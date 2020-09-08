@@ -1,5 +1,5 @@
-use device_driver::ll::register::{RegisterInterface};
-use device_driver::{create_device, implement_registers, ll::register::RegisterError};
+use device_driver::ll::register::RegisterInterface;
+use device_driver::{create_low_level_device, implement_registers, ll::register::RegisterError};
 
 use embedded_hal::blocking::spi::{Transfer, Write};
 use embedded_hal::digital::v2::OutputPin;
@@ -21,6 +21,7 @@ impl Write<u8> for MockSpi {
     }
 }
 
+// Mock impl for output pin
 pub struct MockPin;
 impl OutputPin for MockPin {
     type Error = ();
@@ -38,7 +39,7 @@ impl OutputPin for MockPin {
 pub enum InterfaceError {
     CsError,
     ResetError,
-    CommunicationError
+    CommunicationError,
 }
 
 /// Our full hardware interface with the chip
@@ -60,34 +61,51 @@ impl<SPI: Transfer<u8> + Write<u8>, CS: OutputPin, RESET: OutputPin> RegisterInt
         address: Self::Address,
         value: &mut [u8],
     ) -> Result<(), Self::InterfaceError> {
-        self.cs_pin.set_low().map_err(|_| Self::InterfaceError::CsError)?;
+        self.cs_pin
+            .set_low()
+            .map_err(|_| Self::InterfaceError::CsError)?;
 
-        self.communication_interface.write(&[0x80 | address]).map_err(|_| Self::InterfaceError::CommunicationError)?;
-        self.communication_interface.transfer(value).map_err(|_| Self::InterfaceError::CommunicationError)?;
+        self.communication_interface
+            .write(&[0x80 | address])
+            .map_err(|_| Self::InterfaceError::CommunicationError)?;
+        self.communication_interface
+            .transfer(value)
+            .map_err(|_| Self::InterfaceError::CommunicationError)?;
 
-        self.cs_pin.set_high().map_err(|_| Self::InterfaceError::CsError)?;
+        self.cs_pin
+            .set_high()
+            .map_err(|_| Self::InterfaceError::CsError)?;
         Ok(())
     }
+
     fn write_register(
         &mut self,
         address: Self::Address,
         value: &[u8],
     ) -> Result<(), Self::InterfaceError> {
-        self.cs_pin.set_low().map_err(|_| Self::InterfaceError::CsError)?;
+        self.cs_pin
+            .set_low()
+            .map_err(|_| Self::InterfaceError::CsError)?;
 
-        self.communication_interface.write(&[address]).map_err(|_| Self::InterfaceError::CommunicationError)?;
-        self.communication_interface.write(value).map_err(|_| Self::InterfaceError::CommunicationError)?;
+        self.communication_interface
+            .write(&[address])
+            .map_err(|_| Self::InterfaceError::CommunicationError)?;
+        self.communication_interface
+            .write(value)
+            .map_err(|_| Self::InterfaceError::CommunicationError)?;
 
-        self.cs_pin.set_high().map_err(|_| Self::InterfaceError::CsError)?;
+        self.cs_pin
+            .set_high()
+            .map_err(|_| Self::InterfaceError::CsError)?;
 
         Ok(())
     }
 }
 
-create_device!(MyDevice {
-    error = (),
-});
+// Create our low level device. This holds all the hardware communication definitions
+create_low_level_device!(MyDevice);
 
+// Create a register set for the device
 implement_registers!(MyDevice.registers<u8> = {
     id(RW, 0, 4) = {
 
@@ -101,7 +119,11 @@ implement_registers!(MyDevice.registers<u8> = {
 });
 
 fn main() {
-    let mut device = MyDevice::new(ChipInterface { communication_interface: MockSpi, cs_pin: MockPin, reset_pin: MockPin }).unwrap();
+    let mut device = MyDevice::new(ChipInterface {
+        communication_interface: MockSpi,
+        cs_pin: MockPin,
+        reset_pin: MockPin,
+    });
 
     device.registers().id().modify(|_, w| w).unwrap();
 }
