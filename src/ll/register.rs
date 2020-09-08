@@ -41,16 +41,18 @@ macro_rules! implement_registers {
         $device_name:ident.$register_set_name:ident<$register_address_type:ty> = {
             $(
                 $register_name:ident($register_access_specifier:tt, $register_address:expr, $register_size:expr) = {
-
+                    $(
+                        $field_name:ident: $field_type:ty = $field_access_specifier:tt $field_bit_range:expr
+                    ),* $(,)?
                 }
-            ),*
+            ),* $(,)?
         }
     ) => {
         pub mod $register_set_name {
             use super::*;
             use device_driver::ll::register::RegisterInterface;
             use device_driver::ll::LowLevelDevice;
-            use device_driver::implement_reg_accessor;
+            use device_driver::implement_register;
 
             impl<'a, I> $device_name<I>
             where
@@ -110,26 +112,13 @@ macro_rules! implement_registers {
                 pub mod $register_name {
                     use super::*;
 
-                    pub struct R([u8; $register_size]);
-                    pub struct W([u8; $register_size]);
-
-                    impl<'a, I> RegAccessor<'a, I, R, W>
-                    where
-                        I: RegisterInterface<Address = $register_address_type>,
-                    {
-                        implement_reg_accessor!($register_access_specifier, $register_address);
-                    }
-
-                    impl R {
-                        fn zero() -> Self {
-                            Self([0; $register_size])
+                    implement_register!(
+                        ($register_access_specifier, $register_address, $register_size, $register_address_type) {
+                            $(
+                                $field_name: $field_type = $field_access_specifier $field_bit_range
+                            ),*
                         }
-                    }
-                    impl W {
-                        fn zero() -> Self {
-                            Self([0; $register_size])
-                        }
-                    }
+                    );
                 }
             )*
         }
@@ -137,42 +126,132 @@ macro_rules! implement_registers {
 }
 
 #[macro_export]
-macro_rules! implement_reg_accessor {
-    (RO, $address:expr) => {
-        /// Reads the register
-        pub fn read(&mut self) -> Result<R, RegisterError<I::InterfaceError>> {
-            let mut r = R::zero();
-            self.interface.read_register($address, &mut r.0)?;
-            Ok(r)
+macro_rules! implement_register {
+    ((@R, $register_address:expr, $register_size:expr, $register_address_type:ty) {
+            $(
+                $field_name:ident: $field_type:ty = $field_access_specifier:tt $field_bit_range:expr
+            ),*
+        }
+    ) => {
+        pub struct R([u8; $register_size]);
+
+        impl R {
+            fn zero() -> Self {
+                Self([0; $register_size])
+            }
+        }
+
+        impl<'a, I> RegAccessor<'a, I, R, W>
+        where
+            I: RegisterInterface<Address = $register_address_type>,
+        {
+            /// Reads the register
+            pub fn read(&mut self) -> Result<R, RegisterError<I::InterfaceError>> {
+                let mut r = R::zero();
+                self.interface.read_register($register_address, &mut r.0)?;
+                Ok(r)
+            }
         }
     };
-    (WO, $address:expr) => {
-        /// Writes the value returned by the closure to the register
-        pub fn write<F>(&mut self, f: F) -> Result<(), RegisterError<I::InterfaceError>>
+    ((@W, $register_address:expr, $register_size:expr, $register_address_type:ty) {
+            $(
+                $field_name:ident: $field_type:ty = $field_access_specifier:tt $field_bit_range:expr
+            ),*
+        }
+    ) => {
+        pub struct W([u8; $register_size]);
+
+        impl W {
+            fn zero() -> Self {
+                Self([0; $register_size])
+            }
+        }
+
+        impl<'a, I> RegAccessor<'a, I, R, W>
         where
-            F: FnOnce(W) -> W,
+            I: RegisterInterface<Address = $register_address_type>,
         {
-            let w = f(W::zero());
-            self.interface.write_register($address, &w.0)?;
-            Ok(())
+            /// Writes the value returned by the closure to the register
+            pub fn write<F>(&mut self, f: F) -> Result<(), RegisterError<I::InterfaceError>>
+            where
+                F: FnOnce(W) -> W,
+            {
+                let w = f(W::zero());
+                self.interface.write_register($register_address, &w.0)?;
+                Ok(())
+            }
         }
     };
-    (RW, $address:expr) => {
-        implement_reg_accessor!(RO, $address);
-        implement_reg_accessor!(WO, $address);
-
-        /// Reads the register, gives the value to the closure and writes back the value returned by the closure
-        pub fn modify<F>(&mut self, f: F) -> Result<(), RegisterError<I::InterfaceError>>
-        where
-            F: FnOnce(R, W) -> W,
-        {
-            let r = self.read()?;
-            let w = W(r.0.clone());
-
-            let w = f(r, w);
-
-            self.write(|_| w)?;
-            Ok(())
+    ((RW, $register_address:expr, $register_size:expr, $register_address_type:ty) {
+            $(
+                $field_name:ident: $field_type:ty = $field_access_specifier:tt $field_bit_range:expr
+            ),*
         }
+    ) => {
+        implement_register!(
+            (@R, $register_address, $register_size, $register_address_type) {
+                $(
+                    $field_name: $field_type = $field_access_specifier $field_bit_range
+                ),*
+            }
+        );
+        implement_register!(
+            (@W, $register_address, $register_size, $register_address_type) {
+                $(
+                    $field_name: $field_type = $field_access_specifier $field_bit_range
+                ),*
+            }
+        );
+
+        impl<'a, I> RegAccessor<'a, I, R, W>
+        where
+            I: RegisterInterface<Address = $register_address_type>,
+        {
+            /// Reads the register, gives the value to the closure and writes back the value returned by the closure
+            pub fn modify<F>(&mut self, f: F) -> Result<(), RegisterError<I::InterfaceError>>
+            where
+                F: FnOnce(R, W) -> W,
+            {
+                let r = self.read()?;
+                let w = W(r.0.clone());
+
+                let w = f(r, w);
+
+                self.write(|_| w)?;
+                Ok(())
+            }
+        }
+    };
+    ((RO, $register_address:expr, $register_size:expr, $register_address_type:ty) {
+            $(
+                $field_name:ident: $field_type:ty = $field_access_specifier:tt $field_bit_range:expr
+            ),*
+        }
+    ) => {
+        implement_register!(
+            (@R, $register_address, $register_size, $register_address_type) {
+                $(
+                    $field_name: $field_type = $field_access_specifier $field_bit_range
+                ),*
+            }
+        );
+
+        pub type W = ();
+    };
+    ((WO, $register_address:expr, $register_size:expr, $register_address_type:ty) {
+            $(
+                $field_name:ident: $field_type:ty = $field_access_specifier:tt $field_bit_range:expr
+            ),*
+        }
+    ) => {
+        implement_register!(
+            (@W, $register_address, $register_size, $register_address_type) {
+                $(
+                    $field_name: $field_type = $field_access_specifier $field_bit_range
+                ),*
+            }
+        );
+
+        pub type R = ();
     };
 }

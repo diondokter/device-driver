@@ -108,14 +108,16 @@ create_low_level_device!(MyDevice);
 // Create a register set for the device
 implement_registers!(MyDevice.registers<u8> = {
     id(RW, 0, 4) = {
-
+        manufacturer: u16 = RW 0..16,
+        version: u8 = RO 16..24,
+        kind: u8 = WO 16..24,
     },
     test(RO, 1, 2) = {
 
     },
     test2(WO, 2, 1) = {
 
-    }
+    },
 });
 
 fn main() {
