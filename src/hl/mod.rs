@@ -1,9 +1,9 @@
 /// General Device trait
-pub trait Device<I, P> {
+pub trait Device<I> {
     type Error;
 
     /// Create a new instance of the device with the given interface
-    fn new(interface: I, pins: P) -> Result<Self, Self::Error>
+    fn new(interface: I) -> Result<Self, Self::Error>
     where
         Self: Sized;
 }
@@ -12,29 +12,23 @@ pub trait Device<I, P> {
 macro_rules! create_device {
     (
         $device_name:ident {
-            $(interface: $interface_bounds:path,)?
-            $(pins: $pins_bounds:path,)?
-            error: $error_type:ty,
+            error = $error_type:ty,
         }
     ) => {
         use device_driver::hl::Device;
 
-        pub trait InterfaceBounds = $($interface_bounds)?;
-        pub trait PinsBounds = $($pins_bounds)?;
-
-        pub struct $device_name<I: InterfaceBounds, P: PinsBounds> {
+        pub struct $device_name<I> {
             interface: I,
-            pins: P,
         }
 
-        impl<I: InterfaceBounds, P: PinsBounds> Device<I, P> for $device_name<I, P> {
+        impl<I> Device<I> for $device_name<I> {
             type Error = $error_type;
 
-            fn new(interface: I, pins: P) -> Result<Self, Self::Error>
+            fn new(interface: I) -> Result<Self, Self::Error>
             where
                 Self: Sized,
             {
-                Ok(Self { interface, pins })
+                Ok(Self { interface })
             }
         }
     };

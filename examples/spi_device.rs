@@ -1,73 +1,107 @@
-#![feature(trait_alias)]
-
+use device_driver::ll::register::{RegisterInterface};
 use device_driver::{create_device, implement_registers, ll::register::RegisterError};
 
 use embedded_hal::blocking::spi::{Transfer, Write};
+use embedded_hal::digital::v2::OutputPin;
 
 /// Mock impl for hal spi
-pub struct Spi;
-impl Transfer<u8> for Spi {
+pub struct MockSpi;
+impl Transfer<u8> for MockSpi {
     type Error = ();
     fn transfer<'w>(&mut self, words: &'w mut [u8]) -> Result<&'w [u8], Self::Error> {
+        println!("Spi transferred {:x?}", words);
         Ok(words)
     }
 }
-impl Write<u8> for Spi {
+impl Write<u8> for MockSpi {
     type Error = ();
-    fn write(&mut self, _words: &[u8]) -> Result<(), Self::Error> {
+    fn write(&mut self, words: &[u8]) -> Result<(), Self::Error> {
+        println!("Spi wrote {:x?}", words);
         Ok(())
     }
 }
 
-/// A wrapper around a
-pub struct InterfaceWrapper<E, SPI: Transfer<u8, Error = E> + Write<u8, Error = E>> {
-    pub interface: SPI,
+pub struct MockPin;
+impl OutputPin for MockPin {
+    type Error = ();
+    fn set_low(&mut self) -> Result<(), Self::Error> {
+        println!("Pin set low");
+        Ok(())
+    }
+    fn set_high(&mut self) -> Result<(), Self::Error> {
+        println!("Pin set high");
+        Ok(())
+    }
 }
 
-// Implementing the register interface for the wrapper
-impl<E, SPI: Transfer<u8, Error = E> + Write<u8, Error = E>> RegisterInterface
-    for InterfaceWrapper<E, SPI>
+#[derive(Debug)]
+pub enum InterfaceError {
+    CsError,
+    ResetError,
+    CommunicationError
+}
+
+/// Our full hardware interface with the chip
+pub struct ChipInterface<SPI: Transfer<u8> + Write<u8>, CS: OutputPin, RESET: OutputPin> {
+    pub communication_interface: SPI,
+    pub cs_pin: CS,
+    pub reset_pin: RESET,
+}
+
+// Implementing the register interface for the hardware interface
+impl<SPI: Transfer<u8> + Write<u8>, CS: OutputPin, RESET: OutputPin> RegisterInterface
+    for ChipInterface<SPI, RESET, CS>
 {
-    type Word = u8;
     type Address = u8;
-    type InterfaceError = E;
+    type InterfaceError = InterfaceError;
 
     fn read_register(
         &mut self,
         address: Self::Address,
-    ) -> Result<Self::Word, RegisterError<Self::InterfaceError>> {
-        Ok(self.interface.transfer(&mut [address, 0])?[1])
+        value: &mut [u8],
+    ) -> Result<(), Self::InterfaceError> {
+        self.cs_pin.set_low().map_err(|_| Self::InterfaceError::CsError)?;
+
+        self.communication_interface.write(&[0x80 | address]).map_err(|_| Self::InterfaceError::CommunicationError)?;
+        self.communication_interface.transfer(value).map_err(|_| Self::InterfaceError::CommunicationError)?;
+
+        self.cs_pin.set_high().map_err(|_| Self::InterfaceError::CsError)?;
+        Ok(())
     }
     fn write_register(
         &mut self,
-        _address: Self::Address,
-        _value: Self::Word,
-    ) -> Result<(), RegisterError<Self::InterfaceError>> {
+        address: Self::Address,
+        value: &[u8],
+    ) -> Result<(), Self::InterfaceError> {
+        self.cs_pin.set_low().map_err(|_| Self::InterfaceError::CsError)?;
+
+        self.communication_interface.write(&[address]).map_err(|_| Self::InterfaceError::CommunicationError)?;
+        self.communication_interface.write(value).map_err(|_| Self::InterfaceError::CommunicationError)?;
+
+        self.cs_pin.set_high().map_err(|_| Self::InterfaceError::CsError)?;
+
         Ok(())
     }
 }
 
-pub struct ResetPin;
-impl embedded_hal::digital::v2::OutputPin for ResetPin {
-    type Error = ();
-    fn set_low(&mut self) -> Result<(), Self::Error> {
-        todo!()
-    }
-    fn set_high(&mut self) -> Result<(), Self::Error> {
-        todo!()
-    }
-}
-
 create_device!(MyDevice {
-    //interface: embedded_hal::digital::v2::OutputPin,
-    //pins: embedded_hal::digital::v2::OutputPin,
-    error: (),
+    error = (),
 });
 
-implement_registers!(MyDevice { id, test });
+implement_registers!(MyDevice.registers<u8> = {
+    id(RW, 0, 4) = {
+
+    },
+    test(RO, 1, 2) = {
+
+    },
+    test2(WO, 2, 1) = {
+
+    }
+});
 
 fn main() {
-    let mut device = MyDevice::new(InterfaceWrapper { interface: Spi }, ResetPin).unwrap();
+    let mut device = MyDevice::new(ChipInterface { communication_interface: MockSpi, cs_pin: MockPin, reset_pin: MockPin }).unwrap();
 
-    device.registers().id();
+    device.registers().id().modify(|_, w| w).unwrap();
 }
