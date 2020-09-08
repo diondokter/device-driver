@@ -53,6 +53,7 @@ macro_rules! implement_registers {
             use device_driver::ll::register::RegisterInterface;
             use device_driver::ll::LowLevelDevice;
             use device_driver::implement_register;
+            use device_driver::implement_register_field;
 
             impl<'a, I> $device_name<I>
             where
@@ -139,6 +140,10 @@ macro_rules! implement_register {
             fn zero() -> Self {
                 Self([0; $register_size])
             }
+
+            $(
+                implement_register_field!(@R, $field_name: $field_type = $field_access_specifier $field_bit_range);
+            )*
         }
 
         impl<'a, I> RegAccessor<'a, I, R, W>
@@ -165,6 +170,10 @@ macro_rules! implement_register {
             fn zero() -> Self {
                 Self([0; $register_size])
             }
+
+            $(
+                implement_register_field!(@W, $field_name: $field_type = $field_access_specifier $field_bit_range);
+            )*
         }
 
         impl<'a, I> RegAccessor<'a, I, R, W>
@@ -253,5 +262,41 @@ macro_rules! implement_register {
         );
 
         pub type R = ();
+    };
+}
+
+#[macro_export]
+macro_rules! implement_register_field {
+    (@R, $field_name:ident: $field_type:ty = RO $field_bit_range:expr) => {
+        pub fn $field_name(&self) -> $field_type {
+            use bitvec::prelude::*;
+            use bitvec::view::AsBits;
+
+            self.0.as_bits::<Lsb0>()[$field_bit_range].load_be()
+        }
+    };
+    (@R, $field_name:ident: $field_type:ty = WO $field_bit_range:expr) => {
+        // Empty on purpose
+    };
+    (@R, $field_name:ident: $field_type:ty = RW $field_bit_range:expr) => {
+        implement_register_field!(@R, $field_name: $field_type = RO $field_bit_range);
+        implement_register_field!(@R, $field_name: $field_type = WO $field_bit_range);
+    };
+    (@W, $field_name:ident: $field_type:ty = RO $field_bit_range:expr) => {
+        // Empty on purpose
+    };
+    (@W, $field_name:ident: $field_type:ty = WO $field_bit_range:expr) => {
+        pub fn $field_name(mut self, value: $field_type) -> Self {
+            use bitvec::prelude::*;
+            use bitvec::view::AsBitsMut;
+
+            self.0.as_bits_mut::<Lsb0>()[$field_bit_range].store_be(value);
+
+            self
+        }
+    };
+    (@W, $field_name:ident: $field_type:ty = RW $field_bit_range:expr) => {
+        implement_register_field!(@W, $field_name: $field_type = RO $field_bit_range);
+        implement_register_field!(@W, $field_name: $field_type = WO $field_bit_range);
     };
 }

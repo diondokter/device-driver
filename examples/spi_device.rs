@@ -110,7 +110,7 @@ implement_registers!(MyDevice.registers<u8> = {
     id(RW, 0, 4) = {
         manufacturer: u16 = RW 0..16,
         version: u8 = RO 16..24,
-        kind: u8 = WO 16..24,
+        kind: u8 = WO 24..32,
     },
     test(RO, 1, 2) = {
 
@@ -127,5 +127,5 @@ fn main() {
         reset_pin: MockPin,
     });
 
-    device.registers().id().modify(|_, w| w).unwrap();
+    device.registers().id().modify(|r, w| w.manufacturer(5).kind(r.version())).unwrap();
 }
