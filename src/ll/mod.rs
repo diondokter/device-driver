@@ -1,3 +1,6 @@
+use crate::ll::register::RegisterError;
+use core::fmt::Debug;
+
 //#[macro_use]
 //pub mod memory;
 #[macro_use]
@@ -9,6 +12,9 @@ pub trait LowLevelDevice<I> {
     fn new(interface: I) -> Self
     where
         Self: Sized;
+
+    /// Destruct the device and give back the interface
+    fn free(self) -> I;
 }
 
 #[macro_export]
@@ -29,6 +35,21 @@ macro_rules! create_low_level_device {
             {
                 Self { interface }
             }
+
+            fn free(self) -> I {
+                self.interface
+            }
         }
     };
+}
+
+#[derive(Debug)]
+pub enum LowLevelError<HE: Debug> {
+    RegisterError(RegisterError<HE>),
+}
+
+impl<HE: Debug> From<RegisterError<HE>> for LowLevelError<HE> {
+    fn from(val: RegisterError<HE>) -> Self {
+        LowLevelError::RegisterError(val)
+    }
 }

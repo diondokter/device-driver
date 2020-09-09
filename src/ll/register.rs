@@ -2,13 +2,13 @@ use core::fmt::Debug;
 
 /// General error enum for working with registers
 #[derive(Debug)]
-pub enum RegisterError<IE: Debug> {
+pub enum RegisterError<HE: Debug> {
     InvalidValue,
-    HardwareError(IE),
+    HardwareError(HE),
 }
 
-impl<IE: Debug> From<IE> for RegisterError<IE> {
-    fn from(value: IE) -> Self {
+impl<HE: Debug> From<HE> for RegisterError<HE> {
+    fn from(value: HE) -> Self {
         RegisterError::HardwareError(value)
     }
 }
@@ -19,6 +19,10 @@ pub trait RegisterInterface {
     type Address;
     /// The type representation of the errors the interface can give
     type InterfaceError: Debug;
+
+    // To consider: Right now we're using byte arrays for interfacing with registers.
+    // This could also be bitarray. Pro: Better support for i.e. 7-bit registers.
+    // Con: More elaborate to work with in most cases.
 
     /// Reads the register at the given address and puts the data in the value parameter
     fn read_register(
@@ -38,16 +42,20 @@ pub trait RegisterInterface {
 #[macro_export]
 macro_rules! implement_registers {
     (
+        $(#[$register_set_doc:meta])*
         $device_name:ident.$register_set_name:ident<$register_address_type:ty> = {
             $(
+                $(#[$register_doc:meta])*
                 $register_name:ident($register_access_specifier:tt, $register_address:expr, $register_size:expr) = {
                     $(
+                        $(#[$field_doc:meta])*
                         $field_name:ident: $field_type:ty = $field_access_specifier:tt $field_bit_range:expr
                     ),* $(,)?
                 }
             ),* $(,)?
         }
     ) => {
+        $(#[$register_set_doc])*
         pub mod $register_set_name {
             use super::*;
             use device_driver::ll::register::RegisterInterface;
@@ -59,6 +67,7 @@ macro_rules! implement_registers {
             where
                 I: 'a + RegisterInterface<Address = $register_address_type>,
             {
+                $(#[$register_set_doc])*
                 pub fn $register_set_name(&'a mut self) -> RegisterSet<'a, I> {
                     RegisterSet::new(&mut self.interface)
                 }
@@ -103,6 +112,7 @@ macro_rules! implement_registers {
                 }
 
                 $(
+                    $(#[$register_doc])*
                     pub fn $register_name(&'a mut self) -> RegAccessor<'a, I, $register_name::R, $register_name::W> {
                         RegAccessor::new(&mut self.interface)
                     }
@@ -110,12 +120,14 @@ macro_rules! implement_registers {
             }
 
             $(
+                $(#[$register_doc])*
                 pub mod $register_name {
                     use super::*;
 
                     implement_register!(
                         ($register_access_specifier, $register_address, $register_size, $register_address_type) {
                             $(
+                                $(#[$field_doc])*
                                 $field_name: $field_type = $field_access_specifier $field_bit_range
                             ),*
                         }
@@ -128,12 +140,17 @@ macro_rules! implement_registers {
 
 #[macro_export]
 macro_rules! implement_register {
-    ((@R, $register_address:expr, $register_size:expr, $register_address_type:ty) {
+    // This arm implements the read part (but not read-only)
+    (
+        $(#[$register_doc:meta])*
+        (@R, $register_address:expr, $register_size:expr, $register_address_type:ty) {
             $(
+                $(#[$field_doc:meta])*
                 $field_name:ident: $field_type:ty = $field_access_specifier:tt $field_bit_range:expr
             ),*
         }
     ) => {
+        /// Reader struct for the register
         pub struct R([u8; $register_size]);
 
         impl R {
@@ -142,7 +159,7 @@ macro_rules! implement_register {
             }
 
             $(
-                implement_register_field!(@R, $field_name: $field_type = $field_access_specifier $field_bit_range);
+                implement_register_field!(@R, $(#[$field_doc])* $field_name: $field_type = $field_access_specifier $field_bit_range);
             )*
         }
 
@@ -158,12 +175,17 @@ macro_rules! implement_register {
             }
         }
     };
-    ((@W, $register_address:expr, $register_size:expr, $register_address_type:ty) {
+    // This arm implements the write part (but not write-only)
+    (
+        $(#[$register_doc:meta])*
+        (@W, $register_address:expr, $register_size:expr, $register_address_type:ty) {
             $(
+                $(#[$field_doc:meta])*
                 $field_name:ident: $field_type:ty = $field_access_specifier:tt $field_bit_range:expr
             ),*
         }
     ) => {
+        /// Writer struct for the register
         pub struct W([u8; $register_size]);
 
         impl W {
@@ -172,7 +194,7 @@ macro_rules! implement_register {
             }
 
             $(
-                implement_register_field!(@W, $field_name: $field_type = $field_access_specifier $field_bit_range);
+                implement_register_field!(@W, $(#[$field_doc])* $field_name: $field_type = $field_access_specifier $field_bit_range);
             )*
         }
 
@@ -191,22 +213,30 @@ macro_rules! implement_register {
             }
         }
     };
-    ((RW, $register_address:expr, $register_size:expr, $register_address_type:ty) {
+    // This arm implements both read and write parts
+    (
+        $(#[$register_doc:meta])*
+        (RW, $register_address:expr, $register_size:expr, $register_address_type:ty) {
             $(
+                $(#[$field_doc:meta])*
                 $field_name:ident: $field_type:ty = $field_access_specifier:tt $field_bit_range:expr
             ),*
         }
     ) => {
         implement_register!(
+            $(#[$register_doc:meta])*
             (@R, $register_address, $register_size, $register_address_type) {
                 $(
+                    $(#[$field_doc])*
                     $field_name: $field_type = $field_access_specifier $field_bit_range
                 ),*
             }
         );
         implement_register!(
+            $(#[$register_doc:meta])*
             (@W, $register_address, $register_size, $register_address_type) {
                 $(
+                    $(#[$field_doc])*
                     $field_name: $field_type = $field_access_specifier $field_bit_range
                 ),*
             }
@@ -231,43 +261,58 @@ macro_rules! implement_register {
             }
         }
     };
-    ((RO, $register_address:expr, $register_size:expr, $register_address_type:ty) {
+    // This arm implements the read part and disables write
+    (
+        $(#[$register_doc:meta])*
+        (RO, $register_address:expr, $register_size:expr, $register_address_type:ty) {
             $(
+                $(#[$field_doc:meta])*
                 $field_name:ident: $field_type:ty = $field_access_specifier:tt $field_bit_range:expr
             ),*
         }
     ) => {
         implement_register!(
+            $(#[$register_doc:meta])*
             (@R, $register_address, $register_size, $register_address_type) {
                 $(
+                    $(#[$field_doc])*
                     $field_name: $field_type = $field_access_specifier $field_bit_range
                 ),*
             }
         );
 
+        /// Empty writer. This means this register is read-only
         pub type W = ();
     };
-    ((WO, $register_address:expr, $register_size:expr, $register_address_type:ty) {
+    // This arm implements the write part and disables read
+    (
+        $(#[$register_doc:meta])*
+        (WO, $register_address:expr, $register_size:expr, $register_address_type:ty) {
             $(
+                $(#[$field_doc:meta])*
                 $field_name:ident: $field_type:ty = $field_access_specifier:tt $field_bit_range:expr
             ),*
         }
     ) => {
         implement_register!(
+            $(#[$register_doc:meta])*
             (@W, $register_address, $register_size, $register_address_type) {
                 $(
+                    $(#[$field_doc])*
                     $field_name: $field_type = $field_access_specifier $field_bit_range
                 ),*
             }
         );
 
+        /// Empty reader. This means this register is write-only
         pub type R = ();
     };
 }
 
 #[macro_export]
 macro_rules! implement_register_field {
-    (@R, $field_name:ident: $field_type:ty = RO $field_bit_range:expr) => {
+    (@R, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty = RO $field_bit_range:expr) => {
+        $(#[$field_doc])*
         pub fn $field_name(&self) -> $field_type {
             use bitvec::prelude::*;
             use bitvec::view::AsBits;
@@ -275,17 +320,18 @@ macro_rules! implement_register_field {
             self.0.as_bits::<Lsb0>()[$field_bit_range].load_be()
         }
     };
-    (@R, $field_name:ident: $field_type:ty = WO $field_bit_range:expr) => {
+    (@R, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty = WO $field_bit_range:expr) => {
         // Empty on purpose
     };
-    (@R, $field_name:ident: $field_type:ty = RW $field_bit_range:expr) => {
-        implement_register_field!(@R, $field_name: $field_type = RO $field_bit_range);
-        implement_register_field!(@R, $field_name: $field_type = WO $field_bit_range);
+    (@R, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty = RW $field_bit_range:expr) => {
+        implement_register_field!(@R, $(#[$field_doc])* $field_name: $field_type = RO $field_bit_range);
+        implement_register_field!(@R, $(#[$field_doc])* $field_name: $field_type = WO $field_bit_range);
     };
-    (@W, $field_name:ident: $field_type:ty = RO $field_bit_range:expr) => {
+    (@W, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty = RO $field_bit_range:expr) => {
         // Empty on purpose
     };
-    (@W, $field_name:ident: $field_type:ty = WO $field_bit_range:expr) => {
+    (@W, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty = WO $field_bit_range:expr) => {
+        $(#[$field_doc])*
         pub fn $field_name(mut self, value: $field_type) -> Self {
             use bitvec::prelude::*;
             use bitvec::view::AsBitsMut;
@@ -295,8 +341,8 @@ macro_rules! implement_register_field {
             self
         }
     };
-    (@W, $field_name:ident: $field_type:ty = RW $field_bit_range:expr) => {
-        implement_register_field!(@W, $field_name: $field_type = RO $field_bit_range);
-        implement_register_field!(@W, $field_name: $field_type = WO $field_bit_range);
+    (@W, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty = RW $field_bit_range:expr) => {
+        implement_register_field!(@W, $(#[$field_doc])* $field_name: $field_type = RO $field_bit_range);
+        implement_register_field!(@W, $(#[$field_doc])* $field_name: $field_type = WO $field_bit_range);
     };
 }
