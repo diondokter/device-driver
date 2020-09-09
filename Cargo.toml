@@ -16,3 +16,4 @@ bitvec = { version = "0.18.3", default-features = false }
 [dev-dependencies]
 embedded-hal = "0.2.4"
 embedded-hal-mock = "0.7.2"
+num_enum = { version = "0.5.1", default-features = false }
