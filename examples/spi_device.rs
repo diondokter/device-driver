@@ -1,5 +1,5 @@
 use device_driver::ll::register::RegisterInterface;
-use device_driver::{create_low_level_device, implement_registers};
+use device_driver::{create_low_level_device, implement_registers, Bit};
 
 use embedded_hal::blocking::spi::{Transfer, Write};
 use embedded_hal::digital::v2::OutputPin;
@@ -104,21 +104,21 @@ implement_registers!(
         /// The output value will only be updated for the output of which the mask bit is also set.
         port(WO, 1, 1) = {
             /// Sets output 0 if mask 0 is also high
-            output_0: u8 as bool = WO 0..=0,
+            output_0: u8 as Bit = WO 0..=0,
             /// Sets output 1 if mask 0 is also high
-            output_1: u8 as bool = WO 1..=1,
+            output_1: u8 as Bit = WO 1..=1,
             /// Sets output 2 if mask 0 is also high
-            output_2: u8 as bool = WO 2..=2,
+            output_2: u8 as Bit = WO 2..=2,
             /// Sets output 3 if mask 0 is also high
-            output_3: u8 as bool = WO 3..=3,
+            output_3: u8 as Bit = WO 3..=3,
             /// Mask bit for output 0
-            mask_0: u8 as bool = WO 4..=4,
+            mask_0: u8 as Bit = WO 4..=4,
             /// Mask bit for output 1
-            mask_1: u8 as bool = WO 5..=5,
+            mask_1: u8 as Bit = WO 5..=5,
             /// Mask bit for output 2
-            mask_2: u8 as bool = WO 6..=6,
+            mask_2: u8 as Bit = WO 6..=6,
             /// Mask bit for output 3
-            mask_3: u8 as bool = WO 7..=7,
+            mask_3: u8 as Bit = WO 7..=7,
         },
         /// The input register
         pin(RO, 2, 1) = {
@@ -231,7 +231,7 @@ where
         device
             .registers()
             .port()
-            .write(|w| w.output_0(true).mask_0(true))?;
+            .write(|w| w.output_0(Bit::Set).mask_0(Bit::Set))?;
     }
 
     Ok(())
