@@ -23,7 +23,7 @@ macro_rules! create_low_level_device {
         use device_driver::ll::LowLevelDevice;
         use device_driver::ll::register::ConversionError;
 
-        pub struct $device_name<I> {
+        pub(crate) struct $device_name<I> {
             interface: I,
         }
 

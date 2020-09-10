@@ -227,7 +227,10 @@ where
     let manufacturer = device.registers().id().read()?.manufacturer()?;
 
     if manufacturer != Manufacturer::Unknown {
-        device.registers().mode().modify(|_, w| w.mode_0(PinMode::Output))?;
+        device
+            .registers()
+            .mode()
+            .modify(|_, w| w.mode_0(PinMode::Output))?;
         device
             .registers()
             .port()
