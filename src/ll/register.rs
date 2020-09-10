@@ -305,8 +305,8 @@ macro_rules! implement_register_field {
     (@R, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty = RO $field_bit_range:expr) => {
         $(#[$field_doc])*
         pub fn $field_name(&self) -> $field_type {
-            use bitvec::prelude::*;
-            use bitvec::view::AsBits;
+            use device_driver::bitvec::prelude::*;
+            use device_driver::bitvec::view::AsBits;
 
             self.0.as_bits::<Lsb0>()[$field_bit_range].load_be()
         }
@@ -315,8 +315,8 @@ macro_rules! implement_register_field {
     (@R, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty as $field_convert_type:ty = RO $field_bit_range:expr) => {
         $(#[$field_doc])*
         pub fn $field_name(&self) -> Result<$field_convert_type, ConversionError> {
-            use bitvec::prelude::*;
-            use bitvec::view::AsBits;
+            use device_driver::bitvec::prelude::*;
+            use device_driver::bitvec::view::AsBits;
             use core::convert::TryInto;
 
             let raw: $field_type = self.0.as_bits::<Lsb0>()[$field_bit_range].load_be();
@@ -337,8 +337,8 @@ macro_rules! implement_register_field {
     (@W, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty = WO $field_bit_range:expr) => {
         $(#[$field_doc])*
         pub fn $field_name(mut self, value: $field_type) -> Self {
-            use bitvec::prelude::*;
-            use bitvec::view::AsBitsMut;
+            use device_driver::bitvec::prelude::*;
+            use device_driver::bitvec::view::AsBitsMut;
 
             self.0.as_bits_mut::<Lsb0>()[$field_bit_range].store_be(value);
 
@@ -349,8 +349,8 @@ macro_rules! implement_register_field {
     (@W, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty as $field_convert_type:ty = WO $field_bit_range:expr) => {
         $(#[$field_doc])*
         pub fn $field_name(mut self, value: $field_convert_type) -> Self {
-            use bitvec::prelude::*;
-            use bitvec::view::AsBitsMut;
+            use device_driver::bitvec::prelude::*;
+            use device_driver::bitvec::view::AsBitsMut;
 
             let raw_value: $field_type = value.into();
             self.0.as_bits_mut::<Lsb0>()[$field_bit_range].store_be(raw_value);
