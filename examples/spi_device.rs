@@ -132,15 +132,9 @@ implement_registers!(
             input_3: u8 as PinInputState = RO 6..=7,
         },
         /// The pin mode register
-        mode(RW, 3, 1) = {
-            /// The mode of pin 0
-            mode_0: u8 as PinMode = RW 0..=1,
-            /// The mode of pin 1
-            mode_1: u8 as PinMode = RW 2..=3,
-            /// The mode of pin 2
-            mode_2: u8 as PinMode = RW 4..=5,
-            /// The mode of pin 3
-            mode_3: u8 as PinMode = RW 6..=7,
+        mode(RW, [3, 4, 5, 6], 1) = {
+            /// The mode of the pin
+            mode: u8 as PinMode = RW 0..=1,
         },
     }
 );
@@ -230,7 +224,7 @@ where
         device
             .registers()
             .mode()
-            .modify(|_, w| w.mode_0(PinMode::Output))?;
+            .modify_index(0, |_, w| w.mode(PinMode::Output))?;
         device
             .registers()
             .port()
