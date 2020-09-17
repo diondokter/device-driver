@@ -132,7 +132,7 @@ implement_registers!(
             input_3: u8 as PinInputState = RO 6..=7,
         },
         /// The pin mode register
-        mode(RW, 2, 1) = {
+        mode(RW, 3, 1) = {
             /// The mode of pin 0
             mode_0: u8 as PinMode = RW 0..=1,
             /// The mode of pin 1
@@ -178,10 +178,10 @@ fn main() {
         spi::Transaction::write(vec![0x80]),
         spi::Transaction::transfer(vec![0x00, 0x00], vec![0xCC, 0x05]),
         // Read Mode register
-        spi::Transaction::write(vec![0x82]),
+        spi::Transaction::write(vec![0x83]),
         spi::Transaction::transfer(vec![0x00], vec![0b11100100]),
         // Write Mode register
-        spi::Transaction::write(vec![0x02]),
+        spi::Transaction::write(vec![0x03]),
         spi::Transaction::write(vec![0b11100111]),
         // Write Port register
         spi::Transaction::write(vec![0x01]),
