@@ -148,6 +148,10 @@ macro_rules! implement_register {
                 Self([0; $register_size])
             }
 
+            pub fn get_raw(&self) -> [u8; $register_size] {
+                self.0
+            }
+
             $(
                 implement_register_field!(@R, $(#[$field_doc])* $field_name: $field_type $(as $field_convert_type)? = $field_access_specifier $field_bit_range);
             )*
@@ -184,6 +188,10 @@ macro_rules! implement_register {
                 Self([0; $register_size])
             }
 
+            pub fn get_raw(&self) -> [u8; $register_size] {
+                self.0
+            }
+
             $(
                 implement_register_field!(@R, $(#[$field_doc])* $field_name: $field_type $(as $field_convert_type)? = $field_access_specifier $field_bit_range);
             )*
@@ -217,6 +225,10 @@ macro_rules! implement_register {
         impl W {
             fn zero() -> Self {
                 Self([0; $register_size])
+            }
+            
+            pub fn set_raw(&mut self, value: [u8; $register_size]) {
+                self.0 = value;
             }
 
             $(
@@ -256,6 +268,10 @@ macro_rules! implement_register {
         impl W {
             fn zero() -> Self {
                 Self([0; $register_size])
+            }
+
+            pub fn set_raw(&mut self, value: [u8; $register_size]) {
+                self.0 = value;
             }
 
             $(
