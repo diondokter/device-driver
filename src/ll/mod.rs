@@ -1,5 +1,7 @@
 //#[macro_use]
 //pub mod memory;
+
+/// Module that helps with creating a register interface
 #[macro_use]
 pub mod register;
 

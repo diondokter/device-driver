@@ -1,5 +1,6 @@
 use core::fmt::Debug;
 
+/// Error type for type conversion errors
 #[derive(Debug)]
 pub struct ConversionError;
 
@@ -148,6 +149,7 @@ macro_rules! implement_register {
                 Self([0; $register_size])
             }
 
+            /// Gets the raw value of the writer.
             pub fn get_raw(&self) -> [u8; $register_size] {
                 self.0
             }
@@ -188,6 +190,7 @@ macro_rules! implement_register {
                 Self([0; $register_size])
             }
 
+            /// Gets the raw value of the writer.
             pub fn get_raw(&self) -> [u8; $register_size] {
                 self.0
             }
@@ -227,6 +230,9 @@ macro_rules! implement_register {
                 Self([0; $register_size])
             }
             
+            /// Sets the raw value of the writer.
+            ///
+            /// Be careful because you may inadvertendly set invalid values
             pub fn set_raw(&mut self, value: [u8; $register_size]) {
                 self.0 = value;
             }
@@ -270,6 +276,9 @@ macro_rules! implement_register {
                 Self([0; $register_size])
             }
 
+            /// Sets the raw value of the writer.
+            ///
+            /// Be careful because you may inadvertendly set invalid values
             pub fn set_raw(&mut self, value: [u8; $register_size]) {
                 self.0 = value;
             }
