@@ -80,12 +80,26 @@ impl<SPI: Transfer<u8> + Write<u8>, CS: OutputPin, RESET: OutputPin> RegisterInt
     }
 }
 
+/// Mark this interface so it can be used
+impl<SPI: Transfer<u8> + Write<u8>, CS: OutputPin, RESET: OutputPin> HardwareInterface for ChipInterface<SPI, CS, RESET> {
+    fn reset(&mut self) -> Result<(), InterfaceError> {
+        self.reset_pin.set_high().map_err(|_| InterfaceError::ResetError)?;
+        self.reset_pin.set_low().map_err(|_| InterfaceError::ResetError)?;
+
+        Ok(())
+    }
+}
+
 // Create our low level device. This holds all the hardware communication definitions
-create_low_level_device!({
-    // The name of our new low level device
-    name: MyDevice,
+create_low_level_device!(
+/// Our test device
+MyDevice {
     // The types of errors our low level error enum must contain
     errors: [InterfaceError],
+    hardware_interface_requirements: { RegisterInterface },
+    hardware_interface_capabilities: {
+        fn reset(&mut self) -> Result<(), InterfaceError>;
+    },
 });
 
 // Create a register set for the device
@@ -193,13 +207,18 @@ fn main() {
         pin::Transaction::set(pin::State::High),
     ];
 
-    let reset_expectations = [];
+    let reset_expectations = [
+        pin::Transaction::set(pin::State::High),
+        pin::Transaction::set(pin::State::Low),
+    ];
 
     let mut device = MyDevice::new(ChipInterface {
         communication_interface: spi::Mock::new(&spi_expectations),
         cs_pin: pin::Mock::new(&cs_expectations),
         reset_pin: pin::Mock::new(&reset_expectations),
     });
+
+    device.interface().reset().unwrap();
 
     run(&mut device).unwrap();
 

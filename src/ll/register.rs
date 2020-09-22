@@ -54,7 +54,7 @@ macro_rules! implement_registers {
             use device_driver::implement_register;
             use device_driver::implement_register_field;
 
-            impl<'a, I> $device_name<I>
+            impl<'a, I: HardwareInterface> $device_name<I>
             where
                 I: 'a + RegisterInterface<Address = $register_address_type>,
             {
