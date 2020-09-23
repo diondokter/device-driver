@@ -142,6 +142,7 @@ macro_rules! implement_register {
         }
     ) => {
         /// Reader struct for the register
+        #[derive(Debug, Copy, Clone)]
         pub struct R([u8; $register_size]);
 
         impl R {
@@ -191,6 +192,7 @@ macro_rules! implement_register {
         }
     ) => {
         /// Reader struct for the register
+        #[derive(Debug, Copy, Clone)]
         pub struct R([u8; $register_size]);
 
         impl R {
@@ -239,6 +241,7 @@ macro_rules! implement_register {
         }
     ) => {
         /// Writer struct for the register
+        #[derive(Debug, Copy, Clone)]
         pub struct W([u8; $register_size]);
 
         impl W {
@@ -293,6 +296,7 @@ macro_rules! implement_register {
         }
     ) => {
         /// Writer struct for the register
+        #[derive(Debug, Copy, Clone)]
         pub struct W([u8; $register_size]);
 
         impl W {
