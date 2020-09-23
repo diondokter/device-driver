@@ -145,12 +145,20 @@ macro_rules! implement_register {
         pub struct R([u8; $register_size]);
 
         impl R {
-            fn zero() -> Self {
+            /// Create a zeroed reader
+            pub const fn zero() -> Self {
                 Self([0; $register_size])
             }
 
+            /// Creates a reader with the given value.
+            ///
+            /// Be careful because you may inadvertendly set invalid values
+            pub const fn from_raw(value: [u8; $register_size]) -> Self {
+                Self(value)
+            }
+
             /// Gets the raw value of the writer.
-            pub fn get_raw(&self) -> [u8; $register_size] {
+            pub const fn get_raw(&self) -> [u8; $register_size] {
                 self.0
             }
 
@@ -186,12 +194,20 @@ macro_rules! implement_register {
         pub struct R([u8; $register_size]);
 
         impl R {
-            fn zero() -> Self {
+            /// Create a zeroed reader
+            pub const fn zero() -> Self {
                 Self([0; $register_size])
             }
 
+            /// Creates a reader with the given value.
+            ///
+            /// Be careful because you may inadvertendly set invalid values
+            pub const fn from_raw(value: [u8; $register_size]) -> Self {
+                Self(value)
+            }
+
             /// Gets the raw value of the writer.
-            pub fn get_raw(&self) -> [u8; $register_size] {
+            pub const fn get_raw(&self) -> [u8; $register_size] {
                 self.0
             }
 
@@ -226,14 +242,22 @@ macro_rules! implement_register {
         pub struct W([u8; $register_size]);
 
         impl W {
-            fn zero() -> Self {
+            /// Create a zeroed writer
+            pub const fn zero() -> Self {
                 Self([0; $register_size])
+            }
+
+            /// Creates a writer with the given value.
+            ///
+            /// Be careful because you may inadvertendly set invalid values
+            pub const fn from_raw(value: [u8; $register_size]) -> Self {
+                Self(value)
             }
             
             /// Sets the raw value of the writer.
             ///
             /// Be careful because you may inadvertendly set invalid values
-            pub fn set_raw(self, value: [u8; $register_size]) -> Self {
+            pub const fn set_raw(self, value: [u8; $register_size]) -> Self {
                 Self(value)
             }
 
@@ -272,14 +296,22 @@ macro_rules! implement_register {
         pub struct W([u8; $register_size]);
 
         impl W {
-            fn zero() -> Self {
+            /// Create a zeroed writer
+            pub const fn zero() -> Self {
                 Self([0; $register_size])
+            }
+
+            /// Creates a writer with the given value.
+            ///
+            /// Be careful because you may inadvertendly set invalid values
+            pub const fn from_raw(value: [u8; $register_size]) -> Self {
+                Self(value)
             }
 
             /// Sets the raw value of the writer.
             ///
             /// Be careful because you may inadvertendly set invalid values
-            pub fn set_raw(self, value: [u8; $register_size]) -> Self {
+            pub const fn set_raw(self, value: [u8; $register_size]) -> Self {
                 Self(value)
             }
 

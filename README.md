@@ -18,3 +18,11 @@ at your option.
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
 dual licensed as above, without any additional terms or conditions.
+
+## TODO
+
+- Make hardware interfaces async. (Best way?)
+- Make register R and W type functions const.
+- Better error handling. (Suggestions?)
+- Adding memory devices support.
+- Allow user to specify default register values.
