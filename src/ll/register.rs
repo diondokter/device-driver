@@ -233,8 +233,8 @@ macro_rules! implement_register {
             /// Sets the raw value of the writer.
             ///
             /// Be careful because you may inadvertendly set invalid values
-            pub fn set_raw(&mut self, value: [u8; $register_size]) {
-                self.0 = value;
+            pub fn set_raw(self, value: [u8; $register_size]) -> Self {
+                Self(value)
             }
 
             $(
@@ -279,8 +279,8 @@ macro_rules! implement_register {
             /// Sets the raw value of the writer.
             ///
             /// Be careful because you may inadvertendly set invalid values
-            pub fn set_raw(&mut self, value: [u8; $register_size]) {
-                self.0 = value;
+            pub fn set_raw(self, value: [u8; $register_size]) -> Self {
+                Self(value)
             }
 
             $(
