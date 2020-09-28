@@ -1,4 +1,6 @@
 /// A single bit
+///
+/// Can be used in register definitions instead of a bool
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Bit {
     /// The bit is set high

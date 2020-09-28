@@ -1,12 +1,15 @@
+// We're not using any unsafe
+#![forbid(unsafe_code)]
+
 use device_driver::ll::register::RegisterInterface;
 use device_driver::{create_low_level_device, implement_registers, Bit};
-
 use embedded_hal::blocking::spi::{Transfer, Write};
 use embedded_hal::digital::v2::OutputPin;
 use embedded_hal_mock::{pin, spi};
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use std::fmt::Debug;
 
+/// The errors our hardware interface can return.
 #[derive(Debug)]
 pub enum InterfaceError {
     CsError,
@@ -225,17 +228,22 @@ fn main() {
         reset_pin: pin::Mock::new(&reset_expectations),
     });
 
+    // Call reset on the device
     device.interface().reset().unwrap();
 
+    // Do the tests
     run(&mut device).unwrap();
 
+    // Destruct the interface
     let (mut spi, mut cs, mut reset) = device.free().free();
 
+    // Check the results
     spi.done();
     cs.done();
     reset.done();
 }
 
+/// Does some random register things to showcase how everything works
 fn run<SPI, CS, RESET>(
     device: &mut MyDevice<ChipInterface<SPI, CS, RESET>>,
 ) -> Result<(), LowLevelError>
@@ -244,13 +252,17 @@ where
     CS: OutputPin,
     RESET: OutputPin,
 {
+    // We read the manufacturer
     let manufacturer = device.registers().id().read()?.manufacturer()?;
 
+    // Is it known?
     if manufacturer != Manufacturer::Unknown {
+        // Yes, set pin 0 to output
         device
             .registers()
             .mode()
             .modify_index(0, |_, w| w.mode(PinMode::Output))?;
+        // Enable output on pin 0
         device
             .registers()
             .port()

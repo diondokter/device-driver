@@ -30,6 +30,35 @@ pub trait RegisterInterface {
     ) -> Result<(), Self::InterfaceError>;
 }
 
+/// Defines a register interface for a low level device.
+///
+/// Format:
+///
+/// - `AccessSpecifier` = WO (write-only) | RO (read-only) | RW (read-write)
+/// - `FieldType` = any int type
+/// - `SomeType` = any type that implements Into<FieldType> the field can be written and TryFrom<FieldType> if the field can be read
+///
+/// ```ignore
+/// implement_registers!(
+///     /// Possible docs for register set
+///     DeviceName.register_set_name<RegisterAddressType> = {
+///         /// Possible docs for register
+///         register_name(AccessSpecifier, register_address, register_size) = {
+///             /// Possible docs for register field
+///             field_name: FieldType = AccessSpecifier inclusive_start_bit_index..exclusive_end_bit_index,
+///             /// This field has a conversion and uses an inclusive range
+///             field_name: FieldType as SomeType = AccessSpecifier inclusive_start_bit_index..=inclusive_end_bit_index,
+///         },
+///         /// This register is present at multiple addresses
+///         register_name(AccessSpecifier, [register_address, register_address, register_address], register_size) = {
+///
+///         },
+///     }
+/// );
+/// ```
+///
+/// See the examples folder for actual examples
+///
 #[macro_export]
 macro_rules! implement_registers {
     (
@@ -129,6 +158,7 @@ macro_rules! implement_registers {
     };
 }
 
+/// Internal macro. Do not use.
 #[macro_export]
 macro_rules! implement_register {
     // This arm implements the array read part (but not read-only)
@@ -483,6 +513,7 @@ macro_rules! implement_register {
     };
 }
 
+/// Internal macro. Do not use.
 #[macro_export]
 macro_rules! implement_register_field {
     // Read without 'as' convert

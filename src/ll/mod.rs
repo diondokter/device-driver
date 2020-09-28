@@ -16,6 +16,29 @@ pub trait LowLevelDevice<I> {
     fn free(self) -> I;
 }
 
+/// The base macro for low level.
+/// Creates the struct and implements the right traits for it.
+///
+/// # Example
+///
+/// ```ignore
+/// // Create our low level device. This holds all the hardware communication definitions
+/// create_low_level_device!(
+///     /// Our test device
+///     MyDevice {
+///         // The types of errors our low level error enum must contain
+///         errors: [InterfaceError],
+///         // Any hardware interface must implement the HarwareInterface trait that is created by this macro.
+///         // This option allows us to specify which traits that new trait inherits. In this case that is RegisterInterface and Debug.
+///         hardware_interface_requirements: { RegisterInterface + Debug },
+///         // This specifies the contents of the HardwareInterface trait.
+///         hardware_interface_capabilities: {
+///             /// Resets the device
+///             fn reset(&mut self) -> Result<(), InterfaceError>;
+///         },
+///     }
+/// );
+/// ```
 #[macro_export]
 macro_rules! create_low_level_device {
     (
@@ -38,6 +61,7 @@ macro_rules! create_low_level_device {
         }
 
         impl<I: HardwareInterface> $device_name<I> {
+            /// Access to the pure hardware interface type
             pub fn interface(&mut self) -> &mut I {
                 &mut self.interface
             }
@@ -56,6 +80,7 @@ macro_rules! create_low_level_device {
             }
         }
 
+        /// Error type containing all low level errors
         #[derive(Debug)]
         pub enum LowLevelError {
             ConversionError,
