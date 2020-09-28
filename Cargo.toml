@@ -5,9 +5,10 @@ authors = ["Dion Dokter <diondokter@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
 homepage = "https://github.com/diondokter/device-driver"
-repository = "hhttps://github.com/diondokter/device-driver"
+repository = "https://github.com/diondokter/device-driver"
 readme = "README.md"
 keywords = ["no_std", "device", "driver", "toolkit"]
+categories = ["embedded", "hardware-support", "no-std"]
 description = "A toolkit to write better device drivers, faster"
 
 [dependencies]

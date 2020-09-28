@@ -29,6 +29,7 @@ dual licensed as above, without any additional terms or conditions.
 - Adding memory devices support.
 - Allow user to specify default register values.
 - Create tools for helping create high level layers.
+- Allow register specification based on files? (Work together with [bitinfo](https://crates.io/crates/bitinfo)?)
 
 ## Stability
 
