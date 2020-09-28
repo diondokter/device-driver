@@ -256,7 +256,7 @@ macro_rules! implement_register {
             pub const fn from_raw(value: [u8; $register_size]) -> Self {
                 Self(value)
             }
-            
+
             /// Sets the raw value of the writer.
             ///
             /// Be careful because you may inadvertendly set invalid values

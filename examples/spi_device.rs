@@ -81,10 +81,16 @@ impl<SPI: Transfer<u8> + Write<u8>, CS: OutputPin, RESET: OutputPin> RegisterInt
 }
 
 /// Mark this interface so it can be used
-impl<SPI: Transfer<u8> + Write<u8>, CS: OutputPin, RESET: OutputPin> HardwareInterface for ChipInterface<SPI, CS, RESET> {
+impl<SPI: Transfer<u8> + Write<u8>, CS: OutputPin, RESET: OutputPin> HardwareInterface
+    for ChipInterface<SPI, CS, RESET>
+{
     fn reset(&mut self) -> Result<(), InterfaceError> {
-        self.reset_pin.set_high().map_err(|_| InterfaceError::ResetError)?;
-        self.reset_pin.set_low().map_err(|_| InterfaceError::ResetError)?;
+        self.reset_pin
+            .set_high()
+            .map_err(|_| InterfaceError::ResetError)?;
+        self.reset_pin
+            .set_low()
+            .map_err(|_| InterfaceError::ResetError)?;
 
         Ok(())
     }
@@ -92,15 +98,16 @@ impl<SPI: Transfer<u8> + Write<u8>, CS: OutputPin, RESET: OutputPin> HardwareInt
 
 // Create our low level device. This holds all the hardware communication definitions
 create_low_level_device!(
-/// Our test device
-MyDevice {
-    // The types of errors our low level error enum must contain
-    errors: [InterfaceError],
-    hardware_interface_requirements: { RegisterInterface },
-    hardware_interface_capabilities: {
-        fn reset(&mut self) -> Result<(), InterfaceError>;
-    },
-});
+    /// Our test device
+    MyDevice {
+        // The types of errors our low level error enum must contain
+        errors: [InterfaceError],
+        hardware_interface_requirements: { RegisterInterface },
+        hardware_interface_capabilities: {
+            fn reset(&mut self) -> Result<(), InterfaceError>;
+        },
+    }
+);
 
 // Create a register set for the device
 implement_registers!(

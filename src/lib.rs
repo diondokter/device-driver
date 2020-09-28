@@ -1,7 +1,7 @@
 #![no_std]
 
-pub use bitvec;
 pub use bit::Bit;
+pub use bitvec;
 
 // #[macro_use]
 // pub mod hl;
