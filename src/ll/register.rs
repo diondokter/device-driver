@@ -12,7 +12,8 @@ pub trait RegisterInterface {
     type InterfaceError: Debug;
 
     // To consider: Right now we're using byte arrays for interfacing with registers.
-    // This could also be bitarray. Pro: Better support for i.e. 7-bit registers.
+    // This could also be [`bitarray`](https://crates.io/crates/bitarray).
+    // Pro: Better support for i.e. 7-bit registers.
     // Con: More elaborate to work with in most cases.
 
     /// Reads the register at the given address and puts the data in the value parameter
@@ -183,7 +184,7 @@ macro_rules! implement_register {
 
             /// Creates a reader with the given value.
             ///
-            /// Be careful because you may inadvertendly set invalid values
+            /// Be careful because you may inadvertently set invalid values
             pub const fn from_raw(value: [u8; $register_size]) -> Self {
                 Self(value)
             }
@@ -233,7 +234,7 @@ macro_rules! implement_register {
 
             /// Creates a reader with the given value.
             ///
-            /// Be careful because you may inadvertendly set invalid values
+            /// Be careful because you may inadvertently set invalid values
             pub const fn from_raw(value: [u8; $register_size]) -> Self {
                 Self(value)
             }
@@ -282,14 +283,14 @@ macro_rules! implement_register {
 
             /// Creates a writer with the given value.
             ///
-            /// Be careful because you may inadvertendly set invalid values
+            /// Be careful because you may inadvertently set invalid values
             pub const fn from_raw(value: [u8; $register_size]) -> Self {
                 Self(value)
             }
 
             /// Sets the raw value of the writer.
             ///
-            /// Be careful because you may inadvertendly set invalid values
+            /// Be careful because you may inadvertently set invalid values
             pub const fn set_raw(self, value: [u8; $register_size]) -> Self {
                 Self(value)
             }
@@ -337,14 +338,14 @@ macro_rules! implement_register {
 
             /// Creates a writer with the given value.
             ///
-            /// Be careful because you may inadvertendly set invalid values
+            /// Be careful because you may inadvertently set invalid values
             pub const fn from_raw(value: [u8; $register_size]) -> Self {
                 Self(value)
             }
 
             /// Sets the raw value of the writer.
             ///
-            /// Be careful because you may inadvertendly set invalid values
+            /// Be careful because you may inadvertently set invalid values
             pub const fn set_raw(self, value: [u8; $register_size]) -> Self {
                 Self(value)
             }
