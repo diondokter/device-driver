@@ -28,7 +28,7 @@ pub trait LowLevelDevice<I> {
 ///     MyDevice {
 ///         // The types of errors our low level error enum must contain
 ///         errors: [InterfaceError],
-///         // Any hardware interface must implement the HarwareInterface trait that is created by this macro.
+///         // Any hardware interface must implement the HardwareInterface trait that is created by this macro.
 ///         // This option allows us to specify which traits that new trait inherits. In this case that is RegisterInterface and Debug.
 ///         hardware_interface_requirements: { RegisterInterface + Debug },
 ///         // This specifies the contents of the HardwareInterface trait.
