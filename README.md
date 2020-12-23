@@ -2,7 +2,7 @@
 
 A toolkit to write better device drivers, faster.
 
-See [this](https://github.com/diondokter/device-driver/blob/master/examples/spi_device.rs) example to see how it works. There's also [this OPL2 device driver](https://github.com/diondokter/opl-driver) that is used as reference register implementation for this crate.
+See [this](https://github.com/diondokter/device-driver/blob/master/examples/spi_register_device.rs) example to see how it works. There's also [this OPL2 device driver](https://github.com/diondokter/opl-driver) that is used as reference register implementation for this crate.
 
 ## License
 
