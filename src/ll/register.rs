@@ -35,9 +35,14 @@ pub trait RegisterInterface {
 ///
 /// Format:
 ///
-/// - `AccessSpecifier` = WO (write-only) | RO (read-only) | RW (read-write)
+/// - `AccessSpecifier` = `WO` (write-only) | `RO` (read-only) | `RW` (read-write)
 /// - `FieldType` = any int type
 /// - `SomeType` = any type that implements Into<FieldType> the field can be written and TryFrom<FieldType> if the field can be read
+/// - `RegisterBitOrder` = optional (can be left out. default = LSB) or `LSB` (Least Significant Bit) | `MSB` (Most Significant Bit) =>
+/// This follows uses the ordering semantics of [bitvec::slice::BitSlice] when used with [bitvec::field::BitField].
+/// - `FieldBitOrder` = optional (can be left out. default = BE) or `:LE` (Little Endian) | `:BE` (Big Endian) | `:NE` (Native Endian) =>
+/// Specifies how the bits are read. Native Endian specifies that the CPU Architecture decides if it's LE or BE.
+/// This only makes sense to specify for int types that have more than 1 byte.
 ///
 /// ```ignore
 /// implement_registers!(
@@ -49,9 +54,11 @@ pub trait RegisterInterface {
 ///             field_name: FieldType = AccessSpecifier inclusive_start_bit_index..exclusive_end_bit_index,
 ///             /// This field has a conversion and uses an inclusive range
 ///             field_name: FieldType as SomeType = AccessSpecifier inclusive_start_bit_index..=inclusive_end_bit_index,
+///             /// This field is read with a specified endianness
+///             field_name: FieldType:FieldBitOrder = AccessSpecifier inclusive_start_bit_index..exclusive_end_bit_index,
 ///         },
-///         /// This register is present at multiple addresses
-///         register_name(AccessSpecifier, [register_address, register_address, register_address], register_size) = {
+///         /// This register is present at multiple addresses and has a specified register bit order
+///         register_name(AccessSpecifier, [register_address, register_address, register_address], register_size) = RegisterBitOrder {
 ///
 ///         },
 ///     }
@@ -67,10 +74,10 @@ macro_rules! implement_registers {
         $device_name:ident.$register_set_name:ident<$register_address_type:ty> = {
             $(
                 $(#[$register_doc:meta])*
-                $register_name:ident($register_access_specifier:tt, $register_address:tt, $register_size:expr) = {
+                $register_name:ident($register_access_specifier:tt, $register_address:tt, $register_size:expr) = $($register_bit_order:ident)? {
                     $(
                         $(#[$field_doc:meta])*
-                        $field_name:ident: $field_type:ty $(as $field_convert_type:ty)? = $field_access_specifier:tt $field_bit_range:expr
+                        $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? $(as $field_convert_type:ty)? = $field_access_specifier:tt $field_bit_range:expr
                     ),* $(,)?
                 }
             ),* $(,)?
@@ -81,8 +88,11 @@ macro_rules! implement_registers {
             use super::*;
             use device_driver::ll::register::{RegisterInterface, ConversionError};
             use device_driver::ll::LowLevelDevice;
-            use device_driver::implement_register;
-            use device_driver::implement_register_field;
+            use device_driver::_implement_register;
+            use device_driver::_implement_register_field;
+            use device_driver::_get_bit_order;
+            use device_driver::_load_with_endianness;
+            use device_driver::_store_with_endianness;
 
             impl<'a, I: HardwareInterface> $device_name<I>
             where
@@ -145,11 +155,11 @@ macro_rules! implement_registers {
                 pub mod $register_name {
                     use super::*;
 
-                    implement_register!(
-                        ($register_access_specifier, $register_address, $register_size, $register_address_type) {
+                    _implement_register!(
+                        ($register_access_specifier, $register_address, $register_size, $register_address_type, _get_bit_order!($($register_bit_order)*)) {
                             $(
                                 $(#[$field_doc])*
-                                $field_name: $field_type $(as $field_convert_type)? = $field_access_specifier $field_bit_range
+                                $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = $field_access_specifier $field_bit_range
                             ),*
                         }
                     );
@@ -161,14 +171,15 @@ macro_rules! implement_registers {
 
 /// Internal macro. Do not use.
 #[macro_export]
-macro_rules! implement_register {
+#[doc(hidden)]
+macro_rules! _implement_register {
     // This arm implements the array read part (but not read-only)
     (
         $(#[$register_doc:meta])*
-        (@R, [$($register_address:expr),* $(,)?], $register_size:expr, $register_address_type:ty) {
+        (@R, [$($register_address:expr),* $(,)?], $register_size:expr, $register_address_type:ty, $register_bit_order:ty) {
             $(
                 $(#[$field_doc:meta])*
-                $field_name:ident: $field_type:ty $(as $field_convert_type:ty)? = $field_access_specifier:tt $field_bit_range:expr
+                $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? $(as $field_convert_type:ty)? = $field_access_specifier:tt $field_bit_range:expr
             ),*
         }
     ) => {
@@ -195,7 +206,7 @@ macro_rules! implement_register {
             }
 
             $(
-                implement_register_field!(@R, $(#[$field_doc])* $field_name: $field_type $(as $field_convert_type)? = $field_access_specifier $field_bit_range);
+                _implement_register_field!(@R, $register_bit_order, $(#[$field_doc])* $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = $field_access_specifier $field_bit_range);
             )*
         }
 
@@ -215,10 +226,10 @@ macro_rules! implement_register {
     // This arm implements the single read part (but not read-only)
     (
         $(#[$register_doc:meta])*
-        (@R, $register_address:expr, $register_size:expr, $register_address_type:ty) {
+        (@R, $register_address:expr, $register_size:expr, $register_address_type:ty, $register_bit_order:ty) {
             $(
                 $(#[$field_doc:meta])*
-                $field_name:ident: $field_type:ty $(as $field_convert_type:ty)? = $field_access_specifier:tt $field_bit_range:expr
+                $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? $(as $field_convert_type:ty)? = $field_access_specifier:tt $field_bit_range:expr
             ),*
         }
     ) => {
@@ -245,7 +256,7 @@ macro_rules! implement_register {
             }
 
             $(
-                implement_register_field!(@R, $(#[$field_doc])* $field_name: $field_type $(as $field_convert_type)? = $field_access_specifier $field_bit_range);
+                _implement_register_field!(@R, $register_bit_order, $(#[$field_doc])* $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = $field_access_specifier $field_bit_range);
             )*
         }
 
@@ -264,10 +275,10 @@ macro_rules! implement_register {
     // This arm implements the array write part (but not write-only)
     (
         $(#[$register_doc:meta])*
-        (@W, [$($register_address:expr),* $(,)?], $register_size:expr, $register_address_type:ty) {
+        (@W, [$($register_address:expr),* $(,)?], $register_size:expr, $register_address_type:ty, $register_bit_order:ty) {
             $(
                 $(#[$field_doc:meta])*
-                $field_name:ident: $field_type:ty $(as $field_convert_type:ty)? = $field_access_specifier:tt $field_bit_range:expr
+                $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? $(as $field_convert_type:ty)? = $field_access_specifier:tt $field_bit_range:expr
             ),*
         }
     ) => {
@@ -296,7 +307,7 @@ macro_rules! implement_register {
             }
 
             $(
-                implement_register_field!(@W, $(#[$field_doc])* $field_name: $field_type $(as $field_convert_type)? = $field_access_specifier $field_bit_range);
+                _implement_register_field!(@W, $register_bit_order, $(#[$field_doc])* $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = $field_access_specifier $field_bit_range);
             )*
         }
 
@@ -319,10 +330,10 @@ macro_rules! implement_register {
     // This arm implements the single write part (but not write-only)
     (
         $(#[$register_doc:meta])*
-        (@W, $register_address:expr, $register_size:expr, $register_address_type:ty) {
+        (@W, $register_address:expr, $register_size:expr, $register_address_type:ty, $register_bit_order:ty) {
             $(
                 $(#[$field_doc:meta])*
-                $field_name:ident: $field_type:ty $(as $field_convert_type:ty)? = $field_access_specifier:tt $field_bit_range:expr
+                $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? $(as $field_convert_type:ty)? = $field_access_specifier:tt $field_bit_range:expr
             ),*
         }
     ) => {
@@ -351,7 +362,7 @@ macro_rules! implement_register {
             }
 
             $(
-                implement_register_field!(@W, $(#[$field_doc])* $field_name: $field_type $(as $field_convert_type)? = $field_access_specifier $field_bit_range);
+                _implement_register_field!(@W, $register_bit_order, $(#[$field_doc])* $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = $field_access_specifier $field_bit_range);
             )*
         }
 
@@ -373,28 +384,28 @@ macro_rules! implement_register {
     // This arm implements both array read and write parts
     (
         $(#[$register_doc:meta])*
-        (RW, [$($register_address:expr),* $(,)?], $register_size:expr, $register_address_type:ty) {
+        (RW, [$($register_address:expr),* $(,)?], $register_size:expr, $register_address_type:ty, $register_bit_order:ty) {
             $(
                 $(#[$field_doc:meta])*
-                $field_name:ident: $field_type:ty $(as $field_convert_type:ty)? = $field_access_specifier:tt $field_bit_range:expr
+                $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? $(as $field_convert_type:ty)? = $field_access_specifier:tt $field_bit_range:expr
             ),*
         }
     ) => {
-        implement_register!(
+        _implement_register!(
             $(#[$register_doc:meta])*
-            (@R, [$($register_address,)*], $register_size, $register_address_type) {
+            (@R, [$($register_address,)*], $register_size, $register_address_type, $register_bit_order) {
                 $(
                     $(#[$field_doc])*
-                    $field_name: $field_type $(as $field_convert_type)? = $field_access_specifier $field_bit_range
+                    $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = $field_access_specifier $field_bit_range
                 ),*
             }
         );
-        implement_register!(
+        _implement_register!(
             $(#[$register_doc:meta])*
-            (@W, [$($register_address,)*], $register_size, $register_address_type) {
+            (@W, [$($register_address,)*], $register_size, $register_address_type, $register_bit_order) {
                 $(
                     $(#[$field_doc])*
-                    $field_name: $field_type $(as $field_convert_type)? = $field_access_specifier $field_bit_range
+                    $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = $field_access_specifier $field_bit_range
                 ),*
             }
         );
@@ -421,28 +432,28 @@ macro_rules! implement_register {
     // This arm implements both single read and write parts
     (
         $(#[$register_doc:meta])*
-        (RW, $register_address:expr, $register_size:expr, $register_address_type:ty) {
+        (RW, $register_address:expr, $register_size:expr, $register_address_type:ty, $register_bit_order:ty) {
             $(
                 $(#[$field_doc:meta])*
-                $field_name:ident: $field_type:ty $(as $field_convert_type:ty)? = $field_access_specifier:tt $field_bit_range:expr
+                $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? $(as $field_convert_type:ty)? = $field_access_specifier:tt $field_bit_range:expr
             ),*
         }
     ) => {
-        implement_register!(
+        _implement_register!(
             $(#[$register_doc:meta])*
-            (@R, $register_address, $register_size, $register_address_type) {
+            (@R, $register_address, $register_size, $register_address_type, $register_bit_order) {
                 $(
                     $(#[$field_doc])*
-                    $field_name: $field_type $(as $field_convert_type)? = $field_access_specifier $field_bit_range
+                    $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = $field_access_specifier $field_bit_range
                 ),*
             }
         );
-        implement_register!(
+        _implement_register!(
             $(#[$register_doc:meta])*
-            (@W, $register_address, $register_size, $register_address_type) {
+            (@W, $register_address, $register_size, $register_address_type, $register_bit_order) {
                 $(
                     $(#[$field_doc])*
-                    $field_name: $field_type $(as $field_convert_type)? = $field_access_specifier $field_bit_range
+                    $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = $field_access_specifier $field_bit_range
                 ),*
             }
         );
@@ -469,19 +480,19 @@ macro_rules! implement_register {
     // This arm implements the read part and disables write
     (
         $(#[$register_doc:meta])*
-        (RO, $register_address:tt, $register_size:expr, $register_address_type:ty) {
+        (RO, $register_address:tt, $register_size:expr, $register_address_type:ty, $register_bit_order:ty) {
             $(
                 $(#[$field_doc:meta])*
-                $field_name:ident: $field_type:ty $(as $field_convert_type:ty)? = $field_access_specifier:tt $field_bit_range:expr
+                $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? $(as $field_convert_type:ty)? = $field_access_specifier:tt $field_bit_range:expr
             ),*
         }
     ) => {
-        implement_register!(
+        _implement_register!(
             $(#[$register_doc:meta])*
-            (@R, $register_address, $register_size, $register_address_type) {
+            (@R, $register_address, $register_size, $register_address_type, $register_bit_order) {
                 $(
                     $(#[$field_doc])*
-                    $field_name: $field_type $(as $field_convert_type)? = $field_access_specifier $field_bit_range
+                    $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = $field_access_specifier $field_bit_range
                 ),*
             }
         );
@@ -492,19 +503,19 @@ macro_rules! implement_register {
     // This arm implements the write part and disables read
     (
         $(#[$register_doc:meta])*
-        (WO, $register_address:tt, $register_size:expr, $register_address_type:ty) {
+        (WO, $register_address:tt, $register_size:expr, $register_address_type:ty, $register_bit_order:ty) {
             $(
                 $(#[$field_doc:meta])*
-                $field_name:ident: $field_type:ty $(as $field_convert_type:ty)? = $field_access_specifier:tt $field_bit_range:expr
+                $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? $(as $field_convert_type:ty)? = $field_access_specifier:tt $field_bit_range:expr
             ),*
         }
     ) => {
-        implement_register!(
+        _implement_register!(
             $(#[$register_doc:meta])*
-            (@W, $register_address, $register_size, $register_address_type) {
+            (@W, $register_address, $register_size, $register_address_type, $register_bit_order) {
                 $(
                     $(#[$field_doc])*
-                    $field_name: $field_type $(as $field_convert_type)? = $field_access_specifier $field_bit_range
+                    $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = $field_access_specifier $field_bit_range
                 ),*
             }
         );
@@ -516,66 +527,124 @@ macro_rules! implement_register {
 
 /// Internal macro. Do not use.
 #[macro_export]
-macro_rules! implement_register_field {
+#[doc(hidden)]
+macro_rules! _implement_register_field {
     // Read without 'as' convert
-    (@R, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty = RO $field_bit_range:expr) => {
+    (@R, $register_bit_order:ty, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? = RO $field_bit_range:expr) => {
         $(#[$field_doc])*
         pub fn $field_name(&self) -> $field_type {
             use device_driver::bitvec::prelude::*;
             use device_driver::bitvec::view::AsBits;
 
-            self.0.as_bits::<Lsb0>()[$field_bit_range].load_be()
+            _load_with_endianness!(self.0.as_bits::<$register_bit_order>()[$field_bit_range], $($field_bit_order)?)
         }
     };
     // Read with 'as' convert
-    (@R, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty as $field_convert_type:ty = RO $field_bit_range:expr) => {
+    (@R, $register_bit_order:ty, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? as $field_convert_type:ty = RO $field_bit_range:expr) => {
         $(#[$field_doc])*
         pub fn $field_name(&self) -> Result<$field_convert_type, ConversionError> {
             use device_driver::bitvec::prelude::*;
             use device_driver::bitvec::view::AsBits;
             use core::convert::TryInto;
 
-            let raw: $field_type = self.0.as_bits::<Lsb0>()[$field_bit_range].load_be();
+            let raw: $field_type = _load_with_endianness!(self.0.as_bits::<$register_bit_order>()[$field_bit_range], $($field_bit_order)?);
             raw.try_into().map_err(|_| ConversionError)
         }
     };
-    (@R, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty $(as $field_convert_type:ty)? = WO $field_bit_range:expr) => {
+    (@R, $register_bit_order:ty, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? $(as $field_convert_type:ty)? = WO $field_bit_range:expr) => {
         // Empty on purpose
     };
-    (@R, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty $(as $field_convert_type:ty)? = RW $field_bit_range:expr) => {
-        implement_register_field!(@R, $(#[$field_doc])* $field_name: $field_type $(as $field_convert_type)? = RO $field_bit_range);
-        implement_register_field!(@R, $(#[$field_doc])* $field_name: $field_type $(as $field_convert_type)? = WO $field_bit_range);
+    (@R, $register_bit_order:ty, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? $(as $field_convert_type:ty)? = RW $field_bit_range:expr) => {
+        _implement_register_field!(@R, $register_bit_order, $(#[$field_doc])* $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = RO $field_bit_range);
+        _implement_register_field!(@R, $register_bit_order, $(#[$field_doc])* $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = WO $field_bit_range);
     };
-    (@W, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty $(as $field_convert_type:ty)? = RO $field_bit_range:expr) => {
+    (@W, $register_bit_order:ty, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? $(as $field_convert_type:ty)? = RO $field_bit_range:expr) => {
         // Empty on purpose
     };
     // Write without 'as' convert
-    (@W, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty = WO $field_bit_range:expr) => {
+    (@W, $register_bit_order:ty, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? = WO $field_bit_range:expr) => {
         $(#[$field_doc])*
         pub fn $field_name(mut self, value: $field_type) -> Self {
             use device_driver::bitvec::prelude::*;
             use device_driver::bitvec::view::AsBitsMut;
 
-            self.0.as_bits_mut::<Lsb0>()[$field_bit_range].store_be(value);
+            _store_with_endianness!(self.0.as_bits_mut::<$register_bit_order>()[$field_bit_range], value, $($field_bit_order:ident)?);
 
             self
         }
     };
     // Write with 'as' convert
-    (@W, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty as $field_convert_type:ty = WO $field_bit_range:expr) => {
+    (@W, $register_bit_order:ty, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? as $field_convert_type:ty = WO $field_bit_range:expr) => {
         $(#[$field_doc])*
         pub fn $field_name(mut self, value: $field_convert_type) -> Self {
             use device_driver::bitvec::prelude::*;
             use device_driver::bitvec::view::AsBitsMut;
 
             let raw_value: $field_type = value.into();
-            self.0.as_bits_mut::<Lsb0>()[$field_bit_range].store_be(raw_value);
+            _store_with_endianness!(self.0.as_bits_mut::<$register_bit_order>()[$field_bit_range], raw_value, $($field_bit_order:ident)?);
 
             self
         }
     };
-    (@W, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty $(as $field_convert_type:ty)? = RW $field_bit_range:expr) => {
-        implement_register_field!(@W, $(#[$field_doc])* $field_name: $field_type $(as $field_convert_type)? = RO $field_bit_range);
-        implement_register_field!(@W, $(#[$field_doc])* $field_name: $field_type $(as $field_convert_type)? = WO $field_bit_range);
+    (@W, $register_bit_order:ty, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? $(as $field_convert_type:ty)? = RW $field_bit_range:expr) => {
+        _implement_register_field!(@W, $register_bit_order, $(#[$field_doc])* $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = RO $field_bit_range);
+        _implement_register_field!(@W, $register_bit_order, $(#[$field_doc])* $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = WO $field_bit_range);
+    };
+}
+
+/// Internal macro. Do not use.
+#[macro_export]
+#[doc(hidden)]
+macro_rules! _get_bit_order {
+    () => { Lsb0 };
+    (LSB) => { Lsb0 };
+    (MSB) => { Msb0 };
+}
+
+/// Internal macro. Do not use.
+///
+/// Load the value from the [bitvec::field::BitField] with the given endianness
+#[macro_export]
+#[doc(hidden)]
+macro_rules! _load_with_endianness {
+    // Load the value from the field with the default ordering
+    ($field:expr, ) => {
+        _load_with_endianness!($field, BE)
+    };
+    // Load the value from the field with the Big Endian ordering
+    ($field:expr, BE) => {
+        $field.load_be()
+    };
+    // Load the value from the field with the Little Endian ordering
+    ($field:expr, LE) => {
+        $field.load_le()
+    };
+    // Load the value from the field with the Native Endian ordering
+    ($field:expr, NE) => {
+        $field.load()
+    };
+}
+
+/// Internal macro. Do not use.
+///
+/// Store the value into the [bitvec::field::BitField] with the given endianness
+#[macro_export]
+#[doc(hidden)]
+macro_rules! _store_with_endianness {
+    // Store the value into the field with the default ordering
+    ($field:expr, $value:expr, ) => {
+        _store_with_endianness!($field, $value, BE)
+    };
+    // Store the value into the field with the Big Endian ordering
+    ($field:expr, $value:expr, BE) => {
+        $field.store_be($value)
+    };
+    // Store the value into the field with the Little Endian ordering
+    ($field:expr, $value:expr, LE) => {
+        $field.store_le($value)
+    };
+    // Store the value into the field with the Native Endian ordering
+    ($field:expr, $value:expr, NE) => {
+        $field.store($value)
     };
 }

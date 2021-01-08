@@ -12,7 +12,7 @@ categories = ["embedded", "hardware-support", "no-std"]
 description = "A toolkit to write better device drivers, faster"
 
 [dependencies]
-bitvec = { version = "0.19.4", default-features = false }
+bitvec = { version = "0.20.1", default-features = false }
 
 [dev-dependencies]
 embedded-hal = "0.2.4"

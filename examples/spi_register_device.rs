@@ -117,16 +117,18 @@ implement_registers!(
     /// The global register set
     MyDevice.registers<u8> = {
         /// The identification register
-        id(RO, 0, 2) = {
+        id(RO, 0, 3) = MSB {
             /// The manufacturer code
-            manufacturer: u8 as Manufacturer = RW 0..8,
+            manufacturer: u16:LE as Manufacturer = RW 0..16,
             /// The version of the chip
-            version: u8 = RO 8..16,
+            version: u8:NE = RO 16..20,
+            /// The edition of the chip
+            edition: u8:BE = RO 20..24,
         },
         /// The output register.
         ///
         /// The output value will only be updated for the output of which the mask bit is also set.
-        port(WO, 1, 1) = {
+        port(WO, 1, 1) = LSB {
             /// Sets output 0 if mask 0 is also high
             output_0: u8 as Bit = WO 0..=0,
             /// Sets output 1 if mask 0 is also high
@@ -183,18 +185,18 @@ pub enum PinInputState {
 }
 
 /// The name of the manufacturer. 8 bits.
-#[repr(u8)]
+#[repr(u16)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, IntoPrimitive, TryFromPrimitive)]
 pub enum Manufacturer {
-    Unknown = 0x00,
-    CarmineCrystal = 0xCC,
+    Unknown = 0x0000,
+    CarmineCrystal = 0x0001,
 }
 
 fn main() {
     let spi_expectations = [
         // Read ID register
         spi::Transaction::write(vec![0x80]),
-        spi::Transaction::transfer(vec![0x00, 0x00], vec![0xCC, 0x05]),
+        spi::Transaction::transfer(vec![0x00, 0x00, 0x00], vec![0x01, 0x00, 0x65]),
         // Read Mode register
         spi::Transaction::write(vec![0x83]),
         spi::Transaction::transfer(vec![0x00], vec![0b11100100]),
@@ -253,10 +255,10 @@ where
     RESET: OutputPin,
 {
     // We read the manufacturer
-    let manufacturer = device.registers().id().read()?.manufacturer()?;
+    let id = device.registers().id().read()?;
 
     // Is it known?
-    if manufacturer != Manufacturer::Unknown {
+    if id.manufacturer()? == Manufacturer::CarmineCrystal && id.version() == 6 && id.edition() == 5 {
         // Yes, set pin 0 to output
         device
             .registers()
