@@ -568,7 +568,7 @@ macro_rules! _implement_register_field {
             use device_driver::bitvec::prelude::*;
             use device_driver::bitvec::view::AsBitsMut;
 
-            _store_with_endianness!(self.0.as_bits_mut::<$register_bit_order>()[$field_bit_range], value, $($field_bit_order:ident)?);
+            _store_with_endianness!(self.0.as_bits_mut::<$register_bit_order>()[$field_bit_range], value, $($field_bit_order)?);
 
             self
         }
@@ -581,7 +581,7 @@ macro_rules! _implement_register_field {
             use device_driver::bitvec::view::AsBitsMut;
 
             let raw_value: $field_type = value.into();
-            _store_with_endianness!(self.0.as_bits_mut::<$register_bit_order>()[$field_bit_range], raw_value, $($field_bit_order:ident)?);
+            _store_with_endianness!(self.0.as_bits_mut::<$register_bit_order>()[$field_bit_range], raw_value, $($field_bit_order)?);
 
             self
         }
