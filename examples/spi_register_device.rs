@@ -162,6 +162,15 @@ implement_registers!(
             /// The mode of the pin
             mode: u8 as PinMode = RW 0..=1,
         },
+        /// The irq settings register
+        irq_settings(RW, 7, 1) = {
+            /// Whether or not the irq is enabled
+            irq_enabled: u8 as Bit = RW 0..=0,
+            /// The polarity of the irq pin
+            polarity: u8 as IrqPolarity = RW 1..=1,
+            /// If true, the irq is active. Write false to this bit to reset the status.
+            irq_status: u8 as Bit = RW 2..=2,
+        },
     }
 );
 
@@ -192,6 +201,14 @@ pub enum Manufacturer {
     CarmineCrystal = 0x0001,
 }
 
+/// The polarity of the IRQ pin. 1 bit.
+#[repr(u8)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, IntoPrimitive, TryFromPrimitive)]
+pub enum IrqPolarity {
+    ActiveLow = 0,
+    ActiveHigh = 1,
+}
+
 fn main() {
     let spi_expectations = [
         // Read ID register
@@ -206,9 +223,34 @@ fn main() {
         // Write Port register
         spi::Transaction::write(vec![0x01]),
         spi::Transaction::write(vec![0x11]),
+        // Write Port register
+        spi::Transaction::write(vec![0x01]),
+        spi::Transaction::write(vec![0x22]),
+        // Read Irq Settings register
+        spi::Transaction::write(vec![0x87]),
+        spi::Transaction::transfer(vec![0x00], vec![0x04]),
+        // Write Irq Settings register
+        spi::Transaction::write(vec![0x07]),
+        spi::Transaction::write(vec![0x05]),
+        // Read Irq Settings register
+        spi::Transaction::write(vec![0x87]),
+        spi::Transaction::transfer(vec![0x00], vec![0x05]),
+        // Write Irq Settings register
+        spi::Transaction::write(vec![0x07]),
+        spi::Transaction::write(vec![0x01]),
     ];
 
     let cs_expectations = [
+        pin::Transaction::set(pin::State::Low),
+        pin::Transaction::set(pin::State::High),
+        pin::Transaction::set(pin::State::Low),
+        pin::Transaction::set(pin::State::High),
+        pin::Transaction::set(pin::State::Low),
+        pin::Transaction::set(pin::State::High),
+        pin::Transaction::set(pin::State::Low),
+        pin::Transaction::set(pin::State::High),
+        pin::Transaction::set(pin::State::Low),
+        pin::Transaction::set(pin::State::High),
         pin::Transaction::set(pin::State::Low),
         pin::Transaction::set(pin::State::High),
         pin::Transaction::set(pin::State::Low),
@@ -258,7 +300,8 @@ where
     let id = device.registers().id().read()?;
 
     // Is it known?
-    if id.manufacturer()? == Manufacturer::CarmineCrystal && id.version() == 6 && id.edition() == 5 {
+    if id.manufacturer()? == Manufacturer::CarmineCrystal && id.version() == 6 && id.edition() == 5
+    {
         // Yes, set pin 0 to output
         device
             .registers()
@@ -269,6 +312,22 @@ where
             .registers()
             .port()
             .write(|w| w.output_0(Bit::Set).mask_0(Bit::Set))?;
+        // Enable output on pin 1
+        device.registers().port().write(|w| {
+            w.output_1(Bit::Set);
+            w.mask_1(Bit::Set);
+            w
+        })?;
+        // Set the polarity to Active Low and enable it
+        device.registers().irq_settings().modify(|_, w| {
+            w.irq_enabled(Bit::Set);
+            w.polarity(IrqPolarity::ActiveLow);
+            w
+        })?;
+        // Disable the irq status bit
+        device.registers().irq_settings().modify(|_, w| {
+            w.irq_status(Bit::Cleared)
+        })?;
     }
 
     Ok(())
