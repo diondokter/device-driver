@@ -35,3 +35,6 @@ dual licensed as above, without any additional terms or conditions.
 
 This crate is far from stable. But if it works, then I see no reason why you couldn't use it already. Only updating to a new version may break stuff. However, proper Semver will be used.
 
+## Changelog
+### 0.2.0 (19-04-21)
+- All user interaction with a 'W' is now through &mut instead of directly to support more kinds of code structuring ([#7](https://github.com/diondokter/device-driver/pull/7))
