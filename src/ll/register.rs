@@ -318,9 +318,15 @@ macro_rules! _implement_register {
             /// Writes the value returned by the closure to the register
             pub fn write_index<F>(&mut self, index: usize, f: F) -> Result<(), I::InterfaceError>
             where
-                F: FnOnce(W) -> W,
+                for<'w> F: FnOnce(&'w mut W) -> &'w mut W,
             {
-                let w = f(W::zero());
+                let mut w = W::zero();
+                let _ = f(&mut w);
+                self.write_index_direct(index, w)
+            }
+
+            /// Writes the w value to the register
+            fn write_index_direct(&mut self, index: usize, w: W) -> Result<(), I::InterfaceError> {
                 let addresses = [$($register_address,)*];
                 self.interface.write_register(addresses[index], &w.0)?;
                 Ok(())
@@ -373,9 +379,15 @@ macro_rules! _implement_register {
             /// Writes the value returned by the closure to the register
             pub fn write<F>(&mut self, f: F) -> Result<(), I::InterfaceError>
             where
-                F: FnOnce(W) -> W,
+                for<'w> F: FnOnce(&'w mut W) -> &'w mut W,
             {
-                let w = f(W::zero());
+                let mut w = W::zero();
+                let _ = f(&mut w);
+                self.write_direct(w)
+            }
+
+            /// Writes the w value to the register
+            fn write_direct(&mut self, w: W) -> Result<(), I::InterfaceError> {
                 self.interface.write_register($register_address, &w.0)?;
                 Ok(())
             }
@@ -417,14 +429,13 @@ macro_rules! _implement_register {
             /// Reads the register, gives the value to the closure and writes back the value returned by the closure
             pub fn modify_index<F>(&mut self, index: usize, f: F) -> Result<(), I::InterfaceError>
             where
-                F: FnOnce(R, W) -> W,
+                for<'w> F: FnOnce(R, &'w mut W) -> &'w mut W,
             {
                 let r = self.read_index(index)?;
-                let w = W(r.0.clone());
+                let mut w = W(r.0.clone());
 
-                let w = f(r, w);
-
-                self.write_index(index, |_| w)?;
+                let _ = f(r, &mut w);
+                self.write_index_direct(index, w)?;
                 Ok(())
             }
         }
@@ -465,14 +476,13 @@ macro_rules! _implement_register {
             /// Reads the register, gives the value to the closure and writes back the value returned by the closure
             pub fn modify<F>(&mut self, f: F) -> Result<(), I::InterfaceError>
             where
-                F: FnOnce(R, W) -> W,
+                for<'w> F: FnOnce(R, &'w mut W) -> &'w mut W,
             {
                 let r = self.read()?;
-                let w = W(r.0.clone());
+                let mut w = W(r.0.clone());
 
-                let w = f(r, w);
-
-                self.write(|_| w)?;
+                let _ = f(r, &mut w);
+                self.write_direct(w)?;
                 Ok(())
             }
         }
@@ -564,7 +574,7 @@ macro_rules! _implement_register_field {
     // Write without 'as' convert
     (@W, $register_bit_order:ty, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? = WO $field_bit_range:expr) => {
         $(#[$field_doc])*
-        pub fn $field_name(mut self, value: $field_type) -> Self {
+        pub fn $field_name(&mut self, value: $field_type) -> &mut Self {
             use device_driver::bitvec::prelude::*;
             use device_driver::bitvec::view::AsBitsMut;
 
@@ -576,7 +586,7 @@ macro_rules! _implement_register_field {
     // Write with 'as' convert
     (@W, $register_bit_order:ty, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? as $field_convert_type:ty = WO $field_bit_range:expr) => {
         $(#[$field_doc])*
-        pub fn $field_name(mut self, value: $field_convert_type) -> Self {
+        pub fn $field_name(&mut self, value: $field_convert_type) -> &mut Self {
             use device_driver::bitvec::prelude::*;
             use device_driver::bitvec::view::AsBitsMut;
 
@@ -596,9 +606,15 @@ macro_rules! _implement_register_field {
 #[macro_export]
 #[doc(hidden)]
 macro_rules! _get_bit_order {
-    () => { Lsb0 };
-    (LSB) => { Lsb0 };
-    (MSB) => { Msb0 };
+    () => {
+        Lsb0
+    };
+    (LSB) => {
+        Lsb0
+    };
+    (MSB) => {
+        Msb0
+    };
 }
 
 /// Internal macro. Do not use.
