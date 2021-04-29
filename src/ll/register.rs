@@ -1,8 +1,18 @@
-use core::fmt::Debug;
+use core::fmt::{Debug, Formatter, UpperHex};
 
 /// Error type for type conversion errors
-#[derive(Debug)]
-pub struct ConversionError;
+pub struct ConversionError<T: UpperHex + Debug> {
+    /// The raw value that was tried to have converted
+    pub raw: T,
+}
+
+impl<T: UpperHex + Debug> Debug for ConversionError<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("ConversionError")
+            .field("raw", &format_args!("0x{:X}", self.raw))
+            .finish()
+    }
+}
 
 /// Trait for reading and writing registers
 pub trait RegisterInterface {
@@ -73,7 +83,8 @@ macro_rules! implement_registers {
         $(#[$register_set_doc:meta])*
         $device_name:ident.$register_set_name:ident<$register_address_type:ty> = {
             $(
-                $(#[$register_doc:meta])*
+                $(#[doc=$register_doc:literal])*
+                $(#[generate($($generate_list:tt)*)])?
                 $register_name:ident($register_access_specifier:tt, $register_address:tt, $register_size:expr) = $($register_bit_order:ident)? {
                     $(
                         $(#[$field_doc:meta])*
@@ -93,6 +104,7 @@ macro_rules! implement_registers {
             use device_driver::_get_bit_order;
             use device_driver::_load_with_endianness;
             use device_driver::_store_with_endianness;
+            use device_driver::generate_if_debug_keyword;
 
             impl<'a, I: HardwareInterface> $device_name<I>
             where
@@ -143,7 +155,7 @@ macro_rules! implement_registers {
                 }
 
                 $(
-                    $(#[$register_doc])*
+                    $(#[doc = $register_doc])*
                     pub fn $register_name(&'a mut self) -> RegAccessor<'a, I, $register_name::R, $register_name::W> {
                         RegAccessor::new(&mut self.interface)
                     }
@@ -151,12 +163,13 @@ macro_rules! implement_registers {
             }
 
             $(
-                $(#[$register_doc])*
+                $(#[doc = $register_doc])*
                 pub mod $register_name {
                     use super::*;
 
                     _implement_register!(
-                        ($register_access_specifier, $register_address, $register_size, $register_address_type, _get_bit_order!($($register_bit_order)*)) {
+                        #[generate($($($generate_list)*)*)]
+                        ($register_name, $register_access_specifier, $register_address, $register_size, $register_address_type, _get_bit_order!($($register_bit_order)*)) {
                             $(
                                 $(#[$field_doc])*
                                 $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = $field_access_specifier $field_bit_range
@@ -175,8 +188,8 @@ macro_rules! implement_registers {
 macro_rules! _implement_register {
     // This arm implements the array read part (but not read-only)
     (
-        $(#[$register_doc:meta])*
-        (@R, [$($register_address:expr),* $(,)?], $register_size:expr, $register_address_type:ty, $register_bit_order:ty) {
+        #[generate($($generate_list:tt)*)]
+        ($register_name:ident, @R, [$($register_address:expr),* $(,)?], $register_size:expr, $register_address_type:ty, $register_bit_order:ty) {
             $(
                 $(#[$field_doc:meta])*
                 $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? $(as $field_convert_type:ty)? = $field_access_specifier:tt $field_bit_range:expr
@@ -184,7 +197,7 @@ macro_rules! _implement_register {
         }
     ) => {
         /// Reader struct for the register
-        #[derive(Debug, Copy, Clone)]
+        #[derive(Copy, Clone)]
         pub struct R([u8; $register_size]);
 
         impl R {
@@ -209,6 +222,27 @@ macro_rules! _implement_register {
                 _implement_register_field!(@R, $register_bit_order, $(#[$field_doc])* $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = $field_access_specifier $field_bit_range);
             )*
         }
+
+        generate_if_debug_keyword!(
+            impl Debug for R {
+                fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+                    f.debug_struct(concat!(stringify!($register_name), "::R"))
+                        .field("raw", &device_driver::utils::SliceHexFormatter::new(&self.0))
+                        $(
+                            .field(stringify!($field_name), &self.$field_name())
+                        )*
+                        .finish()
+                }
+            },
+            impl Debug for R {
+                fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+                    f.debug_struct(concat!(stringify!($register_name), "::R"))
+                        .field("raw", &device_driver::utils::SliceHexFormatter::new(&self.0))
+                        .finish()
+                }
+            },
+            $($generate_list)*
+        );
 
         impl<'a, I> RegAccessor<'a, I, R, W>
         where
@@ -225,8 +259,8 @@ macro_rules! _implement_register {
     };
     // This arm implements the single read part (but not read-only)
     (
-        $(#[$register_doc:meta])*
-        (@R, $register_address:expr, $register_size:expr, $register_address_type:ty, $register_bit_order:ty) {
+        #[generate($($generate_list:tt)*)]
+        ($register_name:ident, @R, $register_address:expr, $register_size:expr, $register_address_type:ty, $register_bit_order:ty) {
             $(
                 $(#[$field_doc:meta])*
                 $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? $(as $field_convert_type:ty)? = $field_access_specifier:tt $field_bit_range:expr
@@ -234,8 +268,8 @@ macro_rules! _implement_register {
         }
     ) => {
         /// Reader struct for the register
-        #[derive(Debug, Copy, Clone)]
-        pub struct R([u8; $register_size]);
+        #[derive(Copy, Clone)]
+        pub struct R(pub [u8; $register_size]);
 
         impl R {
             /// Create a zeroed reader
@@ -260,6 +294,27 @@ macro_rules! _implement_register {
             )*
         }
 
+        generate_if_debug_keyword!(
+            impl Debug for R {
+                fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+                    f.debug_struct(concat!(stringify!($register_name), "::R"))
+                        .field("raw", &device_driver::utils::SliceHexFormatter::new(&self.0))
+                        $(
+                            .field(stringify!($field_name), &self.$field_name())
+                        )*
+                        .finish()
+                }
+            },
+            impl Debug for R {
+                fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+                    f.debug_struct(concat!(stringify!($register_name), "::R"))
+                        .field("raw", &device_driver::utils::SliceHexFormatter::new(&self.0))
+                        .finish()
+                }
+            },
+            $($generate_list)*
+        );
+
         impl<'a, I> RegAccessor<'a, I, R, W>
         where
             I: RegisterInterface<Address = $register_address_type>,
@@ -274,8 +329,8 @@ macro_rules! _implement_register {
     };
     // This arm implements the array write part (but not write-only)
     (
-        $(#[$register_doc:meta])*
-        (@W, [$($register_address:expr),* $(,)?], $register_size:expr, $register_address_type:ty, $register_bit_order:ty) {
+        #[generate($($generate_list:tt)*)]
+        ($register_name:ident, @W, [$($register_address:expr),* $(,)?], $register_size:expr, $register_address_type:ty, $register_bit_order:ty) {
             $(
                 $(#[$field_doc:meta])*
                 $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? $(as $field_convert_type:ty)? = $field_access_specifier:tt $field_bit_range:expr
@@ -335,8 +390,8 @@ macro_rules! _implement_register {
     };
     // This arm implements the single write part (but not write-only)
     (
-        $(#[$register_doc:meta])*
-        (@W, $register_address:expr, $register_size:expr, $register_address_type:ty, $register_bit_order:ty) {
+        #[generate($($generate_list:tt)*)]
+        ($register_name:ident, @W, $register_address:expr, $register_size:expr, $register_address_type:ty, $register_bit_order:ty) {
             $(
                 $(#[$field_doc:meta])*
                 $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? $(as $field_convert_type:ty)? = $field_access_specifier:tt $field_bit_range:expr
@@ -395,8 +450,8 @@ macro_rules! _implement_register {
     };
     // This arm implements both array read and write parts
     (
-        $(#[$register_doc:meta])*
-        (RW, [$($register_address:expr),* $(,)?], $register_size:expr, $register_address_type:ty, $register_bit_order:ty) {
+        #[generate($($generate_list:tt)*)]
+        ($register_name:ident, RW, [$($register_address:expr),* $(,)?], $register_size:expr, $register_address_type:ty, $register_bit_order:ty) {
             $(
                 $(#[$field_doc:meta])*
                 $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? $(as $field_convert_type:ty)? = $field_access_specifier:tt $field_bit_range:expr
@@ -404,8 +459,8 @@ macro_rules! _implement_register {
         }
     ) => {
         _implement_register!(
-            $(#[$register_doc:meta])*
-            (@R, [$($register_address,)*], $register_size, $register_address_type, $register_bit_order) {
+            #[generate($($generate_list)*)]
+            ($register_name, @R, [$($register_address,)*], $register_size, $register_address_type, $register_bit_order) {
                 $(
                     $(#[$field_doc])*
                     $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = $field_access_specifier $field_bit_range
@@ -413,8 +468,8 @@ macro_rules! _implement_register {
             }
         );
         _implement_register!(
-            $(#[$register_doc:meta])*
-            (@W, [$($register_address,)*], $register_size, $register_address_type, $register_bit_order) {
+            #[generate($($generate_list)*)]
+            ($register_name, @W, [$($register_address,)*], $register_size, $register_address_type, $register_bit_order) {
                 $(
                     $(#[$field_doc])*
                     $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = $field_access_specifier $field_bit_range
@@ -442,8 +497,8 @@ macro_rules! _implement_register {
     };
     // This arm implements both single read and write parts
     (
-        $(#[$register_doc:meta])*
-        (RW, $register_address:expr, $register_size:expr, $register_address_type:ty, $register_bit_order:ty) {
+        #[generate($($generate_list:tt)*)]
+        ($register_name:ident, RW, $register_address:expr, $register_size:expr, $register_address_type:ty, $register_bit_order:ty) {
             $(
                 $(#[$field_doc:meta])*
                 $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? $(as $field_convert_type:ty)? = $field_access_specifier:tt $field_bit_range:expr
@@ -451,8 +506,8 @@ macro_rules! _implement_register {
         }
     ) => {
         _implement_register!(
-            $(#[$register_doc:meta])*
-            (@R, $register_address, $register_size, $register_address_type, $register_bit_order) {
+            #[generate($($generate_list)*)]
+            ($register_name, @R, $register_address, $register_size, $register_address_type, $register_bit_order) {
                 $(
                     $(#[$field_doc])*
                     $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = $field_access_specifier $field_bit_range
@@ -460,8 +515,8 @@ macro_rules! _implement_register {
             }
         );
         _implement_register!(
-            $(#[$register_doc:meta])*
-            (@W, $register_address, $register_size, $register_address_type, $register_bit_order) {
+            #[generate($($generate_list)*)]
+            ($register_name, @W, $register_address, $register_size, $register_address_type, $register_bit_order) {
                 $(
                     $(#[$field_doc])*
                     $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = $field_access_specifier $field_bit_range
@@ -489,8 +544,8 @@ macro_rules! _implement_register {
     };
     // This arm implements the read part and disables write
     (
-        $(#[$register_doc:meta])*
-        (RO, $register_address:tt, $register_size:expr, $register_address_type:ty, $register_bit_order:ty) {
+        #[generate($($generate_list:tt)*)]
+        ($register_name:ident, RO, $register_address:tt, $register_size:expr, $register_address_type:ty, $register_bit_order:ty) {
             $(
                 $(#[$field_doc:meta])*
                 $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? $(as $field_convert_type:ty)? = $field_access_specifier:tt $field_bit_range:expr
@@ -498,8 +553,8 @@ macro_rules! _implement_register {
         }
     ) => {
         _implement_register!(
-            $(#[$register_doc:meta])*
-            (@R, $register_address, $register_size, $register_address_type, $register_bit_order) {
+            #[generate($($generate_list)*)]
+            ($register_name, @R, $register_address, $register_size, $register_address_type, $register_bit_order) {
                 $(
                     $(#[$field_doc])*
                     $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = $field_access_specifier $field_bit_range
@@ -512,8 +567,8 @@ macro_rules! _implement_register {
     };
     // This arm implements the write part and disables read
     (
-        $(#[$register_doc:meta])*
-        (WO, $register_address:tt, $register_size:expr, $register_address_type:ty, $register_bit_order:ty) {
+        #[generate($($generate_list:tt)*)]
+        ($register_name:ident, WO, $register_address:tt, $register_size:expr, $register_address_type:ty, $register_bit_order:ty) {
             $(
                 $(#[$field_doc:meta])*
                 $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? $(as $field_convert_type:ty)? = $field_access_specifier:tt $field_bit_range:expr
@@ -521,8 +576,8 @@ macro_rules! _implement_register {
         }
     ) => {
         _implement_register!(
-            $(#[$register_doc:meta])*
-            (@W, $register_address, $register_size, $register_address_type, $register_bit_order) {
+            #[generate($($generate_list)*)]
+            ($register_name, @W, $register_address, $register_size, $register_address_type, $register_bit_order) {
                 $(
                     $(#[$field_doc])*
                     $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = $field_access_specifier $field_bit_range
@@ -552,13 +607,13 @@ macro_rules! _implement_register_field {
     // Read with 'as' convert
     (@R, $register_bit_order:ty, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? as $field_convert_type:ty = RO $field_bit_range:expr) => {
         $(#[$field_doc])*
-        pub fn $field_name(&self) -> Result<$field_convert_type, ConversionError> {
+        pub fn $field_name(&self) -> Result<$field_convert_type, ConversionError<$field_type>> {
             use device_driver::bitvec::prelude::*;
             use device_driver::bitvec::view::AsBits;
             use core::convert::TryInto;
 
             let raw: $field_type = _load_with_endianness!(self.0.as_bits::<$register_bit_order>()[$field_bit_range], $($field_bit_order)?);
-            raw.try_into().map_err(|_| ConversionError)
+            raw.try_into().map_err(|_| ConversionError { raw })
         }
     };
     (@R, $register_bit_order:ty, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? $(as $field_convert_type:ty)? = WO $field_bit_range:expr) => {
@@ -662,5 +717,34 @@ macro_rules! _store_with_endianness {
     // Store the value into the field with the Native Endian ordering
     ($field:expr, $value:expr, NE) => {
         $field.store($value)
+    };
+}
+
+/// Internal macro. Do not use.
+///
+/// A TT muncher that will place the `true` parameter if the list contains the `Debug` keyword
+/// and the `false` parameter if it does not.
+#[macro_export]
+#[doc(hidden)]
+macro_rules! generate_if_debug_keyword {
+    // There's no Debug keyword
+    ($true:item, $false:item, ) => {
+        $false
+    };
+    // There's only a Debug keyword
+    ($true:item, $false:item, Debug) => {
+        $true
+    };
+    // There's a Debug keyword
+    ($true:item, $false:item, Debug, $($list:tt)*) => {
+        generate_if_debug_keyword!($true, $false, Debug);
+    };
+    // There's only a different keyword
+    ($true:item, $false:item, $keyword:ident) => {
+        generate_if_debug_keyword!($true, $false, );
+    };
+    // There's a different keyword, so we need to continue munching
+    ($true:item, $false:item, $keyword:ident, $($list:tt)*) => {
+        generate_if_debug_keyword!($true, $false, $($list)*);
     };
 }

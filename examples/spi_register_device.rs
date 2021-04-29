@@ -117,6 +117,7 @@ implement_registers!(
     /// The global register set
     MyDevice.registers<u8> = {
         /// The identification register
+        #[generate(Debug)]
         id(RO, 0, 3) = MSB {
             /// The manufacturer code
             manufacturer: u16:LE as Manufacturer = RW 0..16,
@@ -158,6 +159,7 @@ implement_registers!(
             input_3: u8 as PinInputState = RO 6..=7,
         },
         /// The pin mode register
+        #[generate(Debug)]
         mode(RW, [3, 4, 5, 6], 1) = {
             /// The mode of the pin
             mode: u8 as PinMode = RW 0..=1,
@@ -215,10 +217,10 @@ fn main() {
         spi::Transaction::write(vec![0x80]),
         spi::Transaction::transfer(vec![0x00, 0x00, 0x00], vec![0x01, 0x00, 0x65]),
         // Read Mode register
-        spi::Transaction::write(vec![0x83]),
+        spi::Transaction::write(vec![0x85]),
         spi::Transaction::transfer(vec![0x00], vec![0b11100100]),
         // Write Mode register
-        spi::Transaction::write(vec![0x03]),
+        spi::Transaction::write(vec![0x05]),
         spi::Transaction::write(vec![0b11100111]),
         // Write Port register
         spi::Transaction::write(vec![0x01]),
@@ -299,6 +301,10 @@ where
     // We read the manufacturer
     let id = device.registers().id().read()?;
 
+    // Print the id. It is marked with `#[generate(Debug)]`,
+    // so it should only show all fields
+    println!("{:?}", id);
+
     // Is it known?
     if id.manufacturer()? == Manufacturer::CarmineCrystal && id.version() == 6 && id.edition() == 5
     {
@@ -306,7 +312,10 @@ where
         device
             .registers()
             .mode()
-            .modify_index(0, |_, w| w.mode(PinMode::Output))?;
+            .modify_index(2, |r, w| {
+                println!("{:?}", r);
+                w.mode(PinMode::Output)
+            })?;
         // Enable output on pin 0
         device
             .registers()
@@ -319,15 +328,19 @@ where
             w
         })?;
         // Set the polarity to Active Low and enable it
-        device.registers().irq_settings().modify(|_, w| {
+        device.registers().irq_settings().modify(|r, w| {
+            // Print the current value. It is not marked with `#[generate(Debug)]`,
+            // so it should only show the raw value
+            println!("{:?}", r);
             w.irq_enabled(Bit::Set);
             w.polarity(IrqPolarity::ActiveLow);
             w
         })?;
         // Disable the irq status bit
-        device.registers().irq_settings().modify(|_, w| {
-            w.irq_status(Bit::Cleared)
-        })?;
+        device
+            .registers()
+            .irq_settings()
+            .modify(|_, w| w.irq_status(Bit::Cleared))?;
     }
 
     Ok(())
