@@ -224,7 +224,7 @@ macro_rules! _implement_register {
         }
 
         generate_if_debug_keyword!(
-            impl Debug for R {
+            impl core::fmt::Debug for R {
                 fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
                     f.debug_struct(concat!(stringify!($register_name), "::R"))
                         .field("raw", &device_driver::utils::SliceHexFormatter::new(&self.0))
@@ -234,7 +234,7 @@ macro_rules! _implement_register {
                         .finish()
                 }
             },
-            impl Debug for R {
+            impl core::fmt::Debug for R {
                 fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
                     f.debug_struct(concat!(stringify!($register_name), "::R"))
                         .field("raw", &device_driver::utils::SliceHexFormatter::new(&self.0))
@@ -295,7 +295,7 @@ macro_rules! _implement_register {
         }
 
         generate_if_debug_keyword!(
-            impl Debug for R {
+            impl core::fmt::Debug for R {
                 fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
                     f.debug_struct(concat!(stringify!($register_name), "::R"))
                         .field("raw", &device_driver::utils::SliceHexFormatter::new(&self.0))
@@ -305,7 +305,7 @@ macro_rules! _implement_register {
                         .finish()
                 }
             },
-            impl Debug for R {
+            impl core::fmt::Debug for R {
                 fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
                     f.debug_struct(concat!(stringify!($register_name), "::R"))
                         .field("raw", &device_driver::utils::SliceHexFormatter::new(&self.0))

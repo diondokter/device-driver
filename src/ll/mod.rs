@@ -87,7 +87,7 @@ macro_rules! create_low_level_device {
             $($error_type($error_type))*
         }
 
-        impl<T: core::fmt::UpperHex + Debug> From<ConversionError<T>> for LowLevelError {
+        impl<T: core::fmt::UpperHex + core::fmt::Debug> From<ConversionError<T>> for LowLevelError {
             fn from(_: ConversionError<T>) -> Self {
                 LowLevelError::ConversionError
             }
