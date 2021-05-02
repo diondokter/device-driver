@@ -1,6 +1,6 @@
 [package]
 name = "device-driver"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Dion Dokter <diondokter@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -15,6 +15,6 @@ description = "A toolkit to write better device drivers, faster"
 bitvec = { version = "0.20.1", default-features = false }
 
 [dev-dependencies]
-embedded-hal = "0.2.4"
+embedded-hal = "0.2.5"
 embedded-hal-mock = "0.7.2"
 num_enum = { version = "0.5.1", default-features = false }
