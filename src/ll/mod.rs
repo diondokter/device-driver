@@ -83,8 +83,12 @@ macro_rules! create_low_level_device {
         /// Error type containing all low level errors
         #[derive(Debug)]
         pub enum LowLevelError {
+            /// Error variant for type conversion errors
             ConversionError,
-            $($error_type($error_type))*
+            $(
+            #[doc = concat!("Error variant containing [", stringify!($error_type), "]")]
+            $error_type($error_type)
+            )*
         }
 
         impl<T: core::fmt::UpperHex + core::fmt::Debug> From<ConversionError<T>> for LowLevelError {
