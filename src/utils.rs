@@ -37,7 +37,7 @@ mod tests {
                 "{:?}",
                 SliceHexFormatter::new(&[0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x01])
             ),
-            "DEADBEEF0001".to_string()
+            "0xDEADBEEF0001".to_string()
         );
     }
 }
