@@ -107,6 +107,8 @@ dual licensed as above, without any additional terms or conditions.
 This crate is far from stable. But if it works for you, then I see no reason why you couldn't use it already. Only updating to a new version may break stuff and proper Semver will be used.
 
 ## Changelog
+### 0.3.1 (22-12-21)
+- Added docs to low level error ([#14](https://github.com/diondokter/device-driver/pull/10))
 ### 0.3.0 (02-05-21)
 - Added better `Debug` impls to all register `R` that prints the raw value in hex.
   There's now also the option (`#[generate(Debug)]`) to get an even better `Debug` impl that also prints out all the fields,
