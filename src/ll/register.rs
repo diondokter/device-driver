@@ -554,8 +554,36 @@ macro_rules! _implement_register {
             }
         }
     };
-
-        // This arm implements both single RWB
+        // This arm implements array RWB
+        (
+            #[generate($($generate_list:tt)*)]
+            ($register_name:ident, RWB, [$($register_address:expr),* $(,)?], $register_size:expr, $register_address_type:ty, $register_bit_order:ty) {
+                $(
+                    $(#[$field_doc:meta])*
+                    $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? $(as $field_convert_type:ty)? = $field_access_specifier:tt $field_bit_range:expr
+                ),*
+            }
+        ) => {
+            _implement_register!(
+                #[generate($($generate_list)*)]
+                ($register_name, RW, [$($register_address,)*], $register_size, $register_address_type, $register_bit_order) {
+                    $(
+                        $(#[$field_doc])*
+                        $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = $field_access_specifier $field_bit_range
+                    ),*
+                }
+            );
+            _implement_register!(
+                #[generate($($generate_list)*)]
+                ($register_name, @B, [$($register_address,)*], $register_size, $register_address_type, $register_bit_order) {
+                    $(
+                        $(#[$field_doc])*
+                        $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = $field_access_specifier $field_bit_range
+                    ),*
+                }
+            );
+        };
+        // This arm implements single RWB
         (
             #[generate($($generate_list:tt)*)]
             ($register_name:ident, RWB, $register_address:expr, $register_size:expr, $register_address_type:ty, $register_bit_order:ty) {
@@ -584,7 +612,7 @@ macro_rules! _implement_register {
                 }
             );
         };
-        // This arm implements the array write part (but not write-only)
+        // This arm implements the array RWB part
         (
             #[generate($($generate_list:tt)*)]
             ($register_name:ident, @B, [$($register_address:expr),* $(,)?], $register_size:expr, $register_address_type:ty, $register_bit_order:ty) {
@@ -595,7 +623,7 @@ macro_rules! _implement_register {
             }
         ) => {
             /// Writer struct for the register
-            #[derive(Debug, Copy, Clone)]
+            #[derive(Copy, Clone)]
             pub struct B([u8; $register_size], [u8; $register_size]);
 
             impl B {
@@ -616,29 +644,44 @@ macro_rules! _implement_register {
                 )*
             }
 
+            generate_if_debug_keyword!(
+                impl core::fmt::Debug for B {
+                    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+                        f.debug_struct(concat!(stringify!($register_name), "::B"))
+                            .field("raw", &device_driver::utils::SliceHexFormatter::new(&self.0))
+                            .field("mask", &device_driver::utils::SliceHexFormatter::new(&self.1))
+                            $(
+                                .field(stringify!($field_name), &self.$field_name())
+                            )*
+                            .finish()
+                    }
+                },
+                impl core::fmt::Debug for B {
+                    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+                        f.debug_struct(concat!(stringify!($register_name), "::B"))
+                            .field("raw", &device_driver::utils::SliceHexFormatter::new(&self.0))
+                            .field("mask", &device_driver::utils::SliceHexFormatter::new(&self.1))
+                            .finish()
+                    }
+                },
+                $($generate_list)*
+            );
+
             impl<'a, I> RegAccessor<'a, I, R, W>
             where
                 I: BitModifyRegisterInterface<Address = $register_address_type>,
             {
-                /// Writes the w value to the register
-                fn write_modified(&mut self, b: B) -> Result<(), I::InterfaceError> {
-                    self.interface.bit_modify_register($register_address, &b.1, &b.0)?;
-                    Ok(())
-                }
-
-                pub fn bit_modify<F>(&mut self, f: F) -> Result<(), I::InterfaceError>
-                where
-                    for<'b> F: FnOnce(&'b mut B) -> &'b mut B,
-                {
-                    let mut b = B([0; $register_size], [0; $register_size]);
-
-                    let _ = f(&mut b);
-                    self.write_modified(b)?;
-                    Ok(())
+                /// Reads the register
+                pub fn bit_modify_index(&mut self, index: usize) -> Result<R, I::InterfaceError> {
+                    let mut r = R::zero();
+                    let addresses = [$($register_address,)*];
+                    self.interface.read_register(addresses[index], &mut r.0)?;
+                    Ok(r)
                 }
             }
+
         };
-        // This arm implements the single write part (but not write-only)
+        // This arm implements the single bit modify part
         (
             #[generate($($generate_list:tt)*)]
             ($register_name:ident, @B, $register_address:expr, $register_size:expr, $register_address_type:ty, $register_bit_order:ty) {
@@ -648,8 +691,8 @@ macro_rules! _implement_register {
                 ),*
             }
         ) => {
-            /// Writer struct for the register
-            #[derive(Debug, Copy, Clone)]
+            /// Bit Writer struct for the register
+            #[derive(Copy, Clone)]
             pub struct B([u8; $register_size], [u8; $register_size]);
 
             impl B {
@@ -658,7 +701,7 @@ macro_rules! _implement_register {
                     Self([0; $register_size], [0; $register_size])
                 }
 
-                /// Creates a writer with the given value.
+                /// Creates a bit writer with the given value.
                 ///
                 /// Be careful because you may inadvertently set invalid values
                 pub const fn from_raw(value: [u8; $register_size]) -> Self {
@@ -669,6 +712,30 @@ macro_rules! _implement_register {
                     _implement_register_field!(@B, $register_bit_order, $(#[$field_doc])* $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = $field_access_specifier $field_bit_range);
                 )*
             }
+
+            generate_if_debug_keyword!(
+                impl core::fmt::Debug for B {
+                    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+                        f.debug_struct(concat!(stringify!($register_name), "::R"))
+                            .field("raw", &device_driver::utils::SliceHexFormatter::new(&self.0))
+                            .field("mask", &device_driver::utils::SliceHexFormatter::new(&self.1))
+                            $(
+                                .field(stringify!($field_name), &self.$field_name())
+                            )*
+                            .finish()
+                    }
+                },
+                impl core::fmt::Debug for B {
+                    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+                        f.debug_struct(concat!(stringify!($register_name), "::R"))
+                            .field("raw", &device_driver::utils::SliceHexFormatter::new(&self.0))
+                            .field("mask", &device_driver::utils::SliceHexFormatter::new(&self.1))
+                            .finish()
+                    }
+                },
+                $($generate_list)*
+            );
+
 
             impl<'a, I> RegAccessor<'a, I, R, W>
             where
@@ -840,6 +907,10 @@ macro_rules! _implement_register_field {
     };
     (@B, $register_bit_order:ty, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? $(as $field_convert_type:ty)? = RW $field_bit_range:expr) => {
         _implement_register_field!(@B, $register_bit_order, $(#[$field_doc])* $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = WO $field_bit_range);
+    };
+    (@B, $register_bit_order:ty, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? $(as $field_convert_type:ty)? = RO $field_bit_range:expr) => {
+                // Empty on purpose
+
     };
 }
 
