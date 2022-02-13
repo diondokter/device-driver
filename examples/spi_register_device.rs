@@ -1,7 +1,7 @@
 // We're not using any unsafe
 #![forbid(unsafe_code)]
 
-use device_driver::ll::register::RegisterInterface;
+use device_driver::ll::register::{RegisterInterface, BitModifyRegisterInterface};
 use device_driver::{create_low_level_device, implement_registers, Bit};
 use embedded_hal::blocking::spi::{Transfer, Write};
 use embedded_hal::digital::v2::OutputPin;
@@ -83,6 +83,37 @@ impl<SPI: Transfer<u8> + Write<u8>, CS: OutputPin, RESET: OutputPin> RegisterInt
     }
 }
 
+impl<SPI: Transfer<u8> + Write<u8>, CS: OutputPin, RESET: OutputPin> BitModifyRegisterInterface
+    for ChipInterface<SPI, CS, RESET>
+{
+    fn bit_modify_register(
+        &mut self,
+        address: Self::Address,
+        mask: &[u8],
+        value: &[u8],
+    ) -> Result<(), Self::InterfaceError> {
+        self.cs_pin
+            .set_low()
+            .map_err(|_| Self::InterfaceError::CsError)?;
+
+        self.communication_interface
+            .write(&[0x40 | address])
+            .map_err(|_| Self::InterfaceError::CommunicationError)?;
+        self.communication_interface
+            .write(mask)
+            .map_err(|_| Self::InterfaceError::CommunicationError)?;
+        self.communication_interface
+            .write(value)
+            .map_err(|_| Self::InterfaceError::CommunicationError)?;
+
+        self.cs_pin
+            .set_high()
+            .map_err(|_| Self::InterfaceError::CsError)?;
+
+        Ok(())
+    }
+}
+
 /// Mark this interface so it can be used
 impl<SPI: Transfer<u8> + Write<u8>, CS: OutputPin, RESET: OutputPin> HardwareInterface
     for ChipInterface<SPI, CS, RESET>
@@ -105,7 +136,7 @@ create_low_level_device!(
     MyDevice {
         // The types of errors our low level error enum must contain
         errors: [InterfaceError],
-        hardware_interface_requirements: { RegisterInterface },
+        hardware_interface_requirements: { BitModifyRegisterInterface + RegisterInterface },
         hardware_interface_capabilities: {
             fn reset(&mut self) -> Result<(), InterfaceError>;
         },
@@ -173,6 +204,14 @@ implement_registers!(
             /// If true, the irq is active. Write false to this bit to reset the status.
             irq_status: u8 as Bit = RW 2..=2,
         },
+        irq_ack(RWB, 8, 1) = {
+            irq_0: u8 as Bit = RW 0..=0,
+            irq_1: u8 as Bit = RW 1..=1,
+            irq_2: u8 as Bit = RW 2..=2,
+            irq_3: u8 as Bit = RW 3..=3,
+            irq_4: u8 as Bit = RW 4..=4,
+            irq_5: u8 as Bit = RW 5..=5,
+        }
     }
 );
 
@@ -240,9 +279,15 @@ fn main() {
         // Write Irq Settings register
         spi::Transaction::write(vec![0x07]),
         spi::Transaction::write(vec![0x01]),
+        // Bit modify Irq Ack register
+        spi::Transaction::write(vec![0x48]),
+        spi::Transaction::write(vec![0x01]),
+        spi::Transaction::write(vec![0x01]),
     ];
 
     let cs_expectations = [
+        pin::Transaction::set(pin::State::Low),
+        pin::Transaction::set(pin::State::High),
         pin::Transaction::set(pin::State::Low),
         pin::Transaction::set(pin::State::High),
         pin::Transaction::set(pin::State::Low),
@@ -341,6 +386,12 @@ where
             .registers()
             .irq_settings()
             .modify(|_, w| w.irq_status(Bit::Cleared))?;
+
+        // Ack irq with bit modify operation
+        device
+            .registers()
+            .irq_ack()
+            .bit_modify(|b| b.irq_0(Bit::Set))?;
     }
 
     Ok(())

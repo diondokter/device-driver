@@ -41,6 +41,17 @@ pub trait RegisterInterface {
     ) -> Result<(), Self::InterfaceError>;
 }
 
+/// Trait for modifying single bits from register
+pub trait BitModifyRegisterInterface: RegisterInterface {
+    /// Writes register with changed bits mask
+    fn bit_modify_register(
+        &mut self,
+        address: Self::Address,
+        mask: &[u8],
+        value: &[u8],
+    ) -> Result<(), Self::InterfaceError>;
+}
+
 /// Defines a register interface for a low level device.
 ///
 /// Format:
@@ -98,6 +109,7 @@ macro_rules! implement_registers {
         pub mod $register_set_name {
             use super::*;
             use device_driver::ll::register::{RegisterInterface, ConversionError};
+            use device_driver::ll::register::BitModifyRegisterInterface;
             use device_driver::ll::LowLevelDevice;
             use device_driver::_implement_register;
             use device_driver::_implement_register_field;
@@ -542,6 +554,147 @@ macro_rules! _implement_register {
             }
         }
     };
+
+        // This arm implements both single RWB
+        (
+            #[generate($($generate_list:tt)*)]
+            ($register_name:ident, RWB, $register_address:expr, $register_size:expr, $register_address_type:ty, $register_bit_order:ty) {
+                $(
+                    $(#[$field_doc:meta])*
+                    $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? $(as $field_convert_type:ty)? = $field_access_specifier:tt $field_bit_range:expr
+                ),*
+            }
+        ) => {
+            _implement_register!(
+                #[generate($($generate_list)*)]
+                ($register_name, RW, $register_address, $register_size, $register_address_type, $register_bit_order) {
+                    $(
+                        $(#[$field_doc])*
+                        $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = $field_access_specifier $field_bit_range
+                    ),*
+                }
+            );
+            _implement_register!(
+                #[generate($($generate_list)*)]
+                ($register_name, @B, $register_address, $register_size, $register_address_type, $register_bit_order) {
+                    $(
+                        $(#[$field_doc])*
+                        $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = $field_access_specifier $field_bit_range
+                    ),*
+                }
+            );
+        };
+        // This arm implements the array write part (but not write-only)
+        (
+            #[generate($($generate_list:tt)*)]
+            ($register_name:ident, @B, [$($register_address:expr),* $(,)?], $register_size:expr, $register_address_type:ty, $register_bit_order:ty) {
+                $(
+                    $(#[$field_doc:meta])*
+                    $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? $(as $field_convert_type:ty)? = $field_access_specifier:tt $field_bit_range:expr
+                ),*
+            }
+        ) => {
+            /// Writer struct for the register
+            #[derive(Debug, Copy, Clone)]
+            pub struct B([u8; $register_size], [u8; $register_size]);
+
+            impl B {
+                /// Create a zeroed writer
+                pub const fn zero() -> Self {
+                    Self([0; $register_size], [0; $register_size])
+                }
+
+                /// Creates a writer with the given value.
+                ///
+                /// Be careful because you may inadvertently set invalid values
+                pub const fn from_raw(value: [u8; $register_size]) -> Self {
+                    Self(value, [0; $register_size])
+                }
+
+                $(
+                    _implement_register_field!(@B, $register_bit_order, $(#[$field_doc])* $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = $field_access_specifier $field_bit_range);
+                )*
+            }
+
+            impl<'a, I> RegAccessor<'a, I, R, W>
+            where
+                I: BitModifyRegisterInterface<Address = $register_address_type>,
+            {
+                /// Writes the w value to the register
+                fn write_modified(&mut self, b: B) -> Result<(), I::InterfaceError> {
+                    self.interface.bit_modify_register($register_address, &b.1, &b.0)?;
+                    Ok(())
+                }
+
+                pub fn bit_modify<F>(&mut self, f: F) -> Result<(), I::InterfaceError>
+                where
+                    for<'b> F: FnOnce(&'b mut B) -> &'b mut B,
+                {
+                    let mut b = B([0; $register_size], [0; $register_size]);
+
+                    let _ = f(&mut b);
+                    self.write_modified(b)?;
+                    Ok(())
+                }
+            }
+        };
+        // This arm implements the single write part (but not write-only)
+        (
+            #[generate($($generate_list:tt)*)]
+            ($register_name:ident, @B, $register_address:expr, $register_size:expr, $register_address_type:ty, $register_bit_order:ty) {
+                $(
+                    $(#[$field_doc:meta])*
+                    $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? $(as $field_convert_type:ty)? = $field_access_specifier:tt $field_bit_range:expr
+                ),*
+            }
+        ) => {
+            /// Writer struct for the register
+            #[derive(Debug, Copy, Clone)]
+            pub struct B([u8; $register_size], [u8; $register_size]);
+
+            impl B {
+                /// Create a zeroed writer
+                pub const fn zero() -> Self {
+                    Self([0; $register_size], [0; $register_size])
+                }
+
+                /// Creates a writer with the given value.
+                ///
+                /// Be careful because you may inadvertently set invalid values
+                pub const fn from_raw(value: [u8; $register_size]) -> Self {
+                    Self(value, [0; $register_size])
+                }
+
+                $(
+                    _implement_register_field!(@B, $register_bit_order, $(#[$field_doc])* $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = $field_access_specifier $field_bit_range);
+                )*
+            }
+
+            impl<'a, I> RegAccessor<'a, I, R, W>
+            where
+                I: BitModifyRegisterInterface<Address = $register_address_type>,
+            {
+                /// Writes the w value to the register
+                fn write_modified(&mut self, b: B) -> Result<(), I::InterfaceError> {
+                    self.interface.bit_modify_register($register_address, &b.1, &b.0)?;
+                    Ok(())
+                }
+
+                pub fn bit_modify<F>(&mut self, f: F) -> Result<(), I::InterfaceError>
+                where
+                    for<'b> F: FnOnce(&'b mut B) -> &'b mut B,
+                {
+                    let mut b = B([0; $register_size], [0; $register_size]);
+
+                    let _ = f(&mut b);
+                    self.write_modified(b)?;
+                    Ok(())
+                }
+            }
+        };
+
+
+
     // This arm implements the read part and disables write
     (
         #[generate($($generate_list:tt)*)]
@@ -654,6 +807,39 @@ macro_rules! _implement_register_field {
     (@W, $register_bit_order:ty, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? $(as $field_convert_type:ty)? = RW $field_bit_range:expr) => {
         _implement_register_field!(@W, $register_bit_order, $(#[$field_doc])* $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = RO $field_bit_range);
         _implement_register_field!(@W, $register_bit_order, $(#[$field_doc])* $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = WO $field_bit_range);
+    };
+
+
+    // Write without 'as' convert
+    (@B, $register_bit_order:ty, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? = WO $field_bit_range:expr) => {
+        $(#[$field_doc])*
+        pub fn $field_name(&mut self, value: $field_type) -> &mut Self {
+            use device_driver::bitvec::prelude::*;
+            use device_driver::bitvec::view::AsBitsMut;
+
+            _store_with_endianness!(self.0.as_bits_mut::<$register_bit_order>()[$field_bit_range], value, $($field_bit_order)?);
+            _store_with_endianness!(self.1.as_bits_mut::<$register_bit_order>()[$field_bit_range], 0xffffffffffffffff as $field_type, $($field_bit_order)?);
+
+            self
+        }
+    };
+    // Write with 'as' convert
+    (@B, $register_bit_order:ty, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? as $field_convert_type:ty = WO $field_bit_range:expr) => {
+        $(#[$field_doc])*
+        pub fn $field_name(&mut self, value: $field_convert_type) -> &mut Self {
+            use device_driver::bitvec::prelude::*;
+            use device_driver::bitvec::view::AsBitsMut;
+
+            let raw_value: $field_type = value.into();
+            _store_with_endianness!(self.0.as_bits_mut::<$register_bit_order>()[$field_bit_range], raw_value, $($field_bit_order)?);
+            _store_with_endianness!(self.1.as_bits_mut::<$register_bit_order>()[$field_bit_range], 0xffffffffffffffff as $field_type, $($field_bit_order)?);
+
+
+            self
+        }
+    };
+    (@B, $register_bit_order:ty, $(#[$field_doc:meta])* $field_name:ident: $field_type:ty $(:$field_bit_order:ident)? $(as $field_convert_type:ty)? = RW $field_bit_range:expr) => {
+        _implement_register_field!(@B, $register_bit_order, $(#[$field_doc])* $field_name: $field_type $(:$field_bit_order)? $(as $field_convert_type)? = WO $field_bit_range);
     };
 }
 
