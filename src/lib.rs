@@ -3,7 +3,10 @@
 //! The best source to see how it works is the examples folder.
 
 #![cfg_attr(not(test), no_std)]
-#![forbid(missing_docs)]
+// #![forbid(missing_docs)]
+
+#![cfg_attr(feature = "async", feature(async_fn_in_trait))]
+#![cfg_attr(feature = "async", allow(incomplete_features))]
 
 pub use bit::Bit;
 pub use bitvec;

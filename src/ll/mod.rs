@@ -1,9 +1,15 @@
 //#[macro_use]
 //pub mod memory;
 
+use core::fmt::{UpperHex, Formatter, Debug};
+
 /// Module that helps with creating a register interface
 #[macro_use]
 pub mod register;
+
+#[cfg(feature = "async")]
+#[macro_use]
+pub mod register_async;
 
 /// General Device trait
 pub trait LowLevelDevice<I> {
@@ -50,7 +56,7 @@ macro_rules! create_low_level_device {
         }
     ) => {
         use device_driver::ll::LowLevelDevice;
-        use device_driver::ll::register::ConversionError;
+        use device_driver::ll::ConversionError;
 
         /// Marker trait for hardware interface implementations
         pub trait HardwareInterface : $($hardware_interface_bound_type)* $hardware_interface_capabilities
@@ -105,4 +111,18 @@ macro_rules! create_low_level_device {
         }
         )*
     };
+}
+
+/// Error type for type conversion errors
+pub struct ConversionError<T: UpperHex + Debug> {
+    /// The raw value that was tried to have converted
+    pub raw: T,
+}
+
+impl<T: UpperHex + Debug> Debug for ConversionError<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("ConversionError")
+            .field("raw", &format_args!("0x{:X}", self.raw))
+            .finish()
+    }
 }

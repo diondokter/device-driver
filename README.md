@@ -2,7 +2,9 @@
 
 A toolkit to write better device drivers, faster.
 
-See [this](https://github.com/diondokter/device-driver/blob/master/examples/spi_register_device.rs) example to see how it works. There's also [this OPL2 device driver](https://github.com/diondokter/opl-driver) that is used as reference register implementation for this crate.
+See [this](./examples/spi_register_device.rs) example to see how it works. There's also [this OPL2 device driver](https://github.com/diondokter/opl-driver) that is used as reference register implementation for this crate.
+
+You can now also generate an async interface. See [this example](./examples/spi_register_device_async.rs).
 
 Feedback and feature requests are appreciated! Just open an issue on github.
 
@@ -94,8 +96,6 @@ dual licensed as above, without any additional terms or conditions.
 
 ## TODO
 
-- Make hardware interfaces async. (Best way? async/await or nb?)
-- Make register R and W type functions const. (Depends on BitVec)
 - Better error handling. (Suggestions?)
 - Adding memory devices support.
 - Allow user to specify default register values.
@@ -107,6 +107,11 @@ dual licensed as above, without any additional terms or conditions.
 This crate is far from stable. But if it works for you, then I see no reason why you couldn't use it already. Only updating to a new version may break stuff and proper Semver will be used.
 
 ## Changelog
+### 0.4.0 (13-12-22)
+- Added async support for the register interfaces. Use the `async` feature flag to activate it.
+  When you do, you will have access to the `ll::register_async` module that will generate async code for you.
+- Updated dependencies (mainly bitvec to 1.0, which makes this release a technically breaking change)
+
 ### 0.3.1 (22-12-21)
 - Added docs to low level error ([#14](https://github.com/diondokter/device-driver/pull/10))
 ### 0.3.0 (02-05-21)
