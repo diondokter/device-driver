@@ -5,6 +5,7 @@ A toolkit to write better device drivers, faster.
 See [this](./examples/spi_register_device.rs) example to see how it works. There's also [this OPL2 device driver](https://github.com/diondokter/opl-driver) that is used as reference register implementation for this crate.
 
 You can now also generate an async interface. See [this example](./examples/spi_register_device_async.rs).
+This is only supported on a recent nightly as of writing (13-12-22).
 
 Feedback and feature requests are appreciated! Just open an issue on github.
 
@@ -107,7 +108,9 @@ dual licensed as above, without any additional terms or conditions.
 This crate is far from stable. But if it works for you, then I see no reason why you couldn't use it already. Only updating to a new version may break stuff and proper Semver will be used.
 
 ## Changelog
-### 0.4.0 (13-12-22)
+### 0.4.1 (13-12-22)
+- Accidentally left the async flag on by default for 0.4.0 which caused it not to compile on stable.
+### 0.4.0 (13-12-22) (yanked)
 - Added async support for the register interfaces. Use the `async` feature flag to activate it.
   When you do, you will have access to the `ll::register_async` module that will generate async code for you.
 - Updated dependencies (mainly bitvec to 1.0, which makes this release a technically breaking change)

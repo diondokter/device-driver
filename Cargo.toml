@@ -1,6 +1,6 @@
 [package]
 name = "device-driver"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["Dion Dokter <diondokter@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -22,5 +22,5 @@ num_enum = { version = "0.5.1", default-features = false }
 tokio = { version = "1.23.0", features = ["full"] }
 
 [features]
-default = ["async"]
+default = []
 async = []
