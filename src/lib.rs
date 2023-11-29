@@ -134,7 +134,9 @@ where
     pub async fn write_async(&mut self, f: impl FnOnce(&mut R) -> &mut R) -> Result<(), D::Error> {
         let mut register = R::ZERO;
         f(&mut register);
-        self.device.write_register::<R, SIZE_BYTES>(register.bits()).await
+        self.device
+            .write_register::<R, SIZE_BYTES>(register.bits())
+            .await
     }
 }
 
@@ -147,7 +149,8 @@ where
     pub async fn read_async(&mut self) -> Result<R, D::Error> {
         let mut register = R::ZERO;
         self.device
-            .read_register::<R, SIZE_BYTES>(register.bits()).await?;
+            .read_register::<R, SIZE_BYTES>(register.bits())
+            .await?;
         Ok(register)
     }
 }
@@ -161,7 +164,9 @@ where
     pub async fn modify_async(&mut self, f: impl FnOnce(&mut R) -> &mut R) -> Result<(), D::Error> {
         let mut register = self.read_async().await?;
         f(&mut register);
-        self.device.write_register::<R, SIZE_BYTES>(register.bits()).await
+        self.device
+            .write_register::<R, SIZE_BYTES>(register.bits())
+            .await
     }
 }
 
