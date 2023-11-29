@@ -234,7 +234,7 @@ pub mod tests {
         C,
     }
 
-    impl Register<2> for DeviceId {
+    impl Register<{ Self::SIZE_BYTES }> for DeviceId {
         const ZERO: Self = Self {
             bits: BitArray::ZERO,
         };
@@ -244,7 +244,7 @@ pub mod tests {
 
         type RWCapability = ReadWrite;
 
-        fn bits(&mut self) -> &mut BitArray<[u8; 2]> {
+        fn bits(&mut self) -> &mut BitArray<[u8; Self::SIZE_BYTES]> {
             &mut self.bits
         }
     }
