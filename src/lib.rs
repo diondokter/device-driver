@@ -8,17 +8,18 @@ use core::{
 use bitvec::{array::BitArray, field::BitField};
 use funty::Integral;
 
-pub trait Device {
+pub trait RegisterDevice {
     type Error;
     type AddressType;
 
-    fn write<R, const SIZE_BYTES: usize>(
+    fn write_register<R, const SIZE_BYTES: usize>(
         &mut self,
         data: &BitArray<[u8; SIZE_BYTES]>,
     ) -> Result<(), Self::Error>
     where
         R: Register<SIZE_BYTES, AddressType = Self::AddressType>;
-    fn read<R, const SIZE_BYTES: usize>(
+        
+    fn read_register<R, const SIZE_BYTES: usize>(
         &mut self,
         data: &mut BitArray<[u8; SIZE_BYTES]>,
     ) -> Result<(), Self::Error>
@@ -44,14 +45,14 @@ pub trait Register<const SIZE_BYTES: usize> {
     }
 }
 
-pub struct RegisterOperation<'a, D: Device, R: Register<SIZE_BYTES>, const SIZE_BYTES: usize> {
+pub struct RegisterOperation<'a, D: RegisterDevice, R: Register<SIZE_BYTES>, const SIZE_BYTES: usize> {
     device: &'a mut D,
     _phantom: PhantomData<R>,
 }
 
 impl<'a, D, R, const SIZE_BYTES: usize> RegisterOperation<'a, D, R, SIZE_BYTES>
 where
-    D: Device<AddressType = R::AddressType>,
+    D: RegisterDevice<AddressType = R::AddressType>,
     R: Register<SIZE_BYTES>,
 {
     pub fn new(device: &'a mut D) -> Self {
@@ -64,40 +65,40 @@ where
 
 impl<'a, D, R, const SIZE_BYTES: usize> RegisterOperation<'a, D, R, SIZE_BYTES>
 where
-    D: Device<AddressType = R::AddressType>,
+    D: RegisterDevice<AddressType = R::AddressType>,
     R: Register<SIZE_BYTES>,
     R::RWCapability: WriteCapability,
 {
     pub fn write(&mut self, f: impl FnOnce(&mut R) -> &mut R) -> Result<(), D::Error> {
         let mut register = R::ZERO;
         f(&mut register);
-        self.device.write::<R, SIZE_BYTES>(register.bits())
+        self.device.write_register::<R, SIZE_BYTES>(register.bits())
     }
 }
 
 impl<'a, D, R, const SIZE_BYTES: usize> RegisterOperation<'a, D, R, SIZE_BYTES>
 where
-    D: Device<AddressType = R::AddressType>,
+    D: RegisterDevice<AddressType = R::AddressType>,
     R: Register<SIZE_BYTES>,
     R::RWCapability: ReadCapability,
 {
     pub fn read(&mut self) -> Result<R, D::Error> {
         let mut register = R::ZERO;
-        self.device.read::<R, SIZE_BYTES>(register.bits())?;
+        self.device.read_register::<R, SIZE_BYTES>(register.bits())?;
         Ok(register)
     }
 }
 
 impl<'a, D, R, const SIZE_BYTES: usize> RegisterOperation<'a, D, R, SIZE_BYTES>
 where
-    D: Device<AddressType = R::AddressType>,
+    D: RegisterDevice<AddressType = R::AddressType>,
     R: Register<SIZE_BYTES>,
     R::RWCapability: ReadCapability + WriteCapability,
 {
     pub fn modify(&mut self, f: impl FnOnce(&mut R) -> &mut R) -> Result<(), D::Error> {
         let mut register = self.read()?;
         f(&mut register);
-        self.device.write::<R, SIZE_BYTES>(register.bits())
+        self.device.write_register::<R, SIZE_BYTES>(register.bits())
     }
 }
 
@@ -166,11 +167,11 @@ pub mod tests {
         device_memory: [u8; 128],
     }
 
-    impl Device for TestDevice {
+    impl RegisterDevice for TestDevice {
         type Error = ();
         type AddressType = usize;
 
-        fn write<R, const SIZE_BYTES: usize>(
+        fn write_register<R, const SIZE_BYTES: usize>(
             &mut self,
             data: &BitArray<[u8; SIZE_BYTES]>,
         ) -> Result<(), Self::Error>
@@ -182,7 +183,7 @@ pub mod tests {
             Ok(())
         }
 
-        fn read<R, const SIZE_BYTES: usize>(
+        fn read_register<R, const SIZE_BYTES: usize>(
             &mut self,
             data: &mut BitArray<[u8; SIZE_BYTES]>,
         ) -> Result<(), Self::Error>
