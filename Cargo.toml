@@ -13,6 +13,7 @@ description = "A toolkit to write better device drivers, faster"
 
 [dependencies]
 bitvec = { version = "1.0.1", default-features = false }
+funty = { version = "2.0.0", default-features = false }
 
 [dev-dependencies]
 embedded-hal = "0.2.5"
