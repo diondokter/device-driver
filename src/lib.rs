@@ -215,15 +215,15 @@ where
     }
 }
 
-pub struct Write;
-pub struct Read;
+pub struct WriteOnly;
+pub struct ReadOnly;
 pub struct ReadWrite;
 
 pub trait ReadCapability {}
 pub trait WriteCapability {}
 
-impl WriteCapability for Write {}
-impl ReadCapability for Read {}
+impl WriteCapability for WriteOnly {}
+impl ReadCapability for ReadOnly {}
 impl WriteCapability for ReadWrite {}
 impl ReadCapability for ReadWrite {}
 
