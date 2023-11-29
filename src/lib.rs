@@ -87,6 +87,8 @@ impl EndiannessType for NativeEndian {
 
 #[cfg(test)]
 mod tests {
+    use bitvec::array::BitArray;
+
     use super::*;
 
     struct DeviceId {
