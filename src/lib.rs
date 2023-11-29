@@ -1,4 +1,5 @@
 #![cfg_attr(not(test), no_std)]
+#![allow(async_fn_in_trait)]
 
 use core::{
     convert::{TryFrom, TryInto},
@@ -18,8 +19,27 @@ pub trait RegisterDevice {
     ) -> Result<(), Self::Error>
     where
         R: Register<SIZE_BYTES, AddressType = Self::AddressType>;
-        
+
     fn read_register<R, const SIZE_BYTES: usize>(
+        &mut self,
+        data: &mut BitArray<[u8; SIZE_BYTES]>,
+    ) -> Result<(), Self::Error>
+    where
+        R: Register<SIZE_BYTES, AddressType = Self::AddressType>;
+}
+
+pub trait AsyncRegisterDevice {
+    type Error;
+    type AddressType;
+
+    async fn write_register<R, const SIZE_BYTES: usize>(
+        &mut self,
+        data: &BitArray<[u8; SIZE_BYTES]>,
+    ) -> Result<(), Self::Error>
+    where
+        R: Register<SIZE_BYTES, AddressType = Self::AddressType>;
+
+    async fn read_register<R, const SIZE_BYTES: usize>(
         &mut self,
         data: &mut BitArray<[u8; SIZE_BYTES]>,
     ) -> Result<(), Self::Error>
@@ -45,14 +65,16 @@ pub trait Register<const SIZE_BYTES: usize> {
     }
 }
 
-pub struct RegisterOperation<'a, D: RegisterDevice, R: Register<SIZE_BYTES>, const SIZE_BYTES: usize> {
+pub struct RegisterOperation<'a, D, R, const SIZE_BYTES: usize>
+where
+    R: Register<SIZE_BYTES>,
+{
     device: &'a mut D,
     _phantom: PhantomData<R>,
 }
 
 impl<'a, D, R, const SIZE_BYTES: usize> RegisterOperation<'a, D, R, SIZE_BYTES>
 where
-    D: RegisterDevice<AddressType = R::AddressType>,
     R: Register<SIZE_BYTES>,
 {
     pub fn new(device: &'a mut D) -> Self {
@@ -84,7 +106,8 @@ where
 {
     pub fn read(&mut self) -> Result<R, D::Error> {
         let mut register = R::ZERO;
-        self.device.read_register::<R, SIZE_BYTES>(register.bits())?;
+        self.device
+            .read_register::<R, SIZE_BYTES>(register.bits())?;
         Ok(register)
     }
 }
@@ -99,6 +122,46 @@ where
         let mut register = self.read()?;
         f(&mut register);
         self.device.write_register::<R, SIZE_BYTES>(register.bits())
+    }
+}
+
+impl<'a, D, R, const SIZE_BYTES: usize> RegisterOperation<'a, D, R, SIZE_BYTES>
+where
+    D: AsyncRegisterDevice<AddressType = R::AddressType>,
+    R: Register<SIZE_BYTES>,
+    R::RWCapability: WriteCapability,
+{
+    pub async fn write_async(&mut self, f: impl FnOnce(&mut R) -> &mut R) -> Result<(), D::Error> {
+        let mut register = R::ZERO;
+        f(&mut register);
+        self.device.write_register::<R, SIZE_BYTES>(register.bits()).await
+    }
+}
+
+impl<'a, D, R, const SIZE_BYTES: usize> RegisterOperation<'a, D, R, SIZE_BYTES>
+where
+    D: AsyncRegisterDevice<AddressType = R::AddressType>,
+    R: Register<SIZE_BYTES>,
+    R::RWCapability: ReadCapability,
+{
+    pub async fn read_async(&mut self) -> Result<R, D::Error> {
+        let mut register = R::ZERO;
+        self.device
+            .read_register::<R, SIZE_BYTES>(register.bits()).await?;
+        Ok(register)
+    }
+}
+
+impl<'a, D, R, const SIZE_BYTES: usize> RegisterOperation<'a, D, R, SIZE_BYTES>
+where
+    D: AsyncRegisterDevice<AddressType = R::AddressType>,
+    R: Register<SIZE_BYTES>,
+    R::RWCapability: ReadCapability + WriteCapability,
+{
+    pub async fn modify_async(&mut self, f: impl FnOnce(&mut R) -> &mut R) -> Result<(), D::Error> {
+        let mut register = self.read_async().await?;
+        f(&mut register);
+        self.device.write_register::<R, SIZE_BYTES>(register.bits()).await
     }
 }
 
@@ -184,6 +247,35 @@ pub mod tests {
         }
 
         fn read_register<R, const SIZE_BYTES: usize>(
+            &mut self,
+            data: &mut BitArray<[u8; SIZE_BYTES]>,
+        ) -> Result<(), Self::Error>
+        where
+            R: Register<SIZE_BYTES, AddressType = Self::AddressType>,
+        {
+            data.as_raw_mut_slice()
+                .copy_from_slice(&self.device_memory[R::ADDRESS..][..SIZE_BYTES]);
+            Ok(())
+        }
+    }
+
+    impl AsyncRegisterDevice for TestDevice {
+        type Error = ();
+        type AddressType = usize;
+
+        async fn write_register<R, const SIZE_BYTES: usize>(
+            &mut self,
+            data: &BitArray<[u8; SIZE_BYTES]>,
+        ) -> Result<(), Self::Error>
+        where
+            R: Register<SIZE_BYTES, AddressType = Self::AddressType>,
+        {
+            self.device_memory[R::ADDRESS..][..SIZE_BYTES].copy_from_slice(data.as_raw_slice());
+
+            Ok(())
+        }
+
+        async fn read_register<R, const SIZE_BYTES: usize>(
             &mut self,
             data: &mut BitArray<[u8; SIZE_BYTES]>,
         ) -> Result<(), Self::Error>
