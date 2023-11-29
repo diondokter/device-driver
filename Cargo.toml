@@ -16,12 +16,4 @@ bitvec = { version = "1.0.1", default-features = false }
 funty = { version = "2.0.0", default-features = false }
 
 [dev-dependencies]
-embedded-hal = "0.2.5"
-embedded-hal-mock = "0.8.0"
-embedded-hal-async = "0.2.0-alpha.0"
-num_enum = { version = "0.5.1", default-features = false }
-tokio = { version = "1.23.0", features = ["full"] }
-
-[features]
-default = []
-async = []
+num_enum = { version = "0.7.1", default-features = false }
