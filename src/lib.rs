@@ -1,22 +1,27 @@
-//! Crate providing some tools to create better device drivers more easily
-//!
-//! The best source to see how it works is the examples folder.
-
 #![cfg_attr(not(test), no_std)]
-// #![forbid(missing_docs)]
 
-#![cfg_attr(feature = "async", feature(async_fn_in_trait))]
-#![cfg_attr(feature = "async", allow(incomplete_features))]
+pub trait Register {
+    type AddressType;
+    const ADDRESS: Self::AddressType;
 
-pub use bit::Bit;
-pub use bitvec;
+    const SIZE_BITS: usize;
+    type Endianness: EndiannessType;
+}
 
-// #[macro_use]
-// pub mod hl;
-/// The module with tools for creating the low-level parts of the device driver
-#[macro_use]
-pub mod ll;
+pub trait EndiannessType {
+    const LITTLE_ENDIAN: bool;
+}
 
-pub mod utils;
+pub struct LittleEndian;
+impl EndiannessType for LittleEndian {
+    const LITTLE_ENDIAN: bool = true;
+}
+pub struct BigEndian;
+impl EndiannessType for BigEndian {
+    const LITTLE_ENDIAN: bool = false;
+}
 
-mod bit;
+pub struct NativeEndian;
+impl EndiannessType for NativeEndian {
+    const LITTLE_ENDIAN: bool = cfg!(target_endian = "little");
+}
