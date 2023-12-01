@@ -1,5 +1,5 @@
-#![cfg_attr(not(test), no_std)]
 #![allow(async_fn_in_trait)]
+#![cfg_attr(not(test), no_std)]
 
 use core::{
     convert::{TryFrom, TryInto},
