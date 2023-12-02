@@ -5,22 +5,48 @@ use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens, TokenStreamExt};
 
 impl Device {
-    pub fn generate_device_impl(&self) -> TokenStream {
-        todo!()
+    pub fn generate_device_impl(&self, mut existing_impl: syn::ItemImpl) -> TokenStream {
+        assert!(
+            existing_impl.trait_.is_none(),
+            "Device impl must not be a block that impl's a trait"
+        );
+        existing_impl.items = self.generate_device_register_functions();
+
+        existing_impl.into_token_stream()
+    }
+
+    pub fn generate_device_register_functions(&self) -> Vec<syn::ImplItem> {
+        self.registers
+            .iter()
+            .map(|register| register.generate_register_function())
+            .collect()
     }
 
     pub fn generate_definitions(&self) -> TokenStream {
         let mut stream = TokenStream::new();
 
-        for register in self.registers.iter() {
-            register.generate_definition(self).to_tokens(&mut stream);
-        }
+        stream.append_all(
+            self.registers
+                .iter()
+                .map(|register| register.generate_definition(self)),
+        );
 
         stream
     }
 }
 
 impl Register {
+    fn generate_register_function(&self) -> syn::ImplItem {
+        let snake_case_name = syn::Ident::new(&self.name.to_case(Case::Snake), Span::call_site());
+        let pascal_case_name = syn::Ident::new(&self.name.to_case(Case::Pascal), Span::call_site());
+
+        syn::parse_quote! {
+            pub fn #snake_case_name(&mut self) -> device_driver_core::RegisterOperation<'_, Self, #pascal_case_name, { #pascal_case_name::SIZE_BYTES }> {
+                device_driver_core::RegisterOperation::new(self)
+            }
+        }
+    }
+
     fn generate_definition(&self, device: &Device) -> TokenStream {
         let Register {
             name, size_bytes, ..
@@ -93,7 +119,7 @@ impl Field {
         let register_type = register_type.into_type();
         let conversion_type = conversion_type
             .as_ref()
-            .map(|ct| ct.into_type(&name))
+            .map(|ct| ct.into_type(name))
             .unwrap_or(register_type.clone());
         let start = proc_macro2::Literal::u32_unsuffixed(*start);
         let end = proc_macro2::Literal::u32_unsuffixed(*end);

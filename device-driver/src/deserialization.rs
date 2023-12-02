@@ -99,7 +99,7 @@ impl<'de> serde::Deserialize<'de> for TypePathOrEnum {
                 <IndexMap<String, Option<i128>> as serde::Deserialize>::deserialize(
                     de::value::MapAccessDeserializer::new(map),
                 )
-                .map(|map| TypePathOrEnum::Enum(map))
+                .map(TypePathOrEnum::Enum)
             }
         }
 

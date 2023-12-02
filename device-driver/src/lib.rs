@@ -246,7 +246,16 @@ mod tests {
         let definitions = include_str!("../json_syntax.json");
         let device = serde_json::from_str::<Device>(definitions).unwrap();
 
-        let output = prettyplease::unparse(&syn::parse2(device.generate_definitions()).unwrap());
+        let mut stream = TokenStream::new();
+
+        device
+            .generate_device_impl(syn::parse_quote! {
+                impl<FOO> MyRegisterDevice<FOO> {}
+            })
+            .to_tokens(&mut stream);
+        device.generate_definitions().to_tokens(&mut stream);
+
+        let output = prettyplease::unparse(&syn::parse2(stream).unwrap());
         println!("{output}");
     }
 }
