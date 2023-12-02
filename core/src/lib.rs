@@ -6,6 +6,10 @@ use core::{
     marker::PhantomData,
 };
 
+pub use bitvec;
+pub use funty;
+pub use num_enum;
+
 use bitvec::{array::BitArray, field::BitField};
 use funty::Integral;
 

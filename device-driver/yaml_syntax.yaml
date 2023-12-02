@@ -1,0 +1,24 @@
+address_type: u8
+registers:
+  id:
+    rw_capability: ro
+    address: 12
+    size_bytes: 3
+    fields:
+      manufacturer:
+        type: u16
+        conversion: Manufacturer
+        start: 0
+        end: 16
+      version:
+        type: u8
+        start: 16
+        end: 20
+      edition:
+        type: u8
+        conversion:
+          One: 1
+          Two:
+          Five: 5
+        start: 20
+        end: 24

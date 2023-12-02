@@ -1,134 +1,163 @@
-use std::collections::HashMap;
+use std::iter::FromIterator;
 
+use convert_case::Casing;
+use deserialization::{FieldCollection, RegisterCollection};
 use indexmap::IndexMap;
+use proc_macro2::TokenStream;
+use quote::{quote, ToTokens, TokenStreamExt};
+
+mod deserialization;
+mod generation;
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Device {
-    address_type: IntegerType,
-    registers: RegisterCollection,
+pub struct Device {
+    pub address_type: IntegerType,
+    pub registers: RegisterCollection,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct RegisterCollection(Vec<Register>);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Register {
+    #[serde(skip)]
+    pub name: String,
+    pub rw_capability: RWCapability,
+    pub address: u64,
+    pub size_bytes: u64,
+    pub fields: FieldCollection,
+}
 
-impl<'de> serde::Deserialize<'de> for RegisterCollection {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let registers = HashMap::<String, Register>::deserialize(deserializer)?;
+impl PartialOrd for Register {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
 
-        Ok(Self(
-            registers
-                .into_iter()
-                .map(|(name, mut register)| {
-                    register.name = name;
-                    register
-                })
-                .collect(),
-        ))
+impl Ord for Register {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.address
+            .cmp(&other.address)
+            .then_with(|| self.name.cmp(&other.name))
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Register {
+pub struct Field {
     #[serde(skip)]
-    name: String,
-    rw_capability: RWCapability,
-    address: u128,
-    size_bytes: u128,
-    fields: FieldCollection,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct FieldCollection(Vec<Field>);
-
-impl<'de> serde::Deserialize<'de> for FieldCollection {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let registers = HashMap::<String, Field>::deserialize(deserializer)?;
-
-        Ok(Self(
-            registers
-                .into_iter()
-                .map(|(name, mut register)| {
-                    register.name = name;
-                    register
-                })
-                .collect(),
-        ))
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-struct Field {
-    #[serde(skip)]
-    name: String,
+    pub name: String,
     #[serde(rename = "type")]
-    register_type: IntegerType,
+    pub register_type: IntegerType,
     #[serde(rename = "conversion")]
-    conversion_type: Option<TypePathOrEnum>,
-    start: u32,
-    end: u32,
+    pub conversion_type: Option<TypePathOrEnum>,
+    pub start: u32,
+    pub end: u32,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(untagged)]
-enum TypePathOrEnum {
+impl PartialOrd for Field {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Field {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.start
+            .cmp(&other.start)
+            .then_with(|| self.name.cmp(&other.name))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TypePathOrEnum {
     TypePath(TypePath),
     Enum(IndexMap<String, Option<i128>>),
 }
 
-impl<'de> serde::Deserialize<'de> for TypePathOrEnum {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        use serde::de;
-        use std::fmt;
+impl TypePathOrEnum {
+    pub fn into_type(&self, field_name: &str) -> syn::Type {
+        match self {
+            TypePathOrEnum::TypePath(type_path) => type_path.into_type(),
+            TypePathOrEnum::Enum(_) => {
+                let name = syn::Ident::new(
+                    &field_name.to_case(convert_case::Case::Pascal),
+                    proc_macro2::Span::call_site(),
+                );
 
-        struct StringOrStruct;
+                let mut segments = syn::punctuated::Punctuated::new();
+                segments.push(name.into());
 
-        impl<'de> serde::de::Visitor<'de> for StringOrStruct {
-            type Value = TypePathOrEnum;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("string or map")
-            }
-
-            fn visit_str<E>(self, value: &str) -> Result<TypePathOrEnum, E>
-            where
-                E: de::Error,
-            {
-                Ok(TypePathOrEnum::TypePath(TypePath(value.into())))
-            }
-
-            fn visit_map<M>(self, map: M) -> Result<TypePathOrEnum, M::Error>
-            where
-                M: de::MapAccess<'de>,
-            {
-                <IndexMap<String, Option<i128>> as serde::Deserialize>::deserialize(
-                    de::value::MapAccessDeserializer::new(map),
-                )
-                .map(|map| TypePathOrEnum::Enum(map))
+                syn::Type::Path(syn::TypePath {
+                    qself: None,
+                    path: syn::Path {
+                        leading_colon: None,
+                        segments,
+                    },
+                })
             }
         }
+    }
 
-        deserializer.deserialize_any(StringOrStruct)
+    pub fn generate_type_definition(
+        &self,
+        register_type: syn::Type,
+        field_name: &str,
+    ) -> Option<TokenStream> {
+        match self {
+            TypePathOrEnum::TypePath(_) => None,
+            TypePathOrEnum::Enum(map) => {
+                let name = syn::Ident::new(
+                    &field_name.to_case(convert_case::Case::Pascal),
+                    proc_macro2::Span::call_site(),
+                );
+                let mut variants = TokenStream::new();
+                variants.append_all(map.iter().map(|(name, value)| {
+                    let variant = syn::Ident::new(
+                        &name.to_case(convert_case::Case::Pascal),
+                        proc_macro2::Span::call_site(),
+                    );
+                    let value_specifier = value.map(|value| {
+                        let value = proc_macro2::Literal::i128_unsuffixed(value);
+                        quote!(= #value)
+                    });
+                    quote! {
+                        #variant #value_specifier,
+                    }
+                }));
+                Some(
+                    quote::quote! {
+                        #[derive(device_driver_core::num_enum::TryFromPrimitive, device_driver_core::num_enum::IntoPrimitive, Debug, Copy, Clone, PartialEq, Eq)]
+                        #[repr(#register_type)]
+                        pub enum #name {
+                            #variants
+                        }
+                    }.into_token_stream()
+                )
+            }
+        }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
 #[serde(transparent)]
-struct TypePath(String);
+pub struct TypePath(String);
+
+impl TypePath {
+    pub fn into_type(&self) -> syn::Type {
+        syn::Type::Path(syn::TypePath {
+            qself: None,
+            path: syn::Path {
+                leading_colon: None,
+                segments: syn::punctuated::Punctuated::from_iter(self.0.split("::").map(|seg| {
+                    syn::PathSegment::from(syn::Ident::new(seg, proc_macro2::Span::call_site()))
+                })),
+            },
+        })
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
-enum RWCapability {
+pub enum RWCapability {
     #[serde(alias = "ro", alias = "RO")]
     ReadOnly,
     #[serde(alias = "wo", alias = "WO")]
@@ -137,9 +166,19 @@ enum RWCapability {
     ReadWrite,
 }
 
+impl RWCapability {
+    pub fn into_type(&self) -> syn::Type {
+        match self {
+            RWCapability::ReadOnly => syn::parse_quote!(device_driver_core::ReadOnly),
+            RWCapability::WriteOnly => syn::parse_quote!(device_driver_core::WriteOnly),
+            RWCapability::ReadWrite => syn::parse_quote!(device_driver_core::ReadWrite),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
-enum IntegerType {
+pub enum IntegerType {
     #[serde(alias = "unsigned char", alias = "byte")]
     U8,
     #[serde(alias = "unsigned short")]
@@ -166,31 +205,48 @@ enum IntegerType {
     Isize,
 }
 
+impl IntegerType {
+    pub fn into_type(&self) -> syn::Type {
+        match self {
+            IntegerType::U8 => syn::parse_quote!(u8),
+            IntegerType::U16 => syn::parse_quote!(u16),
+            IntegerType::U32 => syn::parse_quote!(u32),
+            IntegerType::U64 => syn::parse_quote!(u64),
+            IntegerType::U128 => syn::parse_quote!(u128),
+            IntegerType::Usize => syn::parse_quote!(usize),
+            IntegerType::I8 => syn::parse_quote!(i8),
+            IntegerType::I16 => syn::parse_quote!(i16),
+            IntegerType::I32 => syn::parse_quote!(i32),
+            IntegerType::I64 => syn::parse_quote!(i64),
+            IntegerType::I128 => syn::parse_quote!(i128),
+            IntegerType::Isize => syn::parse_quote!(isize),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn deserialize_json() {
+    fn deserialize_file_formats() {
         let json_string = include_str!("../json_syntax.json");
+        let from_json_value = serde_json::from_str::<Device>(json_string).unwrap();
+        let yaml_string = include_str!("../yaml_syntax.yaml");
+        let from_yaml_value = serde_yaml::from_str::<Device>(yaml_string).unwrap();
 
-        let value = serde_json::from_str::<Device>(json_string).unwrap();
-        println!("{value:#?}");
+        println!("From json: {from_json_value:#?}");
+        println!("From yaml: {from_yaml_value:#?}");
+
+        assert_eq!(from_json_value, from_yaml_value);
     }
 
     #[test]
-    fn serialize() {
-        let path = serde_json::to_string_pretty(&TypePathOrEnum::TypePath(TypePath(String::from(
-            "my::type::path",
-        ))))
-        .unwrap();
-        println!("{path}");
-        serde_json::from_str::<TypePathOrEnum>(&path).unwrap();
+    fn generate() {
+        let definitions = include_str!("../json_syntax.json");
+        let device = serde_json::from_str::<Device>(definitions).unwrap();
 
-        let e = serde_json::to_string_pretty(&TypePathOrEnum::Enum(
-            indexmap::indexmap! { "One".into() => Some(1), "Two".into() => None, "Three".into() => Some(3)}
-        )).unwrap();
-        println!("{e}");
-        serde_json::from_str::<TypePathOrEnum>(&e).unwrap();
+        let output = prettyplease::unparse(&syn::parse2(device.generate_definitions()).unwrap());
+        println!("{output}");
     }
 }
