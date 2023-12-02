@@ -41,8 +41,8 @@ impl Register {
         let pascal_case_name = syn::Ident::new(&self.name.to_case(Case::Pascal), Span::call_site());
 
         syn::parse_quote! {
-            pub fn #snake_case_name(&mut self) -> device_driver_core::RegisterOperation<'_, Self, #pascal_case_name, { #pascal_case_name::SIZE_BYTES }> {
-                device_driver_core::RegisterOperation::new(self)
+            pub fn #snake_case_name(&mut self) -> device_driver::RegisterOperation<'_, Self, #pascal_case_name, { #pascal_case_name::SIZE_BYTES }> {
+                device_driver::RegisterOperation::new(self)
             }
         }
     }
@@ -75,10 +75,10 @@ impl Register {
 
         quote! {
             struct #pascal_case_name {
-                bits: device_driver_core::bitvec::BitArray<[u8; Self::SIZE_BYTES]>,
+                bits: device_driver::bitvec::BitArray<[u8; Self::SIZE_BYTES]>,
             }
 
-            impl device_driver_core::Register<{ Self::SIZE_BYTES }> for #pascal_case_name {
+            impl device_driver::Register<{ Self::SIZE_BYTES }> for #pascal_case_name {
                 const ZERO: Self = Self {
                     bits: BitArray::ZERO,
                 };
@@ -125,7 +125,7 @@ impl Field {
         let end = proc_macro2::Literal::u32_unsuffixed(*end);
 
         quote! {
-            pub fn #snake_case_name(&mut self) -> device_driver_core::Field<'_, Self, #conversion_type, #register_type, #start, #end, { Self::SIZE_BYTES }> {
+            pub fn #snake_case_name(&mut self) -> device_driver::Field<'_, Self, #conversion_type, #register_type, #start, #end, { Self::SIZE_BYTES }> {
                 Field::new(self)
             }
         }.to_token_stream()

@@ -1,261 +1,372 @@
-use std::iter::FromIterator;
+#![allow(async_fn_in_trait)]
+#![cfg_attr(not(test), no_std)]
 
-use convert_case::Casing;
-use deserialization::{FieldCollection, RegisterCollection};
-use indexmap::IndexMap;
-use proc_macro2::TokenStream;
-use quote::{quote, ToTokens, TokenStreamExt};
+use core::{
+    convert::{TryFrom, TryInto},
+    marker::PhantomData,
+};
 
-mod deserialization;
-mod generation;
+pub use bitvec;
+pub use device_driver_macros::*;
+pub use funty;
+pub use num_enum;
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Device {
-    pub address_type: IntegerType,
-    pub registers: RegisterCollection,
+use bitvec::{array::BitArray, field::BitField};
+use funty::Integral;
+
+pub trait RegisterDevice {
+    type Error;
+    type AddressType;
+
+    fn write_register<R, const SIZE_BYTES: usize>(
+        &mut self,
+        data: &BitArray<[u8; SIZE_BYTES]>,
+    ) -> Result<(), Self::Error>
+    where
+        R: Register<SIZE_BYTES, AddressType = Self::AddressType>;
+
+    fn read_register<R, const SIZE_BYTES: usize>(
+        &mut self,
+        data: &mut BitArray<[u8; SIZE_BYTES]>,
+    ) -> Result<(), Self::Error>
+    where
+        R: Register<SIZE_BYTES, AddressType = Self::AddressType>;
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Register {
-    #[serde(skip)]
-    pub name: String,
-    pub rw_capability: RWCapability,
-    pub address: u64,
-    pub size_bytes: u64,
-    pub fields: FieldCollection,
+pub trait AsyncRegisterDevice {
+    type Error;
+    type AddressType;
+
+    async fn write_register<R, const SIZE_BYTES: usize>(
+        &mut self,
+        data: &BitArray<[u8; SIZE_BYTES]>,
+    ) -> Result<(), Self::Error>
+    where
+        R: Register<SIZE_BYTES, AddressType = Self::AddressType>;
+
+    async fn read_register<R, const SIZE_BYTES: usize>(
+        &mut self,
+        data: &mut BitArray<[u8; SIZE_BYTES]>,
+    ) -> Result<(), Self::Error>
+    where
+        R: Register<SIZE_BYTES, AddressType = Self::AddressType>;
 }
 
-impl PartialOrd for Register {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
+pub trait Register<const SIZE_BYTES: usize> {
+    const ZERO: Self;
+
+    type AddressType;
+    const ADDRESS: Self::AddressType;
+
+    type RWCapability;
+
+    fn bits(&mut self) -> &mut BitArray<[u8; SIZE_BYTES]>;
+
+    fn default() -> Self
+    where
+        Self: Sized,
+    {
+        Self::ZERO
     }
 }
 
-impl Ord for Register {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.address
-            .cmp(&other.address)
-            .then_with(|| self.name.cmp(&other.name))
-    }
+pub struct RegisterOperation<'a, D, R, const SIZE_BYTES: usize>
+where
+    R: Register<SIZE_BYTES>,
+{
+    device: &'a mut D,
+    _phantom: PhantomData<R>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Field {
-    #[serde(skip)]
-    pub name: String,
-    #[serde(rename = "type")]
-    pub register_type: IntegerType,
-    #[serde(rename = "conversion")]
-    pub conversion_type: Option<TypePathOrEnum>,
-    pub start: u32,
-    pub end: u32,
-}
-
-impl PartialOrd for Field {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for Field {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.start
-            .cmp(&other.start)
-            .then_with(|| self.name.cmp(&other.name))
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum TypePathOrEnum {
-    TypePath(TypePath),
-    Enum(IndexMap<String, Option<i128>>),
-}
-
-impl TypePathOrEnum {
-    pub fn into_type(&self, field_name: &str) -> syn::Type {
-        match self {
-            TypePathOrEnum::TypePath(type_path) => type_path.into_type(),
-            TypePathOrEnum::Enum(_) => {
-                let name = syn::Ident::new(
-                    &field_name.to_case(convert_case::Case::Pascal),
-                    proc_macro2::Span::call_site(),
-                );
-
-                let mut segments = syn::punctuated::Punctuated::new();
-                segments.push(name.into());
-
-                syn::Type::Path(syn::TypePath {
-                    qself: None,
-                    path: syn::Path {
-                        leading_colon: None,
-                        segments,
-                    },
-                })
-            }
-        }
-    }
-
-    pub fn generate_type_definition(
-        &self,
-        register_type: syn::Type,
-        field_name: &str,
-    ) -> Option<TokenStream> {
-        match self {
-            TypePathOrEnum::TypePath(_) => None,
-            TypePathOrEnum::Enum(map) => {
-                let name = syn::Ident::new(
-                    &field_name.to_case(convert_case::Case::Pascal),
-                    proc_macro2::Span::call_site(),
-                );
-                let mut variants = TokenStream::new();
-                variants.append_all(map.iter().map(|(name, value)| {
-                    let variant = syn::Ident::new(
-                        &name.to_case(convert_case::Case::Pascal),
-                        proc_macro2::Span::call_site(),
-                    );
-                    let value_specifier = value.map(|value| {
-                        let value = proc_macro2::Literal::i128_unsuffixed(value);
-                        quote!(= #value)
-                    });
-                    quote! {
-                        #variant #value_specifier,
-                    }
-                }));
-                Some(
-                    quote::quote! {
-                        #[derive(device_driver_core::num_enum::TryFromPrimitive, device_driver_core::num_enum::IntoPrimitive, Debug, Copy, Clone, PartialEq, Eq)]
-                        #[repr(#register_type)]
-                        pub enum #name {
-                            #variants
-                        }
-                    }.into_token_stream()
-                )
-            }
+impl<'a, D, R, const SIZE_BYTES: usize> RegisterOperation<'a, D, R, SIZE_BYTES>
+where
+    R: Register<SIZE_BYTES>,
+{
+    pub fn new(device: &'a mut D) -> Self {
+        Self {
+            device,
+            _phantom: PhantomData,
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
-#[serde(transparent)]
-pub struct TypePath(String);
-
-impl TypePath {
-    pub fn into_type(&self) -> syn::Type {
-        syn::Type::Path(syn::TypePath {
-            qself: None,
-            path: syn::Path {
-                leading_colon: None,
-                segments: syn::punctuated::Punctuated::from_iter(self.0.split("::").map(|seg| {
-                    syn::PathSegment::from(syn::Ident::new(seg, proc_macro2::Span::call_site()))
-                })),
-            },
-        })
+impl<'a, D, R, const SIZE_BYTES: usize> RegisterOperation<'a, D, R, SIZE_BYTES>
+where
+    D: RegisterDevice<AddressType = R::AddressType>,
+    R: Register<SIZE_BYTES>,
+    R::RWCapability: WriteCapability,
+{
+    pub fn write(&mut self, f: impl FnOnce(&mut R) -> &mut R) -> Result<(), D::Error> {
+        let mut register = R::ZERO;
+        f(&mut register);
+        self.device.write_register::<R, SIZE_BYTES>(register.bits())
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
-pub enum RWCapability {
-    #[serde(alias = "ro", alias = "RO")]
-    ReadOnly,
-    #[serde(alias = "wo", alias = "WO")]
-    WriteOnly,
-    #[serde(alias = "rw", alias = "RW")]
-    ReadWrite,
+impl<'a, D, R, const SIZE_BYTES: usize> RegisterOperation<'a, D, R, SIZE_BYTES>
+where
+    D: RegisterDevice<AddressType = R::AddressType>,
+    R: Register<SIZE_BYTES>,
+    R::RWCapability: ReadCapability,
+{
+    pub fn read(&mut self) -> Result<R, D::Error> {
+        let mut register = R::ZERO;
+        self.device
+            .read_register::<R, SIZE_BYTES>(register.bits())?;
+        Ok(register)
+    }
 }
 
-impl RWCapability {
-    pub fn into_type(&self) -> syn::Type {
-        match self {
-            RWCapability::ReadOnly => syn::parse_quote!(device_driver_core::ReadOnly),
-            RWCapability::WriteOnly => syn::parse_quote!(device_driver_core::WriteOnly),
-            RWCapability::ReadWrite => syn::parse_quote!(device_driver_core::ReadWrite),
+impl<'a, D, R, const SIZE_BYTES: usize> RegisterOperation<'a, D, R, SIZE_BYTES>
+where
+    D: RegisterDevice<AddressType = R::AddressType>,
+    R: Register<SIZE_BYTES>,
+    R::RWCapability: ReadCapability + WriteCapability,
+{
+    pub fn modify(&mut self, f: impl FnOnce(&mut R) -> &mut R) -> Result<(), D::Error> {
+        let mut register = self.read()?;
+        f(&mut register);
+        self.device.write_register::<R, SIZE_BYTES>(register.bits())
+    }
+}
+
+impl<'a, D, R, const SIZE_BYTES: usize> RegisterOperation<'a, D, R, SIZE_BYTES>
+where
+    D: AsyncRegisterDevice<AddressType = R::AddressType>,
+    R: Register<SIZE_BYTES>,
+    R::RWCapability: WriteCapability,
+{
+    pub async fn write_async(&mut self, f: impl FnOnce(&mut R) -> &mut R) -> Result<(), D::Error> {
+        let mut register = R::ZERO;
+        f(&mut register);
+        self.device
+            .write_register::<R, SIZE_BYTES>(register.bits())
+            .await
+    }
+}
+
+impl<'a, D, R, const SIZE_BYTES: usize> RegisterOperation<'a, D, R, SIZE_BYTES>
+where
+    D: AsyncRegisterDevice<AddressType = R::AddressType>,
+    R: Register<SIZE_BYTES>,
+    R::RWCapability: ReadCapability,
+{
+    pub async fn read_async(&mut self) -> Result<R, D::Error> {
+        let mut register = R::ZERO;
+        self.device
+            .read_register::<R, SIZE_BYTES>(register.bits())
+            .await?;
+        Ok(register)
+    }
+}
+
+impl<'a, D, R, const SIZE_BYTES: usize> RegisterOperation<'a, D, R, SIZE_BYTES>
+where
+    D: AsyncRegisterDevice<AddressType = R::AddressType>,
+    R: Register<SIZE_BYTES>,
+    R::RWCapability: ReadCapability + WriteCapability,
+{
+    pub async fn modify_async(&mut self, f: impl FnOnce(&mut R) -> &mut R) -> Result<(), D::Error> {
+        let mut register = self.read_async().await?;
+        f(&mut register);
+        self.device
+            .write_register::<R, SIZE_BYTES>(register.bits())
+            .await
+    }
+}
+
+pub struct Field<
+    'a,
+    R: Register<SIZE_BYTES>,
+    DATA,
+    BACKING,
+    const START: usize,
+    const END: usize,
+    const SIZE_BYTES: usize,
+> {
+    register: &'a mut R,
+    _phantom: PhantomData<(DATA, BACKING)>,
+}
+
+impl<
+        'a,
+        R: Register<SIZE_BYTES>,
+        DATA,
+        BACKING,
+        const START: usize,
+        const END: usize,
+        const SIZE_BYTES: usize,
+    > Field<'a, R, DATA, BACKING, START, END, SIZE_BYTES>
+where
+    DATA: TryFrom<BACKING> + Into<BACKING>,
+    BACKING: Integral,
+{
+    pub fn new(register: &'a mut R) -> Self {
+        Self {
+            register,
+            _phantom: PhantomData,
         }
     }
-}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum IntegerType {
-    #[serde(alias = "unsigned char", alias = "byte")]
-    U8,
-    #[serde(alias = "unsigned short")]
-    U16,
-    #[serde(alias = "unsigned int")]
-    U32,
-    #[serde(alias = "unsigned long")]
-    U64,
-    #[serde(alias = "unsigned long long")]
-    U128,
-    #[serde(alias = "unsigned size")]
-    Usize,
-    #[serde(alias = "char")]
-    I8,
-    #[serde(alias = "short")]
-    I16,
-    #[serde(alias = "int")]
-    I32,
-    #[serde(alias = "long")]
-    I64,
-    #[serde(alias = "long long")]
-    I128,
-    #[serde(alias = "size")]
-    Isize,
-}
+    pub fn set(self, data: DATA) -> &'a mut R {
+        self.register.bits()[START..END].store_be(data.into());
+        self.register
+    }
 
-impl IntegerType {
-    pub fn into_type(&self) -> syn::Type {
-        match self {
-            IntegerType::U8 => syn::parse_quote!(u8),
-            IntegerType::U16 => syn::parse_quote!(u16),
-            IntegerType::U32 => syn::parse_quote!(u32),
-            IntegerType::U64 => syn::parse_quote!(u64),
-            IntegerType::U128 => syn::parse_quote!(u128),
-            IntegerType::Usize => syn::parse_quote!(usize),
-            IntegerType::I8 => syn::parse_quote!(i8),
-            IntegerType::I16 => syn::parse_quote!(i16),
-            IntegerType::I32 => syn::parse_quote!(i32),
-            IntegerType::I64 => syn::parse_quote!(i64),
-            IntegerType::I128 => syn::parse_quote!(i128),
-            IntegerType::Isize => syn::parse_quote!(isize),
-        }
+    pub fn get(self) -> Result<DATA, <BACKING as TryInto<DATA>>::Error> {
+        self.register.bits()[START..END]
+            .load_be::<BACKING>()
+            .try_into()
     }
 }
+
+pub struct WriteOnly;
+pub struct ReadOnly;
+pub struct ReadWrite;
+
+pub trait ReadCapability {}
+pub trait WriteCapability {}
+
+impl WriteCapability for WriteOnly {}
+impl ReadCapability for ReadOnly {}
+impl WriteCapability for ReadWrite {}
+impl ReadCapability for ReadWrite {}
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
 
-    #[test]
-    fn deserialize_file_formats() {
-        let json_string = include_str!("../json_syntax.json");
-        let from_json_value = serde_json::from_str::<Device>(json_string).unwrap();
-        let yaml_string = include_str!("../yaml_syntax.yaml");
-        let from_yaml_value = serde_yaml::from_str::<Device>(yaml_string).unwrap();
+    struct TestDevice {
+        device_memory: [u8; 128],
+    }
 
-        println!("From json: {from_json_value:#?}");
-        println!("From yaml: {from_yaml_value:#?}");
+    impl RegisterDevice for TestDevice {
+        type Error = ();
+        type AddressType = usize;
 
-        assert_eq!(from_json_value, from_yaml_value);
+        fn write_register<R, const SIZE_BYTES: usize>(
+            &mut self,
+            data: &BitArray<[u8; SIZE_BYTES]>,
+        ) -> Result<(), Self::Error>
+        where
+            R: Register<SIZE_BYTES, AddressType = Self::AddressType>,
+        {
+            self.device_memory[R::ADDRESS..][..SIZE_BYTES].copy_from_slice(data.as_raw_slice());
+
+            Ok(())
+        }
+
+        fn read_register<R, const SIZE_BYTES: usize>(
+            &mut self,
+            data: &mut BitArray<[u8; SIZE_BYTES]>,
+        ) -> Result<(), Self::Error>
+        where
+            R: Register<SIZE_BYTES, AddressType = Self::AddressType>,
+        {
+            data.as_raw_mut_slice()
+                .copy_from_slice(&self.device_memory[R::ADDRESS..][..SIZE_BYTES]);
+            Ok(())
+        }
+    }
+
+    impl AsyncRegisterDevice for TestDevice {
+        type Error = ();
+        type AddressType = usize;
+
+        async fn write_register<R, const SIZE_BYTES: usize>(
+            &mut self,
+            data: &BitArray<[u8; SIZE_BYTES]>,
+        ) -> Result<(), Self::Error>
+        where
+            R: Register<SIZE_BYTES, AddressType = Self::AddressType>,
+        {
+            self.device_memory[R::ADDRESS..][..SIZE_BYTES].copy_from_slice(data.as_raw_slice());
+
+            Ok(())
+        }
+
+        async fn read_register<R, const SIZE_BYTES: usize>(
+            &mut self,
+            data: &mut BitArray<[u8; SIZE_BYTES]>,
+        ) -> Result<(), Self::Error>
+        where
+            R: Register<SIZE_BYTES, AddressType = Self::AddressType>,
+        {
+            data.as_raw_mut_slice()
+                .copy_from_slice(&self.device_memory[R::ADDRESS..][..SIZE_BYTES]);
+            Ok(())
+        }
+    }
+
+    impl TestDevice {
+        pub fn new() -> Self {
+            // Normally we'd take like a SPI here or something
+            Self {
+                device_memory: [0; 128],
+            }
+        }
+
+        pub fn device_id(
+            &mut self,
+        ) -> RegisterOperation<'_, Self, DeviceId, { DeviceId::SIZE_BYTES }> {
+            RegisterOperation::new(self)
+        }
+    }
+
+    struct DeviceId {
+        bits: BitArray<[u8; Self::SIZE_BYTES]>,
+    }
+
+    impl DeviceId {
+        pub const SIZE_BYTES: usize = 2;
+
+        pub fn manufacturer(&mut self) -> Field<'_, Self, u8, u8, 0, 8, { Self::SIZE_BYTES }> {
+            Field::new(self)
+        }
+
+        pub fn series(&mut self) -> Field<'_, Self, Series, u8, 8, 12, { Self::SIZE_BYTES }> {
+            Field::new(self)
+        }
+    }
+
+    #[derive(num_enum::TryFromPrimitive, num_enum::IntoPrimitive, PartialEq, Debug)]
+    #[repr(u8)]
+    enum Series {
+        A,
+        B,
+        C,
+    }
+
+    impl Register<{ Self::SIZE_BYTES }> for DeviceId {
+        const ZERO: Self = Self {
+            bits: BitArray::ZERO,
+        };
+
+        type AddressType = usize;
+        const ADDRESS: Self::AddressType = 0;
+
+        type RWCapability = ReadWrite;
+
+        fn bits(&mut self) -> &mut BitArray<[u8; Self::SIZE_BYTES]> {
+            &mut self.bits
+        }
     }
 
     #[test]
-    fn generate() {
-        let definitions = include_str!("../json_syntax.json");
-        let device = serde_json::from_str::<Device>(definitions).unwrap();
+    pub fn test_name() {
+        let mut test_device = TestDevice::new();
 
-        let mut stream = TokenStream::new();
+        test_device
+            .device_id()
+            .write(|w| w.manufacturer().set(12))
+            .unwrap();
+        test_device
+            .device_id()
+            .modify(|w| w.series().set(Series::B))
+            .unwrap();
 
-        device
-            .generate_device_impl(syn::parse_quote! {
-                impl<FOO> MyRegisterDevice<FOO> {}
-            })
-            .to_tokens(&mut stream);
-        device.generate_definitions().to_tokens(&mut stream);
-
-        let output = prettyplease::unparse(&syn::parse2(stream).unwrap());
-        println!("{output}");
+        let mut id = test_device.device_id().read().unwrap();
+        assert_eq!(id.manufacturer().get().unwrap(), 12);
+        assert_eq!(id.series().get().unwrap(), Series::B);
     }
 }

@@ -1,8 +1,8 @@
 [package]
 name = "device-driver"
-version = "0.4.1"
+version = "0.5.0"
 authors = ["Dion Dokter <diondokter@gmail.com>"]
-edition = "2018"
+edition = "2021"
 license = "MIT OR Apache-2.0"
 homepage = "https://github.com/diondokter/device-driver"
 repository = "https://github.com/diondokter/device-driver"
@@ -12,15 +12,9 @@ categories = ["embedded", "hardware-support", "no-std"]
 description = "A toolkit to write better device drivers, faster"
 
 [dependencies]
-convert_case = "0.6.0"
-device-driver-core = { path = "../core" }
-indexmap = { version = "2.1.0", features = ["serde"] }
-prettyplease = "0.2.15"
-proc-macro2 = "1.0.70"
-quote = "1.0.33"
-serde = { version = "1.0.193", features = ["derive"] }
-syn = "2.0.39"
+device-driver-generation = { path = "../generation" }
+device-driver-macros = { path = "../macros" }
 
-[dev-dependencies]
-serde_json = "1.0.108"
-serde_yaml = "0.9.27"
+bitvec = { version = "1.0.1", default-features = false }
+funty = { version = "2.0.0", default-features = false }
+num_enum = { version = "0.7.1", default-features = false }
