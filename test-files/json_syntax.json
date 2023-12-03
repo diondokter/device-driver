@@ -28,6 +28,18 @@
                     "end": 24
                 }
             }
+        },
+        "baudrate": {
+            "rw_capability": "rw",
+            "address": 12,
+            "size_bytes": 2,
+            "fields": {
+                "value": {
+                    "type": "u16",
+                    "start": 0,
+                    "end": 16
+                }
+            }
         }
     }
 }

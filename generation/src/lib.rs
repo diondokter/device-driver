@@ -230,9 +230,9 @@ mod tests {
 
     #[test]
     fn deserialize_file_formats() {
-        let json_string = include_str!("../json_syntax.json");
+        let json_string = include_str!("../../test-files/json_syntax.json");
         let from_json_value = serde_json::from_str::<Device>(json_string).unwrap();
-        let yaml_string = include_str!("../yaml_syntax.yaml");
+        let yaml_string = include_str!("../../test-files/yaml_syntax.yaml");
         let from_yaml_value = serde_yaml::from_str::<Device>(yaml_string).unwrap();
 
         println!("From json: {from_json_value:#?}");
@@ -243,7 +243,7 @@ mod tests {
 
     #[test]
     fn generate() {
-        let definitions = include_str!("../json_syntax.json");
+        let definitions = include_str!("../../test-files/json_syntax.json");
         let device = serde_json::from_str::<Device>(definitions).unwrap();
 
         let mut stream = TokenStream::new();

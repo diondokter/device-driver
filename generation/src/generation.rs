@@ -49,20 +49,26 @@ impl Register {
 
     fn generate_definition(&self, device: &Device) -> TokenStream {
         let Register {
-            name, size_bytes, ..
+            name,
+            size_bytes,
+            address,
+            rw_capability,
+            fields,
         } = self;
 
-        let pascal_case_name = syn::Ident::new(&name.to_case(Case::Pascal), Span::call_site());
+        let pascal_case_name_string = name.to_case(Case::Pascal);
+        let pascal_case_name = syn::Ident::new(&pascal_case_name_string, Span::call_site());
+        let snake_case_name = syn::Ident::new(&name.to_case(Case::Snake), Span::call_site());
 
-        let mut field_functions = TokenStream::new();
-        field_functions.append_all(
-            self.fields
-                .iter()
-                .map(|field| field.generate_field_function()),
-        );
+        let field_functions_write =
+            TokenStream::from_iter(fields.iter().map(|field| field.generate_field_function_write()));
+        let field_functions_read =
+            TokenStream::from_iter(fields.iter().map(|field| field.generate_field_function_read(false)));
+        let field_functions_read_explicit =
+            TokenStream::from_iter(fields.iter().map(|field| field.generate_field_function_read(true)));
 
         let mut field_types = TokenStream::new();
-        field_types.append_all(self.fields.iter().filter_map(|field| {
+        field_types.append_all(fields.iter().filter_map(|field| {
             field
                 .conversion_type
                 .as_ref()
@@ -70,17 +76,24 @@ impl Register {
         }));
 
         let address_type = device.address_type.into_type();
-        let address = proc_macro2::Literal::u64_unsuffixed(self.address);
-        let rw_capability = self.rw_capability.into_type();
+        let address = proc_macro2::Literal::u64_unsuffixed(*address);
+        let rw_capability = rw_capability.into_type();
+        let size_bytes = proc_macro2::Literal::u64_unsuffixed(*size_bytes);
+
+        let debug_field_calls = TokenStream::from_iter(fields.iter().map(|field| {
+            let name_string = &field.name;
+            let name = syn::Ident::new(name_string, Span::call_site());
+            quote!(.field(#name_string, &self.#name()))
+        }));
 
         quote! {
-            struct #pascal_case_name {
-                bits: device_driver::bitvec::BitArray<[u8; Self::SIZE_BYTES]>,
+            pub struct #pascal_case_name {
+                bits: device_driver::bitvec::array::BitArray<[u8; Self::SIZE_BYTES]>,
             }
 
             impl device_driver::Register<{ Self::SIZE_BYTES }> for #pascal_case_name {
                 const ZERO: Self = Self {
-                    bits: BitArray::ZERO,
+                    bits: device_driver::bitvec::array::BitArray::ZERO,
                 };
 
                 type AddressType = #address_type;
@@ -88,15 +101,106 @@ impl Register {
 
                 type RWCapability = #rw_capability;
 
-                fn bits(&mut self) -> &mut BitArray<[u8; Self::SIZE_BYTES]> {
+                type WriteFields = #snake_case_name::W;
+                type ReadFields = #snake_case_name::R;            
+
+                fn bits_mut(&mut self) -> &mut device_driver::bitvec::array::BitArray<[u8; Self::SIZE_BYTES]> {
                     &mut self.bits
+                }
+                fn bits(&self) -> &device_driver::bitvec::array::BitArray<[u8; Self::SIZE_BYTES]> {
+                    &self.bits
                 }
             }
 
             impl #pascal_case_name {
                 pub const SIZE_BYTES: usize = #size_bytes;
+            }
 
-                #field_functions
+            pub mod #snake_case_name {
+                use super::*;
+
+                pub struct W {
+                    inner: #pascal_case_name,
+                }
+
+                impl From<#pascal_case_name> for W {
+                    fn from(val: #pascal_case_name) -> Self {
+                        Self {
+                            inner: val,
+                        }
+                    }
+                }
+
+                impl From<W> for #pascal_case_name {
+                    fn from(val: W) -> Self {
+                        val.inner
+                    }
+                }
+
+                impl core::ops::Deref for W {
+                    type Target = #pascal_case_name;
+
+                    fn deref(&self) -> &Self::Target {
+                        &self.inner
+                    }
+                }
+
+                impl core::ops::DerefMut for W {
+                    fn deref_mut(&mut self) -> &mut Self::Target {
+                        &mut self.inner
+                    }
+                }
+
+                impl W {
+                    pub const SIZE_BYTES: usize = #size_bytes;
+                    #field_functions_write
+                    #field_functions_read_explicit
+                }
+
+                pub struct R {
+                    inner: #pascal_case_name,
+                }
+
+                impl From<#pascal_case_name> for R {
+                    fn from(val: #pascal_case_name) -> Self {
+                        Self {
+                            inner: val,
+                        }
+                    }
+                }
+
+                impl From<R> for #pascal_case_name {
+                    fn from(val: R) -> Self {
+                        val.inner
+                    }
+                }
+
+                impl core::fmt::Debug for R {
+                    fn fmt(&self, fmt: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+                        fmt.debug_struct(#pascal_case_name_string)
+                            #debug_field_calls
+                            .finish()
+                    }
+                }
+
+                impl core::ops::Deref for R {
+                    type Target = #pascal_case_name;
+
+                    fn deref(&self) -> &Self::Target {
+                        &self.inner
+                    }
+                }
+
+                impl core::ops::DerefMut for R {
+                    fn deref_mut(&mut self) -> &mut Self::Target {
+                        &mut self.inner
+                    }
+                }
+
+                impl R {
+                    pub const SIZE_BYTES: usize = #size_bytes;
+                    #field_functions_read
+                }   
             }
 
             #field_types
@@ -106,7 +210,38 @@ impl Register {
 }
 
 impl Field {
-    fn generate_field_function(&self) -> TokenStream {
+    fn generate_field_function_read(&self, explicit: bool) -> TokenStream {
+        let Self {
+            name,
+            conversion_type,
+            register_type,
+            start,
+            end,
+        } = self;
+
+        let function_name = if explicit {
+            format!("get_{name}")
+        } else {
+            name.clone()
+        };
+
+        let snake_case_name = syn::Ident::new(&function_name.to_case(Case::Snake), Span::call_site());
+        let register_type = register_type.into_type();
+        let conversion_type = conversion_type
+            .as_ref()
+            .map(|ct| ct.into_type(name))
+            .unwrap_or(register_type.clone());
+        let start = proc_macro2::Literal::u32_unsuffixed(*start);
+        let end = proc_macro2::Literal::u32_unsuffixed(*end);
+
+        quote! {
+            pub fn #snake_case_name(&self) -> Result<#conversion_type, <#conversion_type as TryFrom<#register_type>>::Error> {
+                device_driver::read_field::<Self, _, #conversion_type, #register_type, #start, #end, { Self::SIZE_BYTES }>(self)
+            }
+        }.to_token_stream()
+    }
+
+    fn generate_field_function_write(&self) -> TokenStream {
         let Self {
             name,
             conversion_type,
@@ -125,8 +260,8 @@ impl Field {
         let end = proc_macro2::Literal::u32_unsuffixed(*end);
 
         quote! {
-            pub fn #snake_case_name(&mut self) -> device_driver::Field<'_, Self, #conversion_type, #register_type, #start, #end, { Self::SIZE_BYTES }> {
-                Field::new(self)
+            pub fn #snake_case_name(&mut self, data: #conversion_type) -> &mut Self {
+                device_driver::write_field::<Self, _, #conversion_type, #register_type, #start, #end, { Self::SIZE_BYTES }>(self, data)
             }
         }.to_token_stream()
     }
