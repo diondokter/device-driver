@@ -31,7 +31,7 @@
         },
         "baudrate": {
             "rw_capability": "rw",
-            "address": 12,
+            "address": 42,
             "size_bytes": 2,
             "fields": {
                 "value": {

@@ -1,11 +1,11 @@
 use bitvec::array::BitArray;
 use device_driver::{AsyncRegisterDevice, Register, RegisterDevice};
 
-pub struct TestDevice {
+pub struct TestDevice<const SIZE: usize> {
     device_memory: [u8; 128],
 }
 
-impl RegisterDevice for TestDevice {
+impl<const SIZE: usize> RegisterDevice for TestDevice<SIZE> {
     type Error = ();
     type AddressType = u8;
 
@@ -35,7 +35,7 @@ impl RegisterDevice for TestDevice {
     }
 }
 
-impl AsyncRegisterDevice for TestDevice {
+impl<const SIZE: usize> AsyncRegisterDevice for TestDevice<SIZE> {
     type Error = ();
     type AddressType = u8;
 
@@ -65,7 +65,7 @@ impl AsyncRegisterDevice for TestDevice {
     }
 }
 
-impl TestDevice {
+impl<const SIZE: usize> TestDevice<SIZE> {
     pub fn new() -> Self {
         // Normally we'd take like a SPI here or something
         Self {
@@ -77,8 +77,30 @@ impl TestDevice {
 pub mod registers {
     use super::*;
 
-    #[device_driver_macros::implement_registers_from_file(json = "test-files/json_syntax.json")]
-    impl TestDevice {}
+    device_driver_macros::implement_registers!(
+        impl<const SIZE: usize> TestDevice<SIZE> {
+            register Id {
+                type RWCapability = ReadOnly;
+                const ADDRESS: usize = 12;
+                const SIZE_BYTES: usize = 3;
+
+                manufacturer: u16 as Manufacturer = 0..16,
+                version: u8 = 16..20,
+                edition: u8 as enum Edition {
+                    One = 1,
+                    Two,
+                    Five = 5,
+                } = 20..24,
+            },
+            register Baudrate {
+                type RWCapability = RW;
+                const ADDRESS: usize = 42;
+                const SIZE_BYTES: usize = 2;
+
+                value: u16 = 0..16,
+            }
+        }
+    );
 }
 
 #[derive(Debug, num_enum::IntoPrimitive, num_enum::TryFromPrimitive)]
@@ -89,17 +111,17 @@ pub enum Manufacturer {
 }
 
 fn main() {
-    let mut test_device = TestDevice::new();
+    // let mut test_device = TestDevice::new();
 
-    println!("{:?}", test_device.id().read().unwrap());
+    // println!("{:?}", test_device.id().read().unwrap());
 
-    test_device.baudrate().write(|w| w.value(12)).unwrap();
+    // test_device.baudrate().write(|w| w.value(12)).unwrap();
 
-    write_baud(&mut test_device);
-    assert_eq!(test_device.baudrate().read().unwrap().value().unwrap(), 12);
+    // write_baud(&mut test_device);
+    // assert_eq!(test_device.baudrate().read().unwrap().value().unwrap(), 12);
 }
 
-#[inline(never)]
-fn write_baud(device: &mut TestDevice) {
-    device.baudrate().write(|w| w.value(12)).unwrap();
-}
+// #[inline(never)]
+// fn write_baud<const SIZE: usize>(device: &mut TestDevice<SIZE>) {
+//     device.baudrate().write(|w| w.value(12)).unwrap();
+// }

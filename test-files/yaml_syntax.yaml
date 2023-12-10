@@ -22,3 +22,12 @@ registers:
           Five: 5
         start: 20
         end: 24
+  baudrate:
+    rw_capability: rw
+    address: 42
+    size_bytes: 2
+    fields:
+      value:
+        type: u16
+        start: 0
+        end: 16
