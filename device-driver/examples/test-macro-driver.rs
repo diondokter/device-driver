@@ -1,11 +1,11 @@
 use bitvec::array::BitArray;
 use device_driver::{AsyncRegisterDevice, Register, RegisterDevice};
 
-pub struct TestDevice<const SIZE: usize> {
+pub struct TestDevice {
     device_memory: [u8; 128],
 }
 
-impl<const SIZE: usize> RegisterDevice for TestDevice<SIZE> {
+impl RegisterDevice for TestDevice {
     type Error = ();
     type AddressType = u8;
 
@@ -35,7 +35,7 @@ impl<const SIZE: usize> RegisterDevice for TestDevice<SIZE> {
     }
 }
 
-impl<const SIZE: usize> AsyncRegisterDevice for TestDevice<SIZE> {
+impl AsyncRegisterDevice for TestDevice {
     type Error = ();
     type AddressType = u8;
 
@@ -65,7 +65,7 @@ impl<const SIZE: usize> AsyncRegisterDevice for TestDevice<SIZE> {
     }
 }
 
-impl<const SIZE: usize> TestDevice<SIZE> {
+impl TestDevice {
     pub fn new() -> Self {
         // Normally we'd take like a SPI here or something
         Self {
@@ -78,10 +78,10 @@ pub mod registers {
     use super::*;
 
     device_driver_macros::implement_registers!(
-        impl<const SIZE: usize> TestDevice<SIZE> {
+        impl TestDevice {
             register Id {
                 type RWCapability = ReadOnly;
-                const ADDRESS: usize = 12;
+                const ADDRESS: u8 = 12;
                 const SIZE_BYTES: usize = 3;
 
                 manufacturer: u16 as Manufacturer = 0..16,
@@ -94,7 +94,7 @@ pub mod registers {
             },
             register Baudrate {
                 type RWCapability = RW;
-                const ADDRESS: usize = 42;
+                const ADDRESS: u8 = 42;
                 const SIZE_BYTES: usize = 2;
 
                 value: u16 = 0..16,
@@ -111,17 +111,17 @@ pub enum Manufacturer {
 }
 
 fn main() {
-    // let mut test_device = TestDevice::new();
+    let mut test_device = TestDevice::new();
 
-    // println!("{:?}", test_device.id().read().unwrap());
+    println!("{:?}", test_device.id().read().unwrap());
 
-    // test_device.baudrate().write(|w| w.value(12)).unwrap();
+    test_device.baudrate().write(|w| w.value(12)).unwrap();
 
-    // write_baud(&mut test_device);
-    // assert_eq!(test_device.baudrate().read().unwrap().value().unwrap(), 12);
+    write_baud(&mut test_device);
+    assert_eq!(test_device.baudrate().read().unwrap().value().unwrap(), 12);
 }
 
-// #[inline(never)]
-// fn write_baud<const SIZE: usize>(device: &mut TestDevice<SIZE>) {
-//     device.baudrate().write(|w| w.value(12)).unwrap();
-// }
+#[inline(never)]
+fn write_baud(device: &mut TestDevice) {
+    device.baudrate().write(|w| w.value(12)).unwrap();
+}

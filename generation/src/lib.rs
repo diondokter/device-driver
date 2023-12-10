@@ -140,7 +140,7 @@ impl TypePathOrEnum {
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
 #[serde(transparent)]
-pub struct TypePath(String);
+pub struct TypePath(pub String);
 
 impl TypePath {
     pub fn into_type(&self) -> syn::Type {
@@ -176,9 +176,19 @@ impl RWCapability {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
+impl TryFrom<&str> for RWCapability {
+    type Error = serde::de::value::Error;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        use serde::Deserialize;
+        Self::deserialize(serde::de::value::StrDeserializer::new(value))
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum IntegerType {
+    #[default]
     #[serde(alias = "unsigned char", alias = "byte")]
     U8,
     #[serde(alias = "unsigned short")]
@@ -221,6 +231,15 @@ impl IntegerType {
             IntegerType::I128 => syn::parse_quote!(i128),
             IntegerType::Isize => syn::parse_quote!(isize),
         }
+    }
+}
+
+impl TryFrom<&str> for IntegerType {
+    type Error = serde::de::value::Error;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        use serde::Deserialize;
+        Self::deserialize(serde::de::value::StrDeserializer::new(value))
     }
 }
 

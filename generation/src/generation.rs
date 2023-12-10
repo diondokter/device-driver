@@ -60,12 +60,21 @@ impl Register {
         let pascal_case_name = syn::Ident::new(&pascal_case_name_string, Span::call_site());
         let snake_case_name = syn::Ident::new(&name.to_case(Case::Snake), Span::call_site());
 
-        let field_functions_write =
-            TokenStream::from_iter(fields.iter().map(|field| field.generate_field_function_write()));
-        let field_functions_read =
-            TokenStream::from_iter(fields.iter().map(|field| field.generate_field_function_read(false)));
-        let field_functions_read_explicit =
-            TokenStream::from_iter(fields.iter().map(|field| field.generate_field_function_read(true)));
+        let field_functions_write = TokenStream::from_iter(
+            fields
+                .iter()
+                .map(|field| field.generate_field_function_write()),
+        );
+        let field_functions_read = TokenStream::from_iter(
+            fields
+                .iter()
+                .map(|field| field.generate_field_function_read(false)),
+        );
+        let field_functions_read_explicit = TokenStream::from_iter(
+            fields
+                .iter()
+                .map(|field| field.generate_field_function_read(true)),
+        );
 
         let mut field_types = TokenStream::new();
         field_types.append_all(fields.iter().filter_map(|field| {
@@ -102,7 +111,7 @@ impl Register {
                 type RWCapability = #rw_capability;
 
                 type WriteFields = #snake_case_name::W;
-                type ReadFields = #snake_case_name::R;            
+                type ReadFields = #snake_case_name::R;
 
                 fn bits_mut(&mut self) -> &mut device_driver::bitvec::array::BitArray<[u8; Self::SIZE_BYTES]> {
                     &mut self.bits
@@ -200,7 +209,7 @@ impl Register {
                 impl R {
                     pub const SIZE_BYTES: usize = #size_bytes;
                     #field_functions_read
-                }   
+                }
             }
 
             #field_types
@@ -225,7 +234,8 @@ impl Field {
             name.clone()
         };
 
-        let snake_case_name = syn::Ident::new(&function_name.to_case(Case::Snake), Span::call_site());
+        let snake_case_name =
+            syn::Ident::new(&function_name.to_case(Case::Snake), Span::call_site());
         let register_type = register_type.into_type();
         let conversion_type = conversion_type
             .as_ref()

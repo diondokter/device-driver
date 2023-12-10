@@ -173,7 +173,7 @@ where
         self.device
             .read_register::<R, SIZE_BYTES>(register.bits_mut())
             .await?;
-        Ok(register.into())
+        Ok(register)
     }
 }
 

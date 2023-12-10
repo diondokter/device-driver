@@ -7,6 +7,12 @@ use crate::{Field, Register, TypePath, TypePathOrEnum};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RegisterCollection(Vec<Register>);
 
+impl From<Vec<Register>> for RegisterCollection {
+    fn from(value: Vec<Register>) -> Self {
+        Self(value)
+    }
+}
+
 impl std::ops::Deref for RegisterCollection {
     type Target = Vec<Register>;
 
@@ -38,6 +44,12 @@ impl<'de> serde::Deserialize<'de> for RegisterCollection {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FieldCollection(Vec<Field>);
+
+impl From<Vec<Field>> for FieldCollection {
+    fn from(value: Vec<Field>) -> Self {
+        Self(value)
+    }
+}
 
 impl std::ops::Deref for FieldCollection {
     type Target = Vec<Field>;

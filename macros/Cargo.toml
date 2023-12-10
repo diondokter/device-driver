@@ -9,7 +9,8 @@ proc-macro = true
 
 [dependencies]
 device-driver-generation = { path = "../generation" }
-syn = { version = "2.0.39", features = ["extra-traits"] }
-serde_json = "1"
+syn = { version = "2.0", features = ["extra-traits"] }
+serde_json = "1.0"
 serde_yaml = "0.9"
-proc-macro2 = "1.0.70"
+proc-macro2 = "1.0"
+quote = "1.0"
