@@ -18,3 +18,16 @@ device-driver-macros = { path = "../macros" }
 bitvec = { version = "1.0.1", default-features = false }
 funty = { version = "2.0.0", default-features = false }
 num_enum = { version = "0.7.1", default-features = false }
+
+[features]
+json = ["device-driver-macros/json"]
+yaml = ["device-driver-macros/yaml"]
+
+[[example]]
+name = "test-json-driver"
+required-features = ["json"]
+[[example]]
+name = "test-yaml-driver"
+required-features = ["yaml"]
+[[example]]
+name = "test-macro-driver"

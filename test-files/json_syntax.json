@@ -4,7 +4,7 @@
         "id": {
             "rw_capability": "ro",
             "address": 12,
-            "size_bytes": 3,
+            "size_bits": 24,
             "fields": {
                 "manufacturer": {
                     "type": "u16",
@@ -32,7 +32,7 @@
         "baudrate": {
             "rw_capability": "rw",
             "address": 42,
-            "size_bytes": 2,
+            "size_bits": 16,
             "fields": {
                 "value": {
                     "type": "u16",

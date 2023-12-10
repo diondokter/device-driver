@@ -60,6 +60,7 @@ pub trait Register<const SIZE_BYTES: usize> {
     const ADDRESS: Self::AddressType;
 
     type RWCapability;
+    const SIZE_BITS: usize;
 
     type WriteFields: From<Self> + Into<Self> + Deref<Target = Self> + DerefMut
     where

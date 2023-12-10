@@ -3,7 +3,6 @@ use proc_macro2::TokenStream;
 use quote::ToTokens;
 use syn::{braced, punctuated::Punctuated, Generics};
 
-#[derive(Debug)]
 struct DeviceImpl {
     impl_generics: syn::Generics,
     device_type: syn::Type,
@@ -47,13 +46,12 @@ impl syn::parse::Parse for DeviceImpl {
     }
 }
 
-#[derive(Debug)]
 struct Register {
     name: syn::Ident,
     rw_capability: RWCapability,
     address_type: syn::Ident,
     address_value: u64,
-    size_bytes_value: u64,
+    size_bits_value: u64,
     fields: Punctuated<Field, syn::Token![,]>,
 }
 
@@ -95,9 +93,9 @@ impl syn::parse::Parse for Register {
                 contents.parse::<syn::Token![;]>()?;
                 value
             },
-            size_bytes_value: {
+            size_bits_value: {
                 contents.parse::<syn::Token![const]>()?;
-                contents.parse::<kw::SIZE_BYTES>()?;
+                contents.parse::<kw::SIZE_BITS>()?;
                 contents.parse::<syn::Token![:]>()?;
                 contents.parse::<syn::Type>()?;
                 contents.parse::<syn::Token![=]>()?;
@@ -110,7 +108,6 @@ impl syn::parse::Parse for Register {
     }
 }
 
-#[derive(Debug)]
 struct Field {
     name: syn::Ident,
     register_type: IntegerType,
@@ -145,7 +142,6 @@ impl syn::parse::Parse for Field {
     }
 }
 
-#[derive(Debug)]
 enum ConversionType {
     None,
     Existing(syn::Path),
@@ -170,7 +166,7 @@ mod kw {
     syn::custom_keyword!(register);
     syn::custom_keyword!(RWCapability);
     syn::custom_keyword!(ADDRESS);
-    syn::custom_keyword!(SIZE_BYTES);
+    syn::custom_keyword!(SIZE_BITS);
 }
 
 pub fn implement_registers(item: TokenStream) -> TokenStream {
@@ -202,7 +198,7 @@ pub fn implement_registers(item: TokenStream) -> TokenStream {
                 name: r.name.to_string(),
                 rw_capability: r.rw_capability,
                 address: r.address_value,
-                size_bytes: r.size_bytes_value,
+                size_bits: r.size_bits_value,
                 fields: r
                     .fields
                     .iter()

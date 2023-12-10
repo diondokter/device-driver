@@ -77,30 +77,8 @@ impl TestDevice {
 pub mod registers {
     use super::*;
 
-    device_driver_macros::implement_registers!(
-        impl TestDevice {
-            register Id {
-                type RWCapability = ReadOnly;
-                const ADDRESS: u8 = 12;
-                const SIZE_BITS: usize = 24;
-
-                manufacturer: u16 as Manufacturer = 0..16,
-                version: u8 = 16..20,
-                edition: u8 as enum Edition {
-                    One = 1,
-                    Two,
-                    Five = 5,
-                } = 20..24,
-            },
-            register Baudrate {
-                type RWCapability = RW;
-                const ADDRESS: u8 = 42;
-                const SIZE_BITS: usize = 16;
-
-                value: u16 = 0..16,
-            }
-        }
-    );
+    #[device_driver_macros::implement_registers_from_file(yaml = "test-files/yaml_syntax.yaml")]
+    impl TestDevice {}
 }
 
 #[derive(Debug, num_enum::IntoPrimitive, num_enum::TryFromPrimitive)]

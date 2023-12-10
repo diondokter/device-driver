@@ -23,7 +23,7 @@ pub struct Register {
     pub name: String,
     pub rw_capability: RWCapability,
     pub address: u64,
-    pub size_bytes: u64,
+    pub size_bits: u64,
     pub fields: FieldCollection,
 }
 

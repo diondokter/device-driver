@@ -50,7 +50,7 @@ impl Register {
     fn generate_definition(&self, device: &Device) -> TokenStream {
         let Register {
             name,
-            size_bytes,
+            size_bits,
             address,
             rw_capability,
             fields,
@@ -87,7 +87,8 @@ impl Register {
         let address_type = device.address_type.into_type();
         let address = proc_macro2::Literal::u64_unsuffixed(*address);
         let rw_capability = rw_capability.into_type();
-        let size_bytes = proc_macro2::Literal::u64_unsuffixed(*size_bytes);
+        let size_bits_lit = proc_macro2::Literal::u64_unsuffixed(*size_bits);
+        let size_bytes_lit = proc_macro2::Literal::u64_unsuffixed(size_bits.div_ceil(8));
 
         let debug_field_calls = TokenStream::from_iter(fields.iter().map(|field| {
             let name_string = &field.name;
@@ -109,6 +110,7 @@ impl Register {
                 const ADDRESS: Self::AddressType = #address;
 
                 type RWCapability = #rw_capability;
+                const SIZE_BITS: usize = #size_bits_lit;
 
                 type WriteFields = #snake_case_name::W;
                 type ReadFields = #snake_case_name::R;
@@ -122,7 +124,7 @@ impl Register {
             }
 
             impl #pascal_case_name {
-                pub const SIZE_BYTES: usize = #size_bytes;
+                pub const SIZE_BYTES: usize = #size_bytes_lit;
             }
 
             pub mod #snake_case_name {
@@ -161,7 +163,7 @@ impl Register {
                 }
 
                 impl W {
-                    pub const SIZE_BYTES: usize = #size_bytes;
+                    pub const SIZE_BYTES: usize = #size_bytes_lit;
                     #field_functions_write
                     #field_functions_read_explicit
                 }
@@ -207,7 +209,7 @@ impl Register {
                 }
 
                 impl R {
-                    pub const SIZE_BYTES: usize = #size_bytes;
+                    pub const SIZE_BYTES: usize = #size_bytes_lit;
                     #field_functions_read
                 }
             }
