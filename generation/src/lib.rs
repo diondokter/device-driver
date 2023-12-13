@@ -171,6 +171,8 @@ pub enum RWType {
     ReadWrite,
     #[serde(alias = "rc", alias = "RC")]
     ReadClear,
+    #[serde(alias = "co", alias = "CO", alias = "c", alias = "C")]
+    ClearOnly,
 }
 
 impl RWType {
@@ -180,6 +182,7 @@ impl RWType {
             RWType::WriteOnly => syn::parse_quote!(device_driver::WriteOnly),
             RWType::ReadWrite => syn::parse_quote!(device_driver::ReadWrite),
             RWType::ReadClear => syn::parse_quote!(device_driver::ReadClear),
+            RWType::ClearOnly => syn::parse_quote!(device_driver::ClearOnly),
         }
     }
 }

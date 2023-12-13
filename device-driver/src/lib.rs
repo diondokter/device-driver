@@ -372,6 +372,7 @@ pub struct WriteOnly;
 pub struct ReadOnly;
 pub struct ReadWrite;
 pub struct ReadClear;
+pub struct ClearOnly;
 
 pub trait ReadCapability {}
 pub trait WriteCapability {}
@@ -388,3 +389,5 @@ impl ClearCapability for ReadWrite {}
 
 impl ReadCapability for ReadClear {}
 impl ClearCapability for ReadClear {}
+
+impl ClearCapability for ClearOnly {}
