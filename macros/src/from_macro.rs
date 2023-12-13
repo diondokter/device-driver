@@ -1,4 +1,4 @@
-use device_driver_generation::{IntegerType, RWCapability, TypePath};
+use device_driver_generation::{BaseType, RWType, TypePath};
 use proc_macro2::TokenStream;
 use quote::ToTokens;
 use syn::{braced, punctuated::Punctuated, Generics};
@@ -48,10 +48,11 @@ impl syn::parse::Parse for DeviceImpl {
 
 struct Register {
     name: syn::Ident,
-    rw_capability: RWCapability,
+    rw_type: RWType,
     address_type: syn::Ident,
     address_value: u64,
     size_bits_value: u64,
+    description: Option<String>,
     fields: Punctuated<Field, syn::Token![,]>,
 }
 
@@ -66,18 +67,16 @@ impl syn::parse::Parse for Register {
 
         Ok(Self {
             name,
-            rw_capability: {
+            rw_type: {
                 contents.parse::<syn::Token![type]>()?;
-                contents.parse::<kw::RWCapability>()?;
+                contents.parse::<kw::RWType>()?;
                 contents.parse::<syn::Token![=]>()?;
-                let rw_capability_value_ident = contents.parse::<syn::Ident>()?;
-                let value = rw_capability_value_ident
+                let rw_type_value_ident = contents.parse::<syn::Ident>()?;
+                let value = rw_type_value_ident
                     .to_string()
                     .as_str()
                     .try_into()
-                    .map_err(|e| {
-                        syn::Error::new(rw_capability_value_ident.span(), format!("{e}"))
-                    })?;
+                    .map_err(|e| syn::Error::new(rw_type_value_ident.span(), format!("{e}")))?;
                 contents.parse::<syn::Token![;]>()?;
                 value
             },
@@ -103,6 +102,7 @@ impl syn::parse::Parse for Register {
                 contents.parse::<syn::Token![;]>()?;
                 value
             },
+            description: None, // TODO
             fields: contents.parse_terminated(Field::parse, syn::Token![,])?,
         })
     }
@@ -110,16 +110,18 @@ impl syn::parse::Parse for Register {
 
 struct Field {
     name: syn::Ident,
-    register_type: IntegerType,
+    description: Option<String>,
+    register_type: BaseType,
     conversion_type: ConversionType,
     bit_start: u32,
-    bit_end: u32,
+    bit_end: Option<u32>,
 }
 
 impl syn::parse::Parse for Field {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         Ok(Self {
             name: input.parse()?,
+            description: None, // TODO
             register_type: {
                 input.parse::<syn::Token![:]>()?;
                 let register_type_ident = input.parse::<syn::Ident>()?;
@@ -134,9 +136,11 @@ impl syn::parse::Parse for Field {
                 input.parse::<syn::Token![=]>()?;
                 input.parse::<syn::LitInt>()?.base10_parse()?
             },
-            bit_end: {
+            bit_end: if input.peek(syn::Token![..]) {
                 input.parse::<syn::Token![..]>()?;
-                input.parse::<syn::LitInt>()?.base10_parse()?
+                Some(input.parse::<syn::LitInt>()?.base10_parse()?)
+            } else {
+                None
             },
         })
     }
@@ -164,7 +168,7 @@ impl syn::parse::Parse for ConversionType {
 
 mod kw {
     syn::custom_keyword!(register);
-    syn::custom_keyword!(RWCapability);
+    syn::custom_keyword!(RWType);
     syn::custom_keyword!(ADDRESS);
     syn::custom_keyword!(SIZE_BITS);
 }
@@ -182,7 +186,7 @@ pub fn implement_registers(item: TokenStream) -> TokenStream {
         .transpose()
     {
         Ok(Some(address_type)) => address_type,
-        Ok(None) => IntegerType::default(),
+        Ok(None) => BaseType::default(),
         Err(e) => {
             return syn::Error::new(device_impl.registers[0].address_type.span(), format!("{e}"))
                 .into_compile_error();
@@ -193,17 +197,20 @@ pub fn implement_registers(item: TokenStream) -> TokenStream {
         address_type,
         registers: device_impl
             .registers
-            .iter()
+            .into_iter()
             .map(|r| device_driver_generation::Register {
                 name: r.name.to_string(),
-                rw_capability: r.rw_capability,
+                rw_type: r.rw_type,
                 address: r.address_value,
                 size_bits: r.size_bits_value,
+                description: r.description,
+                default: None, // TODO
                 fields: r
                     .fields
-                    .iter()
+                    .into_iter()
                     .map(|f| device_driver_generation::Field {
                         name: f.name.to_string(),
+                        description: f.description,
                         register_type: f.register_type,
                         conversion_type: match &f.conversion_type {
                             ConversionType::None => None,

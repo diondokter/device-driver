@@ -80,7 +80,7 @@ pub mod registers {
     device_driver_macros::implement_registers!(
         impl TestDevice {
             register Id {
-                type RWCapability = ReadOnly;
+                type RWType = ReadOnly;
                 const ADDRESS: u8 = 12;
                 const SIZE_BITS: usize = 24;
 
@@ -92,11 +92,13 @@ pub mod registers {
                     Five = 5,
                 } = 20..24,
             },
+            /// Baudrate register
             register Baudrate {
-                type RWCapability = RW;
+                type RWType = RW;
                 const ADDRESS: u8 = 42;
                 const SIZE_BITS: usize = 16;
 
+                /// Baudrate value
                 value: u16 = 0..16,
             }
         }
@@ -118,7 +120,7 @@ fn main() {
     test_device.baudrate().write(|w| w.value(12)).unwrap();
 
     write_baud(&mut test_device);
-    assert_eq!(test_device.baudrate().read().unwrap().value().unwrap(), 12);
+    assert_eq!(test_device.baudrate().read().unwrap().value(), 12);
 }
 
 #[inline(never)]

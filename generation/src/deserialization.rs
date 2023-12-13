@@ -118,3 +118,48 @@ impl<'de> serde::Deserialize<'de> for TypePathOrEnum {
         deserializer.deserialize_any(StringOrStruct)
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DefaultValue(pub Vec<u8>);
+
+impl<'de> serde::Deserialize<'de> for DefaultValue {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de;
+        use std::fmt;
+
+        struct IntegerOrBytes;
+
+        impl<'de> serde::de::Visitor<'de> for IntegerOrBytes {
+            type Value = DefaultValue;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("none, unsigned integer or BE bytes")
+            }
+
+            fn visit_u64<E>(self, value: u64) -> Result<DefaultValue, E>
+            where
+                E: de::Error,
+            {
+                Ok(DefaultValue(value.to_be_bytes().into()))
+            }
+
+            fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Ok(DefaultValue(v.into()))
+            }
+        }
+
+        deserializer.deserialize_any(IntegerOrBytes)
+    }
+}
+
+impl From<Vec<u8>> for DefaultValue {
+    fn from(value: Vec<u8>) -> Self {
+        Self(value)
+    }
+}

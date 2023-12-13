@@ -1,7 +1,7 @@
 use std::iter::FromIterator;
 
 use convert_case::Casing;
-use deserialization::{FieldCollection, RegisterCollection};
+use deserialization::{FieldCollection, RegisterCollection, DefaultValue};
 use indexmap::IndexMap;
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens, TokenStreamExt};
@@ -12,7 +12,7 @@ mod generation;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Device {
-    pub address_type: IntegerType,
+    pub address_type: BaseType,
     pub registers: RegisterCollection,
 }
 
@@ -21,9 +21,11 @@ pub struct Device {
 pub struct Register {
     #[serde(skip)]
     pub name: String,
-    pub rw_capability: RWCapability,
+    pub rw_type: RWType,
     pub address: u64,
     pub size_bits: u64,
+    pub description: Option<String>,
+    pub default: Option<DefaultValue>,
     pub fields: FieldCollection,
 }
 
@@ -46,12 +48,13 @@ impl Ord for Register {
 pub struct Field {
     #[serde(skip)]
     pub name: String,
+    pub description: Option<String>,
     #[serde(rename = "type")]
-    pub register_type: IntegerType,
+    pub register_type: BaseType,
     #[serde(rename = "conversion")]
     pub conversion_type: Option<TypePathOrEnum>,
     pub start: u32,
-    pub end: u32,
+    pub end: Option<u32>,
 }
 
 impl PartialOrd for Field {
@@ -157,26 +160,29 @@ impl TypePath {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
-pub enum RWCapability {
-    #[serde(alias = "ro", alias = "RO")]
+pub enum RWType {
+    #[serde(alias = "ro", alias = "RO", alias = "r", alias = "R")]
     ReadOnly,
-    #[serde(alias = "wo", alias = "WO")]
+    #[serde(alias = "wo", alias = "WO", alias = "w", alias = "W")]
     WriteOnly,
     #[serde(alias = "rw", alias = "RW")]
     ReadWrite,
+    #[serde(alias = "rc", alias = "RC")]
+    ReadClear,
 }
 
-impl RWCapability {
+impl RWType {
     pub fn into_type(&self) -> syn::Type {
         match self {
-            RWCapability::ReadOnly => syn::parse_quote!(device_driver::ReadOnly),
-            RWCapability::WriteOnly => syn::parse_quote!(device_driver::WriteOnly),
-            RWCapability::ReadWrite => syn::parse_quote!(device_driver::ReadWrite),
+            RWType::ReadOnly => syn::parse_quote!(device_driver::ReadOnly),
+            RWType::WriteOnly => syn::parse_quote!(device_driver::WriteOnly),
+            RWType::ReadWrite => syn::parse_quote!(device_driver::ReadWrite),
+            RWType::ReadClear => syn::parse_quote!(device_driver::ReadClear),
         }
     }
 }
 
-impl TryFrom<&str> for RWCapability {
+impl TryFrom<&str> for RWType {
     type Error = serde::de::value::Error;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
@@ -187,7 +193,9 @@ impl TryFrom<&str> for RWCapability {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum IntegerType {
+pub enum BaseType {
+    #[serde(alias = "bool", alias = "boolean")]
+    Bool,
     #[default]
     #[serde(alias = "unsigned char", alias = "byte")]
     U8,
@@ -215,26 +223,27 @@ pub enum IntegerType {
     Isize,
 }
 
-impl IntegerType {
+impl BaseType {
     pub fn into_type(&self) -> syn::Type {
         match self {
-            IntegerType::U8 => syn::parse_quote!(u8),
-            IntegerType::U16 => syn::parse_quote!(u16),
-            IntegerType::U32 => syn::parse_quote!(u32),
-            IntegerType::U64 => syn::parse_quote!(u64),
-            IntegerType::U128 => syn::parse_quote!(u128),
-            IntegerType::Usize => syn::parse_quote!(usize),
-            IntegerType::I8 => syn::parse_quote!(i8),
-            IntegerType::I16 => syn::parse_quote!(i16),
-            IntegerType::I32 => syn::parse_quote!(i32),
-            IntegerType::I64 => syn::parse_quote!(i64),
-            IntegerType::I128 => syn::parse_quote!(i128),
-            IntegerType::Isize => syn::parse_quote!(isize),
+            BaseType::Bool => syn::parse_quote!(bool),
+            BaseType::U8 => syn::parse_quote!(u8),
+            BaseType::U16 => syn::parse_quote!(u16),
+            BaseType::U32 => syn::parse_quote!(u32),
+            BaseType::U64 => syn::parse_quote!(u64),
+            BaseType::U128 => syn::parse_quote!(u128),
+            BaseType::Usize => syn::parse_quote!(usize),
+            BaseType::I8 => syn::parse_quote!(i8),
+            BaseType::I16 => syn::parse_quote!(i16),
+            BaseType::I32 => syn::parse_quote!(i32),
+            BaseType::I64 => syn::parse_quote!(i64),
+            BaseType::I128 => syn::parse_quote!(i128),
+            BaseType::Isize => syn::parse_quote!(isize),
         }
     }
 }
 
-impl TryFrom<&str> for IntegerType {
+impl TryFrom<&str> for BaseType {
     type Error = serde::de::value::Error;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {

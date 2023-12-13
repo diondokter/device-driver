@@ -1,4 +1,4 @@
-use crate::{Device, Field, Register};
+use crate::{Device, Field, Register, BaseType};
 
 use convert_case::{Case, Casing};
 use proc_macro2::{Span, TokenStream};
@@ -52,7 +52,9 @@ impl Register {
             name,
             size_bits,
             address,
-            rw_capability,
+            rw_type,
+            description,
+            default,
             fields,
         } = self;
 
@@ -86,17 +88,28 @@ impl Register {
 
         let address_type = device.address_type.into_type();
         let address = proc_macro2::Literal::u64_unsuffixed(*address);
-        let rw_capability = rw_capability.into_type();
+        let rw_type = rw_type.into_type();
         let size_bits_lit = proc_macro2::Literal::u64_unsuffixed(*size_bits);
         let size_bytes_lit = proc_macro2::Literal::u64_unsuffixed(size_bits.div_ceil(8));
 
         let debug_field_calls = TokenStream::from_iter(fields.iter().map(|field| {
-            let name_string = &field.name;
-            let name = syn::Ident::new(name_string, Span::call_site());
+            let name_string = field.name.to_case(Case::Snake);
+            let name = syn::Ident::new(&name_string, Span::call_site());
             quote!(.field(#name_string, &self.#name()))
         }));
 
+        let doc_attribute = if let Some(description) = description {
+            quote!{ #[doc = #description] }
+        } else {
+            quote!()
+        };
+
+        let module_doc_string = format!("Implementation of R and W types for [{pascal_case_name}]");
+        let w_doc_string = format!("Write struct for [{pascal_case_name}]");
+        let r_doc_string = format!("Read struct for [{pascal_case_name}]");
+
         quote! {
+            #doc_attribute
             pub struct #pascal_case_name {
                 bits: device_driver::bitvec::array::BitArray<[u8; Self::SIZE_BYTES]>,
             }
@@ -109,7 +122,7 @@ impl Register {
                 type AddressType = #address_type;
                 const ADDRESS: Self::AddressType = #address;
 
-                type RWCapability = #rw_capability;
+                type RWType = #rw_type;
                 const SIZE_BITS: usize = #size_bits_lit;
 
                 type WriteFields = #snake_case_name::W;
@@ -127,9 +140,11 @@ impl Register {
                 pub const SIZE_BYTES: usize = #size_bytes_lit;
             }
 
+            #[doc = #module_doc_string]
             pub mod #snake_case_name {
                 use super::*;
 
+                #[doc = #w_doc_string]
                 pub struct W {
                     inner: #pascal_case_name,
                 }
@@ -168,6 +183,7 @@ impl Register {
                     #field_functions_read_explicit
                 }
 
+                #[doc = #r_doc_string]
                 pub struct R {
                     inner: #pascal_case_name,
                 }
@@ -224,6 +240,7 @@ impl Field {
     fn generate_field_function_read(&self, explicit: bool) -> TokenStream {
         let Self {
             name,
+            description,
             conversion_type,
             register_type,
             start,
@@ -239,23 +256,83 @@ impl Field {
         let snake_case_name =
             syn::Ident::new(&function_name.to_case(Case::Snake), Span::call_site());
         let register_type = register_type.into_type();
-        let conversion_type = conversion_type
-            .as_ref()
-            .map(|ct| ct.into_type(name))
-            .unwrap_or(register_type.clone());
         let start = proc_macro2::Literal::u32_unsuffixed(*start);
-        let end = proc_macro2::Literal::u32_unsuffixed(*end);
 
-        quote! {
-            pub fn #snake_case_name(&self) -> Result<#conversion_type, <#conversion_type as TryFrom<#register_type>>::Error> {
-                device_driver::read_field::<Self, _, #conversion_type, #register_type, #start, #end, { Self::SIZE_BYTES }>(self)
+        let doc_attribute = if let Some(description) = description {
+            quote! { #[doc = #description] }
+        } else {
+            quote!()
+        };
+
+        match (self.register_type, *end, conversion_type) {
+            (BaseType::Bool, Some(end), Some(conversion_type)) if end == self.start + 1 => {
+                let conversion_type = conversion_type.into_type(name);
+                quote! {
+                    #doc_attribute
+                    pub fn #snake_case_name(&self) -> Result<#conversion_type, <#conversion_type as TryFrom<#register_type>>::Error> {
+                        device_driver::read_field_bool::<Self, _, #conversion_type, #start, { Self::SIZE_BYTES }>(self)
+                    }
+                }.to_token_stream()        
             }
-        }.to_token_stream()
+            (BaseType::Bool, Some(end), None) if end == self.start + 1 => {
+                quote! {
+                    #doc_attribute
+                    pub fn #snake_case_name(&self) -> #register_type {
+                        device_driver::read_field_bool_no_convert::<Self, _, #start, { Self::SIZE_BYTES }>(self)
+                    }
+                }.to_token_stream()        
+            }
+            (BaseType::Bool, None, Some(conversion_type)) => {
+                let conversion_type = conversion_type.into_type(name);
+                quote! {
+                    #doc_attribute
+                    pub fn #snake_case_name(&self) -> Result<#conversion_type, <#conversion_type as TryFrom<#register_type>>::Error> {
+                        device_driver::read_field_bool::<Self, _, #conversion_type, #start, { Self::SIZE_BYTES }>(self)
+                    }
+                }.to_token_stream()        
+            }
+            (BaseType::Bool, None, None) => {
+                quote! {
+                    #doc_attribute
+                    pub fn #snake_case_name(&self) -> #register_type {
+                        device_driver::read_field_bool_no_convert::<Self, _, #start, { Self::SIZE_BYTES }>(self)
+                    }
+                }.to_token_stream()        
+            }
+            (BaseType::Bool, _, _) => {
+                syn::Error::new(Span::call_site(), format!("Registers {snake_case_name} is a bool and must have no end or an end that is only 1 more than start")).into_compile_error()       
+            }
+            (_, Some(end), Some(conversion_type)) => {
+                let end = proc_macro2::Literal::u32_unsuffixed(end);
+                let conversion_type = conversion_type.into_type(name);
+
+                quote! {
+                    #doc_attribute
+                    pub fn #snake_case_name(&self) -> Result<#conversion_type, <#conversion_type as TryFrom<#register_type>>::Error> {
+                        device_driver::read_field::<Self, _, #conversion_type, #register_type, #start, #end, { Self::SIZE_BYTES }>(self)
+                    }
+                }.to_token_stream()        
+            }
+            (_, Some(end), None) => {
+                let end = proc_macro2::Literal::u32_unsuffixed(end);
+
+                quote! {
+                    #doc_attribute
+                    pub fn #snake_case_name(&self) -> #register_type {
+                        device_driver::read_field_no_convert::<Self, _, #register_type, #start, #end, { Self::SIZE_BYTES }>(self)
+                    }
+                }.to_token_stream()        
+            }
+            (_, None, _) => {
+                syn::Error::new(Span::call_site(), format!("Registers {snake_case_name} has no end specified")).into_compile_error()       
+            }
+        }
     }
 
     fn generate_field_function_write(&self) -> TokenStream {
         let Self {
             name,
+            description,
             conversion_type,
             register_type,
             start,
@@ -264,17 +341,76 @@ impl Field {
 
         let snake_case_name = syn::Ident::new(&name.to_case(Case::Snake), Span::call_site());
         let register_type = register_type.into_type();
-        let conversion_type = conversion_type
-            .as_ref()
-            .map(|ct| ct.into_type(name))
-            .unwrap_or(register_type.clone());
         let start = proc_macro2::Literal::u32_unsuffixed(*start);
-        let end = proc_macro2::Literal::u32_unsuffixed(*end);
 
-        quote! {
-            pub fn #snake_case_name(&mut self, data: #conversion_type) -> &mut Self {
-                device_driver::write_field::<Self, _, #conversion_type, #register_type, #start, #end, { Self::SIZE_BYTES }>(self, data)
+        let doc_attribute = if let Some(description) = description {
+            quote! { #[doc = #description] }
+        } else {
+            quote!()
+        };
+
+        match (self.register_type, *end, conversion_type .as_ref()) {
+            (BaseType::Bool, Some(end), Some(conversion_type)) if end == self.start + 1 => {
+                let conversion_type = conversion_type.into_type(name);
+                quote! {
+                    #doc_attribute
+                    pub fn #snake_case_name(&mut self, data: #conversion_type) -> &mut Self {
+                        device_driver::write_field_bool::<Self, _, #conversion_type, #start, { Self::SIZE_BYTES }>(self, data)
+                    }
+                }.to_token_stream()
             }
-        }.to_token_stream()
+            (BaseType::Bool, Some(end), None) if end == self.start + 1 => {
+                quote! {
+                    #doc_attribute
+                    pub fn #snake_case_name(&mut self, data: #register_type) -> &mut Self {
+                        device_driver::write_field_bool_no_convert::<Self, _, #start, { Self::SIZE_BYTES }>(self, data)
+                    }
+                }.to_token_stream()
+            }
+            (BaseType::Bool, None, Some(conversion_type)) => {
+                let conversion_type = conversion_type.into_type(name);
+                quote! {
+                    #doc_attribute
+                    pub fn #snake_case_name(&mut self, data: #conversion_type) -> &mut Self {
+                        device_driver::write_field_bool::<Self, _, #conversion_type, #start, { Self::SIZE_BYTES }>(self, data)
+                    }
+                }.to_token_stream()
+            }
+            (BaseType::Bool, None, None) => {
+                quote! {
+                    #doc_attribute
+                    pub fn #snake_case_name(&mut self, data: #register_type) -> &mut Self {
+                        device_driver::write_field_bool_no_convert::<Self, _, #start, { Self::SIZE_BYTES }>(self, data)
+                    }
+                }.to_token_stream()
+            }
+            (BaseType::Bool, _, _) => {
+                syn::Error::new(Span::call_site(), format!("Registers {snake_case_name} is a bool and must have no end or an end that is only 1 more than start")).into_compile_error()       
+            }
+            (_, Some(end), Some(conversion_type)) => {
+                let end = proc_macro2::Literal::u32_unsuffixed(end);
+                let conversion_type = conversion_type.into_type(name);
+
+                quote! {
+                    #doc_attribute
+                    pub fn #snake_case_name(&mut self, data: #conversion_type) -> &mut Self {
+                        device_driver::write_field::<Self, _, #conversion_type, #register_type, #start, #end, { Self::SIZE_BYTES }>(self, data)
+                    }
+                }.to_token_stream()
+            }
+            (_, Some(end), None) => {
+                let end = proc_macro2::Literal::u32_unsuffixed(end);
+
+                quote! {
+                    #doc_attribute
+                    pub fn #snake_case_name(&mut self, data: #register_type) -> &mut Self {
+                        device_driver::write_field_no_convert::<Self, _, #register_type, #start, #end, { Self::SIZE_BYTES }>(self, data)
+                    }
+                }.to_token_stream()
+            }
+            (_, None, _) => {
+                syn::Error::new(Span::call_site(), format!("Registers {snake_case_name} has no end specified")).into_compile_error()       
+            }
+        }
     }
 }

@@ -96,7 +96,7 @@ fn main() {
     test_device.baudrate().write(|w| w.value(12)).unwrap();
 
     write_baud(&mut test_device);
-    assert_eq!(test_device.baudrate().read().unwrap().value().unwrap(), 12);
+    assert_eq!(test_device.baudrate().read().unwrap().value(), 12);
 }
 
 #[inline(never)]

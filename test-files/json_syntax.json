@@ -2,7 +2,7 @@
     "address_type": "u8",
     "registers": {
         "id": {
-            "rw_capability": "ro",
+            "rw_type": "ro",
             "address": 12,
             "size_bits": 24,
             "fields": {
@@ -30,11 +30,13 @@
             }
         },
         "baudrate": {
-            "rw_capability": "rw",
+            "rw_type": "rw",
             "address": 42,
             "size_bits": 16,
+            "description": "Baudrate register",
             "fields": {
                 "value": {
+                    "description": "Baudrate value",
                     "type": "u16",
                     "start": 0,
                     "end": 16
