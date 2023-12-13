@@ -4,6 +4,7 @@ registers:
     rw_type: ro
     address: 12
     size_bits: 24
+    reset_value: 0x000005
     fields:
       manufacturer:
         type: u16

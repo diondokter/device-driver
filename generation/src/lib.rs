@@ -1,10 +1,12 @@
 use std::iter::FromIterator;
 
 use convert_case::Casing;
-use deserialization::{FieldCollection, RegisterCollection, ResetValue};
+use deserialization::{FieldCollection, RegisterCollection};
 use indexmap::IndexMap;
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens, TokenStreamExt};
+
+pub use deserialization::ResetValue;
 
 mod deserialization;
 mod generation;
@@ -266,7 +268,7 @@ mod tests {
         println!("From json: {from_json_value:#?}");
         println!("From yaml: {from_yaml_value:#?}");
 
-        assert_eq!(from_json_value, from_yaml_value);
+        pretty_assertions::assert_eq!(from_json_value, from_yaml_value);
     }
 
     #[test]

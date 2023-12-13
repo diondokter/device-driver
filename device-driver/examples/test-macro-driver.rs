@@ -83,6 +83,7 @@ pub mod registers {
                 type RWType = ReadOnly;
                 const ADDRESS: u8 = 12;
                 const SIZE_BITS: usize = 24;
+                const RESET_VALUE: [u8] = [0, 0, 5];
 
                 manufacturer: u16 as Manufacturer = 0..16,
                 version: u8 = 16..20,
@@ -99,6 +100,14 @@ pub mod registers {
                 const SIZE_BITS: usize = 16;
 
                 /// Baudrate value
+                value: u16 = 0..16,
+            },
+            register Foo {
+                type RWType = RW;
+                const ADDRESS: u8 = 0;
+                const SIZE_BITS: usize = 16;
+                const RESET_VALUE: u16 = 0x1234;
+
                 value: u16 = 0..16,
             }
         }
@@ -121,6 +130,18 @@ fn main() {
 
     write_baud(&mut test_device);
     assert_eq!(test_device.baudrate().read().unwrap().value(), 12);
+
+    test_device.foo().clear().unwrap();
+    assert_eq!(test_device.foo().read().unwrap().value(), 0x1234);
+
+    test_device.foo().write(|w| w.value(5)).unwrap();
+    assert_eq!(test_device.foo().read().unwrap().value(), 5);
+
+    test_device.foo().write_with_zero(|w| w).unwrap();
+    assert_eq!(test_device.foo().read().unwrap().value(), 0);
+
+    test_device.foo().write(|w| w).unwrap();
+    assert_eq!(test_device.foo().read().unwrap().value(), 0x1234);
 }
 
 #[inline(never)]

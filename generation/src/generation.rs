@@ -108,6 +108,29 @@ impl Register {
         let w_doc_string = format!("Write struct for [{pascal_case_name}]");
         let r_doc_string = format!("Read struct for [{pascal_case_name}]");
 
+        let reset_value = if let Some(reset_value) = reset_value {
+            let value =
+                reset_value.get_data(size_bits.div_ceil(8) as usize, &pascal_case_name_string);
+
+            match value {
+                Ok(value) => {
+                    quote! {
+                        fn reset_value() -> Self
+                        where
+                            Self: Sized,
+                        {
+                            Self {
+                                bits: device_driver::bitvec::array::BitArray::new([#(#value),*]),
+                            }
+                        }
+                    }
+                }
+                Err(e) => e.to_compile_error(),
+            }
+        } else {
+            quote!()
+        };
+
         quote! {
             #doc_attribute
             pub struct #pascal_case_name {
@@ -134,6 +157,7 @@ impl Register {
                 fn bits(&self) -> &device_driver::bitvec::array::BitArray<[u8; Self::SIZE_BYTES]> {
                     &self.bits
                 }
+                #reset_value
             }
 
             impl #pascal_case_name {

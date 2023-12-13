@@ -1,7 +1,7 @@
-use device_driver_generation::{BaseType, RWType, TypePath};
+use device_driver_generation::{BaseType, RWType, ResetValue, TypePath};
 use proc_macro2::TokenStream;
 use quote::ToTokens;
-use syn::{braced, punctuated::Punctuated, spanned::Spanned, Generics};
+use syn::{braced, punctuated::Punctuated, spanned::Spanned, Expr, ExprLit, Generics, Lit};
 
 struct DeviceImpl {
     impl_generics: syn::Generics,
@@ -52,6 +52,7 @@ struct Register {
     address_type: syn::Ident,
     address_value: u64,
     size_bits_value: u64,
+    reset_value: Option<ResetValue>,
     description: Option<String>,
     fields: Punctuated<Field, syn::Token![,]>,
 }
@@ -136,10 +137,136 @@ impl syn::parse::Parse for Register {
                 contents.parse::<syn::Token![;]>()?;
                 value
             },
+            reset_value: {
+                if contents.peek(syn::Token![const]) {
+                    contents.parse::<syn::Token![const]>()?;
+                    contents.parse::<kw::RESET_VALUE>()?;
+                    contents.parse::<syn::Token![:]>()?;
+                    let t = contents.parse::<syn::Type>()?;
+                    contents.parse::<syn::Token![=]>()?;
+                    let v = contents.parse::<syn::Expr>()?;
+                    contents.parse::<syn::Token![;]>()?;
+
+                    parse_reset_value(t, v)?
+                } else {
+                    None
+                }
+            },
             description,
             fields: contents.parse_terminated(Field::parse, syn::Token![,])?,
         })
     }
+}
+
+fn parse_reset_value(t: syn::Type, v: Expr) -> Result<Option<ResetValue>, syn::Error> {
+    Ok(match (t, v) {
+        (
+            syn::Type::Array(syn::TypeArray {
+                elem,
+                len:
+                    Expr::Lit(ExprLit {
+                        lit: Lit::Int(len), ..
+                    }),
+                ..
+            }),
+            syn::Expr::Array(syn::ExprArray { elems, .. }),
+        ) => {
+            if *elem != syn::parse_quote!(u8) {
+                return Err(syn::Error::new(elem.span(), "Must be a u8 array"));
+            }
+            if len.base10_parse::<usize>()? != elems.len() {
+                return Err(syn::Error::new(
+                    elems.span(),
+                    format!(
+                        "Size of array ({}) does not correspond with the array type",
+                        elems.len()
+                    ),
+                ));
+            }
+
+            let mut buffer = Vec::new();
+
+            for elem in elems {
+                if let Expr::Lit(ExprLit {
+                    lit: Lit::Int(elem),
+                    ..
+                }) = elem
+                {
+                    buffer.push(elem.base10_parse::<u8>()?);
+                } else {
+                    return Err(syn::Error::new(elem.span(), "Must be a u8 literal"));
+                }
+            }
+
+            Some(ResetValue::new(buffer, true))
+        }
+        (
+            syn::Type::Slice(syn::TypeSlice { elem, .. }),
+            syn::Expr::Array(syn::ExprArray { elems, .. }),
+        ) => {
+            if *elem != syn::parse_quote!(u8) {
+                return Err(syn::Error::new(elem.span(), "Must be a u8 array"));
+            }
+
+            let mut buffer = Vec::new();
+
+            for elem in elems {
+                if let Expr::Lit(ExprLit {
+                    lit: Lit::Int(elem),
+                    ..
+                }) = elem
+                {
+                    buffer.push(elem.base10_parse::<u8>()?);
+                } else {
+                    return Err(syn::Error::new(elem.span(), "Must be a u8 literal"));
+                }
+            }
+
+            Some(ResetValue::new(buffer, true))
+        }
+        (
+            syn::Type::Path(syn::TypePath { qself: None, path }),
+            syn::Expr::Lit(syn::ExprLit {
+                lit: syn::Lit::Int(value),
+                ..
+            }),
+        ) => {
+            if path == syn::parse_quote!(u8) {
+                Some(ResetValue::new(
+                    value.base10_parse::<u8>()?.to_be_bytes().into(),
+                    false,
+                ))
+            } else if path == syn::parse_quote!(u16) {
+                Some(ResetValue::new(
+                    value.base10_parse::<u16>()?.to_be_bytes().into(),
+                    false,
+                ))
+            } else if path == syn::parse_quote!(u32) {
+                Some(ResetValue::new(
+                    value.base10_parse::<u32>()?.to_be_bytes().into(),
+                    false,
+                ))
+            } else if path == syn::parse_quote!(u64) {
+                Some(ResetValue::new(
+                    value.base10_parse::<u64>()?.to_be_bytes().into(),
+                    false,
+                ))
+            } else if path == syn::parse_quote!(u128) {
+                Some(ResetValue::new(
+                    value.base10_parse::<u128>()?.to_be_bytes().into(),
+                    false,
+                ))
+            } else {
+                return Err(syn::Error::new(
+                    path.span(),
+                    "Must be a u8, u16, u32, u64 or u128",
+                ));
+            }
+        }
+        (t, _) => {
+            return Err(syn::Error::new(t.span(), "Unsupported reset value type. Use `[u8; N]`, `[u8]` or an unsigned integer like `u16`"));
+        }
+    })
 }
 
 struct Field {
@@ -239,6 +366,7 @@ mod kw {
     syn::custom_keyword!(RWType);
     syn::custom_keyword!(ADDRESS);
     syn::custom_keyword!(SIZE_BITS);
+    syn::custom_keyword!(RESET_VALUE);
 }
 
 pub fn implement_registers(item: TokenStream) -> TokenStream {
@@ -272,7 +400,7 @@ pub fn implement_registers(item: TokenStream) -> TokenStream {
                 address: r.address_value,
                 size_bits: r.size_bits_value,
                 description: r.description,
-                reset_value: None, // TODO
+                reset_value: r.reset_value,
                 fields: r
                     .fields
                     .into_iter()
