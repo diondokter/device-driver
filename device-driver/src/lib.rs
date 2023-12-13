@@ -92,6 +92,7 @@ impl<'a, D, R, const SIZE_BYTES: usize> RegisterOperation<'a, D, R, SIZE_BYTES>
 where
     R: Register<SIZE_BYTES>,
 {
+    #[doc(hidden)]
     pub fn new(device: &'a mut D) -> Self {
         Self {
             device,
@@ -106,6 +107,10 @@ where
     R: Register<SIZE_BYTES>,
     R::RWType: WriteCapability,
 {
+    /// Write to the register.
+    ///
+    /// The closure is given the write object initialized to the reset value of the register.
+    /// If no reset value is specified for this register, this function is the same as [write_with_zero].
     pub fn write(
         &mut self,
         f: impl FnOnce(&mut R::WriteFields) -> &mut R::WriteFields,
@@ -115,6 +120,9 @@ where
         self.device.write_register::<R, SIZE_BYTES>(register.bits())
     }
 
+    /// Write to the register.
+    ///
+    /// The closure is given the write object initialized to all zero.
     pub fn write_with_zero(
         &mut self,
         f: impl FnOnce(&mut R::WriteFields) -> &mut R::WriteFields,
@@ -131,6 +139,7 @@ where
     R: Register<SIZE_BYTES>,
     R::RWType: ReadCapability,
 {
+    /// Read the register from the device
     pub fn read(&mut self) -> Result<R::ReadFields, D::Error> {
         let mut register = R::ZERO;
         self.device
@@ -145,6 +154,10 @@ where
     R: Register<SIZE_BYTES>,
     R::RWType: ReadCapability + WriteCapability,
 {
+    /// Modify the existing register value.
+    ///
+    /// The register is read, the value is then passed to the closure for making changes.
+    /// The result is then written back to the device.
     pub fn modify(
         &mut self,
         f: impl FnOnce(&mut R::WriteFields) -> &mut R::WriteFields,
@@ -162,7 +175,7 @@ where
     R: Register<SIZE_BYTES>,
     R::RWType: ClearCapability,
 {
-    /// Write the default value to the register
+    /// Write the reset value (or zero if the reset value is specified) to the register
     pub fn clear(&mut self) -> Result<(), D::Error> {
         self.device
             .write_register::<R, SIZE_BYTES>(R::reset_value().bits())
@@ -175,6 +188,10 @@ where
     R: Register<SIZE_BYTES>,
     R::RWType: WriteCapability,
 {
+    /// Write to the register.
+    ///
+    /// The closure is given the write object initialized to the reset value of the register.
+    /// If no reset value is specified for this register, this function is the same as [write_with_zero].
     pub async fn write_async(
         &mut self,
         f: impl FnOnce(&mut R::WriteFields) -> &mut R::WriteFields,
@@ -186,6 +203,9 @@ where
             .await
     }
 
+    /// Write to the register.
+    ///
+    /// The closure is given the write object initialized to all zero.
     pub async fn write_with_zero_async(
         &mut self,
         f: impl FnOnce(&mut R::WriteFields) -> &mut R::WriteFields,
@@ -204,6 +224,7 @@ where
     R: Register<SIZE_BYTES>,
     R::RWType: ReadCapability,
 {
+    /// Read the register from the device
     pub async fn read_async(&mut self) -> Result<R, D::Error> {
         let mut register = R::ZERO;
         self.device
@@ -219,6 +240,10 @@ where
     R: Register<SIZE_BYTES>,
     R::RWType: ReadCapability + WriteCapability,
 {
+    /// Modify the existing register value.
+    ///
+    /// The register is read, the value is then passed to the closure for making changes.
+    /// The result is then written back to the device.
     pub async fn modify_async(&mut self, f: impl FnOnce(&mut R) -> &mut R) -> Result<(), D::Error> {
         let mut register = self.read_async().await?;
         f(&mut register);
@@ -234,7 +259,7 @@ where
     R: Register<SIZE_BYTES>,
     R::RWType: ClearCapability,
 {
-    /// Write the default value to the register
+    /// Write the reset value (or zero if the reset value is specified) to the register
     pub async fn clear_async(&mut self) -> Result<(), D::Error> {
         self.device
             .write_register::<R, SIZE_BYTES>(R::reset_value().bits())
@@ -242,6 +267,7 @@ where
     }
 }
 
+#[doc(hidden)]
 pub fn read_field<
     RD,
     R,
@@ -262,6 +288,7 @@ where
     register.bits()[START..END].load_be::<BACKING>().try_into()
 }
 
+#[doc(hidden)]
 pub fn read_field_no_convert<
     RD,
     R,
@@ -280,6 +307,7 @@ where
     register.bits()[START..END].load_be::<BACKING>()
 }
 
+#[doc(hidden)]
 pub fn read_field_bool<RD, R, DATA, const START: usize, const SIZE_BYTES: usize>(
     register: &R,
 ) -> Result<DATA, <bool as TryInto<DATA>>::Error>
@@ -291,6 +319,7 @@ where
     register.bits()[START].try_into()
 }
 
+#[doc(hidden)]
 pub fn read_field_bool_no_convert<RD, R, const START: usize, const SIZE_BYTES: usize>(
     register: &R,
 ) -> bool
@@ -301,6 +330,7 @@ where
     register.bits()[START]
 }
 
+#[doc(hidden)]
 pub fn write_field<
     RD,
     R,
@@ -323,6 +353,7 @@ where
     register
 }
 
+#[doc(hidden)]
 pub fn write_field_no_convert<
     RD,
     R,
@@ -343,6 +374,7 @@ where
     register
 }
 
+#[doc(hidden)]
 pub fn write_field_bool<RD, R, DATA, const START: usize, const SIZE_BYTES: usize>(
     register: &mut RD,
     data: DATA,
@@ -356,6 +388,7 @@ where
     register
 }
 
+#[doc(hidden)]
 pub fn write_field_bool_no_convert<RD, R, const START: usize, const SIZE_BYTES: usize>(
     register: &mut RD,
     data: bool,
@@ -368,14 +401,22 @@ where
     register
 }
 
+#[doc(hidden)]
 pub struct WriteOnly;
+#[doc(hidden)]
 pub struct ReadOnly;
+#[doc(hidden)]
 pub struct ReadWrite;
+#[doc(hidden)]
 pub struct ReadClear;
+#[doc(hidden)]
 pub struct ClearOnly;
 
+#[doc(hidden)]
 pub trait ReadCapability {}
+#[doc(hidden)]
 pub trait WriteCapability {}
+#[doc(hidden)]
 pub trait ClearCapability {}
 
 impl WriteCapability for WriteOnly {}
