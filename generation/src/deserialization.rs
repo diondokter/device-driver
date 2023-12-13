@@ -120,9 +120,9 @@ impl<'de> serde::Deserialize<'de> for TypePathOrEnum {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DefaultValue(pub Vec<u8>);
+pub struct ResetValue(pub Vec<u8>);
 
-impl<'de> serde::Deserialize<'de> for DefaultValue {
+impl<'de> serde::Deserialize<'de> for ResetValue {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
@@ -133,24 +133,24 @@ impl<'de> serde::Deserialize<'de> for DefaultValue {
         struct IntegerOrBytes;
 
         impl<'de> serde::de::Visitor<'de> for IntegerOrBytes {
-            type Value = DefaultValue;
+            type Value = ResetValue;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 formatter.write_str("none, unsigned integer or BE bytes")
             }
 
-            fn visit_u64<E>(self, value: u64) -> Result<DefaultValue, E>
+            fn visit_u64<E>(self, value: u64) -> Result<ResetValue, E>
             where
                 E: de::Error,
             {
-                Ok(DefaultValue(value.to_be_bytes().into()))
+                Ok(ResetValue(value.to_be_bytes().into()))
             }
 
             fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
             where
                 E: de::Error,
             {
-                Ok(DefaultValue(v.into()))
+                Ok(ResetValue(v.into()))
             }
         }
 
@@ -158,7 +158,7 @@ impl<'de> serde::Deserialize<'de> for DefaultValue {
     }
 }
 
-impl From<Vec<u8>> for DefaultValue {
+impl From<Vec<u8>> for ResetValue {
     fn from(value: Vec<u8>) -> Self {
         Self(value)
     }

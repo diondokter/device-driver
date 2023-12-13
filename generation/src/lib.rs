@@ -1,7 +1,7 @@
 use std::iter::FromIterator;
 
 use convert_case::Casing;
-use deserialization::{FieldCollection, RegisterCollection, DefaultValue};
+use deserialization::{FieldCollection, RegisterCollection, ResetValue};
 use indexmap::IndexMap;
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens, TokenStreamExt};
@@ -25,7 +25,7 @@ pub struct Register {
     pub address: u64,
     pub size_bits: u64,
     pub description: Option<String>,
-    pub default: Option<DefaultValue>,
+    pub reset_value: Option<ResetValue>,
     pub fields: FieldCollection,
 }
 

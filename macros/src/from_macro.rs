@@ -1,7 +1,7 @@
 use device_driver_generation::{BaseType, RWType, TypePath};
 use proc_macro2::TokenStream;
 use quote::ToTokens;
-use syn::{braced, punctuated::Punctuated, Generics};
+use syn::{braced, punctuated::Punctuated, spanned::Spanned, Generics};
 
 struct DeviceImpl {
     impl_generics: syn::Generics,
@@ -58,6 +58,40 @@ struct Register {
 
 impl syn::parse::Parse for Register {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let register_attributes = syn::Attribute::parse_outer(input)?;
+
+        let mut description = String::new();
+
+        for attr in register_attributes {
+            let name_value = attr.meta.require_name_value()?;
+            match (
+                name_value.path.require_ident()?.to_string().as_str(),
+                &name_value.value,
+            ) {
+                (
+                    "doc",
+                    syn::Expr::Lit(syn::ExprLit {
+                        lit: syn::Lit::Str(value),
+                        ..
+                    }),
+                ) => {
+                    description += &value.value();
+                }
+                (other, _) => {
+                    return Err(syn::Error::new(
+                        name_value.path.span(),
+                        format!("Attribute type `{other}` not supported in this usecase"),
+                    ));
+                }
+            }
+        }
+
+        let description = if description.is_empty() {
+            None
+        } else {
+            Some(description)
+        };
+
         input.parse::<kw::register>()?;
 
         let name = input.parse()?;
@@ -102,7 +136,7 @@ impl syn::parse::Parse for Register {
                 contents.parse::<syn::Token![;]>()?;
                 value
             },
-            description: None, // TODO
+            description,
             fields: contents.parse_terminated(Field::parse, syn::Token![,])?,
         })
     }
@@ -119,9 +153,43 @@ struct Field {
 
 impl syn::parse::Parse for Field {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let register_attributes = syn::Attribute::parse_outer(input)?;
+
+        let mut description = String::new();
+
+        for attr in register_attributes {
+            let name_value = attr.meta.require_name_value()?;
+            match (
+                name_value.path.require_ident()?.to_string().as_str(),
+                &name_value.value,
+            ) {
+                (
+                    "doc",
+                    syn::Expr::Lit(syn::ExprLit {
+                        lit: syn::Lit::Str(value),
+                        ..
+                    }),
+                ) => {
+                    description += &value.value();
+                }
+                (other, _) => {
+                    return Err(syn::Error::new(
+                        name_value.path.span(),
+                        format!("Attribute type `{other}` not supported in this usecase"),
+                    ));
+                }
+            }
+        }
+
+        let description = if description.is_empty() {
+            None
+        } else {
+            Some(description)
+        };
+
         Ok(Self {
             name: input.parse()?,
-            description: None, // TODO
+            description,
             register_type: {
                 input.parse::<syn::Token![:]>()?;
                 let register_type_ident = input.parse::<syn::Ident>()?;
@@ -204,7 +272,7 @@ pub fn implement_registers(item: TokenStream) -> TokenStream {
                 address: r.address_value,
                 size_bits: r.size_bits_value,
                 description: r.description,
-                default: None, // TODO
+                reset_value: None, // TODO
                 fields: r
                     .fields
                     .into_iter()

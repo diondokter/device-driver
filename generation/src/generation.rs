@@ -1,4 +1,4 @@
-use crate::{Device, Field, Register, BaseType};
+use crate::{BaseType, Device, Field, Register};
 
 use convert_case::{Case, Casing};
 use proc_macro2::{Span, TokenStream};
@@ -54,7 +54,7 @@ impl Register {
             address,
             rw_type,
             description,
-            default,
+            reset_value,
             fields,
         } = self;
 
@@ -99,7 +99,7 @@ impl Register {
         }));
 
         let doc_attribute = if let Some(description) = description {
-            quote!{ #[doc = #description] }
+            quote! { #[doc = #description] }
         } else {
             quote!()
         };
@@ -272,7 +272,7 @@ impl Field {
                     pub fn #snake_case_name(&self) -> Result<#conversion_type, <#conversion_type as TryFrom<#register_type>>::Error> {
                         device_driver::read_field_bool::<Self, _, #conversion_type, #start, { Self::SIZE_BYTES }>(self)
                     }
-                }.to_token_stream()        
+                }.to_token_stream()
             }
             (BaseType::Bool, Some(end), None) if end == self.start + 1 => {
                 quote! {
@@ -280,7 +280,7 @@ impl Field {
                     pub fn #snake_case_name(&self) -> #register_type {
                         device_driver::read_field_bool_no_convert::<Self, _, #start, { Self::SIZE_BYTES }>(self)
                     }
-                }.to_token_stream()        
+                }.to_token_stream()
             }
             (BaseType::Bool, None, Some(conversion_type)) => {
                 let conversion_type = conversion_type.into_type(name);
@@ -289,7 +289,7 @@ impl Field {
                     pub fn #snake_case_name(&self) -> Result<#conversion_type, <#conversion_type as TryFrom<#register_type>>::Error> {
                         device_driver::read_field_bool::<Self, _, #conversion_type, #start, { Self::SIZE_BYTES }>(self)
                     }
-                }.to_token_stream()        
+                }.to_token_stream()
             }
             (BaseType::Bool, None, None) => {
                 quote! {
@@ -297,7 +297,7 @@ impl Field {
                     pub fn #snake_case_name(&self) -> #register_type {
                         device_driver::read_field_bool_no_convert::<Self, _, #start, { Self::SIZE_BYTES }>(self)
                     }
-                }.to_token_stream()        
+                }.to_token_stream()
             }
             (BaseType::Bool, _, _) => {
                 syn::Error::new(Span::call_site(), format!("Registers {snake_case_name} is a bool and must have no end or an end that is only 1 more than start")).into_compile_error()       
@@ -311,7 +311,7 @@ impl Field {
                     pub fn #snake_case_name(&self) -> Result<#conversion_type, <#conversion_type as TryFrom<#register_type>>::Error> {
                         device_driver::read_field::<Self, _, #conversion_type, #register_type, #start, #end, { Self::SIZE_BYTES }>(self)
                     }
-                }.to_token_stream()        
+                }.to_token_stream()
             }
             (_, Some(end), None) => {
                 let end = proc_macro2::Literal::u32_unsuffixed(end);
@@ -321,7 +321,7 @@ impl Field {
                     pub fn #snake_case_name(&self) -> #register_type {
                         device_driver::read_field_no_convert::<Self, _, #register_type, #start, #end, { Self::SIZE_BYTES }>(self)
                     }
-                }.to_token_stream()        
+                }.to_token_stream()
             }
             (_, None, _) => {
                 syn::Error::new(Span::call_site(), format!("Registers {snake_case_name} has no end specified")).into_compile_error()       
