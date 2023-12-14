@@ -110,7 +110,7 @@ where
     /// Write to the register.
     ///
     /// The closure is given the write object initialized to the reset value of the register.
-    /// If no reset value is specified for this register, this function is the same as [write_with_zero].
+    /// If no reset value is specified for this register, this function is the same as [Self::write_with_zero].
     pub fn write(
         &mut self,
         f: impl FnOnce(&mut R::WriteFields) -> &mut R::WriteFields,
@@ -191,7 +191,7 @@ where
     /// Write to the register.
     ///
     /// The closure is given the write object initialized to the reset value of the register.
-    /// If no reset value is specified for this register, this function is the same as [write_with_zero].
+    /// If no reset value is specified for this register, this function is the same as [Self::write_with_zero].
     pub async fn write_async(
         &mut self,
         f: impl FnOnce(&mut R::WriteFields) -> &mut R::WriteFields,
