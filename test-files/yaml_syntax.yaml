@@ -20,7 +20,10 @@ registers:
         conversion:
           One: 1
           Two:
-          Five: 5
+          Five:
+            description: Test!
+            value: 5
+          Others: default
         start: 20
         end: 24
   baudrate:

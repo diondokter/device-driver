@@ -1,7 +1,11 @@
-use device_driver_generation::{BaseType, RWType, ResetValue, TypePath};
+use device_driver_generation::{
+    BaseType, EnumVariant, EnumVariantValue, RWType, ResetValue, TypePath,
+};
 use proc_macro2::TokenStream;
 use quote::ToTokens;
-use syn::{braced, punctuated::Punctuated, spanned::Spanned, Expr, ExprLit, Generics, Lit};
+use syn::{
+    braced, punctuated::Punctuated, spanned::Spanned, Attribute, Expr, ExprLit, Generics, Lit,
+};
 
 struct DeviceImpl {
     impl_generics: syn::Generics,
@@ -61,37 +65,7 @@ impl syn::parse::Parse for Register {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let register_attributes = syn::Attribute::parse_outer(input)?;
 
-        let mut description = String::new();
-
-        for attr in register_attributes {
-            let name_value = attr.meta.require_name_value()?;
-            match (
-                name_value.path.require_ident()?.to_string().as_str(),
-                &name_value.value,
-            ) {
-                (
-                    "doc",
-                    syn::Expr::Lit(syn::ExprLit {
-                        lit: syn::Lit::Str(value),
-                        ..
-                    }),
-                ) => {
-                    description += &value.value();
-                }
-                (other, _) => {
-                    return Err(syn::Error::new(
-                        name_value.path.span(),
-                        format!("Attribute type `{other}` not supported in this usecase"),
-                    ));
-                }
-            }
-        }
-
-        let description = if description.is_empty() {
-            None
-        } else {
-            Some(description)
-        };
+        let description = doc_string_from_attrs(&register_attributes)?;
 
         input.parse::<kw::register>()?;
 
@@ -280,39 +254,9 @@ struct Field {
 
 impl syn::parse::Parse for Field {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let register_attributes = syn::Attribute::parse_outer(input)?;
+        let field_attributes = syn::Attribute::parse_outer(input)?;
 
-        let mut description = String::new();
-
-        for attr in register_attributes {
-            let name_value = attr.meta.require_name_value()?;
-            match (
-                name_value.path.require_ident()?.to_string().as_str(),
-                &name_value.value,
-            ) {
-                (
-                    "doc",
-                    syn::Expr::Lit(syn::ExprLit {
-                        lit: syn::Lit::Str(value),
-                        ..
-                    }),
-                ) => {
-                    description += &value.value();
-                }
-                (other, _) => {
-                    return Err(syn::Error::new(
-                        name_value.path.span(),
-                        format!("Attribute type `{other}` not supported in this usecase"),
-                    ));
-                }
-            }
-        }
-
-        let description = if description.is_empty() {
-            None
-        } else {
-            Some(description)
-        };
+        let description = doc_string_from_attrs(&field_attributes)?;
 
         Ok(Self {
             name: input.parse()?,
@@ -344,14 +288,50 @@ impl syn::parse::Parse for Field {
 enum ConversionType {
     None,
     Existing(syn::Path),
-    Enum(syn::ItemEnum),
+    Enum(Vec<(String, EnumVariant)>),
 }
 
 impl syn::parse::Parse for ConversionType {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         if input.parse::<syn::Token![as]>().is_ok() {
             if input.peek(syn::Token![enum]) {
-                Ok(Self::Enum(input.parse()?))
+                let item_enum = input.parse::<syn::ItemEnum>()?;
+
+                let mut variants = Vec::new();
+
+                for variant in item_enum.variants {
+                    variants.push((variant.ident.to_string(), {
+                        EnumVariant {
+                            description: doc_string_from_attrs(&variant.attrs)?,
+                            value: variant
+                                .discriminant
+                                .as_ref()
+                                .map(|d| match &d.1 {
+                                    syn::Expr::Lit(syn::ExprLit {
+                                        lit: syn::Lit::Int(lit_int),
+                                        ..
+                                    }) => Ok(EnumVariantValue::Specified(
+                                        lit_int.base10_parse().unwrap(),
+                                    )),
+                                    syn::Expr::Lit(syn::ExprLit {
+                                        lit: syn::Lit::Str(lit_str),
+                                        ..
+                                    }) => match lit_str.value().as_str().try_into() {
+                                        Ok(val) => Ok(val),
+                                        Err(e) => Err(syn::Error::new(lit_str.span(), e)),
+                                    },
+                                    d => Err(syn::Error::new(
+                                        d.span(),
+                                        "Value not recognized. Must be a number or a string",
+                                    )),
+                                })
+                                .transpose()?
+                                .unwrap_or_default(),
+                        }
+                    }))
+                }
+
+                Ok(Self::Enum(variants))
             } else {
                 Ok(Self::Existing(input.parse()?))
             }
@@ -408,7 +388,7 @@ pub fn implement_registers(item: TokenStream) -> TokenStream {
                         name: f.name.to_string(),
                         description: f.description,
                         register_type: f.register_type,
-                        conversion_type: match &f.conversion_type {
+                        conversion_type: match f.conversion_type {
                             ConversionType::None => None,
                             ConversionType::Existing(path) => {
                                 Some(device_driver_generation::TypePathOrEnum::TypePath(
@@ -417,18 +397,7 @@ pub fn implement_registers(item: TokenStream) -> TokenStream {
                             }
                             ConversionType::Enum(enum_def) => {
                                 Some(device_driver_generation::TypePathOrEnum::Enum(
-                                    FromIterator::from_iter(enum_def.variants.iter().map(|var| {
-                                        (
-                                            var.ident.to_string(),
-                                            var.discriminant.as_ref().map(|d| match &d.1 {
-                                                syn::Expr::Lit(syn::ExprLit {
-                                                    lit: syn::Lit::Int(lit_int),
-                                                    ..
-                                                }) => lit_int.base10_parse().unwrap(),
-                                                _ => unreachable!(),
-                                            }),
-                                        )
-                                    })),
+                                    FromIterator::from_iter(enum_def),
                                 ))
                             }
                         },
@@ -458,4 +427,40 @@ pub fn implement_registers(item: TokenStream) -> TokenStream {
         device.generate_device_impl(item),
         device.generate_definitions(),
     ])
+}
+
+fn doc_string_from_attrs(attrs: &[Attribute]) -> Result<Option<String>, syn::Error> {
+    let mut description = String::new();
+
+    for attr in attrs {
+        let name_value = attr.meta.require_name_value()?;
+        match (
+            name_value.path.require_ident()?.to_string().as_str(),
+            &name_value.value,
+        ) {
+            (
+                "doc",
+                syn::Expr::Lit(syn::ExprLit {
+                    lit: syn::Lit::Str(value),
+                    ..
+                }),
+            ) => {
+                description += &value.value();
+            }
+            (other, _) => {
+                return Err(syn::Error::new(
+                    name_value.path.span(),
+                    format!("Attribute type `{other}` not supported in this usecase"),
+                ));
+            }
+        }
+    }
+
+    let description = if description.is_empty() {
+        None
+    } else {
+        Some(description)
+    };
+
+    Ok(description)
 }

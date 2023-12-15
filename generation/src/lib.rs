@@ -76,7 +76,31 @@ impl Ord for Field {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TypePathOrEnum {
     TypePath(TypePath),
-    Enum(IndexMap<String, Option<i128>>),
+    Enum(IndexMap<String, EnumVariant>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EnumVariant {
+    pub description: Option<String>,
+    pub value: EnumVariantValue,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub enum EnumVariantValue {
+    #[default]
+    None,
+    Specified(i128),
+    Default,
+    CatchAll,
+}
+
+impl TryFrom<&str> for EnumVariantValue {
+    type Error = serde::de::value::Error;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        use serde::Deserialize;
+        Self::deserialize(serde::de::value::StrDeserializer::new(value))
+    }
 }
 
 impl TypePathOrEnum {
@@ -121,12 +145,29 @@ impl TypePathOrEnum {
                         &name.to_case(convert_case::Case::Pascal),
                         proc_macro2::Span::call_site(),
                     );
-                    let value_specifier = value.map(|value| {
-                        let value = proc_macro2::Literal::i128_unsuffixed(value);
-                        quote!(= #value)
-                    });
+                    let doc = value
+                        .description
+                        .as_ref()
+                        .map(|description| quote!(#[doc = #description]));
+                    let (value_specifier, num_enum_attr, data) = match value.value {
+                        EnumVariantValue::Specified(value) => {
+                            let value = proc_macro2::Literal::i128_unsuffixed(value);
+                            (Some(quote!(= #value)), None, None)
+                        }
+                        EnumVariantValue::None => (None, None, None),
+                        EnumVariantValue::Default => {
+                            (None, Some(quote!(#[num_enum(default)])), None)
+                        }
+                        EnumVariantValue::CatchAll => (
+                            None,
+                            Some(quote!(#[num_enum(catch_all)])),
+                            Some(quote!((#register_type))),
+                        ),
+                    };
                     quote! {
-                        #variant #value_specifier,
+                        #doc
+                        #num_enum_attr
+                        #variant #data #value_specifier,
                     }
                 }));
                 Some(
@@ -153,9 +194,11 @@ impl TypePath {
             qself: None,
             path: syn::Path {
                 leading_colon: None,
-                segments: syn::punctuated::Punctuated::from_iter(self.0.split("::").map(|seg| {
-                    syn::PathSegment::from(syn::Ident::new(seg, proc_macro2::Span::call_site()))
-                })),
+                segments: syn::punctuated::Punctuated::from_iter(
+                    self.0
+                        .split("::")
+                        .map(|seg| syn::parse_str::<syn::PathSegment>(seg).unwrap()),
+                ),
             },
         })
     }

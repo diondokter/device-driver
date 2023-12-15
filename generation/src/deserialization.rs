@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use indexmap::IndexMap;
 use proc_macro2::Span;
 
-use crate::{Field, Register, TypePath, TypePathOrEnum};
+use crate::{EnumVariant, EnumVariantValue, Field, Register, TypePath, TypePathOrEnum};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RegisterCollection(Vec<Register>);
@@ -109,7 +109,7 @@ impl<'de> serde::Deserialize<'de> for TypePathOrEnum {
             where
                 M: de::MapAccess<'de>,
             {
-                <IndexMap<String, Option<i128>> as serde::Deserialize>::deserialize(
+                <IndexMap<String, EnumVariant> as serde::Deserialize>::deserialize(
                     de::value::MapAccessDeserializer::new(map),
                 )
                 .map(TypePathOrEnum::Enum)
@@ -151,19 +151,17 @@ impl ResetValue {
             } else {
                 Err(syn::Error::new(Span::call_site(), format!("Reset value of register `{register_name}` has the wrong length ({} bytes): Must be {num_bytes} bytes", self.data.len())))
             }
+        } else if num_bytes < self.data.len() {
+            Err(syn::Error::new(Span::call_site(), format!("Reset value of register `{register_name}` has the wrong length ({} bytes): Must be {num_bytes} bytes", self.data.len())))
         } else {
-            if num_bytes < self.data.len() {
-                Err(syn::Error::new(Span::call_site(), format!("Reset value of register `{register_name}` has the wrong length ({} bytes): Must be {num_bytes} bytes", self.data.len())))
-            } else {
-                let extra_length_required = num_bytes - self.data.len();
-                let mut data = self.data.clone();
+            let extra_length_required = num_bytes - self.data.len();
+            let mut data = self.data.clone();
 
-                for _ in 0..extra_length_required {
-                    data.insert(0, 0);
-                }
-
-                Ok(data)
+            for _ in 0..extra_length_required {
+                data.insert(0, 0);
             }
+
+            Ok(data)
         }
     }
 }
@@ -233,3 +231,197 @@ impl PartialEq for ResetValue {
 }
 
 impl Eq for ResetValue {}
+
+impl<'de> serde::Deserialize<'de> for EnumVariant {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de;
+        use std::fmt;
+
+        struct IntegerOrValue;
+
+        impl<'de> serde::de::Visitor<'de> for IntegerOrValue {
+            type Value = EnumVariant;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("null, integer or struct with value and description")
+            }
+
+            fn visit_i128<E>(self, value: i128) -> Result<EnumVariant, E>
+            where
+                E: de::Error,
+            {
+                Ok(EnumVariant {
+                    description: None,
+                    value: EnumVariantValue::Specified(value),
+                })
+            }
+
+            fn visit_i64<E>(self, value: i64) -> Result<EnumVariant, E>
+            where
+                E: de::Error,
+            {
+                Ok(EnumVariant {
+                    description: None,
+                    value: EnumVariantValue::Specified(value as _),
+                })
+            }
+
+            fn visit_u64<E>(self, value: u64) -> Result<EnumVariant, E>
+            where
+                E: de::Error,
+            {
+                Ok(EnumVariant {
+                    description: None,
+                    value: EnumVariantValue::Specified(value as _),
+                })
+            }
+
+            fn visit_none<E>(self) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Ok(EnumVariant {
+                    description: None,
+                    value: EnumVariantValue::None,
+                })
+            }
+
+            fn visit_unit<E>(self) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Ok(EnumVariant {
+                    description: None,
+                    value: EnumVariantValue::None,
+                })
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                let value = match v {
+                    "default" => Ok(EnumVariantValue::Default),
+                    "catch-all" => Ok(EnumVariantValue::CatchAll),
+                    _ => Err(serde::de::Error::unknown_variant(
+                        v,
+                        &["default", "catch-all"],
+                    )),
+                }?;
+
+                Ok(EnumVariant {
+                    description: None,
+                    value,
+                })
+            }
+
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+            where
+                A: de::MapAccess<'de>,
+            {
+                let mut s = EnumVariant {
+                    description: None,
+                    value: EnumVariantValue::None,
+                };
+
+                while let Some(key) = map.next_key::<String>()? {
+                    match key.to_lowercase().as_str() {
+                        "description" => s.description = Some(map.next_value()?),
+                        "value" => s.value = map.next_value()?,
+                        _ => {
+                            return Err(serde::de::Error::unknown_field(
+                                &key,
+                                &["description", "value"],
+                            ));
+                        }
+                    }
+                }
+
+                Ok(s)
+            }
+        }
+
+        deserializer.deserialize_any(IntegerOrValue)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for EnumVariantValue {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de;
+        use std::fmt;
+
+        struct EnumVariantValueVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for EnumVariantValueVisitor {
+            type Value = EnumVariantValue;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("null, integer, \"default\" or \"catch-all\"")
+            }
+
+            fn visit_i128<E>(self, value: i128) -> Result<EnumVariantValue, E>
+            where
+                E: de::Error,
+            {
+                Ok(EnumVariantValue::Specified(value))
+            }
+
+            fn visit_u128<E>(self, value: u128) -> Result<EnumVariantValue, E>
+            where
+                E: de::Error,
+            {
+                Ok(EnumVariantValue::Specified(value as _))
+            }
+
+            fn visit_i64<E>(self, value: i64) -> Result<EnumVariantValue, E>
+            where
+                E: de::Error,
+            {
+                Ok(EnumVariantValue::Specified(value as _))
+            }
+
+            fn visit_u64<E>(self, value: u64) -> Result<EnumVariantValue, E>
+            where
+                E: de::Error,
+            {
+                Ok(EnumVariantValue::Specified(value as _))
+            }
+
+            fn visit_unit<E>(self) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Ok(EnumVariantValue::None)
+            }
+
+            fn visit_none<E>(self) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                Ok(EnumVariantValue::None)
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                match v {
+                    "default" => Ok(EnumVariantValue::Default),
+                    "catch-all" => Ok(EnumVariantValue::CatchAll),
+                    _ => Err(serde::de::Error::unknown_variant(
+                        v,
+                        &["default", "catch-all"],
+                    )),
+                }
+            }
+        }
+
+        deserializer.deserialize_any(EnumVariantValueVisitor)
+    }
+}

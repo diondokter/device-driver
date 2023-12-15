@@ -65,6 +65,12 @@ impl AsyncRegisterDevice for TestDevice {
     }
 }
 
+impl Default for TestDevice {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TestDevice {
     pub fn new() -> Self {
         // Normally we'd take like a SPI here or something
@@ -90,7 +96,9 @@ pub mod registers {
                 edition: u8 as enum Edition {
                     One = 1,
                     Two,
+                    /// Test!
                     Five = 5,
+                    Rest = "default",
                 } = 20..24,
             },
             /// Baudrate register
