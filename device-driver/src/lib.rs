@@ -119,7 +119,7 @@ pub trait Register<const SIZE_BYTES: usize> {
     fn bits(&self) -> &BitArray<[u8; SIZE_BYTES]>;
 
     /// The 'default'/reset value of the register.
-    /// 
+    ///
     /// Optional. Standardly implemented as returning [Self::ZERO].
     fn reset_value() -> Self
     where
