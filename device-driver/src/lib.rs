@@ -1,7 +1,7 @@
 #![allow(async_fn_in_trait)]
 #![cfg_attr(not(test), no_std)]
 #![warn(missing_docs)]
-#![doc = include_str!("../../README.md")]
+#![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../README.md"))]
 
 use core::{
     convert::{TryFrom, TryInto},
