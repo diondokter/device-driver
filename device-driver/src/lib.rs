@@ -1,5 +1,7 @@
 #![allow(async_fn_in_trait)]
 #![cfg_attr(not(test), no_std)]
+#![warn(missing_docs)]
+#![doc = include_str!("../../README.md")]
 
 use core::{
     convert::{TryFrom, TryInto},
@@ -15,10 +17,19 @@ pub use num_enum;
 use bitvec::{array::BitArray, field::BitField};
 use funty::Integral;
 
+/// A trait to represent the interface to the device.
+///
+/// This is called to write to and read from registers.
 pub trait RegisterDevice {
+    /// The error type
     type Error;
+    /// The address type used by this interface. Should likely be an integer.
     type AddressType;
 
+    /// Write the given data to the register.
+    ///
+    /// The address and the length of the register is descriped with the constant in the `R` [Register] type.
+    /// The data can made into a normal slice by calling `as_raw_slice` on it.
     fn write_register<R, const SIZE_BYTES: usize>(
         &mut self,
         data: &BitArray<[u8; SIZE_BYTES]>,
@@ -26,6 +37,10 @@ pub trait RegisterDevice {
     where
         R: Register<SIZE_BYTES, AddressType = Self::AddressType>;
 
+    /// Read the data from the register into the given buffer.
+    ///
+    /// The address and the length of the register is descriped with the constant in the `R` [Register] type.
+    /// The data can made into a normal slice by calling `as_raw_slice` on it.
     fn read_register<R, const SIZE_BYTES: usize>(
         &mut self,
         data: &mut BitArray<[u8; SIZE_BYTES]>,
@@ -34,10 +49,19 @@ pub trait RegisterDevice {
         R: Register<SIZE_BYTES, AddressType = Self::AddressType>;
 }
 
+/// A trait to represent the interface to the device.
+///
+/// This is called to asynchronously write to and read from registers.
 pub trait AsyncRegisterDevice {
+    /// The error type
     type Error;
+    /// The address type used by this interface. Should likely be an integer.
     type AddressType;
 
+    /// Write the given data to the register asynchronously.
+    ///
+    /// The address and the length of the register is descriped with the constant in the `R` [Register] type.
+    /// The data can made into a normal slice by calling `as_raw_slice` on it.
     async fn write_register<R, const SIZE_BYTES: usize>(
         &mut self,
         data: &BitArray<[u8; SIZE_BYTES]>,
@@ -45,6 +69,10 @@ pub trait AsyncRegisterDevice {
     where
         R: Register<SIZE_BYTES, AddressType = Self::AddressType>;
 
+    /// Read the data from the register asynchronously into the given buffer.
+    ///
+    /// The address and the length of the register is descriped with the constant in the `R` [Register] type.
+    /// The data can made into a normal slice by calling `as_raw_slice` on it.
     async fn read_register<R, const SIZE_BYTES: usize>(
         &mut self,
         data: &mut BitArray<[u8; SIZE_BYTES]>,
@@ -53,25 +81,46 @@ pub trait AsyncRegisterDevice {
         R: Register<SIZE_BYTES, AddressType = Self::AddressType>;
 }
 
+/// The abstraction and description of a register
 pub trait Register<const SIZE_BYTES: usize> {
+    /// The all-zero bits representation of this register
     const ZERO: Self;
 
+    /// The address type of this register abstraction
     type AddressType;
+    /// The address value of where this register is stored on the device
     const ADDRESS: Self::AddressType;
 
+    /// Typestate value of how this register can be used.
+    ///
+    /// Should be one of:
+    /// - [WriteOnly]
+    /// - [ReadOnly]
+    /// - [ClearOnly]
+    /// - [ReadWrite]
+    /// - [ReadClear]
     type RWType;
+
+    /// The size of the register in bits
     const SIZE_BITS: usize;
 
+    /// The type of the writer `W` type associated with this register
     type WriteFields: From<Self> + Into<Self> + Deref<Target = Self> + DerefMut
     where
         Self: Sized;
+    /// The type of the reader `R` type associated with this register
     type ReadFields: From<Self> + Into<Self> + Deref<Target = Self> + DerefMut
     where
         Self: Sized;
 
+    /// Get mutable access to the local representation of the register bits
     fn bits_mut(&mut self) -> &mut BitArray<[u8; SIZE_BYTES]>;
+    /// Get access to the local representation of the register bits
     fn bits(&self) -> &BitArray<[u8; SIZE_BYTES]>;
 
+    /// The 'default'/reset value of the register.
+    /// 
+    /// Optional. Standardly implemented as returning [Self::ZERO].
     fn reset_value() -> Self
     where
         Self: Sized,
@@ -80,6 +129,7 @@ pub trait Register<const SIZE_BYTES: usize> {
     }
 }
 
+/// Object that performs actions on the device in the context of a register
 pub struct RegisterOperation<'a, D, R, const SIZE_BYTES: usize>
 where
     R: Register<SIZE_BYTES>,

@@ -65,7 +65,7 @@ impl AsyncRegisterDevice for TestDevice {
     }
 }
 
-impl TestDevice {
+impl TestDevic e {
     pub fn new() -> Self {
         // Normally we'd take like a SPI here or something
         Self {
