@@ -6,6 +6,10 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 homepage = "https://github.com/diondokter/device-driver"
 repository = "https://github.com/diondokter/device-driver"
+readme = "../README.md"
+keywords = ["no_std", "device", "driver", "toolkit"]
+categories = ["embedded", "hardware-support", "no-std"]
+description = "Code generation for the `device-driver` crate"
 
 [dependencies]
 convert_case = "0.6.0"

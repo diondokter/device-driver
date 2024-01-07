@@ -1,7 +1,15 @@
 [package]
 name = "device-driver-macros"
 version = "0.5.0"
+authors = ["Dion Dokter <diondokter@gmail.com>"]
 edition = "2021"
+license = "MIT OR Apache-2.0"
+homepage = "https://github.com/diondokter/device-driver"
+repository = "https://github.com/diondokter/device-driver"
+readme = "../README.md"
+keywords = ["no_std", "device", "driver", "toolkit"]
+categories = ["embedded", "hardware-support", "no-std"]
+description = "Proc macro implementation for the `device-driver` crate"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
