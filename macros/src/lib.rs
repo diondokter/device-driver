@@ -1,3 +1,5 @@
+#![doc = include_str!(concat!("../", env!("CARGO_PKG_README")))]
+
 use proc_macro::TokenStream;
 
 mod from_file;

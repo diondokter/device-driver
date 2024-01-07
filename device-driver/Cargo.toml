@@ -6,10 +6,10 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 homepage = "https://github.com/diondokter/device-driver"
 repository = "https://github.com/diondokter/device-driver"
-readme = "../README.md"
 keywords = ["no_std", "device", "driver", "toolkit"]
 categories = ["embedded", "hardware-support", "no-std"]
 description = "A toolkit to write better device drivers, faster"
+readme.workspace = true
 
 [dependencies]
 device-driver-generation = { version = "0.5.0", path = "../generation" }

@@ -5,3 +5,4 @@ members = [
     "generation",
     "macros"
 ]
+package.readme = "README.md"
