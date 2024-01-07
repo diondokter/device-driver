@@ -1,0 +1,54 @@
+{
+    "address_type": "u8",
+    "registers": {
+        "id": {
+            "description": "Doc comment for the ID register",
+            "rw_type": "ro",
+            "address": 12,
+            "size_bits": 24,
+            "reset_value": [0, 0, 5],
+            "fields": {
+                "manufacturer": {
+                    "description": "Doc comment for the manufacturer field",
+                    "type": "u16",
+                    "conversion": "Manufacturer",
+                    "start": 0,
+                    "end": 16
+                },
+                "version": {
+                    "type": "u8",
+                    "start": 16,
+                    "end": 20
+                },
+                "edition": {
+                    "type": "u8",
+                    "conversion": {
+                        "One": 1,
+                        "Two": null,
+                        "Five": {
+                            "description": "Test!",
+                            "value": 5
+                        },
+                        "Others": "default"
+                    },
+                    "start": 20,
+                    "end": 24
+                }
+            }
+        },
+        "baudrate": {
+            "rw_type": "rw",
+            "address": 42,
+            "size_bits": 16,
+            "description": "Baudrate register",
+            "fields": {
+                "value": {
+                    "description": "Baudrate value",
+                    "type": "u16",
+                    "start": 0,
+                    "end": 16
+                }
+            }
+        }
+    }
+}

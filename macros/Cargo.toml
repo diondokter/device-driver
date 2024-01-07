@@ -1,0 +1,20 @@
+[package]
+name = "device-driver-macros"
+version = "0.5.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+proc-macro = true
+
+[dependencies]
+device-driver-generation = { path = "../generation" }
+syn = { version = "2.0", features = ["extra-traits"] }
+serde_json = { version = "1.0", optional = true }
+serde_yaml = { version = "0.9", optional = true }
+proc-macro2 = "1.0"
+quote = "1.0"
+
+[features]
+json = ["dep:serde_json"]
+yaml = ["dep:serde_yaml"]
