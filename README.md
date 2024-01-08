@@ -40,6 +40,10 @@ dual licensed as above, without any additional terms or conditions.
 
 ## Changelog
 
+### 0.5.1 (08-01-24)
+
+- Removed accidental dependency that forced std
+
 ### 0.5.0 (07-01-24)
 
 - *Breaking*: Built up the crate from the ground up again.
