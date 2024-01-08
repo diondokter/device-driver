@@ -275,12 +275,12 @@ where
     R::RWType: ReadCapability,
 {
     /// Read the register from the device
-    pub async fn read_async(&mut self) -> Result<R, D::Error> {
+    pub async fn read_async(&mut self) -> Result<R::ReadFields, D::Error> {
         let mut register = R::ZERO;
         self.device
             .read_register::<R, SIZE_BYTES>(register.bits_mut())
             .await?;
-        Ok(register)
+        Ok(register.into())
     }
 }
 
@@ -294,11 +294,14 @@ where
     ///
     /// The register is read, the value is then passed to the closure for making changes.
     /// The result is then written back to the device.
-    pub async fn modify_async(&mut self, f: impl FnOnce(&mut R) -> &mut R) -> Result<(), D::Error> {
-        let mut register = self.read_async().await?;
+    pub async fn modify_async(
+        &mut self,
+        f: impl FnOnce(&mut R::WriteFields) -> &mut R::WriteFields,
+    ) -> Result<(), D::Error> {
+        let mut register = self.read_async().await?.into().into();
         f(&mut register);
         self.device
-            .write_register::<R, SIZE_BYTES>(register.bits())
+            .write_register::<R, SIZE_BYTES>(register.into().bits())
             .await
     }
 }

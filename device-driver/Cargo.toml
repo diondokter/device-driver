@@ -1,6 +1,6 @@
 [package]
 name = "device-driver"
-version = "0.5.1"
+version = "0.5.2"
 authors = ["Dion Dokter <diondokter@gmail.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"

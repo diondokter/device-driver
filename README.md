@@ -40,6 +40,10 @@ dual licensed as above, without any additional terms or conditions.
 
 ## Changelog
 
+### 0.5.2 (08-01-24)
+
+- Async read and modify worked with registers instead of their read and write types
+
 ### 0.5.1 (08-01-24)
 
 - Removed accidental dependency that forced std
