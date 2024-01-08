@@ -40,7 +40,14 @@ impl Register {
         let snake_case_name = syn::Ident::new(&self.name.to_case(Case::Snake), Span::call_site());
         let pascal_case_name = syn::Ident::new(&self.name.to_case(Case::Pascal), Span::call_site());
 
+        let doc_attribute = if let Some(description) = self.description.as_ref() {
+            quote! { #[doc = #description] }
+        } else {
+            quote!()
+        };
+
         syn::parse_quote! {
+            #doc_attribute
             pub fn #snake_case_name(&mut self) -> device_driver::RegisterOperation<'_, Self, #pascal_case_name, { #pascal_case_name::SIZE_BYTES }> {
                 device_driver::RegisterOperation::new(self)
             }

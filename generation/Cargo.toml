@@ -1,6 +1,6 @@
 [package]
 name = "device-driver-generation"
-version = "0.5.0"
+version = "0.5.3"
 authors = ["Dion Dokter <diondokter@gmail.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
