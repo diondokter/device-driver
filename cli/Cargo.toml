@@ -1,0 +1,17 @@
+[package]
+name = "device-driver-cli"
+version = "0.1.0"
+edition = "2021"
+readme.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap = { version = "4.5.0", features = ["derive"] }
+device-driver-generation = { version = "0.5.0", path = "../generation" }
+serde_json = "1.0"
+serde_yaml = "0.9"
+prettyplease = "0.2.15"
+quote = "1.0"
+syn = "2.0.39"
+

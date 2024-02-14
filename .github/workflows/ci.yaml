@@ -35,5 +35,6 @@ jobs:
     - uses: actions/checkout@v3
     - uses: dtolnay/rust-toolchain@stable
     - run: cargo run --example test-macro-driver
+    - run: cargo run --example test-cli-driver
     - run: cargo run --example test-yaml-driver --features yaml
     - run: cargo run --example test-json-driver --features json
