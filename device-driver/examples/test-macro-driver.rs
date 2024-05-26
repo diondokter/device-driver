@@ -117,7 +117,10 @@ pub mod registers {
                 const RESET_VALUE: u16 = 0x1234;
 
                 value: u16 = 0..16,
-            }
+            },
+            command Sleep: u16 = 0,
+            /// Let's out the magic smoke
+            command Burn: u16 = 0xDEAD
         }
     );
 }
