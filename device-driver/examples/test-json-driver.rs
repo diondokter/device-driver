@@ -1,5 +1,7 @@
 use bitvec::array::BitArray;
-use device_driver::{AsyncCommandDevice, AsyncRegisterDevice, CommandDevice, Register, RegisterDevice};
+use device_driver::{
+    AsyncCommandDevice, AsyncRegisterDevice, CommandDevice, Register, RegisterDevice,
+};
 
 pub struct TestDevice {
     device_memory: [u8; 128],

@@ -81,7 +81,6 @@ impl<'de> serde::Deserialize<'de> for FieldCollection {
     }
 }
 
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CommandCollection(Vec<Command>);
 
@@ -119,7 +118,6 @@ impl<'de> serde::Deserialize<'de> for CommandCollection {
         Ok(Self(registers))
     }
 }
-
 
 impl<'de> serde::Deserialize<'de> for TypePathOrEnum {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>

@@ -44,8 +44,7 @@ impl Device {
             result.extend(
                 commands
                     .iter()
-                    .map(|command| command.generate_command_function())
-                    .flatten(),
+                    .flat_map(|command| command.generate_command_function()),
             );
         }
 

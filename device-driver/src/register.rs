@@ -1,9 +1,9 @@
+use bitvec::{array::BitArray, field::BitField};
 use core::{
     convert::{TryFrom, TryInto},
     marker::PhantomData,
     ops::{Deref, DerefMut},
 };
-use bitvec::{array::BitArray, field::BitField};
 use funty::Integral;
 
 /// A trait to represent the interface to the device.
@@ -71,7 +71,7 @@ pub trait AsyncRegisterDevice {
 }
 
 /// The abstraction and description of a register.
-/// 
+///
 /// This is meant to be implemented by the macros.
 pub trait Register<const SIZE_BYTES: usize> {
     /// The all-zero bits representation of this register

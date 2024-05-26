@@ -465,7 +465,7 @@ pub fn implement_device(item: TokenStream) -> TokenStream {
         .items
         .iter()
         .filter_map(Item::as_register)
-        .nth(0)
+        .next()
         .map(|r| r.address_type.to_string().as_str().try_into())
         .transpose()
     {
@@ -477,7 +477,7 @@ pub fn implement_device(item: TokenStream) -> TokenStream {
                     .items
                     .iter()
                     .filter_map(Item::as_register)
-                    .nth(0)
+                    .next()
                     .unwrap()
                     .address_type
                     .span(),
@@ -538,7 +538,7 @@ pub fn implement_device(item: TokenStream) -> TokenStream {
         .items
         .iter()
         .filter_map(Item::as_command)
-        .nth(0)
+        .next()
         .map(|r| r.raw_type.to_string().as_str().try_into())
         .transpose()
     {
@@ -550,7 +550,7 @@ pub fn implement_device(item: TokenStream) -> TokenStream {
                     .items
                     .iter()
                     .filter_map(Item::as_command)
-                    .nth(0)
+                    .next()
                     .unwrap()
                     .raw_type
                     .span(),
@@ -564,7 +564,6 @@ pub fn implement_device(item: TokenStream) -> TokenStream {
         .items
         .iter()
         .filter_map(Item::as_command)
-        .into_iter()
         .map(|r| device_driver_generation::Command {
             name: r.name.to_string(),
             value: r.raw_value,
