@@ -1,8 +1,11 @@
 use bitvec::array::BitArray;
-use device_driver::{AsyncRegisterDevice, Register, RegisterDevice};
+use device_driver::{
+    AsyncCommandDevice, AsyncRegisterDevice, CommandDevice, Register, RegisterDevice,
+};
 
 pub struct TestDevice {
     device_memory: [u8; 128],
+    last_command: u16,
 }
 
 impl RegisterDevice for TestDevice {
@@ -65,6 +68,30 @@ impl AsyncRegisterDevice for TestDevice {
     }
 }
 
+impl CommandDevice for TestDevice {
+    type Error = ();
+
+    type RawType = u16;
+
+    fn dispatch_command(&mut self, raw_command: Self::RawType) -> Result<(), Self::Error> {
+        self.last_command = raw_command;
+
+        Ok(())
+    }
+}
+
+impl AsyncCommandDevice for TestDevice {
+    type Error = ();
+
+    type RawType = u16;
+
+    async fn dispatch_command(&mut self, raw_command: Self::RawType) -> Result<(), Self::Error> {
+        self.last_command = raw_command;
+
+        Ok(())
+    }
+}
+
 impl Default for TestDevice {
     fn default() -> Self {
         Self::new()
@@ -76,6 +103,7 @@ impl TestDevice {
         // Normally we'd take like a SPI here or something
         Self {
             device_memory: [0; 128],
+            last_command: u16::MAX,
         }
     }
 }
@@ -83,7 +111,7 @@ impl TestDevice {
 pub mod registers {
     use super::*;
 
-    device_driver_macros::implement_registers!(
+    device_driver_macros::implement_device!(
         impl TestDevice {
             register Id {
                 type RWType = ReadOnly;
@@ -117,7 +145,10 @@ pub mod registers {
                 const RESET_VALUE: u16 = 0x1234;
 
                 value: u16 = 0..16,
-            }
+            },
+            command Sleep = 0,
+            /// Let's out the magic smoke
+            command Burn = 0xDEAD
         }
     );
 }
@@ -150,6 +181,12 @@ fn main() {
 
     test_device.foo().write(|w| w).unwrap();
     assert_eq!(test_device.foo().read().unwrap().value(), 0x1234);
+
+    test_device.dispatch_sleep().unwrap();
+    assert_eq!(test_device.last_command, 0);
+
+    test_device.dispatch_burn().unwrap();
+    assert_eq!(test_device.last_command, 0xDEAD);
 }
 
 #[inline(never)]

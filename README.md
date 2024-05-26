@@ -2,8 +2,8 @@
 
 A toolkit to write better device drivers, faster.
 
-This crate is a set of traits to represent devices and registers.
-You can make use of macros to implement the registers in a convenient way.
+This crate is a set of traits to represent devices, registers and commands.
+You can make use of macros to implement the registers and commands in a convenient way.
 
 With quite some ease you can give users a blocking and an async interface to the device.
 
@@ -70,6 +70,11 @@ for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
 dual licensed as above, without any additional terms or conditions.
 
 ## Changelog
+
+### 0.6.0 (26-05-24)
+
+- *Breaking*: Renamed the macros so they don't include the word 'register'
+- Added a way to define macros
 
 ### 0.5.3 (08-01-24)
 

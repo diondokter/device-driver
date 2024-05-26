@@ -1,6 +1,6 @@
 [package]
 name = "device-driver"
-version = "0.5.3"
+version = "0.6.0"
 authors = ["Dion Dokter <diondokter@gmail.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -12,7 +12,7 @@ description = "A toolkit to write better device drivers, faster"
 readme.workspace = true
 
 [dependencies]
-device-driver-macros = { version = "0.5.3", path = "../macros" }
+device-driver-macros = { version = "0.6.0", path = "../macros" }
 
 bitvec = { version = "1.0.1", default-features = false }
 funty = { version = "2.0.0", default-features = false }
