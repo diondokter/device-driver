@@ -146,9 +146,9 @@ pub mod registers {
 
                 value: u16 = 0..16,
             },
-            command Sleep: u16 = 0,
+            command Sleep = 0,
             /// Let's out the magic smoke
-            command Burn: u16 = 0xDEAD
+            command Burn = 0xDEAD
         }
     );
 }

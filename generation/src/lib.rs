@@ -18,7 +18,6 @@ mod generation;
 pub struct Device {
     pub register_address_type: Option<BaseType>,
     pub registers: Option<RegisterCollection>,
-    pub command_raw_type: Option<BaseType>,
     pub commands: Option<CommandCollection>,
 }
 

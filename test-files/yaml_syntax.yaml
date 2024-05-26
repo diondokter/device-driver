@@ -40,7 +40,6 @@ registers:
         start: 0
         end: 16
 
-command_raw_type: u16
 commands:
   sleep:
     value: 0

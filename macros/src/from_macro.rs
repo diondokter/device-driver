@@ -59,29 +59,6 @@ impl syn::parse::Parse for DeviceImpl {
             }
         }
 
-        // Make sure all commands use the same raw type
-        if let Some(raw_type) = s
-            .items
-            .iter()
-            .filter_map(Item::as_command)
-            .nth(0)
-            .map(|r| &r.raw_type)
-        {
-            for other_raw_type in s
-                .items
-                .iter()
-                .filter_map(Item::as_command)
-                .map(|r| &r.raw_type)
-            {
-                if *other_raw_type != *raw_type {
-                    return Err(syn::Error::new(
-                        other_raw_type.span(),
-                        format!("All commands must have the same raw type. Previous type was `{}` and this is `{}`", raw_type, other_raw_type),
-                    ));
-                }
-            }
-        }
-
         Ok(s)
     }
 }
@@ -209,7 +186,6 @@ impl Register {
 
 struct Command {
     name: syn::Ident,
-    raw_type: syn::Ident,
     raw_value: u64,
     description: Option<String>,
 }
@@ -222,10 +198,6 @@ impl Command {
 
         Ok(Self {
             name: input.parse()?,
-            raw_type: {
-                input.parse::<syn::Token![:]>()?;
-                input.parse()?
-            },
             raw_value: {
                 input.parse::<syn::Token![=]>()?;
                 input.parse::<syn::LitInt>()?.base10_parse()?
@@ -534,32 +506,6 @@ pub fn implement_device(item: TokenStream) -> TokenStream {
         Some(registers)
     };
 
-    let command_raw_type = match device_impl
-        .items
-        .iter()
-        .filter_map(Item::as_command)
-        .next()
-        .map(|r| r.raw_type.to_string().as_str().try_into())
-        .transpose()
-    {
-        Ok(Some(raw_type)) => Some(raw_type),
-        Ok(None) => None,
-        Err(e) => {
-            return syn::Error::new(
-                device_impl
-                    .items
-                    .iter()
-                    .filter_map(Item::as_command)
-                    .next()
-                    .unwrap()
-                    .raw_type
-                    .span(),
-                format!("{e}"),
-            )
-            .into_compile_error();
-        }
-    };
-
     let commands: CommandCollection = device_impl
         .items
         .iter()
@@ -581,7 +527,6 @@ pub fn implement_device(item: TokenStream) -> TokenStream {
     let device = device_driver_generation::Device {
         register_address_type,
         registers,
-        command_raw_type,
         commands,
     };
 

@@ -52,7 +52,6 @@
         }
     },
 
-    "command_raw_type": "u16",
     "commands": {
         "sleep": {
             "value": 0
