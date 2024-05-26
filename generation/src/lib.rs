@@ -3,7 +3,7 @@
 use std::iter::FromIterator;
 
 use convert_case::Casing;
-use deserialization::{FieldCollection, RegisterCollection};
+use deserialization::{CommandCollection, FieldCollection, RegisterCollection};
 use indexmap::IndexMap;
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens, TokenStreamExt};
@@ -18,6 +18,8 @@ mod generation;
 pub struct Device {
     pub register_address_type: Option<BaseType>,
     pub registers: Option<RegisterCollection>,
+    pub command_raw_type: Option<BaseType>,
+    pub commands: Option<CommandCollection>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
@@ -71,6 +73,29 @@ impl Ord for Field {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.start
             .cmp(&other.start)
+            .then_with(|| self.name.cmp(&other.name))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Command {
+    #[serde(skip)]
+    pub name: String,
+    pub value: u64,
+    pub description: Option<String>,
+}
+
+impl PartialOrd for Command {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Command {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.value
+            .cmp(&other.value)
             .then_with(|| self.name.cmp(&other.name))
     }
 }

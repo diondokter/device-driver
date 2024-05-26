@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use indexmap::IndexMap;
 use proc_macro2::Span;
 
-use crate::{EnumVariant, EnumVariantValue, Field, Register, TypePath, TypePathOrEnum};
+use crate::{Command, EnumVariant, EnumVariantValue, Field, Register, TypePath, TypePathOrEnum};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RegisterCollection(Vec<Register>);
@@ -80,6 +80,46 @@ impl<'de> serde::Deserialize<'de> for FieldCollection {
         Ok(Self(fields))
     }
 }
+
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CommandCollection(Vec<Command>);
+
+impl From<Vec<Command>> for CommandCollection {
+    fn from(value: Vec<Command>) -> Self {
+        Self(value)
+    }
+}
+
+impl std::ops::Deref for CommandCollection {
+    type Target = Vec<Command>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for CommandCollection {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let registers = HashMap::<String, Command>::deserialize(deserializer)?;
+
+        let mut registers: Vec<_> = registers
+            .into_iter()
+            .map(|(name, mut register)| {
+                register.name = name;
+                register
+            })
+            .collect();
+
+        registers.sort();
+
+        Ok(Self(registers))
+    }
+}
+
 
 impl<'de> serde::Deserialize<'de> for TypePathOrEnum {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>

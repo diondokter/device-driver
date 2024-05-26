@@ -1,6 +1,6 @@
 use device_driver_generation::{
-    deserialization::RegisterCollection, BaseType, EnumVariant, EnumVariantValue, RWType,
-    ResetValue, TypePath,
+    deserialization::{CommandCollection, RegisterCollection},
+    BaseType, EnumVariant, EnumVariantValue, RWType, ResetValue, TypePath,
 };
 use proc_macro2::TokenStream;
 use quote::ToTokens;
@@ -12,7 +12,7 @@ struct DeviceImpl {
     impl_generics: syn::Generics,
     device_type: syn::Type,
 
-    registers: Punctuated<Register, syn::Token![,]>,
+    items: Punctuated<Item, syn::Token![,]>,
 }
 
 impl syn::parse::Parse for DeviceImpl {
@@ -27,17 +27,29 @@ impl syn::parse::Parse for DeviceImpl {
 
         impl_generics.where_clause = input.parse().ok();
 
-        let registers;
-        braced!(registers in input);
+        let items;
+        braced!(items in input);
 
         let s = Self {
             impl_generics,
             device_type: device_ident,
-            registers: registers.parse_terminated(Register::parse, syn::Token![,])?,
+            items: items.parse_terminated(Item::parse, syn::Token![,])?,
         };
 
-        if let Some(address_type) = s.registers.first().map(|r| &r.address_type) {
-            for other_address_type in s.registers.iter().map(|r| &r.address_type) {
+        // Make sure all registers use the same address type
+        if let Some(address_type) = s
+            .items
+            .iter()
+            .filter_map(Item::as_register)
+            .nth(0)
+            .map(|r| &r.address_type)
+        {
+            for other_address_type in s
+                .items
+                .iter()
+                .filter_map(Item::as_register)
+                .map(|r| &r.address_type)
+            {
                 if *other_address_type != *address_type {
                     return Err(syn::Error::new(
                         other_address_type.span(),
@@ -47,7 +59,70 @@ impl syn::parse::Parse for DeviceImpl {
             }
         }
 
+        // Make sure all commands use the same raw type
+        if let Some(raw_type) = s
+            .items
+            .iter()
+            .filter_map(Item::as_command)
+            .nth(0)
+            .map(|r| &r.raw_type)
+        {
+            for other_raw_type in s
+                .items
+                .iter()
+                .filter_map(Item::as_command)
+                .map(|r| &r.raw_type)
+            {
+                if *other_raw_type != *raw_type {
+                    return Err(syn::Error::new(
+                        other_raw_type.span(),
+                        format!("All commands must have the same raw type. Previous type was `{}` and this is `{}`", raw_type, other_raw_type),
+                    ));
+                }
+            }
+        }
+
         Ok(s)
+    }
+}
+
+enum Item {
+    Register(Register),
+    Command(Command),
+}
+
+impl Item {
+    fn as_register(&self) -> Option<&Register> {
+        if let Self::Register(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    fn as_command(&self) -> Option<&Command> {
+        if let Self::Command(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+}
+
+impl syn::parse::Parse for Item {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let attributes = syn::Attribute::parse_outer(input)?;
+
+        if input.peek(kw::register) {
+            Ok(Self::Register(Register::parse(input, attributes)?))
+        } else if input.peek(kw::command) {
+            Ok(Self::Command(Command::parse(input, attributes)?))
+        } else {
+            Err(syn::Error::new(
+                input.span(),
+                "Must be `register` or `command`",
+            ))
+        }
     }
 }
 
@@ -62,11 +137,9 @@ struct Register {
     fields: Punctuated<Field, syn::Token![,]>,
 }
 
-impl syn::parse::Parse for Register {
-    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let register_attributes = syn::Attribute::parse_outer(input)?;
-
-        let description = doc_string_from_attrs(&register_attributes)?;
+impl Register {
+    fn parse(input: syn::parse::ParseStream, attributes: Vec<Attribute>) -> syn::Result<Self> {
+        let description = doc_string_from_attrs(&attributes)?;
 
         input.parse::<kw::register>()?;
 
@@ -128,7 +201,36 @@ impl syn::parse::Parse for Register {
                 }
             },
             description,
-            fields: contents.parse_terminated(Field::parse, syn::Token![,])?,
+            fields: contents
+                .parse_terminated(<Field as syn::parse::Parse>::parse, syn::Token![,])?,
+        })
+    }
+}
+
+struct Command {
+    name: syn::Ident,
+    raw_type: syn::Ident,
+    raw_value: u64,
+    description: Option<String>,
+}
+
+impl Command {
+    fn parse(input: syn::parse::ParseStream, attributes: Vec<Attribute>) -> syn::Result<Self> {
+        let description = doc_string_from_attrs(&attributes)?;
+
+        input.parse::<kw::command>()?;
+
+        Ok(Self {
+            name: input.parse()?,
+            raw_type: {
+                input.parse::<syn::Token![:]>()?;
+                input.parse()?
+            },
+            raw_value: {
+                input.parse::<syn::Token![=]>()?;
+                input.parse::<syn::LitInt>()?.base10_parse()?
+            },
+            description,
         })
     }
 }
@@ -244,6 +346,7 @@ fn parse_reset_value(t: syn::Type, v: Expr) -> Result<Option<ResetValue>, syn::E
     })
 }
 
+#[derive(Clone)]
 struct Field {
     name: syn::Ident,
     description: Option<String>,
@@ -286,6 +389,7 @@ impl syn::parse::Parse for Field {
     }
 }
 
+#[derive(Clone)]
 enum ConversionType {
     None,
     Existing(syn::Path),
@@ -344,6 +448,7 @@ impl syn::parse::Parse for ConversionType {
 
 mod kw {
     syn::custom_keyword!(register);
+    syn::custom_keyword!(command);
     syn::custom_keyword!(RWType);
     syn::custom_keyword!(ADDRESS);
     syn::custom_keyword!(SIZE_BITS);
@@ -357,32 +462,46 @@ pub fn implement_device(item: TokenStream) -> TokenStream {
     };
 
     let register_address_type = match device_impl
-        .registers
-        .first()
+        .items
+        .iter()
+        .filter_map(Item::as_register)
+        .nth(0)
         .map(|r| r.address_type.to_string().as_str().try_into())
         .transpose()
     {
         Ok(Some(address_type)) => Some(address_type),
         Ok(None) => None,
         Err(e) => {
-            return syn::Error::new(device_impl.registers[0].address_type.span(), format!("{e}"))
-                .into_compile_error();
+            return syn::Error::new(
+                device_impl
+                    .items
+                    .iter()
+                    .filter_map(Item::as_register)
+                    .nth(0)
+                    .unwrap()
+                    .address_type
+                    .span(),
+                format!("{e}"),
+            )
+            .into_compile_error();
         }
     };
 
     let registers: RegisterCollection = device_impl
-        .registers
-        .into_iter()
+        .items
+        .iter()
+        .filter_map(Item::as_register)
         .map(|r| device_driver_generation::Register {
             name: r.name.to_string(),
             rw_type: r.rw_type,
             address: r.address_value,
             size_bits: r.size_bits_value,
-            description: r.description,
-            reset_value: r.reset_value,
+            description: r.description.clone(),
+            reset_value: r.reset_value.clone(),
             fields: r
                 .fields
-                .into_iter()
+                .iter()
+                .cloned()
                 .map(|f| device_driver_generation::Field {
                     name: f.name.to_string(),
                     description: f.description,
@@ -415,9 +534,56 @@ pub fn implement_device(item: TokenStream) -> TokenStream {
         Some(registers)
     };
 
+    let command_raw_type = match device_impl
+        .items
+        .iter()
+        .filter_map(Item::as_command)
+        .nth(0)
+        .map(|r| r.raw_type.to_string().as_str().try_into())
+        .transpose()
+    {
+        Ok(Some(raw_type)) => Some(raw_type),
+        Ok(None) => None,
+        Err(e) => {
+            return syn::Error::new(
+                device_impl
+                    .items
+                    .iter()
+                    .filter_map(Item::as_command)
+                    .nth(0)
+                    .unwrap()
+                    .raw_type
+                    .span(),
+                format!("{e}"),
+            )
+            .into_compile_error();
+        }
+    };
+
+    let commands: CommandCollection = device_impl
+        .items
+        .iter()
+        .filter_map(Item::as_command)
+        .into_iter()
+        .map(|r| device_driver_generation::Command {
+            name: r.name.to_string(),
+            value: r.raw_value,
+            description: r.description.clone(),
+        })
+        .collect::<Vec<_>>()
+        .into();
+
+    let commands = if commands.is_empty() {
+        None
+    } else {
+        Some(commands)
+    };
+
     let device = device_driver_generation::Device {
         register_address_type,
         registers,
+        command_raw_type,
+        commands,
     };
 
     let item = syn::ItemImpl {
