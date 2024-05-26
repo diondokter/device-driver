@@ -10,14 +10,14 @@ use quote::{quote, ToTokens, TokenStreamExt};
 
 pub use deserialization::ResetValue;
 
-mod deserialization;
+pub mod deserialization;
 mod generation;
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Device {
-    pub address_type: BaseType,
-    pub registers: RegisterCollection,
+    pub register_address_type: Option<BaseType>,
+    pub registers: Option<RegisterCollection>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]

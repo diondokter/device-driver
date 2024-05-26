@@ -1,5 +1,6 @@
 use device_driver_generation::{
-    BaseType, EnumVariant, EnumVariantValue, RWType, ResetValue, TypePath,
+    deserialization::RegisterCollection, BaseType, EnumVariant, EnumVariantValue, RWType,
+    ResetValue, TypePath,
 };
 use proc_macro2::TokenStream;
 use quote::ToTokens;
@@ -349,66 +350,74 @@ mod kw {
     syn::custom_keyword!(RESET_VALUE);
 }
 
-pub fn implement_registers(item: TokenStream) -> TokenStream {
+pub fn implement_device(item: TokenStream) -> TokenStream {
     let device_impl = match syn::parse2::<DeviceImpl>(item) {
         Ok(device_impl) => device_impl,
         Err(e) => return e.into_compile_error(),
     };
 
-    let address_type = match device_impl
+    let register_address_type = match device_impl
         .registers
         .first()
         .map(|r| r.address_type.to_string().as_str().try_into())
         .transpose()
     {
-        Ok(Some(address_type)) => address_type,
-        Ok(None) => BaseType::default(),
+        Ok(Some(address_type)) => Some(address_type),
+        Ok(None) => None,
         Err(e) => {
             return syn::Error::new(device_impl.registers[0].address_type.span(), format!("{e}"))
                 .into_compile_error();
         }
     };
 
+    let registers: RegisterCollection = device_impl
+        .registers
+        .into_iter()
+        .map(|r| device_driver_generation::Register {
+            name: r.name.to_string(),
+            rw_type: r.rw_type,
+            address: r.address_value,
+            size_bits: r.size_bits_value,
+            description: r.description,
+            reset_value: r.reset_value,
+            fields: r
+                .fields
+                .into_iter()
+                .map(|f| device_driver_generation::Field {
+                    name: f.name.to_string(),
+                    description: f.description,
+                    register_type: f.register_type,
+                    conversion_type: match f.conversion_type {
+                        ConversionType::None => None,
+                        ConversionType::Existing(path) => {
+                            Some(device_driver_generation::TypePathOrEnum::TypePath(
+                                TypePath(path.to_token_stream().to_string()),
+                            ))
+                        }
+                        ConversionType::Enum(enum_def) => {
+                            Some(device_driver_generation::TypePathOrEnum::Enum(
+                                FromIterator::from_iter(enum_def),
+                            ))
+                        }
+                    },
+                    start: f.bit_start,
+                    end: f.bit_end,
+                })
+                .collect::<Vec<_>>()
+                .into(),
+        })
+        .collect::<Vec<_>>()
+        .into();
+
+    let registers = if registers.is_empty() {
+        None
+    } else {
+        Some(registers)
+    };
+
     let device = device_driver_generation::Device {
-        address_type,
-        registers: device_impl
-            .registers
-            .into_iter()
-            .map(|r| device_driver_generation::Register {
-                name: r.name.to_string(),
-                rw_type: r.rw_type,
-                address: r.address_value,
-                size_bits: r.size_bits_value,
-                description: r.description,
-                reset_value: r.reset_value,
-                fields: r
-                    .fields
-                    .into_iter()
-                    .map(|f| device_driver_generation::Field {
-                        name: f.name.to_string(),
-                        description: f.description,
-                        register_type: f.register_type,
-                        conversion_type: match f.conversion_type {
-                            ConversionType::None => None,
-                            ConversionType::Existing(path) => {
-                                Some(device_driver_generation::TypePathOrEnum::TypePath(
-                                    TypePath(path.to_token_stream().to_string()),
-                                ))
-                            }
-                            ConversionType::Enum(enum_def) => {
-                                Some(device_driver_generation::TypePathOrEnum::Enum(
-                                    FromIterator::from_iter(enum_def),
-                                ))
-                            }
-                        },
-                        start: f.bit_start,
-                        end: f.bit_end,
-                    })
-                    .collect::<Vec<_>>()
-                    .into(),
-            })
-            .collect::<Vec<_>>()
-            .into(),
+        register_address_type,
+        registers,
     };
 
     let item = syn::ItemImpl {

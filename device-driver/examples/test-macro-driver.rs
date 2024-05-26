@@ -83,7 +83,7 @@ impl TestDevice {
 pub mod registers {
     use super::*;
 
-    device_driver_macros::implement_registers!(
+    device_driver_macros::implement_device!(
         impl TestDevice {
             register Id {
                 type RWType = ReadOnly;

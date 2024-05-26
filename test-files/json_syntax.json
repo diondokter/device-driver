@@ -1,5 +1,5 @@
 {
-    "address_type": "u8",
+    "register_address_type": "u8",
     "registers": {
         "id": {
             "description": "Doc comment for the ID register",

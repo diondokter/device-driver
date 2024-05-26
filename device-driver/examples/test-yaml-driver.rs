@@ -77,7 +77,7 @@ impl TestDevice {
 pub mod registers {
     use super::*;
 
-    #[device_driver_macros::implement_registers_from_file(yaml = "test-files/yaml_syntax.yaml")]
+    #[device_driver_macros::implement_device_from_file(yaml = "test-files/yaml_syntax.yaml")]
     impl TestDevice {}
 }
 

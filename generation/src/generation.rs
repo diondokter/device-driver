@@ -16,20 +16,26 @@ impl Device {
     }
 
     pub fn generate_device_register_functions(&self) -> Vec<syn::ImplItem> {
-        self.registers
-            .iter()
-            .map(|register| register.generate_register_function())
-            .collect()
+        if let Some(registers) = self.registers.as_ref() {
+            registers
+                .iter()
+                .map(|register| register.generate_register_function())
+                .collect()
+        } else {
+            Vec::new()
+        }
     }
 
     pub fn generate_definitions(&self) -> TokenStream {
         let mut stream = TokenStream::new();
 
-        stream.append_all(
-            self.registers
-                .iter()
-                .map(|register| register.generate_definition(self)),
-        );
+        if let Some(registers) = self.registers.as_ref() {
+            stream.append_all(
+                registers
+                    .iter()
+                    .map(|register| register.generate_definition(self)),
+            );
+        }
 
         stream
     }
@@ -93,7 +99,12 @@ impl Register {
                 .map(|ct| ct.generate_type_definition(field.register_type.into_type(), &field.name))
         }));
 
-        let address_type = device.address_type.into_type();
+        let address_type = if let Some(register_address_type) = device.register_address_type {
+            register_address_type.into_type()
+        } else {
+            return syn::Error::new(Span::call_site(), "register_address_type is not specified")
+                .to_compile_error();
+        };
         let address = proc_macro2::Literal::u64_unsuffixed(*address);
         let rw_type = rw_type.into_type();
         let size_bits_lit = proc_macro2::Literal::u64_unsuffixed(*size_bits);

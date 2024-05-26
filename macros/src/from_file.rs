@@ -38,7 +38,7 @@ impl syn::parse::Parse for KeyValue {
     }
 }
 
-pub fn implement_registers_from_file(attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn implement_device_from_file(attr: TokenStream, item: TokenStream) -> TokenStream {
     let key_value = syn::parse_macro_input!(attr as AttrParams).key_value;
     let item = syn::parse_macro_input!(item as syn::ItemImpl);
 

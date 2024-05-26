@@ -77,7 +77,7 @@ impl TestDevice {
 pub mod registers {
     use super::*;
 
-    #[device_driver_macros::implement_registers_from_file(json = "test-files/json_syntax.json")]
+    #[device_driver_macros::implement_device_from_file(json = "test-files/json_syntax.json")]
     impl TestDevice {}
 }
 
