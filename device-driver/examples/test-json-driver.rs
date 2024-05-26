@@ -1,8 +1,9 @@
 use bitvec::array::BitArray;
-use device_driver::{AsyncRegisterDevice, Register, RegisterDevice};
+use device_driver::{AsyncCommandDevice, AsyncRegisterDevice, CommandDevice, Register, RegisterDevice};
 
 pub struct TestDevice {
     device_memory: [u8; 128],
+    last_command: u16,
 }
 
 impl RegisterDevice for TestDevice {
@@ -65,11 +66,36 @@ impl AsyncRegisterDevice for TestDevice {
     }
 }
 
+impl CommandDevice for TestDevice {
+    type Error = ();
+
+    type RawType = u16;
+
+    fn dispatch_command(&mut self, raw_command: Self::RawType) -> Result<(), Self::Error> {
+        self.last_command = raw_command;
+
+        Ok(())
+    }
+}
+
+impl AsyncCommandDevice for TestDevice {
+    type Error = ();
+
+    type RawType = u16;
+
+    async fn dispatch_command(&mut self, raw_command: Self::RawType) -> Result<(), Self::Error> {
+        self.last_command = raw_command;
+
+        Ok(())
+    }
+}
+
 impl TestDevice {
     pub fn new() -> Self {
         // Normally we'd take like a SPI here or something
         Self {
             device_memory: [0; 128],
+            last_command: u16::MAX,
         }
     }
 }
@@ -97,6 +123,12 @@ fn main() {
 
     write_baud(&mut test_device);
     assert_eq!(test_device.baudrate().read().unwrap().value(), 12);
+
+    test_device.dispatch_sleep().unwrap();
+    assert_eq!(test_device.last_command, 0);
+
+    test_device.dispatch_burn().unwrap();
+    assert_eq!(test_device.last_command, 0xDEAD);
 }
 
 #[inline(never)]

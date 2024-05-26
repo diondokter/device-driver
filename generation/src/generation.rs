@@ -1,4 +1,4 @@
-use crate::{BaseType, Device, Field, Register};
+use crate::{BaseType, Command, Device, Field, Register};
 
 use convert_case::{Case, Casing};
 use proc_macro2::{Span, TokenStream};
@@ -10,20 +10,9 @@ impl Device {
             existing_impl.trait_.is_none(),
             "Device impl must not be a block that impl's a trait"
         );
-        existing_impl.items = self.generate_device_register_functions();
+        existing_impl.items = self.generate_device_functions();
 
         existing_impl.into_token_stream()
-    }
-
-    pub fn generate_device_register_functions(&self) -> Vec<syn::ImplItem> {
-        if let Some(registers) = self.registers.as_ref() {
-            registers
-                .iter()
-                .map(|register| register.generate_register_function())
-                .collect()
-        } else {
-            Vec::new()
-        }
     }
 
     pub fn generate_definitions(&self) -> TokenStream {
@@ -38,6 +27,66 @@ impl Device {
         }
 
         stream
+    }
+
+    fn generate_device_functions(&self) -> Vec<syn::ImplItem> {
+        let mut result = Vec::new();
+
+        if let Some(registers) = self.registers.as_ref() {
+            result.extend(
+                registers
+                    .iter()
+                    .map(|register| register.generate_register_function()),
+            );
+        }
+
+        if let Some(commands) = self.commands.as_ref() {
+            result.extend(
+                commands
+                    .iter()
+                    .map(|command| command.generate_command_function())
+                    .flatten(),
+            );
+        }
+
+        result
+    }
+}
+
+impl Command {
+    fn generate_command_function(&self) -> Vec<syn::ImplItem> {
+        let function_name = syn::Ident::new(
+            &format!("dispatch_{}", self.name).to_case(Case::Snake),
+            Span::call_site(),
+        );
+        let async_function_name = syn::Ident::new(
+            &format!("dispatch_{}_async", self.name).to_case(Case::Snake),
+            Span::call_site(),
+        );
+
+        let doc_attribute = if let Some(description) = self.description.as_ref() {
+            quote! { #[doc = #description] }
+        } else {
+            quote!()
+        };
+
+        let value = proc_macro2::Literal::u64_unsuffixed(self.value);
+
+        [
+            syn::parse_quote! {
+                #doc_attribute
+                pub fn #function_name(&mut self) -> Result<(), <Self as device_driver::CommandDevice>::Error> {
+                    device_driver::CommandDevice::dispatch_command(self, #value)
+                }
+            },
+
+            syn::parse_quote! {
+                #doc_attribute
+                pub async fn #async_function_name(&mut self) -> Result<(), <Self as device_driver::CommandDevice>::Error> {
+                    device_driver::AsyncCommandDevice::dispatch_command(self, #value).await
+                }
+            }
+        ].to_vec()
     }
 }
 
