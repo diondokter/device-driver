@@ -557,7 +557,7 @@ pub fn implement_device(item: TokenStream) -> TokenStream {
         .filter_map(Item::as_command)
         .map(|r| device_driver_generation::Command {
             name: r.name.to_string(),
-            value: r.raw_value,
+            id: r.raw_value,
             description: r.description.clone(),
         })
         .collect::<Vec<_>>()
@@ -575,7 +575,7 @@ pub fn implement_device(item: TokenStream) -> TokenStream {
         .filter_map(Item::as_buffer)
         .map(|r| device_driver_generation::Buffer {
             name: r.name.to_string(),
-            value: r.raw_value,
+            id: r.raw_value,
             description: r.description.clone(),
             rw_type: r.rw_type,
         })

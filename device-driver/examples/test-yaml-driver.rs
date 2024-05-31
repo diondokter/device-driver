@@ -71,9 +71,9 @@ impl AsyncRegisterDevice for TestDevice {
 impl CommandDevice for TestDevice {
     type Error = ();
 
-    type RawType = u16;
+    type Id = u16;
 
-    fn dispatch_command(&mut self, raw_command: Self::RawType) -> Result<(), Self::Error> {
+    fn dispatch_command(&mut self, raw_command: Self::Id) -> Result<(), Self::Error> {
         self.last_command = raw_command;
 
         Ok(())
@@ -83,9 +83,9 @@ impl CommandDevice for TestDevice {
 impl AsyncCommandDevice for TestDevice {
     type Error = ();
 
-    type RawType = u16;
+    type Id = u16;
 
-    async fn dispatch_command(&mut self, raw_command: Self::RawType) -> Result<(), Self::Error> {
+    async fn dispatch_command(&mut self, raw_command: Self::Id) -> Result<(), Self::Error> {
         self.last_command = raw_command;
 
         Ok(())

@@ -69,7 +69,7 @@ impl Command {
             quote!()
         };
 
-        let value = proc_macro2::Literal::u64_unsuffixed(self.value);
+        let value = proc_macro2::Literal::u64_unsuffixed(self.id);
 
         [
             syn::parse_quote! {

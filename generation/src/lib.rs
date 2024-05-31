@@ -82,7 +82,7 @@ impl Ord for Field {
 pub struct Command {
     #[serde(skip)]
     pub name: String,
-    pub value: u64,
+    pub id: u64,
     pub description: Option<String>,
 }
 
@@ -94,8 +94,8 @@ impl PartialOrd for Command {
 
 impl Ord for Command {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.value
-            .cmp(&other.value)
+        self.id
+            .cmp(&other.id)
             .then_with(|| self.name.cmp(&other.name))
     }
 }
@@ -105,7 +105,7 @@ impl Ord for Command {
 pub struct Buffer {
     #[serde(skip)]
     pub name: String,
-    pub value: u64,
+    pub id: u64,
     pub description: Option<String>,
     pub rw_type: RWType,
 }
@@ -118,8 +118,8 @@ impl PartialOrd for Buffer {
 
 impl Ord for Buffer {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.value
-            .cmp(&other.value)
+        self.id
+            .cmp(&other.id)
             .then_with(|| self.name.cmp(&other.name))
     }
 }

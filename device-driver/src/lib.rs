@@ -12,3 +12,37 @@ mod register;
 pub use register::*;
 mod command;
 pub use command::*;
+mod buffer;
+pub use buffer::*;
+
+#[doc(hidden)]
+pub struct WriteOnly;
+#[doc(hidden)]
+pub struct ReadOnly;
+#[doc(hidden)]
+pub struct ReadWrite;
+#[doc(hidden)]
+pub struct ReadClear;
+#[doc(hidden)]
+pub struct ClearOnly;
+
+#[doc(hidden)]
+pub trait ReadCapability {}
+#[doc(hidden)]
+pub trait WriteCapability {}
+#[doc(hidden)]
+pub trait ClearCapability {}
+
+impl WriteCapability for WriteOnly {}
+impl ClearCapability for WriteOnly {}
+
+impl ReadCapability for ReadOnly {}
+
+impl WriteCapability for ReadWrite {}
+impl ReadCapability for ReadWrite {}
+impl ClearCapability for ReadWrite {}
+
+impl ReadCapability for ReadClear {}
+impl ClearCapability for ReadClear {}
+
+impl ClearCapability for ClearOnly {}

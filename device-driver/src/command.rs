@@ -4,11 +4,11 @@
 pub trait CommandDevice {
     /// The error type
     type Error;
-    /// The inner type of the command (that which is sent over the wire to the device)
-    type RawType;
+    /// The Id type of the command (that which is sent over the wire to the device)
+    type Id;
 
     /// Dispatch a command on the device by sending the command.
-    fn dispatch_command(&mut self, raw_command: Self::RawType) -> Result<(), Self::Error>;
+    fn dispatch_command(&mut self, id: Self::Id) -> Result<(), Self::Error>;
 }
 
 /// A trait to represent the interface to the device.
@@ -17,9 +17,9 @@ pub trait CommandDevice {
 pub trait AsyncCommandDevice {
     /// The error type
     type Error;
-    /// The inner type of the command (that which is sent over the wire to the device)
-    type RawType;
+    /// The Id type of the command (that which is sent over the wire to the device)
+    type Id;
 
     /// Dispatch a command on the device by sending the command.
-    async fn dispatch_command(&mut self, raw_command: Self::RawType) -> Result<(), Self::Error>;
+    async fn dispatch_command(&mut self, id: Self::Id) -> Result<(), Self::Error>;
 }

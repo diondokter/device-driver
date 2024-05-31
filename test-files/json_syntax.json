@@ -54,22 +54,22 @@
 
     "commands": {
         "sleep": {
-            "value": 0
+            "id": 0
         },
         "burn": {
             "description": "Let's out the magic smoke",
-            "value": 57005
+            "id": 57005
         }
     },
 
     "buffers": {
         "terminal": {
-            "value": 123,
+            "id": 123,
             "rw_type": "ro"
         },
         "fifo": {
             "description": "A buffer you can write to and read from",
-            "value": 124,
+            "id": 124,
             "rw_type": "rw"
         }
     }
