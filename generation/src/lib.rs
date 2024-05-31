@@ -82,7 +82,7 @@ impl Ord for Field {
 pub struct Command {
     #[serde(skip)]
     pub name: String,
-    pub id: u64,
+    pub id: u32,
     pub description: Option<String>,
 }
 
@@ -105,7 +105,7 @@ impl Ord for Command {
 pub struct Buffer {
     #[serde(skip)]
     pub name: String,
-    pub id: u64,
+    pub id: u32,
     pub description: Option<String>,
     pub rw_type: RWType,
 }

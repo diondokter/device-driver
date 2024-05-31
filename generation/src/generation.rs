@@ -1,4 +1,4 @@
-use crate::{BaseType, Command, Device, Field, Register};
+use crate::{BaseType, Buffer, Command, Device, Field, Register};
 
 use convert_case::{Case, Casing};
 use proc_macro2::{Span, TokenStream};
@@ -48,6 +48,14 @@ impl Device {
             );
         }
 
+        if let Some(buffers) = self.buffers.as_ref() {
+            result.extend(
+                buffers
+                    .iter()
+                    .map(|buffer| buffer.generate_buffer_function()),
+            );
+        }
+
         result
     }
 }
@@ -69,23 +77,46 @@ impl Command {
             quote!()
         };
 
-        let value = proc_macro2::Literal::u64_unsuffixed(self.id);
+        let id = proc_macro2::Literal::u32_unsuffixed(self.id);
 
         [
             syn::parse_quote! {
                 #doc_attribute
                 pub fn #function_name(&mut self) -> Result<(), <Self as device_driver::CommandDevice>::Error> {
-                    device_driver::CommandDevice::dispatch_command(self, #value)
+                    device_driver::CommandDevice::dispatch_command(self, #id)
                 }
             },
 
             syn::parse_quote! {
                 #doc_attribute
                 pub async fn #async_function_name(&mut self) -> Result<(), <Self as device_driver::CommandDevice>::Error> {
-                    device_driver::AsyncCommandDevice::dispatch_command(self, #value).await
+                    device_driver::AsyncCommandDevice::dispatch_command(self, #id).await
                 }
             }
         ].to_vec()
+    }
+}
+
+impl Buffer {
+    fn generate_buffer_function(&self) -> syn::ImplItem {
+        let function_name =
+            syn::Ident::new(&self.name.as_str().to_case(Case::Snake), Span::call_site());
+
+        let doc_attribute = if let Some(description) = self.description.as_ref() {
+            quote! { #[doc = #description] }
+        } else {
+            quote!()
+        };
+
+        let id = proc_macro2::Literal::u32_unsuffixed(self.id);
+        let rw_type = self.rw_type.into_type();
+
+        syn::parse_quote! {
+            #doc_attribute
+            pub fn #function_name<'a>(&'a mut self) -> device_driver::BufferOperation<'a, Self, #rw_type> {
+                device_driver::BufferOperation::new(self, #id)
+            }
+        }
     }
 }
 

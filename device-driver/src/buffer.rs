@@ -1,32 +1,45 @@
+use crate::{ReadCapability, WriteCapability};
 use core::marker::PhantomData;
-
 use embedded_io::ErrorKind;
 
-use crate::{ReadCapability, WriteCapability};
-
+/// A trait to represent the interface to the device.
+///
+/// This is called to read from and write to buffers.
 pub trait BufferDevice {
-    type Id: Copy;
-
-    fn write(&mut self, id: Self::Id, buf: &[u8]) -> Result<usize, ErrorKind>;
-    fn read(&mut self, id: Self::Id, buf: &mut [u8]) -> Result<usize, ErrorKind>;
+    /// Write to the buffer with the given id.
+    ///
+    /// This interface should adhere to [embedded_io::Write::write].
+    fn write(&mut self, id: u32, buf: &[u8]) -> Result<usize, ErrorKind>;
+    /// Read from the buffer with the given id.
+    ///
+    /// This interface should adhere to [embedded_io::Read::read].
+    fn read(&mut self, id: u32, buf: &mut [u8]) -> Result<usize, ErrorKind>;
 }
 
+/// A trait to represent the interface to the device.
+///
+/// This is called to read from and write to buffers.
 pub trait AsyncBufferDevice {
-    type Id: Copy;
-
-    async fn write(&mut self, id: Self::Id, buf: &[u8]) -> Result<usize, ErrorKind>;
-    async fn read(&mut self, id: Self::Id, buf: &mut [u8]) -> Result<usize, ErrorKind>;
+    /// Write to the buffer with the given id.
+    ///
+    /// This interface should adhere to [embedded_io_async::Write::write].
+    async fn write(&mut self, id: u32, buf: &[u8]) -> Result<usize, ErrorKind>;
+    /// Read from the buffer with the given id.
+    ///
+    /// This interface should adhere to [embedded_io_async::Read::read].
+    async fn read(&mut self, id: u32, buf: &mut [u8]) -> Result<usize, ErrorKind>;
 }
 
-pub struct BufferOperation<'a, D, Id, RWType> {
+/// Intermediate type for doing buffer operations
+pub struct BufferOperation<'a, D, RWType> {
     device: &'a mut D,
-    id: Id,
+    id: u32,
     _phantom: PhantomData<RWType>,
 }
 
-impl<'a, D, Id, RWType> BufferOperation<'a, D, Id, RWType> {
+impl<'a, D, RWType> BufferOperation<'a, D, RWType> {
     #[doc(hidden)]
-    pub fn new(device: &'a mut D, id: Id) -> Self {
+    pub fn new(device: &'a mut D, id: u32) -> Self {
         Self {
             device,
             id,
@@ -35,13 +48,13 @@ impl<'a, D, Id, RWType> BufferOperation<'a, D, Id, RWType> {
     }
 }
 
-impl<'a, D, Id, RWType> embedded_io::ErrorType for BufferOperation<'a, D, Id, RWType> {
+impl<'a, D, RWType> embedded_io::ErrorType for BufferOperation<'a, D, RWType> {
     type Error = ErrorKind;
 }
 
-impl<'a, D, Id: Copy, RWType> embedded_io::Read for BufferOperation<'a, D, Id, RWType>
+impl<'a, D: Copy, RWType> embedded_io::Read for BufferOperation<'a, D, RWType>
 where
-    D: BufferDevice<Id = Id>,
+    D: BufferDevice,
     RWType: ReadCapability,
 {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
@@ -49,9 +62,9 @@ where
     }
 }
 
-impl<'a, D, Id: Copy, RWType> embedded_io_async::Read for BufferOperation<'a, D, Id, RWType>
+impl<'a, D: Copy, RWType> embedded_io_async::Read for BufferOperation<'a, D, RWType>
 where
-    D: AsyncBufferDevice<Id = Id>,
+    D: AsyncBufferDevice,
     RWType: ReadCapability,
 {
     async fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
@@ -59,9 +72,9 @@ where
     }
 }
 
-impl<'a, D, Id: Copy, RWType> embedded_io::Write for BufferOperation<'a, D, Id, RWType>
+impl<'a, D: Copy, RWType> embedded_io::Write for BufferOperation<'a, D, RWType>
 where
-    D: BufferDevice<Id = Id>,
+    D: BufferDevice,
     RWType: WriteCapability,
 {
     fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
@@ -73,9 +86,9 @@ where
     }
 }
 
-impl<'a, D, Id: Copy, RWType> embedded_io_async::Write for BufferOperation<'a, D, Id, RWType>
+impl<'a, D: Copy, RWType> embedded_io_async::Write for BufferOperation<'a, D, RWType>
 where
-    D: AsyncBufferDevice<Id = Id>,
+    D: AsyncBufferDevice,
     RWType: WriteCapability,
 {
     async fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {

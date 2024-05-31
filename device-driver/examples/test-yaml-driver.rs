@@ -5,7 +5,7 @@ use device_driver::{
 
 pub struct TestDevice {
     device_memory: [u8; 128],
-    last_command: u16,
+    last_command: u32,
 }
 
 impl RegisterDevice for TestDevice {
@@ -71,10 +71,8 @@ impl AsyncRegisterDevice for TestDevice {
 impl CommandDevice for TestDevice {
     type Error = ();
 
-    type Id = u16;
-
-    fn dispatch_command(&mut self, raw_command: Self::Id) -> Result<(), Self::Error> {
-        self.last_command = raw_command;
+    fn dispatch_command(&mut self, id: u32) -> Result<(), Self::Error> {
+        self.last_command = id;
 
         Ok(())
     }
@@ -83,10 +81,8 @@ impl CommandDevice for TestDevice {
 impl AsyncCommandDevice for TestDevice {
     type Error = ();
 
-    type Id = u16;
-
-    async fn dispatch_command(&mut self, raw_command: Self::Id) -> Result<(), Self::Error> {
-        self.last_command = raw_command;
+    async fn dispatch_command(&mut self, id: u32) -> Result<(), Self::Error> {
+        self.last_command = id;
 
         Ok(())
     }
@@ -97,7 +93,7 @@ impl TestDevice {
         // Normally we'd take like a SPI here or something
         Self {
             device_memory: [0; 128],
-            last_command: u16::MAX,
+            last_command: u32::MAX,
         }
     }
 }

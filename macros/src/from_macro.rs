@@ -197,7 +197,7 @@ impl Register {
 
 struct Command {
     name: syn::Ident,
-    raw_value: u64,
+    raw_value: u32,
     description: Option<String>,
 }
 
@@ -220,7 +220,7 @@ impl Command {
 
 struct Buffer {
     name: syn::Ident,
-    raw_value: u64,
+    raw_value: u32,
     description: Option<String>,
     rw_type: RWType,
 }
