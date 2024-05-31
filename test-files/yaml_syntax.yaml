@@ -46,3 +46,12 @@ commands:
   burn:
     description: Let's out the magic smoke
     value: 0xDEAD
+
+buffers:
+  terminal:
+    value: 123
+    rw_type: ro
+  fifo:
+    description: A buffer you can write to and read from
+    value: 124
+    rw_type: rw

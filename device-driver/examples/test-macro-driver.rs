@@ -148,7 +148,10 @@ pub mod registers {
             },
             command Sleep = 0,
             /// Let's out the magic smoke
-            command Burn = 0xDEAD
+            command Burn = 0xDEAD,
+            buffer Terminal: RO = 123,
+            /// A buffer you can write to and read from
+            buffer Fifo: RW = 124,
         }
     );
 }
