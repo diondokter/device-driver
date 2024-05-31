@@ -108,7 +108,7 @@ impl syn::parse::Parse for Item {
         } else {
             Err(syn::Error::new(
                 input.span(),
-                "Must be `register` or `command`",
+                "Must be `register`, `command` or `buffer`",
             ))
         }
     }
