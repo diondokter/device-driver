@@ -52,7 +52,7 @@ impl<'a, D, RWType> embedded_io::ErrorType for BufferOperation<'a, D, RWType> {
     type Error = ErrorKind;
 }
 
-impl<'a, D: Copy, RWType> embedded_io::Read for BufferOperation<'a, D, RWType>
+impl<'a, D, RWType> embedded_io::Read for BufferOperation<'a, D, RWType>
 where
     D: BufferDevice,
     RWType: ReadCapability,
@@ -62,7 +62,7 @@ where
     }
 }
 
-impl<'a, D: Copy, RWType> embedded_io_async::Read for BufferOperation<'a, D, RWType>
+impl<'a, D, RWType> embedded_io_async::Read for BufferOperation<'a, D, RWType>
 where
     D: AsyncBufferDevice,
     RWType: ReadCapability,
@@ -72,7 +72,7 @@ where
     }
 }
 
-impl<'a, D: Copy, RWType> embedded_io::Write for BufferOperation<'a, D, RWType>
+impl<'a, D, RWType> embedded_io::Write for BufferOperation<'a, D, RWType>
 where
     D: BufferDevice,
     RWType: WriteCapability,
@@ -86,7 +86,7 @@ where
     }
 }
 
-impl<'a, D: Copy, RWType> embedded_io_async::Write for BufferOperation<'a, D, RWType>
+impl<'a, D, RWType> embedded_io_async::Write for BufferOperation<'a, D, RWType>
 where
     D: AsyncBufferDevice,
     RWType: WriteCapability,

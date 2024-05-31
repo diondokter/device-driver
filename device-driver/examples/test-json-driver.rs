@@ -1,11 +1,15 @@
+use std::ops::Range;
+
 use bitvec::array::BitArray;
 use device_driver::{
-    AsyncCommandDevice, AsyncRegisterDevice, CommandDevice, Register, RegisterDevice,
+    AsyncBufferDevice, AsyncCommandDevice, AsyncRegisterDevice, BufferDevice, CommandDevice,
+    Register, RegisterDevice,
 };
 
 pub struct TestDevice {
     device_memory: [u8; 128],
     last_command: u32,
+    last_buffer: u32,
 }
 
 impl RegisterDevice for TestDevice {
@@ -88,16 +92,67 @@ impl AsyncCommandDevice for TestDevice {
     }
 }
 
+const BUFFER_RANGE: Range<usize> = 64..128;
+impl BufferDevice for TestDevice {
+    fn write(&mut self, id: u32, buf: &[u8]) -> Result<usize, embedded_io::ErrorKind> {
+        self.last_buffer = id;
+
+        if buf.len() > BUFFER_RANGE.len() {
+            return Err(embedded_io::ErrorKind::InvalidData);
+        }
+
+        self.device_memory[BUFFER_RANGE][..buf.len()].copy_from_slice(buf);
+        Ok(buf.len())
+    }
+
+    fn read(&mut self, id: u32, buf: &mut [u8]) -> Result<usize, embedded_io::ErrorKind> {
+        self.last_buffer = id;
+
+        let max = buf.len().min(BUFFER_RANGE.len());
+        buf[..max].copy_from_slice(&self.device_memory[BUFFER_RANGE][..max]);
+
+        Ok(max)
+    }
+}
+
+impl AsyncBufferDevice for TestDevice {
+    async fn write(&mut self, id: u32, buf: &[u8]) -> Result<usize, embedded_io::ErrorKind> {
+        self.last_buffer = id;
+
+        if buf.len() > BUFFER_RANGE.len() {
+            return Err(embedded_io::ErrorKind::InvalidData);
+        }
+
+        self.device_memory[BUFFER_RANGE][..buf.len()].copy_from_slice(buf);
+        Ok(buf.len())
+    }
+
+    async fn read(&mut self, id: u32, buf: &mut [u8]) -> Result<usize, embedded_io::ErrorKind> {
+        self.last_buffer = id;
+
+        let max = buf.len().min(BUFFER_RANGE.len());
+        buf[..max].copy_from_slice(&self.device_memory[BUFFER_RANGE][..max]);
+
+        Ok(max)
+    }
+}
+
+impl Default for TestDevice {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TestDevice {
     pub fn new() -> Self {
         // Normally we'd take like a SPI here or something
         Self {
             device_memory: [0; 128],
             last_command: u32::MAX,
+            last_buffer: u32::MAX,
         }
     }
 }
-
 pub mod registers {
     use super::*;
 
