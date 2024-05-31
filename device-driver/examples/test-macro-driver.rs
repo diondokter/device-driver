@@ -5,7 +5,7 @@ use device_driver::{
 
 pub struct TestDevice {
     device_memory: [u8; 128],
-    last_command: u16,
+    last_command: u32,
 }
 
 impl RegisterDevice for TestDevice {
@@ -99,7 +99,7 @@ impl TestDevice {
         // Normally we'd take like a SPI here or something
         Self {
             device_memory: [0; 128],
-            last_command: u16::MAX,
+            last_command: u32::MAX,
         }
     }
 }
