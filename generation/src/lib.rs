@@ -57,8 +57,8 @@ pub struct Field {
     pub description: Option<String>,
     #[serde(rename = "type")]
     pub register_type: BaseType,
-    #[serde(rename = "conversion")]
-    pub conversion_type: Option<TypePathOrEnum>,
+    pub conversion: Option<TypePathOrEnum>,
+    pub strict_conversion: Option<TypePathOrEnum>,
     pub start: u32,
     pub end: Option<u32>,
 }
@@ -182,6 +182,7 @@ impl TypePathOrEnum {
         &self,
         register_type: syn::Type,
         field_name: &str,
+        strict_conversion: bool,
     ) -> Option<TokenStream> {
         match self {
             TypePathOrEnum::TypePath(_) => None,
@@ -221,9 +222,16 @@ impl TypePathOrEnum {
                         #variant #data #value_specifier,
                     }
                 }));
+
+                let from_primitive = if strict_conversion {
+                    quote!(device_driver::num_enum::FromPrimitive)
+                } else {
+                    quote!(device_driver::num_enum::TryFromPrimitive)
+                };
+
                 Some(
                     quote::quote! {
-                        #[derive(device_driver::num_enum::TryFromPrimitive, device_driver::num_enum::IntoPrimitive, Debug, Copy, Clone, PartialEq, Eq)]
+                        #[derive(#from_primitive, device_driver::num_enum::IntoPrimitive, Debug, Copy, Clone, PartialEq, Eq)]
                         #[repr(#register_type)]
                         pub enum #name {
                             #variants

@@ -29,10 +29,7 @@ pub struct CommandOperation<'a, D> {
 impl<'a, D> CommandOperation<'a, D> {
     #[doc(hidden)]
     pub fn new(device: &'a mut D, id: u32) -> Self {
-        Self {
-            device,
-            id,
-        }
+        Self { device, id }
     }
 }
 
@@ -49,5 +46,3 @@ impl<'a, D: AsyncCommandDevice> CommandOperation<'a, D> {
         self.device.dispatch_command(self.id).await
     }
 }
-
-

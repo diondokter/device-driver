@@ -71,6 +71,13 @@ dual licensed as above, without any additional terms or conditions.
 
 ## Changelog
 
+### 0.7.0 (unreleased)
+
+- *Breaking*: Improved the API for dispatching commands
+- Added buffer support
+- Added strict mode conversion. This makes the types require `From<primitive>` instead of `TryFrom<primitive>`.
+  But reading the register field is then not a result.
+
 ### 0.6.0 (26-05-24)
 
 - *Breaking*: Renamed the macros so they don't include the word 'register'
