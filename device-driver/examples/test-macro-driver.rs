@@ -168,7 +168,7 @@ pub mod registers {
 
                 manufacturer: u16 as Manufacturer = 0..16,
                 version: u8 = 16..20,
-                edition: u8 as enum Edition {
+                edition: u8 as strict enum Edition {
                     One = 1,
                     Two,
                     /// Test!
@@ -232,10 +232,10 @@ fn main() {
     test_device.foo().write(|w| w).unwrap();
     assert_eq!(test_device.foo().read().unwrap().value(), 0x1234);
 
-    test_device.dispatch_sleep().unwrap();
+    test_device.sleep().dispatch().unwrap();
     assert_eq!(test_device.last_command, 0);
 
-    test_device.dispatch_burn().unwrap();
+    test_device.burn().dispatch().unwrap();
     assert_eq!(test_device.last_command, 0xDEAD);
 
     let mut data = [1, 2, 3, 4, 5];

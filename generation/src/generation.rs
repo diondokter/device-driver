@@ -44,7 +44,7 @@ impl Device {
             result.extend(
                 commands
                     .iter()
-                    .flat_map(|command| command.generate_command_function()),
+                    .map(|command| command.generate_command_function()),
             );
         }
 
@@ -61,15 +61,9 @@ impl Device {
 }
 
 impl Command {
-    fn generate_command_function(&self) -> Vec<syn::ImplItem> {
-        let function_name = syn::Ident::new(
-            &format!("dispatch_{}", self.name).to_case(Case::Snake),
-            Span::call_site(),
-        );
-        let async_function_name = syn::Ident::new(
-            &format!("dispatch_{}_async", self.name).to_case(Case::Snake),
-            Span::call_site(),
-        );
+    fn generate_command_function(&self) -> syn::ImplItem {
+        let function_name =
+            syn::Ident::new(&self.name.as_str().to_case(Case::Snake), Span::call_site());
 
         let doc_attribute = if let Some(description) = self.description.as_ref() {
             quote! { #[doc = #description] }
@@ -79,21 +73,12 @@ impl Command {
 
         let id = proc_macro2::Literal::u32_unsuffixed(self.id);
 
-        [
-            syn::parse_quote! {
-                #doc_attribute
-                pub fn #function_name(&mut self) -> Result<(), <Self as device_driver::CommandDevice>::Error> {
-                    device_driver::CommandDevice::dispatch_command(self, #id)
-                }
-            },
-
-            syn::parse_quote! {
-                #doc_attribute
-                pub async fn #async_function_name(&mut self) -> Result<(), <Self as device_driver::CommandDevice>::Error> {
-                    device_driver::AsyncCommandDevice::dispatch_command(self, #id).await
-                }
+        syn::parse_quote! {
+            #doc_attribute
+            pub fn #function_name(&mut self) -> device_driver::CommandOperation<'_, Self> {
+                device_driver::CommandOperation::new(self, #id)
             }
-        ].to_vec()
+        }
     }
 }
 
@@ -113,7 +98,7 @@ impl Buffer {
 
         syn::parse_quote! {
             #doc_attribute
-            pub fn #function_name<'a>(&'a mut self) -> device_driver::BufferOperation<'a, Self, #rw_type> {
+            pub fn #function_name(&mut self) -> device_driver::BufferOperation<'_, Self, #rw_type> {
                 device_driver::BufferOperation::new(self, #id)
             }
         }
@@ -172,10 +157,27 @@ impl Register {
 
         let mut field_types = TokenStream::new();
         field_types.append_all(fields.iter().filter_map(|field| {
-            field
-                .conversion_type
-                .as_ref()
-                .map(|ct| ct.generate_type_definition(field.register_type.into_type(), &field.name))
+            let (conversion_type, strict_conversion) =
+                match (&field.conversion, &field.strict_conversion) {
+                    (None, None) => (None, false),
+                    (None, Some(conversion_type)) => (Some(conversion_type), true),
+                    (Some(conversion_type), None) => (Some(conversion_type), false),
+                    (Some(_), Some(_)) => {
+                        return Some(syn::Error::new(
+                        Span::call_site(),
+                        format!("Cannot have strict and non-strict conversion for field `{name}`"),
+                    )
+                    .into_compile_error());
+                    }
+                };
+
+            conversion_type.as_ref().and_then(|ct| {
+                ct.generate_type_definition(
+                    field.register_type.into_type(),
+                    &field.name,
+                    strict_conversion,
+                )
+            })
         }));
 
         let address_type = if let Some(register_address_type) = device.register_address_type {
@@ -362,11 +364,25 @@ impl Field {
         let Self {
             name,
             description,
-            conversion_type,
+            conversion,
+            strict_conversion,
             register_type,
             start,
             end,
         } = self;
+
+        let (conversion_type, strict_conversion) = match (conversion, strict_conversion) {
+            (None, None) => (None, false),
+            (None, Some(conversion_type)) => (Some(conversion_type), true),
+            (Some(conversion_type), None) => (Some(conversion_type), false),
+            (Some(_), Some(_)) => {
+                return syn::Error::new(
+                    Span::call_site(),
+                    format!("Cannot have strict and non-strict conversion for field `{name}`"),
+                )
+                .into_compile_error();
+            }
+        };
 
         let function_name = if explicit {
             format!("get_{name}")
@@ -385,8 +401,8 @@ impl Field {
             quote!()
         };
 
-        match (self.register_type, *end, conversion_type) {
-            (BaseType::Bool, Some(end), Some(conversion_type)) if end == self.start + 1 => {
+        match (self.register_type, *end, conversion_type, strict_conversion) {
+            (BaseType::Bool, Some(end), Some(conversion_type), false) if end == self.start + 1 => {
                 let conversion_type = conversion_type.into_type(name);
                 quote! {
                     #doc_attribute
@@ -395,7 +411,16 @@ impl Field {
                     }
                 }.to_token_stream()
             }
-            (BaseType::Bool, Some(end), None) if end == self.start + 1 => {
+            (BaseType::Bool, Some(end), Some(conversion_type), true) if end == self.start + 1 => {
+                let conversion_type = conversion_type.into_type(name);
+                quote! {
+                    #doc_attribute
+                    pub fn #snake_case_name(&self) -> #conversion_type {
+                        device_driver::read_field_bool_strict::<Self, _, #conversion_type, #start, { Self::SIZE_BYTES }>(self)
+                    }
+                }.to_token_stream()
+            }
+            (BaseType::Bool, Some(end), None, _) if end == self.start + 1 => {
                 quote! {
                     #doc_attribute
                     pub fn #snake_case_name(&self) -> #register_type {
@@ -403,7 +428,7 @@ impl Field {
                     }
                 }.to_token_stream()
             }
-            (BaseType::Bool, None, Some(conversion_type)) => {
+            (BaseType::Bool, None, Some(conversion_type), false) => {
                 let conversion_type = conversion_type.into_type(name);
                 quote! {
                     #doc_attribute
@@ -412,7 +437,16 @@ impl Field {
                     }
                 }.to_token_stream()
             }
-            (BaseType::Bool, None, None) => {
+            (BaseType::Bool, None, Some(conversion_type), true) => {
+                let conversion_type = conversion_type.into_type(name);
+                quote! {
+                    #doc_attribute
+                    pub fn #snake_case_name(&self) -> #conversion_type {
+                        device_driver::read_field_bool_strict::<Self, _, #conversion_type, #start, { Self::SIZE_BYTES }>(self)
+                    }
+                }.to_token_stream()
+            }
+            (BaseType::Bool, None, None, _) => {
                 quote! {
                     #doc_attribute
                     pub fn #snake_case_name(&self) -> #register_type {
@@ -420,10 +454,10 @@ impl Field {
                     }
                 }.to_token_stream()
             }
-            (BaseType::Bool, _, _) => {
+            (BaseType::Bool, _, _, _) => {
                 syn::Error::new(Span::call_site(), format!("Registers {snake_case_name} is a bool and must have no end or an end that is only 1 more than start")).into_compile_error()       
             }
-            (_, Some(end), Some(conversion_type)) => {
+            (_, Some(end), Some(conversion_type), false) => {
                 let end = proc_macro2::Literal::u32_unsuffixed(end);
                 let conversion_type = conversion_type.into_type(name);
 
@@ -434,7 +468,18 @@ impl Field {
                     }
                 }.to_token_stream()
             }
-            (_, Some(end), None) => {
+            (_, Some(end), Some(conversion_type), true) => {
+                let end = proc_macro2::Literal::u32_unsuffixed(end);
+                let conversion_type = conversion_type.into_type(name);
+
+                quote! {
+                    #doc_attribute
+                    pub fn #snake_case_name(&self) -> #conversion_type {
+                        device_driver::read_field_strict::<Self, _, #conversion_type, #register_type, #start, #end, { Self::SIZE_BYTES }>(self)
+                    }
+                }.to_token_stream()
+            }
+            (_, Some(end), None, _) => {
                 let end = proc_macro2::Literal::u32_unsuffixed(end);
 
                 quote! {
@@ -444,7 +489,7 @@ impl Field {
                     }
                 }.to_token_stream()
             }
-            (_, None, _) => {
+            (_, None, _, _) => {
                 syn::Error::new(Span::call_site(), format!("Registers {snake_case_name} has no end specified")).into_compile_error()       
             }
         }
@@ -454,11 +499,25 @@ impl Field {
         let Self {
             name,
             description,
-            conversion_type,
+            conversion,
+            strict_conversion,
             register_type,
             start,
             end,
         } = self;
+
+        let conversion_type = match (conversion, strict_conversion) {
+            (None, None) => None,
+            (None, Some(conversion_type)) => Some(conversion_type),
+            (Some(conversion_type), None) => Some(conversion_type),
+            (Some(_), Some(_)) => {
+                return syn::Error::new(
+                    Span::call_site(),
+                    format!("Cannot have strict and non-strict conversion for field `{name}`"),
+                )
+                .into_compile_error();
+            }
+        };
 
         let snake_case_name = syn::Ident::new(&name.to_case(Case::Snake), Span::call_site());
         let register_type = register_type.into_type();

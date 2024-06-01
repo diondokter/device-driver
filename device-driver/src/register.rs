@@ -335,6 +335,27 @@ where
 }
 
 #[doc(hidden)]
+pub fn read_field_strict<
+    RD,
+    R,
+    DATA,
+    BACKING,
+    const START: usize,
+    const END: usize,
+    const SIZE_BYTES: usize,
+>(
+    register: &R,
+) -> DATA
+where
+    RD: Deref<Target = R>,
+    R: Register<SIZE_BYTES>,
+    DATA: From<BACKING> + Into<BACKING>,
+    BACKING: Integral,
+{
+    register.bits()[START..END].load_be::<BACKING>().into()
+}
+
+#[doc(hidden)]
 pub fn read_field_no_convert<
     RD,
     R,
@@ -363,6 +384,18 @@ where
     DATA: TryFrom<bool> + Into<bool>,
 {
     register.bits()[START].try_into()
+}
+
+#[doc(hidden)]
+pub fn read_field_bool_strict<RD, R, DATA, const START: usize, const SIZE_BYTES: usize>(
+    register: &R,
+) -> DATA
+where
+    RD: Deref<Target = R>,
+    R: Register<SIZE_BYTES>,
+    DATA: From<bool> + Into<bool>,
+{
+    register.bits()[START].into()
 }
 
 #[doc(hidden)]

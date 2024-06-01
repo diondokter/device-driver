@@ -178,10 +178,10 @@ fn main() {
     write_baud(&mut test_device);
     assert_eq!(test_device.baudrate().read().unwrap().value(), 12);
 
-    test_device.dispatch_sleep().unwrap();
+    test_device.sleep().dispatch().unwrap();
     assert_eq!(test_device.last_command, 0);
 
-    test_device.dispatch_burn().unwrap();
+    test_device.burn().dispatch().unwrap();
     assert_eq!(test_device.last_command, 0xDEAD);
 }
 

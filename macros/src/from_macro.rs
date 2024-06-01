@@ -408,13 +408,21 @@ impl syn::parse::Parse for Field {
 #[derive(Clone)]
 enum ConversionType {
     None,
-    Existing(syn::Path),
-    Enum(Vec<(String, EnumVariant)>),
+    Existing {
+        path: syn::Path,
+        strict: bool,
+    },
+    Enum {
+        value: Vec<(String, EnumVariant)>,
+        strict: bool,
+    },
 }
 
 impl syn::parse::Parse for ConversionType {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         if input.parse::<syn::Token![as]>().is_ok() {
+            let strict = input.parse::<kw::strict>().is_ok();
+
             if input.peek(syn::Token![enum]) {
                 let item_enum = input.parse::<syn::ItemEnum>()?;
 
@@ -452,9 +460,15 @@ impl syn::parse::Parse for ConversionType {
                     }))
                 }
 
-                Ok(Self::Enum(variants))
+                Ok(Self::Enum {
+                    value: variants,
+                    strict,
+                })
             } else {
-                Ok(Self::Existing(input.parse()?))
+                Ok(Self::Existing {
+                    path: input.parse()?,
+                    strict,
+                })
             }
         } else {
             Ok(Self::None)
@@ -466,6 +480,7 @@ mod kw {
     syn::custom_keyword!(register);
     syn::custom_keyword!(command);
     syn::custom_keyword!(buffer);
+    syn::custom_keyword!(strict);
     syn::custom_keyword!(RWType);
     syn::custom_keyword!(ADDRESS);
     syn::custom_keyword!(SIZE_BITS);
@@ -523,18 +538,34 @@ pub fn implement_device(item: TokenStream) -> TokenStream {
                     name: f.name.to_string(),
                     description: f.description,
                     register_type: f.register_type,
-                    conversion_type: match f.conversion_type {
-                        ConversionType::None => None,
-                        ConversionType::Existing(path) => {
+                    conversion: match &f.conversion_type {
+                        ConversionType::Existing {
+                            path,
+                            strict: false,
+                        } => Some(device_driver_generation::TypePathOrEnum::TypePath(
+                            TypePath(path.to_token_stream().to_string()),
+                        )),
+                        ConversionType::Enum {
+                            value: enum_def,
+                            strict: false,
+                        } => Some(device_driver_generation::TypePathOrEnum::Enum(
+                            FromIterator::from_iter(enum_def.clone()),
+                        )),
+                        _ => None,
+                    },
+                    strict_conversion: match f.conversion_type {
+                        ConversionType::Existing { path, strict: true } => {
                             Some(device_driver_generation::TypePathOrEnum::TypePath(
                                 TypePath(path.to_token_stream().to_string()),
                             ))
                         }
-                        ConversionType::Enum(enum_def) => {
-                            Some(device_driver_generation::TypePathOrEnum::Enum(
-                                FromIterator::from_iter(enum_def),
-                            ))
-                        }
+                        ConversionType::Enum {
+                            value: enum_def,
+                            strict: true,
+                        } => Some(device_driver_generation::TypePathOrEnum::Enum(
+                            FromIterator::from_iter(enum_def),
+                        )),
+                        _ => None,
                     },
                     start: f.bit_start,
                     end: f.bit_end,

@@ -19,7 +19,7 @@ registers:
         end: 20
       edition:
         type: u8
-        conversion:
+        strict_conversion:
           One: 1
           Two:
           Five:
