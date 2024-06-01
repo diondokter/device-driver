@@ -1,5 +1,5 @@
 use device_driver_generation::{
-    deserialization::{CommandCollection, RegisterCollection},
+    deserialization::{BufferCollection, CommandCollection, RegisterCollection},
     BaseType, EnumVariant, EnumVariantValue, RWType, ResetValue, TypePath,
 };
 use proc_macro2::TokenStream;
@@ -66,6 +66,7 @@ impl syn::parse::Parse for DeviceImpl {
 enum Item {
     Register(Register),
     Command(Command),
+    Buffer(Buffer),
 }
 
 impl Item {
@@ -84,6 +85,14 @@ impl Item {
             None
         }
     }
+
+    fn as_buffer(&self) -> Option<&Buffer> {
+        if let Self::Buffer(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
 }
 
 impl syn::parse::Parse for Item {
@@ -94,10 +103,12 @@ impl syn::parse::Parse for Item {
             Ok(Self::Register(Register::parse(input, attributes)?))
         } else if input.peek(kw::command) {
             Ok(Self::Command(Command::parse(input, attributes)?))
+        } else if input.peek(kw::buffer) {
+            Ok(Self::Buffer(Buffer::parse(input, attributes)?))
         } else {
             Err(syn::Error::new(
                 input.span(),
-                "Must be `register` or `command`",
+                "Must be `register`, `command` or `buffer`",
             ))
         }
     }
@@ -186,7 +197,7 @@ impl Register {
 
 struct Command {
     name: syn::Ident,
-    raw_value: u64,
+    raw_value: u32,
     description: Option<String>,
 }
 
@@ -198,6 +209,39 @@ impl Command {
 
         Ok(Self {
             name: input.parse()?,
+            raw_value: {
+                input.parse::<syn::Token![=]>()?;
+                input.parse::<syn::LitInt>()?.base10_parse()?
+            },
+            description,
+        })
+    }
+}
+
+struct Buffer {
+    name: syn::Ident,
+    raw_value: u32,
+    description: Option<String>,
+    rw_type: RWType,
+}
+
+impl Buffer {
+    fn parse(input: syn::parse::ParseStream, attributes: Vec<Attribute>) -> syn::Result<Self> {
+        let description = doc_string_from_attrs(&attributes)?;
+
+        input.parse::<kw::buffer>()?;
+
+        Ok(Self {
+            name: input.parse()?,
+            rw_type: {
+                input.parse::<syn::Token![:]>()?;
+                let rw_type_value_ident = input.parse::<syn::Ident>()?;
+                rw_type_value_ident
+                    .to_string()
+                    .as_str()
+                    .try_into()
+                    .map_err(|e| syn::Error::new(rw_type_value_ident.span(), format!("{e}")))?
+            },
             raw_value: {
                 input.parse::<syn::Token![=]>()?;
                 input.parse::<syn::LitInt>()?.base10_parse()?
@@ -421,6 +465,7 @@ impl syn::parse::Parse for ConversionType {
 mod kw {
     syn::custom_keyword!(register);
     syn::custom_keyword!(command);
+    syn::custom_keyword!(buffer);
     syn::custom_keyword!(RWType);
     syn::custom_keyword!(ADDRESS);
     syn::custom_keyword!(SIZE_BITS);
@@ -512,7 +557,7 @@ pub fn implement_device(item: TokenStream) -> TokenStream {
         .filter_map(Item::as_command)
         .map(|r| device_driver_generation::Command {
             name: r.name.to_string(),
-            value: r.raw_value,
+            id: r.raw_value,
             description: r.description.clone(),
         })
         .collect::<Vec<_>>()
@@ -524,10 +569,30 @@ pub fn implement_device(item: TokenStream) -> TokenStream {
         Some(commands)
     };
 
+    let buffers: BufferCollection = device_impl
+        .items
+        .iter()
+        .filter_map(Item::as_buffer)
+        .map(|r| device_driver_generation::Buffer {
+            name: r.name.to_string(),
+            id: r.raw_value,
+            description: r.description.clone(),
+            rw_type: r.rw_type,
+        })
+        .collect::<Vec<_>>()
+        .into();
+
+    let buffers = if buffers.is_empty() {
+        None
+    } else {
+        Some(buffers)
+    };
+
     let device = device_driver_generation::Device {
         register_address_type,
         registers,
         commands,
+        buffers,
     };
 
     let item = syn::ItemImpl {

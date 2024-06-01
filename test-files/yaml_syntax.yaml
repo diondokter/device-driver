@@ -42,7 +42,16 @@ registers:
 
 commands:
   sleep:
-    value: 0
+    id: 0
   burn:
     description: Let's out the magic smoke
-    value: 0xDEAD
+    id: 0xDEAD
+
+buffers:
+  terminal:
+    id: 123
+    rw_type: ro
+  fifo:
+    description: A buffer you can write to and read from
+    id: 124
+    rw_type: rw

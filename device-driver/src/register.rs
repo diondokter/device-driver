@@ -6,6 +6,8 @@ use core::{
 };
 use funty::Integral;
 
+use crate::{ClearCapability, ReadCapability, WriteCapability};
+
 /// A trait to represent the interface to the device.
 ///
 /// This is called to write to and read from registers.
@@ -444,35 +446,3 @@ where
     register.bits_mut().set(START, data);
     register
 }
-
-#[doc(hidden)]
-pub struct WriteOnly;
-#[doc(hidden)]
-pub struct ReadOnly;
-#[doc(hidden)]
-pub struct ReadWrite;
-#[doc(hidden)]
-pub struct ReadClear;
-#[doc(hidden)]
-pub struct ClearOnly;
-
-#[doc(hidden)]
-pub trait ReadCapability {}
-#[doc(hidden)]
-pub trait WriteCapability {}
-#[doc(hidden)]
-pub trait ClearCapability {}
-
-impl WriteCapability for WriteOnly {}
-impl ClearCapability for WriteOnly {}
-
-impl ReadCapability for ReadOnly {}
-
-impl WriteCapability for ReadWrite {}
-impl ReadCapability for ReadWrite {}
-impl ClearCapability for ReadWrite {}
-
-impl ReadCapability for ReadClear {}
-impl ClearCapability for ReadClear {}
-
-impl ClearCapability for ClearOnly {}

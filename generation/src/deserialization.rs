@@ -3,7 +3,9 @@ use std::collections::HashMap;
 use indexmap::IndexMap;
 use proc_macro2::Span;
 
-use crate::{Command, EnumVariant, EnumVariantValue, Field, Register, TypePath, TypePathOrEnum};
+use crate::{
+    Buffer, Command, EnumVariant, EnumVariantValue, Field, Register, TypePath, TypePathOrEnum,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RegisterCollection(Vec<Register>);
@@ -104,6 +106,44 @@ impl<'de> serde::Deserialize<'de> for CommandCollection {
         D: serde::Deserializer<'de>,
     {
         let registers = HashMap::<String, Command>::deserialize(deserializer)?;
+
+        let mut registers: Vec<_> = registers
+            .into_iter()
+            .map(|(name, mut register)| {
+                register.name = name;
+                register
+            })
+            .collect();
+
+        registers.sort();
+
+        Ok(Self(registers))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BufferCollection(Vec<Buffer>);
+
+impl From<Vec<Buffer>> for BufferCollection {
+    fn from(value: Vec<Buffer>) -> Self {
+        Self(value)
+    }
+}
+
+impl std::ops::Deref for BufferCollection {
+    type Target = Vec<Buffer>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for BufferCollection {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let registers = HashMap::<String, Buffer>::deserialize(deserializer)?;
 
         let mut registers: Vec<_> = registers
             .into_iter()

@@ -1,11 +1,16 @@
+use std::ops::Range;
+
 use bitvec::array::BitArray;
 use device_driver::{
-    AsyncCommandDevice, AsyncRegisterDevice, CommandDevice, Register, RegisterDevice,
+    embedded_io::{Read, Write},
+    AsyncBufferDevice, AsyncCommandDevice, AsyncRegisterDevice, BufferDevice, CommandDevice,
+    Register, RegisterDevice,
 };
 
 pub struct TestDevice {
     device_memory: [u8; 128],
-    last_command: u16,
+    last_command: u32,
+    last_buffer: u32,
 }
 
 impl RegisterDevice for TestDevice {
@@ -71,10 +76,8 @@ impl AsyncRegisterDevice for TestDevice {
 impl CommandDevice for TestDevice {
     type Error = ();
 
-    type RawType = u16;
-
-    fn dispatch_command(&mut self, raw_command: Self::RawType) -> Result<(), Self::Error> {
-        self.last_command = raw_command;
+    fn dispatch_command(&mut self, id: u32) -> Result<(), Self::Error> {
+        self.last_command = id;
 
         Ok(())
     }
@@ -83,12 +86,55 @@ impl CommandDevice for TestDevice {
 impl AsyncCommandDevice for TestDevice {
     type Error = ();
 
-    type RawType = u16;
-
-    async fn dispatch_command(&mut self, raw_command: Self::RawType) -> Result<(), Self::Error> {
-        self.last_command = raw_command;
+    async fn dispatch_command(&mut self, id: u32) -> Result<(), Self::Error> {
+        self.last_command = id;
 
         Ok(())
+    }
+}
+
+const BUFFER_RANGE: Range<usize> = 64..128;
+impl BufferDevice for TestDevice {
+    fn write(&mut self, id: u32, buf: &[u8]) -> Result<usize, embedded_io::ErrorKind> {
+        self.last_buffer = id;
+
+        if buf.len() > BUFFER_RANGE.len() {
+            return Err(embedded_io::ErrorKind::InvalidData);
+        }
+
+        self.device_memory[BUFFER_RANGE][..buf.len()].copy_from_slice(buf);
+        Ok(buf.len())
+    }
+
+    fn read(&mut self, id: u32, buf: &mut [u8]) -> Result<usize, embedded_io::ErrorKind> {
+        self.last_buffer = id;
+
+        let max = buf.len().min(BUFFER_RANGE.len());
+        buf[..max].copy_from_slice(&self.device_memory[BUFFER_RANGE][..max]);
+
+        Ok(max)
+    }
+}
+
+impl AsyncBufferDevice for TestDevice {
+    async fn write(&mut self, id: u32, buf: &[u8]) -> Result<usize, embedded_io::ErrorKind> {
+        self.last_buffer = id;
+
+        if buf.len() > BUFFER_RANGE.len() {
+            return Err(embedded_io::ErrorKind::InvalidData);
+        }
+
+        self.device_memory[BUFFER_RANGE][..buf.len()].copy_from_slice(buf);
+        Ok(buf.len())
+    }
+
+    async fn read(&mut self, id: u32, buf: &mut [u8]) -> Result<usize, embedded_io::ErrorKind> {
+        self.last_buffer = id;
+
+        let max = buf.len().min(BUFFER_RANGE.len());
+        buf[..max].copy_from_slice(&self.device_memory[BUFFER_RANGE][..max]);
+
+        Ok(max)
     }
 }
 
@@ -103,7 +149,8 @@ impl TestDevice {
         // Normally we'd take like a SPI here or something
         Self {
             device_memory: [0; 128],
-            last_command: u16::MAX,
+            last_command: u32::MAX,
+            last_buffer: u32::MAX,
         }
     }
 }
@@ -148,7 +195,10 @@ pub mod registers {
             },
             command Sleep = 0,
             /// Let's out the magic smoke
-            command Burn = 0xDEAD
+            command Burn = 0xDEAD,
+            buffer Terminal: RO = 123,
+            /// A buffer you can write to and read from
+            buffer Fifo: RW = 124,
         }
     );
 }
@@ -187,6 +237,12 @@ fn main() {
 
     test_device.dispatch_burn().unwrap();
     assert_eq!(test_device.last_command, 0xDEAD);
+
+    let mut data = [1, 2, 3, 4, 5];
+    test_device.fifo().write_all(&data).unwrap();
+    test_device.fifo().read_exact(&mut data).unwrap();
+    assert_eq!(data, [1, 2, 3, 4, 5]);
+    assert_eq!(test_device.last_buffer, 124);
 }
 
 #[inline(never)]
