@@ -165,7 +165,7 @@ impl Register {
                     (Some(_), Some(_)) => {
                         return Some(syn::Error::new(
                         Span::call_site(),
-                        &format!("Cannot have strict and non-strict conversion for field `{name}`"),
+                        format!("Cannot have strict and non-strict conversion for field `{name}`"),
                     )
                     .into_compile_error());
                     }
@@ -378,7 +378,7 @@ impl Field {
             (Some(_), Some(_)) => {
                 return syn::Error::new(
                     Span::call_site(),
-                    &format!("Cannot have strict and non-strict conversion for field `{name}`"),
+                    format!("Cannot have strict and non-strict conversion for field `{name}`"),
                 )
                 .into_compile_error();
             }
@@ -513,7 +513,7 @@ impl Field {
             (Some(_), Some(_)) => {
                 return syn::Error::new(
                     Span::call_site(),
-                    &format!("Cannot have strict and non-strict conversion for field `{name}`"),
+                    format!("Cannot have strict and non-strict conversion for field `{name}`"),
                 )
                 .into_compile_error();
             }
