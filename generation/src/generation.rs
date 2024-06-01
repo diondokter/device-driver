@@ -44,7 +44,7 @@ impl Device {
             result.extend(
                 commands
                     .iter()
-                    .flat_map(|command| command.generate_command_function()),
+                    .map(|command| command.generate_command_function()),
             );
         }
 
@@ -61,15 +61,9 @@ impl Device {
 }
 
 impl Command {
-    fn generate_command_function(&self) -> Vec<syn::ImplItem> {
-        let function_name = syn::Ident::new(
-            &format!("dispatch_{}", self.name).to_case(Case::Snake),
-            Span::call_site(),
-        );
-        let async_function_name = syn::Ident::new(
-            &format!("dispatch_{}_async", self.name).to_case(Case::Snake),
-            Span::call_site(),
-        );
+    fn generate_command_function(&self) -> syn::ImplItem {
+        let function_name =
+            syn::Ident::new(&self.name.as_str().to_case(Case::Snake), Span::call_site());
 
         let doc_attribute = if let Some(description) = self.description.as_ref() {
             quote! { #[doc = #description] }
@@ -79,21 +73,12 @@ impl Command {
 
         let id = proc_macro2::Literal::u32_unsuffixed(self.id);
 
-        [
-            syn::parse_quote! {
-                #doc_attribute
-                pub fn #function_name(&mut self) -> Result<(), <Self as device_driver::CommandDevice>::Error> {
-                    device_driver::CommandDevice::dispatch_command(self, #id)
-                }
-            },
-
-            syn::parse_quote! {
-                #doc_attribute
-                pub async fn #async_function_name(&mut self) -> Result<(), <Self as device_driver::CommandDevice>::Error> {
-                    device_driver::AsyncCommandDevice::dispatch_command(self, #id).await
-                }
+        syn::parse_quote! {
+            #doc_attribute
+            pub fn #function_name(&mut self) -> device_driver::CommandOperation<'_, Self> {
+                device_driver::CommandOperation::new(self, #id)
             }
-        ].to_vec()
+        }
     }
 }
 
@@ -113,7 +98,7 @@ impl Buffer {
 
         syn::parse_quote! {
             #doc_attribute
-            pub fn #function_name<'a>(&'a mut self) -> device_driver::BufferOperation<'a, Self, #rw_type> {
+            pub fn #function_name(&mut self) -> device_driver::BufferOperation<'_, Self, #rw_type> {
                 device_driver::BufferOperation::new(self, #id)
             }
         }
