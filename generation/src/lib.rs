@@ -184,6 +184,7 @@ impl TypePathOrEnum {
         &self,
         register_type: syn::Type,
         field_name: &str,
+        field_description: &Option<String>,
         strict_conversion: bool,
     ) -> Option<TokenStream> {
         match self {
@@ -231,8 +232,13 @@ impl TypePathOrEnum {
                     quote!(device_driver::num_enum::TryFromPrimitive)
                 };
 
+                let doc = field_description
+                    .as_ref()
+                    .map(|description| quote!(#[doc = #description]));
+
                 Some(
                     quote::quote! {
+                        #doc
                         #[derive(#from_primitive, device_driver::num_enum::IntoPrimitive, Debug, Copy, Clone, PartialEq, Eq)]
                         #[repr(#register_type)]
                         pub enum #name {

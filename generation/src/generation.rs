@@ -176,6 +176,7 @@ impl Register {
                 ct.generate_type_definition(
                     field.register_type.into_type(),
                     &field.name,
+                    &field.description,
                     strict_conversion,
                 )
             })
