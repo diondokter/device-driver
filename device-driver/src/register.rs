@@ -106,6 +106,10 @@ pub trait Register<const SIZE_BYTES: usize> {
     where
         Self: Sized;
 
+    /// Is the data of this register little endian?
+    /// False by default when not specified by the end-user
+    const LE: bool;
+
     /// Get mutable access to the local representation of the register bits
     fn bits_mut(&mut self) -> &mut BitArray<[u8; SIZE_BYTES]>;
     /// Get access to the local representation of the register bits
@@ -331,7 +335,11 @@ where
     DATA: TryFrom<BACKING> + Into<BACKING>,
     BACKING: Integral,
 {
-    register.bits()[START..END].load_be::<BACKING>().try_into()
+    if R::LE {
+        register.bits()[START..END].load_le::<BACKING>().try_into()
+    } else {
+        register.bits()[START..END].load_be::<BACKING>().try_into()
+    }
 }
 
 #[doc(hidden)]
@@ -352,7 +360,11 @@ where
     DATA: From<BACKING> + Into<BACKING>,
     BACKING: Integral,
 {
-    register.bits()[START..END].load_be::<BACKING>().into()
+    if R::LE {
+        register.bits()[START..END].load_le::<BACKING>().into()
+    } else {
+        register.bits()[START..END].load_be::<BACKING>().into()
+    }
 }
 
 #[doc(hidden)]
@@ -371,7 +383,11 @@ where
     R: Register<SIZE_BYTES>,
     BACKING: Integral,
 {
-    register.bits()[START..END].load_be::<BACKING>()
+    if R::LE {
+        register.bits()[START..END].load_le::<BACKING>()
+    } else {
+        register.bits()[START..END].load_be::<BACKING>()
+    }
 }
 
 #[doc(hidden)]
@@ -428,7 +444,12 @@ where
     DATA: TryFrom<BACKING> + Into<BACKING>,
     BACKING: Integral,
 {
-    register.bits_mut()[START..END].store_be(data.into());
+    if R::LE {
+        register.bits_mut()[START..END].store_le(data.into());
+    } else {
+        register.bits_mut()[START..END].store_be(data.into());
+    }
+
     register
 }
 
@@ -449,7 +470,12 @@ where
     R: Register<SIZE_BYTES>,
     BACKING: Integral,
 {
-    register.bits_mut()[START..END].store_be(data);
+    if R::LE {
+        register.bits_mut()[START..END].store_le(data);
+    } else {
+        register.bits_mut()[START..END].store_be(data);
+    }
+
     register
 }
 

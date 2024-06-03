@@ -179,6 +179,7 @@ pub mod registers {
             /// Baudrate register
             register Baudrate {
                 type RWType = RW;
+                type ByteOrder = LE; // Everything is BE by default
                 const ADDRESS: u8 = 42;
                 const SIZE_BITS: usize = 16;
 
@@ -219,6 +220,9 @@ fn main() {
 
     write_baud(&mut test_device);
     assert_eq!(test_device.baudrate().read().unwrap().value(), 12);
+    // Test it's actually doing little endian
+    assert_eq!(test_device.device_memory[42], 12);
+    assert_eq!(test_device.device_memory[43], 0);
 
     test_device.foo().clear().unwrap();
     assert_eq!(test_device.foo().read().unwrap().value(), 0x1234);
