@@ -1,4 +1,4 @@
-use crate::{BaseType, Buffer, Command, Device, Field, Register};
+use crate::{BaseType, Buffer, ByteOrder, Command, Device, Field, Register};
 
 use convert_case::{Case, Casing};
 use proc_macro2::{Span, TokenStream};
@@ -133,6 +133,7 @@ impl Register {
             description,
             reset_value,
             fields,
+            byte_order,
         } = self;
 
         let pascal_case_name_string = name.to_case(Case::Pascal);
@@ -230,6 +231,8 @@ impl Register {
             quote!()
         };
 
+        let is_le = matches!(byte_order.unwrap_or(ByteOrder::BE), ByteOrder::LE);
+
         quote! {
             #doc_attribute
             pub struct #pascal_case_name {
@@ -249,6 +252,8 @@ impl Register {
 
                 type WriteFields = #snake_case_name::W;
                 type ReadFields = #snake_case_name::R;
+
+                const LE: bool = #is_le;
 
                 fn bits_mut(&mut self) -> &mut device_driver::bitvec::array::BitArray<[u8; Self::SIZE_BYTES]> {
                     &mut self.bits

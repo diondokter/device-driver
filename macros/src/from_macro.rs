@@ -1,6 +1,6 @@
 use device_driver_generation::{
     deserialization::{BufferCollection, CommandCollection, RegisterCollection},
-    BaseType, EnumVariant, EnumVariantValue, RWType, ResetValue, TypePath,
+    BaseType, ByteOrder, EnumVariant, EnumVariantValue, RWType, ResetValue, TypePath,
 };
 use proc_macro2::TokenStream;
 use quote::ToTokens;
@@ -120,6 +120,7 @@ struct Register {
     address_type: syn::Ident,
     address_value: u64,
     size_bits_value: u64,
+    byte_order: Option<ByteOrder>,
     reset_value: Option<ResetValue>,
     description: Option<String>,
     fields: Punctuated<Field, syn::Token![,]>,
@@ -150,6 +151,25 @@ impl Register {
                     .map_err(|e| syn::Error::new(rw_type_value_ident.span(), format!("{e}")))?;
                 contents.parse::<syn::Token![;]>()?;
                 value
+            },
+            byte_order: {
+                if contents.peek(syn::Token![type]) && contents.peek2(kw::ByteOrder) {
+                    contents.parse::<syn::Token![type]>()?;
+                    contents.parse::<kw::ByteOrder>()?;
+                    contents.parse::<syn::Token![=]>()?;
+                    let byte_order_value_ident = contents.parse::<syn::Ident>()?;
+                    let value = byte_order_value_ident
+                        .to_string()
+                        .as_str()
+                        .try_into()
+                        .map_err(|e| {
+                            syn::Error::new(byte_order_value_ident.span(), format!("{e}"))
+                        })?;
+                    contents.parse::<syn::Token![;]>()?;
+                    Some(value)
+                } else {
+                    None
+                }
             },
             address_type: {
                 contents.parse::<syn::Token![const]>()?;
@@ -482,6 +502,7 @@ mod kw {
     syn::custom_keyword!(buffer);
     syn::custom_keyword!(strict);
     syn::custom_keyword!(RWType);
+    syn::custom_keyword!(ByteOrder);
     syn::custom_keyword!(ADDRESS);
     syn::custom_keyword!(SIZE_BITS);
     syn::custom_keyword!(RESET_VALUE);
@@ -530,6 +551,7 @@ pub fn implement_device(item: TokenStream) -> TokenStream {
             size_bits: r.size_bits_value,
             description: r.description.clone(),
             reset_value: r.reset_value.clone(),
+            byte_order: r.byte_order,
             fields: r
                 .fields
                 .iter()

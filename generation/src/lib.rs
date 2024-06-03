@@ -30,6 +30,8 @@ pub struct Register {
     pub rw_type: RWType,
     pub address: u64,
     pub size_bits: u64,
+    /// BE by default
+    pub byte_order: Option<ByteOrder>,
     pub description: Option<String>,
     pub reset_value: Option<ResetValue>,
     pub fields: FieldCollection,
@@ -290,6 +292,25 @@ impl RWType {
 }
 
 impl TryFrom<&str> for RWType {
+    type Error = serde::de::value::Error;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        use serde::Deserialize;
+        Self::deserialize(serde::de::value::StrDeserializer::new(value))
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
+pub enum ByteOrder {
+    /// Little endian
+    #[serde(alias = "le", alias = "LE")]
+    LE,
+    /// Big endian
+    #[serde(alias = "be", alias = "BE")]
+    BE,
+}
+
+impl TryFrom<&str> for ByteOrder {
     type Error = serde::de::value::Error;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
