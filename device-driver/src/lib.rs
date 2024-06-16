@@ -6,6 +6,7 @@
 pub use bitvec;
 pub use device_driver_macros::*;
 pub use embedded_io;
+pub use embedded_io_async;
 pub use funty;
 pub use num_enum;
 
