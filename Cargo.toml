@@ -1,6 +1,6 @@
 [package]
 name = "device-driver"
-version = "0.4.1"
+version = "0.4.2"
 authors = ["Dion Dokter <diondokter@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -17,7 +17,7 @@ bitvec = { version = "1.0.1", default-features = false }
 [dev-dependencies]
 embedded-hal = "0.2.5"
 embedded-hal-mock = "0.8.0"
-embedded-hal-async = "0.2.0-alpha.0"
+embedded-hal-async = "1.0.0"
 num_enum = { version = "0.5.1", default-features = false }
 tokio = { version = "1.23.0", features = ["full"] }
 

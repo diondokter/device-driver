@@ -1,9 +1,6 @@
 // We're not using any unsafe
 #![forbid(unsafe_code)]
 
-#![feature(async_fn_in_trait)]
-#![allow(incomplete_features)]
-
 // ----------------------------------------------
 //
 // Note: This example only compiles when the device driver async feature is active.

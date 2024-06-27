@@ -108,6 +108,9 @@ dual licensed as above, without any additional terms or conditions.
 This crate is far from stable. But if it works for you, then I see no reason why you couldn't use it already. Only updating to a new version may break stuff and proper Semver will be used.
 
 ## Changelog
+### 0.4.2 (27-06-24)
+- Remove feature flags so this compiles async on newer compilers
+
 ### 0.4.1 (13-12-22)
 - Accidentally left the async flag on by default for 0.4.0 which caused it not to compile on stable.
 ### 0.4.0 (13-12-22) (yanked)

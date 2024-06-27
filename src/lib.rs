@@ -4,9 +4,7 @@
 
 #![cfg_attr(not(test), no_std)]
 // #![forbid(missing_docs)]
-
-#![cfg_attr(feature = "async", feature(async_fn_in_trait))]
-#![cfg_attr(feature = "async", allow(incomplete_features))]
+#![allow(async_fn_in_trait)]
 
 pub use bit::Bit;
 pub use bitvec;
