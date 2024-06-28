@@ -236,6 +236,7 @@ impl Register {
 
         quote! {
             #doc_attribute
+            #[derive(Copy, Clone, Eq, PartialEq)]
             pub struct #pascal_case_name {
                 bits: device_driver::bitvec::array::BitArray<[u8; Self::SIZE_BYTES]>,
             }
@@ -267,6 +268,40 @@ impl Register {
 
             impl #pascal_case_name {
                 pub const SIZE_BYTES: usize = #size_bytes_lit;
+
+                /// Turn this register value into a writer
+                pub fn into_w(self) -> #snake_case_name::W {
+                    self.into()
+                }
+
+                /// Turn this register value into a reader
+                pub fn into_r(self) -> #snake_case_name::R {
+                    self.into()
+                }
+            }
+
+            impl<T: Into<#pascal_case_name>> core::ops::BitAnd<T> for #pascal_case_name {
+                type Output = Self;
+
+                fn bitand(self, rhs: T) -> Self::Output {
+                    #pascal_case_name { bits: self.bits & rhs.into().bits }
+                }
+            }
+
+            impl<T: Into<#pascal_case_name>> core::ops::BitOr<T> for #pascal_case_name {
+                type Output = Self;
+
+                fn bitor(self, rhs: T) -> Self::Output {
+                    Self { bits: self.bits | rhs.into().bits }
+                }
+            }
+
+            impl<T: Into<#pascal_case_name>> core::ops::BitXor<T> for #pascal_case_name {
+                type Output = Self;
+
+                fn bitxor(self, rhs: T) -> Self::Output {
+                    Self { bits: self.bits ^ rhs.into().bits }
+                }
             }
 
             #[doc = #module_doc_string]
@@ -274,6 +309,7 @@ impl Register {
                 use super::*;
 
                 #[doc = #w_doc_string]
+                #[derive(Copy, Clone, Eq, PartialEq)]
                 pub struct W {
                     inner: #pascal_case_name,
                 }
@@ -308,11 +344,18 @@ impl Register {
 
                 impl W {
                     pub const SIZE_BYTES: usize = #size_bytes_lit;
+
+                    /// Turn this writer into the register type
+                    pub fn into_register(self) -> #pascal_case_name {
+                        self.into()
+                    }
+                    
                     #field_functions_write
                     #field_functions_read_explicit
                 }
-
+    
                 #[doc = #r_doc_string]
+                #[derive(Copy, Clone, Eq, PartialEq)]
                 pub struct R {
                     inner: #pascal_case_name,
                 }
@@ -355,6 +398,12 @@ impl Register {
 
                 impl R {
                     pub const SIZE_BYTES: usize = #size_bytes_lit;
+
+                    /// Turn this reader into the register type
+                    pub fn into_register(self) -> #pascal_case_name {
+                        self.into()
+                    }
+
                     #field_functions_read
                 }
             }

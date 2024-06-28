@@ -81,6 +81,7 @@ dual licensed as above, without any additional terms or conditions.
 - Added strict mode conversion. This makes the types require `From<primitive>` instead of `TryFrom<primitive>`.
   But reading the register field is then not a result.
 - Added byte order option to registers so they can be read and stored as little endian. (When not specified, it still defaults to big endian)
+- Added BitAnd, BitOr and BitXor on the register structs. Todo: Make it work better with W and R
 
 ### 0.6.0 (26-05-24)
 

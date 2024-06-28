@@ -247,6 +247,19 @@ fn main() {
     test_device.fifo().read_exact(&mut data).unwrap();
     assert_eq!(data, [1, 2, 3, 4, 5]);
     assert_eq!(test_device.last_buffer, 124);
+
+    // Create a mask
+    let register_mask = registers::Baudrate::ZERO
+        .into_w()
+        .value(1234)
+        .into_register();
+
+    // Write test value
+    test_device.baudrate().write(|w| w.value(u16::MAX)).unwrap();
+
+    // Read back and apply mask
+    let read_baud = (*test_device.baudrate().read().unwrap() & register_mask).into_r();
+    assert_eq!(read_baud.value(), 1234);
 }
 
 #[inline(never)]
