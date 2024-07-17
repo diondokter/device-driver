@@ -2,7 +2,7 @@ use bitvec::{array::BitArray, field::BitField};
 use core::{
     convert::{TryFrom, TryInto},
     marker::PhantomData,
-    ops::{Deref, DerefMut},
+    ops::{Add, Deref, DerefMut},
 };
 use funty::Integral;
 
@@ -68,6 +68,84 @@ pub trait AsyncRegisterDevice: AddressableDevice {
         address: Self::AddressType,
         data: &mut BitArray<[u8; SIZE_BYTES]>,
     ) -> Result<(), Self::Error>;
+}
+
+/// A trait to represent a block of registers.
+pub trait RegisterBlock {
+    /// The type of device this register block belongs to.
+    type Device: AddressableDevice;
+
+    /// The base address to use for registers in this register block.
+    ///
+    /// This base address will be added to the register's address when reading or writing the register to the parent device.
+    const BASE_ADDR: <Self::Device as AddressableDevice>::AddressType;
+
+    /// The device this register block belongs to.
+    fn dev(&mut self) -> &mut Self::Device;
+}
+
+impl<T: RegisterBlock> AddressableDevice for T {
+    type AddressType = <T::Device as AddressableDevice>::AddressType;
+}
+
+impl<T: RegisterBlock> RegisterDevice for T
+where
+    T::Device: RegisterDevice,
+    <T::Device as AddressableDevice>::AddressType: Add<
+        <T::Device as AddressableDevice>::AddressType,
+        Output = <T::Device as AddressableDevice>::AddressType,
+    >,
+{
+    type Error = <T::Device as RegisterDevice>::Error;
+
+    fn write_register<const SIZE_BYTES: usize>(
+        &mut self,
+        address: Self::AddressType,
+        data: &BitArray<[u8; SIZE_BYTES]>,
+    ) -> Result<(), Self::Error> {
+        self.dev()
+            .write_register::<SIZE_BYTES>(address + Self::BASE_ADDR, data)
+    }
+
+    fn read_register<const SIZE_BYTES: usize>(
+        &mut self,
+        address: Self::AddressType,
+        data: &mut BitArray<[u8; SIZE_BYTES]>,
+    ) -> Result<(), Self::Error> {
+        self.dev()
+            .read_register::<SIZE_BYTES>(address + Self::BASE_ADDR, data)
+    }
+}
+
+impl<T: RegisterBlock> AsyncRegisterDevice for T
+where
+    T::Device: AsyncRegisterDevice,
+    <T::Device as AddressableDevice>::AddressType: Add<
+        <T::Device as AddressableDevice>::AddressType,
+        Output = <T::Device as AddressableDevice>::AddressType,
+    >,
+{
+    type Error = <T::Device as AsyncRegisterDevice>::Error;
+
+    async fn write_register<const SIZE_BYTES: usize>(
+        &mut self,
+        address: Self::AddressType,
+        data: &BitArray<[u8; SIZE_BYTES]>,
+    ) -> Result<(), Self::Error> {
+        self.dev()
+            .write_register::<SIZE_BYTES>(address + Self::BASE_ADDR, data)
+            .await
+    }
+
+    async fn read_register<const SIZE_BYTES: usize>(
+        &mut self,
+        address: Self::AddressType,
+        data: &mut BitArray<[u8; SIZE_BYTES]>,
+    ) -> Result<(), Self::Error> {
+        self.dev()
+            .read_register::<SIZE_BYTES>(address + Self::BASE_ADDR, data)
+            .await
+    }
 }
 
 /// The abstraction and description of a register.
