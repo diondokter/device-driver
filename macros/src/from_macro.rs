@@ -4,11 +4,10 @@ use device_driver_generation::{
 };
 use proc_macro2::TokenStream;
 use quote::ToTokens;
-use syn::{
-    braced, punctuated::Punctuated, spanned::Spanned, Attribute, Expr, ExprLit, Generics, Lit,
-};
+use syn::{braced, punctuated::Punctuated, spanned::Spanned, Expr, ExprLit, Generics, Lit};
 
 struct DeviceImpl {
+    attrs: Vec<syn::Attribute>,
     impl_generics: syn::Generics,
     device_type: syn::Type,
 
@@ -17,6 +16,7 @@ struct DeviceImpl {
 
 impl syn::parse::Parse for DeviceImpl {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let attrs = syn::Attribute::parse_outer(input)?;
         input.parse::<syn::Token![impl]>()?;
 
         let mut impl_generics: Generics = input.parse()?;
@@ -31,6 +31,7 @@ impl syn::parse::Parse for DeviceImpl {
         braced!(items in input);
 
         let s = Self {
+            attrs,
             impl_generics,
             device_type: device_ident,
             items: items.parse_terminated(Item::parse, syn::Token![,])?,
@@ -123,12 +124,50 @@ struct Register {
     byte_order: Option<ByteOrder>,
     reset_value: Option<ResetValue>,
     description: Option<String>,
+    cfg_attributes: Vec<syn::Attribute>,
     fields: Punctuated<Field, syn::Token![,]>,
 }
 
 impl Register {
-    fn parse(input: syn::parse::ParseStream, attributes: Vec<Attribute>) -> syn::Result<Self> {
-        let description = doc_string_from_attrs(&attributes)?;
+    fn parse(input: syn::parse::ParseStream, attributes: Vec<syn::Attribute>) -> syn::Result<Self> {
+        let (description, cfg_attributes) = {
+            let mut description = String::new();
+            let mut cfg_attributes = Vec::new();
+
+            for attr in attributes {
+                let path = attr.meta.path().require_ident()?.to_string();
+                match path.as_str() {
+                    "doc" => {
+                        let name_value = attr.meta.require_name_value()?;
+                        if let syn::Expr::Lit(syn::ExprLit {
+                            lit: syn::Lit::Str(value),
+                            ..
+                        }) = &name_value.value
+                        {
+                            description += &value.value();
+                            continue;
+                        }
+                    }
+                    "cfg" => {
+                        cfg_attributes.push(attr);
+                        continue;
+                    }
+                    _ => {}
+                }
+                return Err(syn::Error::new(
+                    attr.meta.path().span(),
+                    format!("Attribute type `{path}` not supported in this usecase"),
+                ));
+            }
+
+            let description = if description.is_empty() {
+                None
+            } else {
+                Some(description)
+            };
+
+            (description, cfg_attributes)
+        };
 
         input.parse::<kw::register>()?;
 
@@ -209,6 +248,7 @@ impl Register {
                 }
             },
             description,
+            cfg_attributes,
             fields: contents
                 .parse_terminated(<Field as syn::parse::Parse>::parse, syn::Token![,])?,
         })
@@ -218,13 +258,11 @@ impl Register {
 struct Command {
     name: syn::Ident,
     raw_value: u32,
-    description: Option<String>,
+    attributes: Vec<syn::Attribute>,
 }
 
 impl Command {
-    fn parse(input: syn::parse::ParseStream, attributes: Vec<Attribute>) -> syn::Result<Self> {
-        let description = doc_string_from_attrs(&attributes)?;
-
+    fn parse(input: syn::parse::ParseStream, attributes: Vec<syn::Attribute>) -> syn::Result<Self> {
         input.parse::<kw::command>()?;
 
         Ok(Self {
@@ -233,7 +271,7 @@ impl Command {
                 input.parse::<syn::Token![=]>()?;
                 input.parse::<syn::LitInt>()?.base10_parse()?
             },
-            description,
+            attributes,
         })
     }
 }
@@ -241,14 +279,12 @@ impl Command {
 struct Buffer {
     name: syn::Ident,
     raw_value: u32,
-    description: Option<String>,
+    attributes: Vec<syn::Attribute>,
     rw_type: RWType,
 }
 
 impl Buffer {
-    fn parse(input: syn::parse::ParseStream, attributes: Vec<Attribute>) -> syn::Result<Self> {
-        let description = doc_string_from_attrs(&attributes)?;
-
+    fn parse(input: syn::parse::ParseStream, attributes: Vec<syn::Attribute>) -> syn::Result<Self> {
         input.parse::<kw::buffer>()?;
 
         Ok(Self {
@@ -266,7 +302,7 @@ impl Buffer {
                 input.parse::<syn::Token![=]>()?;
                 input.parse::<syn::LitInt>()?.base10_parse()?
             },
-            description,
+            attributes,
         })
     }
 }
@@ -385,7 +421,7 @@ fn parse_reset_value(t: syn::Type, v: Expr) -> Result<Option<ResetValue>, syn::E
 #[derive(Clone)]
 struct Field {
     name: syn::Ident,
-    description: Option<String>,
+    attributes: Vec<syn::Attribute>,
     register_type: BaseType,
     conversion_type: ConversionType,
     bit_start: u32,
@@ -394,13 +430,11 @@ struct Field {
 
 impl syn::parse::Parse for Field {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let field_attributes = syn::Attribute::parse_outer(input)?;
-
-        let description = doc_string_from_attrs(&field_attributes)?;
+        let attributes = syn::Attribute::parse_outer(input)?;
 
         Ok(Self {
             name: input.parse()?,
-            description,
+            attributes,
             register_type: {
                 input.parse::<syn::Token![:]>()?;
                 let register_type_ident = input.parse::<syn::Ident>()?;
@@ -550,6 +584,7 @@ pub fn implement_device(item: TokenStream) -> TokenStream {
             address: r.address_value,
             size_bits: r.size_bits_value,
             description: r.description.clone(),
+            cfg_attributes: r.cfg_attributes.clone(),
             reset_value: r.reset_value.clone(),
             byte_order: r.byte_order,
             fields: r
@@ -558,7 +593,8 @@ pub fn implement_device(item: TokenStream) -> TokenStream {
                 .cloned()
                 .map(|f| device_driver_generation::Field {
                     name: f.name.to_string(),
-                    description: f.description,
+                    description: None,
+                    attributes: f.attributes,
                     register_type: f.register_type,
                     conversion: match &f.conversion_type {
                         ConversionType::Existing {
@@ -611,7 +647,8 @@ pub fn implement_device(item: TokenStream) -> TokenStream {
         .map(|r| device_driver_generation::Command {
             name: r.name.to_string(),
             id: r.raw_value,
-            description: r.description.clone(),
+            description: None,
+            attributes: r.attributes.clone(),
         })
         .collect::<Vec<_>>()
         .into();
@@ -629,7 +666,8 @@ pub fn implement_device(item: TokenStream) -> TokenStream {
         .map(|r| device_driver_generation::Buffer {
             name: r.name.to_string(),
             id: r.raw_value,
-            description: r.description.clone(),
+            description: None,
+            attributes: r.attributes.clone(),
             rw_type: r.rw_type,
         })
         .collect::<Vec<_>>()
@@ -649,7 +687,7 @@ pub fn implement_device(item: TokenStream) -> TokenStream {
     };
 
     let item = syn::ItemImpl {
-        attrs: Default::default(),
+        attrs: device_impl.attrs,
         defaultness: Default::default(),
         unsafety: Default::default(),
         impl_token: Default::default(),
@@ -666,7 +704,7 @@ pub fn implement_device(item: TokenStream) -> TokenStream {
     ])
 }
 
-fn doc_string_from_attrs(attrs: &[Attribute]) -> Result<Option<String>, syn::Error> {
+fn doc_string_from_attrs(attrs: &[syn::Attribute]) -> Result<Option<String>, syn::Error> {
     let mut description = String::new();
 
     for attr in attrs {

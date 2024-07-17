@@ -35,6 +35,8 @@ pub struct Register {
     pub description: Option<String>,
     pub reset_value: Option<ResetValue>,
     pub fields: FieldCollection,
+    #[serde(skip)]
+    pub cfg_attributes: Vec<syn::Attribute>,
 }
 
 impl PartialOrd for Register {
@@ -63,6 +65,8 @@ pub struct Field {
     pub strict_conversion: Option<TypePathOrEnum>,
     pub start: u32,
     pub end: Option<u32>,
+    #[serde(skip)]
+    pub attributes: Vec<syn::Attribute>,
 }
 
 impl PartialOrd for Field {
@@ -86,6 +90,8 @@ pub struct Command {
     pub name: String,
     pub id: u32,
     pub description: Option<String>,
+    #[serde(skip)]
+    pub attributes: Vec<syn::Attribute>,
 }
 
 impl PartialOrd for Command {
@@ -110,6 +116,8 @@ pub struct Buffer {
     pub id: u32,
     pub description: Option<String>,
     pub rw_type: RWType,
+    #[serde(skip)]
+    pub attributes: Vec<syn::Attribute>,
 }
 
 impl PartialOrd for Buffer {

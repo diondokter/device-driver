@@ -71,10 +71,12 @@ impl Command {
             quote!()
         };
 
+        let attributes = &self.attributes;
         let id = proc_macro2::Literal::u32_unsuffixed(self.id);
 
         syn::parse_quote! {
             #doc_attribute
+            #(#attributes)*
             pub fn #function_name(&mut self) -> device_driver::CommandOperation<'_, Self> {
                 device_driver::CommandOperation::new(self, #id)
             }
@@ -93,11 +95,13 @@ impl Buffer {
             quote!()
         };
 
+        let attributes = &self.attributes;
         let id = proc_macro2::Literal::u32_unsuffixed(self.id);
         let rw_type = self.rw_type.into_type();
 
         syn::parse_quote! {
             #doc_attribute
+            #(#attributes)*
             pub fn #function_name(&mut self) -> device_driver::BufferOperation<'_, Self, #rw_type> {
                 device_driver::BufferOperation::new(self, #id)
             }
@@ -116,8 +120,11 @@ impl Register {
             quote!()
         };
 
+        let cfg_attributes = &self.cfg_attributes;
+
         syn::parse_quote! {
             #doc_attribute
+            #(#cfg_attributes)*
             pub fn #snake_case_name(&mut self) -> device_driver::RegisterOperation<'_, Self, #pascal_case_name, { #pascal_case_name::SIZE_BYTES }> {
                 device_driver::RegisterOperation::new(self)
             }
@@ -134,6 +141,7 @@ impl Register {
             reset_value,
             fields,
             byte_order,
+            cfg_attributes,
         } = self;
 
         let pascal_case_name_string = name.to_case(Case::Pascal);
@@ -235,12 +243,14 @@ impl Register {
         let is_le = matches!(byte_order.unwrap_or(ByteOrder::BE), ByteOrder::LE);
 
         quote! {
+            #(#cfg_attributes)*
             #doc_attribute
             #[derive(Copy, Clone, Eq, PartialEq)]
             pub struct #pascal_case_name {
                 bits: device_driver::bitvec::array::BitArray<[u8; Self::SIZE_BYTES]>,
             }
 
+            #(#cfg_attributes)*
             impl device_driver::Register<{ Self::SIZE_BYTES }> for #pascal_case_name {
                 const ZERO: Self = Self {
                     bits: device_driver::bitvec::array::BitArray::ZERO,
@@ -266,6 +276,7 @@ impl Register {
                 #reset_value
             }
 
+            #(#cfg_attributes)*
             impl #pascal_case_name {
                 pub const SIZE_BYTES: usize = #size_bytes_lit;
 
@@ -280,6 +291,7 @@ impl Register {
                 }
             }
 
+            #(#cfg_attributes)*
             impl<T: Into<#pascal_case_name>> core::ops::BitAnd<T> for #pascal_case_name {
                 type Output = Self;
 
@@ -288,6 +300,7 @@ impl Register {
                 }
             }
 
+            #(#cfg_attributes)*
             impl<T: Into<#pascal_case_name>> core::ops::BitOr<T> for #pascal_case_name {
                 type Output = Self;
 
@@ -296,6 +309,7 @@ impl Register {
                 }
             }
 
+            #(#cfg_attributes)*
             impl<T: Into<#pascal_case_name>> core::ops::BitXor<T> for #pascal_case_name {
                 type Output = Self;
 
@@ -304,6 +318,7 @@ impl Register {
                 }
             }
 
+            #(#cfg_attributes)*
             #[doc = #module_doc_string]
             pub mod #snake_case_name {
                 use super::*;
@@ -424,6 +439,7 @@ impl Field {
             register_type,
             start,
             end,
+            attributes,
         } = self;
 
         let (conversion_type, strict_conversion) = match (conversion, strict_conversion) {
@@ -461,6 +477,7 @@ impl Field {
                 let conversion_type = conversion_type.into_type(name);
                 quote! {
                     #doc_attribute
+                    #(#attributes)*
                     pub fn #snake_case_name(&self) -> Result<#conversion_type, <#conversion_type as TryFrom<#register_type>>::Error> {
                         device_driver::read_field_bool::<Self, _, #conversion_type, #start, { Self::SIZE_BYTES }>(self)
                     }
@@ -470,6 +487,7 @@ impl Field {
                 let conversion_type = conversion_type.into_type(name);
                 quote! {
                     #doc_attribute
+                    #(#attributes)*
                     pub fn #snake_case_name(&self) -> #conversion_type {
                         device_driver::read_field_bool_strict::<Self, _, #conversion_type, #start, { Self::SIZE_BYTES }>(self)
                     }
@@ -478,6 +496,7 @@ impl Field {
             (BaseType::Bool, Some(end), None, _) if end == self.start + 1 => {
                 quote! {
                     #doc_attribute
+                    #(#attributes)*
                     pub fn #snake_case_name(&self) -> #register_type {
                         device_driver::read_field_bool_no_convert::<Self, _, #start, { Self::SIZE_BYTES }>(self)
                     }
@@ -487,6 +506,7 @@ impl Field {
                 let conversion_type = conversion_type.into_type(name);
                 quote! {
                     #doc_attribute
+                    #(#attributes)*
                     pub fn #snake_case_name(&self) -> Result<#conversion_type, <#conversion_type as TryFrom<#register_type>>::Error> {
                         device_driver::read_field_bool::<Self, _, #conversion_type, #start, { Self::SIZE_BYTES }>(self)
                     }
@@ -496,6 +516,7 @@ impl Field {
                 let conversion_type = conversion_type.into_type(name);
                 quote! {
                     #doc_attribute
+                    #(#attributes)*
                     pub fn #snake_case_name(&self) -> #conversion_type {
                         device_driver::read_field_bool_strict::<Self, _, #conversion_type, #start, { Self::SIZE_BYTES }>(self)
                     }
@@ -504,6 +525,7 @@ impl Field {
             (BaseType::Bool, None, None, _) => {
                 quote! {
                     #doc_attribute
+                    #(#attributes)*
                     pub fn #snake_case_name(&self) -> #register_type {
                         device_driver::read_field_bool_no_convert::<Self, _, #start, { Self::SIZE_BYTES }>(self)
                     }
@@ -518,6 +540,7 @@ impl Field {
 
                 quote! {
                     #doc_attribute
+                    #(#attributes)*
                     pub fn #snake_case_name(&self) -> Result<#conversion_type, <#conversion_type as TryFrom<#register_type>>::Error> {
                         device_driver::read_field::<Self, _, #conversion_type, #register_type, #start, #end, { Self::SIZE_BYTES }>(self)
                     }
@@ -529,6 +552,7 @@ impl Field {
 
                 quote! {
                     #doc_attribute
+                    #(#attributes)*
                     pub fn #snake_case_name(&self) -> #conversion_type {
                         device_driver::read_field_strict::<Self, _, #conversion_type, #register_type, #start, #end, { Self::SIZE_BYTES }>(self)
                     }
@@ -539,6 +563,7 @@ impl Field {
 
                 quote! {
                     #doc_attribute
+                    #(#attributes)*
                     pub fn #snake_case_name(&self) -> #register_type {
                         device_driver::read_field_no_convert::<Self, _, #register_type, #start, #end, { Self::SIZE_BYTES }>(self)
                     }
@@ -559,6 +584,7 @@ impl Field {
             register_type,
             start,
             end,
+            attributes,
         } = self;
 
         let conversion_type = match (conversion, strict_conversion) {
@@ -589,6 +615,7 @@ impl Field {
                 let conversion_type = conversion_type.into_type(name);
                 quote! {
                     #doc_attribute
+                    #(#attributes)*
                     pub fn #snake_case_name(&mut self, data: #conversion_type) -> &mut Self {
                         device_driver::write_field_bool::<Self, _, #conversion_type, #start, { Self::SIZE_BYTES }>(self, data)
                     }
@@ -597,6 +624,7 @@ impl Field {
             (BaseType::Bool, Some(end), None) if end == self.start + 1 => {
                 quote! {
                     #doc_attribute
+                    #(#attributes)*
                     pub fn #snake_case_name(&mut self, data: #register_type) -> &mut Self {
                         device_driver::write_field_bool_no_convert::<Self, _, #start, { Self::SIZE_BYTES }>(self, data)
                     }
@@ -606,6 +634,7 @@ impl Field {
                 let conversion_type = conversion_type.into_type(name);
                 quote! {
                     #doc_attribute
+                    #(#attributes)*
                     pub fn #snake_case_name(&mut self, data: #conversion_type) -> &mut Self {
                         device_driver::write_field_bool::<Self, _, #conversion_type, #start, { Self::SIZE_BYTES }>(self, data)
                     }
@@ -614,6 +643,7 @@ impl Field {
             (BaseType::Bool, None, None) => {
                 quote! {
                     #doc_attribute
+                    #(#attributes)*
                     pub fn #snake_case_name(&mut self, data: #register_type) -> &mut Self {
                         device_driver::write_field_bool_no_convert::<Self, _, #start, { Self::SIZE_BYTES }>(self, data)
                     }
@@ -628,6 +658,7 @@ impl Field {
 
                 quote! {
                     #doc_attribute
+                    #(#attributes)*
                     pub fn #snake_case_name(&mut self, data: #conversion_type) -> &mut Self {
                         device_driver::write_field::<Self, _, #conversion_type, #register_type, #start, #end, { Self::SIZE_BYTES }>(self, data)
                     }
@@ -638,6 +669,7 @@ impl Field {
 
                 quote! {
                     #doc_attribute
+                    #(#attributes)*
                     pub fn #snake_case_name(&mut self, data: #register_type) -> &mut Self {
                         device_driver::write_field_no_convert::<Self, _, #register_type, #start, #end, { Self::SIZE_BYTES }>(self, data)
                     }
