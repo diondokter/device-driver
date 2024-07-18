@@ -3,8 +3,8 @@ use std::ops::Range;
 use bitvec::array::BitArray;
 use device_driver::{
     embedded_io::{Read, Write},
-    AsyncBufferDevice, AsyncCommandDevice, AsyncRegisterDevice, BufferDevice, CommandDevice,
-    Register, RegisterDevice,
+    AddressableDevice, AsyncBufferDevice, AsyncCommandDevice, AsyncRegisterDevice, BufferDevice,
+    CommandDevice, Register, RegisterDevice,
 };
 
 pub struct TestDevice {
@@ -13,62 +13,54 @@ pub struct TestDevice {
     last_buffer: u32,
 }
 
+impl AddressableDevice for TestDevice {
+    type AddressType = u8;
+}
+
 impl RegisterDevice for TestDevice {
     type Error = ();
-    type AddressType = u8;
 
-    fn write_register<R, const SIZE_BYTES: usize>(
+    fn write_register<const SIZE_BYTES: usize>(
         &mut self,
+        address: Self::AddressType,
         data: &BitArray<[u8; SIZE_BYTES]>,
-    ) -> Result<(), Self::Error>
-    where
-        R: Register<SIZE_BYTES, AddressType = Self::AddressType>,
-    {
-        self.device_memory[R::ADDRESS as usize..][..SIZE_BYTES]
-            .copy_from_slice(data.as_raw_slice());
+    ) -> Result<(), Self::Error> {
+        self.device_memory[address as usize..][..SIZE_BYTES].copy_from_slice(data.as_raw_slice());
 
         Ok(())
     }
 
-    fn read_register<R, const SIZE_BYTES: usize>(
+    fn read_register<const SIZE_BYTES: usize>(
         &mut self,
+        address: Self::AddressType,
         data: &mut BitArray<[u8; SIZE_BYTES]>,
-    ) -> Result<(), Self::Error>
-    where
-        R: Register<SIZE_BYTES, AddressType = Self::AddressType>,
-    {
+    ) -> Result<(), Self::Error> {
         data.as_raw_mut_slice()
-            .copy_from_slice(&self.device_memory[R::ADDRESS as usize..][..SIZE_BYTES]);
+            .copy_from_slice(&self.device_memory[address as usize..][..SIZE_BYTES]);
         Ok(())
     }
 }
 
 impl AsyncRegisterDevice for TestDevice {
     type Error = ();
-    type AddressType = u8;
 
-    async fn write_register<R, const SIZE_BYTES: usize>(
+    async fn write_register<const SIZE_BYTES: usize>(
         &mut self,
+        address: Self::AddressType,
         data: &BitArray<[u8; SIZE_BYTES]>,
-    ) -> Result<(), Self::Error>
-    where
-        R: Register<SIZE_BYTES, AddressType = Self::AddressType>,
-    {
-        self.device_memory[R::ADDRESS as usize..][..SIZE_BYTES]
-            .copy_from_slice(data.as_raw_slice());
+    ) -> Result<(), Self::Error> {
+        self.device_memory[address as usize..][..SIZE_BYTES].copy_from_slice(data.as_raw_slice());
 
         Ok(())
     }
 
-    async fn read_register<R, const SIZE_BYTES: usize>(
+    async fn read_register<const SIZE_BYTES: usize>(
         &mut self,
+        address: Self::AddressType,
         data: &mut BitArray<[u8; SIZE_BYTES]>,
-    ) -> Result<(), Self::Error>
-    where
-        R: Register<SIZE_BYTES, AddressType = Self::AddressType>,
-    {
+    ) -> Result<(), Self::Error> {
         data.as_raw_mut_slice()
-            .copy_from_slice(&self.device_memory[R::ADDRESS as usize..][..SIZE_BYTES]);
+            .copy_from_slice(&self.device_memory[address as usize..][..SIZE_BYTES]);
         Ok(())
     }
 }
