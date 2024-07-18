@@ -48,7 +48,7 @@ registers:
     registers:
       baudrate:
         description: Baudrate register
-        address: 42
+        address: 0
         rw_type: rw
         size_bits: 16
         byte_order: le
@@ -59,7 +59,7 @@ registers:
             start: 0
             end: 16
   foo_1:
-    description: Instance of the Foo block
+    description: Second instance of the Foo block
     address: 80
     block: foo
 
