@@ -66,7 +66,7 @@ pub struct Field {
     pub start: u32,
     pub end: Option<u32>,
     #[serde(skip)]
-    pub attributes: Vec<syn::Attribute>,
+    pub cfg_attributes: Vec<syn::Attribute>,
 }
 
 impl PartialOrd for Field {
@@ -91,7 +91,7 @@ pub struct Command {
     pub id: u32,
     pub description: Option<String>,
     #[serde(skip)]
-    pub attributes: Vec<syn::Attribute>,
+    pub cfg_attributes: Vec<syn::Attribute>,
 }
 
 impl PartialOrd for Command {
@@ -117,7 +117,7 @@ pub struct Buffer {
     pub description: Option<String>,
     pub rw_type: RWType,
     #[serde(skip)]
-    pub attributes: Vec<syn::Attribute>,
+    pub cfg_attributes: Vec<syn::Attribute>,
 }
 
 impl PartialOrd for Buffer {
