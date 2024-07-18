@@ -192,6 +192,27 @@ pub mod registers {
                 const SIZE_BITS: usize = 16;
                 const RESET_VALUE: u16 = 0x1234;
 
+                #[cfg(windows)]
+                value: u16 = 0..16,
+                #[cfg(not(windows))]
+                value: u16 = 0..16,
+            },
+            #[cfg(windows)]
+            register Bar {
+                type RWType = RW;
+                const ADDRESS: u8 = 0;
+                const SIZE_BITS: usize = 16;
+                const RESET_VALUE: u16 = 0x1234;
+
+                value: u16 = 0..16,
+            },
+            #[cfg(not(windows))]
+            register Bar {
+                type RWType = RW;
+                const ADDRESS: u8 = 0;
+                const SIZE_BITS: usize = 16;
+                const RESET_VALUE: u16 = 0x5678;
+
                 value: u16 = 0..16,
             },
             command Sleep = 0,
@@ -235,6 +256,12 @@ fn main() {
 
     test_device.foo().write(|w| w).unwrap();
     assert_eq!(test_device.foo().read().unwrap().value(), 0x1234);
+
+    test_device.bar().clear().unwrap();
+    #[cfg(windows)]
+    assert_eq!(test_device.bar().read().unwrap().value(), 0x1234);
+    #[cfg(not(windows))]
+    assert_eq!(test_device.bar().read().unwrap().value(), 0x5678);
 
     test_device.sleep().dispatch().unwrap();
     assert_eq!(test_device.last_command, 0);
