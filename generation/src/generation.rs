@@ -1,4 +1,8 @@
-use crate::{BaseType, Block, Buffer, ByteOrder, Command, Device, Field, Register, RegisterKind};
+use crate::{
+    deserialization::{FieldCollection, RegisterCollection},
+    BaseType, Buffer, ByteOrder, Command, Device, Field, RWType, Register, RegisterKind,
+    ResetValue,
+};
 
 use convert_case::{Case, Casing};
 use proc_macro2::{Span, TokenStream};
@@ -15,28 +19,14 @@ impl Device {
         existing_impl.into_token_stream()
     }
 
-    pub fn generate_blocks(&self, device_impl: &syn::ItemImpl) -> TokenStream {
-        let mut stream = TokenStream::new();
-
-        if let Some(blocks) = self.blocks.as_ref() {
-            stream.append_all(
-                blocks
-                    .iter()
-                    .map(|block| block.generate_definition(self, device_impl)),
-            );
-        }
-
-        stream
-    }
-
-    pub fn generate_definitions(&self) -> TokenStream {
+    pub fn generate_definitions(&self, device_impl: &syn::ItemImpl) -> TokenStream {
         let mut stream = TokenStream::new();
 
         if let Some(registers) = self.registers.as_ref() {
             stream.append_all(
                 registers
                     .iter()
-                    .map(|register| register.generate_definition(self)),
+                    .map(|register| register.generate_definition(self, device_impl)),
             );
         }
 
@@ -123,99 +113,6 @@ impl Buffer {
     }
 }
 
-impl Block {
-    fn generate_definition(&self, device: &Device, device_impl: &syn::ItemImpl) -> TokenStream {
-        let Block {
-            name,
-            description,
-            cfg_attributes,
-            ..
-        } = self;
-
-        let pascal_case_name_string = name.to_case(Case::Pascal);
-        let pascal_case_name = syn::Ident::new(&pascal_case_name_string, Span::call_site());
-        let snake_case_name = syn::Ident::new(&self.name.to_case(Case::Snake), Span::call_site());
-
-        let module_doc_string = format!("Implementation of the [{pascal_case_name}]({snake_case_name}::{pascal_case_name}) register block");
-
-        let doc_attribute = if let Some(description) = description.as_ref() {
-            quote! { #[doc = #description] }
-        } else {
-            quote!()
-        };
-
-        let address_type = if let Some(register_address_type) = device.register_address_type {
-            register_address_type.into_type()
-        } else {
-            return syn::Error::new(Span::call_site(), "register_address_type is not specified")
-                .to_compile_error();
-        };
-
-        let mut generics = device_impl.generics.clone();
-        generics
-            .params
-            .insert(0, syn::GenericParam::Lifetime(syn::parse_quote!('block)));
-        generics.params.push(syn::GenericParam::Const(
-            syn::parse_quote!(const BASE_ADDR: #address_type),
-        ));
-
-        let device_type = device_impl.self_ty.clone();
-        let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-        let fns = self.generate_block_functions();
-        let regs = self.generate_register_definitions(device);
-
-        quote! {
-            #[doc = #module_doc_string]
-            pub mod #snake_case_name {
-                use super::*;
-
-                #doc_attribute
-                #(#cfg_attributes)*
-                pub struct #pascal_case_name #generics (pub(super) &'block mut #device_type);
-
-                impl #impl_generics ::device_driver::RegisterBlock for #pascal_case_name #ty_generics #where_clause {
-                    type Device = #device_type;
-                    const BASE_ADDR: #address_type = BASE_ADDR;
-
-                    fn dev(&mut self) -> &mut Self::Device {
-                        self.0
-                    }
-                }
-
-                impl #impl_generics #pascal_case_name #ty_generics #where_clause {
-                    #(#fns)*
-                }
-
-                #regs
-            }
-        }
-    }
-
-    fn generate_block_functions(&self) -> Vec<syn::ImplItem> {
-        let mut result = Vec::new();
-
-        result.extend(
-            self.registers
-                .iter()
-                .map(|register| register.generate_register_function()),
-        );
-
-        result
-    }
-
-    fn generate_register_definitions(&self, device: &Device) -> TokenStream {
-        let mut stream = TokenStream::new();
-
-        stream.append_all(
-            self.registers
-                .iter()
-                .map(|register| register.generate_definition(device)),
-        );
-
-        stream
-    }
-}
-
 impl Register {
     fn generate_register_function(&self) -> syn::ImplItem {
         let snake_case_name = syn::Ident::new(&self.name.to_case(Case::Snake), Span::call_site());
@@ -240,7 +137,7 @@ impl Register {
                     }
                 }
             }
-            RegisterKind::Block { block } => {
+            RegisterKind::BlockDef { block, .. } | RegisterKind::BlockRef { block } => {
                 let mod_name = syn::Ident::new(&block.to_case(Case::Snake), Span::call_site());
                 let block_name = syn::Ident::new(&block.to_case(Case::Pascal), Span::call_site());
                 let base_address = proc_macro2::Literal::u64_unsuffixed(self.address);
@@ -255,25 +152,53 @@ impl Register {
         }
     }
 
-    fn generate_definition(&self, device: &Device) -> TokenStream {
+    fn generate_definition(&self, device: &Device, device_impl: &syn::ItemImpl) -> TokenStream {
+        match &self.kind {
+            RegisterKind::Register {
+                fields,
+                rw_type,
+                size_bits,
+                reset_value,
+                byte_order,
+            } => self.generate_register_definition(
+                device,
+                fields,
+                *rw_type,
+                *size_bits,
+                reset_value,
+                *byte_order,
+            ),
+            RegisterKind::BlockDef {
+                block,
+                block_description,
+                registers,
+            } => self.generate_block_definition(
+                block,
+                block_description.as_deref(),
+                registers,
+                device,
+                device_impl,
+            ),
+            RegisterKind::BlockRef { .. } => quote!(),
+        }
+    }
+
+    fn generate_register_definition(
+        &self,
+        device: &Device,
+        fields: &FieldCollection,
+        rw_type: RWType,
+        size_bits: u64,
+        reset_value: &Option<ResetValue>,
+        byte_order: Option<ByteOrder>,
+    ) -> TokenStream {
         let Register {
             name,
             address,
             description,
             cfg_attributes,
-            kind,
+            ..
         } = self;
-
-        let RegisterKind::Register {
-            fields,
-            rw_type,
-            size_bits,
-            reset_value,
-            byte_order,
-        } = kind
-        else {
-            return quote!();
-        };
 
         let pascal_case_name_string = name.to_case(Case::Pascal);
         let pascal_case_name = syn::Ident::new(&pascal_case_name_string, Span::call_site());
@@ -329,7 +254,7 @@ impl Register {
         };
         let address = proc_macro2::Literal::u64_unsuffixed(*address);
         let rw_type = rw_type.into_type();
-        let size_bits_lit = proc_macro2::Literal::u64_unsuffixed(*size_bits);
+        let size_bits_lit = proc_macro2::Literal::u64_unsuffixed(size_bits);
         let size_bytes_lit = proc_macro2::Literal::u64_unsuffixed(size_bits.div_ceil(8));
 
         let debug_field_calls = TokenStream::from_iter(fields.iter().map(|field| {
@@ -557,6 +482,104 @@ impl Register {
             #field_types
         }
         .into_token_stream()
+    }
+
+    fn generate_block_definition(
+        &self,
+        name: &str,
+        description: Option<&str>,
+        registers: &RegisterCollection,
+        device: &Device,
+        device_impl: &syn::ItemImpl,
+    ) -> TokenStream {
+        let cfg_attributes = &self.cfg_attributes;
+
+        let pascal_case_name_string = name.to_case(Case::Pascal);
+        let pascal_case_name = syn::Ident::new(&pascal_case_name_string, Span::call_site());
+        let snake_case_name = syn::Ident::new(&name.to_case(Case::Snake), Span::call_site());
+
+        let module_doc_string = format!("Implementation of the [{pascal_case_name}]({snake_case_name}::{pascal_case_name}) register block");
+
+        let doc_attribute = if let Some(description) = description.as_ref() {
+            quote! { #[doc = #description] }
+        } else {
+            quote!()
+        };
+
+        let address_type = if let Some(register_address_type) = device.register_address_type {
+            register_address_type.into_type()
+        } else {
+            return syn::Error::new(Span::call_site(), "register_address_type is not specified")
+                .to_compile_error();
+        };
+
+        let mut generics = device_impl.generics.clone();
+        generics
+            .params
+            .insert(0, syn::GenericParam::Lifetime(syn::parse_quote!('block)));
+        generics.params.push(syn::GenericParam::Const(
+            syn::parse_quote!(const BASE_ADDR: #address_type),
+        ));
+
+        let device_type = device_impl.self_ty.clone();
+        let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+        let fns = self.generate_block_functions(registers);
+        let regs = self.generate_block_register_definitions(registers, device, device_impl);
+
+        quote! {
+            #[doc = #module_doc_string]
+            pub mod #snake_case_name {
+                use super::*;
+
+                #doc_attribute
+                #(#cfg_attributes)*
+                pub struct #pascal_case_name #generics (pub(super) &'block mut #device_type);
+
+                impl #impl_generics ::device_driver::RegisterBlock for #pascal_case_name #ty_generics #where_clause {
+                    type Device = #device_type;
+                    const BASE_ADDR: #address_type = BASE_ADDR;
+
+                    fn dev(&mut self) -> &mut Self::Device {
+                        self.0
+                    }
+                }
+
+                impl #impl_generics #pascal_case_name #ty_generics #where_clause {
+                    #(#fns)*
+                }
+
+                #regs
+            }
+        }
+    }
+
+    fn generate_block_functions(&self, registers: &RegisterCollection) -> Vec<syn::ImplItem> {
+        let mut result = Vec::new();
+
+        result.extend(
+            registers
+                .iter()
+                .map(|register| register.generate_register_function()),
+        );
+
+        result
+    }
+
+    fn generate_block_register_definitions(
+        &self,
+        registers: &RegisterCollection,
+        device: &Device,
+        device_impl: &syn::ItemImpl,
+    ) -> TokenStream {
+        let mut stream = TokenStream::new();
+
+        stream.append_all(
+            registers
+                .iter()
+                .map(|register| register.generate_definition(device, device_impl)),
+        );
+
+        stream
     }
 }
 

@@ -101,13 +101,8 @@ pub fn implement_device_from_file(attr: TokenStream, item: TokenStream) -> Token
                 }
             };
 
-            let blocks = device.generate_blocks(&item);
-            proc_macro2::TokenStream::from_iter([
-                device.generate_device_impl(item),
-                blocks,
-                device.generate_definitions(),
-            ])
-            .into()
+            let defs = device.generate_definitions(&item);
+            proc_macro2::TokenStream::from_iter([device.generate_device_impl(item), defs]).into()
         }
     }
 }

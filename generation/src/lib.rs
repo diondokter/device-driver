@@ -3,9 +3,7 @@
 use std::iter::FromIterator;
 
 use convert_case::Casing;
-use deserialization::{
-    BlockCollection, BufferCollection, CommandCollection, FieldCollection, RegisterCollection,
-};
+use deserialization::{BufferCollection, CommandCollection, FieldCollection, RegisterCollection};
 use indexmap::IndexMap;
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens, TokenStreamExt};
@@ -19,33 +17,9 @@ mod generation;
 #[serde(deny_unknown_fields)]
 pub struct Device {
     pub register_address_type: Option<BaseType>,
-    pub blocks: Option<BlockCollection>,
     pub registers: Option<RegisterCollection>,
     pub commands: Option<CommandCollection>,
     pub buffers: Option<BufferCollection>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Block {
-    #[serde(skip)]
-    pub name: String,
-    pub description: Option<String>,
-    #[serde(skip)]
-    pub cfg_attributes: Vec<syn::Attribute>,
-    pub registers: RegisterCollection,
-}
-
-impl PartialOrd for Block {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for Block {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.name.cmp(&other.name)
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
@@ -71,7 +45,12 @@ pub enum RegisterKind {
         reset_value: Option<ResetValue>,
         fields: FieldCollection,
     },
-    Block {
+    BlockDef {
+        block: String,
+        block_description: Option<String>,
+        registers: RegisterCollection,
+    },
+    BlockRef {
         block: String,
     },
 }
@@ -455,12 +434,14 @@ mod tests {
 
         let mut stream = TokenStream::new();
 
+        let existing_impl = syn::parse_quote! {
+            impl<FOO> MyRegisterDevice<FOO> {}
+        };
+        let defs = device.generate_definitions(&existing_impl);
         device
-            .generate_device_impl(syn::parse_quote! {
-                impl<FOO> MyRegisterDevice<FOO> {}
-            })
+            .generate_device_impl(existing_impl)
             .to_tokens(&mut stream);
-        device.generate_definitions().to_tokens(&mut stream);
+        defs.to_tokens(&mut stream);
 
         let output = prettyplease::unparse(&syn::parse2(stream).unwrap());
         println!("{output}");

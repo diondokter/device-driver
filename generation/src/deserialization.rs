@@ -4,47 +4,8 @@ use indexmap::IndexMap;
 use proc_macro2::Span;
 
 use crate::{
-    Block, Buffer, Command, EnumVariant, EnumVariantValue, Field, Register, TypePath,
-    TypePathOrEnum,
+    Buffer, Command, EnumVariant, EnumVariantValue, Field, Register, TypePath, TypePathOrEnum,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BlockCollection(Vec<Block>);
-
-impl From<Vec<Block>> for BlockCollection {
-    fn from(value: Vec<Block>) -> Self {
-        Self(value)
-    }
-}
-
-impl std::ops::Deref for BlockCollection {
-    type Target = Vec<Block>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<'de> serde::Deserialize<'de> for BlockCollection {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let blcoks = HashMap::<String, Block>::deserialize(deserializer)?;
-
-        let mut blocks: Vec<_> = blcoks
-            .into_iter()
-            .map(|(name, mut block)| {
-                block.name = name;
-                block
-            })
-            .collect();
-
-        blocks.sort();
-
-        Ok(Self(blocks))
-    }
-}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RegisterCollection(Vec<Register>);

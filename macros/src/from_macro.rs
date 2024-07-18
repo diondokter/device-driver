@@ -656,7 +656,6 @@ pub fn implement_device(item: TokenStream) -> TokenStream {
 
     let device = device_driver_generation::Device {
         register_address_type,
-        blocks: None,
         registers,
         commands,
         buffers,
@@ -674,10 +673,8 @@ pub fn implement_device(item: TokenStream) -> TokenStream {
         items: Default::default(),
     };
 
-    proc_macro2::TokenStream::from_iter([
-        device.generate_device_impl(item),
-        device.generate_definitions(),
-    ])
+    let defs = device.generate_definitions(&item);
+    proc_macro2::TokenStream::from_iter([device.generate_device_impl(item), defs])
 }
 
 fn doc_string_from_attrs(attrs: &[syn::Attribute]) -> Result<Option<String>, syn::Error> {
