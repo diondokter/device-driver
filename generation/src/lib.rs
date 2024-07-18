@@ -3,7 +3,9 @@
 use std::iter::FromIterator;
 
 use convert_case::Casing;
-use deserialization::{BufferCollection, CommandCollection, FieldCollection, RegisterCollection};
+use deserialization::{
+    BlockCollection, BufferCollection, CommandCollection, FieldCollection, RegisterCollection,
+};
 use indexmap::IndexMap;
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens, TokenStreamExt};
@@ -17,6 +19,7 @@ mod generation;
 #[serde(deny_unknown_fields)]
 pub struct Device {
     pub register_address_type: Option<BaseType>,
+    pub blocks: Option<BlockCollection>,
     pub registers: Option<RegisterCollection>,
     pub commands: Option<CommandCollection>,
     pub buffers: Option<BufferCollection>,
@@ -24,19 +27,53 @@ pub struct Device {
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
+pub struct Block {
+    #[serde(skip)]
+    pub name: String,
+    pub description: Option<String>,
+    #[serde(skip)]
+    pub cfg_attributes: Vec<syn::Attribute>,
+    pub registers: RegisterCollection,
+}
+
+impl PartialOrd for Block {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Block {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.name.cmp(&other.name)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
 pub struct Register {
     #[serde(skip)]
     pub name: String,
-    pub rw_type: RWType,
     pub address: u64,
-    pub size_bits: u64,
-    /// BE by default
-    pub byte_order: Option<ByteOrder>,
     pub description: Option<String>,
-    pub reset_value: Option<ResetValue>,
-    pub fields: FieldCollection,
     #[serde(skip)]
     pub cfg_attributes: Vec<syn::Attribute>,
+    #[serde(flatten)]
+    pub kind: RegisterKind,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+#[serde(untagged)]
+pub enum RegisterKind {
+    Register {
+        rw_type: RWType,
+        size_bits: u64,
+        /// BE by default
+        byte_order: Option<ByteOrder>,
+        reset_value: Option<ResetValue>,
+        fields: FieldCollection,
+    },
+    Block {
+        block: String,
+    },
 }
 
 impl PartialOrd for Register {

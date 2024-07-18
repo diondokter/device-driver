@@ -553,56 +553,58 @@ pub fn implement_device(item: TokenStream) -> TokenStream {
         .filter_map(Item::as_register)
         .map(|r| device_driver_generation::Register {
             name: r.name.to_string(),
-            rw_type: r.rw_type,
             address: r.address_value,
-            size_bits: r.size_bits_value,
             description: r.description.clone(),
             cfg_attributes: r.cfg_attributes.clone(),
-            reset_value: r.reset_value.clone(),
-            byte_order: r.byte_order,
-            fields: r
-                .fields
-                .iter()
-                .cloned()
-                .map(|f| device_driver_generation::Field {
-                    name: f.name.to_string(),
-                    description: f.description,
-                    cfg_attributes: f.cfg_attributes,
-                    register_type: f.register_type,
-                    conversion: match &f.conversion_type {
-                        ConversionType::Existing {
-                            path,
-                            strict: false,
-                        } => Some(device_driver_generation::TypePathOrEnum::TypePath(
-                            TypePath(path.to_token_stream().to_string()),
-                        )),
-                        ConversionType::Enum {
-                            value: enum_def,
-                            strict: false,
-                        } => Some(device_driver_generation::TypePathOrEnum::Enum(
-                            FromIterator::from_iter(enum_def.clone()),
-                        )),
-                        _ => None,
-                    },
-                    strict_conversion: match f.conversion_type {
-                        ConversionType::Existing { path, strict: true } => {
-                            Some(device_driver_generation::TypePathOrEnum::TypePath(
+            kind: device_driver_generation::RegisterKind::Register {
+                rw_type: r.rw_type,
+                size_bits: r.size_bits_value,
+                reset_value: r.reset_value.clone(),
+                byte_order: r.byte_order,
+                fields: r
+                    .fields
+                    .iter()
+                    .cloned()
+                    .map(|f| device_driver_generation::Field {
+                        name: f.name.to_string(),
+                        description: f.description,
+                        cfg_attributes: f.cfg_attributes,
+                        register_type: f.register_type,
+                        conversion: match &f.conversion_type {
+                            ConversionType::Existing {
+                                path,
+                                strict: false,
+                            } => Some(device_driver_generation::TypePathOrEnum::TypePath(
                                 TypePath(path.to_token_stream().to_string()),
-                            ))
-                        }
-                        ConversionType::Enum {
-                            value: enum_def,
-                            strict: true,
-                        } => Some(device_driver_generation::TypePathOrEnum::Enum(
-                            FromIterator::from_iter(enum_def),
-                        )),
-                        _ => None,
-                    },
-                    start: f.bit_start,
-                    end: f.bit_end,
-                })
-                .collect::<Vec<_>>()
-                .into(),
+                            )),
+                            ConversionType::Enum {
+                                value: enum_def,
+                                strict: false,
+                            } => Some(device_driver_generation::TypePathOrEnum::Enum(
+                                FromIterator::from_iter(enum_def.clone()),
+                            )),
+                            _ => None,
+                        },
+                        strict_conversion: match f.conversion_type {
+                            ConversionType::Existing { path, strict: true } => {
+                                Some(device_driver_generation::TypePathOrEnum::TypePath(
+                                    TypePath(path.to_token_stream().to_string()),
+                                ))
+                            }
+                            ConversionType::Enum {
+                                value: enum_def,
+                                strict: true,
+                            } => Some(device_driver_generation::TypePathOrEnum::Enum(
+                                FromIterator::from_iter(enum_def),
+                            )),
+                            _ => None,
+                        },
+                        start: f.bit_start,
+                        end: f.bit_end,
+                    })
+                    .collect::<Vec<_>>()
+                    .into(),
+            },
         })
         .collect::<Vec<_>>()
         .into();
@@ -654,6 +656,7 @@ pub fn implement_device(item: TokenStream) -> TokenStream {
 
     let device = device_driver_generation::Device {
         register_address_type,
+        blocks: None,
         registers,
         commands,
         buffers,

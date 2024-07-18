@@ -1,5 +1,27 @@
 {
     "register_address_type": "u8",
+    "blocks": {
+        "foo": {
+            "description": "Doc comment for the Foo block",
+            "registers": {
+                "baudrate": {
+                    "description": "Baudrate register",
+                    "address": 42,
+                    "rw_type": "rw",
+                    "size_bits": 16,
+                    "byte_order": "le",
+                    "fields": {
+                        "value": {
+                            "description": "Baudrate value",
+                            "type": "u16",
+                            "start": 0,
+                            "end": 16
+                        }
+                    }
+                }
+            }
+        }
+    },
     "registers": {
         "id": {
             "description": "Doc comment for the ID register",
@@ -50,6 +72,11 @@
                     "end": 16
                 }
             }
+        },
+        "foo_0": {
+            "description": "Instance of the Foo block",
+            "address": 64,
+            "block": "foo"
         }
     },
 
