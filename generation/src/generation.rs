@@ -364,11 +364,11 @@ impl Register {
                     pub fn into_register(self) -> #pascal_case_name {
                         self.into()
                     }
-                    
+
                     #field_functions_write
                     #field_functions_read_explicit
                 }
-    
+
                 #[doc = #r_doc_string]
                 #[derive(Copy, Clone, Eq, PartialEq)]
                 pub struct R {
