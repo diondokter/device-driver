@@ -4,11 +4,25 @@ use indexmap::IndexMap;
 use proc_macro2::Span;
 
 use crate::{
-    Buffer, Command, EnumVariant, EnumVariantValue, Field, Register, TypePath, TypePathOrEnum,
+    Buffer, Command, EnumVariant, EnumVariantValue, Field, Register, RegisterKind, TypePath,
+    TypePathOrEnum,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RegisterCollection(Vec<Register>);
+
+impl RegisterCollection {
+    pub fn resolve(&self, name: &str) -> Option<&Register> {
+        match self.0.iter().find(|x| x.name == name) {
+            None => None,
+            Some(Register {
+                kind: RegisterKind::Ref { copy_of, .. },
+                ..
+            }) => self.resolve(copy_of),
+            Some(r) => Some(r),
+        }
+    }
+}
 
 impl From<Vec<Register>> for RegisterCollection {
     fn from(value: Vec<Register>) -> Self {

@@ -53,9 +53,7 @@
         },
         "foo_0": {
             "description": "Instance of the Foo block",
-            "address": 64,
-            "block": "foo",
-            "block_description": "Doc comment for the Foo block",
+            "base_address": 64,
             "registers": {
                 "baudrate": {
                     "description": "Baudrate register",
@@ -76,8 +74,33 @@
         },
         "foo_1": {
             "description": "Second instance of the Foo block",
-            "address": 80,
-            "block": "foo"
+            "base_address": 80,
+            "copy_of": "foo_0"
+        },
+        "bar": {
+            "description": "Instance of the Bar block",
+            "base_address": 96,
+            "repeat": {
+                "count": 3,
+                "stride": 2
+            },
+            "registers": {
+                "baudrate": {
+                    "description": "Baudrate register",
+                    "address": 0,
+                    "rw_type": "rw",
+                    "size_bits": 16,
+                    "byte_order": "le",
+                    "fields": {
+                        "value": {
+                            "description": "Baudrate value",
+                            "type": "u16",
+                            "start": 0,
+                            "end": 16
+                        }
+                    }
+                }
+            }
         }
     },
 

@@ -26,7 +26,6 @@ pub struct Device {
 pub struct Register {
     #[serde(skip)]
     pub name: String,
-    pub address: u64,
     pub description: Option<String>,
     #[serde(skip)]
     pub cfg_attributes: Vec<syn::Attribute>,
@@ -38,6 +37,7 @@ pub struct Register {
 #[serde(untagged)]
 pub enum RegisterKind {
     Register {
+        address: u64,
         rw_type: RWType,
         size_bits: u64,
         /// BE by default
@@ -45,14 +45,32 @@ pub enum RegisterKind {
         reset_value: Option<ResetValue>,
         fields: FieldCollection,
     },
-    BlockDef {
-        block: String,
-        block_description: Option<String>,
+    Block {
+        base_address: Option<u64>,
+        repeat: Option<RegisterRepeat>,
         registers: RegisterCollection,
     },
-    BlockRef {
-        block: String,
+    Ref {
+        base_address: u64,
+        copy_of: String,
     },
+}
+
+impl RegisterKind {
+    fn address(&self) -> u64 {
+        match self {
+            RegisterKind::Register { address, .. } => *address,
+            RegisterKind::Block { base_address, .. } => base_address.unwrap_or(0),
+            RegisterKind::Ref { base_address, .. } => *base_address,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RegisterRepeat {
+    pub count: u64,
+    pub stride: u64,
 }
 
 impl PartialOrd for Register {
@@ -63,8 +81,9 @@ impl PartialOrd for Register {
 
 impl Ord for Register {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.address
-            .cmp(&other.address)
+        self.kind
+            .address()
+            .cmp(&other.kind.address())
             .then_with(|| self.name.cmp(&other.name))
     }
 }
@@ -437,11 +456,10 @@ mod tests {
         let existing_impl = syn::parse_quote! {
             impl<FOO> MyRegisterDevice<FOO> {}
         };
-        let defs = device.generate_definitions(&existing_impl);
         device
             .generate_device_impl(existing_impl)
             .to_tokens(&mut stream);
-        defs.to_tokens(&mut stream);
+        device.generate_definitions().to_tokens(&mut stream);
 
         let output = prettyplease::unparse(&syn::parse2(stream).unwrap());
         println!("{output}");

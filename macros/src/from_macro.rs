@@ -553,10 +553,10 @@ pub fn implement_device(item: TokenStream) -> TokenStream {
         .filter_map(Item::as_register)
         .map(|r| device_driver_generation::Register {
             name: r.name.to_string(),
-            address: r.address_value,
             description: r.description.clone(),
             cfg_attributes: r.cfg_attributes.clone(),
             kind: device_driver_generation::RegisterKind::Register {
+                address: r.address_value,
                 rw_type: r.rw_type,
                 size_bits: r.size_bits_value,
                 reset_value: r.reset_value.clone(),
@@ -673,8 +673,10 @@ pub fn implement_device(item: TokenStream) -> TokenStream {
         items: Default::default(),
     };
 
-    let defs = device.generate_definitions(&item);
-    proc_macro2::TokenStream::from_iter([device.generate_device_impl(item), defs])
+    proc_macro2::TokenStream::from_iter([
+        device.generate_device_impl(item),
+        device.generate_definitions(),
+    ])
 }
 
 fn doc_string_from_attrs(attrs: &[syn::Attribute]) -> Result<Option<String>, syn::Error> {
