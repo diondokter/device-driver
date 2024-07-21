@@ -1,6 +1,7 @@
 use device_driver_generation::{
     deserialization::{BufferCollection, CommandCollection, RegisterCollection},
-    BaseType, ByteOrder, EnumVariant, EnumVariantValue, RWType, ResetValue, TypePath,
+    BaseType, ByteOrder, EnumVariant, EnumVariantValue, RWType, RegisterRepeat, ResetValue,
+    TypePath,
 };
 use proc_macro2::TokenStream;
 use quote::ToTokens;
@@ -38,24 +39,20 @@ impl syn::parse::Parse for DeviceImpl {
         };
 
         // Make sure all registers use the same address type
-        if let Some(address_type) = s
-            .items
-            .iter()
-            .filter_map(Item::as_register)
-            .nth(0)
-            .map(|r| &r.address_type)
         {
-            for other_address_type in s
+            let mut registers = s
                 .items
                 .iter()
                 .filter_map(Item::as_register)
-                .map(|r| &r.address_type)
-            {
-                if *other_address_type != *address_type {
-                    return Err(syn::Error::new(
+                .flat_map(|r| r.address_types());
+            if let Some(address_type) = registers.next() {
+                for other_address_type in registers {
+                    if *other_address_type != *address_type {
+                        return Err(syn::Error::new(
                         other_address_type.span(),
                         format!("All registers must have the same address type. Previous type was `{}` and this is `{}`", address_type, other_address_type),
                     ));
+                    }
                 }
             }
         }
@@ -101,7 +98,11 @@ impl syn::parse::Parse for Item {
         let attributes = syn::Attribute::parse_outer(input)?;
 
         if input.peek(kw::register) {
-            Ok(Self::Register(Register::parse(input, attributes)?))
+            Ok(Self::Register(Register::parse_register(input, attributes)?))
+        } else if input.peek(kw::block) {
+            Ok(Self::Register(Register::parse_block(input, attributes)?))
+        } else if input.peek(syn::Token![ref]) {
+            Ok(Self::Register(Register::parse_ref(input, attributes)?))
         } else if input.peek(kw::command) {
             Ok(Self::Command(Command::parse(input, attributes)?))
         } else if input.peek(kw::buffer) {
@@ -117,19 +118,33 @@ impl syn::parse::Parse for Item {
 
 struct Register {
     name: syn::Ident,
-    rw_type: RWType,
-    address_type: syn::Ident,
-    address_value: u64,
-    size_bits_value: u64,
-    byte_order: Option<ByteOrder>,
-    reset_value: Option<ResetValue>,
     description: Option<String>,
     cfg_attributes: Vec<syn::Attribute>,
-    fields: Punctuated<Field, syn::Token![,]>,
+    kind: RegisterKind,
 }
 
 impl Register {
-    fn parse(input: syn::parse::ParseStream, attributes: Vec<syn::Attribute>) -> syn::Result<Self> {
+    fn address_types(&self) -> Box<dyn Iterator<Item = &'_ syn::Ident> + '_> {
+        match &self.kind {
+            RegisterKind::Register { address_type, .. }
+            | RegisterKind::Ref { address_type, .. } => Box::new(std::iter::once(address_type)),
+            RegisterKind::Block {
+                address_type,
+                registers,
+                ..
+            } => Box::new(
+                address_type
+                    .as_ref()
+                    .into_iter()
+                    .chain(registers.iter().flat_map(|x| x.address_types())),
+            ),
+        }
+    }
+
+    fn parse_register(
+        input: syn::parse::ParseStream,
+        attributes: Vec<syn::Attribute>,
+    ) -> syn::Result<Self> {
         let (description, cfg_attributes) = doc_string_and_cfg_from_attrs(&attributes)?;
 
         input.parse::<kw::register>()?;
@@ -141,80 +156,291 @@ impl Register {
 
         Ok(Self {
             name,
-            rw_type: {
-                contents.parse::<syn::Token![type]>()?;
-                contents.parse::<kw::RWType>()?;
-                contents.parse::<syn::Token![=]>()?;
-                let rw_type_value_ident = contents.parse::<syn::Ident>()?;
-                let value = rw_type_value_ident
-                    .to_string()
-                    .as_str()
-                    .try_into()
-                    .map_err(|e| syn::Error::new(rw_type_value_ident.span(), format!("{e}")))?;
-                contents.parse::<syn::Token![;]>()?;
-                value
-            },
-            byte_order: {
-                if contents.peek(syn::Token![type]) && contents.peek2(kw::ByteOrder) {
+            description,
+            cfg_attributes,
+            kind: RegisterKind::Register {
+                rw_type: {
                     contents.parse::<syn::Token![type]>()?;
-                    contents.parse::<kw::ByteOrder>()?;
+                    contents.parse::<kw::RWType>()?;
                     contents.parse::<syn::Token![=]>()?;
-                    let byte_order_value_ident = contents.parse::<syn::Ident>()?;
-                    let value = byte_order_value_ident
+                    let rw_type_value_ident = contents.parse::<syn::Ident>()?;
+                    let value = rw_type_value_ident
                         .to_string()
                         .as_str()
                         .try_into()
-                        .map_err(|e| {
-                            syn::Error::new(byte_order_value_ident.span(), format!("{e}"))
-                        })?;
+                        .map_err(|e| syn::Error::new(rw_type_value_ident.span(), format!("{e}")))?;
                     contents.parse::<syn::Token![;]>()?;
-                    Some(value)
-                } else {
-                    None
-                }
-            },
-            address_type: {
-                contents.parse::<syn::Token![const]>()?;
-                contents.parse::<kw::ADDRESS>()?;
-                contents.parse::<syn::Token![:]>()?;
-                contents.parse()?
-            },
-            address_value: {
-                contents.parse::<syn::Token![=]>()?;
-                let value = contents.parse::<syn::LitInt>()?.base10_parse()?;
-                contents.parse::<syn::Token![;]>()?;
-                value
-            },
-            size_bits_value: {
-                contents.parse::<syn::Token![const]>()?;
-                contents.parse::<kw::SIZE_BITS>()?;
-                contents.parse::<syn::Token![:]>()?;
-                contents.parse::<syn::Type>()?;
-                contents.parse::<syn::Token![=]>()?;
-                let value = contents.parse::<syn::LitInt>()?.base10_parse()?;
-                contents.parse::<syn::Token![;]>()?;
-                value
-            },
-            reset_value: {
-                if contents.peek(syn::Token![const]) {
+                    value
+                },
+                byte_order: {
+                    if contents.peek(syn::Token![type]) && contents.peek2(kw::ByteOrder) {
+                        contents.parse::<syn::Token![type]>()?;
+                        contents.parse::<kw::ByteOrder>()?;
+                        contents.parse::<syn::Token![=]>()?;
+                        let byte_order_value_ident = contents.parse::<syn::Ident>()?;
+                        let value = byte_order_value_ident
+                            .to_string()
+                            .as_str()
+                            .try_into()
+                            .map_err(|e| {
+                                syn::Error::new(byte_order_value_ident.span(), format!("{e}"))
+                            })?;
+                        contents.parse::<syn::Token![;]>()?;
+                        Some(value)
+                    } else {
+                        None
+                    }
+                },
+                address_type: {
                     contents.parse::<syn::Token![const]>()?;
-                    contents.parse::<kw::RESET_VALUE>()?;
+                    contents.parse::<kw::ADDRESS>()?;
                     contents.parse::<syn::Token![:]>()?;
-                    let t = contents.parse::<syn::Type>()?;
+                    contents.parse()?
+                },
+                address_value: {
                     contents.parse::<syn::Token![=]>()?;
-                    let v = contents.parse::<syn::Expr>()?;
+                    let value = contents.parse::<syn::LitInt>()?.base10_parse()?;
                     contents.parse::<syn::Token![;]>()?;
+                    value
+                },
+                size_bits_value: {
+                    contents.parse::<syn::Token![const]>()?;
+                    contents.parse::<kw::SIZE_BITS>()?;
+                    contents.parse::<syn::Token![:]>()?;
+                    contents.parse::<syn::Type>()?;
+                    contents.parse::<syn::Token![=]>()?;
+                    let value = contents.parse::<syn::LitInt>()?.base10_parse()?;
+                    contents.parse::<syn::Token![;]>()?;
+                    value
+                },
+                reset_value: {
+                    if contents.peek(syn::Token![const]) {
+                        contents.parse::<syn::Token![const]>()?;
+                        contents.parse::<kw::RESET_VALUE>()?;
+                        contents.parse::<syn::Token![:]>()?;
+                        let t = contents.parse::<syn::Type>()?;
+                        contents.parse::<syn::Token![=]>()?;
+                        let v = contents.parse::<syn::Expr>()?;
+                        contents.parse::<syn::Token![;]>()?;
 
-                    parse_reset_value(t, v)?
-                } else {
-                    None
-                }
+                        parse_reset_value(t, v)?
+                    } else {
+                        None
+                    }
+                },
+                fields: contents
+                    .parse_terminated(<Field as syn::parse::Parse>::parse, syn::Token![,])?,
             },
+        })
+    }
+
+    fn parse_block(
+        input: syn::parse::ParseStream,
+        attributes: Vec<syn::Attribute>,
+    ) -> syn::Result<Self> {
+        let (description, cfg_attributes) = doc_string_and_cfg_from_attrs(&attributes)?;
+
+        input.parse::<kw::block>()?;
+
+        let name = input.parse()?;
+
+        let contents;
+        braced!(contents in input);
+
+        let (address_type, base_address) =
+            if contents.peek(syn::Token![const]) && contents.peek2(kw::BASE_ADDRESS) {
+                let address_type = {
+                    contents.parse::<syn::Token![const]>()?;
+                    contents.parse::<kw::BASE_ADDRESS>()?;
+                    contents.parse::<syn::Token![:]>()?;
+                    contents.parse()?
+                };
+                contents.parse::<syn::Token![=]>()?;
+                let base_address = contents.parse::<syn::LitInt>()?.base10_parse()?;
+                contents.parse::<syn::Token![;]>()?;
+                (Some(address_type), Some(base_address))
+            } else {
+                (None, None)
+            };
+
+        Ok(Self {
+            name,
             description,
             cfg_attributes,
-            fields: contents
-                .parse_terminated(<Field as syn::parse::Parse>::parse, syn::Token![,])?,
+            kind: RegisterKind::Block {
+                base_address,
+                address_type,
+                repeat: {
+                    if contents.peek(syn::Token![const]) {
+                        contents.parse::<syn::Token![const]>()?;
+                        contents.parse::<kw::REPEAT>()?;
+                        contents.parse::<syn::Token![=]>()?;
+
+                        let repeat;
+                        braced!(repeat in contents);
+
+                        repeat.parse::<kw::count>()?;
+                        repeat.parse::<syn::Token![:]>()?;
+                        let count = repeat.parse::<syn::LitInt>()?.base10_parse()?;
+                        repeat.parse::<syn::Token![,]>()?;
+
+                        repeat.parse::<kw::stride>()?;
+                        repeat.parse::<syn::Token![:]>()?;
+                        let stride = repeat.parse::<syn::LitInt>()?.base10_parse()?;
+                        if repeat.peek(syn::Token![,]) {
+                            repeat.parse::<syn::Token![,]>()?;
+                        }
+
+                        Some(RegisterRepeat { count, stride })
+                    } else {
+                        None
+                    }
+                },
+                registers: contents
+                    .parse_terminated(<Register as syn::parse::Parse>::parse, syn::Token![,])?,
+            },
         })
+    }
+
+    fn parse_ref(
+        input: syn::parse::ParseStream,
+        attributes: Vec<syn::Attribute>,
+    ) -> syn::Result<Self> {
+        let (description, cfg_attributes) = doc_string_and_cfg_from_attrs(&attributes)?;
+
+        input.parse::<syn::Token![ref]>()?;
+
+        let name = input.parse()?;
+
+        input.parse::<syn::Token![=]>()?;
+        let copy_of = input.parse()?;
+
+        let contents;
+        braced!(contents in input);
+
+        Ok(Self {
+            name,
+            description,
+            cfg_attributes,
+            kind: RegisterKind::Ref {
+                address_type: {
+                    contents.parse::<syn::Token![const]>()?;
+                    contents.parse::<kw::BASE_ADDRESS>()?;
+                    contents.parse::<syn::Token![:]>()?;
+                    contents.parse()?
+                },
+                base_address: {
+                    contents.parse::<syn::Token![=]>()?;
+                    let value = contents.parse::<syn::LitInt>()?.base10_parse()?;
+                    contents.parse::<syn::Token![;]>()?;
+                    value
+                },
+                copy_of,
+            },
+        })
+    }
+}
+
+impl syn::parse::Parse for Register {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let attributes = syn::Attribute::parse_outer(input)?;
+
+        if input.peek(kw::register) {
+            Ok(Register::parse_register(input, attributes)?)
+        } else if input.peek(kw::block) {
+            Ok(Register::parse_block(input, attributes)?)
+        } else if input.peek(syn::Token![ref]) {
+            Ok(Register::parse_ref(input, attributes)?)
+        } else {
+            Err(syn::Error::new(
+                input.span(),
+                "Must be `register`, `command` or `buffer`",
+            ))
+        }
+    }
+}
+
+impl<'a> From<&'a Register> for device_driver_generation::Register {
+    fn from(r: &'a Register) -> Self {
+        Self {
+            name: r.name.to_string(),
+            description: r.description.clone(),
+            cfg_attributes: r.cfg_attributes.clone(),
+            kind: (&r.kind).into(),
+        }
+    }
+}
+
+enum RegisterKind {
+    Register {
+        rw_type: RWType,
+        address_type: syn::Ident,
+        address_value: u64,
+        size_bits_value: u64,
+        byte_order: Option<ByteOrder>,
+        reset_value: Option<ResetValue>,
+        fields: Punctuated<Field, syn::Token![,]>,
+    },
+    Block {
+        address_type: Option<syn::Ident>,
+        base_address: Option<u64>,
+        repeat: Option<RegisterRepeat>,
+        registers: Punctuated<Register, syn::Token![,]>,
+    },
+    Ref {
+        address_type: syn::Ident,
+        base_address: u64,
+        copy_of: syn::Ident,
+    },
+}
+
+impl<'a> From<&'a RegisterKind> for device_driver_generation::RegisterKind {
+    fn from(value: &'a RegisterKind) -> Self {
+        match value {
+            RegisterKind::Register {
+                rw_type,
+                address_value,
+                size_bits_value,
+                byte_order,
+                reset_value,
+                fields,
+                ..
+            } => device_driver_generation::RegisterKind::Register {
+                address: *address_value,
+                rw_type: *rw_type,
+                size_bits: *size_bits_value,
+                reset_value: reset_value.clone(),
+                byte_order: *byte_order,
+                fields: fields
+                    .iter()
+                    .cloned()
+                    .map(device_driver_generation::Field::from)
+                    .collect::<Vec<_>>()
+                    .into(),
+            },
+            RegisterKind::Block {
+                base_address,
+                repeat,
+                registers,
+                ..
+            } => device_driver_generation::RegisterKind::Block {
+                base_address: *base_address,
+                repeat: *repeat,
+                registers: registers
+                    .iter()
+                    .map(device_driver_generation::Register::from)
+                    .collect::<Vec<_>>()
+                    .into(),
+            },
+            RegisterKind::Ref {
+                base_address,
+                copy_of,
+                ..
+            } => device_driver_generation::RegisterKind::Ref {
+                base_address: *base_address,
+                copy_of: copy_of.to_string(),
+            },
+        }
     }
 }
 
@@ -432,6 +658,48 @@ impl syn::parse::Parse for Field {
     }
 }
 
+impl From<Field> for device_driver_generation::Field {
+    fn from(f: Field) -> Self {
+        device_driver_generation::Field {
+            name: f.name.to_string(),
+            description: f.description,
+            cfg_attributes: f.cfg_attributes,
+            register_type: f.register_type,
+            conversion: match &f.conversion_type {
+                ConversionType::Existing {
+                    path,
+                    strict: false,
+                } => Some(device_driver_generation::TypePathOrEnum::TypePath(
+                    TypePath(path.to_token_stream().to_string()),
+                )),
+                ConversionType::Enum {
+                    value: enum_def,
+                    strict: false,
+                } => Some(device_driver_generation::TypePathOrEnum::Enum(
+                    FromIterator::from_iter(enum_def.clone()),
+                )),
+                _ => None,
+            },
+            strict_conversion: match f.conversion_type {
+                ConversionType::Existing { path, strict: true } => {
+                    Some(device_driver_generation::TypePathOrEnum::TypePath(
+                        TypePath(path.to_token_stream().to_string()),
+                    ))
+                }
+                ConversionType::Enum {
+                    value: enum_def,
+                    strict: true,
+                } => Some(device_driver_generation::TypePathOrEnum::Enum(
+                    FromIterator::from_iter(enum_def),
+                )),
+                _ => None,
+            },
+            start: f.bit_start,
+            end: f.bit_end,
+        }
+    }
+}
+
 #[derive(Clone)]
 enum ConversionType {
     None,
@@ -504,15 +772,20 @@ impl syn::parse::Parse for ConversionType {
 }
 
 mod kw {
+    syn::custom_keyword!(block);
     syn::custom_keyword!(register);
     syn::custom_keyword!(command);
     syn::custom_keyword!(buffer);
     syn::custom_keyword!(strict);
+    syn::custom_keyword!(count);
+    syn::custom_keyword!(stride);
     syn::custom_keyword!(RWType);
     syn::custom_keyword!(ByteOrder);
     syn::custom_keyword!(ADDRESS);
+    syn::custom_keyword!(BASE_ADDRESS);
     syn::custom_keyword!(SIZE_BITS);
     syn::custom_keyword!(RESET_VALUE);
+    syn::custom_keyword!(REPEAT);
 }
 
 pub fn implement_device(item: TokenStream) -> TokenStream {
@@ -525,87 +798,23 @@ pub fn implement_device(item: TokenStream) -> TokenStream {
         .items
         .iter()
         .filter_map(Item::as_register)
+        .flat_map(|r| r.address_types())
         .next()
-        .map(|r| r.address_type.to_string().as_str().try_into())
-        .transpose()
     {
-        Ok(Some(address_type)) => Some(address_type),
-        Ok(None) => None,
-        Err(e) => {
-            return syn::Error::new(
-                device_impl
-                    .items
-                    .iter()
-                    .filter_map(Item::as_register)
-                    .next()
-                    .unwrap()
-                    .address_type
-                    .span(),
-                format!("{e}"),
-            )
-            .into_compile_error();
-        }
+        Some(address_type) => match address_type.to_string().as_str().try_into() {
+            Ok(address_type) => Some(address_type),
+            Err(e) => {
+                return syn::Error::new(address_type.span(), format!("{e}")).into_compile_error()
+            }
+        },
+        None => None,
     };
 
     let registers: RegisterCollection = device_impl
         .items
         .iter()
         .filter_map(Item::as_register)
-        .map(|r| device_driver_generation::Register {
-            name: r.name.to_string(),
-            description: r.description.clone(),
-            cfg_attributes: r.cfg_attributes.clone(),
-            kind: device_driver_generation::RegisterKind::Register {
-                address: r.address_value,
-                rw_type: r.rw_type,
-                size_bits: r.size_bits_value,
-                reset_value: r.reset_value.clone(),
-                byte_order: r.byte_order,
-                fields: r
-                    .fields
-                    .iter()
-                    .cloned()
-                    .map(|f| device_driver_generation::Field {
-                        name: f.name.to_string(),
-                        description: f.description,
-                        cfg_attributes: f.cfg_attributes,
-                        register_type: f.register_type,
-                        conversion: match &f.conversion_type {
-                            ConversionType::Existing {
-                                path,
-                                strict: false,
-                            } => Some(device_driver_generation::TypePathOrEnum::TypePath(
-                                TypePath(path.to_token_stream().to_string()),
-                            )),
-                            ConversionType::Enum {
-                                value: enum_def,
-                                strict: false,
-                            } => Some(device_driver_generation::TypePathOrEnum::Enum(
-                                FromIterator::from_iter(enum_def.clone()),
-                            )),
-                            _ => None,
-                        },
-                        strict_conversion: match f.conversion_type {
-                            ConversionType::Existing { path, strict: true } => {
-                                Some(device_driver_generation::TypePathOrEnum::TypePath(
-                                    TypePath(path.to_token_stream().to_string()),
-                                ))
-                            }
-                            ConversionType::Enum {
-                                value: enum_def,
-                                strict: true,
-                            } => Some(device_driver_generation::TypePathOrEnum::Enum(
-                                FromIterator::from_iter(enum_def),
-                            )),
-                            _ => None,
-                        },
-                        start: f.bit_start,
-                        end: f.bit_end,
-                    })
-                    .collect::<Vec<_>>()
-                    .into(),
-            },
-        })
+        .map(device_driver_generation::Register::from)
         .collect::<Vec<_>>()
         .into();
 

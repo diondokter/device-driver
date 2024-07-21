@@ -178,6 +178,44 @@ pub mod registers {
                 /// Baudrate value
                 value: u16 = 0..16,
             },
+            /// Instance of the Foo block
+            block Foo0 {
+                const BASE_ADDRESS: u8 = 64;
+
+                /// Baudrate register
+                register Baudrate {
+                    type RWType = RW;
+                    type ByteOrder = LE; // Everything is BE by default
+                    const ADDRESS: u8 = 0;
+                    const SIZE_BITS: usize = 16;
+
+                    /// Baudrate value
+                    value: u16 = 0..16,
+                },
+            },
+            /// Second instance of the Foo block
+            ref Foo1 = Foo0 {
+                const BASE_ADDRESS: u8 = 80;
+            },
+            /// Instance of the Bar block
+            block Bar {
+                const BASE_ADDRESS: u8 = 96;
+                const REPEAT = {
+                    count: 3,
+                    stride: 2,
+                }
+
+                /// Baudrate register
+                register Baudrate {
+                    type RWType = RW;
+                    type ByteOrder = LE; // Everything is BE by default
+                    const ADDRESS: u8 = 0;
+                    const SIZE_BITS: usize = 16;
+
+                    /// Baudrate value
+                    value: u16 = 0..16,
+                },
+            },
             register Foo {
                 type RWType = RW;
                 const ADDRESS: u8 = 0;
@@ -190,7 +228,7 @@ pub mod registers {
                 value: u16 = 0..16,
             },
             #[cfg(windows)]
-            register Bar {
+            register CfgReg {
                 type RWType = RW;
                 const ADDRESS: u8 = 0;
                 const SIZE_BITS: usize = 16;
@@ -199,7 +237,7 @@ pub mod registers {
                 value: u16 = 0..16,
             },
             #[cfg(not(windows))]
-            register Bar {
+            register CfgReg {
                 type RWType = RW;
                 const ADDRESS: u8 = 0;
                 const SIZE_BITS: usize = 16;
@@ -249,11 +287,11 @@ fn main() {
     test_device.foo().write(|w| w).unwrap();
     assert_eq!(test_device.foo().read().unwrap().value(), 0x1234);
 
-    test_device.bar().clear().unwrap();
+    test_device.cfg_reg().clear().unwrap();
     #[cfg(windows)]
-    assert_eq!(test_device.bar().read().unwrap().value(), 0x1234);
+    assert_eq!(test_device.cfg_reg().read().unwrap().value(), 0x1234);
     #[cfg(not(windows))]
-    assert_eq!(test_device.bar().read().unwrap().value(), 0x5678);
+    assert_eq!(test_device.cfg_reg().read().unwrap().value(), 0x5678);
 
     test_device.sleep().dispatch().unwrap();
     assert_eq!(test_device.last_command, 0);
