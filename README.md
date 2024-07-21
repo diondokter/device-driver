@@ -86,7 +86,7 @@ dual licensed as above, without any additional terms or conditions.
 ### 0.6.0 (26-05-24)
 
 - *Breaking*: Renamed the macros so they don't include the word 'register'
-- Added a way to define macros
+- Added a way to define commands
 
 ### 0.5.3 (08-01-24)
 
