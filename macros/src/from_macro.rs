@@ -291,6 +291,8 @@ impl Register {
                             repeat.parse::<syn::Token![,]>()?;
                         }
 
+                        contents.parse::<syn::Token![;]>()?;
+
                         Some(RegisterRepeat { count, stride })
                     } else {
                         None

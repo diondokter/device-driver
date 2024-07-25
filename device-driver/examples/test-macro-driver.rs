@@ -203,7 +203,7 @@ pub mod registers {
                 const REPEAT = {
                     count: 3,
                     stride: 2,
-                }
+                };
 
                 /// Baudrate register
                 register Baudrate {
