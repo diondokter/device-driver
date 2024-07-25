@@ -194,7 +194,7 @@ pub mod registers {
                 },
             },
             /// Second instance of the Foo block
-            ref Foo1 = Foo0 {
+            ref block Foo1 = Foo0 {
                 const BASE_ADDRESS: u8 = 80;
             },
             /// Instance of the Bar block

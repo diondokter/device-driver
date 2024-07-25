@@ -311,6 +311,7 @@ impl Register {
         let (description, cfg_attributes) = doc_string_and_cfg_from_attrs(&attributes)?;
 
         input.parse::<syn::Token![ref]>()?;
+        input.parse::<kw::block>()?;
 
         let name = input.parse()?;
 
