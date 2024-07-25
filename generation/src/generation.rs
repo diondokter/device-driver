@@ -152,11 +152,7 @@ impl Register {
                     }
                 })
             }
-            RegisterKind::Block {
-                base_address,
-                repeat,
-                ..
-            } => {
+            RegisterKind::Block { repeat, .. } => {
                 let mod_name = syn::Ident::new(
                     &resolved_register.name.to_case(Case::Snake),
                     Span::call_site(),
@@ -165,7 +161,7 @@ impl Register {
                     &resolved_register.name.to_case(Case::Pascal),
                     Span::call_site(),
                 );
-                let base_address = proc_macro2::Literal::u64_unsuffixed(base_address.unwrap_or(0));
+                let base_address = proc_macro2::Literal::u64_unsuffixed(self.kind.address());
                 if let Some(repeat) = repeat {
                     let count = proc_macro2::Literal::u64_unsuffixed(repeat.count);
                     let stride = proc_macro2::Literal::u64_unsuffixed(repeat.stride);

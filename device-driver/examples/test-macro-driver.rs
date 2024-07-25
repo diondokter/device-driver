@@ -275,6 +275,24 @@ fn main() {
     assert_eq!(test_device.device_memory[42], 12);
     assert_eq!(test_device.device_memory[43], 0);
 
+    test_device
+        .foo_0()
+        .baudrate()
+        .write(|w| w.value(12))
+        .unwrap();
+    assert_eq!(test_device.foo_0().baudrate().read().unwrap().value(), 12);
+    assert_eq!(test_device.device_memory[64], 12);
+    assert_eq!(test_device.device_memory[65], 0);
+
+    test_device
+        .foo_1()
+        .baudrate()
+        .write(|w| w.value(34))
+        .unwrap();
+    assert_eq!(test_device.foo_1().baudrate().read().unwrap().value(), 34);
+    assert_eq!(test_device.device_memory[80], 34);
+    assert_eq!(test_device.device_memory[81], 0);
+
     test_device.foo().clear().unwrap();
     assert_eq!(test_device.foo().read().unwrap().value(), 0x1234);
 
