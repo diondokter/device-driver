@@ -110,7 +110,7 @@ impl syn::parse::Parse for Item {
         } else {
             Err(syn::Error::new(
                 input.span(),
-                "Must be `register`, `command` or `buffer`",
+                "Must be `register`, `block`, `ref`, `command` or `buffer`",
             ))
         }
     }
@@ -126,8 +126,11 @@ struct Register {
 impl Register {
     fn address_types(&self) -> Box<dyn Iterator<Item = &'_ syn::Ident> + '_> {
         match &self.kind {
-            RegisterKind::Register { address_type, .. }
-            | RegisterKind::Ref { address_type, .. } => Box::new(std::iter::once(address_type)),
+            RegisterKind::Standalone { address_type, .. }
+            | RegisterKind::RefBlock { address_type, .. }
+            | RegisterKind::RefStandalone { address_type, .. } => {
+                Box::new(std::iter::once(address_type))
+            }
             RegisterKind::Block {
                 address_type,
                 registers,
@@ -158,7 +161,7 @@ impl Register {
             name,
             description,
             cfg_attributes,
-            kind: RegisterKind::Register {
+            kind: RegisterKind::Standalone {
                 rw_type: {
                     contents.parse::<syn::Token![type]>()?;
                     contents.parse::<kw::RWType>()?;
@@ -308,9 +311,26 @@ impl Register {
         input: syn::parse::ParseStream,
         attributes: Vec<syn::Attribute>,
     ) -> syn::Result<Self> {
+        input.parse::<syn::Token![ref]>()?;
+
+        if input.peek(kw::register) {
+            Ok(Self::parse_standalone_ref(input, attributes)?)
+        } else if input.peek(kw::block) {
+            Ok(Self::parse_block_ref(input, attributes)?)
+        } else {
+            Err(syn::Error::new(
+                input.span(),
+                "Must be `register` or `block`",
+            ))
+        }
+    }
+
+    fn parse_block_ref(
+        input: syn::parse::ParseStream,
+        attributes: Vec<syn::Attribute>,
+    ) -> syn::Result<Self> {
         let (description, cfg_attributes) = doc_string_and_cfg_from_attrs(&attributes)?;
 
-        input.parse::<syn::Token![ref]>()?;
         input.parse::<kw::block>()?;
 
         let name = input.parse()?;
@@ -325,7 +345,8 @@ impl Register {
             name,
             description,
             cfg_attributes,
-            kind: RegisterKind::Ref {
+            kind: RegisterKind::RefBlock {
+                copy_of,
                 address_type: {
                     contents.parse::<syn::Token![const]>()?;
                     contents.parse::<kw::BASE_ADDRESS>()?;
@@ -333,6 +354,90 @@ impl Register {
                     contents.parse()?
                 },
                 base_address: {
+                    contents.parse::<syn::Token![=]>()?;
+                    let value = contents.parse::<syn::LitInt>()?.base10_parse()?;
+                    contents.parse::<syn::Token![;]>()?;
+                    value
+                },
+                repeat: {
+                    if contents.peek(syn::Token![const]) {
+                        contents.parse::<syn::Token![const]>()?;
+                        contents.parse::<kw::REPEAT>()?;
+                        contents.parse::<syn::Token![=]>()?;
+
+                        let repeat;
+                        braced!(repeat in contents);
+
+                        repeat.parse::<kw::count>()?;
+                        repeat.parse::<syn::Token![:]>()?;
+                        let count = repeat.parse::<syn::LitInt>()?.base10_parse()?;
+                        repeat.parse::<syn::Token![,]>()?;
+
+                        repeat.parse::<kw::stride>()?;
+                        repeat.parse::<syn::Token![:]>()?;
+                        let stride = repeat.parse::<syn::LitInt>()?.base10_parse()?;
+                        if repeat.peek(syn::Token![,]) {
+                            repeat.parse::<syn::Token![,]>()?;
+                        }
+
+                        contents.parse::<syn::Token![;]>()?;
+
+                        Some(RegisterRepeat { count, stride })
+                    } else {
+                        None
+                    }
+                },
+            },
+        })
+    }
+
+    fn parse_standalone_ref(
+        input: syn::parse::ParseStream,
+        attributes: Vec<syn::Attribute>,
+    ) -> syn::Result<Self> {
+        let (description, cfg_attributes) = doc_string_and_cfg_from_attrs(&attributes)?;
+
+        input.parse::<kw::register>()?;
+
+        let name = input.parse()?;
+
+        input.parse::<syn::Token![=]>()?;
+        let copy_of = input.parse()?;
+
+        let contents;
+        braced!(contents in input);
+
+        Ok(Self {
+            name,
+            description,
+            cfg_attributes,
+            kind: RegisterKind::RefStandalone {
+                rw_type: {
+                    if contents.peek(syn::Token![type]) {
+                        contents.parse::<syn::Token![type]>()?;
+                        contents.parse::<kw::RWType>()?;
+                        contents.parse::<syn::Token![=]>()?;
+                        let rw_type_value_ident = contents.parse::<syn::Ident>()?;
+                        let value = rw_type_value_ident
+                            .to_string()
+                            .as_str()
+                            .try_into()
+                            .map_err(|e| {
+                                syn::Error::new(rw_type_value_ident.span(), format!("{e}"))
+                            })?;
+                        contents.parse::<syn::Token![;]>()?;
+                        Some(value)
+                    } else {
+                        None
+                    }
+                },
+                address_type: {
+                    contents.parse::<syn::Token![const]>()?;
+                    contents.parse::<kw::ADDRESS>()?;
+                    contents.parse::<syn::Token![:]>()?;
+                    contents.parse()?
+                },
+                address: {
                     contents.parse::<syn::Token![=]>()?;
                     let value = contents.parse::<syn::LitInt>()?.base10_parse()?;
                     contents.parse::<syn::Token![;]>()?;
@@ -375,7 +480,7 @@ impl<'a> From<&'a Register> for device_driver_generation::Register {
 }
 
 enum RegisterKind {
-    Register {
+    Standalone {
         rw_type: RWType,
         address_type: syn::Ident,
         address_value: u64,
@@ -390,17 +495,24 @@ enum RegisterKind {
         repeat: Option<RegisterRepeat>,
         registers: Punctuated<Register, syn::Token![,]>,
     },
-    Ref {
+    RefBlock {
+        copy_of: syn::Ident,
         address_type: syn::Ident,
         base_address: u64,
+        repeat: Option<RegisterRepeat>,
+    },
+    RefStandalone {
         copy_of: syn::Ident,
+        address_type: syn::Ident,
+        address: u64,
+        rw_type: Option<RWType>,
     },
 }
 
 impl<'a> From<&'a RegisterKind> for device_driver_generation::RegisterKind {
     fn from(value: &'a RegisterKind) -> Self {
         match value {
-            RegisterKind::Register {
+            RegisterKind::Standalone {
                 rw_type,
                 address_value,
                 size_bits_value,
@@ -408,7 +520,7 @@ impl<'a> From<&'a RegisterKind> for device_driver_generation::RegisterKind {
                 reset_value,
                 fields,
                 ..
-            } => device_driver_generation::RegisterKind::Register {
+            } => device_driver_generation::StandaloneRegister {
                 address: *address_value,
                 rw_type: *rw_type,
                 size_bits: *size_bits_value,
@@ -420,13 +532,14 @@ impl<'a> From<&'a RegisterKind> for device_driver_generation::RegisterKind {
                     .map(device_driver_generation::Field::from)
                     .collect::<Vec<_>>()
                     .into(),
-            },
+            }
+            .into(),
             RegisterKind::Block {
                 base_address,
                 repeat,
                 registers,
                 ..
-            } => device_driver_generation::RegisterKind::Block {
+            } => device_driver_generation::RegisterBlock {
                 base_address: *base_address,
                 repeat: *repeat,
                 registers: registers
@@ -434,15 +547,30 @@ impl<'a> From<&'a RegisterKind> for device_driver_generation::RegisterKind {
                     .map(device_driver_generation::Register::from)
                     .collect::<Vec<_>>()
                     .into(),
-            },
-            RegisterKind::Ref {
-                base_address,
+            }
+            .into(),
+            RegisterKind::RefBlock {
                 copy_of,
+                base_address,
+                repeat,
                 ..
-            } => device_driver_generation::RegisterKind::Ref {
-                base_address: *base_address,
+            } => device_driver_generation::RegisterBlockRef {
                 copy_of: copy_of.to_string(),
-            },
+                base_address: *base_address,
+                repeat: *repeat,
+            }
+            .into(),
+            RegisterKind::RefStandalone {
+                copy_of,
+                address,
+                rw_type,
+                ..
+            } => device_driver_generation::StandaloneRegisterRef {
+                copy_of: copy_of.to_string(),
+                address: *address,
+                rw_type: *rw_type,
+            }
+            .into(),
         }
     }
 }

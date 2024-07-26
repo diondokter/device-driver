@@ -1,7 +1,6 @@
 use crate::{
-    deserialization::{FieldCollection, RegisterCollection},
-    BaseType, Buffer, ByteOrder, Command, Device, Field, RWType, Register, RegisterKind,
-    ResetValue,
+    deserialization::RegisterCollection, BaseType, Buffer, ByteOrder, Command, Device, Field,
+    Register, RegisterBlock, RegisterBlockRef, RegisterKind, RegisterRef, StandaloneRegister,
 };
 
 use convert_case::{Case, Casing};
@@ -116,20 +115,29 @@ impl Buffer {
 }
 
 impl Register {
+    fn resolve<'a>(
+        &'a self,
+        registers: &'a RegisterCollection,
+    ) -> Result<&'a Register, syn::Error> {
+        match &self.kind {
+            RegisterKind::Standalone(_) | RegisterKind::Block(_) => Ok(self),
+            RegisterKind::Ref(r) => r.resolve(registers).ok_or_else(|| {
+                syn::Error::new(
+                    Span::call_site(),
+                    format!(
+                        "Cannot find referenced register `{}` (referenced by `{}`)",
+                        r.copy_of(),
+                        self.name
+                    ),
+                )
+            }),
+        }
+    }
+
     fn generate_register_function(
         &self,
         registers: &RegisterCollection,
     ) -> Result<syn::ImplItem, syn::Error> {
-        let resolved_register = match &self.kind {
-            RegisterKind::Ref { copy_of, .. } => registers.resolve(copy_of).ok_or_else(|| {
-                syn::Error::new(
-                    Span::call_site(),
-                    format!("Cannot find referenced register `{copy_of}`"),
-                )
-            })?,
-            _ => self,
-        };
-
         let snake_case_name = syn::Ident::new(&self.name.to_case(Case::Snake), Span::call_site());
 
         let doc_attribute = if let Some(description) = self.description.as_ref() {
@@ -140,8 +148,8 @@ impl Register {
 
         let cfg_attributes = &self.cfg_attributes;
 
-        match &resolved_register.kind {
-            RegisterKind::Register { .. } => {
+        match self.kind {
+            RegisterKind::Standalone(_) | RegisterKind::Ref(RegisterRef::Standalone { .. }) => {
                 let pascal_case_name =
                     syn::Ident::new(&self.name.to_case(Case::Pascal), Span::call_site());
                 Ok(syn::parse_quote! {
@@ -152,7 +160,10 @@ impl Register {
                     }
                 })
             }
-            RegisterKind::Block { repeat, .. } => {
+            RegisterKind::Block(RegisterBlock { repeat, .. })
+            | RegisterKind::Ref(RegisterRef::Block(RegisterBlockRef { repeat, .. })) => {
+                let resolved_register = self.resolve(registers)?;
+
                 let mod_name = syn::Ident::new(
                     &resolved_register.name.to_case(Case::Snake),
                     Span::call_site(),
@@ -184,62 +195,32 @@ impl Register {
                     })
                 }
             }
-            RegisterKind::Ref { .. } => unreachable!(),
         }
     }
 
     fn generate_definition(&self, device: &Device, registers: &RegisterCollection) -> TokenStream {
-        let resolved_register = match &self.kind {
-            RegisterKind::Ref { copy_of, .. } => {
-                let r = registers.resolve(copy_of).ok_or_else(|| {
-                    syn::Error::new(
-                        Span::call_site(),
-                        format!("Cannot find referenced register `{copy_of}`"),
-                    )
-                });
-                match r {
-                    Err(err) => return err.into_compile_error(),
-                    Ok(Register {
-                        kind: RegisterKind::Block { .. },
-                        ..
-                    }) => return quote!(),
+        match &self.kind {
+            RegisterKind::Standalone(r) => self.generate_register_definition(device, r),
+            RegisterKind::Block(r) => self.generate_block_definition(device, r),
+            RegisterKind::Ref(RegisterRef::Standalone(r)) => {
+                let resolved_register = match self.resolve(registers) {
                     Ok(r) => r,
+                    Err(err) => return err.into_compile_error(),
+                };
+
+                match r.apply(resolved_register) {
+                    Ok(r) => self.generate_register_definition(device, &r),
+                    Err(_) => syn::Error::new( Span::call_site(), format!("Referenced register `{}` (referenced by `{}`) is not a standalone register", r.copy_of, self.name), ).into_compile_error(),
                 }
             }
-            _ => self,
-        };
-
-        match &resolved_register.kind {
-            RegisterKind::Register {
-                fields,
-                rw_type,
-                size_bits,
-                reset_value,
-                byte_order,
-                ..
-            } => self.generate_register_definition(
-                device,
-                fields,
-                *rw_type,
-                *size_bits,
-                reset_value,
-                *byte_order,
-            ),
-            RegisterKind::Block { registers, .. } => {
-                self.generate_block_definition(registers, device)
-            }
-            RegisterKind::Ref { .. } => unreachable!(),
+            RegisterKind::Ref(RegisterRef::Block { .. }) => quote!(),
         }
     }
 
     fn generate_register_definition(
         &self,
         device: &Device,
-        fields: &FieldCollection,
-        rw_type: RWType,
-        size_bits: u64,
-        reset_value: &Option<ResetValue>,
-        byte_order: Option<ByteOrder>,
+        standalone: &StandaloneRegister,
     ) -> TokenStream {
         let Register {
             name,
@@ -247,6 +228,16 @@ impl Register {
             cfg_attributes,
             ..
         } = self;
+
+        let StandaloneRegister {
+            rw_type,
+            size_bits,
+            byte_order,
+            reset_value,
+            fields,
+            ..
+        } = standalone;
+
         let address = self.kind.address();
 
         let pascal_case_name_string = name.to_case(Case::Pascal);
@@ -303,7 +294,7 @@ impl Register {
         };
         let address = proc_macro2::Literal::u64_unsuffixed(address);
         let rw_type = rw_type.into_type();
-        let size_bits_lit = proc_macro2::Literal::u64_unsuffixed(size_bits);
+        let size_bits_lit = proc_macro2::Literal::u64_unsuffixed(*size_bits);
         let size_bytes_lit = proc_macro2::Literal::u64_unsuffixed(size_bits.div_ceil(8));
 
         let debug_field_calls = TokenStream::from_iter(fields.iter().map(|field| {
@@ -533,11 +524,9 @@ impl Register {
         .into_token_stream()
     }
 
-    fn generate_block_definition(
-        &self,
-        registers: &RegisterCollection,
-        device: &Device,
-    ) -> TokenStream {
+    fn generate_block_definition(&self, device: &Device, block: &RegisterBlock) -> TokenStream {
+        let RegisterBlock { registers, .. } = block;
+
         let cfg_attributes = &self.cfg_attributes;
 
         let pascal_case_name_string = self.name.to_case(Case::Pascal);

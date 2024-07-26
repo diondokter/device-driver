@@ -168,6 +168,20 @@ pub mod registers {
                     Rest = "default",
                 } = 20..24,
             },
+            /// Interrupt flags
+            register IntFlags {
+                type RWType = ReadOnly;
+                const ADDRESS: u8 = 16;
+                const SIZE_BITS: usize = 8;
+
+                rx: bool = 0,
+                tx: bool = 1,
+            },
+            /// Interrupt enable flags
+            ref register IntEnable = IntFlags {
+                type RWType = ReadWrite;
+                const ADDRESS: u8 = 17;
+            },
             /// Baudrate register
             register Baudrate {
                 type RWType = RW;
@@ -266,6 +280,11 @@ fn main() {
     let mut test_device = TestDevice::new();
 
     println!("{:?}", test_device.id().read().unwrap());
+
+    assert!(!test_device.int_flags().read().unwrap().rx());
+    test_device.int_enable().write(|w| w.rx(true)).unwrap();
+    assert!(test_device.int_enable().read().unwrap().rx());
+    assert_eq!(test_device.device_memory[17], 1);
 
     test_device.baudrate().write(|w| w.value(12)).unwrap();
 

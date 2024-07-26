@@ -36,6 +36,30 @@
                 }
             }
         },
+        "int_flags": {
+            "rw_type": "ro",
+            "address": 16,
+            "size_bits": 8,
+            "description": "Interrupt flags",
+            "fields": {
+                "rx": {
+                    "description": "Receive interrupt",
+                    "type": "bool",
+                    "start": 0
+                },
+                "tx": {
+                    "description": "Transmit interrupt",
+                    "type": "bool",
+                    "start": 1
+                }
+            }
+        },
+        "int_enable": {
+            "copy_of": "int_flags",
+            "description": "Interrupt enable flags",
+            "address": 17,
+            "rw_type": "rw"
+        },
         "baudrate": {
             "rw_type": "rw",
             "address": 42,
