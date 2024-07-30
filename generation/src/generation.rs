@@ -555,12 +555,12 @@ impl Register {
         let regs = self.generate_block_register_definitions(registers, device);
 
         quote! {
+            #(#cfg_attributes)*
             #[doc = #module_doc_string]
             pub mod #snake_case_name {
                 use super::*;
 
                 #doc_attribute
-                #(#cfg_attributes)*
                 pub struct #pascal_case_name<'block, D> {
                     pub(super) device: &'block mut D,
                     pub(super) base_address: #address_type,
