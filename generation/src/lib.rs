@@ -22,8 +22,72 @@ pub struct Device {
     pub buffers: Option<BufferCollection>,
 }
 
+impl Device {
+    /// Turns all refs into real copied registers
+    pub fn resolve(self) -> Result<ResolvedDevice, String> {
+        if self.registers.is_some() && self.register_address_type.is_none() {
+            return Err("`register_address_type` is not specified".into());
+        }
+
+        let mut registers = Vec::new();
+
+        if let Some(unresolved_registers) = self.registers {
+            for unresolved_register in unresolved_registers.0.iter() {
+                registers.push(unresolved_register.resolve(&unresolved_registers.0)?);
+            }
+        }
+
+        Ok(ResolvedDevice {
+            register_address_type: self.register_address_type.unwrap_or_default(),
+            registers,
+            commands: self.commands.map(|v| v.0).unwrap_or_default(),
+            buffers: self.buffers.map(|v| v.0).unwrap_or_default(),
+        })
+    }
+}
+
+pub struct ResolvedDevice {
+    pub register_address_type: BaseType,
+    pub registers: Vec<ResolvedRegisterItem>,
+    pub commands: Vec<Command>,
+    pub buffers: Vec<Buffer>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResolvedRegisterItem {
+    pub name: String,
+    pub description: Option<String>,
+    pub cfg_attributes: Vec<syn::Attribute>,
+    pub kind: ResolvedRegisterKind,
+}
+
+impl PartialOrd for ResolvedRegisterItem {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for ResolvedRegisterItem {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.address()
+            .cmp(&other.address())
+            .then_with(|| self.name.cmp(&other.name))
+    }
+}
+
+impl ResolvedRegisterItem {
+    fn address(&self) -> u64 {
+        match &self.kind {
+            ResolvedRegisterKind::Register(Register { address, .. }) => *address,
+            ResolvedRegisterKind::Block(ResolvedRegisterBlock { base_address, .. }) => {
+                base_address.unwrap_or(0)
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
-pub struct Register {
+pub struct RegisterItem {
     #[serde(skip)]
     pub name: String,
     pub description: Option<String>,
@@ -33,31 +97,114 @@ pub struct Register {
     pub kind: RegisterKind,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
-#[serde(untagged)]
-pub enum RegisterKind {
-    Standalone(StandaloneRegister),
-    Block(RegisterBlock),
-    Ref(RegisterRef),
+impl PartialOrd for RegisterItem {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
-impl RegisterKind {
+impl Ord for RegisterItem {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.address()
+            .cmp(&other.address())
+            .then_with(|| self.name.cmp(&other.name))
+    }
+}
+
+impl RegisterItem {
     fn address(&self) -> u64 {
-        match self {
-            RegisterKind::Standalone(StandaloneRegister { address, .. }) => *address,
+        match &self.kind {
+            RegisterKind::Register(Register { address, .. }) => *address,
             RegisterKind::Block(RegisterBlock { base_address, .. }) => base_address.unwrap_or(0),
-            RegisterKind::Ref(RegisterRef::Standalone(StandaloneRegisterRef {
-                address, ..
-            })) => *address,
-            RegisterKind::Ref(RegisterRef::Block(RegisterBlockRef { base_address, .. })) => {
-                *base_address
+            RegisterKind::RegisterRef(RegisterRef { address, .. }) => *address,
+            RegisterKind::BlockRef(RegisterBlockRef { base_address, .. }) => *base_address,
+        }
+    }
+
+    /// Returns Some with the name of the register item this copies
+    fn copy_of(&self) -> Option<&str> {
+        match &self.kind {
+            RegisterKind::RegisterRef(RegisterRef { copy_of, .. })
+            | RegisterKind::BlockRef(RegisterBlockRef { copy_of, .. }) => Some(copy_of),
+            _ => None,
+        }
+    }
+
+    /// Get the resolved register item from this unresolved item
+    fn resolve(&self, registers: &[RegisterItem]) -> Result<ResolvedRegisterItem, String> {
+        match &self.kind {
+            RegisterKind::Register(r) => Ok(ResolvedRegisterItem {
+                name: self.name.clone(),
+                description: self.description.clone(),
+                cfg_attributes: self.cfg_attributes.clone(),
+                kind: ResolvedRegisterKind::Register(r.clone()),
+            }),
+            RegisterKind::Block(b) => Ok(ResolvedRegisterItem {
+                name: self.name.clone(),
+                description: self.description.clone(),
+                cfg_attributes: self.cfg_attributes.clone(),
+                kind: ResolvedRegisterKind::Block(ResolvedRegisterBlock {
+                    base_address: b.base_address,
+                    repeat: b.repeat,
+                    registers: b
+                        .registers
+                        .0
+                        .iter()
+                        .map(|unresolved_register| unresolved_register.resolve(registers))
+                        .collect::<Result<_, _>>()?,
+                }),
+            }),
+            RegisterKind::RegisterRef(_) | RegisterKind::BlockRef(_) => {
+                match registers
+                    .iter()
+                    .find(|x| self.copy_of() == Some(x.name.as_str()))
+                {
+                    Some(copy_source_item) => {
+                        let mut resolved_copy_item = copy_source_item.resolve(registers)?;
+                        resolved_copy_item.name = self.name.clone();
+                        resolved_copy_item.cfg_attributes = self.cfg_attributes.clone();
+                        resolved_copy_item.description = self.description.clone();
+
+                        match (&self.kind, &mut resolved_copy_item.kind) {
+                            (RegisterKind::RegisterRef(refreg), ResolvedRegisterKind::Register(copy_reg)) => {
+                                copy_reg.address = refreg.address;
+                                copy_reg.rw_type = refreg.rw_type.unwrap_or(copy_reg.rw_type);
+                            },
+                            (RegisterKind::BlockRef(refblock), ResolvedRegisterKind::Block(copy_block)) => {
+                                copy_block.base_address = Some(refblock.base_address);
+                                copy_block.repeat = refblock.repeat;
+                            },
+                            (RegisterKind::RegisterRef(_), ResolvedRegisterKind::Block(_)) => return Err(format!("Cannot point at block '{}' from register definition '{}'", self.copy_of().unwrap(), self.name)),
+                            (RegisterKind::BlockRef(_), ResolvedRegisterKind::Register(_)) => return Err(format!("Cannot point at register '{}' from block definition '{}'", self.copy_of().unwrap(), self.name)),
+                            _ => unreachable!()
+                        }
+
+                        Ok(resolved_copy_item)
+                    },
+                    _ => Err(format!("Could not find register/block '{}', which is linked by register/block '{}'", self.copy_of().unwrap(), self.name)),
+                }
             }
         }
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ResolvedRegisterKind {
+    Register(Register),
+    Block(ResolvedRegisterBlock),
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
-pub struct StandaloneRegister {
+#[serde(untagged)]
+pub enum RegisterKind {
+    Register(Register),
+    Block(RegisterBlock),
+    RegisterRef(RegisterRef),
+    BlockRef(RegisterBlockRef),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
+pub struct Register {
     pub address: u64,
     pub rw_type: RWType,
     pub size_bits: u64,
@@ -67,9 +214,9 @@ pub struct StandaloneRegister {
     pub fields: FieldCollection,
 }
 
-impl From<StandaloneRegister> for RegisterKind {
-    fn from(value: StandaloneRegister) -> Self {
-        Self::Standalone(value)
+impl From<Register> for RegisterKind {
+    fn from(value: Register) -> Self {
+        Self::Register(value)
     }
 }
 
@@ -86,29 +233,23 @@ impl From<RegisterBlock> for RegisterKind {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
-#[serde(untagged)]
-pub enum RegisterRef {
-    Standalone(StandaloneRegisterRef),
-    Block(RegisterBlockRef),
-}
-
-impl From<RegisterRef> for RegisterKind {
-    fn from(value: RegisterRef) -> Self {
-        Self::Ref(value)
-    }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResolvedRegisterBlock {
+    pub base_address: Option<u64>,
+    pub repeat: Option<RegisterRepeat>,
+    pub registers: Vec<ResolvedRegisterItem>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
-pub struct StandaloneRegisterRef {
+pub struct RegisterRef {
     pub copy_of: String,
     pub address: u64,
     pub rw_type: Option<RWType>,
 }
 
-impl From<StandaloneRegisterRef> for RegisterKind {
-    fn from(value: StandaloneRegisterRef) -> Self {
-        Self::Ref(RegisterRef::Standalone(value))
+impl From<RegisterRef> for RegisterKind {
+    fn from(value: RegisterRef) -> Self {
+        Self::RegisterRef(value)
     }
 }
 
@@ -121,67 +262,18 @@ pub struct RegisterBlockRef {
 
 impl From<RegisterBlockRef> for RegisterKind {
     fn from(value: RegisterBlockRef) -> Self {
-        Self::Ref(RegisterRef::Block(value))
-    }
-}
-
-impl RegisterRef {
-    pub fn copy_of(&self) -> &str {
-        match self {
-            RegisterRef::Standalone(StandaloneRegisterRef { copy_of, .. })
-            | RegisterRef::Block(RegisterBlockRef { copy_of, .. }) => copy_of,
-        }
-    }
-
-    pub fn resolve<'a>(&self, registers: &'a [Register]) -> Option<&'a Register> {
-        match registers.iter().find(|x| x.name == self.copy_of()) {
-            Some(Register {
-                kind: RegisterKind::Ref(r),
-                ..
-            }) => r.resolve(registers),
-            Some(r) => Some(r),
-            _ => None,
-        }
+        Self::BlockRef(value)
     }
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct RegisterKindError;
 
-impl StandaloneRegisterRef {
-    pub fn apply(&self, register: &Register) -> Result<StandaloneRegister, RegisterKindError> {
-        match &register.kind {
-            RegisterKind::Standalone(r) => {
-                let mut r = r.clone();
-                r.address = self.address;
-                r.rw_type = self.rw_type.unwrap_or(r.rw_type);
-                Ok(r)
-            }
-            _ => Err(RegisterKindError),
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RegisterRepeat {
     pub count: u64,
     pub stride: u64,
-}
-
-impl PartialOrd for Register {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for Register {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.kind
-            .address()
-            .cmp(&other.kind.address())
-            .then_with(|| self.name.cmp(&other.name))
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]

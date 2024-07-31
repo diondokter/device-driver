@@ -304,6 +304,15 @@ fn main() {
     assert_eq!(test_device.device_memory[65], 0);
 
     test_device
+        .foo_0()
+        .baudrate2()
+        .write(|w| w.value(12))
+        .unwrap();
+    assert_eq!(test_device.foo_0().baudrate2().read().unwrap().value(), 12);
+    assert_eq!(test_device.device_memory[66], 12);
+    assert_eq!(test_device.device_memory[67], 0);
+
+    test_device
         .foo_1()
         .baudrate()
         .write(|w| w.value(34))

@@ -1,13 +1,13 @@
 use crate::{
-    deserialization::RegisterCollection, BaseType, Buffer, ByteOrder, Command, Device, Field,
-    Register, RegisterBlock, RegisterBlockRef, RegisterKind, RegisterRef, StandaloneRegister,
+    BaseType, Buffer, ByteOrder, Command, Field, Register, ResolvedDevice, ResolvedRegisterBlock,
+    ResolvedRegisterItem, ResolvedRegisterKind,
 };
 
 use convert_case::{Case, Casing};
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens, TokenStreamExt};
 
-impl Device {
+impl ResolvedDevice {
     pub fn generate_device_impl(&self, mut existing_impl: syn::ItemImpl) -> TokenStream {
         assert!(
             existing_impl.trait_.is_none(),
@@ -24,42 +24,33 @@ impl Device {
     pub fn generate_definitions(&self) -> TokenStream {
         let mut stream = TokenStream::new();
 
-        if let Some(registers) = self.registers.as_ref() {
-            stream.append_all(
-                registers
-                    .iter()
-                    .map(|register| register.generate_definition(self, registers)),
-            );
-        }
+        stream.append_all(
+            self.registers
+                .iter()
+                .map(|register| register.generate_definition(self.register_address_type)),
+        );
 
         stream
     }
 
     fn generate_device_functions(&self) -> Result<Vec<syn::ImplItem>, syn::Error> {
-        let mut result = Vec::new();
+        let mut result = self
+            .registers
+            .iter()
+            .map(|register| register.generate_register_function())
+            .collect::<Result<Vec<_>, _>>()?;
 
-        if let Some(registers) = self.registers.as_ref() {
-            result = registers
+        result.extend(
+            self.commands
                 .iter()
-                .map(|register| register.generate_register_function(registers))
-                .collect::<Result<Vec<_>, _>>()?;
-        }
+                .map(|command| command.generate_command_function()),
+        );
 
-        if let Some(commands) = self.commands.as_ref() {
-            result.extend(
-                commands
-                    .iter()
-                    .map(|command| command.generate_command_function()),
-            );
-        }
-
-        if let Some(buffers) = self.buffers.as_ref() {
-            result.extend(
-                buffers
-                    .iter()
-                    .map(|buffer| buffer.generate_buffer_function()),
-            );
-        }
+        result.extend(
+            self.buffers
+                .iter()
+                .map(|buffer| buffer.generate_buffer_function()),
+        );
 
         Ok(result)
     }
@@ -114,30 +105,8 @@ impl Buffer {
     }
 }
 
-impl Register {
-    fn resolve<'a>(
-        &'a self,
-        registers: &'a RegisterCollection,
-    ) -> Result<&'a Register, syn::Error> {
-        match &self.kind {
-            RegisterKind::Standalone(_) | RegisterKind::Block(_) => Ok(self),
-            RegisterKind::Ref(r) => r.resolve(registers).ok_or_else(|| {
-                syn::Error::new(
-                    Span::call_site(),
-                    format!(
-                        "Cannot find referenced register `{}` (referenced by `{}`)",
-                        r.copy_of(),
-                        self.name
-                    ),
-                )
-            }),
-        }
-    }
-
-    fn generate_register_function(
-        &self,
-        registers: &RegisterCollection,
-    ) -> Result<syn::ImplItem, syn::Error> {
+impl ResolvedRegisterItem {
+    fn generate_register_function(&self) -> Result<syn::ImplItem, syn::Error> {
         let snake_case_name = syn::Ident::new(&self.name.to_case(Case::Snake), Span::call_site());
 
         let doc_attribute = if let Some(description) = self.description.as_ref() {
@@ -149,7 +118,7 @@ impl Register {
         let cfg_attributes = &self.cfg_attributes;
 
         match self.kind {
-            RegisterKind::Standalone(_) | RegisterKind::Ref(RegisterRef::Standalone { .. }) => {
+            ResolvedRegisterKind::Register(_) => {
                 let pascal_case_name =
                     syn::Ident::new(&self.name.to_case(Case::Pascal), Span::call_site());
                 Ok(syn::parse_quote! {
@@ -160,19 +129,11 @@ impl Register {
                     }
                 })
             }
-            RegisterKind::Block(RegisterBlock { repeat, .. })
-            | RegisterKind::Ref(RegisterRef::Block(RegisterBlockRef { repeat, .. })) => {
-                let resolved_register = self.resolve(registers)?;
-
-                let mod_name = syn::Ident::new(
-                    &resolved_register.name.to_case(Case::Snake),
-                    Span::call_site(),
-                );
-                let block_name = syn::Ident::new(
-                    &resolved_register.name.to_case(Case::Pascal),
-                    Span::call_site(),
-                );
-                let base_address = proc_macro2::Literal::u64_unsuffixed(self.kind.address());
+            ResolvedRegisterKind::Block(ResolvedRegisterBlock { repeat, .. }) => {
+                let mod_name = syn::Ident::new(&self.name.to_case(Case::Snake), Span::call_site());
+                let block_name =
+                    syn::Ident::new(&self.name.to_case(Case::Pascal), Span::call_site());
+                let base_address = proc_macro2::Literal::u64_unsuffixed(self.address());
                 if let Some(repeat) = repeat {
                     let count = proc_macro2::Literal::u64_unsuffixed(repeat.count);
                     let stride = proc_macro2::Literal::u64_unsuffixed(repeat.stride);
@@ -198,38 +159,30 @@ impl Register {
         }
     }
 
-    fn generate_definition(&self, device: &Device, registers: &RegisterCollection) -> TokenStream {
+    fn generate_definition(&self, register_address_type: BaseType) -> TokenStream {
         match &self.kind {
-            RegisterKind::Standalone(r) => self.generate_register_definition(device, r),
-            RegisterKind::Block(r) => self.generate_block_definition(device, r),
-            RegisterKind::Ref(RegisterRef::Standalone(r)) => {
-                let resolved_register = match self.resolve(registers) {
-                    Ok(r) => r,
-                    Err(err) => return err.into_compile_error(),
-                };
-
-                match r.apply(resolved_register) {
-                    Ok(r) => self.generate_register_definition(device, &r),
-                    Err(_) => syn::Error::new( Span::call_site(), format!("Referenced register `{}` (referenced by `{}`) is not a standalone register", r.copy_of, self.name), ).into_compile_error(),
-                }
+            ResolvedRegisterKind::Register(r) => {
+                self.generate_register_definition(register_address_type, r)
             }
-            RegisterKind::Ref(RegisterRef::Block { .. }) => quote!(),
+            ResolvedRegisterKind::Block(r) => {
+                self.generate_block_definition(register_address_type, r)
+            }
         }
     }
 
     fn generate_register_definition(
         &self,
-        device: &Device,
-        standalone: &StandaloneRegister,
+        register_address_type: BaseType,
+        standalone: &Register,
     ) -> TokenStream {
-        let Register {
+        let ResolvedRegisterItem {
             name,
             description,
             cfg_attributes,
             ..
         } = self;
 
-        let StandaloneRegister {
+        let Register {
             rw_type,
             size_bits,
             byte_order,
@@ -238,7 +191,7 @@ impl Register {
             ..
         } = standalone;
 
-        let address = self.kind.address();
+        let address = self.address();
 
         let pascal_case_name_string = name.to_case(Case::Pascal);
         let pascal_case_name = syn::Ident::new(&pascal_case_name_string, Span::call_site());
@@ -286,12 +239,7 @@ impl Register {
             })
         }));
 
-        let address_type = if let Some(register_address_type) = device.register_address_type {
-            register_address_type.into_type()
-        } else {
-            return syn::Error::new(Span::call_site(), "register_address_type is not specified")
-                .to_compile_error();
-        };
+        let address_type = register_address_type.into_type();
         let address = proc_macro2::Literal::u64_unsuffixed(address);
         let rw_type = rw_type.into_type();
         let size_bits_lit = proc_macro2::Literal::u64_unsuffixed(*size_bits);
@@ -524,9 +472,11 @@ impl Register {
         .into_token_stream()
     }
 
-    fn generate_block_definition(&self, device: &Device, block: &RegisterBlock) -> TokenStream {
-        let RegisterBlock { registers, .. } = block;
-
+    fn generate_block_definition(
+        &self,
+        register_address_type: BaseType,
+        block: &ResolvedRegisterBlock,
+    ) -> TokenStream {
         let cfg_attributes = &self.cfg_attributes;
 
         let pascal_case_name_string = self.name.to_case(Case::Pascal);
@@ -541,18 +491,14 @@ impl Register {
             quote!()
         };
 
-        let address_type = if let Some(register_address_type) = device.register_address_type {
-            register_address_type.into_type()
-        } else {
-            return syn::Error::new(Span::call_site(), "register_address_type is not specified")
-                .to_compile_error();
-        };
+        let address_type = register_address_type.into_type();
 
-        let fns = match self.generate_block_functions(registers) {
+        let fns = match self.generate_block_functions(&block.registers) {
             Ok(fns) => fns,
             Err(err) => return err.into_compile_error(),
         };
-        let regs = self.generate_block_register_definitions(registers, device);
+        let regs =
+            self.generate_block_register_definitions(&block.registers, register_address_type);
 
         quote! {
             #(#cfg_attributes)*
@@ -627,25 +573,25 @@ impl Register {
 
     fn generate_block_functions(
         &self,
-        registers: &RegisterCollection,
+        registers: &[ResolvedRegisterItem],
     ) -> Result<Vec<syn::ImplItem>, syn::Error> {
         registers
             .iter()
-            .map(|register| register.generate_register_function(registers))
+            .map(|register| register.generate_register_function())
             .collect()
     }
 
     fn generate_block_register_definitions(
         &self,
-        registers: &RegisterCollection,
-        device: &Device,
+        registers: &[ResolvedRegisterItem],
+        register_address_type: BaseType,
     ) -> TokenStream {
         let mut stream = TokenStream::new();
 
         stream.append_all(
             registers
                 .iter()
-                .map(|register| register.generate_definition(device, registers)),
+                .map(|register| register.generate_definition(register_address_type)),
         );
 
         stream

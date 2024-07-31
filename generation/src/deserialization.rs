@@ -4,20 +4,20 @@ use indexmap::IndexMap;
 use proc_macro2::Span;
 
 use crate::{
-    Buffer, Command, EnumVariant, EnumVariantValue, Field, Register, TypePath, TypePathOrEnum,
+    Buffer, Command, EnumVariant, EnumVariantValue, Field, RegisterItem, TypePath, TypePathOrEnum,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RegisterCollection(Vec<Register>);
+pub struct RegisterCollection(pub Vec<RegisterItem>);
 
-impl From<Vec<Register>> for RegisterCollection {
-    fn from(value: Vec<Register>) -> Self {
+impl From<Vec<RegisterItem>> for RegisterCollection {
+    fn from(value: Vec<RegisterItem>) -> Self {
         Self(value)
     }
 }
 
 impl std::ops::Deref for RegisterCollection {
-    type Target = Vec<Register>;
+    type Target = Vec<RegisterItem>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -29,7 +29,7 @@ impl<'de> serde::Deserialize<'de> for RegisterCollection {
     where
         D: serde::Deserializer<'de>,
     {
-        let registers = HashMap::<String, Register>::deserialize(deserializer)?;
+        let registers = HashMap::<String, RegisterItem>::deserialize(deserializer)?;
 
         let mut registers: Vec<_> = registers
             .into_iter()
@@ -84,7 +84,7 @@ impl<'de> serde::Deserialize<'de> for FieldCollection {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CommandCollection(Vec<Command>);
+pub struct CommandCollection(pub Vec<Command>);
 
 impl From<Vec<Command>> for CommandCollection {
     fn from(value: Vec<Command>) -> Self {
@@ -122,7 +122,7 @@ impl<'de> serde::Deserialize<'de> for CommandCollection {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BufferCollection(Vec<Buffer>);
+pub struct BufferCollection(pub Vec<Buffer>);
 
 impl From<Vec<Buffer>> for BufferCollection {
     fn from(value: Vec<Buffer>) -> Self {

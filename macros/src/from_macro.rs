@@ -3,7 +3,7 @@ use device_driver_generation::{
     BaseType, ByteOrder, EnumVariant, EnumVariantValue, RWType, RegisterRepeat, ResetValue,
     TypePath,
 };
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
 use quote::ToTokens;
 use syn::{braced, punctuated::Punctuated, spanned::Spanned, Expr, ExprLit, Generics, Lit};
 
@@ -468,7 +468,7 @@ impl syn::parse::Parse for Register {
     }
 }
 
-impl<'a> From<&'a Register> for device_driver_generation::Register {
+impl<'a> From<&'a Register> for device_driver_generation::RegisterItem {
     fn from(r: &'a Register) -> Self {
         Self {
             name: r.name.to_string(),
@@ -520,7 +520,7 @@ impl<'a> From<&'a RegisterKind> for device_driver_generation::RegisterKind {
                 reset_value,
                 fields,
                 ..
-            } => device_driver_generation::StandaloneRegister {
+            } => device_driver_generation::Register {
                 address: *address_value,
                 rw_type: *rw_type,
                 size_bits: *size_bits_value,
@@ -544,7 +544,7 @@ impl<'a> From<&'a RegisterKind> for device_driver_generation::RegisterKind {
                 repeat: *repeat,
                 registers: registers
                     .iter()
-                    .map(device_driver_generation::Register::from)
+                    .map(device_driver_generation::RegisterItem::from)
                     .collect::<Vec<_>>()
                     .into(),
             }
@@ -565,7 +565,7 @@ impl<'a> From<&'a RegisterKind> for device_driver_generation::RegisterKind {
                 address,
                 rw_type,
                 ..
-            } => device_driver_generation::StandaloneRegisterRef {
+            } => device_driver_generation::RegisterRef {
                 copy_of: copy_of.to_string(),
                 address: *address,
                 rw_type: *rw_type,
@@ -945,7 +945,7 @@ pub fn implement_device(item: TokenStream) -> TokenStream {
         .items
         .iter()
         .filter_map(Item::as_register)
-        .map(device_driver_generation::Register::from)
+        .map(device_driver_generation::RegisterItem::from)
         .collect::<Vec<_>>()
         .into();
 
@@ -1011,6 +1011,15 @@ pub fn implement_device(item: TokenStream) -> TokenStream {
         self_ty: Box::new(device_impl.device_type),
         brace_token: Default::default(),
         items: Default::default(),
+    };
+
+    let device = match device.resolve() {
+        Ok(d) => d,
+        Err(e) => {
+            return syn::Error::new(Span::call_site(), e)
+                .into_compile_error()
+                .into();
+        }
     };
 
     proc_macro2::TokenStream::from_iter([

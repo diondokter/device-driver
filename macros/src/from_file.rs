@@ -5,6 +5,7 @@ use std::fs::File;
 
 use device_driver_generation::Device;
 use proc_macro::TokenStream;
+use proc_macro2::Span;
 use syn::{spanned::Spanned, Ident, LitStr};
 
 struct AttrParams {
@@ -98,6 +99,15 @@ pub fn implement_device_from_file(attr: TokenStream, item: TokenStream) -> Token
                     )
                     .into_compile_error()
                     .into();
+                }
+            };
+
+            let device = match device.resolve() {
+                Ok(d) => d,
+                Err(e) => {
+                    return syn::Error::new(Span::call_site(), e)
+                        .into_compile_error()
+                        .into();
                 }
             };
 
