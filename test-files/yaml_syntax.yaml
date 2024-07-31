@@ -28,6 +28,25 @@ registers:
           Others: default
         start: 20
         end: 24
+  int_flags:
+    rw_type: ro
+    address: 16
+    size_bits: 8
+    description: Interrupt flags
+    fields:
+      rx:
+        description: Receive interrupt
+        type: bool
+        start: 0
+      tx:
+        description: Transmit interrupt
+        type: bool
+        start: 1
+  int_enable:
+    copy_of: int_flags
+    description: Interrupt enable flags
+    address: 17
+    rw_type: rw
   baudrate:
     rw_type: rw
     address: 42
@@ -40,6 +59,45 @@ registers:
         type: u16
         start: 0
         end: 16
+  foo_0:
+    description: Instance of the Foo block
+    base_address: 64
+    registers:
+      baudrate:
+        description: Baudrate register
+        address: 0
+        rw_type: rw
+        size_bits: 16
+        byte_order: le
+        fields:
+          value:
+            description: Baudrate value
+            type: u16
+            start: 0
+            end: 16
+  foo_1:
+    description: Second instance of the Foo block
+    base_address: 80
+    copy_of: foo_0
+  bar:
+      description: Instance of the Bar block
+      base_address: 96
+      repeat: 
+          count: 3
+          stride: 2
+      registers: 
+          baudrate: 
+              description: Baudrate register
+              address: 0
+              rw_type: rw
+              size_bits: 16
+              byte_order: le
+              fields: 
+                  value: 
+                      description: Baudrate value
+                      type: u16
+                      start: 0
+                      end: 16
 
 commands:
   sleep:

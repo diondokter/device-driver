@@ -170,6 +170,13 @@ fn main() {
     write_baud(&mut test_device);
     assert_eq!(test_device.baudrate().read().unwrap().value(), 12);
 
+    test_device
+        .foo_0()
+        .baudrate()
+        .write(|w| w.value(34))
+        .unwrap();
+    assert_eq!(test_device.foo_0().baudrate().read().unwrap().value(), 34);
+
     test_device.sleep().dispatch().unwrap();
     assert_eq!(test_device.last_command, 0);
 
