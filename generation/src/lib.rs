@@ -13,6 +13,8 @@ pub use deserialization::ResetValue;
 pub mod deserialization;
 mod generation;
 
+pub mod dsl_hir;
+
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Device {
