@@ -60,7 +60,7 @@
 //!
 //! _BlockItem_:
 //! > (`const` `ADDRESS_OFFSET` `=` _INTEGER_`;`)
-//! > | _Repeat_
+//! > | (`const` _Repeat_)
 //!
 //! _Register_:
 //! > _AttributeList_
@@ -76,7 +76,7 @@
 //! > | (`const` `ADDRESS` `=` _INTEGER_`;`)
 //! > | (`const` `SIZE_BITS` `=` _INTEGER_`;`)
 //! > | (`const` `RESET_VALUE` `=` _INTEGER_ | _U8_ARRAY_`;`)
-//! > | _Repeat_
+//! > | (`const` _Repeat_)
 //!
 //! _Access_:
 //! > (`ReadWrite`|`RW`)|(`ReadClear`|`RC`)|(`ReadOnly`|`RO`)|(`WriteOnly`|`WO`)|(`ClearOnly`|`CO`)
@@ -92,7 +92,7 @@
 //!
 //! _Field_:
 //! > _AttributeList_
-//! > _IDENTIFIER_`:` _BaseType_ _FieldConversion_? `=` _Access_? _FieldAddress_
+//! > _IDENTIFIER_`:` _Access_? _BaseType_ _FieldConversion_? `=` _FieldAddress_
 //!
 //! _FieldConversion_:
 //! > (`as` _TYPE_PATH_)
@@ -134,10 +134,10 @@
 //! > | (`type` `BitOrder` `=` _BitOrder_`;`)
 //! > | (`const` `ADDRESS` `=` _INTEGER_`;`)
 //! > | (`const` `SIZE_BITS` `=` _INTEGER_`;`)
-//! > | _Repeat_
+//! > | (`const` _Repeat_)
 //!
 //! _Repeat_:
-//! > `const` `REPEAT` `=` `{` `count` `:` _INTEGER_`,` `stride` `:` _INTEGER_`,`? `}` `;`
+//! > `REPEAT` `=` `{` `count` `:` _INTEGER_`,` `stride` `:` _INTEGER_`,`? `}` `;`
 //!
 //! _Buffer_:
 //! > _AttributeList_
@@ -150,6 +150,7 @@ use syn::{
     LitInt, Token,
 };
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Device {
     pub global_config_list: GlobalConfigList,
     pub object_list: ObjectList,
@@ -164,6 +165,7 @@ impl Parse for Device {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GlobalConfigList {
     pub configs: Vec<GlobalConfig>,
 }
@@ -190,6 +192,7 @@ impl Parse for GlobalConfigList {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GlobalConfig {
     DefaultRegisterAccess(Access),
     DefaultFieldAccess(Access),
@@ -247,6 +250,7 @@ impl Parse for GlobalConfig {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum NameCasing {
     Varying,
     PascalCase,
@@ -280,6 +284,7 @@ impl Parse for NameCasing {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ObjectList {
     pub objects: Vec<Object>,
 }
@@ -293,6 +298,7 @@ impl Parse for ObjectList {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Object {
     Block(Block),
     Register(Register),
@@ -321,6 +327,7 @@ impl Parse for Object {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RefObject {
     pub identifier: syn::Ident,
     pub object: Box<Object>,
@@ -340,6 +347,7 @@ impl Parse for RefObject {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AttributeList {
     pub attributes: Vec<Attribute>,
 }
@@ -379,11 +387,13 @@ impl Parse for AttributeList {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Attribute {
     Doc(String),
     Cfg(String),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Block {
     pub attribute_list: AttributeList,
     pub identifier: syn::Ident,
@@ -412,6 +422,7 @@ impl Parse for Block {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BlockItemList {
     pub block_items: Vec<BlockItem>,
 }
@@ -428,6 +439,7 @@ impl Parse for BlockItemList {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BlockItem {
     AddressOffset(LitInt),
     Repeat(Repeat),
@@ -444,6 +456,7 @@ impl Parse for BlockItem {
 
             Ok(Self::AddressOffset(value))
         } else if input.peek2(kw::REPEAT) {
+            input.parse::<Token![const]>()?;
             Ok(Self::Repeat(input.parse()?))
         } else {
             Err(syn::Error::new(
@@ -454,6 +467,7 @@ impl Parse for BlockItem {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Register {
     pub attribute_list: AttributeList,
     pub identifier: syn::Ident,
@@ -482,6 +496,7 @@ impl Parse for Register {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RegisterItemList {
     pub register_items: Vec<RegisterItem>,
 }
@@ -527,7 +542,7 @@ impl Parse for RegisterItemList {
                     input.parse::<Token![=]>()?;
                     let value = input.parse()?;
                     input.parse::<Token![;]>()?;
-                    register_items.push(RegisterItem::Adress(value));
+                    register_items.push(RegisterItem::Address(value));
                 } else if lookahead.peek(kw::SIZE_BITS) {
                     input.parse::<kw::SIZE_BITS>()?;
                     input.parse::<Token![=]>()?;
@@ -574,17 +589,19 @@ impl Parse for RegisterItemList {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RegisterItem {
     Access(Access),
     ByteOrder(ByteOrder),
     BitOrder(BitOrder),
-    Adress(LitInt),
+    Address(LitInt),
     SizeBits(LitInt),
     ResetValueInt(LitInt),
     ResetValueArray(Vec<u8>),
     Repeat(Repeat),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Access {
     RW,
     RC,
@@ -605,16 +622,16 @@ impl Parse for Access {
             Ok(Self::RW)
         } else if lookahead.peek(kw::ReadClear) {
             input.parse::<kw::ReadClear>()?;
-            Ok(Self::RW)
+            Ok(Self::RC)
         } else if lookahead.peek(kw::RC) {
             input.parse::<kw::RC>()?;
-            Ok(Self::RW)
+            Ok(Self::RC)
         } else if lookahead.peek(kw::ReadOnly) {
             input.parse::<kw::ReadOnly>()?;
-            Ok(Self::RW)
+            Ok(Self::RO)
         } else if lookahead.peek(kw::RO) {
             input.parse::<kw::RO>()?;
-            Ok(Self::RW)
+            Ok(Self::RO)
         } else if lookahead.peek(kw::WriteOnly) {
             input.parse::<kw::WriteOnly>()?;
             Ok(Self::WO)
@@ -633,6 +650,7 @@ impl Parse for Access {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ByteOrder {
     LE,
     BE,
@@ -654,6 +672,7 @@ impl Parse for ByteOrder {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BitOrder {
     LSB0,
     MSB0,
@@ -675,6 +694,7 @@ impl Parse for BitOrder {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FieldList {
     pub fields: Vec<Field>,
 }
@@ -689,12 +709,13 @@ impl Parse for FieldList {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Field {
     pub attribute_list: AttributeList,
     pub identifier: syn::Ident,
+    pub access: Option<Access>,
     pub base_type: BaseType,
     pub field_conversion: Option<FieldConversion>,
-    pub access: Option<Access>,
     pub field_address: FieldAddress,
 }
 
@@ -703,6 +724,7 @@ impl Parse for Field {
         let attribute_list = input.parse()?;
         let identifier = input.parse()?;
         input.parse::<Token![:]>()?;
+        let access = input.parse::<Access>().ok();
         let base_type = input.parse()?;
 
         let field_conversion = if input.peek(Token![as]) {
@@ -713,7 +735,6 @@ impl Parse for Field {
 
         input.parse::<Token![=]>()?;
 
-        let access = input.parse::<Access>().ok();
         let field_address = input.parse()?;
 
         Ok(Self {
@@ -727,6 +748,7 @@ impl Parse for Field {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FieldConversion {
     Direct(syn::Path),
     Enum {
@@ -758,6 +780,7 @@ impl Parse for FieldConversion {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnumVariantList {
     pub variants: Vec<EnumVariant>,
 }
@@ -771,6 +794,7 @@ impl Parse for EnumVariantList {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnumVariant {
     pub attribute_list: AttributeList,
     pub identifier: syn::Ident,
@@ -782,18 +806,8 @@ impl Parse for EnumVariant {
         let attribute_list = input.parse()?;
         let identifier = input.parse()?;
 
-        let enum_value = if input.peek(Token![=]) {
-            input.parse::<Token![=]>()?;
-
-            if let Ok(specification) = input.parse::<LitInt>() {
-                Some(EnumValue::Specified(specification))
-            } else if input.parse::<kw::default>().is_ok() {
-                Some(EnumValue::Default)
-            } else if input.parse::<kw::catch_all>().is_ok() {
-                Some(EnumValue::CatchAll)
-            } else {
-                return Err(syn::Error::new(input.span(), "Specifier not recognized. Must be an integer literal, `default` or `catch_all`"));
-            }
+        let enum_value = if input.parse::<Token![=]>().is_ok() {
+            Some(input.parse()?)
         } else {
             None
         };
@@ -806,12 +820,31 @@ impl Parse for EnumVariant {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EnumValue {
     Specified(LitInt),
     Default,
     CatchAll,
 }
 
+impl Parse for EnumValue {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        if let Ok(specification) = input.parse::<LitInt>() {
+            Ok(Self::Specified(specification))
+        } else if input.parse::<kw::default>().is_ok() {
+            Ok(Self::Default)
+        } else if input.parse::<kw::catch_all>().is_ok() {
+            Ok(Self::CatchAll)
+        } else {
+            Err(syn::Error::new(
+                input.span(),
+                "Specifier not recognized. Must be an integer literal, `default` or `catch_all`",
+            ))
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FieldAddress {
     Integer(LitInt),
     Range { start: LitInt, end: LitInt },
@@ -829,13 +862,14 @@ impl Parse for FieldAddress {
         } else if input.peek(Token![..]) {
             input.parse::<Token![..]>()?;
             let end = input.parse()?;
-            Ok(Self::RangeInclusive { start, end })
+            Ok(Self::Range { start, end })
         } else {
             Ok(FieldAddress::Integer(start))
         }
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BaseType {
     Bool,
     Uint,
@@ -861,6 +895,7 @@ impl Parse for BaseType {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Command {
     pub attribute_list: AttributeList,
     pub identifier: syn::Ident,
@@ -882,6 +917,7 @@ impl Parse for Command {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CommandValue {
     Basic(LitInt),
     Extended {
@@ -903,22 +939,26 @@ impl Parse for CommandValue {
         let command_item_list = braced_input.parse()?;
 
         let in_field_list = if braced_input.parse::<Token![in]>().is_ok() {
-            let braced_input;
-            braced!(braced_input in input);
+            let braced_input_inner;
+            braced!(braced_input_inner in braced_input);
 
-            braced_input.parse()?
+            braced_input_inner.parse()?
         } else {
             FieldList { fields: Vec::new() }
         };
+
+        let _ = braced_input.parse::<Token![,]>();
 
         let out_field_list = if braced_input.parse::<kw::out>().is_ok() {
-            let braced_input;
-            braced!(braced_input in input);
+            let braced_input_inner;
+            braced!(braced_input_inner in braced_input);
 
-            braced_input.parse()?
+            braced_input_inner.parse()?
         } else {
             FieldList { fields: Vec::new() }
         };
+
+        let _ = braced_input.parse::<Token![,]>();
 
         if !braced_input.is_empty() {
             return Err(syn::Error::new(
@@ -935,14 +975,16 @@ impl Parse for CommandValue {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CommandItemList {
     pub items: Vec<CommandItem>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CommandItem {
     ByteOrder(ByteOrder),
     BitOrder(BitOrder),
-    Adress(LitInt),
+    Address(LitInt),
     SizeBits(LitInt),
     Repeat(Repeat),
 }
@@ -952,9 +994,7 @@ impl Parse for CommandItemList {
         let mut items = Vec::new();
 
         loop {
-            if input.peek(Token![type]) {
-                input.parse::<Token![type]>()?;
-
+            if input.parse::<Token![type]>().is_ok() {
                 let lookahead = input.lookahead1();
 
                 if lookahead.peek(kw::ByteOrder) {
@@ -982,7 +1022,7 @@ impl Parse for CommandItemList {
                     input.parse::<Token![=]>()?;
                     let value = input.parse()?;
                     input.parse::<Token![;]>()?;
-                    items.push(CommandItem::Adress(value));
+                    items.push(CommandItem::Address(value));
                 } else if lookahead.peek(kw::SIZE_BITS) {
                     input.parse::<kw::SIZE_BITS>()?;
                     input.parse::<Token![=]>()?;
@@ -990,7 +1030,7 @@ impl Parse for CommandItemList {
                     input.parse::<Token![;]>()?;
                     items.push(CommandItem::SizeBits(value));
                 } else if lookahead.peek(kw::REPEAT) {
-                    CommandItem::Repeat(input.parse()?);
+                    items.push(CommandItem::Repeat(input.parse()?));
                 } else {
                     return Err(lookahead.error());
                 }
@@ -1003,6 +1043,7 @@ impl Parse for CommandItemList {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Repeat {
     pub count: LitInt,
     pub stride: LitInt,
@@ -1010,7 +1051,6 @@ pub struct Repeat {
 
 impl Parse for Repeat {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        input.parse::<Token![const]>()?;
         input.parse::<kw::REPEAT>()?;
         input.parse::<Token![=]>()?;
 
@@ -1035,6 +1075,7 @@ impl Parse for Repeat {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Buffer {
     pub attribute_list: AttributeList,
     pub identifier: syn::Ident,
@@ -1136,4 +1177,424 @@ mod kw {
 
     // CommandValue
     syn::custom_keyword!(out);
+}
+
+#[cfg(test)]
+mod tests {
+    use proc_macro2::Span;
+    use syn::Ident;
+
+    use super::*;
+
+    #[test]
+    fn parse_access() {
+        assert_eq!(syn::parse_str::<Access>("RW").unwrap(), Access::RW);
+        assert_eq!(syn::parse_str::<Access>("ReadWrite").unwrap(), Access::RW);
+        assert_eq!(syn::parse_str::<Access>("RC").unwrap(), Access::RC);
+        assert_eq!(syn::parse_str::<Access>("ReadClear").unwrap(), Access::RC);
+        assert_eq!(syn::parse_str::<Access>("RO").unwrap(), Access::RO);
+        assert_eq!(syn::parse_str::<Access>("ReadOnly").unwrap(), Access::RO);
+        assert_eq!(syn::parse_str::<Access>("WO").unwrap(), Access::WO);
+        assert_eq!(syn::parse_str::<Access>("WriteOnly").unwrap(), Access::WO);
+        assert_eq!(syn::parse_str::<Access>("CO").unwrap(), Access::CO);
+        assert_eq!(syn::parse_str::<Access>("ClearOnly").unwrap(), Access::CO);
+
+        assert_eq!(
+            syn::parse_str::<Access>("ABCD").unwrap_err().to_string(),
+            "expected one of: `ReadWrite`, `RW`, `ReadClear`, `RC`, `ReadOnly`, `RO`, `WriteOnly`, `WO`, `ClearOnly`, `CO`"
+        );
+    }
+
+    #[test]
+    fn parse_byte_order() {
+        assert_eq!(syn::parse_str::<ByteOrder>("LE").unwrap(), ByteOrder::LE);
+        assert_eq!(syn::parse_str::<ByteOrder>("BE").unwrap(), ByteOrder::BE);
+
+        assert_eq!(
+            syn::parse_str::<ByteOrder>("ABCD").unwrap_err().to_string(),
+            "expected `LE` or `BE`"
+        );
+    }
+
+    #[test]
+    fn parse_bit_order() {
+        assert_eq!(syn::parse_str::<BitOrder>("LSB0").unwrap(), BitOrder::LSB0);
+        assert_eq!(syn::parse_str::<BitOrder>("MSB0").unwrap(), BitOrder::MSB0);
+
+        assert_eq!(
+            syn::parse_str::<BitOrder>("ABCD").unwrap_err().to_string(),
+            "expected `LSB0` or `MSB0`"
+        );
+    }
+
+    #[test]
+    fn parse_base_type() {
+        assert_eq!(syn::parse_str::<BaseType>("bool").unwrap(), BaseType::Bool);
+        assert_eq!(syn::parse_str::<BaseType>("uint").unwrap(), BaseType::Uint);
+        assert_eq!(syn::parse_str::<BaseType>("int").unwrap(), BaseType::Int);
+
+        assert_eq!(
+            syn::parse_str::<BaseType>("ABCD").unwrap_err().to_string(),
+            "expected one of: `bool`, `uint`, `int`"
+        );
+    }
+
+    #[test]
+    fn parse_enum_value() {
+        assert_eq!(
+            syn::parse_str::<EnumValue>("55").unwrap(),
+            EnumValue::Specified(LitInt::new("55", Span::call_site()))
+        );
+        assert_eq!(
+            syn::parse_str::<EnumValue>("default").unwrap(),
+            EnumValue::Default
+        );
+        assert_eq!(
+            syn::parse_str::<EnumValue>("catch_all").unwrap(),
+            EnumValue::CatchAll
+        );
+
+        assert_eq!(
+            syn::parse_str::<EnumValue>("ABCD").unwrap_err().to_string(),
+            "Specifier not recognized. Must be an integer literal, `default` or `catch_all`"
+        );
+    }
+
+    #[test]
+    fn parse_repeat() {
+        assert_eq!(
+            syn::parse_str::<Repeat>("REPEAT = { count: 55, stride: 0x123, };").unwrap(),
+            Repeat {
+                count: LitInt::new("55", Span::call_site()),
+                stride: LitInt::new("0x123", Span::call_site())
+            }
+        );
+        assert_eq!(
+            syn::parse_str::<Repeat>("REPEAT = { count: 55, stride: 0x123 };").unwrap(),
+            Repeat {
+                count: LitInt::new("55", Span::call_site()),
+                stride: LitInt::new("0x123", Span::call_site())
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<Repeat>("ABCD").unwrap_err().to_string(),
+            "expected `REPEAT`"
+        );
+        assert_eq!(
+            syn::parse_str::<Repeat>("REPEAT = { count: 55 stride: 0x123 };")
+                .unwrap_err()
+                .to_string(),
+            "expected `,`"
+        );
+    }
+
+    #[test]
+    fn parse_command_item_list() {
+        assert_eq!(
+            syn::parse_str::<CommandItemList>("").unwrap(),
+            CommandItemList { items: vec![] }
+        );
+
+        assert_eq!(
+            syn::parse_str::<CommandItemList>("type ByteOrder = LE;").unwrap(),
+            CommandItemList {
+                items: vec![CommandItem::ByteOrder(ByteOrder::LE)]
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<CommandItemList>("type BitOrder = LSB0;\nconst ADDRESS = 123;")
+                .unwrap(),
+            CommandItemList {
+                items: vec![
+                    CommandItem::BitOrder(BitOrder::LSB0),
+                    CommandItem::Address(LitInt::new("123", Span::call_site()))
+                ]
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<CommandItemList>(
+                "const SIZE_BITS = 16;\nconst REPEAT = { count: 2, stride: 2 };"
+            )
+            .unwrap(),
+            CommandItemList {
+                items: vec![
+                    CommandItem::SizeBits(LitInt::new("16", Span::call_site())),
+                    CommandItem::Repeat(Repeat {
+                        count: LitInt::new("2", Span::call_site()),
+                        stride: LitInt::new("2", Span::call_site())
+                    })
+                ]
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<CommandItemList>("const ABC = 16;")
+                .unwrap_err()
+                .to_string(),
+            "expected one of: `ADDRESS`, `SIZE_BITS`, `REPEAT`"
+        );
+
+        assert_eq!(
+            syn::parse_str::<CommandItemList>("type ABC = 16;")
+                .unwrap_err()
+                .to_string(),
+            "expected `ByteOrder` or `BitOrder`"
+        );
+    }
+
+    #[test]
+    fn parse_field_address() {
+        assert_eq!(
+            syn::parse_str::<FieldAddress>("55").unwrap(),
+            FieldAddress::Integer(LitInt::new("55", Span::call_site()))
+        );
+        assert_eq!(
+            syn::parse_str::<FieldAddress>("55..=0x123").unwrap(),
+            FieldAddress::RangeInclusive {
+                start: LitInt::new("55", Span::call_site()),
+                end: LitInt::new("0x123", Span::call_site())
+            }
+        );
+        assert_eq!(
+            syn::parse_str::<FieldAddress>("55..0x123").unwrap(),
+            FieldAddress::Range {
+                start: LitInt::new("55", Span::call_site()),
+                end: LitInt::new("0x123", Span::call_site())
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<FieldAddress>("ABCD")
+                .unwrap_err()
+                .to_string(),
+            "expected integer literal"
+        );
+    }
+
+    #[test]
+    fn parse_buffer() {
+        assert_eq!(
+            syn::parse_str::<Buffer>("buffer TestBuffer = 0x123").unwrap(),
+            Buffer {
+                attribute_list: AttributeList {
+                    attributes: Vec::new()
+                },
+                identifier: Ident::new("TestBuffer", Span::call_site()),
+                access: None,
+                address: LitInt::new("0x123", Span::call_site()),
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<Buffer>("/// A test buffer\nbuffer TestBuffer: RO = 0x123").unwrap(),
+            Buffer {
+                attribute_list: AttributeList {
+                    attributes: vec![Attribute::Doc(" A test buffer".into())]
+                },
+                identifier: Ident::new("TestBuffer", Span::call_site()),
+                access: Some(Access::RO),
+                address: LitInt::new("0x123", Span::call_site()),
+            }
+        );
+    }
+
+    #[test]
+    fn parse_field() {
+        assert_eq!(
+            syn::parse_str::<Field>("TestField: ClearOnly int = 0x123").unwrap(),
+            Field {
+                attribute_list: AttributeList {
+                    attributes: Vec::new()
+                },
+                identifier: Ident::new("TestField".into(), Span::call_site()),
+                access: Some(Access::CO),
+                base_type: BaseType::Int,
+                field_conversion: None,
+                field_address: FieldAddress::Integer(LitInt::new("0x123", Span::call_site()))
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<Field>("ExsitingType: RW uint as crate::module::foo::Bar = 0x1234")
+                .unwrap(),
+            Field {
+                attribute_list: AttributeList {
+                    attributes: Vec::new()
+                },
+                identifier: Ident::new("ExsitingType".into(), Span::call_site()),
+                access: Some(Access::RW),
+                base_type: BaseType::Uint,
+                field_conversion: Some(FieldConversion::Direct(
+                    syn::parse_str("crate::module::foo::Bar").unwrap()
+                )),
+                field_address: FieldAddress::Integer(LitInt::new("0x1234", Span::call_site()))
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<Field>(
+                "ExsitingType: RW uint as enum crate::module::foo::Bar = 0x1234"
+            )
+            .unwrap_err()
+            .to_string(),
+            "expected identifier, found keyword `crate`"
+        );
+
+        assert_eq!(
+            syn::parse_str::<Field>("ExsitingType: RW uint as enum Bar { } = 0x1234").unwrap(),
+            Field {
+                attribute_list: AttributeList {
+                    attributes: Vec::new()
+                },
+                identifier: Ident::new("ExsitingType".into(), Span::call_site()),
+                access: Some(Access::RW),
+                base_type: BaseType::Uint,
+                field_conversion: Some(FieldConversion::Enum {
+                    identifier: Ident::new("Bar", Span::call_site()),
+                    enum_variant_list: EnumVariantList {
+                        variants: Vec::new()
+                    }
+                }),
+                field_address: FieldAddress::Integer(LitInt::new("0x1234", Span::call_site()))
+            }
+        );
+    }
+
+    #[test]
+    fn parse_enum_variant_list() {
+        assert_eq!(
+            syn::parse_str::<EnumVariantList>(
+                "A, B = 0xFF,\n/// This is C\nC = default, D = catch_all"
+            )
+            .unwrap(),
+            EnumVariantList {
+                variants: vec![
+                    EnumVariant {
+                        attribute_list: AttributeList {
+                            attributes: Vec::new()
+                        },
+                        identifier: Ident::new("A", Span::call_site()),
+                        enum_value: None
+                    },
+                    EnumVariant {
+                        attribute_list: AttributeList {
+                            attributes: Vec::new()
+                        },
+                        identifier: Ident::new("B", Span::call_site()),
+                        enum_value: Some(EnumValue::Specified(LitInt::new(
+                            "0xFF",
+                            Span::call_site()
+                        )))
+                    },
+                    EnumVariant {
+                        attribute_list: AttributeList {
+                            attributes: vec![Attribute::Doc(" This is C".into())]
+                        },
+                        identifier: Ident::new("C", Span::call_site()),
+                        enum_value: Some(EnumValue::Default)
+                    },
+                    EnumVariant {
+                        attribute_list: AttributeList {
+                            attributes: Vec::new()
+                        },
+                        identifier: Ident::new("D", Span::call_site()),
+                        enum_value: Some(EnumValue::CatchAll)
+                    },
+                ]
+            }
+        );
+    }
+
+    #[test]
+    fn parse_command() {
+        assert_eq!(
+            syn::parse_str::<Command>("/// A command!\n#[cfg(feature = \"std\")]\ncommand Foo = 5")
+                .unwrap(),
+            Command {
+                attribute_list: AttributeList {
+                    attributes: vec![
+                        Attribute::Doc(" A command!".into()),
+                        Attribute::Cfg("feature = \"std\"".into()),
+                    ]
+                },
+                identifier: Ident::new("Foo", Span::call_site()),
+                value: CommandValue::Basic(LitInt::new("5", Span::call_site())),
+            }
+        );
+        assert_eq!(
+            syn::parse_str::<Command>("command Bar { type BitOrder = LSB0; }").unwrap(),
+            Command {
+                attribute_list: AttributeList { attributes: vec![] },
+                identifier: Ident::new("Bar", Span::call_site()),
+                value: CommandValue::Extended {
+                    command_item_list: CommandItemList {
+                        items: vec![CommandItem::BitOrder(BitOrder::LSB0)]
+                    },
+                    in_field_list: FieldList { fields: vec![] },
+                    out_field_list: FieldList { fields: vec![] }
+                },
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<Command>("command Bar { in { } }").unwrap(),
+            Command {
+                attribute_list: AttributeList { attributes: vec![] },
+                identifier: Ident::new("Bar", Span::call_site()),
+                value: CommandValue::Extended {
+                    command_item_list: CommandItemList { items: vec![] },
+                    in_field_list: FieldList { fields: vec![] },
+                    out_field_list: FieldList { fields: vec![] }
+                },
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<Command>("command Bar { in { }, out { }, }").unwrap(),
+            Command {
+                attribute_list: AttributeList { attributes: vec![] },
+                identifier: Ident::new("Bar", Span::call_site()),
+                value: CommandValue::Extended {
+                    command_item_list: CommandItemList { items: vec![] },
+                    in_field_list: FieldList { fields: vec![] },
+                    out_field_list: FieldList { fields: vec![] }
+                },
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<Command>("command Bar { out { foo: bool = 0 } }").unwrap(),
+            Command {
+                attribute_list: AttributeList { attributes: vec![] },
+                identifier: Ident::new("Bar", Span::call_site()),
+                value: CommandValue::Extended {
+                    command_item_list: CommandItemList { items: vec![] },
+                    in_field_list: FieldList { fields: vec![] },
+                    out_field_list: FieldList {
+                        fields: vec![Field {
+                            attribute_list: AttributeList { attributes: vec![] },
+                            identifier: Ident::new("foo", Span::call_site()),
+                            access: None,
+                            base_type: BaseType::Bool,
+                            field_conversion: None,
+                            field_address: FieldAddress::Integer(LitInt::new(
+                                "0",
+                                Span::call_site()
+                            ))
+                        }]
+                    }
+                },
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<Command>("command Bar { in { }, out { }, more stuff! }")
+                .unwrap_err()
+                .to_string(),
+            "Did not expect any more tokens"
+        );
+    }
 }
