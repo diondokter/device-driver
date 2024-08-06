@@ -23,11 +23,11 @@
 //! > | (`type` `DefaultBufferAccess` `=` _Access_`;`)
 //! > | (`type` `DefaultByteOrder` `=` _ByteOrder_`;`)
 //! > | (`type` `DefaultBitOrder` `=` _BitOrder_`;`)
-//! > | (`type` `NameCasing` `=` _NameCasing_`;`)
+//! > | (`type` `NameCase` `=` _NameCase_`;`)
 //!
-//! _NameCasing_:
-//! This specifies the input, not the output.
-//! > `Varying`|`PascalCase`|`SnakeCase`|`ScreamingSnakeCase`|`CamelCase`
+//! _NameCase_:
+//! This specifies the input, not the output. Only applies to object and field names.
+//! > `Varying`|`Pascal`|`Snake`|`ScreamingSnake`|`Camel`|`Kebab`|`Cobol`
 //!
 //! _ObjectList_:
 //! > (_Object_(`,` _Object_)*`,`?)?
@@ -199,7 +199,7 @@ pub enum GlobalConfig {
     DefaultBufferAccess(Access),
     DefaultByteOrder(ByteOrder),
     DefaultBitOrder(BitOrder),
-    NameCasing(NameCasing),
+    NameCase(NameCase),
 }
 
 impl Parse for GlobalConfig {
@@ -238,12 +238,12 @@ impl Parse for GlobalConfig {
             let value = input.parse()?;
             input.parse::<Token![;]>()?;
             Ok(Self::DefaultBitOrder(value))
-        } else if lookahead.peek(kw::NameCasing) {
-            input.parse::<kw::NameCasing>()?;
+        } else if lookahead.peek(kw::NameCase) {
+            input.parse::<kw::NameCase>()?;
             input.parse::<Token![=]>()?;
             let value = input.parse()?;
             input.parse::<Token![;]>()?;
-            Ok(Self::NameCasing(value))
+            Ok(Self::NameCase(value))
         } else {
             Err(lookahead.error())
         }
@@ -251,33 +251,41 @@ impl Parse for GlobalConfig {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum NameCasing {
+pub enum NameCase {
     Varying,
-    PascalCase,
-    SnakeCase,
-    ScreamingSnakeCase,
-    CamelCase,
+    Pascal,
+    Snake,
+    ScreamingSnake,
+    Camel,
+    Kebab,
+    Cobol,
 }
 
-impl Parse for NameCasing {
+impl Parse for NameCase {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let lookahead = input.lookahead1();
 
         if lookahead.peek(kw::Varying) {
             input.parse::<kw::Varying>()?;
             Ok(Self::Varying)
-        } else if lookahead.peek(kw::PascalCase) {
-            input.parse::<kw::PascalCase>()?;
-            Ok(Self::PascalCase)
-        } else if lookahead.peek(kw::SnakeCase) {
-            input.parse::<kw::SnakeCase>()?;
-            Ok(Self::SnakeCase)
-        } else if lookahead.peek(kw::ScreamingSnakeCase) {
-            input.parse::<kw::ScreamingSnakeCase>()?;
-            Ok(Self::ScreamingSnakeCase)
-        } else if lookahead.peek(kw::CamelCase) {
-            input.parse::<kw::CamelCase>()?;
-            Ok(Self::CamelCase)
+        } else if lookahead.peek(kw::Pascal) {
+            input.parse::<kw::Pascal>()?;
+            Ok(Self::Pascal)
+        } else if lookahead.peek(kw::Snake) {
+            input.parse::<kw::Snake>()?;
+            Ok(Self::Snake)
+        } else if lookahead.peek(kw::ScreamingSnake) {
+            input.parse::<kw::ScreamingSnake>()?;
+            Ok(Self::ScreamingSnake)
+        } else if lookahead.peek(kw::Camel) {
+            input.parse::<kw::Camel>()?;
+            Ok(Self::Camel)
+        } else if lookahead.peek(kw::Kebab) {
+            input.parse::<kw::Kebab>()?;
+            Ok(Self::Kebab)
+        } else if lookahead.peek(kw::Cobol) {
+            input.parse::<kw::Cobol>()?;
+            Ok(Self::Cobol)
         } else {
             Err(lookahead.error())
         }
@@ -576,7 +584,7 @@ impl Parse for RegisterItemList {
                     input.parse::<Token![;]>()?;
                     register_items.push(value);
                 } else if lookahead.peek(kw::REPEAT) {
-                    RegisterItem::Repeat(input.parse()?);
+                    register_items.push(RegisterItem::Repeat(input.parse()?));
                 } else {
                     return Err(lookahead.error());
                 }
@@ -1134,14 +1142,16 @@ mod kw {
     syn::custom_keyword!(DefaultBufferAccess);
     syn::custom_keyword!(DefaultByteOrder);
     syn::custom_keyword!(DefaultBitOrder);
-    syn::custom_keyword!(NameCasing);
+    syn::custom_keyword!(NameCase);
 
-    // NameCasing options
+    // NameCase options
     syn::custom_keyword!(Varying);
-    syn::custom_keyword!(PascalCase);
-    syn::custom_keyword!(SnakeCase);
-    syn::custom_keyword!(ScreamingSnakeCase);
-    syn::custom_keyword!(CamelCase);
+    syn::custom_keyword!(Pascal);
+    syn::custom_keyword!(Snake);
+    syn::custom_keyword!(ScreamingSnake);
+    syn::custom_keyword!(Camel);
+    syn::custom_keyword!(Kebab);
+    syn::custom_keyword!(Cobol);
 
     // Access
     syn::custom_keyword!(Access);
@@ -1595,6 +1605,115 @@ mod tests {
                 .unwrap_err()
                 .to_string(),
             "Did not expect any more tokens"
+        );
+    }
+
+    #[test]
+    fn parse_register_item_list() {
+        assert_eq!(
+            syn::parse_str::<RegisterItemList>("").unwrap(),
+            RegisterItemList {
+                register_items: vec![]
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<RegisterItemList>("type Access = RW;").unwrap(),
+            RegisterItemList {
+                register_items: vec![RegisterItem::Access(Access::RW)]
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<RegisterItemList>("type Access = RW")
+                .unwrap_err()
+                .to_string(),
+            "expected `;`"
+        );
+
+        assert_eq!(
+            syn::parse_str::<RegisterItemList>("type ByteOrder = LE;\ntype BitOrder = LSB0;")
+                .unwrap(),
+            RegisterItemList {
+                register_items: vec![
+                    RegisterItem::ByteOrder(ByteOrder::LE),
+                    RegisterItem::BitOrder(BitOrder::LSB0)
+                ]
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<RegisterItemList>("const RST_VALUE = 5;")
+                .unwrap_err()
+                .to_string(),
+            "expected one of: `ADDRESS`, `SIZE_BITS`, `RESET_VALUE`, `REPEAT`"
+        );
+
+        assert_eq!(
+            syn::parse_str::<RegisterItemList>("type BT_ORDR = LSB0;")
+                .unwrap_err()
+                .to_string(),
+            "expected one of: `Access`, `ByteOrder`, `BitOrder`"
+        );
+
+        assert_eq!(
+            syn::parse_str::<RegisterItemList>(
+                "const ADDRESS = 0x123;\nconst SIZE_BITS = 16;\nconst RESET_VALUE = 0xFFFF;"
+            )
+            .unwrap(),
+            RegisterItemList {
+                register_items: vec![
+                    RegisterItem::Address(LitInt::new("0x123", Span::call_site())),
+                    RegisterItem::SizeBits(LitInt::new("16", Span::call_site())),
+                    RegisterItem::ResetValueInt(LitInt::new("0xFFFF", Span::call_site()))
+                ]
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<RegisterItemList>("const RESET_VALUE = [0, 1, 2, 0x30];").unwrap(),
+            RegisterItemList {
+                register_items: vec![RegisterItem::ResetValueArray(vec![0, 1, 2, 0x30])]
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<RegisterItemList>("const RESET_VALUE = [0, 1, 2, 0x300];")
+                .unwrap_err()
+                .to_string(),
+            "number too large to fit in target type"
+        );
+
+        assert_eq!(
+            syn::parse_str::<RegisterItemList>("const REPEAT = { count: 0, stride: 0 };").unwrap(),
+            RegisterItemList {
+                register_items: vec![RegisterItem::Repeat(Repeat {
+                    count: LitInt::new("0", Span::call_site()),
+                    stride: LitInt::new("0", Span::call_site())
+                })]
+            }
+        );
+    }
+
+    #[test]
+    fn parse_attribute_list() {
+        assert_eq!(
+            syn::parse_str::<AttributeList>("#[custom]")
+                .unwrap_err()
+                .to_string(),
+            "Unsupported attribute 'custom'. Only `doc` and `cfg` attributes are allowed"
+        );
+        assert_eq!(
+            syn::parse_str::<AttributeList>("#[doc(bla)]")
+                .unwrap_err()
+                .to_string(),
+            "expected `=`"
+        );
+        assert_eq!(
+            syn::parse_str::<AttributeList>("#[doc = 1]")
+                .unwrap_err()
+                .to_string(),
+            "Invalid doc attribute format"
         );
     }
 }
