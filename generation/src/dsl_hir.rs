@@ -23,6 +23,9 @@
 //! > | (`type` `DefaultBufferAccess` `=` _Access_`;`)
 //! > | (`type` `DefaultByteOrder` `=` _ByteOrder_`;`)
 //! > | (`type` `DefaultBitOrder` `=` _BitOrder_`;`)
+//! > | (`type` `RegisterAddressType` `=` _IntegerType_`;`)
+//! > | (`type` `CommandAddressType` `=` _IntegerType_`;`)
+//! > | (`type` `BufferAddressType` `=` _IntegerType_`;`)
 //! > | (`type` `NameCase` `=` _NameCase_`;`)
 //!
 //! _NameCase_:
@@ -134,7 +137,8 @@
 //! > (`type` `ByteOrder` `=` _ByteOrder_`;`)
 //! > | (`type` `BitOrder` `=` _BitOrder_`;`)
 //! > | (`const` `ADDRESS` `=` _INTEGER_`;`)
-//! > | (`const` `SIZE_BITS` `=` _INTEGER_`;`)
+//! > | (`const` `IN_SIZE_BITS` `=` _INTEGER_`;`)
+//! > | (`const` `OUT_SIZE_BITS` `=` _INTEGER_`;`)
 //! > | (`const` _Repeat_)
 //!
 //! _Repeat_:
@@ -200,6 +204,9 @@ pub enum GlobalConfig {
     DefaultBufferAccess(Access),
     DefaultByteOrder(ByteOrder),
     DefaultBitOrder(BitOrder),
+    RegisterAddressType(syn::Ident),
+    CommandAddressType(syn::Ident),
+    BufferAddressType(syn::Ident),
     NameCase(NameCase),
 }
 
@@ -239,6 +246,24 @@ impl Parse for GlobalConfig {
             let value = input.parse()?;
             input.parse::<Token![;]>()?;
             Ok(Self::DefaultBitOrder(value))
+        } else if lookahead.peek(kw::RegisterAddressType) {
+            input.parse::<kw::RegisterAddressType>()?;
+            input.parse::<Token![=]>()?;
+            let value = input.parse()?;
+            input.parse::<Token![;]>()?;
+            Ok(Self::RegisterAddressType(value))
+        } else if lookahead.peek(kw::CommandAddressType) {
+            input.parse::<kw::CommandAddressType>()?;
+            input.parse::<Token![=]>()?;
+            let value = input.parse()?;
+            input.parse::<Token![;]>()?;
+            Ok(Self::CommandAddressType(value))
+        } else if lookahead.peek(kw::BufferAddressType) {
+            input.parse::<kw::BufferAddressType>()?;
+            input.parse::<Token![=]>()?;
+            let value = input.parse()?;
+            input.parse::<Token![;]>()?;
+            Ok(Self::BufferAddressType(value))
         } else if lookahead.peek(kw::NameCase) {
             input.parse::<kw::NameCase>()?;
             input.parse::<Token![=]>()?;
@@ -1021,7 +1046,8 @@ pub enum CommandItem {
     ByteOrder(ByteOrder),
     BitOrder(BitOrder),
     Address(LitInt),
-    SizeBits(LitInt),
+    SizeBitsIn(LitInt),
+    SizeBitsOut(LitInt),
     Repeat(Repeat),
 }
 
@@ -1059,12 +1085,18 @@ impl Parse for CommandItemList {
                     let value = input.parse()?;
                     input.parse::<Token![;]>()?;
                     items.push(CommandItem::Address(value));
-                } else if lookahead.peek(kw::SIZE_BITS) {
-                    input.parse::<kw::SIZE_BITS>()?;
+                } else if lookahead.peek(kw::SIZE_BITS_IN) {
+                    input.parse::<kw::SIZE_BITS_IN>()?;
                     input.parse::<Token![=]>()?;
                     let value = input.parse()?;
                     input.parse::<Token![;]>()?;
-                    items.push(CommandItem::SizeBits(value));
+                    items.push(CommandItem::SizeBitsIn(value));
+                } else if lookahead.peek(kw::SIZE_BITS_OUT) {
+                    input.parse::<kw::SIZE_BITS_OUT>()?;
+                    input.parse::<Token![=]>()?;
+                    let value = input.parse()?;
+                    input.parse::<Token![;]>()?;
+                    items.push(CommandItem::SizeBitsOut(value));
                 } else if lookahead.peek(kw::REPEAT) {
                     items.push(CommandItem::Repeat(input.parse()?));
                 } else {
@@ -1159,6 +1191,8 @@ mod kw {
     syn::custom_keyword!(ADDRESS);
     syn::custom_keyword!(ADDRESS_OFFSET);
     syn::custom_keyword!(SIZE_BITS);
+    syn::custom_keyword!(SIZE_BITS_IN);
+    syn::custom_keyword!(SIZE_BITS_OUT);
     syn::custom_keyword!(RESET_VALUE);
 
     // Repeat
@@ -1172,6 +1206,9 @@ mod kw {
     syn::custom_keyword!(DefaultBufferAccess);
     syn::custom_keyword!(DefaultByteOrder);
     syn::custom_keyword!(DefaultBitOrder);
+    syn::custom_keyword!(RegisterAddressType);
+    syn::custom_keyword!(CommandAddressType);
+    syn::custom_keyword!(BufferAddressType);
     syn::custom_keyword!(NameCase);
 
     // NameCase options
@@ -1362,12 +1399,13 @@ mod tests {
 
         assert_eq!(
             syn::parse_str::<CommandItemList>(
-                "const SIZE_BITS = 16;\nconst REPEAT = { count: 2, stride: 2 };"
+                "const SIZE_BITS_IN = 16;\nconst SIZE_BITS_OUT = 32;\nconst REPEAT = { count: 2, stride: 2 };"
             )
             .unwrap(),
             CommandItemList {
                 items: vec![
-                    CommandItem::SizeBits(LitInt::new("16", Span::call_site())),
+                    CommandItem::SizeBitsIn(LitInt::new("16", Span::call_site())),
+                    CommandItem::SizeBitsOut(LitInt::new("32", Span::call_site())),
                     CommandItem::Repeat(Repeat {
                         count: LitInt::new("2", Span::call_site()),
                         stride: LitInt::new("2", Span::call_site())
@@ -1380,7 +1418,7 @@ mod tests {
             syn::parse_str::<CommandItemList>("const ABC = 16;")
                 .unwrap_err()
                 .to_string(),
-            "expected one of: `ADDRESS`, `SIZE_BITS`, `REPEAT`"
+            "expected one of: `ADDRESS`, `SIZE_BITS_IN`, `SIZE_BITS_OUT`, `REPEAT`"
         );
 
         assert_eq!(
@@ -2028,10 +2066,24 @@ mod tests {
         );
 
         assert_eq!(
+            syn::parse_str::<GlobalConfigList>(
+                "config { type RegisterAddressType = u8; type CommandAddressType = u16; type BufferAddressType = u32; }"
+            )
+            .unwrap(),
+            GlobalConfigList {
+                configs: vec![
+                    GlobalConfig::RegisterAddressType(Ident::new("u8", Span::call_site())),
+                    GlobalConfig::CommandAddressType(Ident::new("u16", Span::call_site())),
+                    GlobalConfig::BufferAddressType(Ident::new("u32", Span::call_site()))
+                ]
+            }
+        );
+
+        assert_eq!(
             syn::parse_str::<GlobalConfigList>("config { type DefaultRegisterAccesssss = RW; }")
                 .unwrap_err()
                 .to_string(),
-            "expected one of: `DefaultRegisterAccess`, `DefaultFieldAccess`, `DefaultBufferAccess`, `DefaultByteOrder`, `DefaultBitOrder`, `NameCase`"
+            "expected one of: `DefaultRegisterAccess`, `DefaultFieldAccess`, `DefaultBufferAccess`, `DefaultByteOrder`, `DefaultBitOrder`, `RegisterAddressType`, `CommandAddressType`, `BufferAddressType`, `NameCase`"
         );
     }
 
