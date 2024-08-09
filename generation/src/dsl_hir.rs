@@ -41,6 +41,7 @@
 //!
 //! _RefObject_:
 //! An object that is a copy of another object. Any items in the object are overrides.
+//! > _AttributeList_
 //! > `ref` _IDENTIFIER_ `=` _Object_
 //!
 //! _AttributeList_:
@@ -118,7 +119,7 @@
 //!
 //! _Command_:
 //! > _AttributeList_
-//! > `command` _IDENTIFIER_ _CommandValue_
+//! > `command` _IDENTIFIER_ _CommandValue_?
 //!
 //! _CommandValue_:
 //! > (`=` _INTEGER_)
@@ -141,7 +142,7 @@
 //!
 //! _Buffer_:
 //! > _AttributeList_
-//! > `buffer` _IDENTIFIER_(`:` _Access_)? `=` _INTEGER_
+//! > `buffer` _IDENTIFIER_(`:` _Access_)? (`=` _INTEGER_)?
 
 use syn::{
     braced, bracketed,
@@ -360,6 +361,14 @@ pub struct AttributeList {
     pub attributes: Vec<Attribute>,
 }
 
+impl AttributeList {
+    pub fn new() -> Self {
+        Self {
+            attributes: Vec::new(),
+        }
+    }
+}
+
 impl Parse for AttributeList {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let attributes = syn::Attribute::parse_outer(input)?;
@@ -507,6 +516,14 @@ impl Parse for Register {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RegisterItemList {
     pub register_items: Vec<RegisterItem>,
+}
+
+impl RegisterItemList {
+    pub fn new() -> Self {
+        Self {
+            register_items: Vec::new(),
+        }
+    }
 }
 
 impl Parse for RegisterItemList {
@@ -705,6 +722,12 @@ impl Parse for BitOrder {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FieldList {
     pub fields: Vec<Field>,
+}
+
+impl FieldList {
+    pub fn new() -> Self {
+        Self { fields: Vec::new() }
+    }
 }
 
 impl Parse for FieldList {
@@ -907,7 +930,7 @@ impl Parse for BaseType {
 pub struct Command {
     pub attribute_list: AttributeList,
     pub identifier: syn::Ident,
-    pub value: CommandValue,
+    pub value: Option<CommandValue>,
 }
 
 impl Parse for Command {
@@ -915,7 +938,12 @@ impl Parse for Command {
         let attribute_list = input.parse()?;
         input.parse::<kw::command>()?;
         let identifier = input.parse()?;
-        let value = input.parse()?;
+
+        let value = if !input.is_empty() {
+            Some(input.parse()?)
+        } else {
+            None
+        };
 
         Ok(Self {
             attribute_list,
@@ -1088,7 +1116,7 @@ pub struct Buffer {
     pub attribute_list: AttributeList,
     pub identifier: syn::Ident,
     pub access: Option<Access>,
-    pub address: LitInt,
+    pub address: Option<LitInt>,
 }
 
 impl Parse for Buffer {
@@ -1104,9 +1132,11 @@ impl Parse for Buffer {
             None
         };
 
-        input.parse::<Token![=]>()?;
-
-        let address = input.parse()?;
+        let address = if input.parse::<Token![=]>().is_ok() {
+            Some(input.parse()?)
+        } else {
+            None
+        };
 
         Ok(Self {
             attribute_list,
@@ -1297,6 +1327,12 @@ mod tests {
                 .to_string(),
             "expected `,`"
         );
+        assert_eq!(
+            syn::parse_str::<Repeat>("REPEAT = ")
+                .unwrap_err()
+                .to_string(),
+            "unexpected end of input, expected curly braces"
+        );
     }
 
     #[test]
@@ -1389,13 +1425,38 @@ mod tests {
         assert_eq!(
             syn::parse_str::<Buffer>("buffer TestBuffer = 0x123").unwrap(),
             Buffer {
-                attribute_list: AttributeList {
-                    attributes: Vec::new()
-                },
+                attribute_list: AttributeList::new(),
                 identifier: Ident::new("TestBuffer", Span::call_site()),
                 access: None,
-                address: LitInt::new("0x123", Span::call_site()),
+                address: Some(LitInt::new("0x123", Span::call_site())),
             }
+        );
+
+        assert_eq!(
+            syn::parse_str::<Buffer>("buffer TestBuffer").unwrap(),
+            Buffer {
+                attribute_list: AttributeList::new(),
+                identifier: Ident::new("TestBuffer", Span::call_site()),
+                access: None,
+                address: None,
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<Buffer>("buffer TestBuffer: CO").unwrap(),
+            Buffer {
+                attribute_list: AttributeList::new(),
+                identifier: Ident::new("TestBuffer", Span::call_site()),
+                access: Some(Access::CO),
+                address: None,
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<Buffer>("buffer TestBuffer =")
+                .unwrap_err()
+                .to_string(),
+            "unexpected end of input, expected integer literal"
         );
 
         assert_eq!(
@@ -1406,7 +1467,7 @@ mod tests {
                 },
                 identifier: Ident::new("TestBuffer", Span::call_site()),
                 access: Some(Access::RO),
-                address: LitInt::new("0x123", Span::call_site()),
+                address: Some(LitInt::new("0x123", Span::call_site())),
             }
         );
     }
@@ -1416,9 +1477,7 @@ mod tests {
         assert_eq!(
             syn::parse_str::<Field>("TestField: ClearOnly int = 0x123").unwrap(),
             Field {
-                attribute_list: AttributeList {
-                    attributes: Vec::new()
-                },
+                attribute_list: AttributeList::new(),
                 identifier: Ident::new("TestField".into(), Span::call_site()),
                 access: Some(Access::CO),
                 base_type: BaseType::Int,
@@ -1431,9 +1490,7 @@ mod tests {
             syn::parse_str::<Field>("ExsitingType: RW uint as crate::module::foo::Bar = 0x1234")
                 .unwrap(),
             Field {
-                attribute_list: AttributeList {
-                    attributes: Vec::new()
-                },
+                attribute_list: AttributeList::new(),
                 identifier: Ident::new("ExsitingType".into(), Span::call_site()),
                 access: Some(Access::RW),
                 base_type: BaseType::Uint,
@@ -1456,9 +1513,7 @@ mod tests {
         assert_eq!(
             syn::parse_str::<Field>("ExsitingType: RW uint as enum Bar { } = 0x1234").unwrap(),
             Field {
-                attribute_list: AttributeList {
-                    attributes: Vec::new()
-                },
+                attribute_list: AttributeList::new(),
                 identifier: Ident::new("ExsitingType".into(), Span::call_site()),
                 access: Some(Access::RW),
                 base_type: BaseType::Uint,
@@ -1483,16 +1538,12 @@ mod tests {
             EnumVariantList {
                 variants: vec![
                     EnumVariant {
-                        attribute_list: AttributeList {
-                            attributes: Vec::new()
-                        },
+                        attribute_list: AttributeList::new(),
                         identifier: Ident::new("A", Span::call_site()),
                         enum_value: None
                     },
                     EnumVariant {
-                        attribute_list: AttributeList {
-                            attributes: Vec::new()
-                        },
+                        attribute_list: AttributeList::new(),
                         identifier: Ident::new("B", Span::call_site()),
                         enum_value: Some(EnumValue::Specified(LitInt::new(
                             "0xFF",
@@ -1507,9 +1558,7 @@ mod tests {
                         enum_value: Some(EnumValue::Default)
                     },
                     EnumVariant {
-                        attribute_list: AttributeList {
-                            attributes: Vec::new()
-                        },
+                        attribute_list: AttributeList::new(),
                         identifier: Ident::new("D", Span::call_site()),
                         enum_value: Some(EnumValue::CatchAll)
                     },
@@ -1531,61 +1580,61 @@ mod tests {
                     ]
                 },
                 identifier: Ident::new("Foo", Span::call_site()),
-                value: CommandValue::Basic(LitInt::new("5", Span::call_site())),
+                value: Some(CommandValue::Basic(LitInt::new("5", Span::call_site()))),
             }
         );
         assert_eq!(
             syn::parse_str::<Command>("command Bar { type BitOrder = LSB0; }").unwrap(),
             Command {
-                attribute_list: AttributeList { attributes: vec![] },
+                attribute_list: AttributeList::new(),
                 identifier: Ident::new("Bar", Span::call_site()),
-                value: CommandValue::Extended {
+                value: Some(CommandValue::Extended {
                     command_item_list: CommandItemList {
                         items: vec![CommandItem::BitOrder(BitOrder::LSB0)]
                     },
                     in_field_list: FieldList { fields: vec![] },
                     out_field_list: FieldList { fields: vec![] }
-                },
+                }),
             }
         );
 
         assert_eq!(
             syn::parse_str::<Command>("command Bar { in { } }").unwrap(),
             Command {
-                attribute_list: AttributeList { attributes: vec![] },
+                attribute_list: AttributeList::new(),
                 identifier: Ident::new("Bar", Span::call_site()),
-                value: CommandValue::Extended {
+                value: Some(CommandValue::Extended {
                     command_item_list: CommandItemList { items: vec![] },
                     in_field_list: FieldList { fields: vec![] },
                     out_field_list: FieldList { fields: vec![] }
-                },
+                }),
             }
         );
 
         assert_eq!(
             syn::parse_str::<Command>("command Bar { in { }, out { }, }").unwrap(),
             Command {
-                attribute_list: AttributeList { attributes: vec![] },
+                attribute_list: AttributeList::new(),
                 identifier: Ident::new("Bar", Span::call_site()),
-                value: CommandValue::Extended {
+                value: Some(CommandValue::Extended {
                     command_item_list: CommandItemList { items: vec![] },
                     in_field_list: FieldList { fields: vec![] },
                     out_field_list: FieldList { fields: vec![] }
-                },
+                }),
             }
         );
 
         assert_eq!(
             syn::parse_str::<Command>("command Bar { out { foo: bool = 0 } }").unwrap(),
             Command {
-                attribute_list: AttributeList { attributes: vec![] },
+                attribute_list: AttributeList::new(),
                 identifier: Ident::new("Bar", Span::call_site()),
-                value: CommandValue::Extended {
+                value: Some(CommandValue::Extended {
                     command_item_list: CommandItemList { items: vec![] },
                     in_field_list: FieldList { fields: vec![] },
                     out_field_list: FieldList {
                         fields: vec![Field {
-                            attribute_list: AttributeList { attributes: vec![] },
+                            attribute_list: AttributeList::new(),
                             identifier: Ident::new("foo", Span::call_site()),
                             access: None,
                             base_type: BaseType::Bool,
@@ -1596,7 +1645,7 @@ mod tests {
                             ))
                         }]
                     }
-                },
+                }),
             }
         );
 
@@ -1605,6 +1654,15 @@ mod tests {
                 .unwrap_err()
                 .to_string(),
             "Did not expect any more tokens"
+        );
+
+        assert_eq!(
+            syn::parse_str::<Command>("command Bar").unwrap(),
+            Command {
+                attribute_list: AttributeList::new(),
+                identifier: Ident::new("Bar", Span::call_site()),
+                value: None,
+            }
         );
     }
 
@@ -1693,6 +1751,20 @@ mod tests {
                 })]
             }
         );
+
+        assert_eq!(
+            syn::parse_str::<RegisterItemList>("const RRRRRESET_VALUE = [0, 1, 2, 0x30];")
+                .unwrap_err()
+                .to_string(),
+            "expected one of: `ADDRESS`, `SIZE_BITS`, `RESET_VALUE`, `REPEAT`"
+        );
+
+        assert_eq!(
+            syn::parse_str::<RegisterItemList>("const RESET_VALUE = ;")
+                .unwrap_err()
+                .to_string(),
+            "expected integer literal or square brackets"
+        );
     }
 
     #[test]
@@ -1714,6 +1786,372 @@ mod tests {
                 .unwrap_err()
                 .to_string(),
             "Invalid doc attribute format"
+        );
+    }
+
+    #[test]
+    fn parse_ref_object() {
+        assert_eq!(
+            syn::parse_str::<RefObject>("ref MyRef = command MyOriginal").unwrap(),
+            RefObject {
+                identifier: Ident::new("MyRef", Span::call_site()),
+                object: Box::new(Object::Command(Command {
+                    attribute_list: AttributeList::new(),
+                    identifier: Ident::new("MyOriginal", Span::call_site()),
+                    value: None
+                }))
+            }
+        );
+    }
+
+    #[test]
+    fn parse_register() {
+        assert_eq!(
+            syn::parse_str::<Register>("register Foo { }").unwrap(),
+            Register {
+                attribute_list: AttributeList::new(),
+                identifier: Ident::new("Foo", Span::call_site()),
+                field_list: FieldList::new(),
+                register_item_list: RegisterItemList::new(),
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<Register>("register Foo")
+                .unwrap_err()
+                .to_string(),
+            "unexpected end of input, expected curly braces"
+        );
+
+        assert_eq!(
+            syn::parse_str::<Register>(
+                "/// Hello!\nregister Foo { type Access = RW; TestField: ClearOnly int = 0x123, }"
+            )
+            .unwrap(),
+            Register {
+                attribute_list: AttributeList {
+                    attributes: vec![Attribute::Doc(" Hello!".into())]
+                },
+                identifier: Ident::new("Foo", Span::call_site()),
+                register_item_list: RegisterItemList {
+                    register_items: vec![RegisterItem::Access(Access::RW)]
+                },
+                field_list: FieldList {
+                    fields: vec![Field {
+                        attribute_list: AttributeList::new(),
+                        identifier: Ident::new("TestField".into(), Span::call_site()),
+                        access: Some(Access::CO),
+                        base_type: BaseType::Int,
+                        field_conversion: None,
+                        field_address: FieldAddress::Integer(LitInt::new(
+                            "0x123",
+                            Span::call_site()
+                        ))
+                    }]
+                },
+            }
+        );
+    }
+
+    #[test]
+    fn parse_block_item_list() {
+        assert_eq!(
+            syn::parse_str::<BlockItemList>("").unwrap(),
+            BlockItemList {
+                block_items: vec![]
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<BlockItemList>("const ADDRESS_OFFSET = 2;").unwrap(),
+            BlockItemList {
+                block_items: vec![BlockItem::AddressOffset(LitInt::new(
+                    "2",
+                    Span::call_site()
+                ))]
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<BlockItemList>(
+                "const ADDRESS_OFFSET = 2; const REPEAT = { count: 0, stride: 0 };"
+            )
+            .unwrap(),
+            BlockItemList {
+                block_items: vec![
+                    BlockItem::AddressOffset(LitInt::new("2", Span::call_site())),
+                    BlockItem::Repeat(Repeat {
+                        count: LitInt::new("0", Span::call_site()),
+                        stride: LitInt::new("0", Span::call_site())
+                    })
+                ]
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<BlockItemList>("const ADDRESS = 2;")
+                .unwrap_err()
+                .to_string(),
+            "Invalid value. Must be an `ADDRESS_OFFSET` or `REPEAT`"
+        );
+    }
+
+    #[test]
+    fn parse_block() {
+        assert_eq!(
+            syn::parse_str::<Block>("block MyBlock {}").unwrap(),
+            Block {
+                attribute_list: AttributeList::new(),
+                identifier: Ident::new("MyBlock", Span::call_site()),
+                block_item_list: BlockItemList {
+                    block_items: vec![]
+                },
+                object_list: ObjectList { objects: vec![] },
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<Block>("/// Hi there\nblock MyBlock { const ADDRESS_OFFSET = 5; command A = 5, buffer B = 6 }").unwrap(),
+            Block {
+                attribute_list: AttributeList { attributes: vec![Attribute::Doc(" Hi there".into())] },
+                identifier: Ident::new("MyBlock", Span::call_site()),
+                block_item_list: BlockItemList {
+                    block_items: vec![BlockItem::AddressOffset(LitInt::new("5", Span::call_site()))]
+                },
+                object_list: ObjectList {
+                    objects: vec![
+                        Object::Command(Command {
+                            attribute_list: AttributeList::new(),
+                            identifier: Ident::new("A", Span::call_site()),
+                            value: Some(CommandValue::Basic(LitInt::new("5", Span::call_site())))
+                        }),
+                        Object::Buffer(Buffer {
+                            attribute_list: AttributeList::new(),
+                            identifier: Ident::new("B", Span::call_site()),
+                            access: None,
+                            address: Some(LitInt::new("6", Span::call_site()))
+                        })
+                    ]
+                }
+            }
+        );
+    }
+
+    #[test]
+    fn parse_name_case() {
+        assert_eq!(
+            syn::parse_str::<NameCase>("Varying").unwrap(),
+            NameCase::Varying
+        );
+        assert_eq!(
+            syn::parse_str::<NameCase>("Pascal").unwrap(),
+            NameCase::Pascal
+        );
+        assert_eq!(
+            syn::parse_str::<NameCase>("Snake").unwrap(),
+            NameCase::Snake
+        );
+        assert_eq!(
+            syn::parse_str::<NameCase>("ScreamingSnake").unwrap(),
+            NameCase::ScreamingSnake
+        );
+        assert_eq!(
+            syn::parse_str::<NameCase>("Camel").unwrap(),
+            NameCase::Camel
+        );
+        assert_eq!(
+            syn::parse_str::<NameCase>("Kebab").unwrap(),
+            NameCase::Kebab
+        );
+        assert_eq!(
+            syn::parse_str::<NameCase>("Cobol").unwrap(),
+            NameCase::Cobol
+        );
+        assert_eq!(
+            syn::parse_str::<NameCase>("bla").unwrap_err().to_string(),
+            "expected one of: `Varying`, `Pascal`, `Snake`, `ScreamingSnake`, `Camel`, `Kebab`, `Cobol`"
+        );
+    }
+
+    #[test]
+    fn parse_global_config_list() {
+        assert_eq!(
+            syn::parse_str::<GlobalConfigList>("").unwrap(),
+            GlobalConfigList { configs: vec![] }
+        );
+
+        assert_eq!(
+            syn::parse_str::<GlobalConfigList>("config { }").unwrap(),
+            GlobalConfigList { configs: vec![] }
+        );
+
+        assert_eq!(
+            syn::parse_str::<GlobalConfigList>("config { type DefaultRegisterAccess = RW }")
+                .unwrap_err()
+                .to_string(),
+            "expected `;`"
+        );
+
+        assert_eq!(
+            syn::parse_str::<GlobalConfigList>("config { type DefaultRegisterAccess = RW; }")
+                .unwrap(),
+            GlobalConfigList {
+                configs: vec![GlobalConfig::DefaultRegisterAccess(Access::RW)]
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<GlobalConfigList>(
+                "config { type DefaultBufferAccess = RO; type DefaultFieldAccess = RW; }"
+            )
+            .unwrap(),
+            GlobalConfigList {
+                configs: vec![
+                    GlobalConfig::DefaultBufferAccess(Access::RO),
+                    GlobalConfig::DefaultFieldAccess(Access::RW)
+                ]
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<GlobalConfigList>(
+                "config { type DefaultByteOrder = LE; type DefaultBitOrder = LSB0; type NameCase = Camel; }"
+            )
+            .unwrap(),
+            GlobalConfigList {
+                configs: vec![
+                    GlobalConfig::DefaultByteOrder(ByteOrder::LE),
+                    GlobalConfig::DefaultBitOrder(BitOrder::LSB0),
+                    GlobalConfig::NameCase(NameCase::Camel)
+                ]
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<GlobalConfigList>("config { type DefaultRegisterAccesssss = RW; }")
+                .unwrap_err()
+                .to_string(),
+            "expected one of: `DefaultRegisterAccess`, `DefaultFieldAccess`, `DefaultBufferAccess`, `DefaultByteOrder`, `DefaultBitOrder`, `NameCase`"
+        );
+    }
+
+    #[test]
+    fn parse_object() {
+        assert_eq!(
+            syn::parse_str::<Object>("config { }")
+                .unwrap_err()
+                .to_string(),
+            "expected one of: `block`, `register`, `command`, `buffer`, `ref`"
+        );
+
+        assert_eq!(
+            syn::parse_str::<Object>("block Foo {}").unwrap(),
+            Object::Block(Block {
+                attribute_list: AttributeList::new(),
+                identifier: Ident::new("Foo", Span::call_site()),
+                block_item_list: BlockItemList {
+                    block_items: vec![]
+                },
+                object_list: ObjectList { objects: vec![] }
+            }),
+        );
+
+        assert_eq!(
+            syn::parse_str::<Object>("register Foo {}").unwrap(),
+            Object::Register(Register {
+                attribute_list: AttributeList::new(),
+                identifier: Ident::new("Foo", Span::call_site()),
+                register_item_list: RegisterItemList {
+                    register_items: vec![]
+                },
+                field_list: FieldList { fields: vec![] }
+            }),
+        );
+
+        assert_eq!(
+            syn::parse_str::<Object>("command Foo").unwrap(),
+            Object::Command(Command {
+                attribute_list: AttributeList::new(),
+                identifier: Ident::new("Foo", Span::call_site()),
+                value: None,
+            }),
+        );
+
+        assert_eq!(
+            syn::parse_str::<Object>("buffer Foo").unwrap(),
+            Object::Buffer(Buffer {
+                attribute_list: AttributeList::new(),
+                identifier: Ident::new("Foo", Span::call_site()),
+                access: None,
+                address: None,
+            }),
+        );
+
+        assert_eq!(
+            syn::parse_str::<Object>("ref Foo2 = buffer Foo").unwrap(),
+            Object::Ref(RefObject {
+                identifier: Ident::new("Foo2", Span::call_site()),
+                object: Box::new(Object::Buffer(Buffer {
+                    attribute_list: AttributeList::new(),
+                    identifier: Ident::new("Foo", Span::call_site()),
+                    access: None,
+                    address: None,
+                }))
+            }),
+        );
+    }
+
+    #[test]
+    fn parse_device() {
+        assert_eq!(
+            syn::parse_str::<Device>("").unwrap(),
+            Device {
+                global_config_list: GlobalConfigList { configs: vec![] },
+                object_list: ObjectList { objects: vec![] }
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<Device>("config { type DefaultRegisterAccess = RW; }").unwrap(),
+            Device {
+                global_config_list: GlobalConfigList {
+                    configs: vec![GlobalConfig::DefaultRegisterAccess(Access::RW)]
+                },
+                object_list: ObjectList { objects: vec![] }
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<Device>("buffer Foo").unwrap(),
+            Device {
+                global_config_list: GlobalConfigList { configs: vec![] },
+                object_list: ObjectList {
+                    objects: vec![Object::Buffer(Buffer {
+                        attribute_list: AttributeList::new(),
+                        identifier: Ident::new("Foo", Span::call_site()),
+                        access: None,
+                        address: None,
+                    })]
+                }
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<Device>("config { type DefaultRegisterAccess = RW; }\nbuffer Foo")
+                .unwrap(),
+            Device {
+                global_config_list: GlobalConfigList {
+                    configs: vec![GlobalConfig::DefaultRegisterAccess(Access::RW)]
+                },
+                object_list: ObjectList {
+                    objects: vec![Object::Buffer(Buffer {
+                        attribute_list: AttributeList::new(),
+                        identifier: Ident::new("Foo", Span::call_site()),
+                        access: None,
+                        address: None,
+                    })]
+                }
+            }
         );
     }
 }
