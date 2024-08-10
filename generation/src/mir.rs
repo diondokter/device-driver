@@ -171,7 +171,7 @@ pub struct Command {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Buffer {
-    pub cfg_attrs: Vec<String>,
+    pub cfg_attrs: Option<String>,
     pub description: String,
     pub name: String,
     pub access: Access,

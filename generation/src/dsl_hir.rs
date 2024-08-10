@@ -148,10 +148,12 @@
 //! > _AttributeList_
 //! > `buffer` _IDENTIFIER_(`:` _Access_)? (`=` _INTEGER_)?
 
+use proc_macro2::Span;
 use syn::{
     braced, bracketed,
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
+    spanned::Spanned,
     LitInt, Token,
 };
 
@@ -343,7 +345,10 @@ pub enum Object {
 
 impl Parse for Object {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let lookahead = input.lookahead1();
+        // Perform the lookahead on a fork where any attribute list is skipped
+        let fork = input.fork();
+        let _ = fork.parse::<AttributeList>();
+        let lookahead = fork.lookahead1();
 
         if lookahead.peek(kw::block) {
             Ok(Self::Block(input.parse()?))
@@ -407,14 +412,14 @@ impl Parse for AttributeList {
                             syn::Expr::Lit(syn::ExprLit {
                                 lit: syn::Lit::Str(value),
                                 ..
-                            }) => Ok(Attribute::Doc(value.value())),
+                            }) => Ok(Attribute::Doc(value.value(), attr.span())),
                             _ => Err(syn::Error::new_spanned(
                                 attr,
                                 "Invalid doc attribute format",
                             )),
                         },
                         "cfg" => {
-                            Ok(Attribute::Cfg(attr.meta.require_list()?.tokens.to_string()))
+                            Ok(Attribute::Cfg(attr.meta.require_list()?.tokens.to_string(), attr.span()))
                         }
                         val => {
                             Err(syn::Error::new_spanned(
@@ -429,10 +434,22 @@ impl Parse for AttributeList {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub enum Attribute {
-    Doc(String),
-    Cfg(String),
+    Doc(String, Span),
+    Cfg(String, Span),
+}
+
+impl Eq for Attribute {}
+
+impl PartialEq for Attribute {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Doc(l0, _), Self::Doc(r0, _)) => l0 == r0,
+            (Self::Cfg(l0, _), Self::Cfg(r0, _)) => l0 == r0,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1501,7 +1518,7 @@ mod tests {
             syn::parse_str::<Buffer>("/// A test buffer\nbuffer TestBuffer: RO = 0x123").unwrap(),
             Buffer {
                 attribute_list: AttributeList {
-                    attributes: vec![Attribute::Doc(" A test buffer".into())]
+                    attributes: vec![Attribute::Doc(" A test buffer".into(), Span::call_site())]
                 },
                 identifier: Ident::new("TestBuffer", Span::call_site()),
                 access: Some(Access::RO),
@@ -1590,7 +1607,10 @@ mod tests {
                     },
                     EnumVariant {
                         attribute_list: AttributeList {
-                            attributes: vec![Attribute::Doc(" This is C".into())]
+                            attributes: vec![Attribute::Doc(
+                                " This is C".into(),
+                                Span::call_site()
+                            )]
                         },
                         identifier: Ident::new("C", Span::call_site()),
                         enum_value: Some(EnumValue::Default)
@@ -1613,8 +1633,8 @@ mod tests {
             Command {
                 attribute_list: AttributeList {
                     attributes: vec![
-                        Attribute::Doc(" A command!".into()),
-                        Attribute::Cfg("feature = \"std\"".into()),
+                        Attribute::Doc(" A command!".into(), Span::call_site()),
+                        Attribute::Cfg("feature = \"std\"".into(), Span::call_site()),
                     ]
                 },
                 identifier: Ident::new("Foo", Span::call_site()),
@@ -1868,7 +1888,7 @@ mod tests {
             .unwrap(),
             Register {
                 attribute_list: AttributeList {
-                    attributes: vec![Attribute::Doc(" Hello!".into())]
+                    attributes: vec![Attribute::Doc(" Hello!".into(), Span::call_site())]
                 },
                 identifier: Ident::new("Foo", Span::call_site()),
                 register_item_list: RegisterItemList {
@@ -1951,7 +1971,7 @@ mod tests {
         assert_eq!(
             syn::parse_str::<Block>("/// Hi there\nblock MyBlock { const ADDRESS_OFFSET = 5; command A = 5, buffer B = 6 }").unwrap(),
             Block {
-                attribute_list: AttributeList { attributes: vec![Attribute::Doc(" Hi there".into())] },
+                attribute_list: AttributeList { attributes: vec![Attribute::Doc(" Hi there".into(), Span::call_site())] },
                 identifier: Ident::new("MyBlock", Span::call_site()),
                 block_item_list: BlockItemList {
                     block_items: vec![BlockItem::AddressOffset(LitInt::new("5", Span::call_site()))]
@@ -2149,6 +2169,18 @@ mod tests {
                     access: None,
                     address: None,
                 }))
+            }),
+        );
+
+        assert_eq!(
+            syn::parse_str::<Object>("/// Comment!\nbuffer Foo").unwrap(),
+            Object::Buffer(Buffer {
+                attribute_list: AttributeList {
+                    attributes: vec![Attribute::Doc(" Comment!".into(), Span::call_site())]
+                },
+                identifier: Ident::new("Foo", Span::call_site()),
+                access: None,
+                address: None,
             }),
         );
     }
