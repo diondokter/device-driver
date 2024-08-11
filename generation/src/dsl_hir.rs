@@ -949,6 +949,16 @@ pub enum BaseType {
     Int,
 }
 
+impl BaseType {
+    /// Returns `true` if the base type is [`Bool`].
+    ///
+    /// [`Bool`]: BaseType::Bool
+    #[must_use]
+    pub const fn is_bool(&self) -> bool {
+        matches!(self, Self::Bool)
+    }
+}
+
 impl Parse for BaseType {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let lookahead = input.lookahead1();

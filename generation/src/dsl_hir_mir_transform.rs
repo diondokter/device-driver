@@ -87,6 +87,16 @@ impl TryFrom<dsl_hir::Repeat> for mir::Repeat {
     }
 }
 
+impl From<dsl_hir::BaseType> for mir::BaseType {
+    fn from(value: dsl_hir::BaseType) -> Self {
+        match value {
+            dsl_hir::BaseType::Bool => mir::BaseType::Bool,
+            dsl_hir::BaseType::Uint => mir::BaseType::Uint,
+            dsl_hir::BaseType::Int => mir::BaseType::Int,
+        }
+    }
+}
+
 impl TryFrom<dsl_hir::GlobalConfigList> for mir::GlobalConfig {
     type Error = syn::Error;
 
@@ -185,117 +195,11 @@ fn transform_object_list(
             dsl_hir::Object::Block(_) => todo!(),
             dsl_hir::Object::Register(_) => todo!(),
             dsl_hir::Object::Command(command) => {
-                let command_value = command.value.ok_or_else(|| {
-                    syn::Error::new(
-                        command.identifier.span(),
-                        &format!(
-                            "Command `{}` has must have a value",
-                            command.identifier.to_string()
-                        ),
-                    )
-                })?;
-
-                mir::Object::Command(mir::Command {
-                    cfg_attr: get_cfg_attr(&command.attribute_list)?,
-                    description: get_description(&command.attribute_list),
-                    name: command.identifier.to_string(),
-                    address: match &command_value {
-                        dsl_hir::CommandValue::Basic(lit) => lit,
-                        dsl_hir::CommandValue::Extended {
-                            command_item_list, ..
-                        } => command_item_list
-                            .items
-                            .iter()
-                            .find_map(|item| match item {
-                                dsl_hir::CommandItem::Address(lit) => Some(lit),
-                                _ => None,
-                            })
-                            .ok_or_else(|| {
-                                syn::Error::new(
-                                    command.identifier.span(),
-                                    &format!(
-                                        "Command `{}` must have an address",
-                                        command.identifier.to_string()
-                                    ),
-                                )
-                            })?,
-                    }
-                    .base10_parse()?,
-                    byte_order: match &command_value {
-                        dsl_hir::CommandValue::Basic(_) => None,
-                        dsl_hir::CommandValue::Extended {
-                            command_item_list, ..
-                        } => command_item_list.items.iter().find_map(|item| match item {
-                            dsl_hir::CommandItem::ByteOrder(order) => Some(order.clone().into()),
-                            _ => None,
-                        }),
-                    }
-                    .unwrap_or(global_config.default_byte_order),
-                    bit_order: match &command_value {
-                        dsl_hir::CommandValue::Basic(_) => None,
-                        dsl_hir::CommandValue::Extended {
-                            command_item_list, ..
-                        } => command_item_list.items.iter().find_map(|item| match item {
-                            dsl_hir::CommandItem::BitOrder(order) => Some(order.clone().into()),
-                            _ => None,
-                        }),
-                    }
-                    .unwrap_or(global_config.default_bit_order),
-                    size_bits_in: match &command_value {
-                        dsl_hir::CommandValue::Basic(_) => None,
-                        dsl_hir::CommandValue::Extended {
-                            command_item_list, ..
-                        } => command_item_list.items.iter().find_map(|item| match item {
-                            dsl_hir::CommandItem::SizeBitsIn(size) => Some(size.base10_parse()),
-                            _ => None,
-                        }),
-                    }
-                    .unwrap_or(Ok(0))?,
-                    size_bits_out: match &command_value {
-                        dsl_hir::CommandValue::Basic(_) => None,
-                        dsl_hir::CommandValue::Extended {
-                            command_item_list, ..
-                        } => command_item_list.items.iter().find_map(|item| match item {
-                            dsl_hir::CommandItem::SizeBitsOut(size) => Some(size.base10_parse()),
-                            _ => None,
-                        }),
-                    }
-                    .unwrap_or(Ok(0))?,
-                    repeat: match &command_value {
-                        dsl_hir::CommandValue::Basic(_) => None,
-                        dsl_hir::CommandValue::Extended {
-                            command_item_list, ..
-                        } => command_item_list.items.iter().find_map(|item| match item {
-                            dsl_hir::CommandItem::Repeat(repeat) => Some(repeat.clone().try_into()),
-                            _ => None,
-                        }),
-                    }
-                    .transpose()?,
-                    in_fields: todo!(),
-                    out_fields: todo!(),
-                })
+                mir::Object::Command(transform_command(command, global_config)?)
             }
-            dsl_hir::Object::Buffer(buffer) => mir::Object::Buffer(mir::Buffer {
-                cfg_attr: get_cfg_attr(&buffer.attribute_list)?,
-                description: get_description(&buffer.attribute_list),
-                name: buffer.identifier.to_string(),
-                access: buffer
-                    .access
-                    .map(Into::into)
-                    .unwrap_or(global_config.default_buffer_access),
-                address: buffer
-                    .address
-                    .ok_or_else(|| {
-                        syn::Error::new(
-                            buffer.identifier.span(),
-                            &format!(
-                                "Buffer `{}` must have an address",
-                                buffer.identifier.to_string()
-                            ),
-                        )
-                    })?
-                    .base10_parse()?,
-            }),
+            dsl_hir::Object::Buffer(buffer) => {
+                mir::Object::Buffer(transform_buffer(buffer, global_config)?)
+            }
             dsl_hir::Object::Ref(_) => todo!(),
         };
 
@@ -303,6 +207,176 @@ fn transform_object_list(
     }
 
     Ok(objects)
+}
+
+fn transform_command(
+    command: dsl_hir::Command,
+    global_config: &mir::GlobalConfig,
+) -> Result<mir::Command, syn::Error> {
+    let command_value = command.value.ok_or_else(|| {
+        syn::Error::new(
+            command.identifier.span(),
+            &format!(
+                "Command `{}` has must have a value",
+                command.identifier.to_string()
+            ),
+        )
+    })?;
+    Ok(mir::Command {
+        cfg_attr: get_cfg_attr(&command.attribute_list)?,
+        description: get_description(&command.attribute_list),
+        name: command.identifier.to_string(),
+        address: match &command_value {
+            dsl_hir::CommandValue::Basic(lit) => lit,
+            dsl_hir::CommandValue::Extended {
+                command_item_list, ..
+            } => command_item_list
+                .items
+                .iter()
+                .find_map(|item| match item {
+                    dsl_hir::CommandItem::Address(lit) => Some(lit),
+                    _ => None,
+                })
+                .ok_or_else(|| {
+                    syn::Error::new(
+                        command.identifier.span(),
+                        &format!(
+                            "Command `{}` must have an address",
+                            command.identifier.to_string()
+                        ),
+                    )
+                })?,
+        }
+        .base10_parse()?,
+        byte_order: match &command_value {
+            dsl_hir::CommandValue::Basic(_) => None,
+            dsl_hir::CommandValue::Extended {
+                command_item_list, ..
+            } => command_item_list.items.iter().find_map(|item| match item {
+                dsl_hir::CommandItem::ByteOrder(order) => Some(order.clone().into()),
+                _ => None,
+            }),
+        }
+        .unwrap_or(global_config.default_byte_order),
+        bit_order: match &command_value {
+            dsl_hir::CommandValue::Basic(_) => None,
+            dsl_hir::CommandValue::Extended {
+                command_item_list, ..
+            } => command_item_list.items.iter().find_map(|item| match item {
+                dsl_hir::CommandItem::BitOrder(order) => Some(order.clone().into()),
+                _ => None,
+            }),
+        }
+        .unwrap_or(global_config.default_bit_order),
+        size_bits_in: match &command_value {
+            dsl_hir::CommandValue::Basic(_) => None,
+            dsl_hir::CommandValue::Extended {
+                command_item_list, ..
+            } => command_item_list.items.iter().find_map(|item| match item {
+                dsl_hir::CommandItem::SizeBitsIn(size) => Some(size.base10_parse()),
+                _ => None,
+            }),
+        }
+        .unwrap_or(Ok(0))?,
+        size_bits_out: match &command_value {
+            dsl_hir::CommandValue::Basic(_) => None,
+            dsl_hir::CommandValue::Extended {
+                command_item_list, ..
+            } => command_item_list.items.iter().find_map(|item| match item {
+                dsl_hir::CommandItem::SizeBitsOut(size) => Some(size.base10_parse()),
+                _ => None,
+            }),
+        }
+        .unwrap_or(Ok(0))?,
+        repeat: match &command_value {
+            dsl_hir::CommandValue::Basic(_) => None,
+            dsl_hir::CommandValue::Extended {
+                command_item_list, ..
+            } => command_item_list.items.iter().find_map(|item| match item {
+                dsl_hir::CommandItem::Repeat(repeat) => Some(repeat.clone().try_into()),
+                _ => None,
+            }),
+        }
+        .transpose()?,
+        in_fields: match &command_value {
+            dsl_hir::CommandValue::Basic(_) => Vec::new(),
+            dsl_hir::CommandValue::Extended { in_field_list, .. } => in_field_list
+                .fields
+                .iter()
+                .map(|field| transform_field(field, global_config))
+                .collect::<Result<_, _>>()?,
+        },
+        out_fields: match &command_value {
+            dsl_hir::CommandValue::Basic(_) => Vec::new(),
+            dsl_hir::CommandValue::Extended { out_field_list, .. } => out_field_list
+                .fields
+                .iter()
+                .map(|field| transform_field(field, global_config))
+                .collect::<Result<_, _>>()?,
+        },
+    })
+}
+
+fn transform_field(
+    field: &dsl_hir::Field,
+    global_config: &mir::GlobalConfig,
+) -> Result<mir::Field, syn::Error> {
+    Ok(mir::Field {
+        cfg_attr: get_cfg_attr(&field.attribute_list)?,
+        description: get_description(&field.attribute_list),
+        name: field.identifier.to_string(),
+        access: field
+            .access
+            .map(Into::into)
+            .unwrap_or(global_config.default_field_access),
+        base_type: field.base_type.into(),
+        field_conversion: todo!(),
+        field_address: match field.field_address {
+            dsl_hir::FieldAddress::Integer(start) if field.base_type.is_bool() =>
+                start.base10_parse()?..start.base10_parse()?,
+            dsl_hir::FieldAddress::Integer(start) =>
+                return Err(syn::Error::new(
+                    field.identifier.span(),
+                    &format!(
+                        "Field `{}` has a non-bool base type and must specify the start and the end address",
+                        field.identifier.to_string()
+                    )
+                )),
+            dsl_hir::FieldAddress::Range { start, end } => {
+                start.base10_parse()?..end.base10_parse()?
+            }
+            dsl_hir::FieldAddress::RangeInclusive { start, end } => {
+                start.base10_parse()?..(end.base10_parse::<u64>()? + 1)
+            }
+        },
+    })
+}
+
+fn transform_buffer(
+    buffer: dsl_hir::Buffer,
+    global_config: &mir::GlobalConfig,
+) -> Result<mir::Buffer, syn::Error> {
+    Ok(mir::Buffer {
+        cfg_attr: get_cfg_attr(&buffer.attribute_list)?,
+        description: get_description(&buffer.attribute_list),
+        name: buffer.identifier.to_string(),
+        access: buffer
+            .access
+            .map(Into::into)
+            .unwrap_or(global_config.default_buffer_access),
+        address: buffer
+            .address
+            .ok_or_else(|| {
+                syn::Error::new(
+                    buffer.identifier.span(),
+                    &format!(
+                        "Buffer `{}` must have an address",
+                        buffer.identifier.to_string()
+                    ),
+                )
+            })?
+            .base10_parse()?,
+    })
 }
 
 #[cfg(test)]
