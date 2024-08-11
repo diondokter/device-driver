@@ -83,7 +83,7 @@ pub enum Object {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Block {
-    pub cfg_attrs: Vec<String>,
+    pub cfg_attr: Option<String>,
     pub description: String,
     pub name: String,
     pub address_offset: i64,
@@ -99,7 +99,7 @@ pub struct Repeat {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Register {
-    pub cfg_attrs: Vec<String>,
+    pub cfg_attr: Option<String>,
     pub description: String,
     pub name: String,
     pub access: Access,
@@ -114,7 +114,7 @@ pub struct Register {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Field {
-    pub cfg_attrs: Vec<String>,
+    pub cfg_attr: Option<String>,
     pub description: String,
     pub name: String,
     pub access: Access,
@@ -141,7 +141,7 @@ pub enum FieldConversion {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnumVariant {
-    pub cfg_attrs: Vec<String>,
+    pub cfg_attr: Option<String>,
     pub description: String,
     pub name: String,
     pub value: EnumValue,
@@ -156,7 +156,7 @@ pub enum EnumValue {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Command {
-    pub cfg_attrs: Vec<String>,
+    pub cfg_attr: Option<String>,
     pub description: String,
     pub name: String,
     pub address: u64,
@@ -171,7 +171,7 @@ pub struct Command {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Buffer {
-    pub cfg_attrs: Option<String>,
+    pub cfg_attr: Option<String>,
     pub description: String,
     pub name: String,
     pub access: Access,
@@ -180,8 +180,74 @@ pub struct Buffer {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RefObject {
-    pub cfg_attrs: Vec<String>,
+    pub cfg_attr: Option<String>,
     pub description: String,
     pub name: String,
-    pub object: Box<Object>,
+    pub object: Box<ObjectOverride>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ObjectOverride {
+    Block(BlockOverride),
+    Register(RegisterOverride),
+    Command(CommandOverride),
+    Buffer(BufferOverride),
+    Ref(RefObjectOverride),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BlockOverride {
+    pub cfg_attr: Option<Option<String>>,
+    pub description: Option<String>,
+    pub name: String,
+    pub address_offset: Option<i64>,
+    pub repeat: Option<Option<Repeat>>,
+    pub objects: Option<Vec<Object>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RegisterOverride {
+    pub cfg_attr: Option<Option<String>>,
+    pub description: Option<String>,
+    pub name: String,
+    pub access: Option<Access>,
+    pub byte_order: Option<ByteOrder>,
+    pub bit_order: Option<BitOrder>,
+    pub address: Option<u64>,
+    pub size_bits: Option<u64>,
+    pub reset_value: Option<Vec<u8>>,
+    pub repeat: Option<Option<Repeat>>,
+    pub fields: Option<Vec<Field>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CommandOverride {
+    pub cfg_attr: Option<Option<String>>,
+    pub description: Option<String>,
+    pub name: String,
+    pub address: Option<u64>,
+    pub byte_order: Option<ByteOrder>,
+    pub bit_order: Option<BitOrder>,
+    pub size_bits_in: Option<u64>,
+    pub size_bits_out: Option<u64>,
+    pub repeat: Option<Option<Repeat>>,
+    pub in_fields: Option<Vec<Field>>,
+    pub out_fields: Option<Vec<Field>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BufferOverride {
+    pub cfg_attr: Option<Option<String>>,
+    pub description: Option<String>,
+    pub name: String,
+    pub access: Option<Access>,
+    pub address: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RefObjectOverride {
+    pub cfg_attr: Option<Option<String>>,
+    pub description: Option<String>,
+    pub name: String,
+    pub object: Option<Box<ObjectOverride>>,
 }

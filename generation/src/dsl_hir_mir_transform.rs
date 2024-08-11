@@ -4,8 +4,7 @@ use crate::{dsl_hir, mir};
 
 pub fn transform(device: dsl_hir::Device) -> Result<mir::Device, syn::Error> {
     let global_config = device.global_config_list.try_into()?;
-    let mut objects = Vec::new();
-    transform_object_list(device.object_list, &global_config, &mut objects)?;
+    let objects = transform_object_list(device.object_list, &global_config)?;
 
     Ok(mir::Device {
         global_config,
@@ -74,6 +73,17 @@ impl From<dsl_hir::NameCase> for mir::NameCase {
             dsl_hir::NameCase::Kebab => mir::NameCase::Kebab,
             dsl_hir::NameCase::Cobol => mir::NameCase::Cobol,
         }
+    }
+}
+
+impl TryFrom<dsl_hir::Repeat> for mir::Repeat {
+    type Error = syn::Error;
+
+    fn try_from(value: dsl_hir::Repeat) -> Result<Self, Self::Error> {
+        Ok(Self {
+            count: value.count.base10_parse()?,
+            stride: value.stride.base10_parse()?,
+        })
     }
 }
 
@@ -167,15 +177,106 @@ fn get_cfg_attr(attrs: &dsl_hir::AttributeList) -> Result<Option<String>, syn::E
 fn transform_object_list(
     list: dsl_hir::ObjectList,
     global_config: &mir::GlobalConfig,
-    objects: &mut Vec<mir::Object>,
-) -> Result<(), syn::Error> {
+) -> Result<Vec<mir::Object>, syn::Error> {
+    let mut objects = Vec::new();
+
     for object in list.objects.into_iter() {
         let object = match object {
             dsl_hir::Object::Block(_) => todo!(),
             dsl_hir::Object::Register(_) => todo!(),
-            dsl_hir::Object::Command(_) => todo!(),
+            dsl_hir::Object::Command(command) => {
+                let command_value = command.value.ok_or_else(|| {
+                    syn::Error::new(
+                        command.identifier.span(),
+                        &format!(
+                            "Command `{}` has must have a value",
+                            command.identifier.to_string()
+                        ),
+                    )
+                })?;
+
+                mir::Object::Command(mir::Command {
+                    cfg_attr: get_cfg_attr(&command.attribute_list)?,
+                    description: get_description(&command.attribute_list),
+                    name: command.identifier.to_string(),
+                    address: match &command_value {
+                        dsl_hir::CommandValue::Basic(lit) => lit,
+                        dsl_hir::CommandValue::Extended {
+                            command_item_list, ..
+                        } => command_item_list
+                            .items
+                            .iter()
+                            .find_map(|item| match item {
+                                dsl_hir::CommandItem::Address(lit) => Some(lit),
+                                _ => None,
+                            })
+                            .ok_or_else(|| {
+                                syn::Error::new(
+                                    command.identifier.span(),
+                                    &format!(
+                                        "Command `{}` must have an address",
+                                        command.identifier.to_string()
+                                    ),
+                                )
+                            })?,
+                    }
+                    .base10_parse()?,
+                    byte_order: match &command_value {
+                        dsl_hir::CommandValue::Basic(_) => None,
+                        dsl_hir::CommandValue::Extended {
+                            command_item_list, ..
+                        } => command_item_list.items.iter().find_map(|item| match item {
+                            dsl_hir::CommandItem::ByteOrder(order) => Some(order.clone().into()),
+                            _ => None,
+                        }),
+                    }
+                    .unwrap_or(global_config.default_byte_order),
+                    bit_order: match &command_value {
+                        dsl_hir::CommandValue::Basic(_) => None,
+                        dsl_hir::CommandValue::Extended {
+                            command_item_list, ..
+                        } => command_item_list.items.iter().find_map(|item| match item {
+                            dsl_hir::CommandItem::BitOrder(order) => Some(order.clone().into()),
+                            _ => None,
+                        }),
+                    }
+                    .unwrap_or(global_config.default_bit_order),
+                    size_bits_in: match &command_value {
+                        dsl_hir::CommandValue::Basic(_) => None,
+                        dsl_hir::CommandValue::Extended {
+                            command_item_list, ..
+                        } => command_item_list.items.iter().find_map(|item| match item {
+                            dsl_hir::CommandItem::SizeBitsIn(size) => Some(size.base10_parse()),
+                            _ => None,
+                        }),
+                    }
+                    .unwrap_or(Ok(0))?,
+                    size_bits_out: match &command_value {
+                        dsl_hir::CommandValue::Basic(_) => None,
+                        dsl_hir::CommandValue::Extended {
+                            command_item_list, ..
+                        } => command_item_list.items.iter().find_map(|item| match item {
+                            dsl_hir::CommandItem::SizeBitsOut(size) => Some(size.base10_parse()),
+                            _ => None,
+                        }),
+                    }
+                    .unwrap_or(Ok(0))?,
+                    repeat: match &command_value {
+                        dsl_hir::CommandValue::Basic(_) => None,
+                        dsl_hir::CommandValue::Extended {
+                            command_item_list, ..
+                        } => command_item_list.items.iter().find_map(|item| match item {
+                            dsl_hir::CommandItem::Repeat(repeat) => Some(repeat.clone().try_into()),
+                            _ => None,
+                        }),
+                    }
+                    .transpose()?,
+                    in_fields: todo!(),
+                    out_fields: todo!(),
+                })
+            }
             dsl_hir::Object::Buffer(buffer) => mir::Object::Buffer(mir::Buffer {
-                cfg_attrs: get_cfg_attr(&buffer.attribute_list)?,
+                cfg_attr: get_cfg_attr(&buffer.attribute_list)?,
                 description: get_description(&buffer.attribute_list),
                 name: buffer.identifier.to_string(),
                 access: buffer
@@ -186,8 +287,11 @@ fn transform_object_list(
                     .address
                     .ok_or_else(|| {
                         syn::Error::new(
-                            Span::call_site(),
-                            &format!("Buffer `{}` has no address", buffer.identifier.to_string()),
+                            buffer.identifier.span(),
+                            &format!(
+                                "Buffer `{}` must have an address",
+                                buffer.identifier.to_string()
+                            ),
                         )
                     })?
                     .base10_parse()?,
@@ -198,7 +302,7 @@ fn transform_object_list(
         objects.push(object);
     }
 
-    Ok(())
+    Ok(objects)
 }
 
 #[cfg(test)]
@@ -270,7 +374,7 @@ mod tests {
             .unwrap()
             .objects,
             &[mir::Object::Buffer(mir::Buffer {
-                cfg_attrs: Some("feature = \"foo\"".into()),
+                cfg_attr: Some("feature = \"foo\"".into()),
                 description: " Hello world!\n This should be in order!".into(),
                 name: "Foo".into(),
                 access: mir::Access::RO,
@@ -307,7 +411,7 @@ mod tests {
             .unwrap()
             .objects,
             &[mir::Object::Buffer(mir::Buffer {
-                cfg_attrs: None,
+                cfg_attr: None,
                 description: "".into(),
                 name: "Foo".into(),
                 access: mir::Access::default(),
@@ -327,7 +431,7 @@ mod tests {
             .unwrap()
             .objects,
             &[mir::Object::Buffer(mir::Buffer {
-                cfg_attrs: Some("foo".into()),
+                cfg_attr: Some("foo".into()),
                 description: "".into(),
                 name: "Foo".into(),
                 access: mir::Access::default(),
