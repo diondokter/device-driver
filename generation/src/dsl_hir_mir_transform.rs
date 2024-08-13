@@ -1,4 +1,5 @@
 use proc_macro2::Span;
+use quote::ToTokens;
 
 use crate::{dsl_hir, mir};
 
@@ -217,7 +218,7 @@ fn transform_command(
         syn::Error::new(
             command.identifier.span(),
             &format!(
-                "Command `{}` has must have a value",
+                "Command `{}` must have a value",
                 command.identifier.to_string()
             ),
         )
@@ -330,11 +331,11 @@ fn transform_field(
             .map(Into::into)
             .unwrap_or(global_config.default_field_access),
         base_type: field.base_type.into(),
-        field_conversion: todo!(),
-        field_address: match field.field_address {
+        field_conversion: field.field_conversion.as_ref().map(|fc| transform_field_conversion(fc)).transpose()?,
+        field_address: match &field.field_address {
             dsl_hir::FieldAddress::Integer(start) if field.base_type.is_bool() =>
                 start.base10_parse()?..start.base10_parse()?,
-            dsl_hir::FieldAddress::Integer(start) =>
+            dsl_hir::FieldAddress::Integer(_) =>
                 return Err(syn::Error::new(
                     field.identifier.span(),
                     &format!(
@@ -350,6 +351,43 @@ fn transform_field(
             }
         },
     })
+}
+
+fn transform_field_conversion(
+    field_conversion: &dsl_hir::FieldConversion,
+) -> Result<mir::FieldConversion, syn::Error> {
+    match field_conversion {
+        dsl_hir::FieldConversion::Direct(path) => Ok(mir::FieldConversion::Direct(
+            path.to_token_stream()
+                .to_string()
+                .replace(char::is_whitespace, ""),
+        )),
+        dsl_hir::FieldConversion::Enum {
+            identifier,
+            enum_variant_list,
+        } => Ok(mir::FieldConversion::Enum {
+            name: identifier.to_string(),
+            variants: enum_variant_list
+                .variants
+                .iter()
+                .map(|v| {
+                    Ok(mir::EnumVariant {
+                        cfg_attr: get_cfg_attr(&v.attribute_list)?,
+                        description: get_description(&v.attribute_list),
+                        name: v.identifier.to_string(),
+                        value: match &v.enum_value {
+                            None => mir::EnumValue::Unspecified,
+                            Some(dsl_hir::EnumValue::Specified(val)) => {
+                                mir::EnumValue::Specified(val.base10_parse()?)
+                            }
+                            Some(dsl_hir::EnumValue::Default) => mir::EnumValue::Default,
+                            Some(dsl_hir::EnumValue::CatchAll) => mir::EnumValue::CatchAll,
+                        },
+                    })
+                })
+                .collect::<Result<_, syn::Error>>()?,
+        }),
+    }
 }
 
 fn transform_buffer(
@@ -467,8 +505,252 @@ mod tests {
             )
             .unwrap_err()
             .to_string(),
-            "Buffer `Foo` has no address"
+            "Buffer `Foo` must have an address"
         );
+    }
+
+    #[test]
+    fn command() {
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    command Foo
+                    ",
+                )
+                .unwrap()
+            )
+            .unwrap_err()
+            .to_string(),
+            "Command `Foo` must have a value"
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    command Foo {}
+                    ",
+                )
+                .unwrap()
+            )
+            .unwrap_err()
+            .to_string(),
+            "Command `Foo` must have an address"
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    /// Hello world!
+                    #[cfg(feature = \"foo\")]
+                    /// This should be in order!
+                    command Foo = 5
+                    ",
+                )
+                .unwrap()
+            )
+            .unwrap()
+            .objects,
+            &[mir::Object::Command(mir::Command {
+                cfg_attr: Some("feature = \"foo\"".into()),
+                description: " Hello world!\n This should be in order!".into(),
+                name: "Foo".into(),
+                address: 5,
+                byte_order: Default::default(),
+                bit_order: Default::default(),
+                size_bits_in: 0,
+                size_bits_out: 0,
+                repeat: Default::default(),
+                in_fields: Default::default(),
+                out_fields: Default::default()
+            })]
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    config {
+                        type DefaultByteOrder = LE;
+                        type DefaultFieldAccess = RO;
+                    }
+                    command Bar {
+                        const SIZE_BITS_IN = 32;
+                        const SIZE_BITS_OUT = 16;
+                        const REPEAT = {
+                            count: 4,
+                            stride: 0x10,
+                        };
+                        const ADDRESS = 10;
+
+                        in {
+                            /// Hello!
+                            #[cfg(bla)]
+                            val: WO bool = 0,
+                            foo: uint as crate::my_mod::MyStruct = 1..=5,
+                        }
+                        out {
+                            val: int as enum Val {
+                                One,
+                                /// Two!
+                                Two = 2,
+                                Three = default,
+                                #[cfg(yes)]
+                                Four = catch_all,
+                            } = 0..16,
+                        }
+                    }
+                    ",
+                )
+                .unwrap()
+            )
+            .unwrap()
+            .objects,
+            &[mir::Object::Command(mir::Command {
+                cfg_attr: None,
+                description: Default::default(),
+                name: "Bar".into(),
+                address: 10,
+                byte_order: mir::ByteOrder::LE,
+                bit_order: Default::default(),
+                size_bits_in: 32,
+                size_bits_out: 16,
+                repeat: Some(mir::Repeat {
+                    count: 4,
+                    stride: 16
+                }),
+                in_fields: vec![
+                    mir::Field {
+                        cfg_attr: Some("bla".into()),
+                        description: " Hello!".into(),
+                        name: "val".into(),
+                        access: mir::Access::WO,
+                        base_type: mir::BaseType::Bool,
+                        field_conversion: None,
+                        field_address: 0..0,
+                    },
+                    mir::Field {
+                        cfg_attr: None,
+                        description: Default::default(),
+                        name: "foo".into(),
+                        access: mir::Access::RO,
+                        base_type: mir::BaseType::Uint,
+                        field_conversion: Some(mir::FieldConversion::Direct(
+                            "crate::my_mod::MyStruct".into()
+                        )),
+                        field_address: 1..6,
+                    }
+                ],
+                out_fields: vec![mir::Field {
+                    cfg_attr: None,
+                    description: Default::default(),
+                    name: "val".into(),
+                    access: mir::Access::RO,
+                    base_type: mir::BaseType::Int,
+                    field_conversion: Some(mir::FieldConversion::Enum {
+                        name: "Val".into(),
+                        variants: vec![
+                            mir::EnumVariant {
+                                cfg_attr: None,
+                                description: Default::default(),
+                                name: "One".into(),
+                                value: mir::EnumValue::Unspecified,
+                            },
+                            mir::EnumVariant {
+                                cfg_attr: None,
+                                description: " Two!".into(),
+                                name: "Two".into(),
+                                value: mir::EnumValue::Specified(2),
+                            },
+                            mir::EnumVariant {
+                                cfg_attr: None,
+                                description: Default::default(),
+                                name: "Three".into(),
+                                value: mir::EnumValue::Default,
+                            },
+                            mir::EnumVariant {
+                                cfg_attr: Some("yes".into()),
+                                description: Default::default(),
+                                name: "Four".into(),
+                                value: mir::EnumValue::CatchAll,
+                            }
+                        ]
+                    }),
+                    field_address: 0..16,
+                }]
+            })]
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    command Foo {
+                        const ADDRESS = 0;
+
+                        in {
+                            val: int = 0,
+                        }
+                    }
+                    ",
+                )
+                .unwrap()
+            )
+            .unwrap_err()
+            .to_string(),
+            "Field `val` has a non-bool base type and must specify the start and the end address"
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    config {
+                        type DefaultByteOrder = LE;
+                        type DefaultBitOrder = MSB0;
+                    }
+                    command Bar {
+                        type ByteOrder = BE;
+                        type BitOrder = LSB0;
+                        const ADDRESS = 10;
+
+                        in {
+                            val: bool = 0,
+                        }
+                    }
+                    ",
+                )
+                .unwrap()
+            )
+            .unwrap()
+            .objects,
+            &[mir::Object::Command(mir::Command {
+                cfg_attr: None,
+                description: Default::default(),
+                name: "Bar".into(),
+                address: 10,
+                byte_order: mir::ByteOrder::BE,
+                bit_order: mir::BitOrder::LSB0,
+                size_bits_in: 0,
+                size_bits_out: 0,
+                repeat: None,
+                in_fields: vec![
+                    mir::Field {
+                        cfg_attr: None,
+                        description: Default::default(),
+                        name: "val".into(),
+                        access: mir::Access::default(),
+                        base_type: mir::BaseType::Bool,
+                        field_conversion: None,
+                        field_address: 0..0,
+                    },
+                ],
+                out_fields: vec![]
+            })]
+        );
+
     }
 
     #[test]

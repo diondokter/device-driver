@@ -149,7 +149,8 @@ pub struct EnumVariant {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EnumValue {
-    Specified(u128),
+    Unspecified,
+    Specified(i128),
     Default,
     CatchAll,
 }
