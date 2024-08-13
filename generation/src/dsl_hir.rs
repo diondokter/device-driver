@@ -368,12 +368,15 @@ impl Parse for Object {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RefObject {
+    pub attribute_list: AttributeList,
     pub identifier: syn::Ident,
     pub object: Box<Object>,
 }
 
 impl Parse for RefObject {
     fn parse(input: ParseStream) -> syn::Result<Self> {
+        let attribute_list = input.parse()?;
+
         input.parse::<Token![ref]>()?;
 
         let identifier = input.parse()?;
@@ -382,7 +385,11 @@ impl Parse for RefObject {
 
         let object = input.parse()?;
 
-        Ok(Self { identifier, object })
+        Ok(Self {
+            attribute_list,
+            identifier,
+            object,
+        })
     }
 }
 
@@ -1010,8 +1017,8 @@ pub enum CommandValue {
     Basic(LitInt),
     Extended {
         command_item_list: CommandItemList,
-        in_field_list: FieldList,
-        out_field_list: FieldList,
+        in_field_list: Option<FieldList>,
+        out_field_list: Option<FieldList>,
     },
 }
 
@@ -1030,9 +1037,9 @@ impl Parse for CommandValue {
             let braced_input_inner;
             braced!(braced_input_inner in braced_input);
 
-            braced_input_inner.parse()?
+            Some(braced_input_inner.parse()?)
         } else {
-            FieldList { fields: Vec::new() }
+            None
         };
 
         let _ = braced_input.parse::<Token![,]>();
@@ -1041,9 +1048,9 @@ impl Parse for CommandValue {
             let braced_input_inner;
             braced!(braced_input_inner in braced_input);
 
-            braced_input_inner.parse()?
+            Some(braced_input_inner.parse()?)
         } else {
-            FieldList { fields: Vec::new() }
+            None
         };
 
         let _ = braced_input.parse::<Token![,]>();
@@ -1660,8 +1667,8 @@ mod tests {
                     command_item_list: CommandItemList {
                         items: vec![CommandItem::BitOrder(BitOrder::LSB0)]
                     },
-                    in_field_list: FieldList { fields: vec![] },
-                    out_field_list: FieldList { fields: vec![] }
+                    in_field_list: None,
+                    out_field_list: None
                 }),
             }
         );
@@ -1673,8 +1680,8 @@ mod tests {
                 identifier: Ident::new("Bar", Span::call_site()),
                 value: Some(CommandValue::Extended {
                     command_item_list: CommandItemList { items: vec![] },
-                    in_field_list: FieldList { fields: vec![] },
-                    out_field_list: FieldList { fields: vec![] }
+                    in_field_list: Some(FieldList { fields: vec![] }),
+                    out_field_list: None
                 }),
             }
         );
@@ -1686,8 +1693,8 @@ mod tests {
                 identifier: Ident::new("Bar", Span::call_site()),
                 value: Some(CommandValue::Extended {
                     command_item_list: CommandItemList { items: vec![] },
-                    in_field_list: FieldList { fields: vec![] },
-                    out_field_list: FieldList { fields: vec![] }
+                    in_field_list: Some(FieldList { fields: vec![] }),
+                    out_field_list: Some(FieldList { fields: vec![] })
                 }),
             }
         );
@@ -1699,8 +1706,8 @@ mod tests {
                 identifier: Ident::new("Bar", Span::call_site()),
                 value: Some(CommandValue::Extended {
                     command_item_list: CommandItemList { items: vec![] },
-                    in_field_list: FieldList { fields: vec![] },
-                    out_field_list: FieldList {
+                    in_field_list: None,
+                    out_field_list: Some(FieldList {
                         fields: vec![Field {
                             attribute_list: AttributeList::new(),
                             identifier: Ident::new("foo", Span::call_site()),
@@ -1712,7 +1719,7 @@ mod tests {
                                 Span::call_site()
                             ))
                         }]
-                    }
+                    })
                 }),
             }
         );
@@ -1862,6 +1869,22 @@ mod tests {
         assert_eq!(
             syn::parse_str::<RefObject>("ref MyRef = command MyOriginal").unwrap(),
             RefObject {
+                attribute_list: AttributeList::new(),
+                identifier: Ident::new("MyRef", Span::call_site()),
+                object: Box::new(Object::Command(Command {
+                    attribute_list: AttributeList::new(),
+                    identifier: Ident::new("MyOriginal", Span::call_site()),
+                    value: None
+                }))
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<RefObject>("/// Hi!\nref MyRef = command MyOriginal").unwrap(),
+            RefObject {
+                attribute_list: AttributeList {
+                    attributes: vec![Attribute::Doc(" Hi!".into(), Span::call_site())]
+                },
                 identifier: Ident::new("MyRef", Span::call_site()),
                 object: Box::new(Object::Command(Command {
                     attribute_list: AttributeList::new(),
@@ -2172,6 +2195,7 @@ mod tests {
         assert_eq!(
             syn::parse_str::<Object>("ref Foo2 = buffer Foo").unwrap(),
             Object::Ref(RefObject {
+                attribute_list: AttributeList::new(),
                 identifier: Ident::new("Foo2", Span::call_site()),
                 object: Box::new(Object::Buffer(Buffer {
                     attribute_list: AttributeList::new(),

@@ -153,8 +153,8 @@ impl TryFrom<dsl_hir::GlobalConfigList> for mir::GlobalConfig {
     }
 }
 
-fn get_description(attrs: &dsl_hir::AttributeList) -> String {
-    attrs
+fn get_description(attrs: &dsl_hir::AttributeList) -> Option<String> {
+    let str = attrs
         .attributes
         .iter()
         .filter_map(|attr| match attr {
@@ -162,7 +162,13 @@ fn get_description(attrs: &dsl_hir::AttributeList) -> String {
             dsl_hir::Attribute::Cfg(_, _) => None,
         })
         .collect::<Vec<_>>()
-        .join("\n")
+        .join("\n");
+
+    if str.is_empty() {
+        None
+    } else {
+        Some(str)
+    }
 }
 
 fn get_cfg_attr(attrs: &dsl_hir::AttributeList) -> Result<Option<String>, syn::Error> {
@@ -201,7 +207,9 @@ fn transform_object_list(
             dsl_hir::Object::Buffer(buffer) => {
                 mir::Object::Buffer(transform_buffer(buffer, global_config)?)
             }
-            dsl_hir::Object::Ref(_) => todo!(),
+            dsl_hir::Object::Ref(ref_object) => {
+                mir::Object::Ref(transform_ref(ref_object, global_config)?)
+            }
         };
 
         objects.push(object);
@@ -225,7 +233,7 @@ fn transform_command(
     })?;
     Ok(mir::Command {
         cfg_attr: get_cfg_attr(&command.attribute_list)?,
-        description: get_description(&command.attribute_list),
+        description: get_description(&command.attribute_list).unwrap_or_default(),
         name: command.identifier.to_string(),
         address: match &command_value {
             dsl_hir::CommandValue::Basic(lit) => lit,
@@ -300,16 +308,30 @@ fn transform_command(
         }
         .transpose()?,
         in_fields: match &command_value {
-            dsl_hir::CommandValue::Basic(_) => Vec::new(),
-            dsl_hir::CommandValue::Extended { in_field_list, .. } => in_field_list
+            dsl_hir::CommandValue::Basic(_)
+            | dsl_hir::CommandValue::Extended {
+                in_field_list: None,
+                ..
+            } => Vec::new(),
+            dsl_hir::CommandValue::Extended {
+                in_field_list: Some(in_field_list),
+                ..
+            } => in_field_list
                 .fields
                 .iter()
                 .map(|field| transform_field(field, global_config))
                 .collect::<Result<_, _>>()?,
         },
         out_fields: match &command_value {
-            dsl_hir::CommandValue::Basic(_) => Vec::new(),
-            dsl_hir::CommandValue::Extended { out_field_list, .. } => out_field_list
+            dsl_hir::CommandValue::Basic(_)
+            | dsl_hir::CommandValue::Extended {
+                out_field_list: None,
+                ..
+            } => Vec::new(),
+            dsl_hir::CommandValue::Extended {
+                out_field_list: Some(out_field_list),
+                ..
+            } => out_field_list
                 .fields
                 .iter()
                 .map(|field| transform_field(field, global_config))
@@ -324,7 +346,7 @@ fn transform_field(
 ) -> Result<mir::Field, syn::Error> {
     Ok(mir::Field {
         cfg_attr: get_cfg_attr(&field.attribute_list)?,
-        description: get_description(&field.attribute_list),
+        description: get_description(&field.attribute_list).unwrap_or_default(),
         name: field.identifier.to_string(),
         access: field
             .access
@@ -373,7 +395,7 @@ fn transform_field_conversion(
                 .map(|v| {
                     Ok(mir::EnumVariant {
                         cfg_attr: get_cfg_attr(&v.attribute_list)?,
-                        description: get_description(&v.attribute_list),
+                        description: get_description(&v.attribute_list).unwrap_or_default(),
                         name: v.identifier.to_string(),
                         value: match &v.enum_value {
                             None => mir::EnumValue::Unspecified,
@@ -396,7 +418,7 @@ fn transform_buffer(
 ) -> Result<mir::Buffer, syn::Error> {
     Ok(mir::Buffer {
         cfg_attr: get_cfg_attr(&buffer.attribute_list)?,
-        description: get_description(&buffer.attribute_list),
+        description: get_description(&buffer.attribute_list).unwrap_or_default(),
         name: buffer.identifier.to_string(),
         access: buffer
             .access
@@ -415,6 +437,160 @@ fn transform_buffer(
             })?
             .base10_parse()?,
     })
+}
+
+fn transform_ref(
+    ref_object: dsl_hir::RefObject,
+    global_config: &mir::GlobalConfig,
+) -> Result<mir::RefObject, syn::Error> {
+    Ok(mir::RefObject {
+        cfg_attr: get_cfg_attr(&ref_object.attribute_list)?,
+        description: get_description(&ref_object.attribute_list).unwrap_or_default(),
+        name: ref_object.identifier.to_string(),
+        object: match *ref_object.object {
+            dsl_hir::Object::Block(block_override) => Box::new(mir::ObjectOverride::Block(
+                transform_block_override(block_override)?,
+            )),
+            dsl_hir::Object::Register(register_override) => Box::new(
+                mir::ObjectOverride::Register(transform_register_override(register_override)?),
+            ),
+            dsl_hir::Object::Command(command_override) => Box::new(mir::ObjectOverride::Command(
+                transform_command_override(command_override, global_config)?,
+            )),
+            dsl_hir::Object::Buffer(buffer_override) => Box::new(mir::ObjectOverride::Buffer(
+                transform_buffer_override(buffer_override)?,
+            )),
+            dsl_hir::Object::Ref(_) => {
+                return Err(syn::Error::new(
+                    ref_object.identifier.span(),
+                    &format!(
+                        "Ref `{}` cannot ref another ref object",
+                        ref_object.identifier.to_string()
+                    ),
+                ))
+            }
+        },
+    })
+}
+
+fn transform_block_override(
+    block_override: dsl_hir::Block,
+) -> Result<mir::BlockOverride, syn::Error> {
+    todo!()
+}
+
+fn transform_register_override(
+    register_override: dsl_hir::Register,
+) -> Result<mir::RegisterOverride, syn::Error> {
+    todo!()
+}
+
+fn transform_command_override(
+    command_override: dsl_hir::Command,
+    global_config: &mir::GlobalConfig,
+) -> Result<mir::CommandOverride, syn::Error> {
+    Ok(mir::CommandOverride {
+        name: command_override.identifier.to_string(),
+        address: match &command_override.value {
+            None => None,
+            Some(dsl_hir::CommandValue::Basic(lit)) => Some(lit),
+            Some(dsl_hir::CommandValue::Extended {
+                command_item_list, ..
+            }) => command_item_list.items.iter().find_map(|item| match item {
+                dsl_hir::CommandItem::Address(lit) => Some(lit),
+                _ => None,
+            }),
+        }
+        .map(|lit| lit.base10_parse())
+        .transpose()?,
+        byte_order: match &command_override.value {
+            None | Some(dsl_hir::CommandValue::Basic(_)) => None,
+            Some(dsl_hir::CommandValue::Extended {
+                command_item_list, ..
+            }) => command_item_list.items.iter().find_map(|item| match item {
+                dsl_hir::CommandItem::ByteOrder(order) => Some(order.clone().into()),
+                _ => None,
+            }),
+        },
+        bit_order: match &command_override.value {
+            None | Some(dsl_hir::CommandValue::Basic(_)) => None,
+            Some(dsl_hir::CommandValue::Extended {
+                command_item_list, ..
+            }) => command_item_list.items.iter().find_map(|item| match item {
+                dsl_hir::CommandItem::BitOrder(order) => Some(order.clone().into()),
+                _ => None,
+            }),
+        },
+        size_bits_in: match &command_override.value {
+            None | Some(dsl_hir::CommandValue::Basic(_)) => None,
+            Some(dsl_hir::CommandValue::Extended {
+                command_item_list, ..
+            }) => command_item_list.items.iter().find_map(|item| match item {
+                dsl_hir::CommandItem::SizeBitsIn(size) => Some(size.base10_parse()),
+                _ => None,
+            }),
+        }
+        .transpose()?,
+        size_bits_out: match &command_override.value {
+            None | Some(dsl_hir::CommandValue::Basic(_)) => None,
+            Some(dsl_hir::CommandValue::Extended {
+                command_item_list, ..
+            }) => command_item_list.items.iter().find_map(|item| match item {
+                dsl_hir::CommandItem::SizeBitsOut(size) => Some(size.base10_parse()),
+                _ => None,
+            }),
+        }
+        .transpose()?,
+        repeat: match &command_override.value {
+            None | Some(dsl_hir::CommandValue::Basic(_)) => None,
+            Some(dsl_hir::CommandValue::Extended {
+                command_item_list, ..
+            }) => command_item_list
+                .items
+                .iter()
+                .find_map(|item| match item {
+                    dsl_hir::CommandItem::Repeat(repeat) => {
+                        Some(mir::Repeat::try_from(repeat.clone()))
+                    }
+                    _ => None,
+                })
+                .transpose()?,
+        },
+        in_fields: match &command_override.value {
+            None => None,
+            Some(dsl_hir::CommandValue::Basic(_)) => None,
+            Some(dsl_hir::CommandValue::Extended { in_field_list, .. }) => in_field_list
+                .as_ref()
+                .map(|in_field_list| {
+                    in_field_list
+                        .fields
+                        .iter()
+                        .map(|field| transform_field(field, global_config))
+                        .collect::<Result<_, _>>()
+                })
+                .transpose()?,
+        },
+        out_fields: match &command_override.value {
+            None => None,
+            Some(dsl_hir::CommandValue::Basic(_)) => None,
+            Some(dsl_hir::CommandValue::Extended { out_field_list, .. }) => out_field_list
+                .as_ref()
+                .map(|out_field_list| {
+                    out_field_list
+                        .fields
+                        .iter()
+                        .map(|field| transform_field(field, global_config))
+                        .collect::<Result<_, _>>()
+                })
+                .transpose()?,
+        },
+    })
+}
+
+fn transform_buffer_override(
+    buffer_override: dsl_hir::Buffer,
+) -> Result<mir::BufferOverride, syn::Error> {
+    todo!()
 }
 
 #[cfg(test)]
@@ -736,21 +912,18 @@ mod tests {
                 size_bits_in: 0,
                 size_bits_out: 0,
                 repeat: None,
-                in_fields: vec![
-                    mir::Field {
-                        cfg_attr: None,
-                        description: Default::default(),
-                        name: "val".into(),
-                        access: mir::Access::default(),
-                        base_type: mir::BaseType::Bool,
-                        field_conversion: None,
-                        field_address: 0..0,
-                    },
-                ],
+                in_fields: vec![mir::Field {
+                    cfg_attr: None,
+                    description: Default::default(),
+                    name: "val".into(),
+                    access: mir::Access::default(),
+                    base_type: mir::BaseType::Bool,
+                    field_conversion: None,
+                    field_address: 0..0,
+                },],
                 out_fields: vec![]
             })]
         );
-
     }
 
     #[test]
