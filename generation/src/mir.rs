@@ -184,7 +184,7 @@ pub struct RefObject {
     pub cfg_attr: Option<String>,
     pub description: String,
     pub name: String,
-    pub object: Box<ObjectOverride>,
+    pub object: ObjectOverride,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -192,46 +192,27 @@ pub enum ObjectOverride {
     Block(BlockOverride),
     Register(RegisterOverride),
     Command(CommandOverride),
-    Buffer(BufferOverride),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BlockOverride {
     pub name: String,
     pub address_offset: Option<i64>,
-    pub repeat: Option<Option<Repeat>>,
-    pub objects: Option<Vec<Object>>,
+    pub repeat: Option<Repeat>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RegisterOverride {
     pub name: String,
     pub access: Option<Access>,
-    pub byte_order: Option<ByteOrder>,
-    pub bit_order: Option<BitOrder>,
     pub address: Option<u64>,
-    pub size_bits: Option<u64>,
     pub reset_value: Option<Vec<u8>>,
-    pub repeat: Option<Option<Repeat>>,
-    pub fields: Option<Vec<Field>>,
+    pub repeat: Option<Repeat>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CommandOverride {
     pub name: String,
     pub address: Option<u64>,
-    pub byte_order: Option<ByteOrder>,
-    pub bit_order: Option<BitOrder>,
-    pub size_bits_in: Option<u64>,
-    pub size_bits_out: Option<u64>,
     pub repeat: Option<Repeat>,
-    pub in_fields: Option<Vec<Field>>,
-    pub out_fields: Option<Vec<Field>>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BufferOverride {
-    pub name: String,
-    pub access: Option<Access>,
-    pub address: Option<u64>,
 }

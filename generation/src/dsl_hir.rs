@@ -148,6 +148,8 @@
 //! > _AttributeList_
 //! > `buffer` _IDENTIFIER_(`:` _Access_)? (`=` _INTEGER_)?
 
+use std::mem::Discriminant;
+
 use proc_macro2::Span;
 use syn::{
     braced, bracketed,
@@ -497,8 +499,54 @@ impl Parse for BlockItemList {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut block_items = Vec::new();
 
+        let err_if_contains = |items: &[BlockItem], discr: Discriminant<BlockItem>, span: Span| {
+            if items.iter().any(|i| core::mem::discriminant(i) == discr) {
+                Err(syn::Error::new(span, "duplicate item found"))
+            } else {
+                Ok(())
+            }
+        };
+
         while !input.is_empty() && input.peek(Token![const]) {
-            block_items.push(input.parse()?);
+            let item = if input.peek2(kw::ADDRESS_OFFSET) {
+                input.parse::<Token![const]>()?;
+
+                err_if_contains(
+                    &block_items,
+                    core::mem::discriminant(&BlockItem::AddressOffset(LitInt::new(
+                        "0",
+                        Span::call_site(),
+                    ))),
+                    input.span(),
+                )?;
+
+                input.parse::<kw::ADDRESS_OFFSET>()?;
+                input.parse::<Token![=]>()?;
+                let value = input.parse()?;
+                input.parse::<Token![;]>()?;
+
+                BlockItem::AddressOffset(value)
+            } else if input.peek2(kw::REPEAT) {
+                input.parse::<Token![const]>()?;
+
+                err_if_contains(
+                    &block_items,
+                    core::mem::discriminant(&BlockItem::Repeat(Repeat {
+                        count: LitInt::new("0", Span::call_site()),
+                        stride: LitInt::new("0", Span::call_site()),
+                    })),
+                    input.span(),
+                )?;
+
+                BlockItem::Repeat(input.parse()?)
+            } else {
+                return Err(syn::Error::new(
+                    input.span(),
+                    "Invalid value. Must be an `ADDRESS_OFFSET` or `REPEAT`",
+                ));
+            };
+
+            block_items.push(item);
         }
 
         Ok(Self { block_items })
@@ -509,28 +557,6 @@ impl Parse for BlockItemList {
 pub enum BlockItem {
     AddressOffset(LitInt),
     Repeat(Repeat),
-}
-
-impl Parse for BlockItem {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        if input.peek2(kw::ADDRESS_OFFSET) {
-            input.parse::<Token![const]>()?;
-            input.parse::<kw::ADDRESS_OFFSET>()?;
-            input.parse::<Token![=]>()?;
-            let value = input.parse()?;
-            input.parse::<Token![;]>()?;
-
-            Ok(Self::AddressOffset(value))
-        } else if input.peek2(kw::REPEAT) {
-            input.parse::<Token![const]>()?;
-            Ok(Self::Repeat(input.parse()?))
-        } else {
-            Err(syn::Error::new(
-                input.span(),
-                "Invalid value. Must be an `ADDRESS_OFFSET` or `REPEAT`",
-            ))
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -579,6 +605,15 @@ impl Parse for RegisterItemList {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut register_items = Vec::new();
 
+        let err_if_contains =
+            |items: &[RegisterItem], discr: Discriminant<RegisterItem>, span: Span| {
+                if items.iter().any(|i| core::mem::discriminant(i) == discr) {
+                    Err(syn::Error::new(span, "duplicate item found"))
+                } else {
+                    Ok(())
+                }
+            };
+
         loop {
             if input.peek(Token![type]) {
                 input.parse::<Token![type]>()?;
@@ -586,18 +621,36 @@ impl Parse for RegisterItemList {
                 let lookahead = input.lookahead1();
 
                 if lookahead.peek(kw::Access) {
+                    err_if_contains(
+                        &register_items,
+                        core::mem::discriminant(&RegisterItem::Access(Access::CO)),
+                        input.span(),
+                    )?;
+
                     input.parse::<kw::Access>()?;
                     input.parse::<Token![=]>()?;
                     let value = input.parse()?;
                     input.parse::<Token![;]>()?;
                     register_items.push(RegisterItem::Access(value));
                 } else if lookahead.peek(kw::ByteOrder) {
+                    err_if_contains(
+                        &register_items,
+                        core::mem::discriminant(&RegisterItem::ByteOrder(ByteOrder::LE)),
+                        input.span(),
+                    )?;
+
                     input.parse::<kw::ByteOrder>()?;
                     input.parse::<Token![=]>()?;
                     let value = input.parse()?;
                     input.parse::<Token![;]>()?;
                     register_items.push(RegisterItem::ByteOrder(value));
                 } else if lookahead.peek(kw::BitOrder) {
+                    err_if_contains(
+                        &register_items,
+                        core::mem::discriminant(&RegisterItem::BitOrder(BitOrder::LSB0)),
+                        input.span(),
+                    )?;
+
                     input.parse::<kw::BitOrder>()?;
                     input.parse::<Token![=]>()?;
                     let value = input.parse()?;
@@ -612,18 +665,50 @@ impl Parse for RegisterItemList {
                 let lookahead = input.lookahead1();
 
                 if lookahead.peek(kw::ADDRESS) {
+                    err_if_contains(
+                        &register_items,
+                        core::mem::discriminant(&RegisterItem::Address(LitInt::new(
+                            "0",
+                            Span::call_site(),
+                        ))),
+                        input.span(),
+                    )?;
+
                     input.parse::<kw::ADDRESS>()?;
                     input.parse::<Token![=]>()?;
                     let value = input.parse()?;
                     input.parse::<Token![;]>()?;
                     register_items.push(RegisterItem::Address(value));
                 } else if lookahead.peek(kw::SIZE_BITS) {
+                    err_if_contains(
+                        &register_items,
+                        core::mem::discriminant(&RegisterItem::SizeBits(LitInt::new(
+                            "0",
+                            Span::call_site(),
+                        ))),
+                        input.span(),
+                    )?;
+
                     input.parse::<kw::SIZE_BITS>()?;
                     input.parse::<Token![=]>()?;
                     let value = input.parse()?;
                     input.parse::<Token![;]>()?;
                     register_items.push(RegisterItem::SizeBits(value));
                 } else if lookahead.peek(kw::RESET_VALUE) {
+                    err_if_contains(
+                        &register_items,
+                        core::mem::discriminant(&RegisterItem::ResetValueInt(LitInt::new(
+                            "0",
+                            Span::call_site(),
+                        ))),
+                        input.span(),
+                    )?;
+                    err_if_contains(
+                        &register_items,
+                        core::mem::discriminant(&RegisterItem::ResetValueArray(Vec::new())),
+                        input.span(),
+                    )?;
+
                     input.parse::<kw::RESET_VALUE>()?;
                     input.parse::<Token![=]>()?;
 
@@ -650,6 +735,15 @@ impl Parse for RegisterItemList {
                     input.parse::<Token![;]>()?;
                     register_items.push(value);
                 } else if lookahead.peek(kw::REPEAT) {
+                    err_if_contains(
+                        &register_items,
+                        core::mem::discriminant(&RegisterItem::Repeat(Repeat {
+                            count: LitInt::new("0", Span::call_site()),
+                            stride: LitInt::new("0", Span::call_site()),
+                        })),
+                        input.span(),
+                    )?;
+
                     register_items.push(RegisterItem::Repeat(input.parse()?));
                 } else {
                     return Err(lookahead.error());
@@ -1089,17 +1183,38 @@ impl Parse for CommandItemList {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut items = Vec::new();
 
+        let err_if_contains =
+            |items: &[CommandItem], discr: Discriminant<CommandItem>, span: Span| {
+                if items.iter().any(|i| core::mem::discriminant(i) == discr) {
+                    Err(syn::Error::new(span, "duplicate item found"))
+                } else {
+                    Ok(())
+                }
+            };
+
         loop {
             if input.parse::<Token![type]>().is_ok() {
                 let lookahead = input.lookahead1();
 
                 if lookahead.peek(kw::ByteOrder) {
+                    err_if_contains(
+                        &items,
+                        core::mem::discriminant(&CommandItem::ByteOrder(ByteOrder::BE)),
+                        input.span(),
+                    )?;
+
                     input.parse::<kw::ByteOrder>()?;
                     input.parse::<Token![=]>()?;
                     let value = input.parse()?;
                     input.parse::<Token![;]>()?;
                     items.push(CommandItem::ByteOrder(value));
                 } else if lookahead.peek(kw::BitOrder) {
+                    err_if_contains(
+                        &items,
+                        core::mem::discriminant(&CommandItem::BitOrder(BitOrder::LSB0)),
+                        input.span(),
+                    )?;
+
                     input.parse::<kw::BitOrder>()?;
                     input.parse::<Token![=]>()?;
                     let value = input.parse()?;
@@ -1114,24 +1229,60 @@ impl Parse for CommandItemList {
                 let lookahead = input.lookahead1();
 
                 if lookahead.peek(kw::ADDRESS) {
+                    err_if_contains(
+                        &items,
+                        core::mem::discriminant(&CommandItem::Address(LitInt::new(
+                            "0",
+                            Span::call_site(),
+                        ))),
+                        input.span(),
+                    )?;
+
                     input.parse::<kw::ADDRESS>()?;
                     input.parse::<Token![=]>()?;
                     let value = input.parse()?;
                     input.parse::<Token![;]>()?;
                     items.push(CommandItem::Address(value));
                 } else if lookahead.peek(kw::SIZE_BITS_IN) {
+                    err_if_contains(
+                        &items,
+                        core::mem::discriminant(&CommandItem::SizeBitsIn(LitInt::new(
+                            "0",
+                            Span::call_site(),
+                        ))),
+                        input.span(),
+                    )?;
+
                     input.parse::<kw::SIZE_BITS_IN>()?;
                     input.parse::<Token![=]>()?;
                     let value = input.parse()?;
                     input.parse::<Token![;]>()?;
                     items.push(CommandItem::SizeBitsIn(value));
                 } else if lookahead.peek(kw::SIZE_BITS_OUT) {
+                    err_if_contains(
+                        &items,
+                        core::mem::discriminant(&CommandItem::SizeBitsOut(LitInt::new(
+                            "0",
+                            Span::call_site(),
+                        ))),
+                        input.span(),
+                    )?;
+
                     input.parse::<kw::SIZE_BITS_OUT>()?;
                     input.parse::<Token![=]>()?;
                     let value = input.parse()?;
                     input.parse::<Token![;]>()?;
                     items.push(CommandItem::SizeBitsOut(value));
                 } else if lookahead.peek(kw::REPEAT) {
+                    err_if_contains(
+                        &items,
+                        core::mem::discriminant(&CommandItem::Repeat(Repeat {
+                            count: LitInt::new("0", Span::call_site()),
+                            stride: LitInt::new("0", Span::call_site()),
+                        })),
+                        input.span(),
+                    )?;
+
                     items.push(CommandItem::Repeat(input.parse()?));
                 } else {
                     return Err(lookahead.error());
@@ -1460,6 +1611,13 @@ mod tests {
                 .unwrap_err()
                 .to_string(),
             "expected `ByteOrder` or `BitOrder`"
+        );
+
+        assert_eq!(
+            syn::parse_str::<CommandItemList>("type ByteOrder = LE; type ByteOrder = LE;")
+                .unwrap_err()
+                .to_string(),
+            "duplicate item found"
         );
     }
 
@@ -1840,6 +1998,13 @@ mod tests {
                 .to_string(),
             "expected integer literal or square brackets"
         );
+
+        assert_eq!(
+            syn::parse_str::<RegisterItemList>("type Access = RW; type Access = RW;")
+                .unwrap_err()
+                .to_string(),
+            "duplicate item found"
+        );
     }
 
     #[test]
@@ -1984,6 +2149,13 @@ mod tests {
                 .unwrap_err()
                 .to_string(),
             "Invalid value. Must be an `ADDRESS_OFFSET` or `REPEAT`"
+        );
+
+        assert_eq!(
+            syn::parse_str::<BlockItemList>("const ADDRESS_OFFSET = 2; const ADDRESS_OFFSET = 2;")
+                .unwrap_err()
+                .to_string(),
+            "duplicate item found"
         );
     }
 
@@ -2271,5 +2443,29 @@ mod tests {
                 }
             }
         );
+    }
+
+    #[test]
+    fn attribute_eq() {
+        // Test for equality on Doc variant
+        let doc1 = Attribute::Doc(String::from("some doc"), Span::call_site());
+        let doc2 = Attribute::Doc(String::from("some doc"), Span::call_site());
+        assert_eq!(doc1, doc2);
+
+        // Test for inequality on Doc variant
+        let doc3 = Attribute::Doc(String::from("different doc"), Span::call_site());
+        assert_ne!(doc1, doc3);
+
+        // Test for equality on Cfg variant
+        let cfg1 = Attribute::Cfg(String::from("some cfg"), Span::call_site());
+        let cfg2 = Attribute::Cfg(String::from("some cfg"), Span::call_site());
+        assert_eq!(cfg1, cfg2);
+
+        // Test for inequality on Cfg variant
+        let cfg3 = Attribute::Cfg(String::from("different cfg"), Span::call_site());
+        assert_ne!(cfg1, cfg3);
+
+        // Test for inequality between Doc and Cfg variants
+        assert_ne!(doc1, cfg1);
     }
 }

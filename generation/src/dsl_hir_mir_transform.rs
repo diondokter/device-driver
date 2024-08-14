@@ -199,7 +199,9 @@ fn transform_object_list(
 
     for object in list.objects.into_iter() {
         let object = match object {
-            dsl_hir::Object::Block(_) => todo!(),
+            dsl_hir::Object::Block(block) => {
+                mir::Object::Block(transform_block(block, global_config)?)
+            }
             dsl_hir::Object::Register(_) => todo!(),
             dsl_hir::Object::Command(command) => {
                 mir::Object::Command(transform_command(command, global_config)?)
@@ -207,15 +209,46 @@ fn transform_object_list(
             dsl_hir::Object::Buffer(buffer) => {
                 mir::Object::Buffer(transform_buffer(buffer, global_config)?)
             }
-            dsl_hir::Object::Ref(ref_object) => {
-                mir::Object::Ref(transform_ref(ref_object, global_config)?)
-            }
+            dsl_hir::Object::Ref(ref_object) => mir::Object::Ref(transform_ref(ref_object)?),
         };
 
         objects.push(object);
     }
 
     Ok(objects)
+}
+
+fn transform_block(
+    block: dsl_hir::Block,
+    global_config: &mir::GlobalConfig,
+) -> Result<mir::Block, syn::Error> {
+    Ok(mir::Block {
+        cfg_attr: get_cfg_attr(&block.attribute_list)?,
+        description: get_description(&block.attribute_list).unwrap_or_default(),
+        name: block.identifier.to_string(),
+        address_offset: block
+            .block_item_list
+            .block_items
+            .iter()
+            .find_map(|item| match item {
+                dsl_hir::BlockItem::AddressOffset(address_offset) => {
+                    Some(address_offset.base10_parse())
+                }
+                _ => None,
+            })
+            .transpose()?
+            .unwrap_or(0),
+        repeat: block
+            .block_item_list
+            .block_items
+            .iter()
+            .find_map(|item| match item {
+                dsl_hir::BlockItem::Repeat(repeat) => Some(repeat.clone().try_into()),
+                _ => None,
+            })
+            .transpose()?,
+        objects: transform_object_list(block.object_list, global_config)?,
+    })
 }
 
 fn transform_command(
@@ -439,27 +472,30 @@ fn transform_buffer(
     })
 }
 
-fn transform_ref(
-    ref_object: dsl_hir::RefObject,
-    global_config: &mir::GlobalConfig,
-) -> Result<mir::RefObject, syn::Error> {
+fn transform_ref(ref_object: dsl_hir::RefObject) -> Result<mir::RefObject, syn::Error> {
     Ok(mir::RefObject {
         cfg_attr: get_cfg_attr(&ref_object.attribute_list)?,
         description: get_description(&ref_object.attribute_list).unwrap_or_default(),
         name: ref_object.identifier.to_string(),
         object: match *ref_object.object {
-            dsl_hir::Object::Block(block_override) => Box::new(mir::ObjectOverride::Block(
-                transform_block_override(block_override)?,
-            )),
-            dsl_hir::Object::Register(register_override) => Box::new(
-                mir::ObjectOverride::Register(transform_register_override(register_override)?),
-            ),
-            dsl_hir::Object::Command(command_override) => Box::new(mir::ObjectOverride::Command(
-                transform_command_override(command_override, global_config)?,
-            )),
-            dsl_hir::Object::Buffer(buffer_override) => Box::new(mir::ObjectOverride::Buffer(
-                transform_buffer_override(buffer_override)?,
-            )),
+            dsl_hir::Object::Block(block_override) => {
+                mir::ObjectOverride::Block(transform_block_override(block_override)?)
+            }
+            dsl_hir::Object::Register(register_override) => {
+                mir::ObjectOverride::Register(transform_register_override(register_override)?)
+            }
+            dsl_hir::Object::Command(command_override) => {
+                mir::ObjectOverride::Command(transform_command_override(command_override)?)
+            }
+            dsl_hir::Object::Buffer(_) => {
+                return Err(syn::Error::new(
+                    ref_object.identifier.span(),
+                    &format!(
+                        "Ref `{}` cannot ref a buffer",
+                        ref_object.identifier.to_string()
+                    ),
+                ))
+            }
             dsl_hir::Object::Ref(_) => {
                 return Err(syn::Error::new(
                     ref_object.identifier.span(),
@@ -476,121 +512,158 @@ fn transform_ref(
 fn transform_block_override(
     block_override: dsl_hir::Block,
 ) -> Result<mir::BlockOverride, syn::Error> {
-    todo!()
+    if !block_override.attribute_list.attributes.is_empty() {
+        return Err(syn::Error::new(
+            block_override.identifier.span(),
+            "No attributes (cfg or doc) are allowed on block overrides",
+        ));
+    }
+
+    if !block_override.object_list.objects.is_empty() {
+        return Err(syn::Error::new(
+            block_override.identifier.span(),
+            "No objects may be defined on block overrides",
+        ));
+    }
+
+    Ok(mir::BlockOverride {
+        name: block_override.identifier.to_string(),
+        address_offset: block_override
+            .block_item_list
+            .block_items
+            .iter()
+            .find_map(|item| match item {
+                dsl_hir::BlockItem::AddressOffset(address_offset) => {
+                    Some(address_offset.base10_parse())
+                }
+                _ => None,
+            })
+            .transpose()?,
+        repeat: block_override
+            .block_item_list
+            .block_items
+            .iter()
+            .find_map(|item| match item {
+                dsl_hir::BlockItem::Repeat(repeat) => Some(repeat.clone().try_into()),
+                _ => None,
+            })
+            .transpose()?,
+    })
 }
 
 fn transform_register_override(
     register_override: dsl_hir::Register,
 ) -> Result<mir::RegisterOverride, syn::Error> {
+    if !register_override.attribute_list.attributes.is_empty() {
+        return Err(syn::Error::new(
+            register_override.identifier.span(),
+            "No attributes (cfg or doc) are allowed on register overrides",
+        ));
+    }
+
     todo!()
 }
 
 fn transform_command_override(
     command_override: dsl_hir::Command,
-    global_config: &mir::GlobalConfig,
 ) -> Result<mir::CommandOverride, syn::Error> {
+    if !command_override.attribute_list.attributes.is_empty() {
+        return Err(syn::Error::new(
+            command_override.identifier.span(),
+            "No attributes (cfg or doc) are allowed on command overrides",
+        ));
+    }
+
+    let command_item_list = match &command_override.value {
+        Some(dsl_hir::CommandValue::Extended {
+            in_field_list: Some(_),
+            ..
+        }) => {
+            return Err(syn::Error::new(
+                command_override.identifier.span(),
+                "No `in` field list is allowed on command overrides",
+            ))
+        }
+        Some(dsl_hir::CommandValue::Extended {
+            out_field_list: Some(_),
+            ..
+        }) => {
+            return Err(syn::Error::new(
+                command_override.identifier.span(),
+                "No `out` field list is allowed on command overrides",
+            ))
+        }
+        Some(dsl_hir::CommandValue::Extended {
+            command_item_list,
+            in_field_list: None,
+            out_field_list: None,
+        }) => {
+            for ci in command_item_list.items.iter() {
+                match ci {
+                    dsl_hir::CommandItem::ByteOrder(_) => {
+                        return Err(syn::Error::new(
+                            command_override.identifier.span(),
+                            "No byte order is allowed on command overrides",
+                        ))
+                    }
+                    dsl_hir::CommandItem::BitOrder(_) => {
+                        return Err(syn::Error::new(
+                            command_override.identifier.span(),
+                            "No bit order is allowed on command overrides",
+                        ))
+                    }
+                    dsl_hir::CommandItem::SizeBitsIn(_) => {
+                        return Err(syn::Error::new(
+                            command_override.identifier.span(),
+                            "No size bits in is allowed on command overrides",
+                        ))
+                    }
+                    dsl_hir::CommandItem::SizeBitsOut(_) => {
+                        return Err(syn::Error::new(
+                            command_override.identifier.span(),
+                            "No size bits out is allowed on command overrides",
+                        ))
+                    }
+                    dsl_hir::CommandItem::Repeat(_) | dsl_hir::CommandItem::Address(_) => {}
+                }
+            }
+
+            command_item_list
+        }
+        Some(dsl_hir::CommandValue::Basic(_)) => {
+            return Err(syn::Error::new(
+                command_override.identifier.span(),
+                "No basic address specifier is allowed on command overrides. Use the extended syntax with `{ }` instead",
+            ));
+        }
+        None => {
+            return Err(syn::Error::new(
+                command_override.identifier.span(),
+                "A value is required on command overrides",
+            ));
+        }
+    };
+
     Ok(mir::CommandOverride {
         name: command_override.identifier.to_string(),
-        address: match &command_override.value {
-            None => None,
-            Some(dsl_hir::CommandValue::Basic(lit)) => Some(lit),
-            Some(dsl_hir::CommandValue::Extended {
-                command_item_list, ..
-            }) => command_item_list.items.iter().find_map(|item| match item {
+        address: command_item_list
+            .items
+            .iter()
+            .find_map(|item| match item {
                 dsl_hir::CommandItem::Address(lit) => Some(lit),
                 _ => None,
-            }),
-        }
-        .map(|lit| lit.base10_parse())
-        .transpose()?,
-        byte_order: match &command_override.value {
-            None | Some(dsl_hir::CommandValue::Basic(_)) => None,
-            Some(dsl_hir::CommandValue::Extended {
-                command_item_list, ..
-            }) => command_item_list.items.iter().find_map(|item| match item {
-                dsl_hir::CommandItem::ByteOrder(order) => Some(order.clone().into()),
+            })
+            .map(|lit| lit.base10_parse())
+            .transpose()?,
+        repeat: command_item_list
+            .items
+            .iter()
+            .find_map(|item| match item {
+                dsl_hir::CommandItem::Repeat(repeat) => Some(mir::Repeat::try_from(repeat.clone())),
                 _ => None,
-            }),
-        },
-        bit_order: match &command_override.value {
-            None | Some(dsl_hir::CommandValue::Basic(_)) => None,
-            Some(dsl_hir::CommandValue::Extended {
-                command_item_list, ..
-            }) => command_item_list.items.iter().find_map(|item| match item {
-                dsl_hir::CommandItem::BitOrder(order) => Some(order.clone().into()),
-                _ => None,
-            }),
-        },
-        size_bits_in: match &command_override.value {
-            None | Some(dsl_hir::CommandValue::Basic(_)) => None,
-            Some(dsl_hir::CommandValue::Extended {
-                command_item_list, ..
-            }) => command_item_list.items.iter().find_map(|item| match item {
-                dsl_hir::CommandItem::SizeBitsIn(size) => Some(size.base10_parse()),
-                _ => None,
-            }),
-        }
-        .transpose()?,
-        size_bits_out: match &command_override.value {
-            None | Some(dsl_hir::CommandValue::Basic(_)) => None,
-            Some(dsl_hir::CommandValue::Extended {
-                command_item_list, ..
-            }) => command_item_list.items.iter().find_map(|item| match item {
-                dsl_hir::CommandItem::SizeBitsOut(size) => Some(size.base10_parse()),
-                _ => None,
-            }),
-        }
-        .transpose()?,
-        repeat: match &command_override.value {
-            None | Some(dsl_hir::CommandValue::Basic(_)) => None,
-            Some(dsl_hir::CommandValue::Extended {
-                command_item_list, ..
-            }) => command_item_list
-                .items
-                .iter()
-                .find_map(|item| match item {
-                    dsl_hir::CommandItem::Repeat(repeat) => {
-                        Some(mir::Repeat::try_from(repeat.clone()))
-                    }
-                    _ => None,
-                })
-                .transpose()?,
-        },
-        in_fields: match &command_override.value {
-            None => None,
-            Some(dsl_hir::CommandValue::Basic(_)) => None,
-            Some(dsl_hir::CommandValue::Extended { in_field_list, .. }) => in_field_list
-                .as_ref()
-                .map(|in_field_list| {
-                    in_field_list
-                        .fields
-                        .iter()
-                        .map(|field| transform_field(field, global_config))
-                        .collect::<Result<_, _>>()
-                })
-                .transpose()?,
-        },
-        out_fields: match &command_override.value {
-            None => None,
-            Some(dsl_hir::CommandValue::Basic(_)) => None,
-            Some(dsl_hir::CommandValue::Extended { out_field_list, .. }) => out_field_list
-                .as_ref()
-                .map(|out_field_list| {
-                    out_field_list
-                        .fields
-                        .iter()
-                        .map(|field| transform_field(field, global_config))
-                        .collect::<Result<_, _>>()
-                })
-                .transpose()?,
-        },
+            })
+            .transpose()?,
     })
-}
-
-fn transform_buffer_override(
-    buffer_override: dsl_hir::Buffer,
-) -> Result<mir::BufferOverride, syn::Error> {
-    todo!()
 }
 
 #[cfg(test)]
@@ -654,7 +727,7 @@ mod tests {
                     /// Hello world!
                     #[cfg(feature = \"foo\")]
                     /// This should be in order!
-                    buffer Foo: RO = 5
+                    buffer Foo: RW = 5
                     ",
                 )
                 .unwrap()
@@ -665,7 +738,7 @@ mod tests {
                 cfg_attr: Some("feature = \"foo\"".into()),
                 description: " Hello world!\n This should be in order!".into(),
                 name: "Foo".into(),
-                access: mir::Access::RO,
+                access: mir::Access::RW,
                 address: 5,
             })]
         );
@@ -764,7 +837,7 @@ mod tests {
                         in {
                             /// Hello!
                             #[cfg(bla)]
-                            val: WO bool = 0,
+                            val: CO bool = 0,
                             foo: uint as crate::my_mod::MyStruct = 1..=5,
                         }
                         out {
@@ -802,7 +875,7 @@ mod tests {
                         cfg_attr: Some("bla".into()),
                         description: " Hello!".into(),
                         name: "val".into(),
-                        access: mir::Access::WO,
+                        access: mir::Access::CO,
                         base_type: mir::BaseType::Bool,
                         field_conversion: None,
                         field_address: 0..0,
@@ -982,5 +1055,523 @@ mod tests {
             .to_string(),
             "Only one cfg attribute is allowed, but 2 are found"
         );
+    }
+
+    #[test]
+    fn ref_no_buffer_or_ref() {
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo = buffer Bar
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap_err()
+            .to_string(),
+            "Ref `Foo` cannot ref a buffer"
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo = ref Bar = buffer X
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap_err()
+            .to_string(),
+            "Ref `Foo` cannot ref another ref object"
+        );
+    }
+
+    #[test]
+    fn ref_command() {
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo = command Bar {}
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap()
+            .objects,
+            &[mir::Object::Ref(mir::RefObject {
+                cfg_attr: None,
+                description: "".into(),
+                name: "Foo".into(),
+                object: mir::ObjectOverride::Command(mir::CommandOverride {
+                    name: "Bar".into(),
+                    address: None,
+                    repeat: None
+                })
+            })]
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo = command Bar {
+                        const ADDRESS = 6;
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap()
+            .objects,
+            &[mir::Object::Ref(mir::RefObject {
+                cfg_attr: None,
+                description: "".into(),
+                name: "Foo".into(),
+                object: mir::ObjectOverride::Command(mir::CommandOverride {
+                    name: "Bar".into(),
+                    address: Some(6),
+                    repeat: None
+                })
+            })]
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo = command Bar {
+                        const ADDRESS = 7;
+                        const REPEAT = {
+                            count: 4,
+                            stride: 4,
+                        };
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap()
+            .objects,
+            &[mir::Object::Ref(mir::RefObject {
+                cfg_attr: None,
+                description: "".into(),
+                name: "Foo".into(),
+                object: mir::ObjectOverride::Command(mir::CommandOverride {
+                    name: "Bar".into(),
+                    address: Some(7),
+                    repeat: Some(mir::Repeat {
+                        count: 4,
+                        stride: 4
+                    })
+                })
+            })]
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo = command Bar {
+                        const REPEAT = {
+                            count: 4,
+                            stride: 4,
+                        };
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap()
+            .objects,
+            &[mir::Object::Ref(mir::RefObject {
+                cfg_attr: None,
+                description: "".into(),
+                name: "Foo".into(),
+                object: mir::ObjectOverride::Command(mir::CommandOverride {
+                    name: "Bar".into(),
+                    address: None,
+                    repeat: Some(mir::Repeat {
+                        count: 4,
+                        stride: 4
+                    })
+                })
+            })]
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo = command Bar
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap_err()
+            .to_string(),
+            "A value is required on command overrides"
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo = command Bar = 6
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap_err().to_string()
+            ,
+            "No basic address specifier is allowed on command overrides. Use the extended syntax with `{ }` instead"
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo =
+                        /// Illegal attribute!
+                        command Bar {}
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap_err()
+            .to_string(),
+            "No attributes (cfg or doc) are allowed on command overrides"
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo = command Bar {
+                        in {}
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap_err()
+            .to_string(),
+            "No `in` field list is allowed on command overrides"
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo = command Bar {
+                        out {}
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap_err()
+            .to_string(),
+            "No `out` field list is allowed on command overrides"
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo = command Bar {
+                        type ByteOrder = LE;
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap_err()
+            .to_string(),
+            "No byte order is allowed on command overrides"
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo = command Bar {
+                        type BitOrder = LSB0;
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap_err()
+            .to_string(),
+            "No bit order is allowed on command overrides"
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo = command Bar {
+                        const SIZE_BITS_IN = 0;
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap_err()
+            .to_string(),
+            "No size bits in is allowed on command overrides"
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo = command Bar {
+                        const SIZE_BITS_OUT = 0;
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap_err()
+            .to_string(),
+            "No size bits out is allowed on command overrides"
+        );
+    }
+
+    #[test]
+    fn ref_block() {
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo = block Bar {}
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap()
+            .objects,
+            &[mir::Object::Ref(mir::RefObject {
+                cfg_attr: None,
+                description: "".into(),
+                name: "Foo".into(),
+                object: mir::ObjectOverride::Block(mir::BlockOverride {
+                    name: "Bar".into(),
+                    address_offset: None,
+                    repeat: None
+                })
+            })]
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo =
+                        /// Illegal comment!
+                        block Bar {}
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap_err()
+            .to_string(),
+            "No attributes (cfg or doc) are allowed on block overrides"
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo = block Bar {
+                        buffer Bla = 0,
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap_err()
+            .to_string(),
+            "No objects may be defined on block overrides"
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    /// Hi!
+                    #[cfg(bla)]
+                    ref Foo = block Bar {
+                        const ADDRESS_OFFSET = 5;
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap()
+            .objects,
+            &[mir::Object::Ref(mir::RefObject {
+                cfg_attr: Some("bla".into()),
+                description: " Hi!".into(),
+                name: "Foo".into(),
+                object: mir::ObjectOverride::Block(mir::BlockOverride {
+                    name: "Bar".into(),
+                    address_offset: Some(5),
+                    repeat: None
+                })
+            })]
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo = block Bar {
+                        const REPEAT = {
+                            count: 6,
+                            stride: 2
+                        };
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap()
+            .objects,
+            &[mir::Object::Ref(mir::RefObject {
+                cfg_attr: None,
+                description: "".into(),
+                name: "Foo".into(),
+                object: mir::ObjectOverride::Block(mir::BlockOverride {
+                    name: "Bar".into(),
+                    address_offset: None,
+                    repeat: Some(mir::Repeat {
+                        count: 6,
+                        stride: 2
+                    })
+                })
+            })]
+        );
+    }
+
+    #[test]
+    fn block() {
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    block Foo {
+                        
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap()
+            .objects,
+            &[mir::Object::Block(mir::Block {
+                cfg_attr: Default::default(),
+                description: Default::default(),
+                name: "Foo".into(),
+                address_offset: 0,
+                repeat: Default::default(),
+                objects: Default::default(),
+            })]
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    /// Hello!
+                    #[cfg(bar)]
+                    block Foo {
+                        const ADDRESS_OFFSET = 0x500;
+                        buffer Bla = 5,
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap()
+            .objects,
+            &[mir::Object::Block(mir::Block {
+                cfg_attr: Some("bar".into()),
+                description: " Hello!".into(),
+                name: "Foo".into(),
+                address_offset: 0x500,
+                repeat: None,
+                objects: vec![mir::Object::Buffer(mir::Buffer {
+                    cfg_attr: Default::default(),
+                    description: Default::default(),
+                    name: "Bla".into(),
+                    access: Default::default(),
+                    address: 5
+                })],
+            })]
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    block Foo {
+                        const REPEAT = {
+                            count: 4,
+                            stride: 4,
+                        };
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap()
+            .objects,
+            &[mir::Object::Block(mir::Block {
+                cfg_attr: Default::default(),
+                description: Default::default(),
+                name: "Foo".into(),
+                address_offset: 0,
+                repeat: Some(mir::Repeat {
+                    count: 4,
+                    stride: 4
+                }),
+                objects: Default::default(),
+            })]
+        );
+    }
+
+    #[test]
+    fn test_integer_try_from_ident() {
+        // Test for valid integer types
+        let test_cases = vec![
+            ("u8", mir::Integer::U8),
+            ("u16", mir::Integer::U16),
+            ("u32", mir::Integer::U32),
+            ("u64", mir::Integer::U64),
+            ("u128", mir::Integer::U128),
+            ("i8", mir::Integer::I8),
+            ("i16", mir::Integer::I16),
+            ("i32", mir::Integer::I32),
+            ("i64", mir::Integer::I64),
+            ("i128", mir::Integer::I128),
+        ];
+
+        for (ident_str, expected) in test_cases {
+            let ident = syn::Ident::new(&ident_str, Span::call_site());
+            let result = mir::Integer::try_from(ident);
+            assert_eq!(result.unwrap(), expected);
+        }
+
+        // Test for invalid identifier
+        let invalid_ident: syn::Ident = syn::parse_quote! { foo };
+        let result = mir::Integer::try_from(invalid_ident);
+
+        // Check the error string
+        assert_eq!(result.unwrap_err().to_string(), "Must be an integer type",);
     }
 }
