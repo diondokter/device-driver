@@ -202,7 +202,9 @@ fn transform_object_list(
             dsl_hir::Object::Block(block) => {
                 mir::Object::Block(transform_block(block, global_config)?)
             }
-            dsl_hir::Object::Register(_) => todo!(),
+            dsl_hir::Object::Register(register) => {
+                mir::Object::Register(transform_register(register, global_config)?)
+            }
             dsl_hir::Object::Command(command) => {
                 mir::Object::Command(transform_command(command, global_config)?)
             }
@@ -248,6 +250,110 @@ fn transform_block(
             })
             .transpose()?,
         objects: transform_object_list(block.object_list, global_config)?,
+    })
+}
+
+fn transform_register(
+    register: dsl_hir::Register,
+    global_config: &mir::GlobalConfig,
+) -> Result<mir::Register, syn::Error> {
+    Ok(mir::Register {
+        cfg_attr: get_cfg_attr(&register.attribute_list)?,
+        description: get_description(&register.attribute_list).unwrap_or_default(),
+        name: register.identifier.to_string(),
+        access: register
+            .register_item_list
+            .register_items
+            .iter()
+            .find_map(|i| match i {
+                dsl_hir::RegisterItem::Access(access) => Some(access.clone().into()),
+                _ => None,
+            })
+            .unwrap_or(global_config.default_register_access),
+        byte_order: register
+            .register_item_list
+            .register_items
+            .iter()
+            .find_map(|i| match i {
+                dsl_hir::RegisterItem::ByteOrder(bo) => Some(bo.clone().into()),
+                _ => None,
+            })
+            .unwrap_or(global_config.default_byte_order),
+        bit_order: register
+            .register_item_list
+            .register_items
+            .iter()
+            .find_map(|i| match i {
+                dsl_hir::RegisterItem::BitOrder(bi) => Some(bi.clone().into()),
+                _ => None,
+            })
+            .unwrap_or(global_config.default_bit_order),
+        address: register
+            .register_item_list
+            .register_items
+            .iter()
+            .find_map(|i| match i {
+                dsl_hir::RegisterItem::Address(addr) => Some(addr.base10_parse()),
+                _ => None,
+            })
+            .transpose()?
+            .ok_or_else(|| {
+                syn::Error::new(
+                    register.identifier.span(),
+                    &format!(
+                        "Register `{}` must have an address",
+                        register.identifier.to_string()
+                    ),
+                )
+            })?,
+        size_bits: register
+            .register_item_list
+            .register_items
+            .iter()
+            .find_map(|i| match i {
+                dsl_hir::RegisterItem::SizeBits(sb) => Some(sb.base10_parse()),
+                _ => None,
+            })
+            .transpose()?
+            .unwrap_or(0),
+        reset_value: register
+            .register_item_list
+            .register_items
+            .iter()
+            .find_map(|i| match i {
+                dsl_hir::RegisterItem::ResetValueArray(arr) => {
+                    Some(Ok(mir::ResetValue::Array(arr.clone())))
+                }
+                dsl_hir::RegisterItem::ResetValueInt(int) => Some(
+                    int.base10_parse::<i128>()
+                        .map(|v| v as u128)
+                        .or_else(|_| int.base10_parse::<u128>())
+                        .map_err(|e| {
+                            syn::Error::new(
+                                int.span(),
+                                &format!("{e}: number is parsed as an i128 or u128"),
+                            )
+                        })
+                        .map(|v| mir::ResetValue::Integer(v)),
+                ),
+                _ => None,
+            })
+            .transpose()?,
+        repeat: register
+            .register_item_list
+            .register_items
+            .iter()
+            .find_map(|i| match i {
+                dsl_hir::RegisterItem::Repeat(repeat) => Some(repeat.clone().try_into()),
+                _ => None,
+            })
+            .transpose()?,
+        fields: register
+            .field_list
+            .fields
+            .iter()
+            .map(|field| transform_field(field, global_config))
+            .collect::<Result<_, _>>()?,
     })
 }
 
@@ -561,7 +667,89 @@ fn transform_register_override(
         ));
     }
 
-    todo!()
+    if !register_override.field_list.fields.is_empty() {
+        return Err(syn::Error::new(
+            register_override.identifier.span(),
+            "No fields are allowed on register overrides",
+        ));
+    }
+
+    for item in register_override.register_item_list.register_items.iter() {
+        match item {
+            dsl_hir::RegisterItem::ByteOrder(_) => {
+                return Err(syn::Error::new(
+                    register_override.identifier.span(),
+                    "No ByteOrder is allowed on register overrides",
+                ))
+            }
+            dsl_hir::RegisterItem::BitOrder(_) => {
+                return Err(syn::Error::new(
+                    register_override.identifier.span(),
+                    "No BitOrder is allowed on register overrides",
+                ))
+            }
+            dsl_hir::RegisterItem::SizeBits(_) => {
+                return Err(syn::Error::new(
+                    register_override.identifier.span(),
+                    "No SizeBits is allowed on register overrides",
+                ))
+            }
+            _ => {}
+        }
+    }
+
+    Ok(mir::RegisterOverride {
+        name: register_override.identifier.to_string(),
+        access: register_override
+            .register_item_list
+            .register_items
+            .iter()
+            .find_map(|i| match i {
+                dsl_hir::RegisterItem::Access(access) => Some(access.clone().into()),
+                _ => None,
+            }),
+        address: register_override
+            .register_item_list
+            .register_items
+            .iter()
+            .find_map(|i| match i {
+                dsl_hir::RegisterItem::Address(addr) => Some(addr.base10_parse()),
+                _ => None,
+            })
+            .transpose()?,
+        reset_value: register_override
+            .register_item_list
+            .register_items
+            .iter()
+            .find_map(|i| match i {
+                dsl_hir::RegisterItem::ResetValueArray(arr) => {
+                    Some(Ok(mir::ResetValue::Array(arr.clone())))
+                }
+                dsl_hir::RegisterItem::ResetValueInt(int) => Some(
+                    int.base10_parse::<i128>()
+                        .map(|v| v as u128)
+                        .or_else(|_| int.base10_parse::<u128>())
+                        .map_err(|e| {
+                            syn::Error::new(
+                                int.span(),
+                                &format!("{e}: number is parsed as an i128 or u128"),
+                            )
+                        })
+                        .map(|v| mir::ResetValue::Integer(v)),
+                ),
+                _ => None,
+            })
+            .transpose()?,
+        repeat: register_override
+            .register_item_list
+            .register_items
+            .iter()
+            .find_map(|i| match i {
+                dsl_hir::RegisterItem::Repeat(repeat) => Some(repeat.clone().try_into()),
+                _ => None,
+            })
+            .transpose()?,
+    })
 }
 
 fn transform_command_override(
@@ -1089,6 +1277,193 @@ mod tests {
     }
 
     #[test]
+    fn ref_register() {
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo = register Bar {}
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap()
+            .objects,
+            &[mir::Object::Ref(mir::RefObject {
+                cfg_attr: None,
+                description: "".into(),
+                name: "Foo".into(),
+                object: mir::ObjectOverride::Register(mir::RegisterOverride {
+                    name: "Bar".into(),
+                    address: None,
+                    repeat: None,
+                    access: None,
+                    reset_value: None,
+                })
+            })]
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo = register Bar {
+                        const ADDRESS = 5;
+                        const REPEAT = {
+                            count: 5,
+                            stride: 1,
+                        };
+                        type Access = WO;
+                        const RESET_VALUE = 123;
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap()
+            .objects,
+            &[mir::Object::Ref(mir::RefObject {
+                cfg_attr: None,
+                description: "".into(),
+                name: "Foo".into(),
+                object: mir::ObjectOverride::Register(mir::RegisterOverride {
+                    name: "Bar".into(),
+                    address: Some(5),
+                    repeat: Some(mir::Repeat {
+                        count: 5,
+                        stride: 1
+                    }),
+                    access: Some(mir::Access::WO),
+                    reset_value: Some(mir::ResetValue::Integer(123)),
+                })
+            })]
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo = register Bar {
+                        const RESET_VALUE = [1, 2, 3];
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap()
+            .objects,
+            &[mir::Object::Ref(mir::RefObject {
+                cfg_attr: None,
+                description: "".into(),
+                name: "Foo".into(),
+                object: mir::ObjectOverride::Register(mir::RegisterOverride {
+                    name: "Bar".into(),
+                    address: Default::default(),
+                    repeat: Default::default(),
+                    access: Default::default(),
+                    reset_value: Some(mir::ResetValue::Array(vec![1, 2, 3])),
+                })
+            })]
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo = register Bar {
+                        type ByteOrder = BE;
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap_err()
+            .to_string(),
+            "No ByteOrder is allowed on register overrides"
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo = register Bar {
+                        type BitOrder = LSB0;
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap_err()
+            .to_string(),
+            "No BitOrder is allowed on register overrides"
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo = register Bar {
+                        const SIZE_BITS = 5;
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap_err()
+            .to_string(),
+            "No SizeBits is allowed on register overrides"
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo =
+                        /// Hi!
+                        register Bar { }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap_err()
+            .to_string(),
+            "No attributes (cfg or doc) are allowed on register overrides"
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo = register Bar {
+                        val: bool = 0,
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap_err()
+            .to_string(),
+            "No fields are allowed on register overrides"
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo = register Bar {
+                        const RESET_VALUE = 0x123456789012345678901234567890123;
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap_err()
+            .to_string(),
+            "number too large to fit in target type: number is parsed as an i128 or u128"
+        );
+    }
+
+    #[test]
     fn ref_command() {
         assert_eq!(
             transform(
@@ -1541,6 +1916,150 @@ mod tests {
                     stride: 4
                 }),
                 objects: Default::default(),
+            })]
+        );
+    }
+
+    #[test]
+    fn register() {
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    register Foo {
+                        const SIZE_BITS = 16;
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap_err()
+            .to_string(),
+            "Register `Foo` must have an address"
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    register Foo {
+                        const ADDRESS = 5;
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap()
+            .objects,
+            &[mir::Object::Register(mir::Register {
+                cfg_attr: Default::default(),
+                description: Default::default(),
+                name: "Foo".into(),
+                access: Default::default(),
+                byte_order: Default::default(),
+                bit_order: Default::default(),
+                address: 5,
+                size_bits: Default::default(),
+                reset_value: Default::default(),
+                repeat: Default::default(),
+                fields: Default::default(),
+            })]
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    /// This is foo
+                    register Foo {
+                        const ADDRESS = 5;
+                        type ByteOrder = LE;
+                        type BitOrder = MSB0;
+                        type Access = RC;
+                        const SIZE_BITS = 16;
+                        const REPEAT = {
+                            count: 2,
+                            stride: 120
+                        };
+                        const RESET_VALUE = 0x1234;
+
+                        val: int = 0..16
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap()
+            .objects,
+            &[mir::Object::Register(mir::Register {
+                cfg_attr: Default::default(),
+                description: " This is foo".into(),
+                name: "Foo".into(),
+                access: mir::Access::RC,
+                byte_order: mir::ByteOrder::LE,
+                bit_order: mir::BitOrder::MSB0,
+                address: 5,
+                size_bits: 16,
+                reset_value: Some(mir::ResetValue::Integer(0x1234)),
+                repeat: Some(mir::Repeat {
+                    count: 2,
+                    stride: 120
+                }),
+                fields: vec![mir::Field {
+                    cfg_attr: Default::default(),
+                    description: Default::default(),
+                    name: "val".into(),
+                    access: Default::default(),
+                    base_type: mir::BaseType::Int,
+                    field_conversion: Default::default(),
+                    field_address: 0..16
+                }],
+            })]
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    register Foo {
+                        const ADDRESS = 16;
+                        const RESET_VALUE = 0x123456789ABCDEF000000000000000000;
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap_err()
+            .to_string(),
+            "number too large to fit in target type: number is parsed as an i128 or u128"
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    register Foo {
+                        const ADDRESS = 5;
+                        const RESET_VALUE = [12, 34];
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap()
+            .objects,
+            &[mir::Object::Register(mir::Register {
+                cfg_attr: Default::default(),
+                description: Default::default(),
+                name: "Foo".into(),
+                access: Default::default(),
+                byte_order: Default::default(),
+                bit_order: Default::default(),
+                address: 5,
+                size_bits: Default::default(),
+                reset_value: Some(mir::ResetValue::Array(vec![12, 34])),
+                repeat: Default::default(),
+                fields: Default::default(),
             })]
         );
     }

@@ -107,7 +107,7 @@ pub struct Register {
     pub bit_order: BitOrder,
     pub address: u64,
     pub size_bits: u64,
-    pub reset_value: Vec<u8>,
+    pub reset_value: Option<ResetValue>,
     pub repeat: Option<Repeat>,
     pub fields: Vec<Field>,
 }
@@ -206,7 +206,7 @@ pub struct RegisterOverride {
     pub name: String,
     pub access: Option<Access>,
     pub address: Option<u64>,
-    pub reset_value: Option<Vec<u8>>,
+    pub reset_value: Option<ResetValue>,
     pub repeat: Option<Repeat>,
 }
 
@@ -215,4 +215,10 @@ pub struct CommandOverride {
     pub name: String,
     pub address: Option<u64>,
     pub repeat: Option<Repeat>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ResetValue {
+    Integer(u128),
+    Array(Vec<u8>),
 }
