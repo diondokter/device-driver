@@ -12,6 +12,7 @@ description = "Code generation for the `device-driver` crate"
 readme.workspace = true
 
 [dependencies]
+anyhow = "1.0.86"
 convert_case = "0.6.0"
 indexmap = { version = "2.1.0", features = ["serde"] }
 prettyplease = "0.2.15"

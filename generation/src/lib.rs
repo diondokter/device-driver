@@ -14,7 +14,6 @@ pub mod deserialization;
 mod generation;
 
 pub mod dsl_hir;
-pub mod dsl_hir_mir_transform;
 pub mod mir;
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]

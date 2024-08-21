@@ -26,11 +26,12 @@
 //! > | (`type` `RegisterAddressType` `=` _IntegerType_`;`)
 //! > | (`type` `CommandAddressType` `=` _IntegerType_`;`)
 //! > | (`type` `BufferAddressType` `=` _IntegerType_`;`)
-//! > | (`type` `NameCase` `=` _NameCase_`;`)
+//! > | (`type` `NameWordBoundaries` `=` _NameWordBoundaries_`;`)
 //!
-//! _NameCase_:
+//! _NameWordBoundaries_:
 //! This specifies the input, not the output. Only applies to object and field names.
-//! > `Varying`|`Pascal`|`Snake`|`ScreamingSnake`|`Camel`|`Kebab`|`Cobol`
+//! > [_Boundary_*]
+//! > | _String_
 //!
 //! _ObjectList_:
 //! > (_Object_(`,` _Object_)*`,`?)?
@@ -150,14 +151,17 @@
 
 use std::mem::Discriminant;
 
+use convert_case::Boundary;
 use proc_macro2::Span;
 use syn::{
     braced, bracketed,
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
     spanned::Spanned,
-    LitInt, Token,
+    Ident, LitInt, LitStr, Token,
 };
+
+pub mod mir_transform;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Device {
@@ -211,7 +215,7 @@ pub enum GlobalConfig {
     RegisterAddressType(syn::Ident),
     CommandAddressType(syn::Ident),
     BufferAddressType(syn::Ident),
-    NameCase(NameCase),
+    NameWordBoundaries(Vec<Boundary>),
 }
 
 impl Parse for GlobalConfig {
@@ -268,54 +272,42 @@ impl Parse for GlobalConfig {
             let value = input.parse()?;
             input.parse::<Token![;]>()?;
             Ok(Self::BufferAddressType(value))
-        } else if lookahead.peek(kw::NameCase) {
-            input.parse::<kw::NameCase>()?;
+        } else if lookahead.peek(kw::NameWordBoundaries) {
+            input.parse::<kw::NameWordBoundaries>()?;
             input.parse::<Token![=]>()?;
-            let value = input.parse()?;
+
+            let value = if input.peek(syn::token::Bracket) {
+                let bracket_input;
+                bracketed!(bracket_input in input);
+
+                let boundaries = Punctuated::<Ident, Token![,]>::parse_terminated(&bracket_input)?;
+                boundaries
+                    .into_iter()
+                    .map(|ident| {
+                        for b in Boundary::all() {
+                            if format!("{b:?}").to_lowercase() == ident.to_string().to_lowercase() {
+                                return Ok(b);
+                            }
+                        }
+
+                        Err(syn::Error::new(ident.span(), &format!("`{}` is not a valid boundary name. One of the following was expected: {:?}", ident, Boundary::all())))
+                    }).collect::<Result<Vec<_>, _>>()?
+            } else {
+                let string_value = match input.parse::<LitStr>() {
+                    Ok(lit) => lit.value(),
+                    Err(e) => {
+                        return Err(syn::Error::new(
+                            e.span(),
+                            "Expected an array of boundaries or a string",
+                        ));
+                    }
+                };
+
+                Boundary::list_from(&string_value)
+            };
+
             input.parse::<Token![;]>()?;
-            Ok(Self::NameCase(value))
-        } else {
-            Err(lookahead.error())
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum NameCase {
-    Varying,
-    Pascal,
-    Snake,
-    ScreamingSnake,
-    Camel,
-    Kebab,
-    Cobol,
-}
-
-impl Parse for NameCase {
-    fn parse(input: ParseStream) -> syn::Result<Self> {
-        let lookahead = input.lookahead1();
-
-        if lookahead.peek(kw::Varying) {
-            input.parse::<kw::Varying>()?;
-            Ok(Self::Varying)
-        } else if lookahead.peek(kw::Pascal) {
-            input.parse::<kw::Pascal>()?;
-            Ok(Self::Pascal)
-        } else if lookahead.peek(kw::Snake) {
-            input.parse::<kw::Snake>()?;
-            Ok(Self::Snake)
-        } else if lookahead.peek(kw::ScreamingSnake) {
-            input.parse::<kw::ScreamingSnake>()?;
-            Ok(Self::ScreamingSnake)
-        } else if lookahead.peek(kw::Camel) {
-            input.parse::<kw::Camel>()?;
-            Ok(Self::Camel)
-        } else if lookahead.peek(kw::Kebab) {
-            input.parse::<kw::Kebab>()?;
-            Ok(Self::Kebab)
-        } else if lookahead.peek(kw::Cobol) {
-            input.parse::<kw::Cobol>()?;
-            Ok(Self::Cobol)
+            Ok(Self::NameWordBoundaries(value))
         } else {
             Err(lookahead.error())
         }
@@ -1394,16 +1386,7 @@ mod kw {
     syn::custom_keyword!(RegisterAddressType);
     syn::custom_keyword!(CommandAddressType);
     syn::custom_keyword!(BufferAddressType);
-    syn::custom_keyword!(NameCase);
-
-    // NameCase options
-    syn::custom_keyword!(Varying);
-    syn::custom_keyword!(Pascal);
-    syn::custom_keyword!(Snake);
-    syn::custom_keyword!(ScreamingSnake);
-    syn::custom_keyword!(Camel);
-    syn::custom_keyword!(Kebab);
-    syn::custom_keyword!(Cobol);
+    syn::custom_keyword!(NameWordBoundaries);
 
     // Access
     syn::custom_keyword!(Access);
@@ -2201,42 +2184,6 @@ mod tests {
     }
 
     #[test]
-    fn parse_name_case() {
-        assert_eq!(
-            syn::parse_str::<NameCase>("Varying").unwrap(),
-            NameCase::Varying
-        );
-        assert_eq!(
-            syn::parse_str::<NameCase>("Pascal").unwrap(),
-            NameCase::Pascal
-        );
-        assert_eq!(
-            syn::parse_str::<NameCase>("Snake").unwrap(),
-            NameCase::Snake
-        );
-        assert_eq!(
-            syn::parse_str::<NameCase>("ScreamingSnake").unwrap(),
-            NameCase::ScreamingSnake
-        );
-        assert_eq!(
-            syn::parse_str::<NameCase>("Camel").unwrap(),
-            NameCase::Camel
-        );
-        assert_eq!(
-            syn::parse_str::<NameCase>("Kebab").unwrap(),
-            NameCase::Kebab
-        );
-        assert_eq!(
-            syn::parse_str::<NameCase>("Cobol").unwrap(),
-            NameCase::Cobol
-        );
-        assert_eq!(
-            syn::parse_str::<NameCase>("bla").unwrap_err().to_string(),
-            "expected one of: `Varying`, `Pascal`, `Snake`, `ScreamingSnake`, `Camel`, `Kebab`, `Cobol`"
-        );
-    }
-
-    #[test]
     fn parse_global_config_list() {
         assert_eq!(
             syn::parse_str::<GlobalConfigList>("").unwrap(),
@@ -2278,16 +2225,38 @@ mod tests {
 
         assert_eq!(
             syn::parse_str::<GlobalConfigList>(
-                "config { type DefaultByteOrder = LE; type DefaultBitOrder = LSB0; type NameCase = Camel; }"
+                "config { type DefaultByteOrder = LE; type DefaultBitOrder = LSB0; type NameWordBoundaries = \"aA:1B\"; }"
             )
             .unwrap(),
             GlobalConfigList {
                 configs: vec![
                     GlobalConfig::DefaultByteOrder(ByteOrder::LE),
                     GlobalConfig::DefaultBitOrder(BitOrder::LSB0),
-                    GlobalConfig::NameCase(NameCase::Camel)
+                    GlobalConfig::NameWordBoundaries(vec![Boundary::LowerUpper, Boundary::DigitUpper])
                 ]
             }
+        );
+
+        assert_eq!(
+            syn::parse_str::<GlobalConfigList>("config { type NameWordBoundaries = [DigitLower, Hyphen]; }")
+                .unwrap(),
+            GlobalConfigList {
+                configs: vec![
+                    GlobalConfig::NameWordBoundaries(vec![Boundary::DigitLower, Boundary::Hyphen])
+                ]
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<GlobalConfigList>("config { type NameWordBoundaries = 5; }")
+                .unwrap_err().to_string(),
+            "Expected an array of boundaries or a string"
+        );
+
+        assert_eq!(
+            syn::parse_str::<GlobalConfigList>("config { type NameWordBoundaries = [lol]; }")
+                .unwrap_err().to_string(),
+            "`lol` is not a valid boundary name. One of the following was expected: [Hyphen, Underscore, Space, LowerUpper, UpperLower, DigitUpper, UpperDigit, DigitLower, LowerDigit, Acronym]"
         );
 
         assert_eq!(
@@ -2308,7 +2277,7 @@ mod tests {
             syn::parse_str::<GlobalConfigList>("config { type DefaultRegisterAccesssss = RW; }")
                 .unwrap_err()
                 .to_string(),
-            "expected one of: `DefaultRegisterAccess`, `DefaultFieldAccess`, `DefaultBufferAccess`, `DefaultByteOrder`, `DefaultBitOrder`, `RegisterAddressType`, `CommandAddressType`, `BufferAddressType`, `NameCase`"
+            "expected one of: `DefaultRegisterAccess`, `DefaultFieldAccess`, `DefaultBufferAccess`, `DefaultByteOrder`, `DefaultBitOrder`, `RegisterAddressType`, `CommandAddressType`, `BufferAddressType`, `NameWordBoundaries`"
         );
     }
 

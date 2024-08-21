@@ -3,13 +3,17 @@
 
 use std::ops::Range;
 
+use convert_case::Boundary;
+
+pub mod passes;
+
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Device {
     pub global_config: GlobalConfig,
     pub objects: Vec<Object>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GlobalConfig {
     pub default_register_access: Access,
     pub default_field_access: Access,
@@ -19,7 +23,23 @@ pub struct GlobalConfig {
     pub register_address_type: Option<Integer>,
     pub command_address_type: Option<Integer>,
     pub buffer_address_type: Option<Integer>,
-    pub name_case: NameCase,
+    pub name_word_boundaries: Vec<Boundary>,
+}
+
+impl Default for GlobalConfig {
+    fn default() -> Self {
+        Self {
+            default_register_access: Default::default(),
+            default_field_access: Default::default(),
+            default_buffer_access: Default::default(),
+            default_byte_order: Default::default(),
+            default_bit_order: Default::default(),
+            register_address_type: Default::default(),
+            command_address_type: Default::default(),
+            buffer_address_type: Default::default(),
+            name_word_boundaries: convert_case::Boundary::defaults(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -60,18 +80,6 @@ pub enum BitOrder {
     MSB0,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
-pub enum NameCase {
-    #[default]
-    Varying,
-    Pascal,
-    Snake,
-    ScreamingSnake,
-    Camel,
-    Kebab,
-    Cobol,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Object {
     Block(Block),
@@ -79,6 +87,63 @@ pub enum Object {
     Command(Command),
     Buffer(Buffer),
     Ref(RefObject),
+}
+
+impl Object {
+    pub(self) fn get_block_object_list(&mut self) -> Option<&mut Vec<Self>> {
+        match self {
+            Object::Block(b) => Some(&mut b.objects),
+            _ => None,
+        }
+    }
+
+    /// Get a mutable reference to the name of the specific object
+    pub(self) fn name_mut(&mut self) -> &mut String {
+        match self {
+            Object::Block(val) => &mut val.name,
+            Object::Register(val) => &mut val.name,
+            Object::Command(val) => &mut val.name,
+            Object::Buffer(val) => &mut val.name,
+            Object::Ref(val) => &mut val.name,
+        }
+    }
+
+    /// Get a reference to the name of the specific object
+    pub(self) fn name(&self) -> &String {
+        match self {
+            Object::Block(val) => &val.name,
+            Object::Register(val) => &val.name,
+            Object::Command(val) => &val.name,
+            Object::Buffer(val) => &val.name,
+            Object::Ref(val) => &val.name,
+        }
+    }
+
+    /// If the object has fields, get an iterator over all of them
+    pub(self) fn fields_mut(&mut self) -> Option<Box<dyn Iterator<Item = &mut Field> + '_>> {
+        match self {
+            Object::Block(_) => None,
+            Object::Register(val) => Some(Box::new(val.fields.iter_mut())),
+            Object::Command(val) => Some(Box::new(
+                val.in_fields.iter_mut().chain(val.out_fields.iter_mut()),
+            )),
+            Object::Buffer(_) => None,
+            Object::Ref(_) => None,
+        }
+    }
+
+    /// If the object has fields, get an iterator over all of them
+    pub(self) fn fields(&self) -> Option<Box<dyn Iterator<Item = &Field> + '_>> {
+        match self {
+            Object::Block(_) => None,
+            Object::Register(val) => Some(Box::new(val.fields.iter())),
+            Object::Command(val) => {
+                Some(Box::new(val.in_fields.iter().chain(val.out_fields.iter())))
+            }
+            Object::Buffer(_) => None,
+            Object::Ref(_) => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -97,7 +162,7 @@ pub struct Repeat {
     pub stride: i64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Register {
     pub cfg_attr: Option<String>,
     pub description: String,
@@ -112,7 +177,7 @@ pub struct Register {
     pub fields: Vec<Field>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Field {
     pub cfg_attr: Option<String>,
     pub description: String,
@@ -123,9 +188,10 @@ pub struct Field {
     pub field_address: Range<u64>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum BaseType {
     Bool,
+    #[default]
     Uint,
     Int,
 }
@@ -139,7 +205,7 @@ pub enum FieldConversion {
     },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct EnumVariant {
     pub cfg_attr: Option<String>,
     pub description: String,
@@ -147,8 +213,9 @@ pub struct EnumVariant {
     pub value: EnumValue,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum EnumValue {
+    #[default]
     Unspecified,
     Specified(i128),
     Default,
@@ -170,7 +237,7 @@ pub struct Command {
     pub out_fields: Vec<Field>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Buffer {
     pub cfg_attr: Option<String>,
     pub description: String,

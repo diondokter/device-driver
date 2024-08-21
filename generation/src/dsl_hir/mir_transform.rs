@@ -63,20 +63,6 @@ impl TryFrom<syn::Ident> for mir::Integer {
     }
 }
 
-impl From<dsl_hir::NameCase> for mir::NameCase {
-    fn from(value: dsl_hir::NameCase) -> Self {
-        match value {
-            dsl_hir::NameCase::Varying => mir::NameCase::Varying,
-            dsl_hir::NameCase::Pascal => mir::NameCase::Pascal,
-            dsl_hir::NameCase::Snake => mir::NameCase::Snake,
-            dsl_hir::NameCase::ScreamingSnake => mir::NameCase::ScreamingSnake,
-            dsl_hir::NameCase::Camel => mir::NameCase::Camel,
-            dsl_hir::NameCase::Kebab => mir::NameCase::Kebab,
-            dsl_hir::NameCase::Cobol => mir::NameCase::Cobol,
-        }
-    }
-}
-
 impl TryFrom<dsl_hir::Repeat> for mir::Repeat {
     type Error = syn::Error;
 
@@ -145,7 +131,7 @@ impl TryFrom<dsl_hir::GlobalConfigList> for mir::GlobalConfig {
                 dsl_hir::GlobalConfig::BufferAddressType(value) => {
                     global_config.buffer_address_type = Some(value.try_into()?)
                 }
-                dsl_hir::GlobalConfig::NameCase(value) => global_config.name_case = value.into(),
+                dsl_hir::GlobalConfig::NameWordBoundaries(value) => global_config.name_word_boundaries = value,
             }
         }
 
@@ -856,6 +842,8 @@ fn transform_command_override(
 
 #[cfg(test)]
 mod tests {
+    use convert_case::Boundary;
+
     use super::*;
 
     #[test]
@@ -883,7 +871,7 @@ mod tests {
                 type RegisterAddressType = i8;
                 type CommandAddressType = u128;
                 type BufferAddressType = u32;
-                type NameCase = Pascal;
+                type NameWordBoundaries = \"-\";
             }",
         )
         .unwrap();
@@ -901,7 +889,7 @@ mod tests {
                 register_address_type: Some(mir::Integer::I8),
                 command_address_type: Some(mir::Integer::U128),
                 buffer_address_type: Some(mir::Integer::U32),
-                name_case: mir::NameCase::Pascal,
+                name_word_boundaries: vec![Boundary::Hyphen],
             }
         );
     }
