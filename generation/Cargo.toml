@@ -1,6 +1,6 @@
 [package]
 name = "device-driver-generation"
-version = "0.6.0"
+version = "0.7.0"
 authors = ["Dion Dokter <diondokter@gmail.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -18,7 +18,7 @@ prettyplease = "0.2.15"
 proc-macro2 = "1.0.70"
 quote = "1.0.33"
 serde = { version = "1.0.193", features = ["derive"] }
-syn = "2.0.39"
+syn = { version = "2.0", features = ["extra-traits"] }
 
 [dev-dependencies]
 serde_json = "1.0.108"

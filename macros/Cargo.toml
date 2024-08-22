@@ -1,6 +1,6 @@
 [package]
 name = "device-driver-macros"
-version = "0.6.0"
+version = "0.7.0"
 authors = ["Dion Dokter <diondokter@gmail.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -16,7 +16,7 @@ readme.workspace = true
 proc-macro = true
 
 [dependencies]
-device-driver-generation = { version = "0.6.0", path = "../generation" }
+device-driver-generation = { version = "0.7.0", path = "../generation" }
 syn = { version = "2.0", features = ["extra-traits"] }
 serde_json = { version = "1.0", optional = true }
 serde_yaml = { version = "0.9", optional = true }
