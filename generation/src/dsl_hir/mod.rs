@@ -290,7 +290,7 @@ impl Parse for GlobalConfig {
                             }
                         }
 
-                        Err(syn::Error::new(ident.span(), &format!("`{}` is not a valid boundary name. One of the following was expected: {:?}", ident, Boundary::all())))
+                        Err(syn::Error::new(ident.span(), format!("`{}` is not a valid boundary name. One of the following was expected: {:?}", ident, Boundary::all())))
                     }).collect::<Result<Vec<_>, _>>()?
             } else {
                 let string_value = match input.parse::<LitStr>() {
@@ -387,7 +387,7 @@ impl Parse for RefObject {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct AttributeList {
     pub attributes: Vec<Attribute>,
 }
@@ -580,7 +580,7 @@ impl Parse for Register {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct RegisterItemList {
     pub register_items: Vec<RegisterItem>,
 }
@@ -854,7 +854,7 @@ impl Parse for BitOrder {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct FieldList {
     pub fields: Vec<Field>,
 }
@@ -1351,7 +1351,7 @@ impl Parse for Buffer {
             attribute_list,
             identifier,
             access,
-            address: address,
+            address,
         })
     }
 }
@@ -1691,7 +1691,7 @@ mod tests {
             syn::parse_str::<Field>("TestField: ClearOnly int = 0x123").unwrap(),
             Field {
                 attribute_list: AttributeList::new(),
-                identifier: Ident::new("TestField".into(), Span::call_site()),
+                identifier: Ident::new("TestField", Span::call_site()),
                 access: Some(Access::CO),
                 base_type: BaseType::Int,
                 field_conversion: None,
@@ -1704,7 +1704,7 @@ mod tests {
                 .unwrap(),
             Field {
                 attribute_list: AttributeList::new(),
-                identifier: Ident::new("ExsitingType".into(), Span::call_site()),
+                identifier: Ident::new("ExsitingType", Span::call_site()),
                 access: Some(Access::RW),
                 base_type: BaseType::Uint,
                 field_conversion: Some(FieldConversion::Direct(
@@ -1727,7 +1727,7 @@ mod tests {
             syn::parse_str::<Field>("ExsitingType: RW uint as enum Bar { } = 0x1234").unwrap(),
             Field {
                 attribute_list: AttributeList::new(),
-                identifier: Ident::new("ExsitingType".into(), Span::call_site()),
+                identifier: Ident::new("ExsitingType", Span::call_site()),
                 access: Some(Access::RW),
                 base_type: BaseType::Uint,
                 field_conversion: Some(FieldConversion::Enum {
@@ -2078,7 +2078,7 @@ mod tests {
                 field_list: FieldList {
                     fields: vec![Field {
                         attribute_list: AttributeList::new(),
-                        identifier: Ident::new("TestField".into(), Span::call_site()),
+                        identifier: Ident::new("TestField", Span::call_site()),
                         access: Some(Access::CO),
                         base_type: BaseType::Int,
                         field_conversion: None,

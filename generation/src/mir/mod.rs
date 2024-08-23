@@ -218,6 +218,7 @@ impl Enum {
         }
     }
 
+    #[cfg(test)]
     fn new_with_style(
         name: String,
         variants: Vec<EnumVariant>,

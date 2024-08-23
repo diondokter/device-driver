@@ -173,8 +173,8 @@ fn get_cfg_attr(attrs: &dsl_hir::AttributeList) -> Result<Option<String>, syn::E
         0 => Ok(None),
         1 => Ok(Some(cfg_attrs.remove(0).0.clone())),
         n => Err(syn::Error::new(
-            cfg_attrs.remove(1).1.clone(),
-            &format!("Only one cfg attribute is allowed, but {n} are found"),
+            *cfg_attrs.remove(1).1,
+            format!("Only one cfg attribute is allowed, but {n} are found"),
         )),
     }
 }
@@ -254,7 +254,7 @@ fn transform_register(
             .register_items
             .iter()
             .find_map(|i| match i {
-                dsl_hir::RegisterItem::Access(access) => Some(access.clone().into()),
+                dsl_hir::RegisterItem::Access(access) => Some((*access).into()),
                 _ => None,
             })
             .unwrap_or(global_config.default_register_access),
@@ -263,7 +263,7 @@ fn transform_register(
             .register_items
             .iter()
             .find_map(|i| match i {
-                dsl_hir::RegisterItem::ByteOrder(bo) => Some(bo.clone().into()),
+                dsl_hir::RegisterItem::ByteOrder(bo) => Some((*bo).into()),
                 _ => None,
             })
             .unwrap_or(global_config.default_byte_order),
@@ -272,7 +272,7 @@ fn transform_register(
             .register_items
             .iter()
             .find_map(|i| match i {
-                dsl_hir::RegisterItem::BitOrder(bi) => Some(bi.clone().into()),
+                dsl_hir::RegisterItem::BitOrder(bi) => Some((*bi).into()),
                 _ => None,
             })
             .unwrap_or(global_config.default_bit_order),
@@ -288,10 +288,7 @@ fn transform_register(
             .ok_or_else(|| {
                 syn::Error::new(
                     register.identifier.span(),
-                    &format!(
-                        "Register `{}` must have an address",
-                        register.identifier.to_string()
-                    ),
+                    format!("Register `{}` must have an address", register.identifier),
                 )
             })?,
         size_bits: register
@@ -319,10 +316,10 @@ fn transform_register(
                         .map_err(|e| {
                             syn::Error::new(
                                 int.span(),
-                                &format!("{e}: number is parsed as an i128 or u128"),
+                                format!("{e}: number is parsed as an i128 or u128"),
                             )
                         })
-                        .map(|v| mir::ResetValue::Integer(v)),
+                        .map(mir::ResetValue::Integer),
                 ),
                 _ => None,
             })
@@ -352,10 +349,7 @@ fn transform_command(
     let command_value = command.value.ok_or_else(|| {
         syn::Error::new(
             command.identifier.span(),
-            &format!(
-                "Command `{}` must have a value",
-                command.identifier.to_string()
-            ),
+            format!("Command `{}` must have a value", command.identifier),
         )
     })?;
     Ok(mir::Command {
@@ -376,10 +370,7 @@ fn transform_command(
                 .ok_or_else(|| {
                     syn::Error::new(
                         command.identifier.span(),
-                        &format!(
-                            "Command `{}` must have an address",
-                            command.identifier.to_string()
-                        ),
+                        format!("Command `{}` must have an address", command.identifier),
                     )
                 })?,
         }
@@ -389,7 +380,7 @@ fn transform_command(
             dsl_hir::CommandValue::Extended {
                 command_item_list, ..
             } => command_item_list.items.iter().find_map(|item| match item {
-                dsl_hir::CommandItem::ByteOrder(order) => Some(order.clone().into()),
+                dsl_hir::CommandItem::ByteOrder(order) => Some((*order).into()),
                 _ => None,
             }),
         }
@@ -399,7 +390,7 @@ fn transform_command(
             dsl_hir::CommandValue::Extended {
                 command_item_list, ..
             } => command_item_list.items.iter().find_map(|item| match item {
-                dsl_hir::CommandItem::BitOrder(order) => Some(order.clone().into()),
+                dsl_hir::CommandItem::BitOrder(order) => Some((*order).into()),
                 _ => None,
             }),
         }
@@ -480,16 +471,16 @@ fn transform_field(
             .map(Into::into)
             .unwrap_or(global_config.default_field_access),
         base_type: field.base_type.into(),
-        field_conversion: field.field_conversion.as_ref().map(|fc| transform_field_conversion(fc)).transpose()?,
+        field_conversion: field.field_conversion.as_ref().map(transform_field_conversion).transpose()?,
         field_address: match &field.field_address {
             dsl_hir::FieldAddress::Integer(start) if field.base_type.is_bool() =>
                 start.base10_parse()?..start.base10_parse()?,
             dsl_hir::FieldAddress::Integer(_) =>
                 return Err(syn::Error::new(
                     field.identifier.span(),
-                    &format!(
+                    format!(
                         "Field `{}` has a non-bool base type and must specify the start and the end address",
-                        field.identifier.to_string()
+                        field.identifier
                     )
                 )),
             dsl_hir::FieldAddress::Range { start, end } => {
@@ -556,10 +547,7 @@ fn transform_buffer(
             .ok_or_else(|| {
                 syn::Error::new(
                     buffer.identifier.span(),
-                    &format!(
-                        "Buffer `{}` must have an address",
-                        buffer.identifier.to_string()
-                    ),
+                    format!("Buffer `{}` must have an address", buffer.identifier),
                 )
             })?
             .base10_parse()?,
@@ -584,18 +572,15 @@ fn transform_ref(ref_object: dsl_hir::RefObject) -> Result<mir::RefObject, syn::
             dsl_hir::Object::Buffer(_) => {
                 return Err(syn::Error::new(
                     ref_object.identifier.span(),
-                    &format!(
-                        "Ref `{}` cannot ref a buffer",
-                        ref_object.identifier.to_string()
-                    ),
+                    format!("Ref `{}` cannot ref a buffer", ref_object.identifier),
                 ))
             }
             dsl_hir::Object::Ref(_) => {
                 return Err(syn::Error::new(
                     ref_object.identifier.span(),
-                    &format!(
+                    format!(
                         "Ref `{}` cannot ref another ref object",
-                        ref_object.identifier.to_string()
+                        ref_object.identifier
                     ),
                 ))
             }
@@ -693,7 +678,7 @@ fn transform_register_override(
             .register_items
             .iter()
             .find_map(|i| match i {
-                dsl_hir::RegisterItem::Access(access) => Some(access.clone().into()),
+                dsl_hir::RegisterItem::Access(access) => Some((*access).into()),
                 _ => None,
             }),
         address: register_override
@@ -720,10 +705,10 @@ fn transform_register_override(
                         .map_err(|e| {
                             syn::Error::new(
                                 int.span(),
-                                &format!("{e}: number is parsed as an i128 or u128"),
+                                format!("{e}: number is parsed as an i128 or u128"),
                             )
                         })
-                        .map(|v| mir::ResetValue::Integer(v)),
+                        .map(mir::ResetValue::Integer),
                 ),
                 _ => None,
             })
@@ -2071,7 +2056,7 @@ mod tests {
         ];
 
         for (ident_str, expected) in test_cases {
-            let ident = syn::Ident::new(&ident_str, Span::call_site());
+            let ident = syn::Ident::new(ident_str, Span::call_site());
             let result = mir::Integer::try_from(ident);
             assert_eq!(result.unwrap(), expected);
         }

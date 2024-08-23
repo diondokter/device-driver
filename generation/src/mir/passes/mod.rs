@@ -17,8 +17,8 @@ pub fn run_passes(device: &mut Device) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub(self) fn recurse_objects(
-    objects: &mut Vec<Object>,
+fn recurse_objects(
+    objects: &mut [Object],
     f: &mut impl FnMut(&mut Object) -> anyhow::Result<()>,
 ) -> anyhow::Result<()> {
     for object in objects.iter_mut() {
