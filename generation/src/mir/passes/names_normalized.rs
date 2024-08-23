@@ -1,9 +1,10 @@
 use convert_case::Case;
 
-use crate::mir::{Device, FieldConversion};
+use crate::mir::{Device, Enum, FieldConversion};
 
 use super::recurse_objects;
 
+/// Changes all names of all objects, enums and enum variants to either Pascal case or snake case
 pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
     let boundaries = device.global_config.name_word_boundaries.clone();
 
@@ -17,12 +18,10 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
     recurse_objects(&mut device.objects, &mut |object| {
         *object.name_mut() = pascal_converter.convert(object.name_mut());
 
-        for field in object
-            .fields_mut()
-            .unwrap_or_else(|| Box::new(std::iter::empty()))
-        {
+        for field in object.fields_mut().iter_mut().flatten() {
             field.name = snake_converter.convert(&field.name);
-            if let Some(FieldConversion::Enum { name, variants }) = field.field_conversion.as_mut()
+            if let Some(FieldConversion::Enum(Enum { name, variants, .. })) =
+                field.field_conversion.as_mut()
             {
                 *name = pascal_converter.convert(&*name);
 
@@ -70,13 +69,14 @@ mod tests {
                         },
                         Field {
                             name: "my-fielD2".into(),
-                            field_conversion: Some(FieldConversion::Enum {
+                            field_conversion: Some(FieldConversion::Enum(Enum {
                                 name: "mY-enum".into(),
                                 variants: vec![EnumVariant {
                                     name: "eNum-Variant".into(),
                                     ..Default::default()
                                 }],
-                            }),
+                                ..Default::default()
+                            })),
                             ..Default::default()
                         },
                     ],
@@ -101,13 +101,14 @@ mod tests {
                         },
                         Field {
                             name: "my_field2".into(),
-                            field_conversion: Some(FieldConversion::Enum {
+                            field_conversion: Some(FieldConversion::Enum(Enum {
                                 name: "MyEnum".into(),
                                 variants: vec![EnumVariant {
                                     name: "EnumVariant".into(),
                                     ..Default::default()
                                 }],
-                            }),
+                                ..Default::default()
+                            })),
                             ..Default::default()
                         },
                     ],

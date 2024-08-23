@@ -1,9 +1,11 @@
 use std::collections::HashSet;
 
-use crate::mir::{Device, FieldConversion};
+use crate::mir::{Device, Enum, FieldConversion};
 
 use super::recurse_objects;
 
+/// Checks if all names are unique to prevent later name collisions.
+/// If there is a collision an error is returned.
 pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
     let mut seen_object_names = HashSet::new();
     let mut generated_type_names = HashSet::new();
@@ -16,10 +18,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
         );
 
         let mut seen_field_names = HashSet::new();
-        for field in object
-            .fields()
-            .unwrap_or_else(|| Box::new(std::iter::empty()))
-        {
+        for field in object.fields().iter_mut().flatten() {
             anyhow::ensure!(
                 seen_field_names.insert(field.name.clone()),
                 "Duplicate field name found in object \"{}\": \"{}\"",
@@ -27,7 +26,8 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
                 field.name
             );
 
-            if let Some(FieldConversion::Enum { name, variants }) = field.field_conversion.as_ref()
+            if let Some(FieldConversion::Enum(Enum { name, variants, .. })) =
+                field.field_conversion.as_ref()
             {
                 let mut seen_variant_names = HashSet::new();
 
@@ -156,18 +156,20 @@ mod tests {
                 fields: vec![
                     Field {
                         name: "field".into(),
-                        field_conversion: Some(FieldConversion::Enum {
+                        field_conversion: Some(FieldConversion::Enum(Enum {
                             name: "Enum".into(),
                             variants: Default::default(),
-                        }),
+                            ..Default::default()
+                        })),
                         ..Default::default()
                     },
                     Field {
                         name: "field2".into(),
-                        field_conversion: Some(FieldConversion::Enum {
+                        field_conversion: Some(FieldConversion::Enum(Enum {
                             name: "Enum".into(),
                             variants: Default::default(),
-                        }),
+                            ..Default::default()
+                        })),
                         ..Default::default()
                     },
                 ],
@@ -201,7 +203,7 @@ mod tests {
                 name: "Reg".into(),
                 fields: vec![Field {
                     name: "field".into(),
-                    field_conversion: Some(FieldConversion::Enum {
+                    field_conversion: Some(FieldConversion::Enum(Enum {
                         name: "Enum".into(),
                         variants: vec![
                             EnumVariant {
@@ -213,7 +215,8 @@ mod tests {
                                 ..Default::default()
                             },
                         ],
-                    }),
+                        ..Default::default()
+                    })),
                     ..Default::default()
                 }],
                 ..Default::default()

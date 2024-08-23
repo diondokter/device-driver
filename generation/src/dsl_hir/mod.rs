@@ -2238,18 +2238,22 @@ mod tests {
         );
 
         assert_eq!(
-            syn::parse_str::<GlobalConfigList>("config { type NameWordBoundaries = [DigitLower, Hyphen]; }")
-                .unwrap(),
+            syn::parse_str::<GlobalConfigList>(
+                "config { type NameWordBoundaries = [DigitLower, Hyphen]; }"
+            )
+            .unwrap(),
             GlobalConfigList {
-                configs: vec![
-                    GlobalConfig::NameWordBoundaries(vec![Boundary::DigitLower, Boundary::Hyphen])
-                ]
+                configs: vec![GlobalConfig::NameWordBoundaries(vec![
+                    Boundary::DigitLower,
+                    Boundary::Hyphen
+                ])]
             }
         );
 
         assert_eq!(
             syn::parse_str::<GlobalConfigList>("config { type NameWordBoundaries = 5; }")
-                .unwrap_err().to_string(),
+                .unwrap_err()
+                .to_string(),
             "Expected an array of boundaries or a string"
         );
 

@@ -199,10 +199,42 @@ pub enum BaseType {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FieldConversion {
     Direct(String),
-    Enum {
+    Enum(Enum),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Enum {
+    pub name: String,
+    pub variants: Vec<EnumVariant>,
+    generation_style: Option<EnumGenerationStyle>,
+}
+
+impl Enum {
+    pub fn new(name: String, variants: Vec<EnumVariant>) -> Self {
+        Self {
+            name,
+            variants,
+            generation_style: None,
+        }
+    }
+
+    fn new_with_style(
         name: String,
         variants: Vec<EnumVariant>,
-    },
+        generation_style: EnumGenerationStyle,
+    ) -> Self {
+        Self {
+            name,
+            variants,
+            generation_style: Some(generation_style),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum EnumGenerationStyle {
+    Fallible,
+    Infallible,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -217,12 +249,12 @@ pub struct EnumVariant {
 pub enum EnumValue {
     #[default]
     Unspecified,
-    Specified(i128),
+    Specified(u64),
     Default,
     CatchAll,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Command {
     pub cfg_attr: Option<String>,
     pub description: String,

@@ -15,6 +15,7 @@ readme.workspace = true
 anyhow = "1.0.86"
 convert_case = "0.6.0"
 indexmap = { version = "2.1.0", features = ["serde"] }
+itertools = "0.13.0"
 prettyplease = "0.2.15"
 proc-macro2 = "1.0.70"
 quote = "1.0.33"

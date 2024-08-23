@@ -131,7 +131,9 @@ impl TryFrom<dsl_hir::GlobalConfigList> for mir::GlobalConfig {
                 dsl_hir::GlobalConfig::BufferAddressType(value) => {
                     global_config.buffer_address_type = Some(value.try_into()?)
                 }
-                dsl_hir::GlobalConfig::NameWordBoundaries(value) => global_config.name_word_boundaries = value,
+                dsl_hir::GlobalConfig::NameWordBoundaries(value) => {
+                    global_config.name_word_boundaries = value
+                }
             }
         }
 
@@ -512,9 +514,9 @@ fn transform_field_conversion(
         dsl_hir::FieldConversion::Enum {
             identifier,
             enum_variant_list,
-        } => Ok(mir::FieldConversion::Enum {
-            name: identifier.to_string(),
-            variants: enum_variant_list
+        } => Ok(mir::FieldConversion::Enum(mir::Enum::new(
+            identifier.to_string(),
+            enum_variant_list
                 .variants
                 .iter()
                 .map(|v| {
@@ -533,7 +535,7 @@ fn transform_field_conversion(
                     })
                 })
                 .collect::<Result<_, syn::Error>>()?,
-        }),
+        ))),
     }
 }
 
@@ -1074,9 +1076,9 @@ mod tests {
                     name: "val".into(),
                     access: mir::Access::RO,
                     base_type: mir::BaseType::Int,
-                    field_conversion: Some(mir::FieldConversion::Enum {
-                        name: "Val".into(),
-                        variants: vec![
+                    field_conversion: Some(mir::FieldConversion::Enum(mir::Enum::new(
+                        "Val".into(),
+                        vec![
                             mir::EnumVariant {
                                 cfg_attr: None,
                                 description: Default::default(),
@@ -1101,8 +1103,8 @@ mod tests {
                                 name: "Four".into(),
                                 value: mir::EnumValue::CatchAll,
                             }
-                        ]
-                    }),
+                        ],
+                    ))),
                     field_address: 0..16,
                 }]
             })]
