@@ -18,7 +18,7 @@ pub struct GlobalConfig {
     pub default_register_access: Access,
     pub default_field_access: Access,
     pub default_buffer_access: Access,
-    pub default_byte_order: ByteOrder,
+    pub default_byte_order: Option<ByteOrder>,
     pub default_bit_order: BitOrder,
     pub register_address_type: Option<Integer>,
     pub command_address_type: Option<Integer>,
@@ -66,10 +66,9 @@ pub enum Access {
     CO,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ByteOrder {
     LE,
-    #[default]
     BE,
 }
 
@@ -168,7 +167,7 @@ pub struct Register {
     pub description: String,
     pub name: String,
     pub access: Access,
-    pub byte_order: ByteOrder,
+    pub byte_order: Option<ByteOrder>,
     pub bit_order: BitOrder,
     pub address: u64,
     pub size_bits: u64,
@@ -261,7 +260,7 @@ pub struct Command {
     pub description: String,
     pub name: String,
     pub address: u64,
-    pub byte_order: ByteOrder,
+    pub byte_order: Option<ByteOrder>,
     pub bit_order: BitOrder,
     pub size_bits_in: u64,
     pub size_bits_out: u64,

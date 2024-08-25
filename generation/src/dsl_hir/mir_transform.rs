@@ -117,7 +117,7 @@ impl TryFrom<dsl_hir::GlobalConfigList> for mir::GlobalConfig {
                     global_config.default_buffer_access = value.into()
                 }
                 dsl_hir::GlobalConfig::DefaultByteOrder(value) => {
-                    global_config.default_byte_order = value.into()
+                    global_config.default_byte_order = Some(value.into())
                 }
                 dsl_hir::GlobalConfig::DefaultBitOrder(value) => {
                     global_config.default_bit_order = value.into()
@@ -265,8 +265,7 @@ fn transform_register(
             .find_map(|i| match i {
                 dsl_hir::RegisterItem::ByteOrder(bo) => Some((*bo).into()),
                 _ => None,
-            })
-            .unwrap_or(global_config.default_byte_order),
+            }),
         bit_order: register
             .register_item_list
             .register_items
@@ -383,8 +382,7 @@ fn transform_command(
                 dsl_hir::CommandItem::ByteOrder(order) => Some((*order).into()),
                 _ => None,
             }),
-        }
-        .unwrap_or(global_config.default_byte_order),
+        },
         bit_order: match &command_value {
             dsl_hir::CommandValue::Basic(_) => None,
             dsl_hir::CommandValue::Extended {
@@ -871,7 +869,7 @@ mod tests {
                 default_register_access: mir::Access::RO,
                 default_field_access: mir::Access::RC,
                 default_buffer_access: mir::Access::WO,
-                default_byte_order: mir::ByteOrder::LE,
+                default_byte_order: Some(mir::ByteOrder::LE),
                 default_bit_order: mir::BitOrder::MSB0,
                 register_address_type: Some(mir::Integer::I8),
                 command_address_type: Some(mir::Integer::U128),
@@ -1025,7 +1023,7 @@ mod tests {
                 description: Default::default(),
                 name: "Bar".into(),
                 address: 10,
-                byte_order: mir::ByteOrder::LE,
+                byte_order: Default::default(),
                 bit_order: Default::default(),
                 size_bits_in: 32,
                 size_bits_out: 16,
@@ -1143,7 +1141,7 @@ mod tests {
                 description: Default::default(),
                 name: "Bar".into(),
                 address: 10,
-                byte_order: mir::ByteOrder::BE,
+                byte_order: Some(mir::ByteOrder::BE),
                 bit_order: mir::BitOrder::LSB0,
                 size_bits_in: 0,
                 size_bits_out: 0,
@@ -1971,7 +1969,7 @@ mod tests {
                 description: " This is foo".into(),
                 name: "Foo".into(),
                 access: mir::Access::RC,
-                byte_order: mir::ByteOrder::LE,
+                byte_order: Some(mir::ByteOrder::LE),
                 bit_order: mir::BitOrder::MSB0,
                 address: 5,
                 size_bits: 16,
