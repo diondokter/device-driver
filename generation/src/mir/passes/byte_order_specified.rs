@@ -4,19 +4,18 @@ use crate::mir::{Device, Object};
 
 use super::recurse_objects;
 
+/// Checks if the byte order is set for all registers and commands that need it
 pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
+    if device.global_config.default_byte_order.is_some() {
+        return Ok(());
+    }
+
     recurse_objects(&mut device.objects, &mut |object| match object {
-        Object::Register(r)
-            if r.size_bits > 8
-                && r.byte_order.is_none()
-                && device.global_config.default_byte_order.is_none() =>
-        {
+        Object::Register(r) if r.size_bits > 8 && r.byte_order.is_none() => {
             bail!("No byte order is specified for register \"{}\" while it's big enough that byte order is important. Specify it on the register or in the global config", r.name);
         }
         Object::Command(c)
-            if (c.size_bits_in > 8 || c.size_bits_out > 8)
-                && c.byte_order.is_none()
-                && device.global_config.default_byte_order.is_none() =>
+            if (c.size_bits_in > 8 || c.size_bits_out > 8) && c.byte_order.is_none() =>
         {
             bail!("No byte order is specified for command \"{}\" while it's big enough that byte order is important. Specify it on the command or in the global config", c.name);
         }
