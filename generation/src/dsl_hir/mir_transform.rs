@@ -275,6 +275,24 @@ fn transform_register(
                 _ => None,
             })
             .unwrap_or(global_config.default_bit_order),
+        allow_bit_overlap: register
+            .register_item_list
+            .register_items
+            .iter()
+            .find_map(|i| match i {
+                dsl_hir::RegisterItem::AllowBitOverlap(b) => Some(b.value),
+                _ => None,
+            })
+            .unwrap_or_default(),
+        allow_address_overlap: register
+            .register_item_list
+            .register_items
+            .iter()
+            .find_map(|i| match i {
+                dsl_hir::RegisterItem::AllowAddressOverlap(b) => Some(b.value),
+                _ => None,
+            })
+            .unwrap_or_default(),
         address: register
             .register_item_list
             .register_items
@@ -393,6 +411,26 @@ fn transform_command(
             }),
         }
         .unwrap_or(global_config.default_bit_order),
+        allow_bit_overlap: match &command_value {
+            dsl_hir::CommandValue::Basic(_) => None,
+            dsl_hir::CommandValue::Extended {
+                command_item_list, ..
+            } => command_item_list.items.iter().find_map(|item| match item {
+                dsl_hir::CommandItem::AllowBitOverlap(b) => Some(b.value),
+                _ => None,
+            }),
+        }
+        .unwrap_or_default(),
+        allow_address_overlap: match &command_value {
+            dsl_hir::CommandValue::Basic(_) => None,
+            dsl_hir::CommandValue::Extended {
+                command_item_list, ..
+            } => command_item_list.items.iter().find_map(|item| match item {
+                dsl_hir::CommandItem::AllowAddressOverlap(b) => Some(b.value),
+                _ => None,
+            }),
+        }
+        .unwrap_or_default(),
         size_bits_in: match &command_value {
             dsl_hir::CommandValue::Basic(_) => None,
             dsl_hir::CommandValue::Extended {
@@ -650,22 +688,33 @@ fn transform_register_override(
             dsl_hir::RegisterItem::ByteOrder(_) => {
                 return Err(syn::Error::new(
                     register_override.identifier.span(),
-                    "No ByteOrder is allowed on register overrides",
+                    "No `ByteOrder` is allowed on register overrides",
                 ))
             }
             dsl_hir::RegisterItem::BitOrder(_) => {
                 return Err(syn::Error::new(
                     register_override.identifier.span(),
-                    "No BitOrder is allowed on register overrides",
+                    "No `BitOrder` is allowed on register overrides",
                 ))
             }
             dsl_hir::RegisterItem::SizeBits(_) => {
                 return Err(syn::Error::new(
                     register_override.identifier.span(),
-                    "No SizeBits is allowed on register overrides",
+                    "No `SizeBits` is allowed on register overrides",
                 ))
             }
-            _ => {}
+            dsl_hir::RegisterItem::AllowBitOverlap(_) => {
+                return Err(syn::Error::new(
+                    register_override.identifier.span(),
+                    "No `AllowBitOverlap` is allowed on register overrides",
+                ))
+            }
+            dsl_hir::RegisterItem::Access(_) => {}
+            dsl_hir::RegisterItem::Address(_) => {}
+            dsl_hir::RegisterItem::ResetValueInt(_) => {}
+            dsl_hir::RegisterItem::ResetValueArray(_) => {}
+            dsl_hir::RegisterItem::Repeat(_) => {}
+            dsl_hir::RegisterItem::AllowAddressOverlap(_) => {}
         }
     }
 
@@ -688,6 +737,15 @@ fn transform_register_override(
                 _ => None,
             })
             .transpose()?,
+        allow_address_overlap: register_override
+            .register_item_list
+            .register_items
+            .iter()
+            .find_map(|i| match i {
+                dsl_hir::RegisterItem::AllowAddressOverlap(b) => Some(b.value),
+                _ => None,
+            })
+            .unwrap_or_default(),
         reset_value: register_override
             .register_item_list
             .register_items
@@ -762,28 +820,36 @@ fn transform_command_override(
                     dsl_hir::CommandItem::ByteOrder(_) => {
                         return Err(syn::Error::new(
                             command_override.identifier.span(),
-                            "No byte order is allowed on command overrides",
+                            "No `ByteOrder` is allowed on command overrides",
                         ))
                     }
                     dsl_hir::CommandItem::BitOrder(_) => {
                         return Err(syn::Error::new(
                             command_override.identifier.span(),
-                            "No bit order is allowed on command overrides",
+                            "No `BitOrder` is allowed on command overrides",
                         ))
                     }
                     dsl_hir::CommandItem::SizeBitsIn(_) => {
                         return Err(syn::Error::new(
                             command_override.identifier.span(),
-                            "No size bits in is allowed on command overrides",
+                            "No `SizeBitsIn` is allowed on command overrides",
                         ))
                     }
                     dsl_hir::CommandItem::SizeBitsOut(_) => {
                         return Err(syn::Error::new(
                             command_override.identifier.span(),
-                            "No size bits out is allowed on command overrides",
+                            "No `SizeBitsOut` is allowed on command overrides",
                         ))
                     }
-                    dsl_hir::CommandItem::Repeat(_) | dsl_hir::CommandItem::Address(_) => {}
+                    dsl_hir::CommandItem::AllowBitOverlap(_) => {
+                        return Err(syn::Error::new(
+                            command_override.identifier.span(),
+                            "No `AllowBitOverlap` is allowed on command overrides",
+                        ))
+                    }
+                    dsl_hir::CommandItem::AllowAddressOverlap(_) => {}
+                    dsl_hir::CommandItem::Repeat(_) => {}
+                    dsl_hir::CommandItem::Address(_) => {}
                 }
             }
 
@@ -814,6 +880,14 @@ fn transform_command_override(
             })
             .map(|lit| lit.base10_parse())
             .transpose()?,
+        allow_address_overlap: command_item_list
+            .items
+            .iter()
+            .find_map(|item| match item {
+                dsl_hir::CommandItem::AllowAddressOverlap(lit) => Some(lit.value),
+                _ => None,
+            })
+            .unwrap_or_default(),
         repeat: command_item_list
             .items
             .iter()
@@ -968,13 +1042,7 @@ mod tests {
                 description: " Hello world!\n This should be in order!".into(),
                 name: "Foo".into(),
                 address: 5,
-                byte_order: Default::default(),
-                bit_order: Default::default(),
-                size_bits_in: 0,
-                size_bits_out: 0,
-                repeat: Default::default(),
-                in_fields: Default::default(),
-                out_fields: Default::default()
+                ..Default::default()
             })]
         );
 
@@ -1019,12 +1087,8 @@ mod tests {
             .unwrap()
             .objects,
             &[mir::Object::Command(mir::Command {
-                cfg_attr: None,
-                description: Default::default(),
                 name: "Bar".into(),
                 address: 10,
-                byte_order: Default::default(),
-                bit_order: Default::default(),
                 size_bits_in: 32,
                 size_bits_out: 16,
                 repeat: Some(mir::Repeat {
@@ -1089,7 +1153,8 @@ mod tests {
                         ],
                     ))),
                     field_address: 0..16,
-                }]
+                }],
+                ..Default::default()
             })]
         );
 
@@ -1137,15 +1202,10 @@ mod tests {
             .unwrap()
             .objects,
             &[mir::Object::Command(mir::Command {
-                cfg_attr: None,
-                description: Default::default(),
                 name: "Bar".into(),
                 address: 10,
                 byte_order: Some(mir::ByteOrder::BE),
                 bit_order: mir::BitOrder::LSB0,
-                size_bits_in: 0,
-                size_bits_out: 0,
-                repeat: None,
                 in_fields: vec![mir::Field {
                     cfg_attr: None,
                     description: Default::default(),
@@ -1155,7 +1215,31 @@ mod tests {
                     field_conversion: None,
                     field_address: 0..0,
                 },],
-                out_fields: vec![]
+                ..Default::default()
+            })]
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    command Foo {
+                        const ADDRESS = 5;
+                        const ALLOW_BIT_OVERLAP = true;
+                        const ALLOW_ADDRESS_OVERLAP = true;
+                    }
+                    ",
+                )
+                .unwrap()
+            )
+            .unwrap()
+            .objects,
+            &[mir::Object::Command(mir::Command {
+                name: "Foo".into(),
+                address: 5,
+                allow_bit_overlap: true,
+                allow_address_overlap: true,
+                ..Default::default()
             })]
         );
     }
@@ -1268,10 +1352,7 @@ mod tests {
                 name: "Foo".into(),
                 object: mir::ObjectOverride::Register(mir::RegisterOverride {
                     name: "Bar".into(),
-                    address: None,
-                    repeat: None,
-                    access: None,
-                    reset_value: None,
+                    ..Default::default()
                 })
             })]
         );
@@ -1288,6 +1369,7 @@ mod tests {
                         };
                         type Access = WO;
                         const RESET_VALUE = 123;
+                        const ALLOW_ADDRESS_OVERLAP = false;
                     }
                     "
                 )
@@ -1308,6 +1390,7 @@ mod tests {
                     }),
                     access: Some(mir::Access::WO),
                     reset_value: Some(mir::ResetValue::Integer(123)),
+                    ..Default::default()
                 })
             })]
         );
@@ -1331,10 +1414,8 @@ mod tests {
                 name: "Foo".into(),
                 object: mir::ObjectOverride::Register(mir::RegisterOverride {
                     name: "Bar".into(),
-                    address: Default::default(),
-                    repeat: Default::default(),
-                    access: Default::default(),
                     reset_value: Some(mir::ResetValue::Array(vec![1, 2, 3])),
+                    ..Default::default()
                 })
             })]
         );
@@ -1352,7 +1433,7 @@ mod tests {
             )
             .unwrap_err()
             .to_string(),
-            "No ByteOrder is allowed on register overrides"
+            "No `ByteOrder` is allowed on register overrides"
         );
 
         assert_eq!(
@@ -1368,7 +1449,7 @@ mod tests {
             )
             .unwrap_err()
             .to_string(),
-            "No BitOrder is allowed on register overrides"
+            "No `BitOrder` is allowed on register overrides"
         );
 
         assert_eq!(
@@ -1384,7 +1465,23 @@ mod tests {
             )
             .unwrap_err()
             .to_string(),
-            "No SizeBits is allowed on register overrides"
+            "No `SizeBits` is allowed on register overrides"
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo = register Bar {
+                        const ALLOW_BIT_OVERLAP = false;
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap_err()
+            .to_string(),
+            "No `AllowBitOverlap` is allowed on register overrides"
         );
 
         assert_eq!(
@@ -1455,8 +1552,7 @@ mod tests {
                 name: "Foo".into(),
                 object: mir::ObjectOverride::Command(mir::CommandOverride {
                     name: "Bar".into(),
-                    address: None,
-                    repeat: None
+                    ..Default::default()
                 })
             })]
         );
@@ -1467,6 +1563,7 @@ mod tests {
                     "
                     ref Foo = command Bar {
                         const ADDRESS = 6;
+                        const ALLOW_ADDRESS_OVERLAP = true;
                     }
                     "
                 )
@@ -1481,7 +1578,8 @@ mod tests {
                 object: mir::ObjectOverride::Command(mir::CommandOverride {
                     name: "Bar".into(),
                     address: Some(6),
-                    repeat: None
+                    allow_address_overlap: true,
+                    ..Default::default()
                 })
             })]
         );
@@ -1513,7 +1611,8 @@ mod tests {
                     repeat: Some(mir::Repeat {
                         count: 4,
                         stride: 4
-                    })
+                    }),
+                    ..Default::default()
                 })
             })]
         );
@@ -1540,11 +1639,11 @@ mod tests {
                 name: "Foo".into(),
                 object: mir::ObjectOverride::Command(mir::CommandOverride {
                     name: "Bar".into(),
-                    address: None,
                     repeat: Some(mir::Repeat {
                         count: 4,
                         stride: 4
-                    })
+                    }),
+                    ..Default::default()
                 })
             })]
         );
@@ -1638,7 +1737,7 @@ mod tests {
             )
             .unwrap_err()
             .to_string(),
-            "No byte order is allowed on command overrides"
+            "No `ByteOrder` is allowed on command overrides"
         );
 
         assert_eq!(
@@ -1654,7 +1753,7 @@ mod tests {
             )
             .unwrap_err()
             .to_string(),
-            "No bit order is allowed on command overrides"
+            "No `BitOrder` is allowed on command overrides"
         );
 
         assert_eq!(
@@ -1670,7 +1769,7 @@ mod tests {
             )
             .unwrap_err()
             .to_string(),
-            "No size bits in is allowed on command overrides"
+            "No `SizeBitsIn` is allowed on command overrides"
         );
 
         assert_eq!(
@@ -1686,7 +1785,23 @@ mod tests {
             )
             .unwrap_err()
             .to_string(),
-            "No size bits out is allowed on command overrides"
+            "No `SizeBitsOut` is allowed on command overrides"
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo = command Bar {
+                        const ALLOW_BIT_OVERLAP = true;
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap_err()
+            .to_string(),
+            "No `AllowBitOverlap` is allowed on command overrides"
         );
     }
 
@@ -1925,17 +2040,9 @@ mod tests {
             .unwrap()
             .objects,
             &[mir::Object::Register(mir::Register {
-                cfg_attr: Default::default(),
-                description: Default::default(),
                 name: "Foo".into(),
-                access: Default::default(),
-                byte_order: Default::default(),
-                bit_order: Default::default(),
                 address: 5,
-                size_bits: Default::default(),
-                reset_value: Default::default(),
-                repeat: Default::default(),
-                fields: Default::default(),
+                ..Default::default()
             })]
         );
 
@@ -1965,7 +2072,6 @@ mod tests {
             .unwrap()
             .objects,
             &[mir::Object::Register(mir::Register {
-                cfg_attr: Default::default(),
                 description: " This is foo".into(),
                 name: "Foo".into(),
                 access: mir::Access::RC,
@@ -1987,6 +2093,7 @@ mod tests {
                     field_conversion: Default::default(),
                     field_address: 0..16
                 }],
+                ..Default::default()
             })]
         );
 
@@ -2022,17 +2129,34 @@ mod tests {
             .unwrap()
             .objects,
             &[mir::Object::Register(mir::Register {
-                cfg_attr: Default::default(),
-                description: Default::default(),
                 name: "Foo".into(),
-                access: Default::default(),
-                byte_order: Default::default(),
-                bit_order: Default::default(),
                 address: 5,
-                size_bits: Default::default(),
                 reset_value: Some(mir::ResetValue::Array(vec![12, 34])),
-                repeat: Default::default(),
-                fields: Default::default(),
+                ..Default::default()
+            })]
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    register Foo {
+                        const ADDRESS = 5;
+                        const ALLOW_BIT_OVERLAP = true;
+                        const ALLOW_ADDRESS_OVERLAP = true;
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap()
+            .objects,
+            &[mir::Object::Register(mir::Register {
+                name: "Foo".into(),
+                address: 5,
+                allow_bit_overlap: true,
+                allow_address_overlap: true,
+                ..Default::default()
             })]
         );
     }

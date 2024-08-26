@@ -82,6 +82,8 @@
 //! > | (`const` `SIZE_BITS` `=` _INTEGER_`;`)
 //! > | (`const` `RESET_VALUE` `=` _INTEGER_ | _U8_ARRAY_`;`)
 //! > | (`const` _Repeat_)
+//! > | (`const` `ALLOW_BIT_OVERLAP` = _BOOL_`;`)
+//! > | (`const` `ALLOW_ADDRESS_OVERLAP` = _BOOL_`;`)
 //!
 //! _Access_:
 //! > (`ReadWrite`|`RW`)|(`ReadClear`|`RC`)|(`ReadOnly`|`RO`)|(`WriteOnly`|`WO`)|(`ClearOnly`|`CO`)
@@ -141,7 +143,9 @@
 //! > | (`const` `IN_SIZE_BITS` `=` _INTEGER_`;`)
 //! > | (`const` `OUT_SIZE_BITS` `=` _INTEGER_`;`)
 //! > | (`const` _Repeat_)
-//!
+//! > | (`const` `ALLOW_BIT_OVERLAP` = _BOOL_`;`)
+//! > | (`const` `ALLOW_ADDRESS_OVERLAP` = _BOOL_`;`)
+
 //! _Repeat_:
 //! > `REPEAT` `=` `{` `count` `:` _INTEGER_`,` `stride` `:` _INTEGER_`,`? `}` `;`
 //!
@@ -158,7 +162,7 @@ use syn::{
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
     spanned::Spanned,
-    Ident, LitInt, LitStr, Token,
+    Ident, LitBool, LitInt, LitStr, Token,
 };
 
 pub mod mir_transform;
@@ -737,6 +741,36 @@ impl Parse for RegisterItemList {
                     )?;
 
                     register_items.push(RegisterItem::Repeat(input.parse()?));
+                } else if lookahead.peek(kw::ALLOW_BIT_OVERLAP) {
+                    err_if_contains(
+                        &register_items,
+                        core::mem::discriminant(&RegisterItem::AllowBitOverlap(LitBool::new(
+                            false,
+                            Span::call_site(),
+                        ))),
+                        input.span(),
+                    )?;
+
+                    input.parse::<kw::ALLOW_BIT_OVERLAP>()?;
+                    input.parse::<Token![=]>()?;
+                    let value = input.parse()?;
+                    input.parse::<Token![;]>()?;
+                    register_items.push(RegisterItem::AllowBitOverlap(value));
+                } else if lookahead.peek(kw::ALLOW_ADDRESS_OVERLAP) {
+                    err_if_contains(
+                        &register_items,
+                        core::mem::discriminant(&RegisterItem::AllowAddressOverlap(LitBool::new(
+                            false,
+                            Span::call_site(),
+                        ))),
+                        input.span(),
+                    )?;
+
+                    input.parse::<kw::ALLOW_ADDRESS_OVERLAP>()?;
+                    input.parse::<Token![=]>()?;
+                    let value = input.parse()?;
+                    input.parse::<Token![;]>()?;
+                    register_items.push(RegisterItem::AllowAddressOverlap(value));
                 } else {
                     return Err(lookahead.error());
                 }
@@ -759,6 +793,8 @@ pub enum RegisterItem {
     ResetValueInt(LitInt),
     ResetValueArray(Vec<u8>),
     Repeat(Repeat),
+    AllowBitOverlap(LitBool),
+    AllowAddressOverlap(LitBool),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1169,6 +1205,8 @@ pub enum CommandItem {
     SizeBitsIn(LitInt),
     SizeBitsOut(LitInt),
     Repeat(Repeat),
+    AllowBitOverlap(LitBool),
+    AllowAddressOverlap(LitBool),
 }
 
 impl Parse for CommandItemList {
@@ -1276,6 +1314,36 @@ impl Parse for CommandItemList {
                     )?;
 
                     items.push(CommandItem::Repeat(input.parse()?));
+                } else if lookahead.peek(kw::ALLOW_BIT_OVERLAP) {
+                    err_if_contains(
+                        &items,
+                        core::mem::discriminant(&CommandItem::AllowBitOverlap(LitBool::new(
+                            false,
+                            Span::call_site(),
+                        ))),
+                        input.span(),
+                    )?;
+
+                    input.parse::<kw::ALLOW_BIT_OVERLAP>()?;
+                    input.parse::<Token![=]>()?;
+                    let value = input.parse()?;
+                    input.parse::<Token![;]>()?;
+                    items.push(CommandItem::AllowBitOverlap(value));
+                } else if lookahead.peek(kw::ALLOW_ADDRESS_OVERLAP) {
+                    err_if_contains(
+                        &items,
+                        core::mem::discriminant(&CommandItem::AllowAddressOverlap(LitBool::new(
+                            false,
+                            Span::call_site(),
+                        ))),
+                        input.span(),
+                    )?;
+
+                    input.parse::<kw::ALLOW_ADDRESS_OVERLAP>()?;
+                    input.parse::<Token![=]>()?;
+                    let value = input.parse()?;
+                    input.parse::<Token![;]>()?;
+                    items.push(CommandItem::AllowAddressOverlap(value));
                 } else {
                     return Err(lookahead.error());
                 }
@@ -1371,6 +1439,8 @@ mod kw {
     syn::custom_keyword!(SIZE_BITS_IN);
     syn::custom_keyword!(SIZE_BITS_OUT);
     syn::custom_keyword!(RESET_VALUE);
+    syn::custom_keyword!(ALLOW_BIT_OVERLAP);
+    syn::custom_keyword!(ALLOW_ADDRESS_OVERLAP);
 
     // Repeat
     syn::custom_keyword!(REPEAT);
@@ -1586,7 +1656,7 @@ mod tests {
             syn::parse_str::<CommandItemList>("const ABC = 16;")
                 .unwrap_err()
                 .to_string(),
-            "expected one of: `ADDRESS`, `SIZE_BITS_IN`, `SIZE_BITS_OUT`, `REPEAT`"
+            "expected one of: `ADDRESS`, `SIZE_BITS_IN`, `SIZE_BITS_OUT`, `REPEAT`, `ALLOW_BIT_OVERLAP`, `ALLOW_ADDRESS_OVERLAP`"
         );
 
         assert_eq!(
@@ -1920,7 +1990,7 @@ mod tests {
             syn::parse_str::<RegisterItemList>("const RST_VALUE = 5;")
                 .unwrap_err()
                 .to_string(),
-            "expected one of: `ADDRESS`, `SIZE_BITS`, `RESET_VALUE`, `REPEAT`"
+            "expected one of: `ADDRESS`, `SIZE_BITS`, `RESET_VALUE`, `REPEAT`, `ALLOW_BIT_OVERLAP`, `ALLOW_ADDRESS_OVERLAP`"
         );
 
         assert_eq!(
@@ -1972,7 +2042,7 @@ mod tests {
             syn::parse_str::<RegisterItemList>("const RRRRRESET_VALUE = [0, 1, 2, 0x30];")
                 .unwrap_err()
                 .to_string(),
-            "expected one of: `ADDRESS`, `SIZE_BITS`, `RESET_VALUE`, `REPEAT`"
+            "expected one of: `ADDRESS`, `SIZE_BITS`, `RESET_VALUE`, `REPEAT`, `ALLOW_BIT_OVERLAP`, `ALLOW_ADDRESS_OVERLAP`"
         );
 
         assert_eq!(

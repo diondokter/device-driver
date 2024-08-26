@@ -15,6 +15,7 @@ pub fn run_passes(device: &mut Device) -> anyhow::Result<()> {
 
     // TODO:
     // - Validate bit ranges. Is there overlap? Is it not bigger than the register size?
+    // - Validate address overlap. But likely only the actual address and not partial overlap
     // - Validate reset value. Reject too big. Maybe already parse into byte array.
     // - Resolve and copy refs
 

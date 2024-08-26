@@ -169,6 +169,8 @@ pub struct Register {
     pub access: Access,
     pub byte_order: Option<ByteOrder>,
     pub bit_order: BitOrder,
+    pub allow_bit_overlap: bool,
+    pub allow_address_overlap: bool,
     pub address: u64,
     pub size_bits: u64,
     pub reset_value: Option<ResetValue>,
@@ -262,6 +264,8 @@ pub struct Command {
     pub address: u64,
     pub byte_order: Option<ByteOrder>,
     pub bit_order: BitOrder,
+    pub allow_bit_overlap: bool,
+    pub allow_address_overlap: bool,
     pub size_bits_in: u64,
     pub size_bits_out: u64,
     pub repeat: Option<Repeat>,
@@ -300,19 +304,21 @@ pub struct BlockOverride {
     pub repeat: Option<Repeat>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct RegisterOverride {
     pub name: String,
     pub access: Option<Access>,
     pub address: Option<u64>,
+    pub allow_address_overlap: bool,
     pub reset_value: Option<ResetValue>,
     pub repeat: Option<Repeat>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct CommandOverride {
     pub name: String,
     pub address: Option<u64>,
+    pub allow_address_overlap: bool,
     pub repeat: Option<Repeat>,
 }
 
