@@ -17,21 +17,22 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
             object.name()
         );
 
-        let mut seen_field_names = HashSet::new();
-        for field in object.fields().iter_mut().flatten() {
-            anyhow::ensure!(
-                seen_field_names.insert(field.name.clone()),
-                "Duplicate field name found in object \"{}\": \"{}\"",
-                object.name(),
-                field.name
-            );
-
-            if let Some(FieldConversion::Enum(Enum { name, variants, .. })) =
-                field.field_conversion.as_ref()
-            {
-                let mut seen_variant_names = HashSet::new();
-
+        for field_set in object.field_sets() {
+            let mut seen_field_names = HashSet::new();
+            for field in field_set {
                 anyhow::ensure!(
+                    seen_field_names.insert(field.name.clone()),
+                    "Duplicate field name found in object \"{}\": \"{}\"",
+                    object.name(),
+                    field.name
+                );
+
+                if let Some(FieldConversion::Enum(Enum { name, variants, .. })) =
+                    field.field_conversion.as_ref()
+                {
+                    let mut seen_variant_names = HashSet::new();
+
+                    anyhow::ensure!(
                     generated_type_names.insert(name.clone()),
                     "Duplicate generated enum name \"{}\" found in object \"{}\" on field \"{}\"",
                     name,
@@ -39,8 +40,8 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
                     field.name,
                 );
 
-                for v in variants.iter() {
-                    anyhow::ensure!(
+                    for v in variants.iter() {
+                        anyhow::ensure!(
                         seen_variant_names.insert(v.name.clone()),
                         "Duplicate field \"{}\" found in generated enum \"{}\" in object \"{}\" on field \"{}\"",
                         v.name,
@@ -48,6 +49,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
                         object.name(),
                         field.name,
                     );
+                    }
                 }
             }
         }

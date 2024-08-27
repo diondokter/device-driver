@@ -10,7 +10,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
     recurse_objects(&mut device.objects, &mut |object| {
         let object_name = object.name().clone();
 
-        for field in object.fields_mut().iter_mut().flatten() {
+        for field in object.field_sets_mut().flatten() {
             if let Some(FieldConversion::Enum(ec)) = field.field_conversion.as_mut() {
                 let field_bits = field.field_address.clone().count();
                 let highest_value = (1 << field_bits) - 1;

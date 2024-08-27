@@ -118,29 +118,25 @@ impl Object {
         }
     }
 
-    /// If the object has fields, get an iterator over all of them
-    pub(self) fn fields_mut(&mut self) -> Option<Box<dyn Iterator<Item = &mut Field> + '_>> {
+    /// Get an iterator over all the field sets in the object
+    pub(self) fn field_sets_mut(&mut self) -> impl Iterator<Item = &mut [Field]> {
         match self {
-            Object::Block(_) => None,
-            Object::Register(val) => Some(Box::new(val.fields.iter_mut())),
-            Object::Command(val) => Some(Box::new(
-                val.in_fields.iter_mut().chain(val.out_fields.iter_mut()),
-            )),
-            Object::Buffer(_) => None,
-            Object::Ref(_) => None,
+            Object::Register(val) => vec![val.fields.as_mut_slice()].into_iter(),
+            Object::Command(val) => {
+                vec![val.in_fields.as_mut_slice(), val.out_fields.as_mut_slice()].into_iter()
+            }
+            Object::Block(_) | Object::Buffer(_) | Object::Ref(_) => Vec::new().into_iter(),
         }
     }
 
-    /// If the object has fields, get an iterator over all of them
-    pub(self) fn fields(&self) -> Option<Box<dyn Iterator<Item = &Field> + '_>> {
+    /// Get an iterator over all the field sets in the object
+    pub(self) fn field_sets(&self) -> impl Iterator<Item = &[Field]> {
         match self {
-            Object::Block(_) => None,
-            Object::Register(val) => Some(Box::new(val.fields.iter())),
+            Object::Register(val) => vec![val.fields.as_slice()].into_iter(),
             Object::Command(val) => {
-                Some(Box::new(val.in_fields.iter().chain(val.out_fields.iter())))
+                vec![val.in_fields.as_slice(), val.out_fields.as_slice()].into_iter()
             }
-            Object::Buffer(_) => None,
-            Object::Ref(_) => None,
+            Object::Block(_) | Object::Buffer(_) | Object::Ref(_) => Vec::new().into_iter(),
         }
     }
 }

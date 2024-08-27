@@ -1,5 +1,6 @@
 use super::{Device, Object};
 
+mod bit_ranges_validated;
 mod byte_order_specified;
 mod enum_values_checked;
 mod names_normalized;
@@ -12,11 +13,10 @@ pub fn run_passes(device: &mut Device) -> anyhow::Result<()> {
     enum_values_checked::run_pass(device)?;
     byte_order_specified::run_pass(device)?;
     reset_values_converted::run_pass(device)?;
+    bit_ranges_validated::run_pass(device)?;
 
     // TODO:
-    // - Validate bit ranges. Is there overlap? Is it not bigger than the register size?
     // - Validate address overlap. But likely only the actual address and not partial overlap
-    // - Validate reset value. Reject too big. Maybe already parse into byte array.
     // - Resolve and copy refs
 
     Ok(())

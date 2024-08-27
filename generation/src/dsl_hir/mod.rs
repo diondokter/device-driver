@@ -145,7 +145,7 @@
 //! > | (`const` _Repeat_)
 //! > | (`const` `ALLOW_BIT_OVERLAP` = _BOOL_`;`)
 //! > | (`const` `ALLOW_ADDRESS_OVERLAP` = _BOOL_`;`)
-
+//!
 //! _Repeat_:
 //! > `REPEAT` `=` `{` `count` `:` _INTEGER_`,` `stride` `:` _INTEGER_`,`? `}` `;`
 //!

@@ -18,7 +18,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
     recurse_objects(&mut device.objects, &mut |object| {
         *object.name_mut() = pascal_converter.convert(object.name_mut());
 
-        for field in object.fields_mut().iter_mut().flatten() {
+        for field in object.field_sets_mut().flatten() {
             field.name = snake_converter.convert(&field.name);
             if let Some(FieldConversion::Enum(Enum { name, variants, .. })) =
                 field.field_conversion.as_mut()
