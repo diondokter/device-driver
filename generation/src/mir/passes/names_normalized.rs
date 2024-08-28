@@ -2,7 +2,7 @@ use convert_case::Case;
 
 use crate::mir::{Device, Enum, FieldConversion};
 
-use super::recurse_objects;
+use super::recurse_objects_mut;
 
 /// Changes all names of all objects, enums and enum variants to either Pascal case or snake case
 pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
@@ -15,7 +15,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
         .set_boundaries(&boundaries)
         .to_case(Case::Snake);
 
-    recurse_objects(&mut device.objects, &mut |object| {
+    recurse_objects_mut(&mut device.objects, &mut |object| {
         *object.name_mut() = pascal_converter.convert(object.name_mut());
 
         for field in object.field_sets_mut().flatten() {

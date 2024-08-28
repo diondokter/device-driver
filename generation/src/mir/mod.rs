@@ -89,9 +89,16 @@ pub enum Object {
 }
 
 impl Object {
-    pub(self) fn get_block_object_list(&mut self) -> Option<&mut Vec<Self>> {
+    pub(self) fn get_block_object_list_mut(&mut self) -> Option<&mut Vec<Self>> {
         match self {
             Object::Block(b) => Some(&mut b.objects),
+            _ => None,
+        }
+    }
+
+    pub(self) fn get_block_object_list(&self) -> Option<&[Self]> {
+        match self {
+            Object::Block(b) => Some(&b.objects),
             _ => None,
         }
     }
@@ -108,7 +115,7 @@ impl Object {
     }
 
     /// Get a reference to the name of the specific object
-    pub(self) fn name(&self) -> &String {
+    pub(self) fn name(&self) -> &str {
         match self {
             Object::Block(val) => &val.name,
             Object::Register(val) => &val.name,
@@ -293,7 +300,17 @@ pub enum ObjectOverride {
     Command(CommandOverride),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+impl ObjectOverride {
+    fn name(&self) -> &str {
+        match self {
+            ObjectOverride::Block(v) => &v.name,
+            ObjectOverride::Register(v) => &v.name,
+            ObjectOverride::Command(v) => &v.name,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct BlockOverride {
     pub name: String,
     pub address_offset: Option<i64>,

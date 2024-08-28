@@ -3,12 +3,12 @@ use itertools::Itertools;
 
 use crate::mir::{Device, EnumGenerationStyle, EnumValue, FieldConversion};
 
-use super::recurse_objects;
+use super::recurse_objects_mut;
 
 /// Checks if enums are fully specified and determines the generation style
 pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
-    recurse_objects(&mut device.objects, &mut |object| {
-        let object_name = object.name().clone();
+    recurse_objects_mut(&mut device.objects, &mut |object| {
+        let object_name = object.name().to_string();
 
         for field in object.field_sets_mut().flatten() {
             if let Some(FieldConversion::Enum(ec)) = field.field_conversion.as_mut() {

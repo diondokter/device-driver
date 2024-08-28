@@ -4,11 +4,11 @@ use anyhow::ensure;
 
 use crate::mir::{Device, Field, Object};
 
-use super::recurse_objects;
+use super::recurse_objects_mut;
 
 /// Validate that the bit ranges of fields fall within the max size and don't have overlap if they're not allowed
 pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
-    recurse_objects(&mut device.objects, &mut |object| match object {
+    recurse_objects_mut(&mut device.objects, &mut |object| match object {
         Object::Register(r) => {
             validate_max_len(&r.fields, r.size_bits, &r.name)?;
             if !r.allow_bit_overlap {

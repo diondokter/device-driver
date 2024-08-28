@@ -5,6 +5,7 @@ mod byte_order_specified;
 mod enum_values_checked;
 mod names_normalized;
 mod names_unique;
+mod refs_validated;
 mod reset_values_converted;
 
 pub fn run_passes(device: &mut Device) -> anyhow::Result<()> {
@@ -14,19 +15,34 @@ pub fn run_passes(device: &mut Device) -> anyhow::Result<()> {
     byte_order_specified::run_pass(device)?;
     reset_values_converted::run_pass(device)?;
     bit_ranges_validated::run_pass(device)?;
+    refs_validated::run_pass(device)?;
 
     // TODO:
     // - Validate address overlap. But likely only the actual address and not partial overlap
-    // - Resolve and copy refs
+
+    Ok(())
+}
+
+fn recurse_objects_mut(
+    objects: &mut [Object],
+    f: &mut impl FnMut(&mut Object) -> anyhow::Result<()>,
+) -> anyhow::Result<()> {
+    for object in objects.iter_mut() {
+        f(object)?;
+
+        if let Some(objects) = object.get_block_object_list_mut() {
+            recurse_objects_mut(objects, f)?;
+        }
+    }
 
     Ok(())
 }
 
 fn recurse_objects(
-    objects: &mut [Object],
-    f: &mut impl FnMut(&mut Object) -> anyhow::Result<()>,
+    objects: &[Object],
+    f: &mut impl FnMut(&Object) -> anyhow::Result<()>,
 ) -> anyhow::Result<()> {
-    for object in objects.iter_mut() {
+    for object in objects.iter() {
         f(object)?;
 
         if let Some(objects) = object.get_block_object_list() {

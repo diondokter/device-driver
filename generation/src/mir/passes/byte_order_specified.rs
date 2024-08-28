@@ -2,7 +2,7 @@ use anyhow::bail;
 
 use crate::mir::{Device, Object};
 
-use super::recurse_objects;
+use super::recurse_objects_mut;
 
 /// Checks if the byte order is set for all registers and commands that need it
 pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
@@ -10,7 +10,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    recurse_objects(&mut device.objects, &mut |object| match object {
+    recurse_objects_mut(&mut device.objects, &mut |object| match object {
         Object::Register(r) if r.size_bits > 8 && r.byte_order.is_none() => {
             bail!("No byte order is specified for register \"{}\" while it's big enough that byte order is important. Specify it on the register or in the global config", r.name);
         }

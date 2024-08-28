@@ -6,7 +6,7 @@ use bitvec::{
 
 use crate::mir::{BitOrder, ByteOrder, Device, Object, ResetValue};
 
-use super::recurse_objects;
+use super::recurse_objects_mut;
 
 /// Checks if the reset values of registers is valid.
 /// Also converts integer values to the array representation using the correct bit and byte order.
@@ -18,7 +18,7 @@ use super::recurse_objects;
 /// This function assumes all register have a valid byte order, and so depends on [super::byte_order_specified::run_pass]
 /// having been run.
 pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
-    recurse_objects(&mut device.objects, &mut |object| match object {
+    recurse_objects_mut(&mut device.objects, &mut |object| match object {
         Object::Register(reg) => {
             let target_byte_order = reg
                 .byte_order
