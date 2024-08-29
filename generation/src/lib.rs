@@ -2,3 +2,4 @@
 
 pub mod dsl_hir;
 pub mod mir;
+pub mod lir;
