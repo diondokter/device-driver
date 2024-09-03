@@ -35,8 +35,8 @@ pub fn generate_enum(value: &Enum) -> TokenStream {
         };
 
         quote! {
-            #cfg_attr
             #doc_attr
+            #cfg_attr
             #name #enum_field = #number
         }
     });
@@ -134,9 +134,10 @@ pub fn generate_enum(value: &Enum) -> TokenStream {
         }
     };
 
+    // TODO: Add defmt
     quote! {
-        #cfg_attr
         #doc_attr
+        #cfg_attr
         #[repr(#base_type)]
         #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
         pub enum #name {
