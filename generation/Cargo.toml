@@ -14,12 +14,10 @@ readme.workspace = true
 [dependencies]
 anyhow = "1.0.86"
 convert_case = "0.6.0"
-indexmap = { version = "2.1.0", features = ["serde"] }
 itertools = "0.13.0"
 prettyplease = "0.2.15"
 proc-macro2 = "1.0.70"
 quote = "1.0.33"
-serde = { version = "1.0.193", features = ["derive"] }
 syn = { version = "2.0", features = ["extra-traits"] }
 bitvec = "1.0.1"
 
@@ -27,3 +25,4 @@ bitvec = "1.0.1"
 serde_json = "1.0.108"
 serde_yaml = "0.9.27"
 pretty_assertions = "1.4.0"
+indoc = "2.0.5"
