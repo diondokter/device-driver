@@ -248,15 +248,28 @@ mod tests {
             bit_order: BitOrder::LSB0,
             size_bits: 20,
             reset_value: vec![1, 2, 3],
-            fields: vec![Field {
-                cfg_attr: quote! { #[cfg(linux)] },
-                doc_attr: quote! { #[doc = "Hiya again!"] },
-                name: format_ident!("my_field"),
-                address: Literal::u64_unsuffixed(0)..Literal::u64_unsuffixed(4),
-                base_type: format_ident!("u8"),
-                conversion_method: FieldConversionMethod::UnsafeInto(format_ident!("FieldEnum")),
-                access: Access::RW,
-            }],
+            fields: vec![
+                Field {
+                    cfg_attr: quote! { #[cfg(linux)] },
+                    doc_attr: quote! { #[doc = "Hiya again!"] },
+                    name: format_ident!("my_field"),
+                    address: Literal::u64_unsuffixed(0)..Literal::u64_unsuffixed(4),
+                    base_type: format_ident!("u8"),
+                    conversion_method: FieldConversionMethod::UnsafeInto(format_ident!(
+                        "FieldEnum"
+                    )),
+                    access: Access::RW,
+                },
+                Field {
+                    cfg_attr: quote! {},
+                    doc_attr: quote! {},
+                    name: format_ident!("my_field2"),
+                    address: Literal::u64_unsuffixed(4)..Literal::u64_unsuffixed(16),
+                    base_type: format_ident!("i16"),
+                    conversion_method: FieldConversionMethod::None,
+                    access: Access::RC,
+                },
+            ],
         });
 
         pretty_assertions::assert_eq!(
@@ -293,6 +306,12 @@ mod tests {
                     let raw = self.bits[0..4].load_le::<u8>();
                     unsafe { raw.try_into().unwrap_unchecked() }
                 }
+                ///Read the my_field2 field of the register.
+                ///
+                fn my_field2(&self) -> i16 {
+                    let raw = self.bits[4..16].load_le::<i16>();
+                    raw
+                }
                 ///Write the my_field field of the register.
                 ///
                 ///Hiya again!
@@ -300,6 +319,12 @@ mod tests {
                 fn set_my_field(&mut self, value: FieldEnum) {
                     let raw = value.into();
                     self.bits[0..4].store_le::<u8>(raw);
+                }
+                ///Clear (invert from default) the my_field2 field of the register.
+                ///
+                fn clear_my_field2(&mut self) {
+                    let default = Self::new().bits[4..16].load_le::<i16>();
+                    self.bits[4..16].store_le::<i16>(default ^ (0.wrapping_sub(1)));
                 }
             }
             impl From<[u8; 3usize]> for MyRegister {

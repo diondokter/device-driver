@@ -201,13 +201,13 @@ mod tests {
         pretty_assertions::assert_eq!(
             prettyplease::unparse(&syn::parse2(output).unwrap()),
             indoc! {"
-                #[cfg(windows)]
                 ///Docs are important!
+                #[cfg(windows)]
                 #[repr(u8)]
                 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
                 pub enum MyEnum {
-                    #[cfg(unix)]
                     ///Field!
+                    #[cfg(unix)]
                     MyField = 0,
                     MyField1 = 1,
                     MyField2(u8) = 4,
