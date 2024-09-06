@@ -4,7 +4,7 @@ use proc_macro2::{Ident, Literal, TokenStream};
 
 use crate::mir::{self, Access, BitOrder, ByteOrder};
 
-pub mod lir_transform;
+pub mod token_transform;
 
 pub struct Device {
     pub blocks: Vec<Block>,
