@@ -6,6 +6,7 @@ use std::ops::Range;
 use convert_case::Boundary;
 use quote::TokenStreamExt;
 
+pub mod lir_transform;
 pub mod passes;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -55,6 +56,15 @@ pub enum Integer {
     I32,
     I64,
     I128,
+}
+
+impl quote::ToTokens for Integer {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        tokens.append(quote::format_ident!(
+            "{}",
+            format!("{self:?}").to_lowercase()
+        ));
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -215,14 +225,23 @@ pub enum FieldConversion {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Enum {
+    pub cfg_attr: Option<String>,
+    pub description: String,
     pub name: String,
     pub variants: Vec<EnumVariant>,
     generation_style: Option<EnumGenerationStyle>,
 }
 
 impl Enum {
-    pub fn new(name: String, variants: Vec<EnumVariant>) -> Self {
+    pub fn new(
+        cfg_attr: Option<String>,
+        description: String,
+        name: String,
+        variants: Vec<EnumVariant>,
+    ) -> Self {
         Self {
+            cfg_attr,
+            description,
             name,
             variants,
             generation_style: None,
@@ -231,11 +250,15 @@ impl Enum {
 
     #[cfg(test)]
     fn new_with_style(
+        cfg_attr: Option<String>,
+        description: String,
         name: String,
         variants: Vec<EnumVariant>,
         generation_style: EnumGenerationStyle,
     ) -> Self {
         Self {
+            cfg_attr,
+            description,
             name,
             variants,
             generation_style: Some(generation_style),
@@ -246,7 +269,7 @@ impl Enum {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EnumGenerationStyle {
     Fallible,
-    Infallible,
+    Infallible { bit_size: usize },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -346,4 +369,14 @@ pub struct CommandOverride {
 pub enum ResetValue {
     Integer(u128),
     Array(Vec<u8>),
+}
+
+impl ResetValue {
+    pub fn as_array(&self) -> Option<&Vec<u8>> {
+        if let Self::Array(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
 }

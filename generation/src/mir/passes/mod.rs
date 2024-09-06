@@ -23,7 +23,7 @@ pub fn run_passes(device: &mut Device) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn recurse_objects_mut(
+pub(crate) fn recurse_objects_mut(
     objects: &mut [Object],
     f: &mut impl FnMut(&mut Object) -> anyhow::Result<()>,
 ) -> anyhow::Result<()> {
@@ -38,7 +38,7 @@ fn recurse_objects_mut(
     Ok(())
 }
 
-fn recurse_objects(
+pub(crate) fn recurse_objects(
     objects: &[Object],
     f: &mut impl FnMut(&Object) -> anyhow::Result<()>,
 ) -> anyhow::Result<()> {

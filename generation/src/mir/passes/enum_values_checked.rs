@@ -15,6 +15,14 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
                 let field_bits = field.field_address.clone().count();
                 let highest_value = (1 << field_bits) - 1;
 
+                ensure!(
+                    field_bits <= 128,
+                    "Enum \"{}\" is too big to fit in 128-bit in object \"{}\" on field \"{}\"",
+                    &ec.name,
+                    object_name,
+                    &field.name
+                );
+
                 // Record all variant values
                 let mut seen_values = Vec::new();
                 for variant in ec.variants.iter_mut() {
@@ -54,7 +62,9 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
                     .all(|val| seen_values.iter().any(|(seen_val, _)| val == *seen_val));
 
                 ec.generation_style = Some(if has_fallback || has_bits_covered {
-                    EnumGenerationStyle::Infallible
+                    EnumGenerationStyle::Infallible {
+                        bit_size: field_bits,
+                    }
                 } else {
                     EnumGenerationStyle::Fallible
                 });
@@ -93,6 +103,8 @@ mod tests {
                 name: "MyCommand".into(),
                 out_fields: vec![Field {
                     field_conversion: Some(FieldConversion::Enum(Enum::new(
+                        None,
+                        Default::default(),
                         "MyEnum".into(),
                         vec![
                             EnumVariant {
@@ -130,6 +142,8 @@ mod tests {
                 name: "MyCommand".into(),
                 out_fields: vec![Field {
                     field_conversion: Some(FieldConversion::Enum(Enum::new_with_style(
+                        None,
+                        Default::default(),
                         "MyEnum".into(),
                         vec![
                             EnumVariant {
@@ -153,7 +167,7 @@ mod tests {
                                 ..Default::default()
                             },
                         ],
-                        EnumGenerationStyle::Infallible,
+                        EnumGenerationStyle::Infallible { bit_size: 2 },
                     ))),
                     field_address: 0..2,
                     ..Default::default()
@@ -175,6 +189,8 @@ mod tests {
                 name: "MyCommand".into(),
                 out_fields: vec![Field {
                     field_conversion: Some(FieldConversion::Enum(Enum::new(
+                        None,
+                        Default::default(),
                         "MyEnum".into(),
                         vec![
                             EnumVariant {
@@ -202,6 +218,8 @@ mod tests {
                 name: "MyCommand".into(),
                 out_fields: vec![Field {
                     field_conversion: Some(FieldConversion::Enum(Enum::new_with_style(
+                        None,
+                        Default::default(),
                         "MyEnum".into(),
                         vec![
                             EnumVariant {
@@ -215,7 +233,7 @@ mod tests {
                                 ..Default::default()
                             },
                         ],
-                        EnumGenerationStyle::Infallible,
+                        EnumGenerationStyle::Infallible { bit_size: 2 },
                     ))),
                     field_address: 0..2,
                     ..Default::default()
@@ -237,6 +255,8 @@ mod tests {
                 name: "MyCommand".into(),
                 out_fields: vec![Field {
                     field_conversion: Some(FieldConversion::Enum(Enum::new(
+                        None,
+                        Default::default(),
                         "MyEnum".into(),
                         vec![EnumVariant {
                             name: "var0".into(),
@@ -257,6 +277,8 @@ mod tests {
                 name: "MyCommand".into(),
                 out_fields: vec![Field {
                     field_conversion: Some(FieldConversion::Enum(Enum::new_with_style(
+                        None,
+                        Default::default(),
                         "MyEnum".into(),
                         vec![EnumVariant {
                             name: "var0".into(),
@@ -286,6 +308,8 @@ mod tests {
                 out_fields: vec![Field {
                     name: "MyField".into(),
                     field_conversion: Some(FieldConversion::Enum(Enum::new(
+                        None,
+                        Default::default(),
                         "MyEnum".into(),
                         vec![
                             EnumVariant {
@@ -329,6 +353,8 @@ mod tests {
                 out_fields: vec![Field {
                     name: "MyField".into(),
                     field_conversion: Some(FieldConversion::Enum(Enum::new(
+                        None,
+                        Default::default(),
                         "MyEnum".into(),
                         vec![
                             EnumVariant {

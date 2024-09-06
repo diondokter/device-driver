@@ -498,16 +498,22 @@ fn transform_field(
     field: &dsl_hir::Field,
     global_config: &mir::GlobalConfig,
 ) -> Result<mir::Field, syn::Error> {
+    let field_cfg_attr = get_cfg_attr(&field.attribute_list)?;
+    let field_description = get_description(&field.attribute_list).unwrap_or_default();
+
     Ok(mir::Field {
-        cfg_attr: get_cfg_attr(&field.attribute_list)?,
-        description: get_description(&field.attribute_list).unwrap_or_default(),
+        cfg_attr: field_cfg_attr.clone(),
+        description: field_description.clone(),
         name: field.identifier.to_string(),
         access: field
             .access
             .map(Into::into)
             .unwrap_or(global_config.default_field_access),
         base_type: field.base_type.into(),
-        field_conversion: field.field_conversion.as_ref().map(transform_field_conversion).transpose()?,
+        field_conversion: field.field_conversion
+            .as_ref()
+            .map(|fc| transform_field_conversion(field_cfg_attr, field_description, fc))
+            .transpose()?,
         field_address: match &field.field_address {
             dsl_hir::FieldAddress::Integer(start) if field.base_type.is_bool() =>
                 start.base10_parse()?..start.base10_parse()?,
@@ -530,6 +536,8 @@ fn transform_field(
 }
 
 fn transform_field_conversion(
+    field_cfg_attr: Option<String>,
+    field_description: String,
     field_conversion: &dsl_hir::FieldConversion,
 ) -> Result<mir::FieldConversion, syn::Error> {
     match field_conversion {
@@ -542,6 +550,8 @@ fn transform_field_conversion(
             identifier,
             enum_variant_list,
         } => Ok(mir::FieldConversion::Enum(mir::Enum::new(
+            field_cfg_attr,
+            field_description,
             identifier.to_string(),
             enum_variant_list
                 .variants
@@ -1124,6 +1134,8 @@ mod tests {
                     access: mir::Access::RO,
                     base_type: mir::BaseType::Int,
                     field_conversion: Some(mir::FieldConversion::Enum(mir::Enum::new(
+                        None,
+                        Default::default(),
                         "Val".into(),
                         vec![
                             mir::EnumVariant {
