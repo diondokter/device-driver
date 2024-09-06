@@ -4,6 +4,7 @@
 use std::ops::Range;
 
 use convert_case::Boundary;
+use quote::TokenStreamExt;
 
 pub mod passes;
 
@@ -64,6 +65,12 @@ pub enum Access {
     RO,
     WO,
     CO,
+}
+
+impl quote::ToTokens for Access {
+    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
+        tokens.append(quote::format_ident!("{self:?}"));
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

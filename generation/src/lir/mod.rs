@@ -2,23 +2,22 @@ use std::ops::Range;
 
 use proc_macro2::{Ident, Literal, TokenStream};
 
-use crate::mir::{self, BitOrder, ByteOrder};
+use crate::mir::{self, Access, BitOrder, ByteOrder};
 
 pub mod lir_transform;
 
 pub struct Device {
-    pub register_address_type: Ident,
-    pub command_address_type: Ident,
-    pub buffer_address_type: Ident,
-
     pub blocks: Vec<Block>,
     pub field_sets: Vec<FieldSet>,
     pub enums: Vec<Enum>,
 }
 
 pub struct Block {
+    pub cfg_attr: TokenStream,
+    pub doc_attr: TokenStream,
+    /// True for the root (top-level) block
+    pub root: bool,
     pub name: Ident,
-    pub address_offset: Literal,
     pub methods: Vec<BlockMethod>,
 }
 
@@ -28,19 +27,35 @@ pub struct BlockMethod {
     pub name: Ident,
     pub address: Literal,
     pub kind: BlockMethodKind,
-    pub return_type: Ident,
+    pub method_type: BlockMethodType,
 }
 
 pub enum BlockMethodKind {
-    Block,
-    BlockRepeated { count: Literal, stride: Literal },
-    Register,
-    RegisterRepeated { count: Literal, stride: Literal },
-    Command,
-    CommandRepeated { count: Literal, stride: Literal },
-    SimpleCommand,
-    SimpleCommandRepeated { count: Literal, stride: Literal },
-    Buffer,
+    Normal,
+    Repeated { count: Literal, stride: Literal },
+}
+
+pub enum BlockMethodType {
+    Block {
+        name: Ident,
+    },
+    Register {
+        field_set_name: Ident,
+        access: Access,
+        address_type: Ident,
+    },
+    SimpleCommand {
+        address_type: Ident,
+    },
+    Command {
+        field_set_name_in: Ident,
+        field_set_name_out: Ident,
+        address_type: Ident,
+    },
+    Buffer {
+        access: Access,
+        address_type: Ident,
+    },
 }
 
 /// A set of fields, like a register or command in/out
