@@ -541,38 +541,44 @@ fn transform_field_conversion(
     field_conversion: &dsl_hir::FieldConversion,
 ) -> Result<mir::FieldConversion, syn::Error> {
     match field_conversion {
-        dsl_hir::FieldConversion::Direct(path) => Ok(mir::FieldConversion::Direct(
-            path.to_token_stream()
+        dsl_hir::FieldConversion::Direct { path, use_try } => Ok(mir::FieldConversion::Direct {
+            type_name: path
+                .to_token_stream()
                 .to_string()
                 .replace(char::is_whitespace, ""),
-        )),
+            use_try: *use_try,
+        }),
         dsl_hir::FieldConversion::Enum {
             identifier,
             enum_variant_list,
-        } => Ok(mir::FieldConversion::Enum(mir::Enum::new(
-            field_cfg_attr,
-            field_description,
-            identifier.to_string(),
-            enum_variant_list
-                .variants
-                .iter()
-                .map(|v| {
-                    Ok(mir::EnumVariant {
-                        cfg_attr: get_cfg_attr(&v.attribute_list)?,
-                        description: get_description(&v.attribute_list).unwrap_or_default(),
-                        name: v.identifier.to_string(),
-                        value: match &v.enum_value {
-                            None => mir::EnumValue::Unspecified,
-                            Some(dsl_hir::EnumValue::Specified(val)) => {
-                                mir::EnumValue::Specified(val.base10_parse()?)
-                            }
-                            Some(dsl_hir::EnumValue::Default) => mir::EnumValue::Default,
-                            Some(dsl_hir::EnumValue::CatchAll) => mir::EnumValue::CatchAll,
-                        },
+            use_try,
+        } => Ok(mir::FieldConversion::Enum {
+            enum_value: mir::Enum::new(
+                field_cfg_attr,
+                field_description,
+                identifier.to_string(),
+                enum_variant_list
+                    .variants
+                    .iter()
+                    .map(|v| {
+                        Ok(mir::EnumVariant {
+                            cfg_attr: get_cfg_attr(&v.attribute_list)?,
+                            description: get_description(&v.attribute_list).unwrap_or_default(),
+                            name: v.identifier.to_string(),
+                            value: match &v.enum_value {
+                                None => mir::EnumValue::Unspecified,
+                                Some(dsl_hir::EnumValue::Specified(val)) => {
+                                    mir::EnumValue::Specified(val.base10_parse()?)
+                                }
+                                Some(dsl_hir::EnumValue::Default) => mir::EnumValue::Default,
+                                Some(dsl_hir::EnumValue::CatchAll) => mir::EnumValue::CatchAll,
+                            },
+                        })
                     })
-                })
-                .collect::<Result<_, syn::Error>>()?,
-        ))),
+                    .collect::<Result<_, syn::Error>>()?,
+            ),
+            use_try: *use_try,
+        }),
     }
 }
 
@@ -1121,9 +1127,10 @@ mod tests {
                         name: "foo".into(),
                         access: mir::Access::RO,
                         base_type: mir::BaseType::Uint,
-                        field_conversion: Some(mir::FieldConversion::Direct(
-                            "crate::my_mod::MyStruct".into()
-                        )),
+                        field_conversion: Some(mir::FieldConversion::Direct {
+                            type_name: "crate::my_mod::MyStruct".into(),
+                            use_try: false,
+                        }),
                         field_address: 1..6,
                     }
                 ],
@@ -1133,37 +1140,40 @@ mod tests {
                     name: "val".into(),
                     access: mir::Access::RO,
                     base_type: mir::BaseType::Int,
-                    field_conversion: Some(mir::FieldConversion::Enum(mir::Enum::new(
-                        None,
-                        Default::default(),
-                        "Val".into(),
-                        vec![
-                            mir::EnumVariant {
-                                cfg_attr: None,
-                                description: Default::default(),
-                                name: "One".into(),
-                                value: mir::EnumValue::Unspecified,
-                            },
-                            mir::EnumVariant {
-                                cfg_attr: None,
-                                description: " Two!".into(),
-                                name: "Two".into(),
-                                value: mir::EnumValue::Specified(2),
-                            },
-                            mir::EnumVariant {
-                                cfg_attr: None,
-                                description: Default::default(),
-                                name: "Three".into(),
-                                value: mir::EnumValue::Default,
-                            },
-                            mir::EnumVariant {
-                                cfg_attr: Some("yes".into()),
-                                description: Default::default(),
-                                name: "Four".into(),
-                                value: mir::EnumValue::CatchAll,
-                            }
-                        ],
-                    ))),
+                    field_conversion: Some(mir::FieldConversion::Enum {
+                        enum_value: mir::Enum::new(
+                            None,
+                            Default::default(),
+                            "Val".into(),
+                            vec![
+                                mir::EnumVariant {
+                                    cfg_attr: None,
+                                    description: Default::default(),
+                                    name: "One".into(),
+                                    value: mir::EnumValue::Unspecified,
+                                },
+                                mir::EnumVariant {
+                                    cfg_attr: None,
+                                    description: " Two!".into(),
+                                    name: "Two".into(),
+                                    value: mir::EnumValue::Specified(2),
+                                },
+                                mir::EnumVariant {
+                                    cfg_attr: None,
+                                    description: Default::default(),
+                                    name: "Three".into(),
+                                    value: mir::EnumValue::Default,
+                                },
+                                mir::EnumVariant {
+                                    cfg_attr: Some("yes".into()),
+                                    description: Default::default(),
+                                    name: "Four".into(),
+                                    value: mir::EnumValue::CatchAll,
+                                }
+                            ],
+                        ),
+                        use_try: false
+                    }),
                     field_address: 0..16,
                 }],
                 ..Default::default()

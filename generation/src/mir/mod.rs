@@ -219,8 +219,24 @@ pub enum BaseType {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FieldConversion {
-    Direct(String),
-    Enum(Enum),
+    Direct { type_name: String, use_try: bool },
+    Enum { enum_value: Enum, use_try: bool },
+}
+
+impl FieldConversion {
+    pub const fn use_try(&self) -> bool {
+        match self {
+            FieldConversion::Direct { use_try, .. } => *use_try,
+            FieldConversion::Enum { use_try, .. } => *use_try,
+        }
+    }
+
+    pub fn type_name(&self) -> &str {
+        match self {
+            FieldConversion::Direct { type_name, .. } => type_name,
+            FieldConversion::Enum { enum_value, .. } => &enum_value.name,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]

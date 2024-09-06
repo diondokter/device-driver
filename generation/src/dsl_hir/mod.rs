@@ -102,8 +102,8 @@
 //! > _IDENTIFIER_`:` _Access_? _BaseType_ _FieldConversion_? `=` _FieldAddress_
 //!
 //! _FieldConversion_:
-//! > (`as` _TYPE_PATH_)
-//! > | (`as` `enum` _IDENTIFIER_ `{` _EnumVariantList_`}`)
+//! > (`as` `try`? _TYPE_PATH_)
+//! > | (`as` `try`? `enum` _IDENTIFIER_ `{` _EnumVariantList_`}`)
 //!
 //! _EnumVariantList_:
 //! > _EnumVariant_(`,` _EnumVariant_)*`,`?
@@ -952,10 +952,14 @@ impl Parse for Field {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FieldConversion {
-    Direct(syn::Path),
+    Direct {
+        path: syn::Path,
+        use_try: bool,
+    },
     Enum {
         identifier: syn::Ident,
         enum_variant_list: EnumVariantList,
+        use_try: bool,
     },
 }
 
@@ -963,11 +967,15 @@ impl Parse for FieldConversion {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         input.parse::<Token![as]>()?;
 
-        if !input.peek(Token![enum]) {
-            return Ok(Self::Direct(input.parse::<syn::Path>()?));
+        let use_try = input.parse::<Token![try]>().is_ok();
+
+        if input.parse::<Token![enum]>().is_err() {
+            return Ok(Self::Direct {
+                path: input.parse::<syn::Path>()?,
+                use_try,
+            });
         }
 
-        input.parse::<Token![enum]>()?;
         let identifier = input.parse()?;
 
         let braced_input;
@@ -978,6 +986,7 @@ impl Parse for FieldConversion {
         Ok(Self::Enum {
             identifier,
             enum_variant_list,
+            use_try,
         })
     }
 }
@@ -1777,9 +1786,28 @@ mod tests {
                 identifier: Ident::new("ExsitingType", Span::call_site()),
                 access: Some(Access::RW),
                 base_type: BaseType::Uint,
-                field_conversion: Some(FieldConversion::Direct(
-                    syn::parse_str("crate::module::foo::Bar").unwrap()
-                )),
+                field_conversion: Some(FieldConversion::Direct {
+                    path: syn::parse_str("crate::module::foo::Bar").unwrap(),
+                    use_try: false,
+                }),
+                field_address: FieldAddress::Integer(LitInt::new("0x1234", Span::call_site()))
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<Field>(
+                "ExsitingType: RW uint as try crate::module::foo::Bar = 0x1234"
+            )
+            .unwrap(),
+            Field {
+                attribute_list: AttributeList::new(),
+                identifier: Ident::new("ExsitingType", Span::call_site()),
+                access: Some(Access::RW),
+                base_type: BaseType::Uint,
+                field_conversion: Some(FieldConversion::Direct {
+                    path: syn::parse_str("crate::module::foo::Bar").unwrap(),
+                    use_try: true,
+                }),
                 field_address: FieldAddress::Integer(LitInt::new("0x1234", Span::call_site()))
             }
         );
@@ -1804,7 +1832,8 @@ mod tests {
                     identifier: Ident::new("Bar", Span::call_site()),
                     enum_variant_list: EnumVariantList {
                         variants: Vec::new()
-                    }
+                    },
+                    use_try: false,
                 }),
                 field_address: FieldAddress::Integer(LitInt::new("0x1234", Span::call_site()))
             }

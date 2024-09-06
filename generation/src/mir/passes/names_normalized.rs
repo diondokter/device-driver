@@ -20,8 +20,10 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
 
         for field in object.field_sets_mut().flatten() {
             field.name = snake_converter.convert(&field.name);
-            if let Some(FieldConversion::Enum(Enum { name, variants, .. })) =
-                field.field_conversion.as_mut()
+            if let Some(FieldConversion::Enum {
+                enum_value: Enum { name, variants, .. },
+                ..
+            }) = field.field_conversion.as_mut()
             {
                 *name = pascal_converter.convert(&*name);
 
@@ -69,14 +71,17 @@ mod tests {
                         },
                         Field {
                             name: "my-fielD2".into(),
-                            field_conversion: Some(FieldConversion::Enum(Enum {
-                                name: "mY-enum".into(),
-                                variants: vec![EnumVariant {
-                                    name: "eNum-Variant".into(),
+                            field_conversion: Some(FieldConversion::Enum {
+                                enum_value: Enum {
+                                    name: "mY-enum".into(),
+                                    variants: vec![EnumVariant {
+                                        name: "eNum-Variant".into(),
+                                        ..Default::default()
+                                    }],
                                     ..Default::default()
-                                }],
-                                ..Default::default()
-                            })),
+                                },
+                                use_try: false,
+                            }),
                             ..Default::default()
                         },
                     ],
@@ -101,14 +106,17 @@ mod tests {
                         },
                         Field {
                             name: "my_field2".into(),
-                            field_conversion: Some(FieldConversion::Enum(Enum {
-                                name: "MyEnum".into(),
-                                variants: vec![EnumVariant {
-                                    name: "EnumVariant".into(),
+                            field_conversion: Some(FieldConversion::Enum {
+                                enum_value: Enum {
+                                    name: "MyEnum".into(),
+                                    variants: vec![EnumVariant {
+                                        name: "EnumVariant".into(),
+                                        ..Default::default()
+                                    }],
                                     ..Default::default()
-                                }],
-                                ..Default::default()
-                            })),
+                                },
+                                use_try: false,
+                            }),
                             ..Default::default()
                         },
                     ],

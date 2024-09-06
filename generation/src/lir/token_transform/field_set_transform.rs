@@ -1,4 +1,4 @@
-use proc_macro2::TokenStream;
+use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote, ToTokens};
 
 use crate::{
@@ -18,7 +18,7 @@ pub fn generate_field_set(value: &FieldSet) -> TokenStream {
         fields,
     } = value;
 
-    let size_bytes = size_bits.div_ceil(8);
+    let size_bytes = Literal::u64_unsuffixed(size_bits.div_ceil(8));
     let bit_order = match bit_order {
         BitOrder::LSB0 => format_ident!("Lsb0"),
         BitOrder::MSB0 => format_ident!("Msb0"),
@@ -281,7 +281,7 @@ mod tests {
             pub struct MyRegister {
                 /// The internal bits. Always LE format
                 bits: ::device_driver::bitvec::array::BitArray<
-                    [u8; 3usize],
+                    [u8; 3],
                     ::device_driver::bitvec::order::Lsb0,
                 >,
             }
@@ -295,7 +295,7 @@ mod tests {
                 /// Create a new instance, loaded all 0's
                 pub const fn new_zero() -> Self {
                     Self {
-                        bits: ::device_driver::bitvec::array::BitArray::new([0; 3usize]),
+                        bits: ::device_driver::bitvec::array::BitArray::new([0; 3]),
                     }
                 }
                 ///Read the my_field field of the register.
@@ -327,15 +327,15 @@ mod tests {
                     self.bits[4..16].store_le::<i16>(default ^ (0.wrapping_sub(1)));
                 }
             }
-            impl From<[u8; 3usize]> for MyRegister {
-                fn from(mut val: [u8; 3usize]) -> Self {
+            impl From<[u8; 3]> for MyRegister {
+                fn from(mut val: [u8; 3]) -> Self {
                     val[..].reverse();
                     Self {
                         bits: ::device_driver::bitvec::array::BitArray::new(val),
                     }
                 }
             }
-            impl From<MyRegister> for [u8; 3usize] {
+            impl From<MyRegister> for [u8; 3] {
                 fn from(val: MyRegister) -> Self {
                     let mut val = val.bits.into_inner();
                     val[..].reverse();

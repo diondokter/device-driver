@@ -12,29 +12,60 @@ pub fn transform(device: mir::Device) -> anyhow::Result<lir::Device> {
         .map(|(e, base_type, size_bits)| transform_enum(e, *base_type, *size_bits))
         .collect::<Result<_, anyhow::Error>>()?;
 
+    let field_sets = transform_field_sets(&device, mir_enums.iter().map(|(e, _, _)| e))?;
+
     Ok(lir::Device {
         blocks: todo!(),
-        field_sets: todo!(),
+        field_sets,
         enums: lir_enums,
     })
 }
 
-fn transform_field_sets(device: &mir::Device) -> anyhow::Result<Vec<lir::FieldSet>> {
+fn transform_field_sets<'a>(
+    device: &mir::Device,
+    mir_enums: impl Iterator<Item = &'a mir::Enum> + Clone,
+) -> anyhow::Result<Vec<lir::FieldSet>> {
     let mut field_sets = Vec::new();
 
     recurse_objects(&device.objects, &mut |object| {
         match object {
             mir::Object::Register(r) => {
-                field_sets.push(transform_field_set(&r.fields, format_ident!("{}", r.name))?);
+                field_sets.push(transform_field_set(
+                    &r.fields,
+                    format_ident!("{}", r.name),
+                    r.cfg_attr.as_deref(),
+                    &r.description,
+                    r.byte_order.unwrap(),
+                    r.bit_order,
+                    r.size_bits,
+                    r.reset_value
+                        .as_ref()
+                        .map(|rv| rv.as_array().unwrap().clone()),
+                    mir_enums.clone(),
+                )?);
             }
             mir::Object::Command(c) => {
                 field_sets.push(transform_field_set(
                     &c.in_fields,
                     format_ident!("{}In", c.name),
+                    c.cfg_attr.as_deref(),
+                    &c.description,
+                    c.byte_order.unwrap(),
+                    c.bit_order,
+                    c.size_bits_in,
+                    None,
+                    mir_enums.clone(),
                 )?);
                 field_sets.push(transform_field_set(
                     &c.out_fields,
                     format_ident!("{}Out", c.name),
+                    c.cfg_attr.as_deref(),
+                    &c.description,
+                    c.byte_order.unwrap(),
+                    c.bit_order,
+                    c.size_bits_out,
+                    None,
+                    mir_enums.clone(),
                 )?);
             }
             _ => {}
@@ -46,15 +77,16 @@ fn transform_field_sets(device: &mir::Device) -> anyhow::Result<Vec<lir::FieldSe
     Ok(field_sets)
 }
 
-fn transform_field_set(
+fn transform_field_set<'a>(
     field_set: &[mir::Field],
     field_set_name: proc_macro2::Ident,
     cfg_attr: Option<&str>,
     description: &str,
     byte_order: mir::ByteOrder,
     bit_order: mir::BitOrder,
-    size_bits: usize,
+    size_bits: u64,
     reset_value: Option<Vec<u8>>,
+    enum_list: impl Iterator<Item = &'a mir::Enum> + Clone,
 ) -> anyhow::Result<lir::FieldSet> {
     let cfg_attr = if let Some(cfg_attr) = cfg_attr {
         let val = syn::parse_str::<TokenStream>(cfg_attr)?;
@@ -83,23 +115,70 @@ fn transform_field_set(
                 TokenStream::new()
             };
 
-            let address = Literal::u64_unsuffixed(field_address.start)..Literal::u64_unsuffixed(field_address.end);
+            let address = Literal::u64_unsuffixed(field_address.start)
+                ..Literal::u64_unsuffixed(field_address.end);
 
-            // TODO:
-            // let (base_type, conversion_method) = match (base_type, size_bits) {
-            //     (mir::BaseType::Bool, _) => format_ident!("u8"),
-            //     (mir::BaseType::Uint, val) => format_ident!("u{}", val.max(8).next_power_of_two()),
-            //     (mir::BaseType::Int, val) => format_ident!("i{}", val.max(8).next_power_of_two()),
-            // };        
+            let (base_type, conversion_method) = match (base_type, size_bits, field_conversion) {
+                (mir::BaseType::Bool, 1, None) => (
+                    format_ident!("u8"),
+                    lir::FieldConversionMethod::UnsafeInto(format_ident!("bool")),
+                ),
+                (mir::BaseType::Bool, _, _) => unreachable!(
+                    "Checked in a MIR pass. Bools can only be 1 bit and have no conversion"
+                ),
+                (mir::BaseType::Uint | mir::BaseType::Int, val, None) => (
+                    format_ident!(
+                        "{}{}",
+                        match base_type {
+                            mir::BaseType::Bool => unreachable!(),
+                            mir::BaseType::Uint => 'u',
+                            mir::BaseType::Int => 'i',
+                        },
+                        val.max(8).next_power_of_two()
+                    ),
+                    lir::FieldConversionMethod::None,
+                ),
+                (mir::BaseType::Uint | mir::BaseType::Int, val, Some(fc)) => (
+                    format_ident!(
+                        "{}{}",
+                        match base_type {
+                            mir::BaseType::Bool => unreachable!(),
+                            mir::BaseType::Uint => 'u',
+                            mir::BaseType::Int => 'i',
+                        },
+                        val.max(8).next_power_of_two()
+                    ),
+                    match enum_list.clone().find(|e| e.name == fc.type_name()) {
+                        // Always use try if that's specified
+                        _ if fc.use_try() => {
+                            lir::FieldConversionMethod::TryInto(format_ident!("{}", fc.type_name()))
+                        }
+                        // There is an enum we generate so we can look at its metadata
+                        Some(mir::Enum {
+                            generation_style:
+                                Some(mir::EnumGenerationStyle::Infallible { bit_size }),
+                            ..
+                        }) if field.field_address.clone().count() <= *bit_size => {
+                            // This field is equal or smaller in bits than the infallible enum. So we can do the unsafe into
+                            lir::FieldConversionMethod::UnsafeInto(format_ident!(
+                                "{}",
+                                fc.type_name()
+                            ))
+                        }
+                        // Fallback is to require the into trait
+                        _ => lir::FieldConversionMethod::Into(format_ident!("{}", fc.type_name())),
+                    },
+                ),
+            };
 
             Ok(lir::Field {
                 cfg_attr,
                 doc_attr: quote! { #[doc = #description] },
                 name: format_ident!("{name}"),
                 address,
-                base_type: todo!(),
-                conversion_method: todo!(),
-                access: todo!(),
+                base_type,
+                conversion_method,
+                access: *access,
             })
         })
         .collect::<Result<_, anyhow::Error>>()?;
@@ -111,7 +190,7 @@ fn transform_field_set(
         byte_order,
         bit_order,
         size_bits,
-        reset_value: reset_value.unwrap_or_else(|| vec![0; size_bits.div_ceil(8)]),
+        reset_value: reset_value.unwrap_or_else(|| vec![0; size_bits.div_ceil(8) as usize]),
         fields,
     })
 }
@@ -121,14 +200,11 @@ fn collect_enums(device: &mir::Device) -> anyhow::Result<Vec<(mir::Enum, mir::Ba
 
     recurse_objects(&device.objects, &mut |object| {
         for field in object.field_sets().flatten() {
-            match &field.field_conversion {
-                Some(mir::FieldConversion::Enum(e)) => enums.push((
-                    e.clone(),
-                    field.base_type,
-                    field.field_address.clone().count(),
-                )),
-                _ => {}
-            }
+            if let Some(mir::FieldConversion::Enum { enum_value, .. }) = &field.field_conversion { enums.push((
+                enum_value.clone(),
+                field.base_type,
+                field.field_address.clone().count(),
+            )) }
         }
 
         Ok(())

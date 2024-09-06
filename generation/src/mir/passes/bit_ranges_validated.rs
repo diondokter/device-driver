@@ -10,7 +10,7 @@ use super::recurse_objects_mut;
 pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
     recurse_objects_mut(&mut device.objects, &mut |object| match object {
         Object::Register(r) => {
-            validate_max_len(&r.fields, r.size_bits, &r.name)?;
+            validate_len(&r.fields, r.size_bits, &r.name)?;
             if !r.allow_bit_overlap {
                 validate_overlap(&r.fields, &r.name)?;
             }
@@ -18,12 +18,12 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
             Ok(())
         }
         Object::Command(c) => {
-            validate_max_len(&c.in_fields, c.size_bits_in, &format!("{} (in)", c.name))?;
+            validate_len(&c.in_fields, c.size_bits_in, &format!("{} (in)", c.name))?;
             if !c.allow_bit_overlap {
                 validate_overlap(&c.in_fields, &format!("{} (in)", c.name))?;
             }
 
-            validate_max_len(&c.out_fields, c.size_bits_out, &format!("{} (out)", c.name))?;
+            validate_len(&c.out_fields, c.size_bits_out, &format!("{} (out)", c.name))?;
             if !c.allow_bit_overlap {
                 validate_overlap(&c.out_fields, &format!("{} (out)", c.name))?;
             }
@@ -34,11 +34,17 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
     })
 }
 
-fn validate_max_len(field_set: &[Field], size_bits: u64, object_name: &str) -> anyhow::Result<()> {
+fn validate_len(field_set: &[Field], size_bits: u64, object_name: &str) -> anyhow::Result<()> {
     for field in field_set {
         ensure!(
             field.field_address.end <= size_bits,
             "Object \"{object_name}\" has field \"{}\" that exceeds the max size",
+            field.name
+        );
+
+        ensure!(
+            field.field_address.clone().count() > 0,
+            "Object \"{object_name}\" has field \"{}\" that is 0 bits. This is likely a mistake",
             field.name
         );
     }

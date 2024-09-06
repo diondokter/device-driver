@@ -27,8 +27,10 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
                     field.name
                 );
 
-                if let Some(FieldConversion::Enum(Enum { name, variants, .. })) =
-                    field.field_conversion.as_ref()
+                if let Some(FieldConversion::Enum {
+                    enum_value: Enum { name, variants, .. },
+                    ..
+                }) = field.field_conversion.as_ref()
                 {
                     let mut seen_variant_names = HashSet::new();
 
@@ -158,20 +160,26 @@ mod tests {
                 fields: vec![
                     Field {
                         name: "field".into(),
-                        field_conversion: Some(FieldConversion::Enum(Enum {
-                            name: "Enum".into(),
-                            variants: Default::default(),
-                            ..Default::default()
-                        })),
+                        field_conversion: Some(FieldConversion::Enum {
+                            enum_value: Enum {
+                                name: "Enum".into(),
+                                variants: Default::default(),
+                                ..Default::default()
+                            },
+                            use_try: false,
+                        }),
                         ..Default::default()
                     },
                     Field {
                         name: "field2".into(),
-                        field_conversion: Some(FieldConversion::Enum(Enum {
-                            name: "Enum".into(),
-                            variants: Default::default(),
-                            ..Default::default()
-                        })),
+                        field_conversion: Some(FieldConversion::Enum {
+                            enum_value: Enum {
+                                name: "Enum".into(),
+                                variants: Default::default(),
+                                ..Default::default()
+                            },
+                            use_try: false,
+                        }),
                         ..Default::default()
                     },
                 ],
@@ -205,20 +213,23 @@ mod tests {
                 name: "Reg".into(),
                 fields: vec![Field {
                     name: "field".into(),
-                    field_conversion: Some(FieldConversion::Enum(Enum {
-                        name: "Enum".into(),
-                        variants: vec![
-                            EnumVariant {
-                                name: "Variant".into(),
-                                ..Default::default()
-                            },
-                            EnumVariant {
-                                name: "Variant".into(),
-                                ..Default::default()
-                            },
-                        ],
-                        ..Default::default()
-                    })),
+                    field_conversion: Some(FieldConversion::Enum {
+                        enum_value: Enum {
+                            name: "Enum".into(),
+                            variants: vec![
+                                EnumVariant {
+                                    name: "Variant".into(),
+                                    ..Default::default()
+                                },
+                                EnumVariant {
+                                    name: "Variant".into(),
+                                    ..Default::default()
+                                },
+                            ],
+                            ..Default::default()
+                        },
+                        use_try: false,
+                    }),
                     ..Default::default()
                 }],
                 ..Default::default()
