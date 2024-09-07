@@ -18,7 +18,7 @@ pub fn generate_field_set(value: &FieldSet) -> TokenStream {
         fields,
     } = value;
 
-    let size_bytes = Literal::u64_unsuffixed(size_bits.div_ceil(8));
+    let size_bytes = Literal::u32_unsuffixed(size_bits.div_ceil(8));
     let bit_order = match bit_order {
         BitOrder::LSB0 => format_ident!("Lsb0"),
         BitOrder::MSB0 => format_ident!("Msb0"),

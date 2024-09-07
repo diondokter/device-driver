@@ -529,7 +529,7 @@ fn transform_field(
                 start.base10_parse()?..end.base10_parse()?
             }
             dsl_hir::FieldAddress::RangeInclusive { start, end } => {
-                start.base10_parse()?..(end.base10_parse::<u64>()? + 1)
+                start.base10_parse()?..(end.base10_parse::<u32>()? + 1)
             }
         },
     })

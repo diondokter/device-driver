@@ -65,7 +65,7 @@ pub struct FieldSet {
     pub name: Ident,
     pub byte_order: ByteOrder,
     pub bit_order: BitOrder,
-    pub size_bits: u64,
+    pub size_bits: u32,
     pub reset_value: Vec<u8>,
     pub fields: Vec<Field>,
 }

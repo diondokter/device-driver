@@ -5,6 +5,9 @@ use crate::mir::{Device, Enum, FieldConversion};
 use super::recurse_objects_mut;
 
 /// Changes all names of all objects, enums and enum variants to either Pascal case or snake case
+///
+/// - PascalCase: Object names, enum names, enum variant names
+/// - snake_case: Field names
 pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
     let boundaries = device.global_config.name_word_boundaries.clone();
 

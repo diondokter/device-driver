@@ -21,6 +21,8 @@ pub fn run_passes(device: &mut Device) -> anyhow::Result<()> {
 
     // TODO:
     // - Validate address overlap. But likely only the actual address and not partial overlap
+    // - Resolve refs
+    // - Check if address types arae specified
 
     Ok(())
 }

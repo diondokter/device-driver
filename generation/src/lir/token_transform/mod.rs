@@ -9,7 +9,7 @@ mod block_transform;
 mod enum_transform;
 mod field_set_transform;
 
-pub fn transform_lir(device: Device) -> TokenStream {
+pub fn transform(device: Device) -> TokenStream {
     let mut tokens = TokenStream::new();
 
     for block in &device.blocks {

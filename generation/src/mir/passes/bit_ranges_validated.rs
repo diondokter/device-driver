@@ -34,7 +34,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
     })
 }
 
-fn validate_len(field_set: &[Field], size_bits: u64, object_name: &str) -> anyhow::Result<()> {
+fn validate_len(field_set: &[Field], size_bits: u32, object_name: &str) -> anyhow::Result<()> {
     for field in field_set {
         ensure!(
             field.field_address.end <= size_bits,
@@ -67,7 +67,7 @@ fn validate_overlap(field_set: &[Field], object_name: &str) -> anyhow::Result<()
     Ok(())
 }
 
-fn ranges_overlap(l: &Range<u64>, r: &Range<u64>) -> bool {
+fn ranges_overlap(l: &Range<u32>, r: &Range<u32>) -> bool {
     l.start < r.end && r.start < l.end
 }
 

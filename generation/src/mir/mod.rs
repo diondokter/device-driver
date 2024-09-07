@@ -58,12 +58,9 @@ pub enum Integer {
     I128,
 }
 
-impl quote::ToTokens for Integer {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        tokens.append(quote::format_ident!(
-            "{}",
-            format!("{self:?}").to_lowercase()
-        ));
+impl From<Integer> for proc_macro2::Ident {
+    fn from(value: Integer) -> Self {
+        quote::format_ident!("{}", format!("{value:?}").to_lowercase())
     }
 }
 
@@ -191,8 +188,8 @@ pub struct Register {
     pub bit_order: BitOrder,
     pub allow_bit_overlap: bool,
     pub allow_address_overlap: bool,
-    pub address: u64,
-    pub size_bits: u64,
+    pub address: i64,
+    pub size_bits: u32,
     pub reset_value: Option<ResetValue>,
     pub repeat: Option<Repeat>,
     pub fields: Vec<Field>,
@@ -206,7 +203,7 @@ pub struct Field {
     pub access: Access,
     pub base_type: BaseType,
     pub field_conversion: Option<FieldConversion>,
-    pub field_address: Range<u64>,
+    pub field_address: Range<u32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -285,7 +282,7 @@ impl Enum {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EnumGenerationStyle {
     Fallible,
-    Infallible { bit_size: usize },
+    Infallible { bit_size: u32 },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -300,7 +297,7 @@ pub struct EnumVariant {
 pub enum EnumValue {
     #[default]
     Unspecified,
-    Specified(u64),
+    Specified(i128),
     Default,
     CatchAll,
 }
@@ -310,13 +307,13 @@ pub struct Command {
     pub cfg_attr: Option<String>,
     pub description: String,
     pub name: String,
-    pub address: u64,
+    pub address: i64,
     pub byte_order: Option<ByteOrder>,
     pub bit_order: BitOrder,
     pub allow_bit_overlap: bool,
     pub allow_address_overlap: bool,
-    pub size_bits_in: u64,
-    pub size_bits_out: u64,
+    pub size_bits_in: u32,
+    pub size_bits_out: u32,
     pub repeat: Option<Repeat>,
     pub in_fields: Vec<Field>,
     pub out_fields: Vec<Field>,
@@ -328,7 +325,7 @@ pub struct Buffer {
     pub description: String,
     pub name: String,
     pub access: Access,
-    pub address: u64,
+    pub address: i64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -367,7 +364,7 @@ pub struct BlockOverride {
 pub struct RegisterOverride {
     pub name: String,
     pub access: Option<Access>,
-    pub address: Option<u64>,
+    pub address: Option<i64>,
     pub allow_address_overlap: bool,
     pub reset_value: Option<ResetValue>,
     pub repeat: Option<Repeat>,
@@ -376,7 +373,7 @@ pub struct RegisterOverride {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct CommandOverride {
     pub name: String,
-    pub address: Option<u64>,
+    pub address: Option<i64>,
     pub allow_address_overlap: bool,
     pub repeat: Option<Repeat>,
 }

@@ -65,7 +65,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
 
                 ec.generation_style = Some(if has_fallback || has_bits_covered {
                     EnumGenerationStyle::Infallible {
-                        bit_size: field_bits,
+                        bit_size: field_bits as u32,
                     }
                 } else {
                     EnumGenerationStyle::Fallible

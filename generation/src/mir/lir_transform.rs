@@ -5,7 +5,7 @@ use crate::{lir, mir};
 
 use super::passes::recurse_objects;
 
-pub fn transform(device: mir::Device) -> anyhow::Result<lir::Device> {
+pub fn transform(device: mir::Device, driver_name: &str) -> anyhow::Result<lir::Device> {
     let mir_enums = collect_enums(&device)?;
     let lir_enums = mir_enums
         .iter()
@@ -14,11 +14,157 @@ pub fn transform(device: mir::Device) -> anyhow::Result<lir::Device> {
 
     let field_sets = transform_field_sets(&device, mir_enums.iter().map(|(e, _, _)| e))?;
 
+    // Create a root block and pass the device objects to it
+    let blocks = collect_into_blocks(
+        &mir::Block {
+            cfg_attr: None,
+            description: format!("Root block of the {driver_name} driver"),
+            name: driver_name.into(),
+            address_offset: 0,
+            repeat: None,
+            objects: device.objects,
+        },
+        true,
+        &device.global_config,
+    )?;
+
     Ok(lir::Device {
-        blocks: todo!(),
+        blocks,
         field_sets,
         enums: lir_enums,
     })
+}
+
+fn collect_into_blocks(
+    block: &mir::Block,
+    is_root: bool,
+    global_config: &mir::GlobalConfig,
+) -> anyhow::Result<Vec<lir::Block>> {
+    let mut blocks = Vec::new();
+
+    let mir::Block {
+        cfg_attr,
+        description,
+        name,
+        address_offset: _,
+        repeat,
+        objects,
+    } = block;
+
+    let cfg_attr = cfg_attr_string_to_tokens(cfg_attr.as_deref())?;
+
+    let mut methods = Vec::new();
+
+    for object in objects {
+        use convert_case::Casing;
+        let method = match object {
+            mir::Object::Block(
+                b @ mir::Block {
+                    cfg_attr,
+                    description,
+                    name,
+                    address_offset,
+                    repeat,
+                    ..
+                },
+            ) => {
+                blocks.extend(collect_into_blocks(b, false, global_config)?);
+
+                lir::BlockMethod {
+                    cfg_attr: cfg_attr_string_to_tokens(cfg_attr.as_deref())?,
+                    doc_attr: quote! { #[doc = #description] },
+                    name: format_ident!("{}", name.to_case(convert_case::Case::Snake)),
+                    address: Literal::i64_unsuffixed(*address_offset),
+                    kind: repeat_to_method_kind(repeat),
+                    method_type: lir::BlockMethodType::Block {
+                        name: format_ident!("{name}"),
+                    },
+                }
+            }
+            mir::Object::Register(mir::Register {
+                cfg_attr,
+                description,
+                name,
+                address,
+                access,
+                repeat,
+                ..
+            }) => lir::BlockMethod {
+                cfg_attr: cfg_attr_string_to_tokens(cfg_attr.as_deref())?,
+                doc_attr: quote! { #[doc = #description] },
+                name: format_ident!("{}", name.to_case(convert_case::Case::Snake)),
+                address: Literal::i64_unsuffixed(*address),
+                kind: repeat_to_method_kind(repeat),
+                method_type: lir::BlockMethodType::Register {
+                    field_set_name: format_ident!("{name}"),
+                    access: *access,
+                    address_type: global_config
+                        .register_address_type
+                        .expect("The presence of the address type is already checked in a mir pass")
+                        .into(),
+                },
+            },
+            mir::Object::Command(mir::Command {
+                cfg_attr,
+                description,
+                name,
+                address,
+                repeat,
+                ..
+            }) => lir::BlockMethod {
+                cfg_attr: cfg_attr_string_to_tokens(cfg_attr.as_deref())?,
+                doc_attr: quote! { #[doc = #description] },
+                name: format_ident!("{}", name.to_case(convert_case::Case::Snake)),
+                address: Literal::i64_unsuffixed(*address),
+                kind: repeat_to_method_kind(repeat),
+                method_type: lir::BlockMethodType::Command {
+                    field_set_name_in: format_ident!("{name}In"),
+                    field_set_name_out: format_ident!("{name}Out"),
+                    address_type: global_config
+                        .command_address_type
+                        .expect("The presence of the address type is already checked in a mir pass")
+                        .into(),
+                },
+            },
+            mir::Object::Buffer(mir::Buffer {
+                cfg_attr,
+                description,
+                name,
+                access,
+                address,
+            }) => lir::BlockMethod {
+                cfg_attr: cfg_attr_string_to_tokens(cfg_attr.as_deref())?,
+                doc_attr: quote! { #[doc = #description] },
+                name: format_ident!("{}", name.to_case(convert_case::Case::Snake)),
+                address: Literal::i64_unsuffixed(*address),
+                kind: repeat_to_method_kind(repeat),
+                method_type: lir::BlockMethodType::Buffer {
+                    access: *access,
+                    address_type: global_config
+                        .buffer_address_type
+                        .expect("The presence of the address type is already checked in a mir pass")
+                        .into(),
+                },
+            },
+            mir::Object::Ref(_) => {
+                unreachable!("All refs should already have been resolved in a mir pass")
+            }
+        };
+
+        methods.push(method);
+    }
+
+    let new_block = lir::Block {
+        cfg_attr,
+        doc_attr: quote! { #[doc = #description] },
+        root: is_root,
+        name: format_ident!("{name}"),
+        methods,
+    };
+
+    blocks.insert(0, new_block);
+
+    Ok(blocks)
 }
 
 fn transform_field_sets<'a>(
@@ -77,6 +223,7 @@ fn transform_field_sets<'a>(
     Ok(field_sets)
 }
 
+#[allow(clippy::too_many_arguments)] // Though it is correct... it's too many args
 fn transform_field_set<'a>(
     field_set: &[mir::Field],
     field_set_name: proc_macro2::Ident,
@@ -84,16 +231,11 @@ fn transform_field_set<'a>(
     description: &str,
     byte_order: mir::ByteOrder,
     bit_order: mir::BitOrder,
-    size_bits: u64,
+    size_bits: u32,
     reset_value: Option<Vec<u8>>,
     enum_list: impl Iterator<Item = &'a mir::Enum> + Clone,
 ) -> anyhow::Result<lir::FieldSet> {
-    let cfg_attr = if let Some(cfg_attr) = cfg_attr {
-        let val = syn::parse_str::<TokenStream>(cfg_attr)?;
-        quote! { #[cfg(#val)] }
-    } else {
-        TokenStream::new()
-    };
+    let cfg_attr = cfg_attr_string_to_tokens(cfg_attr)?;
 
     let fields = field_set
         .iter()
@@ -108,15 +250,10 @@ fn transform_field_set<'a>(
                 field_address,
             } = field;
 
-            let cfg_attr = if let Some(cfg_attr) = cfg_attr {
-                let val = syn::parse_str::<TokenStream>(cfg_attr)?;
-                quote! { #[cfg(#val)] }
-            } else {
-                TokenStream::new()
-            };
+            let cfg_attr = cfg_attr_string_to_tokens(cfg_attr.as_deref())?;
 
-            let address = Literal::u64_unsuffixed(field_address.start)
-                ..Literal::u64_unsuffixed(field_address.end);
+            let address = Literal::u32_unsuffixed(field_address.start)
+                ..Literal::u32_unsuffixed(field_address.end);
 
             let (base_type, conversion_method) = match (base_type, size_bits, field_conversion) {
                 (mir::BaseType::Bool, 1, None) => (
@@ -158,7 +295,7 @@ fn transform_field_set<'a>(
                             generation_style:
                                 Some(mir::EnumGenerationStyle::Infallible { bit_size }),
                             ..
-                        }) if field.field_address.clone().count() <= *bit_size => {
+                        }) if field.field_address.clone().count() <= *bit_size as usize => {
                             // This field is equal or smaller in bits than the infallible enum. So we can do the unsafe into
                             lir::FieldConversionMethod::UnsafeInto(format_ident!(
                                 "{}",
@@ -200,11 +337,13 @@ fn collect_enums(device: &mir::Device) -> anyhow::Result<Vec<(mir::Enum, mir::Ba
 
     recurse_objects(&device.objects, &mut |object| {
         for field in object.field_sets().flatten() {
-            if let Some(mir::FieldConversion::Enum { enum_value, .. }) = &field.field_conversion { enums.push((
-                enum_value.clone(),
-                field.base_type,
-                field.field_address.clone().count(),
-            )) }
+            if let Some(mir::FieldConversion::Enum { enum_value, .. }) = &field.field_conversion {
+                enums.push((
+                    enum_value.clone(),
+                    field.base_type,
+                    field.field_address.clone().count(),
+                ))
+            }
         }
 
         Ok(())
@@ -226,13 +365,7 @@ fn transform_enum(
         generation_style: _,
     } = e;
 
-    let cfg_attr = match cfg_attr {
-        Some(val) => {
-            let cfg_content = syn::parse_str::<proc_macro2::TokenStream>(val)?;
-            quote! { #[cfg(#cfg_content)] }
-        }
-        None => quote! {},
-    };
+    let cfg_attr = cfg_attr_string_to_tokens(cfg_attr.as_deref())?;
 
     let base_type = match (base_type, size_bits) {
         (mir::BaseType::Bool, _) => format_ident!("u8"),
@@ -251,13 +384,7 @@ fn transform_enum(
                 value,
             } = v;
 
-            let cfg_attr = match cfg_attr {
-                Some(val) => {
-                    let cfg_content = syn::parse_str::<proc_macro2::TokenStream>(val)?;
-                    quote! { #[cfg(#cfg_content)] }
-                }
-                None => quote! {},
-            };
+            let cfg_attr = cfg_attr_string_to_tokens(cfg_attr.as_deref())?;
 
             let number = match value {
                 mir::EnumValue::Unspecified
@@ -277,7 +404,7 @@ fn transform_enum(
                 cfg_attr,
                 doc_attr: quote! { #[doc = #description] },
                 name: format_ident!("{name}"),
-                number: Literal::u64_unsuffixed(number),
+                number: Literal::i128_unsuffixed(number),
                 default: matches!(value, mir::EnumValue::Default),
                 catch_all: matches!(value, mir::EnumValue::CatchAll),
             })
@@ -291,4 +418,24 @@ fn transform_enum(
         base_type,
         variants,
     })
+}
+
+fn cfg_attr_string_to_tokens(cfg_attr: Option<&str>) -> anyhow::Result<TokenStream> {
+    match cfg_attr {
+        Some(val) => {
+            let cfg_content = syn::parse_str::<proc_macro2::TokenStream>(val)?;
+            Ok(quote! { #[cfg(#cfg_content)] })
+        }
+        None => Ok(quote! {}),
+    }
+}
+
+fn repeat_to_method_kind(repeat: &Option<mir::Repeat>) -> lir::BlockMethodKind {
+    match repeat {
+        Some(mir::Repeat { count, stride }) => lir::BlockMethodKind::Repeated {
+            count: Literal::u64_unsuffixed(*count),
+            stride: Literal::i64_unsuffixed(*stride),
+        },
+        None => lir::BlockMethodKind::Normal,
+    }
 }
