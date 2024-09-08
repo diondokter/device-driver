@@ -146,7 +146,7 @@ fn get_description(attrs: &dsl_hir::AttributeList) -> Option<String> {
         .attributes
         .iter()
         .filter_map(|attr| match attr {
-            dsl_hir::Attribute::Doc(val, _) => Some(val.as_str()),
+            dsl_hir::Attribute::Doc(val) => Some(val.as_str()),
             dsl_hir::Attribute::Cfg(_, _) => None,
         })
         .collect::<Vec<_>>()
@@ -165,7 +165,7 @@ fn get_cfg_attr(attrs: &dsl_hir::AttributeList) -> Result<Option<String>, syn::E
         .iter()
         .filter_map(|attr| match attr {
             dsl_hir::Attribute::Cfg(val, span) => Some((val, span)),
-            dsl_hir::Attribute::Doc(_, _) => None,
+            dsl_hir::Attribute::Doc(_) => None,
         })
         .collect::<Vec<_>>();
 

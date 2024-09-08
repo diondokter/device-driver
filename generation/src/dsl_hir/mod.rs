@@ -396,6 +396,7 @@ pub struct AttributeList {
     pub attributes: Vec<Attribute>,
 }
 
+#[cfg(test)]
 impl AttributeList {
     pub fn new() -> Self {
         Self {
@@ -417,7 +418,7 @@ impl Parse for AttributeList {
                             syn::Expr::Lit(syn::ExprLit {
                                 lit: syn::Lit::Str(value),
                                 ..
-                            }) => Ok(Attribute::Doc(value.value(), attr.span())),
+                            }) => Ok(Attribute::Doc(value.value())),
                             _ => Err(syn::Error::new_spanned(
                                 attr,
                                 "Invalid doc attribute format",
@@ -441,7 +442,7 @@ impl Parse for AttributeList {
 
 #[derive(Debug, Clone)]
 pub enum Attribute {
-    Doc(String, Span),
+    Doc(String),
     Cfg(String, Span),
 }
 
@@ -450,7 +451,7 @@ impl Eq for Attribute {}
 impl PartialEq for Attribute {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Self::Doc(l0, _), Self::Doc(r0, _)) => l0 == r0,
+            (Self::Doc(l0), Self::Doc(r0)) => l0 == r0,
             (Self::Cfg(l0, _), Self::Cfg(r0, _)) => l0 == r0,
             _ => false,
         }
@@ -589,6 +590,7 @@ pub struct RegisterItemList {
     pub register_items: Vec<RegisterItem>,
 }
 
+#[cfg(test)]
 impl RegisterItemList {
     pub fn new() -> Self {
         Self {
@@ -895,6 +897,7 @@ pub struct FieldList {
     pub fields: Vec<Field>,
 }
 
+#[cfg(test)]
 impl FieldList {
     pub fn new() -> Self {
         Self { fields: Vec::new() }
@@ -1755,7 +1758,7 @@ mod tests {
             syn::parse_str::<Buffer>("/// A test buffer\nbuffer TestBuffer: RO = 0x123").unwrap(),
             Buffer {
                 attribute_list: AttributeList {
-                    attributes: vec![Attribute::Doc(" A test buffer".into(), Span::call_site())]
+                    attributes: vec![Attribute::Doc(" A test buffer".into())]
                 },
                 identifier: Ident::new("TestBuffer", Span::call_site()),
                 access: Some(Access::RO),
@@ -1864,10 +1867,7 @@ mod tests {
                     },
                     EnumVariant {
                         attribute_list: AttributeList {
-                            attributes: vec![Attribute::Doc(
-                                " This is C".into(),
-                                Span::call_site()
-                            )]
+                            attributes: vec![Attribute::Doc(" This is C".into())]
                         },
                         identifier: Ident::new("C", Span::call_site()),
                         enum_value: Some(EnumValue::Default)
@@ -1890,7 +1890,7 @@ mod tests {
             Command {
                 attribute_list: AttributeList {
                     attributes: vec![
-                        Attribute::Doc(" A command!".into(), Span::call_site()),
+                        Attribute::Doc(" A command!".into()),
                         Attribute::Cfg("feature = \"std\"".into(), Span::call_site()),
                     ]
                 },
@@ -2130,7 +2130,7 @@ mod tests {
             syn::parse_str::<RefObject>("/// Hi!\nref MyRef = command MyOriginal").unwrap(),
             RefObject {
                 attribute_list: AttributeList {
-                    attributes: vec![Attribute::Doc(" Hi!".into(), Span::call_site())]
+                    attributes: vec![Attribute::Doc(" Hi!".into())]
                 },
                 identifier: Ident::new("MyRef", Span::call_site()),
                 object: Box::new(Object::Command(Command {
@@ -2168,7 +2168,7 @@ mod tests {
             .unwrap(),
             Register {
                 attribute_list: AttributeList {
-                    attributes: vec![Attribute::Doc(" Hello!".into(), Span::call_site())]
+                    attributes: vec![Attribute::Doc(" Hello!".into())]
                 },
                 identifier: Ident::new("Foo", Span::call_site()),
                 register_item_list: RegisterItemList {
@@ -2258,7 +2258,7 @@ mod tests {
         assert_eq!(
             syn::parse_str::<Block>("/// Hi there\nblock MyBlock { const ADDRESS_OFFSET = 5; command A = 5, buffer B = 6 }").unwrap(),
             Block {
-                attribute_list: AttributeList { attributes: vec![Attribute::Doc(" Hi there".into(), Span::call_site())] },
+                attribute_list: AttributeList { attributes: vec![Attribute::Doc(" Hi there".into())] },
                 identifier: Ident::new("MyBlock", Span::call_site()),
                 block_item_list: BlockItemList {
                     block_items: vec![BlockItem::AddressOffset(LitInt::new("5", Span::call_site()))]
@@ -2454,7 +2454,7 @@ mod tests {
             syn::parse_str::<Object>("/// Comment!\nbuffer Foo").unwrap(),
             Object::Buffer(Buffer {
                 attribute_list: AttributeList {
-                    attributes: vec![Attribute::Doc(" Comment!".into(), Span::call_site())]
+                    attributes: vec![Attribute::Doc(" Comment!".into())]
                 },
                 identifier: Ident::new("Foo", Span::call_site()),
                 access: None,
@@ -2520,12 +2520,12 @@ mod tests {
     #[test]
     fn attribute_eq() {
         // Test for equality on Doc variant
-        let doc1 = Attribute::Doc(String::from("some doc"), Span::call_site());
-        let doc2 = Attribute::Doc(String::from("some doc"), Span::call_site());
+        let doc1 = Attribute::Doc(String::from("some doc"));
+        let doc2 = Attribute::Doc(String::from("some doc"));
         assert_eq!(doc1, doc2);
 
         // Test for inequality on Doc variant
-        let doc3 = Attribute::Doc(String::from("different doc"), Span::call_site());
+        let doc3 = Attribute::Doc(String::from("different doc"));
         assert_ne!(doc1, doc3);
 
         // Test for equality on Cfg variant

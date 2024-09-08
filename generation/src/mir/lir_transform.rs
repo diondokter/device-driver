@@ -142,6 +142,28 @@ fn get_method(
             name,
             address,
             repeat,
+            in_fields,
+            out_fields,
+            ..
+        }) if in_fields.is_empty() && out_fields.is_empty() => lir::BlockMethod {
+            cfg_attr: cfg_attr_string_to_tokens(cfg_attr.as_deref())?,
+            doc_attr: quote! { #[doc = #description] },
+            name: format_ident!("{}", name.to_case(convert_case::Case::Snake)),
+            address: Literal::i64_unsuffixed(*address),
+            kind: repeat_to_method_kind(repeat),
+            method_type: lir::BlockMethodType::SimpleCommand {
+                address_type: global_config
+                    .command_address_type
+                    .expect("The presence of the address type is already checked in a mir pass")
+                    .into(),
+            },
+        },
+        mir::Object::Command(mir::Command {
+            cfg_attr,
+            description,
+            name,
+            address,
+            repeat,
             ..
         }) => lir::BlockMethod {
             cfg_attr: cfg_attr_string_to_tokens(cfg_attr.as_deref())?,

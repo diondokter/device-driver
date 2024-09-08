@@ -1,8 +1,8 @@
 #![doc = include_str!(concat!("../", env!("CARGO_PKG_README")))]
 
-pub mod dsl_hir;
-pub mod lir;
-pub mod mir;
+mod dsl_hir;
+mod lir;
+mod mir;
 
 /// Transform the tokens of the DSL lang to the generated device driver (or a compile error).
 ///
@@ -17,10 +17,15 @@ pub fn transform_dsl(
         Err(e) => return e.into_compile_error(),
     };
 
-    let mir = match dsl_hir::mir_transform::transform(hir) {
+    let mut mir = match dsl_hir::mir_transform::transform(hir) {
         Ok(mir) => mir,
         Err(e) => return e.into_compile_error(),
     };
+
+    match mir::passes::run_passes(&mut mir) {
+        Ok(_) => {}
+        Err(e) => return syn::Error::new(proc_macro2::Span::call_site(), e).into_compile_error(),
+    }
 
     let lir = match mir::lir_transform::transform(mir, driver_name) {
         Ok(lir) => lir,
