@@ -107,6 +107,7 @@ fn get_method(
                 doc_attr: quote! { #[doc = #description] },
                 name: format_ident!("{}", name.to_case(convert_case::Case::Snake)),
                 address: Literal::i64_unsuffixed(*address_offset),
+                allow_address_overlap: false,
                 kind: repeat_to_method_kind(repeat),
                 method_type: lir::BlockMethodType::Block {
                     name: format_ident!("{name}"),
@@ -117,6 +118,7 @@ fn get_method(
             cfg_attr,
             description,
             name,
+            allow_address_overlap,
             address,
             access,
             repeat,
@@ -126,6 +128,7 @@ fn get_method(
             doc_attr: quote! { #[doc = #description] },
             name: format_ident!("{}", name.to_case(convert_case::Case::Snake)),
             address: Literal::i64_unsuffixed(*address),
+            allow_address_overlap: *allow_address_overlap,
             kind: repeat_to_method_kind(repeat),
             method_type: lir::BlockMethodType::Register {
                 field_set_name: format_ident!("{name}"),
@@ -140,6 +143,7 @@ fn get_method(
             cfg_attr,
             description,
             name,
+            allow_address_overlap,
             address,
             repeat,
             in_fields,
@@ -150,6 +154,7 @@ fn get_method(
             doc_attr: quote! { #[doc = #description] },
             name: format_ident!("{}", name.to_case(convert_case::Case::Snake)),
             address: Literal::i64_unsuffixed(*address),
+            allow_address_overlap: *allow_address_overlap,
             kind: repeat_to_method_kind(repeat),
             method_type: lir::BlockMethodType::SimpleCommand {
                 address_type: global_config
@@ -162,6 +167,7 @@ fn get_method(
             cfg_attr,
             description,
             name,
+            allow_address_overlap,
             address,
             repeat,
             ..
@@ -170,6 +176,7 @@ fn get_method(
             doc_attr: quote! { #[doc = #description] },
             name: format_ident!("{}", name.to_case(convert_case::Case::Snake)),
             address: Literal::i64_unsuffixed(*address),
+            allow_address_overlap: *allow_address_overlap,
             kind: repeat_to_method_kind(repeat),
             method_type: lir::BlockMethodType::Command {
                 field_set_name_in: format_ident!("{name}In"),
@@ -191,6 +198,7 @@ fn get_method(
             doc_attr: quote! { #[doc = #description] },
             name: format_ident!("{}", name.to_case(convert_case::Case::Snake)),
             address: Literal::i64_unsuffixed(*address),
+            allow_address_overlap: false,
             kind: lir::BlockMethodKind::Normal, // Buffers can't be repeated (for now?)
             method_type: lir::BlockMethodType::Buffer {
                 access: *access,

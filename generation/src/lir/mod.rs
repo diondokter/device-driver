@@ -4,6 +4,7 @@ use proc_macro2::{Ident, Literal, TokenStream};
 
 use crate::mir::{self, Access, BitOrder, ByteOrder};
 
+pub mod passes;
 pub mod token_transform;
 
 pub struct Device {
@@ -26,6 +27,8 @@ pub struct BlockMethod {
     pub doc_attr: TokenStream,
     pub name: Ident,
     pub address: Literal,
+    // Only used for LIR passes, not codegen
+    pub allow_address_overlap: bool,
     pub kind: BlockMethodKind,
     pub method_type: BlockMethodType,
 }

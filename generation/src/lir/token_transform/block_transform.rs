@@ -25,7 +25,7 @@ pub fn generate_block(value: &Block) -> TokenStream {
             (
                 quote! { 'i, I },
                 quote! { &'i mut I },
-                Some(quote! { base_address: usize }),
+                Some(quote! { base_address: i64 }),
                 quote! { base_address },
                 quote! { self.interface },
             )
@@ -39,7 +39,7 @@ pub fn generate_block(value: &Block) -> TokenStream {
         #[derive(Debug)]
         pub struct #name<#generics> {
             interface: #interface_decleration,
-            base_address: usize,
+            base_address: i64,
         }
 
         #cfg_attr
@@ -67,6 +67,7 @@ fn generate_method(method: &BlockMethod) -> TokenStream {
         doc_attr,
         name,
         address,
+        allow_address_overlap: _,
         kind,
         method_type,
     } = method;
@@ -111,7 +112,7 @@ fn generate_method(method: &BlockMethod) -> TokenStream {
         BlockMethodKind::Repeated { count, stride } => {
             let doc = format!("Valid index range: 0..{count}");
             (
-                Some(quote! { index: usize, }),
+                Some(quote! { index: i64, }),
                 quote! { {
                     assert!(index < #count);
                     self.base_address + #address + index * #stride
@@ -155,7 +156,8 @@ mod tests {
                 cfg_attr: quote! { #[cfg(unix)] },
                 doc_attr: quote! { #[doc = "42 is the answer"] },
                 name: format_ident!("my_register1"),
-                address: Literal::usize_unsuffixed(5),
+                address: Literal::i64_unsuffixed(5),
+                allow_address_overlap: false,
                 kind: BlockMethodKind::Normal,
                 method_type: BlockMethodType::Register {
                     field_set_name: format_ident!("MyRegister"),
@@ -173,7 +175,7 @@ mod tests {
                 #[derive(Debug)]
                 pub struct RootBlock<I> {
                     interface: I,
-                    base_address: usize,
+                    base_address: i64,
                 }
                 #[cfg(unix)]
                 impl<I> RootBlock<I> {
@@ -214,10 +216,11 @@ mod tests {
                 cfg_attr: quote! { #[cfg(unix)] },
                 doc_attr: quote! { #[doc = "42 is the answer"] },
                 name: format_ident!("my_buffer"),
-                address: Literal::usize_unsuffixed(5),
+                address: Literal::i64_unsuffixed(5),
+                allow_address_overlap: false,
                 kind: BlockMethodKind::Repeated {
-                    count: Literal::usize_unsuffixed(4),
-                    stride: Literal::usize_unsuffixed(1),
+                    count: Literal::i64_unsuffixed(4),
+                    stride: Literal::i64_unsuffixed(1),
                 },
                 method_type: BlockMethodType::Buffer {
                     access: crate::mir::Access::RO,
@@ -234,12 +237,12 @@ mod tests {
                 #[derive(Debug)]
                 pub struct AnyBlock<'i, I> {
                     interface: &'i mut I,
-                    base_address: usize,
+                    base_address: i64,
                 }
                 #[cfg(unix)]
                 impl<'i, I> AnyBlock<'i, I> {
                     /// Create a new instance of the block based on device interface
-                    pub fn new(interface: &'i mut I, base_address: usize) -> Self {
+                    pub fn new(interface: &'i mut I, base_address: i64) -> Self {
                         Self {
                             interface,
                             base_address: base_address,
@@ -252,7 +255,7 @@ mod tests {
                     ///
                     ///Valid index range: 0..4
                     #[cfg(unix)]
-                    pub fn my_buffer(index: usize) -> ::device_driver::BufferOperation<'_, I, RO>
+                    pub fn my_buffer(index: i64) -> ::device_driver::BufferOperation<'_, I, RO>
                     where
                         I: ::device_driver::BufferInterface<AddressType = i16>,
                     {

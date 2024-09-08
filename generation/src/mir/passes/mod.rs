@@ -1,5 +1,6 @@
 use super::{Device, Object};
 
+mod address_types_specified;
 mod bit_ranges_validated;
 mod bool_fields_checked;
 mod byte_order_specified;
@@ -18,10 +19,7 @@ pub fn run_passes(device: &mut Device) -> anyhow::Result<()> {
     bit_ranges_validated::run_pass(device)?;
     refs_validated::run_pass(device)?;
     bool_fields_checked::run_pass(device)?;
-
-    // TODO:
-    // - Validate address overlap. But likely only the actual address and not partial overlap
-    // - Check if address types are specified
+    address_types_specified::run_pass(device)?;
 
     Ok(())
 }
@@ -45,13 +43,28 @@ pub(crate) fn recurse_objects<'o>(
     objects: &'o [Object],
     f: &mut impl FnMut(&'o Object) -> anyhow::Result<()>,
 ) -> anyhow::Result<()> {
-    for object in objects.iter() {
-        f(object)?;
+    recurse_objects_with_depth(objects, &mut |o, _| f(o))
+}
 
-        if let Some(objects) = object.get_block_object_list() {
-            recurse_objects(objects, f)?;
+pub(crate) fn recurse_objects_with_depth<'o>(
+    objects: &'o [Object],
+    f: &mut impl FnMut(&'o Object, usize) -> anyhow::Result<()>,
+) -> anyhow::Result<()> {
+    fn recurse_objects_with_depth_inner<'o>(
+        objects: &'o [Object],
+        f: &mut impl FnMut(&'o Object, usize) -> anyhow::Result<()>,
+        depth: usize,
+    ) -> anyhow::Result<()> {
+        for object in objects.iter() {
+            f(object, depth)?;
+
+            if let Some(objects) = object.get_block_object_list() {
+                recurse_objects_with_depth_inner(objects, f, depth + 1)?;
+            }
         }
+
+        Ok(())
     }
 
-    Ok(())
+    recurse_objects_with_depth_inner(objects, f, 0)
 }
