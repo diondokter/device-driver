@@ -8,7 +8,6 @@ mod names_normalized;
 mod names_unique;
 mod refs_validated;
 mod reset_values_converted;
-mod refs_resolved;
 
 pub fn run_passes(device: &mut Device) -> anyhow::Result<()> {
     names_normalized::run_pass(device)?;
@@ -19,7 +18,6 @@ pub fn run_passes(device: &mut Device) -> anyhow::Result<()> {
     bit_ranges_validated::run_pass(device)?;
     refs_validated::run_pass(device)?;
     bool_fields_checked::run_pass(device)?;
-    refs_resolved::run_pass(device)?;
 
     // TODO:
     // - Validate address overlap. But likely only the actual address and not partial overlap
@@ -43,9 +41,9 @@ pub(crate) fn recurse_objects_mut(
     Ok(())
 }
 
-pub(crate) fn recurse_objects(
-    objects: &[Object],
-    f: &mut impl FnMut(&Object) -> anyhow::Result<()>,
+pub(crate) fn recurse_objects<'o>(
+    objects: &'o [Object],
+    f: &mut impl FnMut(&'o Object) -> anyhow::Result<()>,
 ) -> anyhow::Result<()> {
     for object in objects.iter() {
         f(object)?;

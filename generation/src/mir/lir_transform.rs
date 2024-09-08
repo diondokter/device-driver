@@ -16,16 +16,17 @@ pub fn transform(device: mir::Device, driver_name: &str) -> anyhow::Result<lir::
 
     // Create a root block and pass the device objects to it
     let blocks = collect_into_blocks(
-        &mir::Block {
-            cfg_attr: None,
-            description: format!("Root block of the {driver_name} driver"),
-            name: driver_name.into(),
-            address_offset: 0,
-            repeat: None,
-            objects: device.objects,
+        BorrowedBlock {
+            cfg_attr: &None,
+            description: &format!("Root block of the {driver_name} driver"),
+            name: &driver_name.into(),
+            address_offset: &0,
+            repeat: &None,
+            objects: &device.objects,
         },
         true,
         &device.global_config,
+        &device.objects,
     )?;
 
     Ok(lir::Device {
@@ -36,18 +37,19 @@ pub fn transform(device: mir::Device, driver_name: &str) -> anyhow::Result<lir::
 }
 
 fn collect_into_blocks(
-    block: &mir::Block,
+    block: BorrowedBlock,
     is_root: bool,
     global_config: &mir::GlobalConfig,
+    device_objects: &[mir::Object],
 ) -> anyhow::Result<Vec<lir::Block>> {
     let mut blocks = Vec::new();
 
-    let mir::Block {
+    let BorrowedBlock {
         cfg_attr,
         description,
         name,
         address_offset: _,
-        repeat,
+        repeat: _,
         objects,
     } = block;
 
@@ -56,100 +58,7 @@ fn collect_into_blocks(
     let mut methods = Vec::new();
 
     for object in objects {
-        use convert_case::Casing;
-        let method = match object {
-            mir::Object::Block(
-                b @ mir::Block {
-                    cfg_attr,
-                    description,
-                    name,
-                    address_offset,
-                    repeat,
-                    ..
-                },
-            ) => {
-                blocks.extend(collect_into_blocks(b, false, global_config)?);
-
-                lir::BlockMethod {
-                    cfg_attr: cfg_attr_string_to_tokens(cfg_attr.as_deref())?,
-                    doc_attr: quote! { #[doc = #description] },
-                    name: format_ident!("{}", name.to_case(convert_case::Case::Snake)),
-                    address: Literal::i64_unsuffixed(*address_offset),
-                    kind: repeat_to_method_kind(repeat),
-                    method_type: lir::BlockMethodType::Block {
-                        name: format_ident!("{name}"),
-                    },
-                }
-            }
-            mir::Object::Register(mir::Register {
-                cfg_attr,
-                description,
-                name,
-                address,
-                access,
-                repeat,
-                ..
-            }) => lir::BlockMethod {
-                cfg_attr: cfg_attr_string_to_tokens(cfg_attr.as_deref())?,
-                doc_attr: quote! { #[doc = #description] },
-                name: format_ident!("{}", name.to_case(convert_case::Case::Snake)),
-                address: Literal::i64_unsuffixed(*address),
-                kind: repeat_to_method_kind(repeat),
-                method_type: lir::BlockMethodType::Register {
-                    field_set_name: format_ident!("{name}"),
-                    access: *access,
-                    address_type: global_config
-                        .register_address_type
-                        .expect("The presence of the address type is already checked in a mir pass")
-                        .into(),
-                },
-            },
-            mir::Object::Command(mir::Command {
-                cfg_attr,
-                description,
-                name,
-                address,
-                repeat,
-                ..
-            }) => lir::BlockMethod {
-                cfg_attr: cfg_attr_string_to_tokens(cfg_attr.as_deref())?,
-                doc_attr: quote! { #[doc = #description] },
-                name: format_ident!("{}", name.to_case(convert_case::Case::Snake)),
-                address: Literal::i64_unsuffixed(*address),
-                kind: repeat_to_method_kind(repeat),
-                method_type: lir::BlockMethodType::Command {
-                    field_set_name_in: format_ident!("{name}In"),
-                    field_set_name_out: format_ident!("{name}Out"),
-                    address_type: global_config
-                        .command_address_type
-                        .expect("The presence of the address type is already checked in a mir pass")
-                        .into(),
-                },
-            },
-            mir::Object::Buffer(mir::Buffer {
-                cfg_attr,
-                description,
-                name,
-                access,
-                address,
-            }) => lir::BlockMethod {
-                cfg_attr: cfg_attr_string_to_tokens(cfg_attr.as_deref())?,
-                doc_attr: quote! { #[doc = #description] },
-                name: format_ident!("{}", name.to_case(convert_case::Case::Snake)),
-                address: Literal::i64_unsuffixed(*address),
-                kind: repeat_to_method_kind(repeat),
-                method_type: lir::BlockMethodType::Buffer {
-                    access: *access,
-                    address_type: global_config
-                        .buffer_address_type
-                        .expect("The presence of the address type is already checked in a mir pass")
-                        .into(),
-                },
-            },
-            mir::Object::Ref(_) => {
-                unreachable!("All refs should already have been resolved in a mir pass")
-            }
-        };
+        let method = get_method(object, &mut blocks, global_config, device_objects)?;
 
         methods.push(method);
     }
@@ -165,6 +74,197 @@ fn collect_into_blocks(
     blocks.insert(0, new_block);
 
     Ok(blocks)
+}
+
+fn get_method(
+    object: &mir::Object,
+    blocks: &mut Vec<lir::Block>,
+    global_config: &mir::GlobalConfig,
+    device_objects: &[mir::Object],
+) -> Result<lir::BlockMethod, anyhow::Error> {
+    use convert_case::Casing;
+
+    Ok(match object {
+        mir::Object::Block(
+            b @ mir::Block {
+                cfg_attr,
+                description,
+                name,
+                address_offset,
+                repeat,
+                ..
+            },
+        ) => {
+            blocks.extend(collect_into_blocks(
+                b.into(),
+                false,
+                global_config,
+                device_objects,
+            )?);
+
+            lir::BlockMethod {
+                cfg_attr: cfg_attr_string_to_tokens(cfg_attr.as_deref())?,
+                doc_attr: quote! { #[doc = #description] },
+                name: format_ident!("{}", name.to_case(convert_case::Case::Snake)),
+                address: Literal::i64_unsuffixed(*address_offset),
+                kind: repeat_to_method_kind(repeat),
+                method_type: lir::BlockMethodType::Block {
+                    name: format_ident!("{name}"),
+                },
+            }
+        }
+        mir::Object::Register(mir::Register {
+            cfg_attr,
+            description,
+            name,
+            address,
+            access,
+            repeat,
+            ..
+        }) => lir::BlockMethod {
+            cfg_attr: cfg_attr_string_to_tokens(cfg_attr.as_deref())?,
+            doc_attr: quote! { #[doc = #description] },
+            name: format_ident!("{}", name.to_case(convert_case::Case::Snake)),
+            address: Literal::i64_unsuffixed(*address),
+            kind: repeat_to_method_kind(repeat),
+            method_type: lir::BlockMethodType::Register {
+                field_set_name: format_ident!("{name}"),
+                access: *access,
+                address_type: global_config
+                    .register_address_type
+                    .expect("The presence of the address type is already checked in a mir pass")
+                    .into(),
+            },
+        },
+        mir::Object::Command(mir::Command {
+            cfg_attr,
+            description,
+            name,
+            address,
+            repeat,
+            ..
+        }) => lir::BlockMethod {
+            cfg_attr: cfg_attr_string_to_tokens(cfg_attr.as_deref())?,
+            doc_attr: quote! { #[doc = #description] },
+            name: format_ident!("{}", name.to_case(convert_case::Case::Snake)),
+            address: Literal::i64_unsuffixed(*address),
+            kind: repeat_to_method_kind(repeat),
+            method_type: lir::BlockMethodType::Command {
+                field_set_name_in: format_ident!("{name}In"),
+                field_set_name_out: format_ident!("{name}Out"),
+                address_type: global_config
+                    .command_address_type
+                    .expect("The presence of the address type is already checked in a mir pass")
+                    .into(),
+            },
+        },
+        mir::Object::Buffer(mir::Buffer {
+            cfg_attr,
+            description,
+            name,
+            access,
+            address,
+        }) => lir::BlockMethod {
+            cfg_attr: cfg_attr_string_to_tokens(cfg_attr.as_deref())?,
+            doc_attr: quote! { #[doc = #description] },
+            name: format_ident!("{}", name.to_case(convert_case::Case::Snake)),
+            address: Literal::i64_unsuffixed(*address),
+            kind: lir::BlockMethodKind::Normal, // Buffers can't be repeated (for now?)
+            method_type: lir::BlockMethodType::Buffer {
+                access: *access,
+                address_type: global_config
+                    .buffer_address_type
+                    .expect("The presence of the address type is already checked in a mir pass")
+                    .into(),
+            },
+        },
+        mir::Object::Ref(mir::RefObject {
+            cfg_attr,
+            description,
+            name,
+            object_override,
+        }) => {
+            let mut reffed_object = search_object(object_override.name(), device_objects)
+                .expect("All refs are validated in a mir pass")
+                .clone();
+
+            match object_override {
+                mir::ObjectOverride::Block(override_values) => {
+                    let reffed_object = reffed_object
+                        .as_block_mut()
+                        .expect("All refs are validated in a mir pass");
+                    reffed_object.cfg_attr = cfg_attr.clone();
+                    reffed_object.description = description.clone();
+
+                    if let Some(address_offset) = override_values.address_offset {
+                        reffed_object.address_offset = address_offset;
+                    }
+                    if let Some(repeat) = override_values.repeat {
+                        reffed_object.repeat = Some(repeat);
+                    }
+                }
+                mir::ObjectOverride::Register(override_values) => {
+                    let reffed_object = reffed_object
+                        .as_register_mut()
+                        .expect("All refs are validated in a mir pass");
+                    reffed_object.cfg_attr = cfg_attr.clone();
+                    reffed_object.description = description.clone();
+
+                    if let Some(access) = override_values.access {
+                        reffed_object.access = access;
+                    }
+                    if let Some(address) = override_values.address {
+                        reffed_object.address = address;
+                    }
+                    if let Some(reset_value) = override_values.reset_value.clone() {
+                        reffed_object.reset_value = Some(reset_value);
+                    }
+                    if let Some(repeat) = override_values.repeat {
+                        reffed_object.repeat = Some(repeat);
+                    }
+                }
+                mir::ObjectOverride::Command(override_values) => {
+                    let reffed_object = reffed_object
+                        .as_command_mut()
+                        .expect("All refs are validated in a mir pass");
+                    reffed_object.cfg_attr = cfg_attr.clone();
+                    reffed_object.description = description.clone();
+
+                    if let Some(address) = override_values.address {
+                        reffed_object.address = address;
+                    }
+                    if let Some(repeat) = override_values.repeat {
+                        reffed_object.repeat = Some(repeat);
+                    }
+                }
+            }
+
+            let mut method = get_method(&reffed_object, blocks, global_config, device_objects)?;
+
+            // We kept the old name in the reffed object so it generates with the correct field sets.
+            // But we do want to have the name of ref to be the method name.
+            method.name = format_ident!("{}", name.to_case(convert_case::Case::Snake));
+
+            method
+        }
+    })
+}
+
+fn search_object<'d>(name: &str, objects: &'d [mir::Object]) -> Option<&'d mir::Object> {
+    for object in objects {
+        if object.name() == name {
+            return Some(object);
+        }
+
+        if let Some(block_objects) = object.get_block_object_list() {
+            match search_object(name, block_objects) {
+                None => {}
+                found => return found,
+            }
+        }
+    }
+
+    None
 }
 
 fn transform_field_sets<'a>(
@@ -437,5 +537,37 @@ fn repeat_to_method_kind(repeat: &Option<mir::Repeat>) -> lir::BlockMethodKind {
             stride: Literal::i64_unsuffixed(*stride),
         },
         None => lir::BlockMethodKind::Normal,
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BorrowedBlock<'o> {
+    pub cfg_attr: &'o Option<String>,
+    pub description: &'o String,
+    pub name: &'o String,
+    pub address_offset: &'o i64,
+    pub repeat: &'o Option<mir::Repeat>,
+    pub objects: &'o [mir::Object],
+}
+
+impl<'o> From<&'o mir::Block> for BorrowedBlock<'o> {
+    fn from(value: &'o mir::Block) -> Self {
+        let mir::Block {
+            cfg_attr,
+            description,
+            name,
+            address_offset,
+            repeat,
+            objects,
+        } = value;
+
+        Self {
+            cfg_attr,
+            description,
+            name,
+            address_offset,
+            repeat,
+            objects,
+        }
     }
 }

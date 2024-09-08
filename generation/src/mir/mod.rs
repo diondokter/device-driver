@@ -160,6 +160,30 @@ impl Object {
             Object::Block(_) | Object::Buffer(_) | Object::Ref(_) => Vec::new().into_iter(),
         }
     }
+
+    pub fn as_block_mut(&mut self) -> Option<&mut Block> {
+        if let Self::Block(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_register_mut(&mut self) -> Option<&mut Register> {
+        if let Self::Register(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_command_mut(&mut self) -> Option<&mut Command> {
+        if let Self::Command(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -172,7 +196,7 @@ pub struct Block {
     pub objects: Vec<Object>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Repeat {
     pub count: u64,
     pub stride: i64,
@@ -333,7 +357,7 @@ pub struct RefObject {
     pub cfg_attr: Option<String>,
     pub description: String,
     pub name: String,
-    pub object: ObjectOverride,
+    pub object_override: ObjectOverride,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

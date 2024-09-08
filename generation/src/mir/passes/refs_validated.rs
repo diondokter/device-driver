@@ -19,15 +19,14 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
     recurse_objects(&device.objects, &mut |object| {
         match object {
             Object::Ref(r) => {
-                match r.object {
+                match r.object_override {
                     ObjectOverride::Block(_) => {
-                        reffed_blocks.insert(r.object.name().to_string(), r.name.clone())
+                        reffed_blocks.insert(r.object_override.name().to_string(), r.name.clone())
                     }
-                    ObjectOverride::Register(_) => {
-                        reffed_registers.insert(r.object.name().to_string(), r.name.clone())
-                    }
+                    ObjectOverride::Register(_) => reffed_registers
+                        .insert(r.object_override.name().to_string(), r.name.clone()),
                     ObjectOverride::Command(_) => {
-                        reffed_commands.insert(r.object.name().to_string(), r.name.clone())
+                        reffed_commands.insert(r.object_override.name().to_string(), r.name.clone())
                     }
                 };
             }
@@ -91,7 +90,7 @@ mod tests {
                     cfg_attr: Default::default(),
                     description: Default::default(),
                     name: "MyRef".into(),
-                    object: ObjectOverride::Register(RegisterOverride {
+                    object_override: ObjectOverride::Register(RegisterOverride {
                         name: "MyReg".into(),
                         ..Default::default()
                     }),
@@ -110,7 +109,7 @@ mod tests {
                 cfg_attr: Default::default(),
                 description: Default::default(),
                 name: "MyRef".into(),
-                object: ObjectOverride::Register(RegisterOverride {
+                object_override: ObjectOverride::Register(RegisterOverride {
                     name: "MyReg2".into(),
                     ..Default::default()
                 }),
@@ -131,7 +130,7 @@ mod tests {
                 cfg_attr: Default::default(),
                 description: Default::default(),
                 name: "MyRef".into(),
-                object: ObjectOverride::Block(BlockOverride {
+                object_override: ObjectOverride::Block(BlockOverride {
                     name: "MyBlock2".into(),
                     ..Default::default()
                 }),
@@ -152,7 +151,7 @@ mod tests {
                 cfg_attr: Default::default(),
                 description: Default::default(),
                 name: "MyRef".into(),
-                object: ObjectOverride::Command(CommandOverride {
+                object_override: ObjectOverride::Command(CommandOverride {
                     name: "MyComm2".into(),
                     ..Default::default()
                 }),

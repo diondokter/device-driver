@@ -611,7 +611,7 @@ fn transform_ref(ref_object: dsl_hir::RefObject) -> Result<mir::RefObject, syn::
         cfg_attr: get_cfg_attr(&ref_object.attribute_list)?,
         description: get_description(&ref_object.attribute_list).unwrap_or_default(),
         name: ref_object.identifier.to_string(),
-        object: match *ref_object.object {
+        object_override: match *ref_object.object {
             dsl_hir::Object::Block(block_override) => {
                 mir::ObjectOverride::Block(transform_block_override(block_override)?)
             }
@@ -1372,7 +1372,7 @@ mod tests {
                 cfg_attr: None,
                 description: "".into(),
                 name: "Foo".into(),
-                object: mir::ObjectOverride::Register(mir::RegisterOverride {
+                object_override: mir::ObjectOverride::Register(mir::RegisterOverride {
                     name: "Bar".into(),
                     ..Default::default()
                 })
@@ -1403,7 +1403,7 @@ mod tests {
                 cfg_attr: None,
                 description: "".into(),
                 name: "Foo".into(),
-                object: mir::ObjectOverride::Register(mir::RegisterOverride {
+                object_override: mir::ObjectOverride::Register(mir::RegisterOverride {
                     name: "Bar".into(),
                     address: Some(5),
                     repeat: Some(mir::Repeat {
@@ -1434,7 +1434,7 @@ mod tests {
                 cfg_attr: None,
                 description: "".into(),
                 name: "Foo".into(),
-                object: mir::ObjectOverride::Register(mir::RegisterOverride {
+                object_override: mir::ObjectOverride::Register(mir::RegisterOverride {
                     name: "Bar".into(),
                     reset_value: Some(mir::ResetValue::Array(vec![1, 2, 3])),
                     ..Default::default()
@@ -1572,7 +1572,7 @@ mod tests {
                 cfg_attr: None,
                 description: "".into(),
                 name: "Foo".into(),
-                object: mir::ObjectOverride::Command(mir::CommandOverride {
+                object_override: mir::ObjectOverride::Command(mir::CommandOverride {
                     name: "Bar".into(),
                     ..Default::default()
                 })
@@ -1597,7 +1597,7 @@ mod tests {
                 cfg_attr: None,
                 description: "".into(),
                 name: "Foo".into(),
-                object: mir::ObjectOverride::Command(mir::CommandOverride {
+                object_override: mir::ObjectOverride::Command(mir::CommandOverride {
                     name: "Bar".into(),
                     address: Some(6),
                     allow_address_overlap: true,
@@ -1627,7 +1627,7 @@ mod tests {
                 cfg_attr: None,
                 description: "".into(),
                 name: "Foo".into(),
-                object: mir::ObjectOverride::Command(mir::CommandOverride {
+                object_override: mir::ObjectOverride::Command(mir::CommandOverride {
                     name: "Bar".into(),
                     address: Some(7),
                     repeat: Some(mir::Repeat {
@@ -1659,7 +1659,7 @@ mod tests {
                 cfg_attr: None,
                 description: "".into(),
                 name: "Foo".into(),
-                object: mir::ObjectOverride::Command(mir::CommandOverride {
+                object_override: mir::ObjectOverride::Command(mir::CommandOverride {
                     name: "Bar".into(),
                     repeat: Some(mir::Repeat {
                         count: 4,
@@ -1844,7 +1844,7 @@ mod tests {
                 cfg_attr: None,
                 description: "".into(),
                 name: "Foo".into(),
-                object: mir::ObjectOverride::Block(mir::BlockOverride {
+                object_override: mir::ObjectOverride::Block(mir::BlockOverride {
                     name: "Bar".into(),
                     address_offset: None,
                     repeat: None
@@ -1903,7 +1903,7 @@ mod tests {
                 cfg_attr: Some("bla".into()),
                 description: " Hi!".into(),
                 name: "Foo".into(),
-                object: mir::ObjectOverride::Block(mir::BlockOverride {
+                object_override: mir::ObjectOverride::Block(mir::BlockOverride {
                     name: "Bar".into(),
                     address_offset: Some(5),
                     repeat: None
@@ -1931,7 +1931,7 @@ mod tests {
                 cfg_attr: None,
                 description: "".into(),
                 name: "Foo".into(),
-                object: mir::ObjectOverride::Block(mir::BlockOverride {
+                object_override: mir::ObjectOverride::Block(mir::BlockOverride {
                     name: "Bar".into(),
                     address_offset: None,
                     repeat: Some(mir::Repeat {
