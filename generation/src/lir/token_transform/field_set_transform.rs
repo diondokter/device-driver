@@ -67,6 +67,10 @@ pub fn generate_field_set(value: &FieldSet) -> TokenStream {
         }
     };
 
+    // TODO:
+    // - Add debug impl
+    // - Add defmt impl
+
     quote! {
         #doc_attr
         #cfg_attr

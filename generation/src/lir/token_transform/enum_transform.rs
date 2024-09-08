@@ -134,7 +134,9 @@ pub fn generate_enum(value: &Enum) -> TokenStream {
         }
     };
 
-    // TODO: Add defmt
+    // TODO:
+    // - Add defmt impl
+
     quote! {
         #doc_attr
         #cfg_attr
