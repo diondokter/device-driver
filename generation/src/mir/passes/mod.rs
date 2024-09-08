@@ -8,6 +8,7 @@ mod names_normalized;
 mod names_unique;
 mod refs_validated;
 mod reset_values_converted;
+mod refs_resolved;
 
 pub fn run_passes(device: &mut Device) -> anyhow::Result<()> {
     names_normalized::run_pass(device)?;
@@ -18,11 +19,11 @@ pub fn run_passes(device: &mut Device) -> anyhow::Result<()> {
     bit_ranges_validated::run_pass(device)?;
     refs_validated::run_pass(device)?;
     bool_fields_checked::run_pass(device)?;
+    refs_resolved::run_pass(device)?;
 
     // TODO:
     // - Validate address overlap. But likely only the actual address and not partial overlap
-    // - Resolve refs
-    // - Check if address types arae specified
+    // - Check if address types are specified
 
     Ok(())
 }
