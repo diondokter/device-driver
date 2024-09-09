@@ -122,6 +122,54 @@ pub fn generate_field_set(value: &FieldSet) -> TokenStream {
         #from_impl
         #into_impl
         #debug_impl
+
+        impl core::ops::BitAnd for #name {
+            type Output = Self;
+
+            fn bitand(self, rhs: Self) -> Self::Output {
+                Self {
+                    bits: self.bits & rhs.bits
+                }
+            }
+        }
+
+        impl core::ops::BitAndAssign for #name {
+            fn bitand_assign(&mut self, rhs: Self) {
+                self.bits &= rhs.bits;
+            }
+        }
+
+        impl core::ops::BitOr for #name {
+            type Output = Self;
+
+            fn bitor(self, rhs: Self) -> Self::Output {
+                Self {
+                    bits: self.bits | rhs.bits
+                }
+            }
+        }
+
+        impl core::ops::BitOrAssign for #name {
+            fn bitor_assign(&mut self, rhs: Self) {
+                self.bits |= rhs.bits;
+            }
+        }
+
+        impl core::ops::BitXor for #name {
+            type Output = Self;
+
+            fn bitxor(self, rhs: Self) -> Self::Output {
+                Self {
+                    bits: self.bits ^ rhs.bits
+                }
+            }
+        }
+
+        impl core::ops::BitXorAssign for #name {
+            fn bitxor_assign(&mut self, rhs: Self) {
+                self.bits ^= rhs.bits;
+            }
+        }
     }
 }
 
@@ -370,6 +418,39 @@ mod tests {
                         .field(\"my_field\", &self.my_field())
                         .field(\"my_field2\", &self.my_field2())
                         .finish()
+                }
+            }
+            impl core::ops::BitAnd for MyRegister {
+                type Output = Self;
+                fn bitand(self, rhs: Self) -> Self::Output {
+                    Self { bits: self.bits & rhs.bits }
+                }
+            }
+            impl core::ops::BitAndAssign for MyRegister {
+                fn bitand_assign(&mut self, rhs: Self) {
+                    self.bits &= rhs.bits;
+                }
+            }
+            impl core::ops::BitOr for MyRegister {
+                type Output = Self;
+                fn bitor(self, rhs: Self) -> Self::Output {
+                    Self { bits: self.bits | rhs.bits }
+                }
+            }
+            impl core::ops::BitOrAssign for MyRegister {
+                fn bitor_assign(&mut self, rhs: Self) {
+                    self.bits |= rhs.bits;
+                }
+            }
+            impl core::ops::BitXor for MyRegister {
+                type Output = Self;
+                fn bitxor(self, rhs: Self) -> Self::Output {
+                    Self { bits: self.bits ^ rhs.bits }
+                }
+            }
+            impl core::ops::BitXorAssign for MyRegister {
+                fn bitxor_assign(&mut self, rhs: Self) {
+                    self.bits ^= rhs.bits;
                 }
             }
             "}
