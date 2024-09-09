@@ -67,8 +67,25 @@ pub fn generate_field_set(value: &FieldSet) -> TokenStream {
         }
     };
 
+    let debug_impl = {
+        let debug_field_calls = fields.iter().map(|f| {
+            let name = &f.name;
+            let name_string = name.to_string();
+            quote! {.field(#name_string, &self.#name()) }
+        });
+
+        quote! {
+            impl core::fmt::Debug for #name {
+                fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+                    fmt.debug_struct(#name)
+                        #(#debug_field_calls)*
+                        .finish()
+                }
+            }
+        }
+    };
+
     // TODO:
-    // - Add debug impl
     // - Add defmt impl
 
     quote! {
@@ -104,6 +121,7 @@ pub fn generate_field_set(value: &FieldSet) -> TokenStream {
 
         #from_impl
         #into_impl
+        #debug_impl
     }
 }
 
@@ -344,6 +362,14 @@ mod tests {
                     let mut val = val.bits.into_inner();
                     val[..].reverse();
                     val
+                }
+            }
+            impl core::fmt::Debug for MyRegister {
+                fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+                    fmt.debug_struct(MyRegister)
+                        .field(\"my_field\", &self.my_field())
+                        .field(\"my_field2\", &self.my_field2())
+                        .finish()
                 }
             }
             "}
