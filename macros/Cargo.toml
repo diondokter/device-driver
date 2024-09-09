@@ -17,12 +17,5 @@ proc-macro = true
 
 [dependencies]
 device-driver-generation = { version = "0.7.0", path = "../generation" }
-syn = { version = "2.0", features = ["extra-traits"] }
-serde_json = { version = "1.0", optional = true }
-serde_yaml = { version = "0.9", optional = true }
+syn = { version = "2.0" }
 proc-macro2 = "1.0"
-quote = "1.0"
-
-[features]
-json = ["dep:serde_json"]
-yaml = ["dep:serde_yaml"]
