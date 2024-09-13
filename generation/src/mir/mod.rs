@@ -68,10 +68,8 @@ impl From<Integer> for proc_macro2::Ident {
 pub enum Access {
     #[default]
     RW,
-    RC,
     RO,
     WO,
-    CO,
 }
 
 impl quote::ToTokens for Access {

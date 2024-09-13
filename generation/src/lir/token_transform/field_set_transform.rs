@@ -26,7 +26,6 @@ pub fn generate_field_set(value: &FieldSet) -> TokenStream {
 
     let read_functions = fields.iter().map(get_read_function);
     let write_functions = fields.iter().map(get_write_function);
-    let clear_functions = fields.iter().map(get_clear_function);
 
     let from_impl = {
         let be_reverse = match byte_order {
@@ -74,10 +73,11 @@ pub fn generate_field_set(value: &FieldSet) -> TokenStream {
             quote! {.field(#name_string, &self.#name()) }
         });
 
+        let name_string = name.to_string();
         quote! {
             impl core::fmt::Debug for #name {
                 fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
-                    fmt.debug_struct(#name)
+                    f.debug_struct(#name_string)
                         #(#debug_field_calls)*
                         .finish()
                 }
@@ -97,26 +97,26 @@ pub fn generate_field_set(value: &FieldSet) -> TokenStream {
             bits: ::device_driver::bitvec::array::BitArray<[u8; #size_bytes], ::device_driver::bitvec::order::#bit_order>,
         }
 
-        impl #name {
-            /// Create a new instance, loaded with the default value (if any)
-            pub const fn new() -> Self {
+        impl ::device_driver::FieldSet for #name {
+            type BUFFER = [u8; #size_bytes];
+
+            fn new() -> Self {
                 Self {
                     bits: ::device_driver::bitvec::array::BitArray::new([#(#reset_value),*]),
                 }
             }
 
-            /// Create a new instance, loaded all 0's
-            pub const fn new_zero() -> Self {
+            fn new_zero() -> Self {
                 Self {
                     bits: ::device_driver::bitvec::array::BitArray::new([0; #size_bytes]),
                 }
             }
+        }
 
+        impl #name {
             #(#read_functions)*
 
             #(#write_functions)*
-
-            #(#clear_functions)*
         }
 
         #from_impl
@@ -184,7 +184,7 @@ fn get_read_function(field: &Field) -> TokenStream {
         access,
     } = field;
 
-    if !matches!(access, Access::RW | Access::RC | Access::RO) {
+    if !matches!(access, Access::RW | Access::RO) {
         return TokenStream::new();
     }
 
@@ -195,6 +195,7 @@ fn get_read_function(field: &Field) -> TokenStream {
         FieldConversionMethod::TryInto(conversion_type) => {
             quote! { Result<#conversion_type, #base_type> }
         }
+        FieldConversionMethod::Bool => format_ident!("bool").into_token_stream(),
     };
 
     let start_bit = &address.start;
@@ -207,6 +208,7 @@ fn get_read_function(field: &Field) -> TokenStream {
             quote! { unsafe { raw.try_into().unwrap_unchecked() } }
         }
         FieldConversionMethod::TryInto(_) => quote! { raw.try_into() },
+        FieldConversionMethod::Bool => quote! { raw > 0 },
     };
 
     let function_description = format!("Read the {name} field of the register.");
@@ -216,7 +218,8 @@ fn get_read_function(field: &Field) -> TokenStream {
         #[doc = ""]
         #doc_attr
         #cfg_attr
-        fn #name(&self) -> #return_type {
+        pub fn #name(&self) -> #return_type {
+            use ::device_driver::bitvec::field::BitField;
             let raw = self.bits[#start_bit..#end_bit].load_le::<#base_type>();
             #conversion
         }
@@ -243,6 +246,7 @@ fn get_write_function(field: &Field) -> TokenStream {
         FieldConversionMethod::Into(conversion_type)
         | FieldConversionMethod::UnsafeInto(conversion_type)
         | FieldConversionMethod::TryInto(conversion_type) => conversion_type,
+        FieldConversionMethod::Bool => &format_ident!("bool"),
     };
 
     let start_bit = &address.start;
@@ -250,6 +254,7 @@ fn get_write_function(field: &Field) -> TokenStream {
 
     let conversion = match conversion_method {
         FieldConversionMethod::None => quote! { value },
+        FieldConversionMethod::Bool => quote! { value as _ },
         _ => quote! { value.into() },
     };
 
@@ -261,43 +266,11 @@ fn get_write_function(field: &Field) -> TokenStream {
         #[doc = ""]
         #doc_attr
         #cfg_attr
-        fn #function_name(&mut self, value: #input_type) {
+        pub fn #function_name(&mut self, value: #input_type) -> &mut Self {
+            use ::device_driver::bitvec::field::BitField;
             let raw = #conversion;
             self.bits[#start_bit..#end_bit].store_le::<#base_type>(raw);
-        }
-    }
-}
-
-fn get_clear_function(field: &Field) -> TokenStream {
-    let Field {
-        cfg_attr,
-        doc_attr,
-        name,
-        address,
-        base_type,
-        conversion_method: _,
-        access,
-    } = field;
-
-    if !matches!(access, Access::RC | Access::CO) {
-        return TokenStream::new();
-    }
-
-    let start_bit = &address.start;
-    let end_bit = &address.end;
-
-    let function_description =
-        format!("Clear (invert from default) the {name} field of the register.");
-    let function_name = format_ident!("clear_{name}");
-
-    quote! {
-        #[doc = #function_description]
-        #[doc = ""]
-        #doc_attr
-        #cfg_attr
-        fn #function_name(&mut self) {
-            let default = Self::new().bits[#start_bit..#end_bit].load_le::<#base_type>();
-            self.bits[#start_bit..#end_bit].store_le::<#base_type>(default ^ (0.wrapping_sub(1)));
+            self
         }
     }
 }
@@ -337,7 +310,7 @@ mod tests {
                     address: Literal::u64_unsuffixed(4)..Literal::u64_unsuffixed(16),
                     base_type: format_ident!("i16"),
                     conversion_method: FieldConversionMethod::None,
-                    access: Access::RC,
+                    access: Access::WO,
                 },
             ],
         });
@@ -355,46 +328,46 @@ mod tests {
                     ::device_driver::bitvec::order::Lsb0,
                 >,
             }
-            impl MyRegister {
-                /// Create a new instance, loaded with the default value (if any)
-                pub const fn new() -> Self {
+            impl ::device_driver::FieldSet for MyRegister {
+                type BUFFER = [u8; 3];
+                fn new() -> Self {
                     Self {
                         bits: ::device_driver::bitvec::array::BitArray::new([1u8, 2u8, 3u8]),
                     }
                 }
-                /// Create a new instance, loaded all 0's
-                pub const fn new_zero() -> Self {
+                fn new_zero() -> Self {
                     Self {
                         bits: ::device_driver::bitvec::array::BitArray::new([0; 3]),
                     }
                 }
+            }
+            impl MyRegister {
                 ///Read the my_field field of the register.
                 ///
                 ///Hiya again!
                 #[cfg(linux)]
-                fn my_field(&self) -> FieldEnum {
+                pub fn my_field(&self) -> FieldEnum {
+                    use ::device_driver::bitvec::field::BitField;
                     let raw = self.bits[0..4].load_le::<u8>();
                     unsafe { raw.try_into().unwrap_unchecked() }
-                }
-                ///Read the my_field2 field of the register.
-                ///
-                fn my_field2(&self) -> i16 {
-                    let raw = self.bits[4..16].load_le::<i16>();
-                    raw
                 }
                 ///Write the my_field field of the register.
                 ///
                 ///Hiya again!
                 #[cfg(linux)]
-                fn set_my_field(&mut self, value: FieldEnum) {
+                pub fn set_my_field(&mut self, value: FieldEnum) -> &mut Self {
+                    use ::device_driver::bitvec::field::BitField;
                     let raw = value.into();
                     self.bits[0..4].store_le::<u8>(raw);
+                    self
                 }
-                ///Clear (invert from default) the my_field2 field of the register.
+                ///Write the my_field2 field of the register.
                 ///
-                fn clear_my_field2(&mut self) {
-                    let default = Self::new().bits[4..16].load_le::<i16>();
-                    self.bits[4..16].store_le::<i16>(default ^ (0.wrapping_sub(1)));
+                pub fn set_my_field2(&mut self, value: i16) -> &mut Self {
+                    use ::device_driver::bitvec::field::BitField;
+                    let raw = value;
+                    self.bits[4..16].store_le::<i16>(raw);
+                    self
                 }
             }
             impl From<[u8; 3]> for MyRegister {
@@ -414,7 +387,7 @@ mod tests {
             }
             impl core::fmt::Debug for MyRegister {
                 fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
-                    fmt.debug_struct(MyRegister)
+                    f.debug_struct(\"MyRegister\")
                         .field(\"my_field\", &self.my_field())
                         .field(\"my_field2\", &self.my_field2())
                         .finish()

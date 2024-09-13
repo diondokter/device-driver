@@ -86,7 +86,7 @@
 //! > | (`const` `ALLOW_ADDRESS_OVERLAP` = _BOOL_`;`)
 //!
 //! _Access_:
-//! > (`ReadWrite`|`RW`)|(`ReadClear`|`RC`)|(`ReadOnly`|`RO`)|(`WriteOnly`|`WO`)|(`ClearOnly`|`CO`)
+//! > (`ReadWrite`|`RW`)|(`ReadOnly`|`RO`)|(`WriteOnly`|`WO`)
 //!
 //! _ByteOrder_:
 //! > `LE`|`BE`
@@ -621,7 +621,7 @@ impl Parse for RegisterItemList {
                 if lookahead.peek(kw::Access) {
                     err_if_contains(
                         &register_items,
-                        core::mem::discriminant(&RegisterItem::Access(Access::CO)),
+                        core::mem::discriminant(&RegisterItem::Access(Access::RW)),
                         input.span(),
                     )?;
 
@@ -802,10 +802,8 @@ pub enum RegisterItem {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Access {
     RW,
-    RC,
     RO,
     WO,
-    CO,
 }
 
 impl Parse for Access {
@@ -818,12 +816,6 @@ impl Parse for Access {
         } else if lookahead.peek(kw::RW) {
             input.parse::<kw::RW>()?;
             Ok(Self::RW)
-        } else if lookahead.peek(kw::ReadClear) {
-            input.parse::<kw::ReadClear>()?;
-            Ok(Self::RC)
-        } else if lookahead.peek(kw::RC) {
-            input.parse::<kw::RC>()?;
-            Ok(Self::RC)
         } else if lookahead.peek(kw::ReadOnly) {
             input.parse::<kw::ReadOnly>()?;
             Ok(Self::RO)
@@ -836,12 +828,6 @@ impl Parse for Access {
         } else if lookahead.peek(kw::WO) {
             input.parse::<kw::WO>()?;
             Ok(Self::WO)
-        } else if lookahead.peek(kw::ClearOnly) {
-            input.parse::<kw::ClearOnly>()?;
-            Ok(Self::CO)
-        } else if lookahead.peek(kw::CO) {
-            input.parse::<kw::CO>()?;
-            Ok(Self::CO)
         } else {
             Err(lookahead.error())
         }
@@ -1474,14 +1460,10 @@ mod kw {
     syn::custom_keyword!(Access);
     syn::custom_keyword!(RW);
     syn::custom_keyword!(ReadWrite);
-    syn::custom_keyword!(RC);
-    syn::custom_keyword!(ReadClear);
     syn::custom_keyword!(RO);
     syn::custom_keyword!(ReadOnly);
     syn::custom_keyword!(WO);
     syn::custom_keyword!(WriteOnly);
-    syn::custom_keyword!(CO);
-    syn::custom_keyword!(ClearOnly);
 
     // ByteOrder
     syn::custom_keyword!(ByteOrder);
@@ -1517,18 +1499,14 @@ mod tests {
     fn parse_access() {
         assert_eq!(syn::parse_str::<Access>("RW").unwrap(), Access::RW);
         assert_eq!(syn::parse_str::<Access>("ReadWrite").unwrap(), Access::RW);
-        assert_eq!(syn::parse_str::<Access>("RC").unwrap(), Access::RC);
-        assert_eq!(syn::parse_str::<Access>("ReadClear").unwrap(), Access::RC);
         assert_eq!(syn::parse_str::<Access>("RO").unwrap(), Access::RO);
         assert_eq!(syn::parse_str::<Access>("ReadOnly").unwrap(), Access::RO);
         assert_eq!(syn::parse_str::<Access>("WO").unwrap(), Access::WO);
         assert_eq!(syn::parse_str::<Access>("WriteOnly").unwrap(), Access::WO);
-        assert_eq!(syn::parse_str::<Access>("CO").unwrap(), Access::CO);
-        assert_eq!(syn::parse_str::<Access>("ClearOnly").unwrap(), Access::CO);
 
         assert_eq!(
             syn::parse_str::<Access>("ABCD").unwrap_err().to_string(),
-            "expected one of: `ReadWrite`, `RW`, `ReadClear`, `RC`, `ReadOnly`, `RO`, `WriteOnly`, `WO`, `ClearOnly`, `CO`"
+            "expected one of: `ReadWrite`, `RW`, `ReadOnly`, `RO`, `WriteOnly`, `WO`"
         );
     }
 
@@ -1738,11 +1716,11 @@ mod tests {
         );
 
         assert_eq!(
-            syn::parse_str::<Buffer>("buffer TestBuffer: CO").unwrap(),
+            syn::parse_str::<Buffer>("buffer TestBuffer: WO").unwrap(),
             Buffer {
                 attribute_list: AttributeList::new(),
                 identifier: Ident::new("TestBuffer", Span::call_site()),
-                access: Some(Access::CO),
+                access: Some(Access::WO),
                 address: None,
             }
         );
@@ -1770,11 +1748,11 @@ mod tests {
     #[test]
     fn parse_field() {
         assert_eq!(
-            syn::parse_str::<Field>("TestField: ClearOnly int = 0x123").unwrap(),
+            syn::parse_str::<Field>("TestField: ReadOnly int = 0x123").unwrap(),
             Field {
                 attribute_list: AttributeList::new(),
                 identifier: Ident::new("TestField", Span::call_site()),
-                access: Some(Access::CO),
+                access: Some(Access::RO),
                 base_type: BaseType::Int,
                 field_conversion: None,
                 field_address: FieldAddress::Integer(LitInt::new("0x123", Span::call_site()))
@@ -2163,7 +2141,7 @@ mod tests {
 
         assert_eq!(
             syn::parse_str::<Register>(
-                "/// Hello!\nregister Foo { type Access = RW; TestField: ClearOnly int = 0x123, }"
+                "/// Hello!\nregister Foo { type Access = RW; TestField: ReadWrite int = 0x123, }"
             )
             .unwrap(),
             Register {
@@ -2178,7 +2156,7 @@ mod tests {
                     fields: vec![Field {
                         attribute_list: AttributeList::new(),
                         identifier: Ident::new("TestField", Span::call_site()),
-                        access: Some(Access::CO),
+                        access: Some(Access::RW),
                         base_type: BaseType::Int,
                         field_conversion: None,
                         field_address: FieldAddress::Integer(LitInt::new(

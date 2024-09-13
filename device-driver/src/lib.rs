@@ -7,8 +7,6 @@ pub use bitvec;
 pub use device_driver_macros::*;
 pub use embedded_io;
 pub use embedded_io_async;
-pub use funty;
-pub use num_enum;
 
 mod register;
 pub use register::*;
@@ -18,33 +16,38 @@ mod buffer;
 pub use buffer::*;
 
 #[doc(hidden)]
-pub struct WriteOnly;
+pub trait FieldSet {
+    /// The inner buffer type
+    type BUFFER: From<Self> + Into<Self> + AsMut<[u8]> + AsRef<[u8]>
+    where
+        Self: Sized;
+
+    /// Create a new instance, loaded with the default value (if any)
+    fn new() -> Self;
+
+    /// Create a new instance, loaded all 0's
+    fn new_zero() -> Self;
+}
+
 #[doc(hidden)]
-pub struct ReadOnly;
+pub struct WO;
 #[doc(hidden)]
-pub struct ReadWrite;
+pub struct RO;
 #[doc(hidden)]
-pub struct ReadClear;
+pub struct RW;
 #[doc(hidden)]
-pub struct ClearOnly;
+pub struct RC;
+#[doc(hidden)]
+pub struct CO;
 
 #[doc(hidden)]
 pub trait ReadCapability {}
 #[doc(hidden)]
 pub trait WriteCapability {}
-#[doc(hidden)]
-pub trait ClearCapability {}
 
-impl WriteCapability for WriteOnly {}
-impl ClearCapability for WriteOnly {}
+impl WriteCapability for WO {}
 
-impl ReadCapability for ReadOnly {}
+impl ReadCapability for RO {}
 
-impl WriteCapability for ReadWrite {}
-impl ReadCapability for ReadWrite {}
-impl ClearCapability for ReadWrite {}
-
-impl ReadCapability for ReadClear {}
-impl ClearCapability for ReadClear {}
-
-impl ClearCapability for ClearOnly {}
+impl WriteCapability for RW {}
+impl ReadCapability for RW {}

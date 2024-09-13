@@ -26,10 +26,20 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
         Object::Register(r) if r.size_bits > 8 && r.byte_order.is_none() => {
             bail!("No byte order is specified for register \"{}\" while it's big enough that byte order is important. Specify it on the register or in the global config", r.name);
         }
+        Object::Register(r) if r.byte_order.is_none() => {
+            // Too small to matter, so just use LE
+            r.byte_order = Some(crate::mir::ByteOrder::LE);
+            Ok(())
+        }
         Object::Command(c)
             if (c.size_bits_in > 8 || c.size_bits_out > 8) && c.byte_order.is_none() =>
         {
             bail!("No byte order is specified for command \"{}\" while it's big enough that byte order is important. Specify it on the command or in the global config", c.name);
+        }
+        Object::Command(c) if c.byte_order.is_none() => {
+            // Too small to matter, so just use LE
+            c.byte_order = Some(crate::mir::ByteOrder::LE);
+            Ok(())
         }
         _ => Ok(()),
     })

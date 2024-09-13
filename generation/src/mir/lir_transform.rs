@@ -385,11 +385,14 @@ fn transform_field_set<'a>(
             let address = Literal::u32_unsuffixed(field_address.start)
                 ..Literal::u32_unsuffixed(field_address.end);
 
-            let (base_type, conversion_method) = match (base_type, size_bits, field_conversion) {
-                (mir::BaseType::Bool, 1, None) => (
-                    format_ident!("u8"),
-                    lir::FieldConversionMethod::UnsafeInto(format_ident!("bool")),
-                ),
+            let (base_type, conversion_method) = match (
+                base_type,
+                field.field_address.clone().count(),
+                field_conversion,
+            ) {
+                (mir::BaseType::Bool, 1, None) => {
+                    (format_ident!("u8"), lir::FieldConversionMethod::Bool)
+                }
                 (mir::BaseType::Bool, _, _) => unreachable!(
                     "Checked in a MIR pass. Bools can only be 1 bit and have no conversion"
                 ),

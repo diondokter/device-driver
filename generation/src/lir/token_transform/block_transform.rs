@@ -38,7 +38,8 @@ pub fn generate_block(value: &Block) -> TokenStream {
         #cfg_attr
         #[derive(Debug)]
         pub struct #name<#generics> {
-            interface: #interface_decleration,
+            pub(crate) interface: #interface_decleration,
+            #[doc(hidden)]
             base_address: i64,
         }
 
@@ -52,7 +53,7 @@ pub fn generate_block(value: &Block) -> TokenStream {
                 }
             }
 
-            fn interface(&mut self) -> &mut I {
+            pub(crate) fn interface(&mut self) -> &mut I {
                 #interface_borrow
             }
 
@@ -79,12 +80,12 @@ fn generate_method(method: &BlockMethod) -> TokenStream {
             access,
             address_type,
         } => (
-            quote! { ::device_driver::RegisterOperation::<'_, I, #field_set_name, #access>  },
+            quote! { ::device_driver::RegisterOperation::<'_, I, #address_type, #field_set_name, ::device_driver::#access>  },
             quote! { where I: ::device_driver::RegisterInterface<AddressType = #address_type> },
             quote! { as #address_type },
         ),
         BlockMethodType::SimpleCommand { address_type } => (
-            quote! { ::device_driver::CommandOperation::<'_, I, (), ()>  },
+            quote! { ::device_driver::CommandOperation::<'_, I, #address_type, (), ()>  },
             quote! { where I: ::device_driver::CommandInterface<AddressType = #address_type> },
             quote! { as #address_type },
         ),
@@ -93,7 +94,7 @@ fn generate_method(method: &BlockMethod) -> TokenStream {
             field_set_name_out,
             address_type,
         } => (
-            quote! { ::device_driver::CommandOperation::<'_, I, #field_set_name_in, #field_set_name_out>  },
+            quote! { ::device_driver::CommandOperation::<'_, I, #address_type, #field_set_name_in, #field_set_name_out>  },
             quote! { where I: ::device_driver::CommandInterface<AddressType = #address_type> },
             quote! { as #address_type },
         ),
@@ -101,7 +102,7 @@ fn generate_method(method: &BlockMethod) -> TokenStream {
             access,
             address_type,
         } => (
-            quote! { ::device_driver::BufferOperation::<'_, I, #access>  },
+            quote! { ::device_driver::BufferOperation::<'_, I, #address_type, ::device_driver::#access>  },
             quote! { where I: ::device_driver::BufferInterface<AddressType = #address_type> },
             quote! { as #address_type },
         ),
@@ -129,7 +130,7 @@ fn generate_method(method: &BlockMethod) -> TokenStream {
         #doc_attr
         #index_doc
         #cfg_attr
-        pub fn #name(#index_param) -> #return_type
+        pub fn #name(&mut self, #index_param) -> #return_type
         #where_bounds
         {
             let address = #address_calc;
@@ -174,7 +175,8 @@ mod tests {
                 #[cfg(unix)]
                 #[derive(Debug)]
                 pub struct RootBlock<I> {
-                    interface: I,
+                    pub(crate) interface: I,
+                    #[doc(hidden)]
                     base_address: i64,
                 }
                 #[cfg(unix)]
@@ -183,12 +185,14 @@ mod tests {
                     pub fn new(interface: I) -> Self {
                         Self { interface, base_address: 0 }
                     }
-                    fn interface(&mut self) -> &mut I {
+                    pub(crate) fn interface(&mut self) -> &mut I {
                         &mut self.interface
                     }
                     ///42 is the answer
                     #[cfg(unix)]
-                    pub fn my_register1() -> ::device_driver::RegisterOperation<'_, I, MyRegister, RW>
+                    pub fn my_register1(
+                        &mut self,
+                    ) -> ::device_driver::RegisterOperation<'_, I, u8, MyRegister, ::device_driver::RW>
                     where
                         I: ::device_driver::RegisterInterface<AddressType = u8>,
                     {
@@ -196,8 +200,9 @@ mod tests {
                         ::device_driver::RegisterOperation::<
                             '_,
                             I,
+                            u8,
                             MyRegister,
-                            RW,
+                            ::device_driver::RW,
                         >::new(self.interface(), address as u8)
                     }
                 }
@@ -236,7 +241,8 @@ mod tests {
                 #[cfg(unix)]
                 #[derive(Debug)]
                 pub struct AnyBlock<'i, I> {
-                    interface: &'i mut I,
+                    pub(crate) interface: &'i mut I,
+                    #[doc(hidden)]
                     base_address: i64,
                 }
                 #[cfg(unix)]
@@ -248,14 +254,17 @@ mod tests {
                             base_address: base_address,
                         }
                     }
-                    fn interface(&mut self) -> &mut I {
+                    pub(crate) fn interface(&mut self) -> &mut I {
                         self.interface
                     }
                     ///42 is the answer
                     ///
                     ///Valid index range: 0..4
                     #[cfg(unix)]
-                    pub fn my_buffer(index: i64) -> ::device_driver::BufferOperation<'_, I, RO>
+                    pub fn my_buffer(
+                        &mut self,
+                        index: i64,
+                    ) -> ::device_driver::BufferOperation<'_, I, i16, ::device_driver::RO>
                     where
                         I: ::device_driver::BufferInterface<AddressType = i16>,
                     {
@@ -266,7 +275,8 @@ mod tests {
                         ::device_driver::BufferOperation::<
                             '_,
                             I,
-                            RO,
+                            i16,
+                            ::device_driver::RO,
                         >::new(self.interface(), address as i16)
                     }
                 }

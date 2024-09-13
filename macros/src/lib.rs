@@ -32,7 +32,7 @@ enum GenerationType {
 
 impl syn::parse::Parse for Input {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        input.parse::<kw::name>()?;
+        input.parse::<kw::device_name>()?;
         input.parse::<syn::Token![:]>()?;
         let device_name = input.parse()?;
         input.parse::<syn::Token![,]>()?;
@@ -79,7 +79,7 @@ impl syn::parse::Parse for Input {
 }
 
 mod kw {
-    syn::custom_keyword!(name);
+    syn::custom_keyword!(device_name);
     syn::custom_keyword!(dsl);
     syn::custom_keyword!(json);
     syn::custom_keyword!(yaml);

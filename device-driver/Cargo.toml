@@ -15,8 +15,6 @@ readme.workspace = true
 device-driver-macros = { version = "0.7.0", path = "../macros" }
 
 bitvec = { version = "1.0.1", default-features = false }
-funty = { version = "2.0.0", default-features = false }
-num_enum = { version = "0.7.1", default-features = false }
 embedded-io = "0.6.1"
 embedded-io-async = "0.6.1"
 

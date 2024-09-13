@@ -88,6 +88,7 @@ pub enum FieldConversionMethod {
     Into(Ident),
     UnsafeInto(Ident),
     TryInto(Ident),
+    Bool,
 }
 
 pub struct Enum {

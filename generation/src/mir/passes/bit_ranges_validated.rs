@@ -38,7 +38,7 @@ fn validate_len(field_set: &[Field], size_bits: u32, object_name: &str) -> anyho
     for field in field_set {
         ensure!(
             field.field_address.end <= size_bits,
-            "Object \"{object_name}\" has field \"{}\" that exceeds the max size",
+            "Object \"{object_name}\" has field \"{}\" who's address exceeds the given max size bits",
             field.name
         );
 
@@ -111,7 +111,7 @@ mod tests {
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
-            "Object \"MyReg\" has field \"my_field\" that exceeds the max size"
+            "Object \"MyReg\" has field \"my_field\" who's address exceeds the given max size bits"
         );
 
         let mut start_mir = Device {
@@ -146,7 +146,7 @@ mod tests {
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
-            "Object \"MyReg (in)\" has field \"my_field\" that exceeds the max size"
+            "Object \"MyReg (in)\" has field \"my_field\" who's address exceeds the given max size bits"
         );
 
         let mut start_mir = Device {
@@ -181,7 +181,7 @@ mod tests {
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
-            "Object \"MyReg (out)\" has field \"my_field\" that exceeds the max size"
+            "Object \"MyReg (out)\" has field \"my_field\" who's address exceeds the given max size bits"
         );
     }
 

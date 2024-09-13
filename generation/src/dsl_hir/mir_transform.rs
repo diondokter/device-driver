@@ -17,10 +17,8 @@ impl From<dsl_hir::Access> for mir::Access {
     fn from(value: dsl_hir::Access) -> Self {
         match value {
             dsl_hir::Access::RW => mir::Access::RW,
-            dsl_hir::Access::RC => mir::Access::RC,
             dsl_hir::Access::RO => mir::Access::RO,
             dsl_hir::Access::WO => mir::Access::WO,
-            dsl_hir::Access::CO => mir::Access::CO,
         }
     }
 }
@@ -317,7 +315,15 @@ fn transform_register(
                 _ => None,
             })
             .transpose()?
-            .unwrap_or(0),
+            .ok_or_else(|| {
+                syn::Error::new(
+                    register.identifier.span(),
+                    format!(
+                        "Register `{}` must have size bits specified",
+                        register.identifier
+                    ),
+                )
+            })?,
         reset_value: register
             .register_item_list
             .register_items
@@ -939,7 +945,7 @@ mod tests {
         let device = syn::parse_str::<dsl_hir::Device>(
             "config {
                 type DefaultRegisterAccess = RO;
-                type DefaultFieldAccess = RC;
+                type DefaultFieldAccess = RW;
                 type DefaultBufferAccess = WO;
                 type DefaultByteOrder = LE;
                 type DefaultBitOrder = MSB0;
@@ -957,7 +963,7 @@ mod tests {
             device.global_config,
             mir::GlobalConfig {
                 default_register_access: mir::Access::RO,
-                default_field_access: mir::Access::RC,
+                default_field_access: mir::Access::RW,
                 default_buffer_access: mir::Access::WO,
                 default_byte_order: Some(mir::ByteOrder::LE),
                 default_bit_order: mir::BitOrder::MSB0,
@@ -1082,7 +1088,7 @@ mod tests {
                         in {
                             /// Hello!
                             #[cfg(bla)]
-                            val: CO bool = 0,
+                            val: WO bool = 0,
                             foo: uint as crate::my_mod::MyStruct = 1..=5,
                         }
                         out {
@@ -1116,7 +1122,7 @@ mod tests {
                         cfg_attr: Some("bla".into()),
                         description: " Hello!".into(),
                         name: "val".into(),
-                        access: mir::Access::CO,
+                        access: mir::Access::WO,
                         base_type: mir::BaseType::Bool,
                         field_conversion: None,
                         field_address: 0..0,
@@ -2059,11 +2065,29 @@ mod tests {
                 )
                 .unwrap()
             )
+            .unwrap_err()
+            .to_string(),
+            "Register `Foo` must have size bits specified"
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    register Foo {
+                        const ADDRESS = 5;
+                        const SIZE_BITS = 16;
+                    }
+                    "
+                )
+                .unwrap()
+            )
             .unwrap()
             .objects,
             &[mir::Object::Register(mir::Register {
                 name: "Foo".into(),
                 address: 5,
+                size_bits: 16,
                 ..Default::default()
             })]
         );
@@ -2077,7 +2101,7 @@ mod tests {
                         const ADDRESS = 5;
                         type ByteOrder = LE;
                         type BitOrder = MSB0;
-                        type Access = RC;
+                        type Access = RO;
                         const SIZE_BITS = 16;
                         const REPEAT = {
                             count: 2,
@@ -2096,7 +2120,7 @@ mod tests {
             &[mir::Object::Register(mir::Register {
                 description: " This is foo".into(),
                 name: "Foo".into(),
-                access: mir::Access::RC,
+                access: mir::Access::RO,
                 byte_order: Some(mir::ByteOrder::LE),
                 bit_order: mir::BitOrder::MSB0,
                 address: 5,
@@ -2125,6 +2149,7 @@ mod tests {
                     "
                     register Foo {
                         const ADDRESS = 16;
+                        const SIZE_BITS = 136;
                         const RESET_VALUE = 0x123456789ABCDEF000000000000000000;
                     }
                     "
@@ -2142,6 +2167,7 @@ mod tests {
                     "
                     register Foo {
                         const ADDRESS = 5;
+                        const SIZE_BITS = 16;
                         const RESET_VALUE = [12, 34];
                     }
                     "
@@ -2154,6 +2180,7 @@ mod tests {
                 name: "Foo".into(),
                 address: 5,
                 reset_value: Some(mir::ResetValue::Array(vec![12, 34])),
+                size_bits: 16,
                 ..Default::default()
             })]
         );
@@ -2164,6 +2191,7 @@ mod tests {
                     "
                     register Foo {
                         const ADDRESS = 5;
+                        const SIZE_BITS = 16;
                         const ALLOW_BIT_OVERLAP = true;
                         const ALLOW_ADDRESS_OVERLAP = true;
                     }
@@ -2176,6 +2204,7 @@ mod tests {
             &[mir::Object::Register(mir::Register {
                 name: "Foo".into(),
                 address: 5,
+                size_bits: 16,
                 allow_bit_overlap: true,
                 allow_address_overlap: true,
                 ..Default::default()
