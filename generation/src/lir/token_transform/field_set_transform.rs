@@ -18,6 +18,11 @@ pub fn generate_field_set(value: &FieldSet) -> TokenStream {
         fields,
     } = value;
 
+    if *size_bits == 0 {
+        // No need to generate this. All uses are covered with the unit type
+        return TokenStream::new();
+    }
+
     let size_bytes = Literal::u32_unsuffixed(size_bits.div_ceil(8));
     let bit_order = match bit_order {
         BitOrder::LSB0 => format_ident!("Lsb0"),
