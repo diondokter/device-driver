@@ -135,6 +135,7 @@ Byte order
 - Thus this combined register is **little endian (LE)**
 
 Bit order
+- Depends on the hardware settings of the SPI. We set it to most significant bit first to match the datasheet.
 - The 0th bit is the last and least significant one of the byte
 - Thus this is **Least Significant Bit 0 (LSB0)**
 
@@ -184,6 +185,7 @@ Byte order
 - Thus this combined register is **big endian (BE)**
 
 Bit order
+- Depends on the hardware settings of the SPI. We set it to most significant bit first to match the datasheet.
 - The 0th bit is the last/least significant one
 - Thus this is **Least Significant Bit 0 (LSB0)**
 
@@ -210,6 +212,7 @@ Luckily for us, the user manual spells out the modes (along to the diagrams):
 - Diagram example: Register `0x00` contains `0xDECA0130` and is sent as `[0x30, 0x01, 0xCA, 0xDE]`
   - Thus **little endian (LE)**
 - > Note: The octets are physically presented on the SPI interface data lines with the high order bit sent first in time.
+  - Depends on the hardware settings of the SPI. We set it to most significant bit first to match the datasheet.
   - Thus **Least Significant Bit 0 (LSB0)** (assuming your SPI master also sees the first bit as the LSB)
 
 ```rust
