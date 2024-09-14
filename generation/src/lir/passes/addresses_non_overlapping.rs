@@ -88,9 +88,7 @@ fn get_block_claimed_addresses(
                 continue;
             }
             BlockMethodType::Register { .. } => ClaimedAddressType::Register,
-            BlockMethodType::SimpleCommand { .. } | BlockMethodType::Command { .. } => {
-                ClaimedAddressType::Command
-            }
+            BlockMethodType::Command { .. } => ClaimedAddressType::Command,
             BlockMethodType::Buffer { .. } => ClaimedAddressType::Buffer,
         };
 

@@ -1,5 +1,5 @@
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{quote, ToTokens};
 
 use crate::lir::{Block, BlockMethod, BlockMethodKind, BlockMethodType};
 
@@ -84,20 +84,25 @@ fn generate_method(method: &BlockMethod) -> TokenStream {
             quote! { where I: ::device_driver::RegisterInterface<AddressType = #address_type> },
             quote! { as #address_type },
         ),
-        BlockMethodType::SimpleCommand { address_type } => (
-            quote! { ::device_driver::CommandOperation::<'_, I, #address_type, (), ()>  },
-            quote! { where I: ::device_driver::CommandInterface<AddressType = #address_type> },
-            quote! { as #address_type },
-        ),
         BlockMethodType::Command {
             field_set_name_in,
             field_set_name_out,
             address_type,
-        } => (
-            quote! { ::device_driver::CommandOperation::<'_, I, #address_type, #field_set_name_in, #field_set_name_out>  },
-            quote! { where I: ::device_driver::CommandInterface<AddressType = #address_type> },
-            quote! { as #address_type },
-        ),
+        } => {
+            let field_set_name_in = match field_set_name_in {
+                Some(val) => val.to_token_stream(),
+                None => quote! { () },
+            };
+            let field_set_name_out = match field_set_name_out {
+                Some(val) => val.to_token_stream(),
+                None => quote! { () },
+            };
+            (
+                quote! { ::device_driver::CommandOperation::<'_, I, #address_type, #field_set_name_in, #field_set_name_out>  },
+                quote! { where I: ::device_driver::CommandInterface<AddressType = #address_type> },
+                quote! { as #address_type },
+            )
+        }
         BlockMethodType::Buffer {
             access,
             address_type,

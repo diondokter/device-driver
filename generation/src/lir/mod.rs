@@ -47,12 +47,9 @@ pub enum BlockMethodType {
         access: Access,
         address_type: Ident,
     },
-    SimpleCommand {
-        address_type: Ident,
-    },
     Command {
-        field_set_name_in: Ident,
-        field_set_name_out: Ident,
+        field_set_name_in: Option<Ident>,
+        field_set_name_out: Option<Ident>,
         address_type: Ident,
     },
     Buffer {

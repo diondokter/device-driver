@@ -175,6 +175,16 @@ pub fn generate_field_set(value: &FieldSet) -> TokenStream {
                 self.bits ^= rhs.bits;
             }
         }
+
+        impl core::ops::Not for #name {
+            type Output = Self;
+
+            fn not(self) -> Self::Output {
+                Self {
+                    bits: !self.bits
+                }
+            }
+        }
     }
 }
 
@@ -216,7 +226,7 @@ fn get_read_function(field: &Field) -> TokenStream {
         FieldConversionMethod::Bool => quote! { raw > 0 },
     };
 
-    let function_description = format!("Read the {name} field of the register.");
+    let function_description = format!("Read the `{name}` field of the register.");
 
     quote! {
         #[doc = #function_description]
@@ -263,7 +273,7 @@ fn get_write_function(field: &Field) -> TokenStream {
         _ => quote! { value.into() },
     };
 
-    let function_description = format!("Write the {name} field of the register.");
+    let function_description = format!("Write the `{name}` field of the register.");
     let function_name = format_ident!("set_{name}");
 
     quote! {
@@ -347,7 +357,7 @@ mod tests {
                 }
             }
             impl MyRegister {
-                ///Read the my_field field of the register.
+                ///Read the `my_field` field of the register.
                 ///
                 ///Hiya again!
                 #[cfg(linux)]
@@ -356,7 +366,7 @@ mod tests {
                     let raw = self.bits[0..4].load_le::<u8>();
                     unsafe { raw.try_into().unwrap_unchecked() }
                 }
-                ///Write the my_field field of the register.
+                ///Write the `my_field` field of the register.
                 ///
                 ///Hiya again!
                 #[cfg(linux)]
@@ -366,7 +376,7 @@ mod tests {
                     self.bits[0..4].store_le::<u8>(raw);
                     self
                 }
-                ///Write the my_field2 field of the register.
+                ///Write the `my_field2` field of the register.
                 ///
                 pub fn set_my_field2(&mut self, value: i16) -> &mut Self {
                     use ::device_driver::bitvec::field::BitField;
@@ -429,6 +439,12 @@ mod tests {
             impl core::ops::BitXorAssign for MyRegister {
                 fn bitxor_assign(&mut self, rhs: Self) {
                     self.bits ^= rhs.bits;
+                }
+            }
+            impl core::ops::Not for MyRegister {
+                type Output = Self;
+                fn not(self) -> Self::Output {
+                    Self { bits: !self.bits }
                 }
             }
             "}

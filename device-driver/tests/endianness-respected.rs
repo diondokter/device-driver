@@ -28,85 +28,81 @@ impl RegisterInterface for DeviceInterface {
     }
 }
 
-pub mod registers {
-    use super::*;
-
-    device_driver_macros::implement_device!(
-        device_name: MyTestDevice,
-        dsl: {
-            config {
-                type RegisterAddressType = u8;
-            }
-            register FooLE {
-                const ADDRESS = 0;
-                const SIZE_BITS = 16;
-                type ByteOrder = LE;
-                const ALLOW_ADDRESS_OVERLAP = true;
-                const RESET_VALUE = 0x1234;
-
-                val: uint = 0..16,
-            },
-            register FooLEArray {
-                const ADDRESS = 0;
-                const SIZE_BITS = 16;
-                type ByteOrder = LE;
-                const ALLOW_ADDRESS_OVERLAP = true;
-                const RESET_VALUE = [0x34, 0x12]; // As the read and write functions see it
-
-                val: uint = 0..16,
-            },
-            register FooBE {
-                const ADDRESS = 0;
-                const SIZE_BITS = 16;
-                type ByteOrder = BE;
-                const ALLOW_ADDRESS_OVERLAP = true;
-                const RESET_VALUE = 0x3412;
-
-                val: uint = 0..16,
-            },
-            register FooBEArray {
-                const ADDRESS = 0;
-                const SIZE_BITS = 16;
-                type ByteOrder = BE;
-                const ALLOW_ADDRESS_OVERLAP = true;
-                const RESET_VALUE = [0x34, 0x12];
-
-                val: uint = 0..16,
-            }
+device_driver_macros::implement_device!(
+    device_name: MyTestDevice,
+    dsl: {
+        config {
+            type RegisterAddressType = u8;
         }
-    );
+        register FooLE {
+            const ADDRESS = 0;
+            const SIZE_BITS = 16;
+            type ByteOrder = LE;
+            const ALLOW_ADDRESS_OVERLAP = true;
+            const RESET_VALUE = 0x1234;
 
-    #[test]
-    fn little_endian_respected() {
-        let mut device = MyTestDevice::new(DeviceInterface);
+            val: uint = 0..16,
+        },
+        register FooLEArray {
+            const ADDRESS = 0;
+            const SIZE_BITS = 16;
+            type ByteOrder = LE;
+            const ALLOW_ADDRESS_OVERLAP = true;
+            const RESET_VALUE = [0x34, 0x12]; // As the read and write functions see it
 
-        device.foo_le().write(|w| w).unwrap();
-        device
-            .foo_le()
-            .write_with_zero(|w| w.set_val(0x1234))
-            .unwrap();
+            val: uint = 0..16,
+        },
+        register FooBE {
+            const ADDRESS = 0;
+            const SIZE_BITS = 16;
+            type ByteOrder = BE;
+            const ALLOW_ADDRESS_OVERLAP = true;
+            const RESET_VALUE = 0x3412;
 
-        device.foo_le_array().write(|w| w).unwrap();
-        device
-            .foo_le_array()
-            .write_with_zero(|w| w.set_val(0x1234))
-            .unwrap();
+            val: uint = 0..16,
+        },
+        register FooBEArray {
+            const ADDRESS = 0;
+            const SIZE_BITS = 16;
+            type ByteOrder = BE;
+            const ALLOW_ADDRESS_OVERLAP = true;
+            const RESET_VALUE = [0x34, 0x12];
+
+            val: uint = 0..16,
+        }
     }
+);
 
-    #[test]
-    fn big_endian_respected() {
-        let mut device = MyTestDevice::new(DeviceInterface);
+#[test]
+fn little_endian_respected() {
+    let mut device = MyTestDevice::new(DeviceInterface);
 
-        device.foo_be().write(|w| w).unwrap();
-        device
-            .foo_be()
-            .write_with_zero(|w| w.set_val(0x3412))
-            .unwrap();
+    device.foo_le().write(|w| w).unwrap();
+    device
+        .foo_le()
+        .write_with_zero(|w| w.set_val(0x1234))
+        .unwrap();
 
-        device.foo_be_array().write(|w| w).unwrap();
-        device
-            .foo_be_array()
-            .write_with_zero(|w| w.set_val(0x3412))
-            .unwrap();
-    }
+    device.foo_le_array().write(|w| w).unwrap();
+    device
+        .foo_le_array()
+        .write_with_zero(|w| w.set_val(0x1234))
+        .unwrap();
+}
+
+#[test]
+fn big_endian_respected() {
+    let mut device = MyTestDevice::new(DeviceInterface);
+
+    device.foo_be().write(|w| w).unwrap();
+    device
+        .foo_be()
+        .write_with_zero(|w| w.set_val(0x3412))
+        .unwrap();
+
+    device.foo_be_array().write(|w| w).unwrap();
+    device
+        .foo_be_array()
+        .write_with_zero(|w| w.set_val(0x3412))
+        .unwrap();
 }

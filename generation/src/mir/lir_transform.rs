@@ -1,3 +1,5 @@
+use std::ops::Not;
+
 use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
 
@@ -149,28 +151,6 @@ fn get_method(
             in_fields,
             out_fields,
             ..
-        }) if in_fields.is_empty() && out_fields.is_empty() => lir::BlockMethod {
-            cfg_attr: cfg_attr_string_to_tokens(cfg_attr.as_deref())?,
-            doc_attr: quote! { #[doc = #description] },
-            name: format_ident!("{}", name.to_case(convert_case::Case::Snake)),
-            address: Literal::i64_unsuffixed(*address),
-            allow_address_overlap: *allow_address_overlap,
-            kind: repeat_to_method_kind(repeat),
-            method_type: lir::BlockMethodType::SimpleCommand {
-                address_type: global_config
-                    .command_address_type
-                    .expect("The presence of the address type is already checked in a mir pass")
-                    .into(),
-            },
-        },
-        mir::Object::Command(mir::Command {
-            cfg_attr,
-            description,
-            name,
-            allow_address_overlap,
-            address,
-            repeat,
-            ..
         }) => lir::BlockMethod {
             cfg_attr: cfg_attr_string_to_tokens(cfg_attr.as_deref())?,
             doc_attr: quote! { #[doc = #description] },
@@ -179,8 +159,14 @@ fn get_method(
             allow_address_overlap: *allow_address_overlap,
             kind: repeat_to_method_kind(repeat),
             method_type: lir::BlockMethodType::Command {
-                field_set_name_in: format_ident!("{name}In"),
-                field_set_name_out: format_ident!("{name}Out"),
+                field_set_name_in: in_fields
+                    .is_empty()
+                    .not()
+                    .then(|| format_ident!("{name}In")),
+                field_set_name_out: out_fields
+                    .is_empty()
+                    .not()
+                    .then(|| format_ident!("{name}Out")),
                 address_type: global_config
                     .command_address_type
                     .expect("The presence of the address type is already checked in a mir pass")

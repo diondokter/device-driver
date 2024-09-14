@@ -26,7 +26,9 @@ struct Input {
 
 enum GenerationType {
     Dsl(proc_macro2::TokenStream),
+    #[allow(dead_code)]
     Json(LitStr),
+    #[allow(dead_code)]
     Yaml(LitStr),
 }
 
