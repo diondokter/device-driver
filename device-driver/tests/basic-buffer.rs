@@ -5,8 +5,17 @@ pub struct DeviceInterface {
     last_val: Vec<u8>,
 }
 
+#[derive(Debug)]
+pub enum Error {}
+
+impl embedded_io::Error for Error {
+    fn kind(&self) -> embedded_io::ErrorKind {
+        todo!()
+    }
+}
+
 impl BufferInterfaceError for DeviceInterface {
-    type Error = ();
+    type Error = Error;
 }
 
 impl BufferInterface for DeviceInterface {
@@ -59,4 +68,18 @@ fn buffer_write_read() {
     assert_eq!(device.interface.last_address, 0);
     assert_eq!(len, 4);
     assert_eq!(&buffer[..len], &[0, 1, 2, 3]);
+}
+
+#[test]
+fn impls_embedded_io() {
+    let mut device = MyTestDevice::new(DeviceInterface {
+        last_address: 0xFF,
+        last_val: Vec::new(),
+    });
+
+    fn is_read(_: impl embedded_io::Read) {}
+    fn is_write(_: impl embedded_io::Write) {}
+
+    is_read(device.ro_buf());
+    is_write(device.wo_buf());
 }

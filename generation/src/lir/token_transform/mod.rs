@@ -13,7 +13,7 @@ pub fn transform(device: Device) -> TokenStream {
     let mut tokens = TokenStream::new();
 
     for block in &device.blocks {
-        tokens.extend(generate_block(block));
+        tokens.extend(generate_block(block, &device.internal_address_type));
     }
 
     for field_set in &device.field_sets {

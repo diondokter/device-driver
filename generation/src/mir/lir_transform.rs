@@ -1,11 +1,11 @@
-use std::ops::Not;
+use std::ops::{Add, Not};
 
 use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
 
 use crate::{lir, mir};
 
-use super::passes::recurse_objects;
+use super::passes::{recurse_objects, recurse_objects_with_depth};
 
 pub fn transform(device: mir::Device, driver_name: &str) -> anyhow::Result<lir::Device> {
     let mir_enums = collect_enums(&device)?;
@@ -32,6 +32,7 @@ pub fn transform(device: mir::Device, driver_name: &str) -> anyhow::Result<lir::
     )?;
 
     Ok(lir::Device {
+        internal_address_type: find_best_internal_address(&device),
         blocks,
         field_sets,
         enums: lir_enums,
@@ -588,5 +589,66 @@ impl<'o> From<&'o mir::Block> for BorrowedBlock<'o> {
             repeat,
             objects,
         }
+    }
+}
+
+fn find_best_internal_address(device: &mir::Device) -> proc_macro2::Ident {
+    let mut min_address_found = 0;
+    let mut max_address_found = 0;
+
+    let mut last_depth = 0;
+    let mut address_offsets = vec![0];
+
+    recurse_objects_with_depth(&device.objects, &mut |object, depth| {
+        while depth < last_depth {
+            address_offsets.pop();
+            last_depth -= 1;
+        }
+
+        if let Some(address) = object.address() {
+            let repeat = object.repeat().unwrap_or(mir::Repeat {
+                count: 1,
+                stride: 0,
+            });
+
+            let total_address_offsets = address_offsets.iter().sum::<i64>();
+
+            let count_0_address = total_address_offsets + address;
+            let count_max_address =
+                count_0_address + (repeat.count.saturating_sub(1) as i64 * repeat.stride);
+
+            min_address_found = min_address_found
+                .min(count_0_address)
+                .min(count_max_address);
+            max_address_found = max_address_found
+                .max(count_0_address)
+                .max(count_max_address);
+        }
+
+        if let mir::Object::Block(b) = object {
+            // Push an offset because the next objects are gonna be deeper
+            address_offsets.push(b.address_offset);
+            last_depth += 1;
+        }
+
+        Ok(())
+    })
+    .unwrap();
+
+    let needs_signed = min_address_found < 0;
+    let needs_bits = (min_address_found
+        .unsigned_abs()
+        .max(max_address_found.unsigned_abs())
+        .add(1)
+        .next_power_of_two()
+        .ilog2()
+        + needs_signed as u32)
+        .next_power_of_two()
+        .max(8);
+
+    if needs_signed {
+        format_ident!("i{needs_bits}")
+    } else {
+        format_ident!("u{needs_bits}")
     }
 }

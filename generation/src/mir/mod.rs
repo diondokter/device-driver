@@ -182,6 +182,37 @@ impl Object {
             None
         }
     }
+
+    /// Return the address if it is specified.
+    /// It's only not specified in ref objects where the user hasn't overridden the address
+    fn address(&self) -> Option<i64> {
+        match self {
+            Object::Block(block) => Some(block.address_offset),
+            Object::Register(register) => Some(register.address),
+            Object::Command(command) => Some(command.address),
+            Object::Buffer(buffer) => Some(buffer.address),
+            Object::Ref(ref_object) => match &ref_object.object_override {
+                ObjectOverride::Block(block_override) => block_override.address_offset,
+                ObjectOverride::Register(register_override) => register_override.address,
+                ObjectOverride::Command(command_override) => command_override.address,
+            },
+        }
+    }
+
+    /// Return the repeat value if it exists
+    fn repeat(&self) -> Option<Repeat> {
+        match self {
+            Object::Block(block) => block.repeat,
+            Object::Register(register) => register.repeat,
+            Object::Command(command) => command.repeat,
+            Object::Buffer(_) => None,
+            Object::Ref(ref_object) => match &ref_object.object_override {
+                ObjectOverride::Block(block_override) => block_override.repeat,
+                ObjectOverride::Register(register_override) => register_override.repeat,
+                ObjectOverride::Command(command_override) => command_override.repeat,
+            },
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

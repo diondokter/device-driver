@@ -1,9 +1,9 @@
-use proc_macro2::TokenStream;
+use proc_macro2::{Ident, Literal, TokenStream};
 use quote::{quote, ToTokens};
 
 use crate::lir::{Block, BlockMethod, BlockMethodKind, BlockMethodType};
 
-pub fn generate_block(value: &Block) -> TokenStream {
+pub fn generate_block(value: &Block, internal_address_type: &Ident) -> TokenStream {
     let Block {
         cfg_attr,
         doc_attr,
@@ -25,13 +25,21 @@ pub fn generate_block(value: &Block) -> TokenStream {
             (
                 quote! { 'i, I },
                 quote! { &'i mut I },
-                Some(quote! { base_address: i64 }),
+                Some(quote! { base_address: #internal_address_type }),
                 quote! { base_address },
                 quote! { self.interface },
             )
         };
 
-    let methods = methods.iter().map(generate_method);
+    let methods = methods
+        .iter()
+        .map(|m| generate_method(m, internal_address_type));
+
+    let (new_hidden_if_not_root, new_access) = if *root {
+        (quote! {}, quote! { pub })
+    } else {
+        (quote! { #[doc(hidden)] }, quote! {})
+    };
 
     quote! {
         #doc_attr
@@ -40,13 +48,14 @@ pub fn generate_block(value: &Block) -> TokenStream {
         pub struct #name<#generics> {
             pub(crate) interface: #interface_decleration,
             #[doc(hidden)]
-            base_address: i64,
+            base_address: #internal_address_type,
         }
 
         #cfg_attr
         impl<#generics> #name<#generics> {
             /// Create a new instance of the block based on device interface
-            pub fn new(interface: #interface_decleration, #address_param) -> Self {
+            #new_hidden_if_not_root
+            #new_access fn new(interface: #interface_decleration, #address_param) -> Self {
                 Self {
                     interface,
                     base_address: #address_specifier,
@@ -62,7 +71,7 @@ pub fn generate_block(value: &Block) -> TokenStream {
     }
 }
 
-fn generate_method(method: &BlockMethod) -> TokenStream {
+fn generate_method(method: &BlockMethod, internal_address_type: &Ident) -> TokenStream {
     let BlockMethod {
         cfg_attr,
         doc_attr,
@@ -74,7 +83,7 @@ fn generate_method(method: &BlockMethod) -> TokenStream {
     } = method;
 
     let (return_type, where_bounds, address_conversion) = match method_type {
-        BlockMethodType::Block { name } => (quote! { #name<'_, I> }, quote! {}, quote! {}),
+        BlockMethodType::Block { name } => (quote! { #name::<'_, I> }, quote! {}, quote! {}),
         BlockMethodType::Register {
             field_set_name,
             access,
@@ -117,11 +126,22 @@ fn generate_method(method: &BlockMethod) -> TokenStream {
         BlockMethodKind::Normal => (None, quote! { self.base_address + #address }, None),
         BlockMethodKind::Repeated { count, stride } => {
             let doc = format!("Valid index range: 0..{count}");
+
+            let stride = stride.to_string().parse::<i64>().unwrap();
+
+            let operator = if stride.is_negative() {
+                quote! { - }
+            } else {
+                quote! { + }
+            };
+
+            let stride = Literal::u64_unsuffixed(stride.unsigned_abs());
+
             (
-                Some(quote! { index: i64, }),
+                Some(quote! { index: usize, }),
                 quote! { {
                     assert!(index < #count);
-                    self.base_address + #address + index * #stride
+                    self.base_address + #address #operator index as #internal_address_type * #stride
                 } },
                 Some(quote! {
                     #[doc = ""]
@@ -153,25 +173,28 @@ mod tests {
 
     #[test]
     fn root_block_correct() {
-        let output = generate_block(&Block {
-            cfg_attr: quote! { #[cfg(unix)] },
-            doc_attr: quote! { #[doc = "Hello!"] },
-            root: true,
-            name: format_ident!("RootBlock"),
-            methods: vec![BlockMethod {
+        let output = generate_block(
+            &Block {
                 cfg_attr: quote! { #[cfg(unix)] },
-                doc_attr: quote! { #[doc = "42 is the answer"] },
-                name: format_ident!("my_register1"),
-                address: Literal::i64_unsuffixed(5),
-                allow_address_overlap: false,
-                kind: BlockMethodKind::Normal,
-                method_type: BlockMethodType::Register {
-                    field_set_name: format_ident!("MyRegister"),
-                    access: crate::mir::Access::RW,
-                    address_type: format_ident!("u8"),
-                },
-            }],
-        });
+                doc_attr: quote! { #[doc = "Hello!"] },
+                root: true,
+                name: format_ident!("RootBlock"),
+                methods: vec![BlockMethod {
+                    cfg_attr: quote! { #[cfg(unix)] },
+                    doc_attr: quote! { #[doc = "42 is the answer"] },
+                    name: format_ident!("my_register1"),
+                    address: Literal::i64_unsuffixed(5),
+                    allow_address_overlap: false,
+                    kind: BlockMethodKind::Normal,
+                    method_type: BlockMethodType::Register {
+                        field_set_name: format_ident!("MyRegister"),
+                        access: crate::mir::Access::RW,
+                        address_type: format_ident!("u8"),
+                    },
+                }],
+            },
+            &format_ident!("u8"),
+        );
 
         pretty_assertions::assert_eq!(
             prettyplease::unparse(&syn::parse2(output).unwrap()),
@@ -182,7 +205,7 @@ mod tests {
                 pub struct RootBlock<I> {
                     pub(crate) interface: I,
                     #[doc(hidden)]
-                    base_address: i64,
+                    base_address: u8,
                 }
                 #[cfg(unix)]
                 impl<I> RootBlock<I> {
@@ -217,27 +240,30 @@ mod tests {
 
     #[test]
     fn non_root_block_correct() {
-        let output = generate_block(&Block {
-            cfg_attr: quote! { #[cfg(unix)] },
-            doc_attr: quote! { #[doc = "Hello!"] },
-            root: false,
-            name: format_ident!("AnyBlock"),
-            methods: vec![BlockMethod {
+        let output = generate_block(
+            &Block {
                 cfg_attr: quote! { #[cfg(unix)] },
-                doc_attr: quote! { #[doc = "42 is the answer"] },
-                name: format_ident!("my_buffer"),
-                address: Literal::i64_unsuffixed(5),
-                allow_address_overlap: false,
-                kind: BlockMethodKind::Repeated {
-                    count: Literal::i64_unsuffixed(4),
-                    stride: Literal::i64_unsuffixed(1),
-                },
-                method_type: BlockMethodType::Buffer {
-                    access: crate::mir::Access::RO,
-                    address_type: format_ident!("i16"),
-                },
-            }],
-        });
+                doc_attr: quote! { #[doc = "Hello!"] },
+                root: false,
+                name: format_ident!("AnyBlock"),
+                methods: vec![BlockMethod {
+                    cfg_attr: quote! { #[cfg(unix)] },
+                    doc_attr: quote! { #[doc = "42 is the answer"] },
+                    name: format_ident!("my_buffer"),
+                    address: Literal::i64_unsuffixed(5),
+                    allow_address_overlap: false,
+                    kind: BlockMethodKind::Repeated {
+                        count: Literal::i64_unsuffixed(4),
+                        stride: Literal::i64_unsuffixed(1),
+                    },
+                    method_type: BlockMethodType::Buffer {
+                        access: crate::mir::Access::RO,
+                        address_type: format_ident!("i16"),
+                    },
+                }],
+            },
+            &format_ident!("u8"),
+        );
 
         pretty_assertions::assert_eq!(
             prettyplease::unparse(&syn::parse2(output).unwrap()),
@@ -248,12 +274,13 @@ mod tests {
                 pub struct AnyBlock<'i, I> {
                     pub(crate) interface: &'i mut I,
                     #[doc(hidden)]
-                    base_address: i64,
+                    base_address: u8,
                 }
                 #[cfg(unix)]
                 impl<'i, I> AnyBlock<'i, I> {
                     /// Create a new instance of the block based on device interface
-                    pub fn new(interface: &'i mut I, base_address: i64) -> Self {
+                    #[doc(hidden)]
+                    fn new(interface: &'i mut I, base_address: u8) -> Self {
                         Self {
                             interface,
                             base_address: base_address,
@@ -268,14 +295,14 @@ mod tests {
                     #[cfg(unix)]
                     pub fn my_buffer(
                         &mut self,
-                        index: i64,
+                        index: usize,
                     ) -> ::device_driver::BufferOperation<'_, I, i16, ::device_driver::RO>
                     where
                         I: ::device_driver::BufferInterface<AddressType = i16>,
                     {
                         let address = {
                             assert!(index < 4);
-                            self.base_address + 5 + index * 1
+                            self.base_address + 5 + index as u8 * 1
                         };
                         ::device_driver::BufferOperation::<
                             '_,
