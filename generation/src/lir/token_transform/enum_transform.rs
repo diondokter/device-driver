@@ -65,42 +65,54 @@ pub fn generate_enum(value: &Enum) -> TokenStream {
         quote! {}
     };
 
-    let try_from_fallback_variant = match (catch_all_variant, default_variant) {
-        (None, None) => quote! { val => Err(val) },
-        (None, Some(_)) => quote! { _ => Ok(Self::default()) },
-        (Some(EnumVariant { name, .. }), _) => quote! { val => Ok(Self::#name(val)) },
-    };
-    let try_from_variants = variants
-        .iter()
-        .filter(|v| !v.catch_all)
-        .map(|EnumVariant { name, number, .. }| {
-            quote! {
-                #number => Ok(Self::#name)
-            }
-        })
-        .chain(Some(try_from_fallback_variant));
-    let try_from_impl = quote! {
-        impl core::convert::TryFrom<#base_type> for #name {
-            type Error = #base_type;
-            fn try_from(val: #base_type) -> Result<Self, Self::Error> {
-                match val {
-                    #(#try_from_variants),*
-                }
-            }
-        }
-    };
-
     let from_impl = if catch_all_variant.is_some() || default_variant.is_some() {
+        let from_fallback_variant = match (catch_all_variant, default_variant) {
+            (None, None) => unreachable!(),
+            (None, Some(_)) => quote! { _ => Self::default() },
+            (Some(EnumVariant { name, .. }), _) => quote! { val => Self::#name(val) },
+        };
+        let from_variants = variants
+            .iter()
+            .filter(|v| !v.catch_all)
+            .map(|EnumVariant { name, number, .. }| {
+                quote! {
+                    #number => Self::#name
+                }
+            })
+            .chain(Some(from_fallback_variant));
+
         quote! {
             impl From<#base_type> for #name {
                 fn from(val: #base_type) -> Self {
-                    use core::convert::TryInto;
-                    val.try_into().unwrap()
+                    match val {
+                        #(#from_variants),*
+                    }
                 }
             }
         }
     } else {
-        quote! {}
+        let try_from_fallback_variant =
+            quote! { val => Err(::device_driver::ConversionError(val)) };
+        let try_from_variants = variants
+            .iter()
+            .filter(|v| !v.catch_all)
+            .map(|EnumVariant { name, number, .. }| {
+                quote! {
+                    #number => Ok(Self::#name)
+                }
+            })
+            .chain(Some(try_from_fallback_variant));
+
+        quote! {
+            impl core::convert::TryFrom<#base_type> for #name {
+                type Error = ::device_driver::ConversionError<#base_type>;
+                fn try_from(val: #base_type) -> Result<Self, Self::Error> {
+                    match val {
+                        #(#try_from_variants),*
+                    }
+                }
+            }
+        }
     };
 
     let into_impl = {
@@ -147,8 +159,6 @@ pub fn generate_enum(value: &Enum) -> TokenStream {
         }
 
         #default_impl
-
-        #try_from_impl
 
         #from_impl
 
@@ -219,20 +229,13 @@ mod tests {
                         Self::MyField1
                     }
                 }
-                impl core::convert::TryFrom<u8> for MyEnum {
-                    type Error = u8;
-                    fn try_from(val: u8) -> Result<Self, Self::Error> {
-                        match val {
-                            0 => Ok(Self::MyField),
-                            1 => Ok(Self::MyField1),
-                            val => Ok(Self::MyField2(val)),
-                        }
-                    }
-                }
                 impl From<u8> for MyEnum {
                     fn from(val: u8) -> Self {
-                        use core::convert::TryInto;
-                        val.try_into().unwrap()
+                        match val {
+                            0 => Self::MyField,
+                            1 => Self::MyField1,
+                            val => Self::MyField2(val),
+                        }
                     }
                 }
                 impl From<MyEnum> for u8 {

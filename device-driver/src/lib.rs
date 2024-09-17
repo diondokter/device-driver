@@ -3,6 +3,8 @@
 #![warn(missing_docs)]
 #![doc = include_str!(concat!("../", env!("CARGO_PKG_README")))]
 
+use core::fmt::{Debug, Display};
+
 pub use bitvec;
 pub use device_driver_macros::*;
 pub use embedded_io;
@@ -28,6 +30,20 @@ pub trait FieldSet {
     /// Create a new instance, loaded all 0's
     fn new_zero() -> Self;
 }
+
+/// The error returned by the generated [TryFrom]s.
+/// It contains the base type of the enum.
+#[repr(transparent)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct ConversionError<T>(pub T);
+
+impl<T: Display> Display for ConversionError<T> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "Could not convert value from `{}`", self.0)
+    }
+}
+
+impl<T: Display + Debug> core::error::Error for ConversionError<T> {}
 
 #[doc(hidden)]
 pub struct WO;

@@ -83,9 +83,9 @@ pub struct Field {
 
 pub enum FieldConversionMethod {
     None,
-    Into(Ident),
-    UnsafeInto(Ident),
-    TryInto(Ident),
+    Into(TokenStream),
+    UnsafeInto(TokenStream),
+    TryInto(TokenStream),
     Bool,
 }
 

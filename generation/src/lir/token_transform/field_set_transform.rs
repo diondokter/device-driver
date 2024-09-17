@@ -208,7 +208,7 @@ fn get_read_function(field: &Field) -> TokenStream {
         FieldConversionMethod::Into(conversion_type)
         | FieldConversionMethod::UnsafeInto(conversion_type) => conversion_type.to_token_stream(),
         FieldConversionMethod::TryInto(conversion_type) => {
-            quote! { Result<#conversion_type, #base_type> }
+            quote! { Result<#conversion_type, <#conversion_type as TryFrom<#base_type>>::Error> }
         }
         FieldConversionMethod::Bool => format_ident!("bool").into_token_stream(),
     };
@@ -257,11 +257,11 @@ fn get_write_function(field: &Field) -> TokenStream {
     }
 
     let input_type = match conversion_method {
-        FieldConversionMethod::None => base_type,
+        FieldConversionMethod::None => &base_type.to_token_stream(),
         FieldConversionMethod::Into(conversion_type)
         | FieldConversionMethod::UnsafeInto(conversion_type)
         | FieldConversionMethod::TryInto(conversion_type) => conversion_type,
-        FieldConversionMethod::Bool => &format_ident!("bool"),
+        FieldConversionMethod::Bool => &quote! { bool },
     };
 
     let start_bit = &address.start;
@@ -313,9 +313,7 @@ mod tests {
                     name: format_ident!("my_field"),
                     address: Literal::u64_unsuffixed(0)..Literal::u64_unsuffixed(4),
                     base_type: format_ident!("u8"),
-                    conversion_method: FieldConversionMethod::UnsafeInto(format_ident!(
-                        "FieldEnum"
-                    )),
+                    conversion_method: FieldConversionMethod::UnsafeInto(quote! { FieldEnum }),
                     access: Access::RW,
                 },
                 Field {

@@ -25,6 +25,12 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
                     &field.name
                 );
 
+                ensure!(
+                    !ec.variants.is_empty(),
+                    "Enum \"{}\" has no variants which is not allowed. Add at least one variant",
+                    &ec.name,
+                );
+
                 // Record all variant values
                 let mut seen_values = Vec::new();
                 for variant in ec.variants.iter_mut() {

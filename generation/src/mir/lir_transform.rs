@@ -405,25 +405,25 @@ fn transform_field_set<'a>(
                         },
                         val.max(8).next_power_of_two()
                     ),
-                    match enum_list.clone().find(|e| e.name == fc.type_name()) {
-                        // Always use try if that's specified
-                        _ if fc.use_try() => {
-                            lir::FieldConversionMethod::TryInto(format_ident!("{}", fc.type_name()))
+                    {
+                        let type_name = syn::parse_str::<syn::Path>(fc.type_name()).unwrap();
+                        match enum_list.clone().find(|e| e.name == fc.type_name()) {
+                            // Always use try if that's specified
+                            _ if fc.use_try() => {
+                                lir::FieldConversionMethod::TryInto(quote! { #type_name })
+                            }
+                            // There is an enum we generate so we can look at its metadata
+                            Some(mir::Enum {
+                                generation_style:
+                                    Some(mir::EnumGenerationStyle::Infallible { bit_size }),
+                                ..
+                            }) if field.field_address.clone().count() <= *bit_size as usize => {
+                                // This field is equal or smaller in bits than the infallible enum. So we can do the unsafe into
+                                lir::FieldConversionMethod::UnsafeInto(quote! { #type_name })
+                            }
+                            // Fallback is to require the into trait
+                            _ => lir::FieldConversionMethod::Into(quote! { #type_name }),
                         }
-                        // There is an enum we generate so we can look at its metadata
-                        Some(mir::Enum {
-                            generation_style:
-                                Some(mir::EnumGenerationStyle::Infallible { bit_size }),
-                            ..
-                        }) if field.field_address.clone().count() <= *bit_size as usize => {
-                            // This field is equal or smaller in bits than the infallible enum. So we can do the unsafe into
-                            lir::FieldConversionMethod::UnsafeInto(format_ident!(
-                                "{}",
-                                fc.type_name()
-                            ))
-                        }
-                        // Fallback is to require the into trait
-                        _ => lir::FieldConversionMethod::Into(format_ident!("{}", fc.type_name())),
                     },
                 ),
             };
