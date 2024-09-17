@@ -6,7 +6,6 @@
 use core::fmt::{Debug, Display};
 
 pub use bitvec;
-pub use device_driver_macros::*;
 pub use embedded_io;
 pub use embedded_io_async;
 
@@ -16,6 +15,9 @@ mod command;
 pub use command::*;
 mod buffer;
 pub use buffer::*;
+
+#[cfg(feature = "macros")]
+pub use device_driver_macros::*;
 
 #[doc(hidden)]
 pub trait FieldSet {
