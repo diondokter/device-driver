@@ -5,7 +5,7 @@ use quote::{format_ident, quote};
 
 use crate::{lir, mir};
 
-use super::passes::{recurse_objects, recurse_objects_with_depth};
+use super::passes::{find_min_max_addresses, recurse_objects};
 
 pub fn transform(device: mir::Device, driver_name: &str) -> anyhow::Result<lir::Device> {
     let mir_enums = collect_enums(&device)?;
@@ -593,47 +593,7 @@ impl<'o> From<&'o mir::Block> for BorrowedBlock<'o> {
 }
 
 fn find_best_internal_address(device: &mir::Device) -> proc_macro2::Ident {
-    let mut min_address_found = 0;
-    let mut max_address_found = 0;
-
-    let mut last_depth = 0;
-    let mut address_offsets = vec![0];
-
-    recurse_objects_with_depth(&device.objects, &mut |object, depth| {
-        while depth < last_depth {
-            address_offsets.pop();
-            last_depth -= 1;
-        }
-
-        if let Some(address) = object.address() {
-            let repeat = object.repeat().unwrap_or(mir::Repeat {
-                count: 1,
-                stride: 0,
-            });
-
-            let total_address_offsets = address_offsets.iter().sum::<i64>();
-
-            let count_0_address = total_address_offsets + address;
-            let count_max_address =
-                count_0_address + (repeat.count.saturating_sub(1) as i64 * repeat.stride);
-
-            min_address_found = min_address_found
-                .min(count_0_address)
-                .min(count_max_address);
-            max_address_found = max_address_found
-                .max(count_0_address)
-                .max(count_max_address);
-        }
-
-        if let mir::Object::Block(b) = object {
-            // Push an offset because the next objects are gonna be deeper
-            address_offsets.push(b.address_offset);
-            last_depth += 1;
-        }
-
-        Ok(())
-    })
-    .unwrap();
+    let (min_address_found, max_address_found) = find_min_max_addresses(&device.objects, |_| true);
 
     let needs_signed = min_address_found < 0;
     let needs_bits = (min_address_found

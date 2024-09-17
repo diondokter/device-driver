@@ -1,7 +1,7 @@
 //! The MIR takes its data from HIR and makes sure all required data is there
 //! and all optional data is filled in with defaults.
 
-use std::ops::Range;
+use std::{fmt::Display, ops::Range};
 
 use convert_case::Boundary;
 use quote::TokenStreamExt;
@@ -49,18 +49,55 @@ pub enum Integer {
     U8,
     U16,
     U32,
-    U64,
-    U128,
     I8,
     I16,
     I32,
     I64,
-    I128,
+}
+
+impl Integer {
+    pub fn min_value(&self) -> i64 {
+        match self {
+            Integer::U8 => u8::MIN as i64,
+            Integer::U16 => u16::MIN as i64,
+            Integer::U32 => u32::MIN as i64,
+            Integer::I8 => i8::MIN as i64,
+            Integer::I16 => i16::MIN as i64,
+            Integer::I32 => i32::MIN as i64,
+            Integer::I64 => i64::MIN,
+        }
+    }
+
+    pub fn max_value(&self) -> i64 {
+        match self {
+            Integer::U8 => u8::MAX as i64,
+            Integer::U16 => u16::MAX as i64,
+            Integer::U32 => u32::MAX as i64,
+            Integer::I8 => i8::MAX as i64,
+            Integer::I16 => i16::MAX as i64,
+            Integer::I32 => i32::MAX as i64,
+            Integer::I64 => i64::MAX,
+        }
+    }
+}
+
+impl Display for Integer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Integer::U8 => write!(f, "u8"),
+            Integer::U16 => write!(f, "u16"),
+            Integer::U32 => write!(f, "u32"),
+            Integer::I8 => write!(f, "i8"),
+            Integer::I16 => write!(f, "i16"),
+            Integer::I32 => write!(f, "i32"),
+            Integer::I64 => write!(f, "i64"),
+        }
+    }
 }
 
 impl From<Integer> for proc_macro2::Ident {
     fn from(value: Integer) -> Self {
-        quote::format_ident!("{}", format!("{value:?}").to_lowercase())
+        quote::format_ident!("{}", value.to_string())
     }
 }
 

@@ -49,14 +49,14 @@ impl TryFrom<syn::Ident> for mir::Integer {
             "u8" => Ok(mir::Integer::U8),
             "u16" => Ok(mir::Integer::U16),
             "u32" => Ok(mir::Integer::U32),
-            "u64" => Ok(mir::Integer::U64),
-            "u128" => Ok(mir::Integer::U128),
             "i8" => Ok(mir::Integer::I8),
             "i16" => Ok(mir::Integer::I16),
             "i32" => Ok(mir::Integer::I32),
             "i64" => Ok(mir::Integer::I64),
-            "i128" => Ok(mir::Integer::I128),
-            _ => Err(syn::Error::new(value.span(), "Must be an integer type")),
+            _ => Err(syn::Error::new(
+                value.span(),
+                "Must be an integer type: u8, u16, u32, i8, i16, i32, i64",
+            )),
         }
     }
 }
@@ -950,7 +950,7 @@ mod tests {
                 type DefaultByteOrder = LE;
                 type DefaultBitOrder = MSB0;
                 type RegisterAddressType = i8;
-                type CommandAddressType = u128;
+                type CommandAddressType = i64;
                 type BufferAddressType = u32;
                 type NameWordBoundaries = \"-\";
             }",
@@ -968,7 +968,7 @@ mod tests {
                 default_byte_order: Some(mir::ByteOrder::LE),
                 default_bit_order: mir::BitOrder::MSB0,
                 register_address_type: Some(mir::Integer::I8),
-                command_address_type: Some(mir::Integer::U128),
+                command_address_type: Some(mir::Integer::I64),
                 buffer_address_type: Some(mir::Integer::U32),
                 name_word_boundaries: vec![Boundary::Hyphen],
             }
@@ -2219,13 +2219,10 @@ mod tests {
             ("u8", mir::Integer::U8),
             ("u16", mir::Integer::U16),
             ("u32", mir::Integer::U32),
-            ("u64", mir::Integer::U64),
-            ("u128", mir::Integer::U128),
             ("i8", mir::Integer::I8),
             ("i16", mir::Integer::I16),
             ("i32", mir::Integer::I32),
             ("i64", mir::Integer::I64),
-            ("i128", mir::Integer::I128),
         ];
 
         for (ident_str, expected) in test_cases {
@@ -2239,6 +2236,9 @@ mod tests {
         let result = mir::Integer::try_from(invalid_ident);
 
         // Check the error string
-        assert_eq!(result.unwrap_err().to_string(), "Must be an integer type",);
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "Must be an integer type: u8, u16, u32, i8, i16, i32, i64"
+        );
     }
 }
