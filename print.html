@@ -89,7 +89,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="preface.html">Preface</a></li><li class="chapter-item expanded affix "><li class="spacer"></li><li class="chapter-item expanded "><a href="intro.html"><strong aria-hidden="true">1.</strong> Intro</a></li><li class="chapter-item expanded "><a href="memory.html"><strong aria-hidden="true">2.</strong> Memory</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="preface.html">Preface</a></li><li class="chapter-item expanded affix "><li class="spacer"></li><li class="chapter-item expanded "><a href="intro.html"><strong aria-hidden="true">1.</strong> Intro</a></li><li class="chapter-item expanded "><a href="using-the-macro.html"><strong aria-hidden="true">2.</strong> Using the macro</a></li><li class="chapter-item expanded "><a href="dsl.html"><strong aria-hidden="true">3.</strong> DLS</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="dsl-global-config.html"><strong aria-hidden="true">3.1.</strong> Global config</a></li><li class="chapter-item expanded "><a href="dsl-registers.html"><strong aria-hidden="true">3.2.</strong> Registers</a></li><li class="chapter-item expanded "><a href="dsl-commands.html"><strong aria-hidden="true">3.3.</strong> Commands</a></li><li class="chapter-item expanded "><a href="dsl-buffers.html"><strong aria-hidden="true">3.4.</strong> Buffers</a></li><li class="chapter-item expanded "><a href="dsl-blocks.html"><strong aria-hidden="true">3.5.</strong> Blocks</a></li><li class="chapter-item expanded "><a href="dsl-refs.html"><strong aria-hidden="true">3.6.</strong> Refs</a></li><li class="chapter-item expanded "><a href="dsl-syntax.html"><strong aria-hidden="true">3.7.</strong> Syntax</a></li></ol></li><li class="chapter-item expanded "><a href="markup.html"><strong aria-hidden="true">4.</strong> Markup</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="markup-global-config.html"><strong aria-hidden="true">4.1.</strong> Global config</a></li><li class="chapter-item expanded "><a href="markup-registers.html"><strong aria-hidden="true">4.2.</strong> Registers</a></li><li class="chapter-item expanded "><a href="markup-commands.html"><strong aria-hidden="true">4.3.</strong> Commands</a></li><li class="chapter-item expanded "><a href="markup-buffers.html"><strong aria-hidden="true">4.4.</strong> Buffers</a></li><li class="chapter-item expanded "><a href="markup-blocks.html"><strong aria-hidden="true">4.5.</strong> Blocks</a></li><li class="chapter-item expanded "><a href="markup-refs.html"><strong aria-hidden="true">4.6.</strong> Refs</a></li><li class="chapter-item expanded "><a href="markup-syntax.html"><strong aria-hidden="true">4.7.</strong> Syntax</a></li></ol></li><li class="chapter-item expanded "><a href="output.html"><strong aria-hidden="true">5.</strong> Output</a></li><li class="chapter-item expanded "><a href="memory.html"><strong aria-hidden="true">6.</strong> Memory</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
@@ -148,6 +148,9 @@
                         <a href="print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
+                        <a href="https://github.com/diondokter/device-driver" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
 
                     </div>
                 </div>
@@ -178,11 +181,49 @@
 <p><a href="https://crates.io/crates/device-driver"><img src="https://img.shields.io/crates/v/device-driver.svg" alt="crates.io" /></a> <a href="https://docs.rs/device-driver"><img src="https://docs.rs/device-driver/badge.svg" alt="Documentation" /></a></p>
 <p>A toolkit to write better device drivers, faster.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="intro"><a class="header" href="#intro">Intro</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="using-the-macro"><a class="header" href="#using-the-macro">Using the macro</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="dls"><a class="header" href="#dls">DLS</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="global-config"><a class="header" href="#global-config">Global config</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="registers"><a class="header" href="#registers">Registers</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="commands"><a class="header" href="#commands">Commands</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="buffers"><a class="header" href="#buffers">Buffers</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="blocks"><a class="header" href="#blocks">Blocks</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="refs"><a class="header" href="#refs">Refs</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="syntax"><a class="header" href="#syntax">Syntax</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="markup"><a class="header" href="#markup">Markup</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="global-config-1"><a class="header" href="#global-config-1">Global config</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="registers-1"><a class="header" href="#registers-1">Registers</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="commands-1"><a class="header" href="#commands-1">Commands</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="buffers-1"><a class="header" href="#buffers-1">Buffers</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="blocks-1"><a class="header" href="#blocks-1">Blocks</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="refs-1"><a class="header" href="#refs-1">Refs</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="syntax-1"><a class="header" href="#syntax-1">Syntax</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="output"><a class="header" href="#output">Output</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="memory"><a class="header" href="#memory">Memory</a></h1>
 <p>Memory is quite easy. But assigning meaning to it is where all complexity comes from.
 This page describes all the different levels of memory and what this crate does.
 The goal is to leave you with a better understanding of how memory is handled and to serve as a quick reference if or when
 confusion ensues.</p>
+<ul>
+<li><a href="memory.html#memory">Memory</a>
+<ul>
+<li><a href="memory.html#concepts">Concepts</a>
+<ul>
+<li><a href="memory.html#byte-order">Byte order</a></li>
+<li><a href="memory.html#bit-order">Bit order</a></li>
+<li><a href="memory.html#together">Together</a></li>
+</ul>
+</li>
+<li><a href="memory.html#the-memories-of-device-driver">The memories of device-driver</a>
+<ul>
+<li><a href="memory.html#example-lis3dh---multi-register-le-lsb0">Example LIS3DH - Multi-register LE, LSB0</a></li>
+<li><a href="memory.html#example-s2-lp---multi-register-be-lsb0">Example s2-lp - Multi-register BE, LSB0</a></li>
+<li><a href="memory.html#example-dw1000---single-register-le-lsb0">Example DW1000 - Single-register LE, LSB0</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
 <h2 id="concepts"><a class="header" href="#concepts">Concepts</a></h2>
 <h3 id="byte-order"><a class="header" href="#byte-order">Byte order</a></h3>
 <p>Also known as endianness. It describes what the first byte is in an array of bytes.
