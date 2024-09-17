@@ -5,6 +5,16 @@ This page describes all the different levels of memory and what this crate does.
 The goal is to leave you with a better understanding of how memory is handled and to serve as a quick reference if or when
 confusion ensues.
 
+- [Memory](#memory)
+  - [Concepts](#concepts)
+    - [Byte order](#byte-order)
+    - [Bit order](#bit-order)
+    - [Together](#together)
+  - [The memories of device-driver](#the-memories-of-device-driver)
+    - [Example LIS3DH - Multi-register LE, LSB0](#example-lis3dh---multi-register-le-lsb0)
+    - [Example s2-lp - Multi-register BE, LSB0](#example-s2-lp---multi-register-be-lsb0)
+    - [Example DW1000 - Single-register LE, LSB0](#example-dw1000---single-register-le-lsb0)
+
 ## Concepts
 
 ### Byte order
