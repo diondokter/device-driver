@@ -24,7 +24,7 @@ impl CommandInterface for DeviceInterface {
     }
 }
 
-device_driver_macros::implement_device!(
+device_driver::create_device!(
     device_name: MyTestDevice,
     dsl: {
         config {

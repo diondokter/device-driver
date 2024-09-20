@@ -1,1 +1,1 @@
-# Syntax
+# Markup syntax

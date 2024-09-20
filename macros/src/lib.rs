@@ -4,7 +4,7 @@ use proc_macro::TokenStream;
 use syn::{braced, Ident, LitStr};
 
 #[proc_macro]
-pub fn implement_device(item: TokenStream) -> TokenStream {
+pub fn create_device(item: TokenStream) -> TokenStream {
     let input = match syn::parse::<Input>(item) {
         Ok(i) => i,
         Err(e) => return e.into_compile_error().into(),

@@ -82,15 +82,14 @@ fn generate_method(method: &BlockMethod, internal_address_type: &Ident) -> Token
         method_type,
     } = method;
 
-    let (return_type, where_bounds, address_conversion) = match method_type {
-        BlockMethodType::Block { name } => (quote! { #name::<'_, I> }, quote! {}, quote! {}),
+    let (return_type, address_conversion) = match method_type {
+        BlockMethodType::Block { name } => (quote! { #name::<'_, I> }, quote! {}),
         BlockMethodType::Register {
             field_set_name,
             access,
             address_type,
         } => (
             quote! { ::device_driver::RegisterOperation::<'_, I, #address_type, #field_set_name, ::device_driver::#access>  },
-            quote! { where I: ::device_driver::RegisterInterface<AddressType = #address_type> },
             quote! { as #address_type },
         ),
         BlockMethodType::Command {
@@ -108,7 +107,6 @@ fn generate_method(method: &BlockMethod, internal_address_type: &Ident) -> Token
             };
             (
                 quote! { ::device_driver::CommandOperation::<'_, I, #address_type, #field_set_name_in, #field_set_name_out>  },
-                quote! { where I: ::device_driver::CommandInterface<AddressType = #address_type> },
                 quote! { as #address_type },
             )
         }
@@ -117,7 +115,6 @@ fn generate_method(method: &BlockMethod, internal_address_type: &Ident) -> Token
             address_type,
         } => (
             quote! { ::device_driver::BufferOperation::<'_, I, #address_type, ::device_driver::#access>  },
-            quote! { where I: ::device_driver::BufferInterface<AddressType = #address_type> },
             quote! { as #address_type },
         ),
     };
@@ -155,9 +152,7 @@ fn generate_method(method: &BlockMethod, internal_address_type: &Ident) -> Token
         #doc_attr
         #index_doc
         #cfg_attr
-        pub fn #name(&mut self, #index_param) -> #return_type
-        #where_bounds
-        {
+        pub fn #name(&mut self, #index_param) -> #return_type {
             let address = #address_calc;
             #return_type::new(self.interface(), address #address_conversion)
         }
@@ -220,10 +215,7 @@ mod tests {
                     #[cfg(unix)]
                     pub fn my_register1(
                         &mut self,
-                    ) -> ::device_driver::RegisterOperation<'_, I, u8, MyRegister, ::device_driver::RW>
-                    where
-                        I: ::device_driver::RegisterInterface<AddressType = u8>,
-                    {
+                    ) -> ::device_driver::RegisterOperation<'_, I, u8, MyRegister, ::device_driver::RW> {
                         let address = self.base_address + 5;
                         ::device_driver::RegisterOperation::<
                             '_,
@@ -296,10 +288,7 @@ mod tests {
                     pub fn my_buffer(
                         &mut self,
                         index: usize,
-                    ) -> ::device_driver::BufferOperation<'_, I, i16, ::device_driver::RO>
-                    where
-                        I: ::device_driver::BufferInterface<AddressType = i16>,
-                    {
+                    ) -> ::device_driver::BufferOperation<'_, I, i16, ::device_driver::RO> {
                         let address = {
                             assert!(index < 4);
                             self.base_address + 5 + index as u8 * 1
