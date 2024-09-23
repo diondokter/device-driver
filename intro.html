@@ -244,6 +244,152 @@
 
 </style>
 <h1 id="intro"><a class="header" href="#intro">Intro</a></h1>
+<ul>
+<li><a href="#intro">Intro</a>
+<ul>
+<li><a href="#the-old-ways">The old ways</a></li>
+<li><a href="#the-goal">The goal</a></li>
+<li><a href="#meeting-the-goals">Meeting the goals</a>
+<ul>
+<li><a href="#input">Input</a></li>
+<li><a href="#device-interface">Device interface</a></li>
+<li><a href="#docs">Docs</a></li>
+</ul>
+</li>
+<li><a href="#how-to-continue">How to continue</a></li>
+</ul>
+</li>
+</ul>
+<p>We deserve better drivers. Rust has shown that we don't need to stick to old principles and that we as an industry can do better.</p>
+<p>While the Rust language provides many opportunities to improve the way we write drivers, it doesn't mean those are easy to use. There are two issues:</p>
+<ol>
+<li>Figuring out how to create registers (and more) using the type system well is hard</li>
+<li>It takes more time to write more elaborate definitions</li>
+</ol>
+<p>While there could be a crate that could figure out the first issue, the latter issue would still be there.</p>
+<p>By using this toolkit, you get both 1 and 2 solved.</p>
+<p>This is done with inspiration from other parts of the ecosystem and 5 years of iteration. It has led to an awesome representation of a device using the type system that is coupled with the ease of code generation.</p>
+<h2 id="the-old-ways"><a class="header" href="#the-old-ways">The old ways</a></h2>
+<p>So a typical driver in C (or a simple driver in Rust) will have some constants or an enum for the registers.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[repr(u8)]
+pub enum Register {
+    Status = 0x00,
+    Ctrl0 = 0x08,
+    Ctrl1 = 0x09,
+    IntCfg = 0x010,
+    OutX = 0x20,
+    OutY = 0x21,
+    OutZ = 0x22
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Then we need a way to read and write the registers. In Rust this is typically done in a struct.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct Device&lt;Bus&gt; {
+    bus: Bus,
+}
+
+impl&lt;Bus: I2C&gt; Device&lt;Bus&gt; {
+    pub(crate) fn write_register(&amp;mut self, reg: Register, value: u8) -&gt; Result&lt;(), Error&gt; {
+        self.bus.write(DEV_ADDRESS, &amp;[reg as u8, value as u8])?;
+        Ok(())
+    }
+
+    pub(crate) fn read_register(&amp;mut self, reg: Register) -&gt; Result&lt;u8, Error&gt; {
+        let mut buf = [0];
+        self.bus.write_then_read(DEV_ADDRESS, &amp;[reg as u8], &amp;mut buf)?;
+        Ok(buf[0])
+    }
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Everything is fine up until now. But now what? All we have are some register addresses and a way to read/write the device.
+There are so many open questions:</p>
+<ul>
+<li>How do we model the data in the registers?
+<ul>
+<li>Provide bitmasks and shift values?</li>
+<li>Define it in bitfield?</li>
+<li>Create bespoke types?</li>
+</ul>
+</li>
+<li>How do we connect our model to a specific register?
+<ul>
+<li>Don't connect it at all and depend on the user to do the right thing?</li>
+<li>Maybe make all registers their own type instead using an enum?</li>
+<li>Something in the middle?</li>
+</ul>
+</li>
+<li>How do we provide documentation to the user?</li>
+<li>And more...</li>
+</ul>
+<p>Most good solutions require you to do a lot of implementation work.</p>
+<h2 id="the-goal"><a class="header" href="#the-goal">The goal</a></h2>
+<p>When you're writing a driver, you just want to implement it and be done with it.
+Most of the time developing a driver is boring and repetitive.</p>
+<p>The goals are:</p>
+<ol>
+<li>Get a great driver for minimal effort</li>
+<li>Get a driver that is correct and hard to misuse
+<ul>
+<li>(assuming the input spec is correct)</li>
+</ul>
+</li>
+<li>Get a driver that is well documented
+<ul>
+<li>(assuming the input spec gives docs)</li>
+</ul>
+</li>
+</ol>
+<h2 id="meeting-the-goals"><a class="header" href="#meeting-the-goals">Meeting the goals</a></h2>
+<h3 id="input"><a class="header" href="#input">Input</a></h3>
+<p>To meet the goals, this toolkit provides a way to generate a driver based on a dense and precise input language.</p>
+<p>There are three options:</p>
+<ul>
+<li>DSL
+<ul>
+<li>Rust-like code</li>
+</ul>
+</li>
+<li>YAML</li>
+<li>JSON</li>
+</ul>
+<p>For example, defining a register looks like this in the DSL:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// This is the Foo register
+register Foo {
+    const ADDRESS = 0;
+    const SIZE_BITS = 24;
+
+    /// This is a bool!
+    value0: bool = 0..1,
+    /// 15 bits of unsigned integer
+    value1: uint = 1..16,
+    /// Inline enum generation too
+    value2: int as enum MyEnum {
+        Val0,
+        Val16 = 0x10,
+        Reserved = default,
+    } = 16..24,
+},
+<span class="boring">}</span></code></pre></pre>
+<p>There are loads more powerful options like bit and byte ordering specification, repeated registers, fallible and infallible type conversion, name normalization to make copying from the datasheet easier and more.</p>
+<p>Many correctness checks are done so there's no overlap in register addresses and field bit addresses. (On by default)</p>
+<p>This all is carried over to commands and buffers as well.</p>
+<p>The exact details are discussed in further chapters.</p>
+<h3 id="device-interface"><a class="header" href="#device-interface">Device interface</a></h3>
+<p>Of course some register definitions don't magically know how to talk to a device. For that you need to create an interface struct and implement one of the traits.</p>
+<p>There are traits for register, command and buffer interfaces, and each of them has an async variant too. If the blocking interfaces are implemented, then the driver can do blocking operations and if the async interfaces are implemented, the driver can do async operations.</p>
+<p>More of this is explained in the interface chapter.</p>
+<h3 id="docs"><a class="header" href="#docs">Docs</a></h3>
+<p>Everything is or can be documented.</p>
+<p>For the definitions, it up to the spec writer to include the documentation. Almost every field can be documented.</p>
+<p>The rest of the this toolkit is well documented through the docs.rs docs and this book.</p>
+<h2 id="how-to-continue"><a class="header" href="#how-to-continue">How to continue</a></h2>
+<p>Simply read the rest of the book!</p>
+<p>Looking at existing drivers and examples can also be very helpful.</p>
 
                     </main>
 
