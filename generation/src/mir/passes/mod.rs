@@ -17,9 +17,9 @@ pub fn run_passes(device: &mut Device) -> anyhow::Result<()> {
     enum_values_checked::run_pass(device)?;
     byte_order_specified::run_pass(device)?;
     reset_values_converted::run_pass(device)?;
+    bool_fields_checked::run_pass(device)?;
     bit_ranges_validated::run_pass(device)?;
     refs_validated::run_pass(device)?;
-    bool_fields_checked::run_pass(device)?;
     address_types_specified::run_pass(device)?;
     address_types_big_enough::run_pass(device)?;
 

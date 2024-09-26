@@ -49,7 +49,7 @@ device_driver::create_device!(
             const SIZE_BITS = 24;
 
             /// This is a bool!
-            value0: bool = 0..1,
+            value0: bool = 0,
             value1: uint = 1..16,
             value2: int = 16..24,
         },
@@ -63,7 +63,7 @@ device_driver::create_device!(
             };
 
             /// This is a bool!
-            value0: bool = 0..1,
+            value0: bool = 0,
             value1: uint = 1..16,
             value2: int = 16..24,
         }
