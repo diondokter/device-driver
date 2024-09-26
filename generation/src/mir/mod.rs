@@ -174,6 +174,17 @@ impl Object {
         }
     }
 
+    /// Get a reference to the cfg of the specific object
+    pub(self) fn cfg_attr(&self) -> Option<&String> {
+        match self {
+            Object::Block(val) => val.cfg_attr.as_ref(),
+            Object::Register(val) => val.cfg_attr.as_ref(),
+            Object::Command(val) => val.cfg_attr.as_ref(),
+            Object::Buffer(val) => val.cfg_attr.as_ref(),
+            Object::Ref(val) => val.cfg_attr.as_ref(),
+        }
+    }
+
     /// Get an iterator over all the field sets in the object
     pub(self) fn field_sets_mut(&mut self) -> impl Iterator<Item = &mut [Field]> {
         match self {

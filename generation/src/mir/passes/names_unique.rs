@@ -12,7 +12,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
 
     recurse_objects_mut(&mut device.objects, &mut |object| {
         anyhow::ensure!(
-            seen_object_names.insert(object.name().to_string()),
+            seen_object_names.insert((object.name().to_string(), object.cfg_attr().cloned())),
             "Duplicate object name found: \"{}\"",
             object.name()
         );

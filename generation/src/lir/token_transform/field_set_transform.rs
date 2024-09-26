@@ -41,6 +41,7 @@ pub fn generate_field_set(value: &FieldSet) -> TokenStream {
         };
 
         quote! {
+            #cfg_attr
             impl From<[u8; #size_bytes]> for #name {
                 fn from(mut val: [u8; #size_bytes]) -> Self {
                     #be_reverse
@@ -61,6 +62,7 @@ pub fn generate_field_set(value: &FieldSet) -> TokenStream {
         };
 
         quote! {
+            #cfg_attr
             impl From<#name> for [u8; #size_bytes] {
                 fn from(val: #name) -> Self {
                     let mut val = val.bits.into_inner();
@@ -80,6 +82,7 @@ pub fn generate_field_set(value: &FieldSet) -> TokenStream {
 
         let name_string = name.to_string();
         quote! {
+            #cfg_attr
             impl core::fmt::Debug for #name {
                 fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
                     f.debug_struct(#name_string)
@@ -102,6 +105,7 @@ pub fn generate_field_set(value: &FieldSet) -> TokenStream {
             bits: ::device_driver::bitvec::array::BitArray<[u8; #size_bytes], ::device_driver::bitvec::order::#bit_order>,
         }
 
+        #cfg_attr
         impl ::device_driver::FieldSet for #name {
             type BUFFER = [u8; #size_bytes];
 
@@ -118,6 +122,7 @@ pub fn generate_field_set(value: &FieldSet) -> TokenStream {
             }
         }
 
+        #cfg_attr
         impl #name {
             #(#read_functions)*
 
@@ -128,6 +133,7 @@ pub fn generate_field_set(value: &FieldSet) -> TokenStream {
         #into_impl
         #debug_impl
 
+        #cfg_attr
         impl core::ops::BitAnd for #name {
             type Output = Self;
 
@@ -138,12 +144,14 @@ pub fn generate_field_set(value: &FieldSet) -> TokenStream {
             }
         }
 
+        #cfg_attr
         impl core::ops::BitAndAssign for #name {
             fn bitand_assign(&mut self, rhs: Self) {
                 self.bits &= rhs.bits;
             }
         }
 
+        #cfg_attr
         impl core::ops::BitOr for #name {
             type Output = Self;
 
@@ -154,12 +162,14 @@ pub fn generate_field_set(value: &FieldSet) -> TokenStream {
             }
         }
 
+        #cfg_attr
         impl core::ops::BitOrAssign for #name {
             fn bitor_assign(&mut self, rhs: Self) {
                 self.bits |= rhs.bits;
             }
         }
 
+        #cfg_attr
         impl core::ops::BitXor for #name {
             type Output = Self;
 
@@ -170,12 +180,14 @@ pub fn generate_field_set(value: &FieldSet) -> TokenStream {
             }
         }
 
+        #cfg_attr
         impl core::ops::BitXorAssign for #name {
             fn bitxor_assign(&mut self, rhs: Self) {
                 self.bits ^= rhs.bits;
             }
         }
 
+        #cfg_attr
         impl core::ops::Not for #name {
             type Output = Self;
 
@@ -341,6 +353,7 @@ mod tests {
                     ::device_driver::bitvec::order::Lsb0,
                 >,
             }
+            #[cfg(windows)]
             impl ::device_driver::FieldSet for MyRegister {
                 type BUFFER = [u8; 3];
                 fn new() -> Self {
@@ -354,6 +367,7 @@ mod tests {
                     }
                 }
             }
+            #[cfg(windows)]
             impl MyRegister {
                 ///Read the `my_field` field of the register.
                 ///
@@ -383,6 +397,7 @@ mod tests {
                     self
                 }
             }
+            #[cfg(windows)]
             impl From<[u8; 3]> for MyRegister {
                 fn from(mut val: [u8; 3]) -> Self {
                     val[..].reverse();
@@ -391,6 +406,7 @@ mod tests {
                     }
                 }
             }
+            #[cfg(windows)]
             impl From<MyRegister> for [u8; 3] {
                 fn from(val: MyRegister) -> Self {
                     let mut val = val.bits.into_inner();
@@ -398,6 +414,7 @@ mod tests {
                     val
                 }
             }
+            #[cfg(windows)]
             impl core::fmt::Debug for MyRegister {
                 fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
                     f.debug_struct(\"MyRegister\")
@@ -406,39 +423,46 @@ mod tests {
                         .finish()
                 }
             }
+            #[cfg(windows)]
             impl core::ops::BitAnd for MyRegister {
                 type Output = Self;
                 fn bitand(self, rhs: Self) -> Self::Output {
                     Self { bits: self.bits & rhs.bits }
                 }
             }
+            #[cfg(windows)]
             impl core::ops::BitAndAssign for MyRegister {
                 fn bitand_assign(&mut self, rhs: Self) {
                     self.bits &= rhs.bits;
                 }
             }
+            #[cfg(windows)]
             impl core::ops::BitOr for MyRegister {
                 type Output = Self;
                 fn bitor(self, rhs: Self) -> Self::Output {
                     Self { bits: self.bits | rhs.bits }
                 }
             }
+            #[cfg(windows)]
             impl core::ops::BitOrAssign for MyRegister {
                 fn bitor_assign(&mut self, rhs: Self) {
                     self.bits |= rhs.bits;
                 }
             }
+            #[cfg(windows)]
             impl core::ops::BitXor for MyRegister {
                 type Output = Self;
                 fn bitxor(self, rhs: Self) -> Self::Output {
                     Self { bits: self.bits ^ rhs.bits }
                 }
             }
+            #[cfg(windows)]
             impl core::ops::BitXorAssign for MyRegister {
                 fn bitxor_assign(&mut self, rhs: Self) {
                     self.bits ^= rhs.bits;
                 }
             }
+            #[cfg(windows)]
             impl core::ops::Not for MyRegister {
                 type Output = Self;
                 fn not(self) -> Self::Output {
