@@ -16,7 +16,7 @@
   - [Blocks](./blocks.md)
   - [Refs](./refs.md)
   - [DSL syntax](./dsl-syntax.md)
-  - [Markup syntax](./markup-syntax.md)
+  - [Manifest syntax](./manifest-syntax.md)
 - [Output](./output.md)
 - [Addendum]()
   - [Memory](./memory.md)
