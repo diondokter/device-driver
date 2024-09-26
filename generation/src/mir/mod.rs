@@ -467,7 +467,6 @@ pub struct RegisterOverride {
     pub access: Option<Access>,
     pub address: Option<i64>,
     pub allow_address_overlap: bool,
-    pub reset_value: Option<ResetValue>,
     pub repeat: Option<Repeat>,
 }
 
