@@ -82,7 +82,7 @@ fn command_combinations() {
     assert_eq!(device.interface.last_command, 0);
     assert_eq!(device.interface.last_input, vec![]);
 
-    device.input().dispatch(|w| w.set_val(123)).unwrap();
+    device.input().dispatch(|reg| reg.set_val(123)).unwrap();
     assert_eq!(device.interface.last_command, 1);
     assert_eq!(device.interface.last_input, vec![0x7B, 0x00]);
 
@@ -91,7 +91,7 @@ fn command_combinations() {
     assert_eq!(device.interface.last_input, vec![]);
     assert_eq!(out.val(), 0);
 
-    let out = device.in_out().dispatch(|w| w.set_val(123)).unwrap();
+    let out = device.in_out().dispatch(|reg| reg.set_val(123)).unwrap();
     assert_eq!(device.interface.last_command, 3);
     assert_eq!(device.interface.last_input, vec![0x7B, 0x00]);
     assert_eq!(out.val(), 0x7B);

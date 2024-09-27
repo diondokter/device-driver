@@ -305,11 +305,10 @@ fn get_write_function(field: &Field) -> TokenStream {
         #[doc = ""]
         #doc_attr
         #cfg_attr
-        pub fn #function_name(&mut self, value: #input_type) -> &mut Self {
+        pub fn #function_name(&mut self, value: #input_type) {
             use ::device_driver::bitvec::field::BitField;
             let raw = #conversion;
             self.bits[#start_bit..#end_bit].store_le::<#base_type>(raw);
-            self
         }
     }
 }
@@ -405,19 +404,17 @@ mod tests {
                 ///
                 ///Hiya again!
                 #[cfg(linux)]
-                pub fn set_my_field(&mut self, value: FieldEnum) -> &mut Self {
+                pub fn set_my_field(&mut self, value: FieldEnum) {
                     use ::device_driver::bitvec::field::BitField;
                     let raw = value.into();
                     self.bits[0..4].store_le::<u8>(raw);
-                    self
                 }
                 ///Write the `my_field2` field of the register.
                 ///
-                pub fn set_my_field2(&mut self, value: i16) -> &mut Self {
+                pub fn set_my_field2(&mut self, value: i16) {
                     use ::device_driver::bitvec::field::BitField;
                     let raw = value;
                     self.bits[4..16].store_le::<i16>(raw);
-                    self
                 }
             }
             #[cfg(windows)]

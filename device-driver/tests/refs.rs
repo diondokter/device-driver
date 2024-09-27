@@ -63,7 +63,7 @@ device_driver::create_device!(
 fn ref_uses_own_address() {
     let mut device = MyTestDevice::new(DeviceInterface::new());
 
-    device.foo().write(|w| w.set_val(123)).unwrap();
+    device.foo().write(|reg| reg.set_val(123)).unwrap();
     let foo_ref = device.foo_ref().read().unwrap();
 
     assert_eq!(foo_ref.val(), 0);

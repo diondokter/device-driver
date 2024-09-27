@@ -143,13 +143,13 @@ fn test_basic_read_modify_write() {
 
     device
         .foo()
-        .write(|w| {
-            w.set_convert_custom_try(my_mod::MyTryEnum::C)
-                .set_convert_custom(MyEnum::D)
-                .set_convert_generated_try(GenTryEnum::B)
-                .set_convert_generated(GenEnum::C)
-                .set_convert_generated_default(GenDefaultEnum::B)
-                .set_convert_generated_catchall(GenCatchAllEnum::B(3))
+        .write(|reg| {
+            reg.set_convert_custom_try(my_mod::MyTryEnum::C);
+            reg.set_convert_custom(MyEnum::D);
+            reg.set_convert_generated_try(GenTryEnum::B);
+            reg.set_convert_generated(GenEnum::C);
+            reg.set_convert_generated_default(GenDefaultEnum::B);
+            reg.set_convert_generated_catchall(GenCatchAllEnum::B(3));
         })
         .unwrap();
 

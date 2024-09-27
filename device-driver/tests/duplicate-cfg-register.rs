@@ -66,7 +66,7 @@ device_driver::create_device!(
 #[test]
 fn test_basic_read_modify_write() {
     let mut device = MyTestDevice::new(DeviceInterface::new());
-    device.foo().write(|w| w.set_value(true)).unwrap();
+    device.foo().write(|reg| reg.set_value(true)).unwrap();
 
     #[cfg(not(windows))]
     assert_eq!(device.interface().device_memory[0], 0x01);

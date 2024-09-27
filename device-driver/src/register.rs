@@ -80,28 +80,28 @@ where
     ///
     /// The closure is given the write object initialized to the reset value of the register.
     /// If no reset value is specified for this register, this function is the same as [Self::write_with_zero].
-    pub fn write(
-        &mut self,
-        f: impl FnOnce(&mut Register) -> &mut Register,
-    ) -> Result<(), Interface::Error> {
+    pub fn write<R>(&mut self, f: impl FnOnce(&mut Register) -> R) -> Result<R, Interface::Error> {
         let mut register = Register::new_with_default();
-        f(&mut register);
+        let returned = f(&mut register);
 
         let buffer = Register::BUFFER::from(register);
-        self.interface.write_register(self.address, buffer.as_ref())
+        self.interface
+            .write_register(self.address, buffer.as_ref())?;
+        Ok(returned)
     }
 
     /// Write to the register.
     ///
     /// The closure is given the write object initialized to all zero.
-    pub fn write_with_zero(
+    pub fn write_with_zero<R>(
         &mut self,
-        f: impl FnOnce(&mut Register) -> &mut Register,
-    ) -> Result<(), Interface::Error> {
+        f: impl FnOnce(&mut Register) -> R,
+    ) -> Result<R, Interface::Error> {
         let mut register = Register::new_with_zero();
-        f(&mut register);
+        let returned = f(&mut register);
         self.interface
-            .write_register(self.address, Register::BUFFER::from(register).as_mut())
+            .write_register(self.address, Register::BUFFER::from(register).as_mut())?;
+        Ok(returned)
     }
 }
 
@@ -131,14 +131,12 @@ where
     ///
     /// The register is read, the value is then passed to the closure for making changes.
     /// The result is then written back to the device.
-    pub fn modify(
-        &mut self,
-        f: impl FnOnce(&mut Register) -> &mut Register,
-    ) -> Result<(), Interface::Error> {
+    pub fn modify<R>(&mut self, f: impl FnOnce(&mut Register) -> R) -> Result<R, Interface::Error> {
         let mut register = self.read()?;
-        f(&mut register);
+        let returned = f(&mut register);
         self.interface
-            .write_register(self.address, Register::BUFFER::from(register).as_mut())
+            .write_register(self.address, Register::BUFFER::from(register).as_mut())?;
+        Ok(returned)
     }
 }
 
@@ -152,31 +150,33 @@ where
     ///
     /// The closure is given the write object initialized to the reset value of the register.
     /// If no reset value is specified for this register, this function is the same as [Self::write_with_zero].
-    pub async fn write_async(
+    pub async fn write_async<R>(
         &mut self,
-        f: impl FnOnce(&mut Register) -> &mut Register,
-    ) -> Result<(), Interface::Error> {
+        f: impl FnOnce(&mut Register) -> R,
+    ) -> Result<R, Interface::Error> {
         let mut register = Register::new_with_default();
-        f(&mut register);
+        let returned = f(&mut register);
 
         let buffer = Register::BUFFER::from(register);
         self.interface
             .write_register(self.address, buffer.as_ref())
-            .await
+            .await?;
+        Ok(returned)
     }
 
     /// Write to the register.
     ///
     /// The closure is given the write object initialized to all zero.
-    pub async fn write_with_zero_async(
+    pub async fn write_with_zero_async<R>(
         &mut self,
-        f: impl FnOnce(&mut Register) -> &mut Register,
-    ) -> Result<(), Interface::Error> {
+        f: impl FnOnce(&mut Register) -> R,
+    ) -> Result<R, Interface::Error> {
         let mut register = Register::new_with_zero();
-        f(&mut register);
+        let returned = f(&mut register);
         self.interface
             .write_register(self.address, Register::BUFFER::from(register).as_mut())
-            .await
+            .await?;
+        Ok(returned)
     }
 }
 
@@ -207,14 +207,15 @@ where
     ///
     /// The register is read, the value is then passed to the closure for making changes.
     /// The result is then written back to the device.
-    pub async fn modify_async(
+    pub async fn modify_async<R>(
         &mut self,
-        f: impl FnOnce(&mut Register) -> &mut Register,
-    ) -> Result<(), Interface::Error> {
+        f: impl FnOnce(&mut Register) -> R,
+    ) -> Result<R, Interface::Error> {
         let mut register = self.read_async().await?;
-        f(&mut register);
+        let returned = f(&mut register);
         self.interface
             .write_register(self.address, Register::BUFFER::from(register).as_mut())
-            .await
+            .await?;
+        Ok(returned)
     }
 }

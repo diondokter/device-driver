@@ -77,16 +77,16 @@ device_driver::create_device!(
 fn little_endian_respected() {
     let mut device = MyTestDevice::new(DeviceInterface);
 
-    device.foo_le().write(|w| w).unwrap();
+    device.foo_le().write(|_| {}).unwrap();
     device
         .foo_le()
-        .write_with_zero(|w| w.set_val(0x1234))
+        .write_with_zero(|reg| reg.set_val(0x1234))
         .unwrap();
 
-    device.foo_le_array().write(|w| w).unwrap();
+    device.foo_le_array().write(|_| {}).unwrap();
     device
         .foo_le_array()
-        .write_with_zero(|w| w.set_val(0x1234))
+        .write_with_zero(|reg| reg.set_val(0x1234))
         .unwrap();
 }
 
@@ -94,15 +94,15 @@ fn little_endian_respected() {
 fn big_endian_respected() {
     let mut device = MyTestDevice::new(DeviceInterface);
 
-    device.foo_be().write(|w| w).unwrap();
+    device.foo_be().write(|_| {}).unwrap();
     device
         .foo_be()
-        .write_with_zero(|w| w.set_val(0x3412))
+        .write_with_zero(|reg| reg.set_val(0x3412))
         .unwrap();
 
-    device.foo_be_array().write(|w| w).unwrap();
+    device.foo_be_array().write(|_| {}).unwrap();
     device
         .foo_be_array()
-        .write_with_zero(|w| w.set_val(0x3412))
+        .write_with_zero(|reg| reg.set_val(0x3412))
         .unwrap();
 }

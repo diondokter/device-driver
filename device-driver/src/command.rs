@@ -86,10 +86,7 @@ where
     Interface: CommandInterface<AddressType = AddressType>,
 {
     /// Dispatch the command to the device
-    pub fn dispatch(
-        self,
-        f: impl FnOnce(&mut InFieldSet) -> &mut InFieldSet,
-    ) -> Result<(), Interface::Error> {
+    pub fn dispatch(self, f: impl FnOnce(&mut InFieldSet)) -> Result<(), Interface::Error> {
         let mut in_fields = InFieldSet::new_with_default();
         f(&mut in_fields);
 
@@ -127,7 +124,7 @@ where
     /// Dispatch the command to the device
     pub fn dispatch(
         self,
-        f: impl FnOnce(&mut InFieldSet) -> &mut InFieldSet,
+        f: impl FnOnce(&mut InFieldSet),
     ) -> Result<OutFieldSet, Interface::Error> {
         let mut in_fields = InFieldSet::new_with_default();
         f(&mut in_fields);
@@ -166,7 +163,7 @@ where
     /// Dispatch the command to the device
     pub async fn dispatch_async(
         self,
-        f: impl FnOnce(&mut InFieldSet) -> &mut InFieldSet,
+        f: impl FnOnce(&mut InFieldSet),
     ) -> Result<(), Interface::Error> {
         let mut in_fields = InFieldSet::new_with_default();
         f(&mut in_fields);
@@ -208,7 +205,7 @@ where
     /// Dispatch the command to the device
     pub async fn dispatch_async(
         self,
-        f: impl FnOnce(&mut InFieldSet) -> &mut InFieldSet,
+        f: impl FnOnce(&mut InFieldSet),
     ) -> Result<OutFieldSet, Interface::Error> {
         let mut in_fields = InFieldSet::new_with_default();
         f(&mut in_fields);

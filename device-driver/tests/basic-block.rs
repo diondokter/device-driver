@@ -70,7 +70,7 @@ fn test_basic_read_modify_write() {
 
     let mut bar = device.bar(1);
 
-    bar.foo().write(|w| w.set_value_1(12345)).unwrap();
+    bar.foo().write(|reg| reg.set_value_1(12345)).unwrap();
     let reg = bar.foo().read().unwrap();
 
     assert_eq!(reg.value_0(), false);
@@ -78,7 +78,10 @@ fn test_basic_read_modify_write() {
     assert_eq!(reg.value_2(), 0i8);
 
     bar.foo()
-        .modify(|w| w.set_value_0(true).set_value_2(-1))
+        .modify(|reg| {
+            reg.set_value_0(true);
+            reg.set_value_2(-1);
+        })
         .unwrap();
 
     let reg = bar.foo().read().unwrap();
