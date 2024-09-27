@@ -84,7 +84,7 @@ where
         &mut self,
         f: impl FnOnce(&mut Register) -> &mut Register,
     ) -> Result<(), Interface::Error> {
-        let mut register = Register::new();
+        let mut register = Register::new_with_default();
         f(&mut register);
 
         let buffer = Register::BUFFER::from(register);
@@ -98,7 +98,7 @@ where
         &mut self,
         f: impl FnOnce(&mut Register) -> &mut Register,
     ) -> Result<(), Interface::Error> {
-        let mut register = Register::new_zero();
+        let mut register = Register::new_with_zero();
         f(&mut register);
         self.interface
             .write_register(self.address, Register::BUFFER::from(register).as_mut())
@@ -113,7 +113,7 @@ where
 {
     /// Read the register from the device
     pub fn read(&mut self) -> Result<Register, Interface::Error> {
-        let mut buffer = Register::BUFFER::from(Register::new_zero());
+        let mut buffer = Register::BUFFER::from(Register::new_with_zero());
 
         self.interface
             .read_register(self.address, buffer.as_mut())?;
@@ -156,7 +156,7 @@ where
         &mut self,
         f: impl FnOnce(&mut Register) -> &mut Register,
     ) -> Result<(), Interface::Error> {
-        let mut register = Register::new();
+        let mut register = Register::new_with_default();
         f(&mut register);
 
         let buffer = Register::BUFFER::from(register);
@@ -172,7 +172,7 @@ where
         &mut self,
         f: impl FnOnce(&mut Register) -> &mut Register,
     ) -> Result<(), Interface::Error> {
-        let mut register = Register::new_zero();
+        let mut register = Register::new_with_zero();
         f(&mut register);
         self.interface
             .write_register(self.address, Register::BUFFER::from(register).as_mut())
@@ -188,7 +188,7 @@ where
 {
     /// Read the register from the device
     pub async fn read_async(&mut self) -> Result<Register, Interface::Error> {
-        let mut buffer = Register::BUFFER::from(Register::new_zero());
+        let mut buffer = Register::BUFFER::from(Register::new_with_zero());
 
         self.interface
             .read_register(self.address, buffer.as_mut())

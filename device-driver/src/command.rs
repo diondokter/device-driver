@@ -90,7 +90,7 @@ where
         self,
         f: impl FnOnce(&mut InFieldSet) -> &mut InFieldSet,
     ) -> Result<(), Interface::Error> {
-        let mut in_fields = InFieldSet::new();
+        let mut in_fields = InFieldSet::new_with_default();
         f(&mut in_fields);
 
         self.interface.dispatch_command(
@@ -109,7 +109,7 @@ where
 {
     /// Dispatch the command to the device
     pub fn dispatch(self) -> Result<OutFieldSet, Interface::Error> {
-        let mut buffer = OutFieldSet::BUFFER::from(OutFieldSet::new_zero());
+        let mut buffer = OutFieldSet::BUFFER::from(OutFieldSet::new_with_zero());
 
         self.interface
             .dispatch_command(self.address, &[], buffer.as_mut())?;
@@ -129,10 +129,10 @@ where
         self,
         f: impl FnOnce(&mut InFieldSet) -> &mut InFieldSet,
     ) -> Result<OutFieldSet, Interface::Error> {
-        let mut in_fields = InFieldSet::new();
+        let mut in_fields = InFieldSet::new_with_default();
         f(&mut in_fields);
 
-        let mut buffer = OutFieldSet::BUFFER::from(OutFieldSet::new_zero());
+        let mut buffer = OutFieldSet::BUFFER::from(OutFieldSet::new_with_zero());
 
         self.interface.dispatch_command(
             self.address,
@@ -168,7 +168,7 @@ where
         self,
         f: impl FnOnce(&mut InFieldSet) -> &mut InFieldSet,
     ) -> Result<(), Interface::Error> {
-        let mut in_fields = InFieldSet::new();
+        let mut in_fields = InFieldSet::new_with_default();
         f(&mut in_fields);
 
         self.interface
@@ -189,7 +189,7 @@ where
 {
     /// Dispatch the command to the device
     pub async fn dispatch_async(self) -> Result<OutFieldSet, Interface::Error> {
-        let mut buffer = OutFieldSet::BUFFER::from(OutFieldSet::new_zero());
+        let mut buffer = OutFieldSet::BUFFER::from(OutFieldSet::new_with_zero());
 
         self.interface
             .dispatch_command(self.address, &[], buffer.as_mut())
@@ -210,10 +210,10 @@ where
         self,
         f: impl FnOnce(&mut InFieldSet) -> &mut InFieldSet,
     ) -> Result<OutFieldSet, Interface::Error> {
-        let mut in_fields = InFieldSet::new();
+        let mut in_fields = InFieldSet::new_with_default();
         f(&mut in_fields);
 
-        let mut buffer = OutFieldSet::BUFFER::from(OutFieldSet::new_zero());
+        let mut buffer = OutFieldSet::BUFFER::from(OutFieldSet::new_with_zero());
 
         self.interface
             .dispatch_command(

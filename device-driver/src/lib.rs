@@ -27,10 +27,10 @@ pub trait FieldSet {
         Self: Sized;
 
     /// Create a new instance, loaded with the default value (if any)
-    fn new() -> Self;
+    fn new_with_default() -> Self;
 
     /// Create a new instance, loaded all 0's
-    fn new_zero() -> Self;
+    fn new_with_zero() -> Self;
 }
 
 /// The error returned by the generated [TryFrom]s.

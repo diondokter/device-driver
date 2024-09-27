@@ -109,21 +109,33 @@ pub fn generate_field_set(value: &FieldSet) -> TokenStream {
         impl ::device_driver::FieldSet for #name {
             type BUFFER = [u8; #size_bytes];
 
-            fn new() -> Self {
-                Self {
-                    bits: ::device_driver::bitvec::array::BitArray::new([#(#reset_value),*]),
-                }
+            fn new_with_default() -> Self {
+                Self::new()
             }
 
-            fn new_zero() -> Self {
-                Self {
-                    bits: ::device_driver::bitvec::array::BitArray::new([0; #size_bytes]),
-                }
+            fn new_with_zero() -> Self {
+                Self::new_zero()
             }
         }
 
         #cfg_attr
         impl #name {
+            /// Create a new instance, loaded with the default value (if any)
+            pub const fn new() -> Self {
+                use ::device_driver::bitvec::array::BitArray;
+                Self {
+                    bits: BitArray { data: [#(#reset_value),*], ..BitArray::ZERO },
+                }
+            }
+
+            /// Create a new instance, loaded with all zeroes
+            pub const fn new_zero() -> Self {
+                use ::device_driver::bitvec::array::BitArray;
+                Self {
+                    bits: BitArray::ZERO,
+                }
+            }
+
             #(#read_functions)*
 
             #(#write_functions)*
@@ -356,19 +368,30 @@ mod tests {
             #[cfg(windows)]
             impl ::device_driver::FieldSet for MyRegister {
                 type BUFFER = [u8; 3];
-                fn new() -> Self {
-                    Self {
-                        bits: ::device_driver::bitvec::array::BitArray::new([1u8, 2u8, 3u8]),
-                    }
+                fn new_with_default() -> Self {
+                    Self::new()
                 }
-                fn new_zero() -> Self {
-                    Self {
-                        bits: ::device_driver::bitvec::array::BitArray::new([0; 3]),
-                    }
+                fn new_with_zero() -> Self {
+                    Self::new_zero()
                 }
             }
             #[cfg(windows)]
             impl MyRegister {
+                /// Create a new instance, loaded with the default value (if any)
+                pub const fn new() -> Self {
+                    use ::device_driver::bitvec::array::BitArray;
+                    Self {
+                        bits: BitArray {
+                            data: [1u8, 2u8, 3u8],
+                            ..BitArray::ZERO
+                        },
+                    }
+                }
+                /// Create a new instance, loaded with all zeroes
+                pub const fn new_zero() -> Self {
+                    use ::device_driver::bitvec::array::BitArray;
+                    Self { bits: BitArray::ZERO }
+                }
                 ///Read the `my_field` field of the register.
                 ///
                 ///Hiya again!
