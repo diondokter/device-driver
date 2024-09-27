@@ -731,14 +731,10 @@ fn transform_register_override(
                     "No `AllowBitOverlap` is allowed on register overrides",
                 ))
             }
-            dsl_hir::RegisterItem::ResetValueInt(_) | dsl_hir::RegisterItem::ResetValueArray(_) => {
-                return Err(syn::Error::new(
-                    register_override.identifier.span(),
-                    "No `ResetValue` is allowed on register overrides",
-                ))
-            }
             dsl_hir::RegisterItem::Access(_) => {}
             dsl_hir::RegisterItem::Address(_) => {}
+            dsl_hir::RegisterItem::ResetValueInt(_) => {}
+            dsl_hir::RegisterItem::ResetValueArray(_) => {}
             dsl_hir::RegisterItem::Repeat(_) => {}
             dsl_hir::RegisterItem::AllowAddressOverlap(_) => {}
         }
@@ -772,6 +768,29 @@ fn transform_register_override(
                 _ => None,
             })
             .unwrap_or_default(),
+        reset_value: register_override
+            .register_item_list
+            .register_items
+            .iter()
+            .find_map(|i| match i {
+                dsl_hir::RegisterItem::ResetValueArray(arr) => {
+                    Some(Ok(mir::ResetValue::Array(arr.clone())))
+                }
+                dsl_hir::RegisterItem::ResetValueInt(int) => Some(
+                    int.base10_parse::<i128>()
+                        .map(|v| v as u128)
+                        .or_else(|_| int.base10_parse::<u128>())
+                        .map_err(|e| {
+                            syn::Error::new(
+                                int.span(),
+                                format!("{e}: number is parsed as an i128 or u128"),
+                            )
+                        })
+                        .map(mir::ResetValue::Integer),
+                ),
+                _ => None,
+            })
+            .transpose()?,
         repeat: register_override
             .register_item_list
             .register_items
@@ -1384,28 +1403,6 @@ mod tests {
                 )
                 .unwrap()
             )
-            .unwrap_err()
-            .to_string(),
-            "No `ResetValue` is allowed on register overrides"
-        );
-
-        assert_eq!(
-            transform(
-                syn::parse_str::<dsl_hir::Device>(
-                    "
-                    ref Foo = register Bar {
-                        const ADDRESS = 5;
-                        const REPEAT = {
-                            count: 5,
-                            stride: 1,
-                        };
-                        type Access = WO;
-                        const ALLOW_ADDRESS_OVERLAP = false;
-                    }
-                    "
-                )
-                .unwrap()
-            )
             .unwrap()
             .objects,
             &[mir::Object::Ref(mir::RefObject {
@@ -1420,6 +1417,32 @@ mod tests {
                         stride: 1
                     }),
                     access: Some(mir::Access::WO),
+                    reset_value: Some(mir::ResetValue::Integer(123)),
+                    ..Default::default()
+                })
+            })]
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo = register Bar {
+                        const RESET_VALUE = [1, 2, 3];
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap()
+            .objects,
+            &[mir::Object::Ref(mir::RefObject {
+                cfg_attr: None,
+                description: "".into(),
+                name: "Foo".into(),
+                object_override: mir::ObjectOverride::Register(mir::RegisterOverride {
+                    name: "Bar".into(),
+                    reset_value: Some(mir::ResetValue::Array(vec![1, 2, 3])),
                     ..Default::default()
                 })
             })]
@@ -1519,6 +1542,22 @@ mod tests {
             .unwrap_err()
             .to_string(),
             "No fields are allowed on register overrides"
+        );
+
+        assert_eq!(
+            transform(
+                syn::parse_str::<dsl_hir::Device>(
+                    "
+                    ref Foo = register Bar {
+                        const RESET_VALUE = 0x123456789012345678901234567890123;
+                    }
+                    "
+                )
+                .unwrap()
+            )
+            .unwrap_err()
+            .to_string(),
+            "number too large to fit in target type: number is parsed as an i128 or u128"
         );
     }
 

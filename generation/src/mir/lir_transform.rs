@@ -233,6 +233,9 @@ fn get_method(
                     if let Some(address) = override_values.address {
                         reffed_object.address = address;
                     }
+                    if let Some(reset_value) = override_values.reset_value.clone() {
+                        reffed_object.reset_value = Some(reset_value);
+                    }
                     if let Some(repeat) = override_values.repeat {
                         reffed_object.repeat = Some(repeat);
                     }
