@@ -19,8 +19,10 @@ impl RegisterInterface for DeviceInterface {
     fn write_register(
         &mut self,
         address: Self::AddressType,
+        size_bits: u32,
         data: &[u8],
     ) -> Result<(), Self::Error> {
+        assert_eq!(size_bits, 24);
         self.device_memory[address as usize..][..data.len()].copy_from_slice(data);
 
         Ok(())
@@ -29,8 +31,10 @@ impl RegisterInterface for DeviceInterface {
     fn read_register(
         &mut self,
         address: Self::AddressType,
+        size_bits: u32,
         data: &mut [u8],
     ) -> Result<(), Self::Error> {
+        assert_eq!(size_bits, 24);
         data.copy_from_slice(&self.device_memory[address as usize..][..data.len()]);
         Ok(())
     }

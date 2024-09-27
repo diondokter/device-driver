@@ -10,6 +10,7 @@ impl RegisterInterface for DeviceInterface {
     fn write_register(
         &mut self,
         _address: Self::AddressType,
+        _size_bits: u32,
         data: &[u8],
     ) -> Result<(), Self::Error> {
         // Assert data is little endian
@@ -21,6 +22,7 @@ impl RegisterInterface for DeviceInterface {
     fn read_register(
         &mut self,
         _address: Self::AddressType,
+        _size_bits: u32,
         data: &mut [u8],
     ) -> Result<(), Self::Error> {
         data.copy_from_slice(&[0x32, 0x12]);

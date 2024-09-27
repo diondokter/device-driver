@@ -24,6 +24,7 @@ pub fn generate_field_set(value: &FieldSet) -> TokenStream {
     }
 
     let size_bytes = Literal::u32_unsuffixed(size_bits.div_ceil(8));
+    let size_bits = Literal::u32_unsuffixed(*size_bits);
     let bit_order = match bit_order {
         BitOrder::LSB0 => format_ident!("Lsb0"),
         BitOrder::MSB0 => format_ident!("Msb0"),
@@ -108,6 +109,8 @@ pub fn generate_field_set(value: &FieldSet) -> TokenStream {
         #cfg_attr
         impl ::device_driver::FieldSet for #name {
             type BUFFER = [u8; #size_bytes];
+
+            const SIZE_BITS: u32 = #size_bits;
 
             fn new_with_default() -> Self {
                 Self::new()
@@ -367,6 +370,7 @@ mod tests {
             #[cfg(windows)]
             impl ::device_driver::FieldSet for MyRegister {
                 type BUFFER = [u8; 3];
+                const SIZE_BITS: u32 = 20;
                 fn new_with_default() -> Self {
                     Self::new()
                 }

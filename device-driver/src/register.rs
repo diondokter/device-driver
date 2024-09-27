@@ -15,6 +15,7 @@ pub trait RegisterInterface {
     fn write_register(
         &mut self,
         address: Self::AddressType,
+        size_bits: u32,
         data: &[u8],
     ) -> Result<(), Self::Error>;
 
@@ -22,6 +23,7 @@ pub trait RegisterInterface {
     fn read_register(
         &mut self,
         address: Self::AddressType,
+        size_bits: u32,
         data: &mut [u8],
     ) -> Result<(), Self::Error>;
 }
@@ -39,6 +41,7 @@ pub trait AsyncRegisterInterface {
     async fn write_register(
         &mut self,
         address: Self::AddressType,
+        size_bits: u32,
         data: &[u8],
     ) -> Result<(), Self::Error>;
 
@@ -46,6 +49,7 @@ pub trait AsyncRegisterInterface {
     async fn read_register(
         &mut self,
         address: Self::AddressType,
+        size_bits: u32,
         data: &mut [u8],
     ) -> Result<(), Self::Error>;
 }
@@ -86,7 +90,7 @@ where
 
         let buffer = Register::BUFFER::from(register);
         self.interface
-            .write_register(self.address, buffer.as_ref())?;
+            .write_register(self.address, Register::SIZE_BITS, buffer.as_ref())?;
         Ok(returned)
     }
 
@@ -100,7 +104,7 @@ where
         let mut register = Register::new_with_zero();
         let returned = f(&mut register);
         self.interface
-            .write_register(self.address, Register::BUFFER::from(register).as_mut())?;
+            .write_register(self.address, Register::SIZE_BITS, Register::BUFFER::from(register).as_mut())?;
         Ok(returned)
     }
 }
@@ -116,7 +120,7 @@ where
         let mut buffer = Register::BUFFER::from(Register::new_with_zero());
 
         self.interface
-            .read_register(self.address, buffer.as_mut())?;
+            .read_register(self.address, Register::SIZE_BITS, buffer.as_mut())?;
         Ok(buffer.into())
     }
 }
@@ -135,7 +139,7 @@ where
         let mut register = self.read()?;
         let returned = f(&mut register);
         self.interface
-            .write_register(self.address, Register::BUFFER::from(register).as_mut())?;
+            .write_register(self.address, Register::SIZE_BITS, Register::BUFFER::from(register).as_mut())?;
         Ok(returned)
     }
 }
@@ -159,7 +163,7 @@ where
 
         let buffer = Register::BUFFER::from(register);
         self.interface
-            .write_register(self.address, buffer.as_ref())
+            .write_register(self.address, Register::SIZE_BITS, buffer.as_ref())
             .await?;
         Ok(returned)
     }
@@ -174,7 +178,7 @@ where
         let mut register = Register::new_with_zero();
         let returned = f(&mut register);
         self.interface
-            .write_register(self.address, Register::BUFFER::from(register).as_mut())
+            .write_register(self.address, Register::SIZE_BITS, Register::BUFFER::from(register).as_mut())
             .await?;
         Ok(returned)
     }
@@ -191,7 +195,7 @@ where
         let mut buffer = Register::BUFFER::from(Register::new_with_zero());
 
         self.interface
-            .read_register(self.address, buffer.as_mut())
+            .read_register(self.address, Register::SIZE_BITS, buffer.as_mut())
             .await?;
         Ok(buffer.into())
     }
@@ -214,7 +218,7 @@ where
         let mut register = self.read_async().await?;
         let returned = f(&mut register);
         self.interface
-            .write_register(self.address, Register::BUFFER::from(register).as_mut())
+            .write_register(self.address, Register::SIZE_BITS, Register::BUFFER::from(register).as_mut())
             .await?;
         Ok(returned)
     }

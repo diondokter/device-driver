@@ -12,7 +12,9 @@ impl CommandInterface for DeviceInterface {
     fn dispatch_command(
         &mut self,
         address: Self::AddressType,
+        _size_bits_in: u32,
         input: &[u8],
+        _size_bits_out: u32,
         output: &mut [u8],
     ) -> Result<(), Self::Error> {
         self.last_command = address;
