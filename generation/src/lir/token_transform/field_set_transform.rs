@@ -1,3 +1,4 @@
+use convert_case::Casing;
 use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote, ToTokens};
 
@@ -15,6 +16,7 @@ pub fn generate_field_set(value: &FieldSet) -> TokenStream {
         bit_order,
         size_bits,
         reset_value,
+        ref_reset_overrides,
         fields,
     } = value;
 
@@ -94,6 +96,26 @@ pub fn generate_field_set(value: &FieldSet) -> TokenStream {
         }
     };
 
+    let ref_value_constructors = {
+        ref_reset_overrides.iter().map(|(ref_name, reset_value)| {
+            let name = format_ident!("new_as_{}", ref_name.to_case(convert_case::Case::Snake));
+            let docs: String = format!(
+                "Create a new instance, loaded with the reset value of the `{ref_name}` ref"
+            );
+
+            quote! {
+                #[doc = #docs]
+                pub const fn #name() -> Self {
+                    use ::device_driver::bitvec::array::BitArray;
+                    Self {
+                        bits: BitArray { data: [#(#reset_value),*], ..BitArray::ZERO },
+                    }
+                }
+
+            }
+        })
+    };
+
     // TODO:
     // - Add defmt impl
 
@@ -112,10 +134,6 @@ pub fn generate_field_set(value: &FieldSet) -> TokenStream {
 
             const SIZE_BITS: u32 = #size_bits;
 
-            fn new_with_default() -> Self {
-                Self::new()
-            }
-
             fn new_with_zero() -> Self {
                 Self::new_zero()
             }
@@ -123,7 +141,7 @@ pub fn generate_field_set(value: &FieldSet) -> TokenStream {
 
         #cfg_attr
         impl #name {
-            /// Create a new instance, loaded with the default value (if any)
+            /// Create a new instance, loaded with the reset value (if any)
             pub const fn new() -> Self {
                 use ::device_driver::bitvec::array::BitArray;
                 Self {
@@ -138,6 +156,8 @@ pub fn generate_field_set(value: &FieldSet) -> TokenStream {
                     bits: BitArray::ZERO,
                 }
             }
+
+            #(#ref_value_constructors)*
 
             #(#read_functions)*
 
@@ -332,6 +352,7 @@ mod tests {
             bit_order: BitOrder::LSB0,
             size_bits: 20,
             reset_value: vec![1, 2, 3],
+            ref_reset_overrides: vec![("MyRef".into(), vec![0, 1, 2])],
             fields: vec![
                 Field {
                     cfg_attr: quote! { #[cfg(linux)] },
@@ -371,16 +392,13 @@ mod tests {
             impl ::device_driver::FieldSet for MyRegister {
                 type BUFFER = [u8; 3];
                 const SIZE_BITS: u32 = 20;
-                fn new_with_default() -> Self {
-                    Self::new()
-                }
                 fn new_with_zero() -> Self {
                     Self::new_zero()
                 }
             }
             #[cfg(windows)]
             impl MyRegister {
-                /// Create a new instance, loaded with the default value (if any)
+                /// Create a new instance, loaded with the reset value (if any)
                 pub const fn new() -> Self {
                     use ::device_driver::bitvec::array::BitArray;
                     Self {
@@ -394,6 +412,16 @@ mod tests {
                 pub const fn new_zero() -> Self {
                     use ::device_driver::bitvec::array::BitArray;
                     Self { bits: BitArray::ZERO }
+                }
+                ///Create a new instance, loaded with the reset value of the `MyRef` ref
+                pub const fn new_as_my_ref() -> Self {
+                    use ::device_driver::bitvec::array::BitArray;
+                    Self {
+                        bits: BitArray {
+                            data: [0u8, 1u8, 2u8],
+                            ..BitArray::ZERO
+                        },
+                    }
                 }
                 ///Read the `my_field` field of the register.
                 ///

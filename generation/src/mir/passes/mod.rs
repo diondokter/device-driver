@@ -123,3 +123,20 @@ pub(crate) fn find_min_max_addresses(
 
     (min_address_found, max_address_found)
 }
+
+pub(crate) fn search_object<'d>(name: &str, objects: &'d [Object]) -> Option<&'d Object> {
+    for object in objects {
+        if object.name() == name {
+            return Some(object);
+        }
+
+        if let Some(block_objects) = object.get_block_object_list() {
+            match search_object(name, block_objects) {
+                None => {}
+                found => return found,
+            }
+        }
+    }
+
+    None
+}

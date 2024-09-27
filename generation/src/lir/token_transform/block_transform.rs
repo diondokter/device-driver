@@ -82,15 +82,17 @@ fn generate_method(method: &BlockMethod, internal_address_type: &Ident) -> Token
         method_type,
     } = method;
 
-    let (return_type, address_conversion) = match method_type {
-        BlockMethodType::Block { name } => (quote! { #name::<'_, I> }, quote! {}),
+    let (return_type, address_conversion, default_arg) = match method_type {
+        BlockMethodType::Block { name } => (quote! { #name::<'_, I> }, quote! {}, quote! {}),
         BlockMethodType::Register {
             field_set_name,
             access,
             address_type,
+            reset_value_function: default_value_function_name,
         } => (
             quote! { ::device_driver::RegisterOperation::<'_, I, #address_type, #field_set_name, ::device_driver::#access>  },
             quote! { as #address_type },
+            quote! { , #field_set_name::#default_value_function_name },
         ),
         BlockMethodType::Command {
             field_set_name_in,
@@ -108,6 +110,7 @@ fn generate_method(method: &BlockMethod, internal_address_type: &Ident) -> Token
             (
                 quote! { ::device_driver::CommandOperation::<'_, I, #address_type, #field_set_name_in, #field_set_name_out>  },
                 quote! { as #address_type },
+                quote! {},
             )
         }
         BlockMethodType::Buffer {
@@ -116,6 +119,7 @@ fn generate_method(method: &BlockMethod, internal_address_type: &Ident) -> Token
         } => (
             quote! { ::device_driver::BufferOperation::<'_, I, #address_type, ::device_driver::#access>  },
             quote! { as #address_type },
+            quote! {},
         ),
     };
 
@@ -154,7 +158,7 @@ fn generate_method(method: &BlockMethod, internal_address_type: &Ident) -> Token
         #cfg_attr
         pub fn #name(&mut self, #index_param) -> #return_type {
             let address = #address_calc;
-            #return_type::new(self.interface(), address #address_conversion)
+            #return_type::new(self.interface(), address #address_conversion #default_arg)
         }
     }
 }
@@ -185,6 +189,7 @@ mod tests {
                         field_set_name: format_ident!("MyRegister"),
                         access: crate::mir::Access::RW,
                         address_type: format_ident!("u8"),
+                        reset_value_function: format_ident!("new"),
                     },
                 }],
             },
@@ -223,7 +228,7 @@ mod tests {
                             u8,
                             MyRegister,
                             ::device_driver::RW,
-                        >::new(self.interface(), address as u8)
+                        >::new(self.interface(), address as u8, MyRegister::new)
                     }
                 }
             "}

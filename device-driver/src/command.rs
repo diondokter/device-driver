@@ -92,7 +92,7 @@ where
 {
     /// Dispatch the command to the device
     pub fn dispatch(self, f: impl FnOnce(&mut InFieldSet)) -> Result<(), Interface::Error> {
-        let mut in_fields = InFieldSet::new_with_default();
+        let mut in_fields = InFieldSet::new_with_zero();
         f(&mut in_fields);
 
         self.interface.dispatch_command(
@@ -138,7 +138,7 @@ where
         self,
         f: impl FnOnce(&mut InFieldSet),
     ) -> Result<OutFieldSet, Interface::Error> {
-        let mut in_fields = InFieldSet::new_with_default();
+        let mut in_fields = InFieldSet::new_with_zero();
         f(&mut in_fields);
 
         let mut buffer = OutFieldSet::BUFFER::from(OutFieldSet::new_with_zero());
@@ -179,7 +179,7 @@ where
         self,
         f: impl FnOnce(&mut InFieldSet),
     ) -> Result<(), Interface::Error> {
-        let mut in_fields = InFieldSet::new_with_default();
+        let mut in_fields = InFieldSet::new_with_zero();
         f(&mut in_fields);
 
         self.interface
@@ -229,7 +229,7 @@ where
         self,
         f: impl FnOnce(&mut InFieldSet),
     ) -> Result<OutFieldSet, Interface::Error> {
-        let mut in_fields = InFieldSet::new_with_default();
+        let mut in_fields = InFieldSet::new_with_zero();
         f(&mut in_fields);
 
         let mut buffer = OutFieldSet::BUFFER::from(OutFieldSet::new_with_zero());

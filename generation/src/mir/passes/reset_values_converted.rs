@@ -1,14 +1,18 @@
+use std::collections::HashMap;
+
 use anyhow::ensure;
 use bitvec::{
     order::{Lsb0, Msb0},
     view::BitView,
 };
 
-use crate::mir::{BitOrder, ByteOrder, Device, Object, ResetValue};
+use crate::mir::{
+    BitOrder, ByteOrder, Device, Object, ObjectOverride, RefObject, Register, ResetValue,
+};
 
-use super::recurse_objects_mut;
+use super::{recurse_objects, recurse_objects_mut, search_object};
 
-/// Checks if the reset values of registers is valid.
+/// Checks if the reset values of registers (and ref registers) are valid.
 /// Also converts integer values to the array representation using the correct bit and byte order.
 ///
 /// For the array representation, the rule is that the input must have the same spec as the bit and byte order.
@@ -18,87 +22,165 @@ use super::recurse_objects_mut;
 /// This function assumes all register have a valid byte order, and so depends on [super::byte_order_specified::run_pass]
 /// having been run.
 pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
-    recurse_objects_mut(&mut device.objects, &mut |object| match object {
+    let mut new_reset_values = HashMap::new();
+
+    recurse_objects(&device.objects, &mut |object| match object {
         Object::Register(reg) => {
-            let target_byte_order = reg
-                .byte_order
-                .or(device.global_config.default_byte_order)
-                .or((reg.size_bits <= 8).then_some(ByteOrder::LE))
-                .expect("Register should have a valid byte order or not need one");
+            let target_byte_order = get_target_byte_order(reg, device);
 
-            let target_byte_size = reg.size_bits.div_ceil(8) as usize;
-
-            match reg.reset_value.as_mut() {
-                Some(ResetValue::Integer(int)) => {
-                    // Convert the integer to LE and LSB0
-                    let mut array = int.to_le_bytes();
-                    if reg.bit_order == BitOrder::MSB0 {
-                        array.iter_mut().for_each(|b| *b = b.reverse_bits());
-                    }
-
-                    let array_view = array.view_bits_mut::<Lsb0>();
-
-                    // Check if the value is not too big
-                    ensure!(
-                        !array_view[reg.size_bits as usize..].any(),
-                        "The reset value of register \"{}\" has (a) bit(s) specified above the size of the register. \
-                        While you can specify them, this is likely a mistake and thus not accepted. Keep the bits `{}..` all at zero",
-                        reg.name,
+            match reg.reset_value.as_ref() {
+                Some(reset_value) => {
+                    let new_reset_value = convert_reset_value(
+                        reset_value.clone(),
+                        reg.bit_order,
                         reg.size_bits,
-                    );
-
-                    let mut final_array = array[..target_byte_size].to_vec();
-
-                    // Flip the bitorder back to the target, but crucially keep the byte order little endian!
-                    if reg.bit_order == BitOrder::MSB0 {
-                        final_array.iter_mut().for_each(|b| *b = b.reverse_bits());
-                    }
-
-                    reg.reset_value = Some(ResetValue::Array(final_array));
-
-                    Ok(())
-                }
-                Some(ResetValue::Array(array)) => {
-                    ensure!(
-                        array.len() == target_byte_size,
-                        "The reset value of register \"{}\" has the incorrect length. It must be specified as {target_byte_size} bytes, but now only has {} elements",
-                        reg.name,
-                        array.len(),
-                    );
-
-                    // Convert to little endian since that's the output we need
-                    if target_byte_order == ByteOrder::BE {
-                        array.reverse();
-                    }
-
-                    match reg.bit_order {
-                        BitOrder::LSB0 => {
-                            ensure!(
-                                !array.view_bits::<Lsb0>()[reg.size_bits as usize..].any(),
-                                "The reset value of register \"{}\" has (a) bit(s) specified above the size of the register. \
-                                While you can specify them, this is likely a mistake and thus not accepted. Keep the bits `{}..` all at zero",
-                                reg.name,
-                                reg.size_bits,
-                            );
-                        }
-                        BitOrder::MSB0 => {
-                            ensure!(
-                                !array.view_bits::<Msb0>()[reg.size_bits as usize..].any(),
-                                "The reset value of register \"{}\" has (a) bit(s) specified above the size of the register. \
-                                While you can specify them, this is likely a mistake and thus not accepted. Keep the bits `{}..` all at zero",
-                                reg.name,
-                                reg.size_bits,
-                            );
-                        }
-                    }
-
+                        "register",
+                        &reg.name,
+                        target_byte_order,
+                    )?;
+                    new_reset_values.insert(reg.name.clone(), new_reset_value);
                     Ok(())
                 }
                 None => Ok(()),
             }
         }
+        Object::Ref(RefObject {
+            name,
+            object_override: ObjectOverride::Register(reg_override),
+            ..
+        }) => match reg_override.reset_value.as_ref() {
+            Some(reset_value) => {
+                let base_reg = search_object(&reg_override.name, &device.objects)
+                    .expect("Refs have been validated already for existance")
+                    .as_register()
+                    .expect("Refs have been validated already for types");
+
+                let target_byte_order = get_target_byte_order(base_reg, device);
+
+                let new_reset_value = convert_reset_value(
+                    reset_value.clone(),
+                    base_reg.bit_order,
+                    base_reg.size_bits,
+                    "ref register",
+                    name,
+                    target_byte_order,
+                )?;
+                new_reset_values.insert(name.clone(), new_reset_value);
+                Ok(())
+            }
+            None => Ok(()),
+        },
         _ => Ok(()),
-    })
+    })?;
+
+    recurse_objects_mut(&mut device.objects, &mut |object| match object {
+        Object::Register(register) => {
+            if let Some(new_reset_value) = new_reset_values.remove(&register.name) {
+                register.reset_value = Some(new_reset_value);
+            }
+
+            Ok(())
+        }
+        Object::Ref(RefObject {
+            name,
+            object_override: ObjectOverride::Register(reg_override),
+            ..
+        }) => {
+            if let Some(new_reset_value) = new_reset_values.remove(name) {
+                reg_override.reset_value = Some(new_reset_value);
+            }
+            Ok(())
+        }
+        _ => Ok(()),
+    })?;
+
+    assert!(new_reset_values.is_empty());
+
+    Ok(())
+}
+
+fn get_target_byte_order(reg: &Register, device: &Device) -> ByteOrder {
+    reg.byte_order
+        .or(device.global_config.default_byte_order)
+        .or((reg.size_bits <= 8).then_some(ByteOrder::LE))
+        .expect("Register should have a valid byte order or not need one")
+}
+
+fn convert_reset_value(
+    reset_value: ResetValue,
+    bit_order: BitOrder,
+    size_bits: u32,
+    object_type_name: &str,
+    object_name: &str,
+    target_byte_order: ByteOrder,
+) -> anyhow::Result<ResetValue> {
+    let target_byte_size = size_bits.div_ceil(8) as usize;
+
+    match reset_value {
+        ResetValue::Integer(int) => {
+            // Convert the integer to LE and LSB0
+            let mut array = int.to_le_bytes();
+            if bit_order == BitOrder::MSB0 {
+                array.iter_mut().for_each(|b| *b = b.reverse_bits());
+            }
+
+            let array_view = array.view_bits_mut::<Lsb0>();
+
+            // Check if the value is not too big
+            ensure!(
+                !array_view[size_bits as usize..].any(),
+                "The reset value of {object_type_name} \"{}\" has (a) bit(s) specified above the size of the register. \
+                While you can specify them, this is likely a mistake and thus not accepted. Keep the bits `{}..` all at zero",
+                object_name,
+                size_bits,
+            );
+
+            let mut final_array = array[..target_byte_size].to_vec();
+
+            // Flip the bitorder back to the target, but crucially keep the byte order little endian!
+            if bit_order == BitOrder::MSB0 {
+                final_array.iter_mut().for_each(|b| *b = b.reverse_bits());
+            }
+
+            Ok(ResetValue::Array(final_array))
+        }
+        ResetValue::Array(mut array) => {
+            ensure!(
+                array.len() == target_byte_size,
+                "The reset value of {object_type_name} \"{}\" has the incorrect length. It must be specified as {target_byte_size} bytes, but now only has {} elements",
+                object_name,
+                array.len(),
+            );
+
+            // Convert to little endian since that's the output we need
+            if target_byte_order == ByteOrder::BE {
+                array.reverse();
+            }
+
+            match bit_order {
+                BitOrder::LSB0 => {
+                    ensure!(
+                        !array.view_bits::<Lsb0>()[size_bits as usize..].any(),
+                        "The reset value of {object_type_name} \"{}\" has (a) bit(s) specified above the size of the register. \
+                        While you can specify them, this is likely a mistake and thus not accepted. Keep the bits `{}..` all at zero",
+                        object_name,
+                        size_bits,
+                    );
+                }
+                BitOrder::MSB0 => {
+                    ensure!(
+                        !array.view_bits::<Msb0>()[size_bits as usize..].any(),
+                        "The reset value of {object_type_name} \"{}\" has (a) bit(s) specified above the size of the register. \
+                        While you can specify them, this is likely a mistake and thus not accepted. Keep the bits `{}..` all at zero",
+                        object_name,
+                        size_bits,
+                    );
+                }
+            }
+
+            Ok(ResetValue::Array(array))
+        }
+    }
 }
 
 #[cfg(test)]

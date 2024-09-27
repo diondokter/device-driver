@@ -223,6 +223,14 @@ impl Object {
         }
     }
 
+    pub fn as_register(&self) -> Option<&Register> {
+        if let Self::Register(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
     pub fn as_command_mut(&mut self) -> Option<&mut Command> {
         if let Self::Command(v) = self {
             Some(v)
@@ -450,6 +458,14 @@ impl ObjectOverride {
             ObjectOverride::Block(v) => &v.name,
             ObjectOverride::Register(v) => &v.name,
             ObjectOverride::Command(v) => &v.name,
+        }
+    }
+
+    pub fn as_register(&self) -> Option<&RegisterOverride> {
+        if let Self::Register(v) = self {
+            Some(v)
+        } else {
+            None
         }
     }
 }

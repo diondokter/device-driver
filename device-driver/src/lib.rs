@@ -25,12 +25,9 @@ pub trait FieldSet {
     type BUFFER: From<Self> + Into<Self> + AsMut<[u8]> + AsRef<[u8]>
     where
         Self: Sized;
-    
+
     /// The size of the field set in number of bits
     const SIZE_BITS: u32;
-
-    /// Create a new instance, loaded with the default value (if any)
-    fn new_with_default() -> Self;
 
     /// Create a new instance, loaded all 0's
     fn new_with_zero() -> Self;

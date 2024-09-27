@@ -2,8 +2,12 @@ use std::ops::{Add, Not};
 
 use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
+use syn::Ident;
 
-use crate::{lir, mir};
+use crate::{
+    lir,
+    mir::{self, passes::search_object},
+};
 
 use super::passes::{find_min_max_addresses, recurse_objects};
 
@@ -61,7 +65,13 @@ fn collect_into_blocks(
     let mut methods = Vec::new();
 
     for object in objects {
-        let method = get_method(object, &mut blocks, global_config, device_objects)?;
+        let method = get_method(
+            object,
+            &mut blocks,
+            global_config,
+            device_objects,
+            format_ident!("new"),
+        )?;
 
         methods.push(method);
     }
@@ -84,6 +94,7 @@ fn get_method(
     blocks: &mut Vec<lir::Block>,
     global_config: &mir::GlobalConfig,
     device_objects: &[mir::Object],
+    mut register_reset_value_function: Ident,
 ) -> Result<lir::BlockMethod, anyhow::Error> {
     use convert_case::Casing;
 
@@ -140,6 +151,7 @@ fn get_method(
                     .register_address_type
                     .expect("The presence of the address type is already checked in a mir pass")
                     .into(),
+                reset_value_function: register_reset_value_function.clone(),
             },
         },
         mir::Object::Command(mir::Command {
@@ -235,6 +247,8 @@ fn get_method(
                     }
                     if let Some(reset_value) = override_values.reset_value.clone() {
                         reffed_object.reset_value = Some(reset_value);
+                        register_reset_value_function =
+                            format_ident!("new_as_{}", name.to_case(convert_case::Case::Snake));
                     }
                     if let Some(repeat) = override_values.repeat {
                         reffed_object.repeat = Some(repeat);
@@ -256,7 +270,13 @@ fn get_method(
                 }
             }
 
-            let mut method = get_method(&reffed_object, blocks, global_config, device_objects)?;
+            let mut method = get_method(
+                &reffed_object,
+                blocks,
+                global_config,
+                device_objects,
+                register_reset_value_function,
+            )?;
 
             // We kept the old name in the reffed object so it generates with the correct field sets.
             // But we do want to have the name of ref to be the method name.
@@ -265,23 +285,6 @@ fn get_method(
             method
         }
     })
-}
-
-fn search_object<'d>(name: &str, objects: &'d [mir::Object]) -> Option<&'d mir::Object> {
-    for object in objects {
-        if object.name() == name {
-            return Some(object);
-        }
-
-        if let Some(block_objects) = object.get_block_object_list() {
-            match search_object(name, block_objects) {
-                None => {}
-                found => return found,
-            }
-        }
-    }
-
-    None
 }
 
 fn transform_field_sets<'a>(
@@ -293,6 +296,23 @@ fn transform_field_sets<'a>(
     recurse_objects(&device.objects, &mut |object| {
         match object {
             mir::Object::Register(r) => {
+                let ref_reset_overrides = find_refs(device, object)?
+                    .iter()
+                    .map(|r| {
+                        (
+                            &r.name,
+                            r.object_override
+                                .as_register()
+                                .expect("Ref must be register override"),
+                        )
+                    })
+                    .filter_map(|(ref_name, ro)| {
+                        ro.reset_value.as_ref().map(|reset_value| {
+                            (ref_name.clone(), reset_value.as_array().unwrap().clone())
+                        })
+                    })
+                    .collect();
+
                 field_sets.push(transform_field_set(
                     &r.fields,
                     format_ident!("{}", r.name),
@@ -304,6 +324,7 @@ fn transform_field_sets<'a>(
                     r.reset_value
                         .as_ref()
                         .map(|rv| rv.as_array().unwrap().clone()),
+                    ref_reset_overrides,
                     mir_enums.clone(),
                 )?);
             }
@@ -317,6 +338,7 @@ fn transform_field_sets<'a>(
                     c.bit_order,
                     c.size_bits_in,
                     None,
+                    Vec::new(),
                     mir_enums.clone(),
                 )?);
                 field_sets.push(transform_field_set(
@@ -328,6 +350,7 @@ fn transform_field_sets<'a>(
                     c.bit_order,
                     c.size_bits_out,
                     None,
+                    Vec::new(),
                     mir_enums.clone(),
                 )?);
             }
@@ -350,6 +373,7 @@ fn transform_field_set<'a>(
     bit_order: mir::BitOrder,
     size_bits: u32,
     reset_value: Option<Vec<u8>>,
+    ref_reset_overrides: Vec<(String, Vec<u8>)>,
     enum_list: impl Iterator<Item = &'a mir::Enum> + Clone,
 ) -> anyhow::Result<lir::FieldSet> {
     let cfg_attr = cfg_attr_string_to_tokens(cfg_attr)?;
@@ -448,6 +472,7 @@ fn transform_field_set<'a>(
         bit_order,
         size_bits,
         reset_value: reset_value.unwrap_or_else(|| vec![0; size_bits.div_ceil(8) as usize]),
+        ref_reset_overrides,
         fields,
     })
 }
@@ -611,4 +636,23 @@ fn find_best_internal_address(device: &mir::Device) -> proc_macro2::Ident {
     } else {
         format_ident!("u{needs_bits}")
     }
+}
+
+fn find_refs<'d>(
+    device: &'d mir::Device,
+    source_object: &mir::Object,
+) -> anyhow::Result<Vec<&'d mir::RefObject>> {
+    let mut found_refs = Vec::new();
+
+    recurse_objects(&device.objects, &mut |object| {
+        if let mir::Object::Ref(ref_object) = object {
+            if ref_object.object_override.name() == source_object.name() {
+                found_refs.push(ref_object);
+            }
+        }
+
+        Ok(())
+    })?;
+
+    Ok(found_refs)
 }

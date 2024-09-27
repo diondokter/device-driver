@@ -58,6 +58,7 @@ pub trait AsyncRegisterInterface {
 pub struct RegisterOperation<'i, Interface, AddressType: Copy, Register: FieldSet, Access> {
     interface: &'i mut Interface,
     address: AddressType,
+    register_new_with_reset: fn() -> Register,
     _phantom: PhantomData<(Register, Access)>,
 }
 
@@ -65,10 +66,15 @@ impl<'i, Interface, AddressType: Copy, Register: FieldSet, Access>
     RegisterOperation<'i, Interface, AddressType, Register, Access>
 {
     #[doc(hidden)]
-    pub fn new(interface: &'i mut Interface, address: AddressType) -> Self {
+    pub fn new(
+        interface: &'i mut Interface,
+        address: AddressType,
+        register_new_with_reset: fn() -> Register,
+    ) -> Self {
         Self {
             interface,
             address,
+            register_new_with_reset,
             _phantom: PhantomData,
         }
     }
@@ -85,7 +91,7 @@ where
     /// The closure is given the write object initialized to the reset value of the register.
     /// If no reset value is specified for this register, this function is the same as [Self::write_with_zero].
     pub fn write<R>(&mut self, f: impl FnOnce(&mut Register) -> R) -> Result<R, Interface::Error> {
-        let mut register = Register::new_with_default();
+        let mut register = (self.register_new_with_reset)();
         let returned = f(&mut register);
 
         let buffer = Register::BUFFER::from(register);
@@ -103,8 +109,11 @@ where
     ) -> Result<R, Interface::Error> {
         let mut register = Register::new_with_zero();
         let returned = f(&mut register);
-        self.interface
-            .write_register(self.address, Register::SIZE_BITS, Register::BUFFER::from(register).as_mut())?;
+        self.interface.write_register(
+            self.address,
+            Register::SIZE_BITS,
+            Register::BUFFER::from(register).as_mut(),
+        )?;
         Ok(returned)
     }
 }
@@ -138,8 +147,11 @@ where
     pub fn modify<R>(&mut self, f: impl FnOnce(&mut Register) -> R) -> Result<R, Interface::Error> {
         let mut register = self.read()?;
         let returned = f(&mut register);
-        self.interface
-            .write_register(self.address, Register::SIZE_BITS, Register::BUFFER::from(register).as_mut())?;
+        self.interface.write_register(
+            self.address,
+            Register::SIZE_BITS,
+            Register::BUFFER::from(register).as_mut(),
+        )?;
         Ok(returned)
     }
 }
@@ -158,7 +170,7 @@ where
         &mut self,
         f: impl FnOnce(&mut Register) -> R,
     ) -> Result<R, Interface::Error> {
-        let mut register = Register::new_with_default();
+        let mut register = (self.register_new_with_reset)();
         let returned = f(&mut register);
 
         let buffer = Register::BUFFER::from(register);
@@ -178,7 +190,11 @@ where
         let mut register = Register::new_with_zero();
         let returned = f(&mut register);
         self.interface
-            .write_register(self.address, Register::SIZE_BITS, Register::BUFFER::from(register).as_mut())
+            .write_register(
+                self.address,
+                Register::SIZE_BITS,
+                Register::BUFFER::from(register).as_mut(),
+            )
             .await?;
         Ok(returned)
     }
@@ -218,7 +234,11 @@ where
         let mut register = self.read_async().await?;
         let returned = f(&mut register);
         self.interface
-            .write_register(self.address, Register::SIZE_BITS, Register::BUFFER::from(register).as_mut())
+            .write_register(
+                self.address,
+                Register::SIZE_BITS,
+                Register::BUFFER::from(register).as_mut(),
+            )
             .await?;
         Ok(returned)
     }

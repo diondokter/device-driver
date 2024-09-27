@@ -51,12 +51,14 @@ device_driver::create_device!(
         register Foo {
             const ADDRESS = 0;
             const SIZE_BITS = 24;
+            const RESET_VALUE = 0x000001;
 
             val: int = 0..24,
         },
         /// This is the Foo ref
         ref FooRef = register Foo {
             const ADDRESS = 3;
+            const RESET_VALUE = 0x000002;
         }
     }
 );
@@ -83,4 +85,17 @@ fn refs_have_same_type() {
 
 fn type_id_of<T: 'static + ?Sized>(_: &T) -> TypeId {
     TypeId::of::<T>()
+}
+
+#[test]
+#[inline(never)]
+#[no_mangle]
+fn refs_have_own_reset_value() {
+    let mut device = MyTestDevice::new(DeviceInterface::new());
+
+    device.foo().write(|_| {}).unwrap();
+    device.foo_ref().write(|_| {}).unwrap();
+
+    assert_eq!(device.foo().read().unwrap().val(), 1);
+    assert_eq!(device.foo_ref().read().unwrap().val(), 2);
 }
