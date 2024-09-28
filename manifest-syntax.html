@@ -244,6 +244,213 @@
 
 </style>
 <h1 id="manifest-syntax"><a class="header" href="#manifest-syntax">Manifest syntax</a></h1>
+<div class="mdbook-alerts mdbook-alerts-important">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  important
+</p>
+<p>This doc is written manually. The implementation may differ.
+If it does, then either this doc is wrong or the implementation is wrong.
+In any case, them disagreeing is a bug. Please file an issue!</p>
+</div>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>While something may be valid to be parsed, it may not be valid as a construct
+and may generate an error deeper down.</p>
+</div>
+<p>Top-level item is <em>Device</em>.</p>
+<p>Anything marked like <em>this</em> denotes its own type specification.</p>
+<p>These are the pre-defined types:</p>
+<ul>
+<li>bool</li>
+<li>uint</li>
+<li>int</li>
+<li>float</li>
+<li>string</li>
+<li>array
+<ul>
+<li>Using <code>[]</code> brackets.</li>
+<li>If inner types are restricted, then signaled as e.g. <code>[float]</code></li>
+</ul>
+</li>
+<li>map
+<ul>
+<li>Using <code>{}</code> brackets.</li>
+<li>The keys are always text/string.</li>
+<li>Restrictions can be signaled as required by <code>?</code></li>
+<li>Restriction syntax: `{ foo?, bar?: float, xen: bool, *: bool }
+<ul>
+<li>Optional field <code>foo</code> without type restriction</li>
+<li>Optional field <code>bar</code> with float restriction</li>
+<li>Required field <code>xen</code> with bool restriction</li>
+<li><code>0..N</code> fields with any name with bool restriction</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>Further restriction can be denoted using <code>oneof()</code>, for example: <code>int oneof(1, 2, 3, 4)</code> or <code>oneof(bool, int)</code></p>
+<p><em>Device</em>:
+The key of the object will become the name of it</p>
+<pre><code>{
+    config?: _GlobalConfig_,
+    *: _Object_
+}
+</code></pre>
+<p><em>GlobalConfig</em>:</p>
+<pre><code>{
+    default_register_access?: _Access_,
+    default_field_access?: _Access_,
+    default_buffer_access?: _Access_,
+    default_byte_order?: _ByteOrder_,
+    default_bit_order?: _BitOrder_,
+    register_address_type?: _IntegerType_,
+    command_address_type?: _IntegerType_,
+    buffer_address_type?: _IntegerType_,
+    name_word_boundaries?: _NameWordBoundaries_
+}
+</code></pre>
+<p><em>Access</em>:</p>
+<pre><code>string oneof("ReadWrite", "RW", "ReadOnly", "RO", "WriteOnly", "WO")
+</code></pre>
+<p><em>ByteOrder</em>:</p>
+<pre><code>string oneof("LE", "BE")
+</code></pre>
+<p><em>BitOrder</em>:</p>
+<pre><code>string oneof("LSB0", "MSB0")
+</code></pre>
+<p><em>IntegerType</em>:</p>
+<pre><code>string oneof("u8", "u16", "u32", "i8", "i16", "i32", "i64")
+</code></pre>
+<p><em>NameWordBoundaries</em>:</p>
+<pre><code>oneof([_Boundary_], string)
+</code></pre>
+<p><em>Object</em>:</p>
+<pre><code>oneof(
+  _Block_,
+  _Register_,
+  _Command_,
+  _Buffer_,
+  _RefObject_
+)
+</code></pre>
+<p><em>RefObject</em>:</p>
+<pre><code>{
+    type: string oneof("ref"),
+    cfg?: string,
+    description?: string,
+    override: _Object_,
+}
+</code></pre>
+<p><em>Block</em>:</p>
+<pre><code>{
+    type: string oneof("block"),
+    cfg?: string,
+    description?: string,
+    address_offset?: int,
+    repeat?: _Repeat_,
+    objects?: {
+        *: _Object_
+    }
+}
+</code></pre>
+<p><em>Repeat</em>:</p>
+<pre><code>{
+    count: uint,
+    stride: int
+}
+</code></pre>
+<p><em>Register</em>:</p>
+<pre><code>{
+    type: string oneof("register"),
+    cfg?: string,
+    description?: string,
+    access?: _Access_,
+    byte_order?: _ByteOrder_,
+    bit_order?: _BitOrder_,
+    address: int,
+    size_bits: int,
+    reset_value?: oneof(int, [uint]),
+    repeat?: _Repeat_,
+    allow_bit_overlap?: bool,
+    allow_address_overlap?: bool,
+    fields?: {
+        *: _Field_
+    }
+}
+</code></pre>
+<p><em>Field</em>:</p>
+<pre><code>{
+    cfg?: string,
+    description?: string,
+    access?: _Access_,
+    base: _BaseType_,
+    conversion?: _FieldConversion_,
+    try_conversion?: _FieldConversion_,
+    start: int,
+    end?: int,
+}
+</code></pre>
+<p><em>BaseType</em>:</p>
+<pre><code>string oneof("bool", "int", "uint")
+</code></pre>
+<p><em>FieldConversion</em>:</p>
+<pre><code>oneof(
+    string,
+    {
+        name: string,
+        *: _EnumVariant_
+    }
+)
+</code></pre>
+<p><em>EnumVariant</em>:</p>
+<pre><code>oneof(
+    _EnumValue_,
+    {
+        cfg?: string,
+        description?: string,
+        value: _EnumValue_
+    }
+)
+</code></pre>
+<p><em>EnumValue</em>:</p>
+<pre><code>oneof(
+    null, int, string oneof("default", "catch_all")
+)
+</code></pre>
+<p><em>Command</em>:</p>
+<pre><code>{
+    type: string oneof("command"),
+    cfg?: string,
+    description?: string,
+    byte_order?: _ByteOrder_,
+    bit_order?: _BitOrder_,
+    address: int,
+    repeat?: _Repeat_,
+    allow_bit_overlap?: bool,
+    allow_address_overlap?: bool,
+    size_bits_in?: int,
+    fields_in?: {
+        *: _Field_
+    },
+    size_bits_out?: int,
+    fields_out?: {
+        *: _Field_
+    },
+}
+</code></pre>
+<p><em>Buffer</em>:</p>
+<pre><code>{
+    type: string oneof("buffer"),
+    cfg?: string,
+    description?: string,
+    access?: _Access_,
+    address: int,
+}
+</code></pre>
 
                     </main>
 
