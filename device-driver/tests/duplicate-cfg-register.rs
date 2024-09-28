@@ -51,6 +51,9 @@ device_driver::create_device!(
             const RESET_VALUE = 20;
 
             value: bool = 0,
+            generated: uint as try enum Gen {
+                A = 0,
+            } = 1..2,
         },
         #[cfg(windows)]
         register Foo {
@@ -59,6 +62,9 @@ device_driver::create_device!(
             const RESET_VALUE = 10;
 
             value: bool = 0,
+            generated: uint as try enum Gen {
+                A = 1,
+            } = 1..2,
         },
         /// This ref uses whatever Foo ends up existing. But one must exist!
         ref FooRef = register Foo {
@@ -79,4 +85,9 @@ fn test_basic_read_modify_write() {
     assert_eq!(device.interface().device_memory[0], 0x01);
     #[cfg(windows)]
     assert_eq!(device.interface().device_memory[1], 0x01);
+
+    #[cfg(not(windows))]
+    assert_eq!(Gen::A as u8, 0);
+    #[cfg(windows)]
+    assert_eq!(Gen::A as u8, 1);
 }

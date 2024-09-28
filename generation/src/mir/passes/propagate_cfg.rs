@@ -25,6 +25,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
             if let Some(FieldConversion::Enum { enum_value, .. }) = field.field_conversion.as_mut()
             {
                 enum_value.cfg_attr = field.cfg_attr.combine(&new_cfg_attr);
+                // Just like we don't have to update the field cfg, we also don't have to update the enum variant cfgs
             }
         }
 

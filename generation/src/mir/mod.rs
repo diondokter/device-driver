@@ -583,6 +583,7 @@ impl_unique!(Command);
 impl_unique!(Buffer);
 impl_unique!(RefObject);
 impl_unique!(Block);
+impl_unique!(Enum);
 
 impl Unique for Object {
     fn id(&self) -> UniqueId {

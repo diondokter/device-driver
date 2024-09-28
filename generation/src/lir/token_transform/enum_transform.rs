@@ -55,6 +55,7 @@ pub fn generate_enum(value: &Enum) -> TokenStream {
         };
 
         quote! {
+            #cfg_attr
             impl Default for #name {
                 fn default() -> Self {
                     Self::#var_name #catch_all_extension
@@ -82,6 +83,7 @@ pub fn generate_enum(value: &Enum) -> TokenStream {
             .chain(Some(from_fallback_variant));
 
         quote! {
+            #cfg_attr
             impl From<#base_type> for #name {
                 fn from(val: #base_type) -> Self {
                     match val {
@@ -104,6 +106,7 @@ pub fn generate_enum(value: &Enum) -> TokenStream {
             .chain(Some(try_from_fallback_variant));
 
         quote! {
+            #cfg_attr
             impl core::convert::TryFrom<#base_type> for #name {
                 type Error = ::device_driver::ConversionError<#base_type>;
                 fn try_from(val: #base_type) -> Result<Self, Self::Error> {
@@ -136,6 +139,7 @@ pub fn generate_enum(value: &Enum) -> TokenStream {
         );
 
         quote! {
+            #cfg_attr
             impl From<#name> for #base_type {
                 fn from(val: #name) -> Self {
                     match val {
@@ -224,11 +228,13 @@ mod tests {
                     MyField1 = 1,
                     MyField2(u8) = 4,
                 }
+                #[cfg(windows)]
                 impl Default for MyEnum {
                     fn default() -> Self {
                         Self::MyField1
                     }
                 }
+                #[cfg(windows)]
                 impl From<u8> for MyEnum {
                     fn from(val: u8) -> Self {
                         match val {
@@ -238,6 +244,7 @@ mod tests {
                         }
                     }
                 }
+                #[cfg(windows)]
                 impl From<MyEnum> for u8 {
                     fn from(val: MyEnum) -> Self {
                         match val {

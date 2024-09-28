@@ -8,7 +8,7 @@ use super::recurse_objects_mut;
 /// If there is a collision an error is returned.
 pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
     let mut seen_object_ids = HashSet::new();
-    let mut generated_type_names = HashSet::new();
+    let mut generated_type_ids = HashSet::new();
 
     recurse_objects_mut(&mut device.objects, &mut |object| {
         anyhow::ensure!(
@@ -28,19 +28,19 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
                 );
 
                 if let Some(FieldConversion::Enum {
-                    enum_value: Enum { name, variants, .. },
+                    enum_value: enum_value @ Enum { name, variants, .. },
                     ..
                 }) = field.field_conversion.as_ref()
                 {
                     let mut seen_variant_names = HashSet::new();
 
                     anyhow::ensure!(
-                    generated_type_names.insert(name.clone()),
-                    "Duplicate generated enum name \"{}\" found in object \"{}\" on field \"{}\"",
-                    name,
-                    object.name(),
-                    field.name,
-                );
+                        generated_type_ids.insert(enum_value.id()),
+                        "Duplicate generated enum name \"{}\" found in object \"{}\" on field \"{}\"",
+                        name,
+                        object.name(),
+                        field.name,
+                    );
 
                     for v in variants.iter() {
                         anyhow::ensure!(
