@@ -1,4 +1,4 @@
-# Syntax
+# Dsl syntax
 
 > [!IMPORTANT]
 > This doc is written manually. The implementation may differ.
