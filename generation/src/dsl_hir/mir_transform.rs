@@ -157,7 +157,7 @@ fn get_description(attrs: &dsl_hir::AttributeList) -> Option<String> {
     }
 }
 
-fn get_cfg_attr(attrs: &dsl_hir::AttributeList) -> Result<Option<String>, syn::Error> {
+fn get_cfg_attr(attrs: &dsl_hir::AttributeList) -> Result<mir::Cfg, syn::Error> {
     let mut cfg_attrs = attrs
         .attributes
         .iter()
@@ -168,8 +168,8 @@ fn get_cfg_attr(attrs: &dsl_hir::AttributeList) -> Result<Option<String>, syn::E
         .collect::<Vec<_>>();
 
     match cfg_attrs.len() {
-        0 => Ok(None),
-        1 => Ok(Some(cfg_attrs.remove(0).0.clone())),
+        0 => Ok(mir::Cfg::new(None)),
+        1 => Ok(mir::Cfg::new(Some(&cfg_attrs.remove(0).0.clone()))),
         n => Err(syn::Error::new(
             *cfg_attrs.remove(1).1,
             format!("Only one cfg attribute is allowed, but {n} are found"),
@@ -542,7 +542,7 @@ fn transform_field(
 }
 
 fn transform_field_conversion(
-    field_cfg_attr: Option<String>,
+    field_cfg_attr: mir::Cfg,
     field_description: String,
     field_conversion: &dsl_hir::FieldConversion,
 ) -> Result<mir::FieldConversion, syn::Error> {
@@ -992,7 +992,7 @@ mod tests {
             .unwrap()
             .objects,
             &[mir::Object::Buffer(mir::Buffer {
-                cfg_attr: Some("feature = \"foo\"".into()),
+                cfg_attr: mir::Cfg::new(Some("feature = \"foo\"")),
                 description: " Hello world!\n This should be in order!".into(),
                 name: "Foo".into(),
                 access: mir::Access::RW,
@@ -1060,7 +1060,7 @@ mod tests {
             .unwrap()
             .objects,
             &[mir::Object::Command(mir::Command {
-                cfg_attr: Some("feature = \"foo\"".into()),
+                cfg_attr: mir::Cfg::new(Some("feature = \"foo\"")),
                 description: " Hello world!\n This should be in order!".into(),
                 name: "Foo".into(),
                 address: 5,
@@ -1119,7 +1119,7 @@ mod tests {
                 }),
                 in_fields: vec![
                     mir::Field {
-                        cfg_attr: Some("bla".into()),
+                        cfg_attr: mir::Cfg::new(Some("bla")),
                         description: " Hello!".into(),
                         name: "val".into(),
                         access: mir::Access::WO,
@@ -1128,7 +1128,7 @@ mod tests {
                         field_address: 0..0,
                     },
                     mir::Field {
-                        cfg_attr: None,
+                        cfg_attr: mir::Cfg::new(None),
                         description: Default::default(),
                         name: "foo".into(),
                         access: mir::Access::RO,
@@ -1141,37 +1141,37 @@ mod tests {
                     }
                 ],
                 out_fields: vec![mir::Field {
-                    cfg_attr: None,
+                    cfg_attr: mir::Cfg::new(None),
                     description: Default::default(),
                     name: "val".into(),
                     access: mir::Access::RO,
                     base_type: mir::BaseType::Int,
                     field_conversion: Some(mir::FieldConversion::Enum {
                         enum_value: mir::Enum::new(
-                            None,
+                            mir::Cfg::new(None),
                             Default::default(),
                             "Val".into(),
                             vec![
                                 mir::EnumVariant {
-                                    cfg_attr: None,
+                                    cfg_attr: mir::Cfg::new(None),
                                     description: Default::default(),
                                     name: "One".into(),
                                     value: mir::EnumValue::Unspecified,
                                 },
                                 mir::EnumVariant {
-                                    cfg_attr: None,
+                                    cfg_attr: mir::Cfg::new(None),
                                     description: " Two!".into(),
                                     name: "Two".into(),
                                     value: mir::EnumValue::Specified(2),
                                 },
                                 mir::EnumVariant {
-                                    cfg_attr: None,
+                                    cfg_attr: mir::Cfg::new(None),
                                     description: Default::default(),
                                     name: "Three".into(),
                                     value: mir::EnumValue::Default,
                                 },
                                 mir::EnumVariant {
-                                    cfg_attr: Some("yes".into()),
+                                    cfg_attr: mir::Cfg::new(Some("yes")),
                                     description: Default::default(),
                                     name: "Four".into(),
                                     value: mir::EnumValue::CatchAll,
@@ -1235,7 +1235,7 @@ mod tests {
                 byte_order: Some(mir::ByteOrder::BE),
                 bit_order: mir::BitOrder::LSB0,
                 in_fields: vec![mir::Field {
-                    cfg_attr: None,
+                    cfg_attr: mir::Cfg::new(None),
                     description: Default::default(),
                     name: "val".into(),
                     access: mir::Access::default(),
@@ -1286,7 +1286,7 @@ mod tests {
             .unwrap()
             .objects,
             &[mir::Object::Buffer(mir::Buffer {
-                cfg_attr: None,
+                cfg_attr: mir::Cfg::new(None),
                 description: "".into(),
                 name: "Foo".into(),
                 access: mir::Access::default(),
@@ -1306,7 +1306,7 @@ mod tests {
             .unwrap()
             .objects,
             &[mir::Object::Buffer(mir::Buffer {
-                cfg_attr: Some("foo".into()),
+                cfg_attr: mir::Cfg::new(Some("foo")),
                 description: "".into(),
                 name: "Foo".into(),
                 access: mir::Access::default(),
@@ -1375,7 +1375,7 @@ mod tests {
             .unwrap()
             .objects,
             &[mir::Object::Ref(mir::RefObject {
-                cfg_attr: None,
+                cfg_attr: mir::Cfg::new(None),
                 description: "".into(),
                 name: "Foo".into(),
                 object_override: mir::ObjectOverride::Register(mir::RegisterOverride {
@@ -1406,7 +1406,7 @@ mod tests {
             .unwrap()
             .objects,
             &[mir::Object::Ref(mir::RefObject {
-                cfg_attr: None,
+                cfg_attr: mir::Cfg::new(None),
                 description: "".into(),
                 name: "Foo".into(),
                 object_override: mir::ObjectOverride::Register(mir::RegisterOverride {
@@ -1437,7 +1437,7 @@ mod tests {
             .unwrap()
             .objects,
             &[mir::Object::Ref(mir::RefObject {
-                cfg_attr: None,
+                cfg_attr: mir::Cfg::new(None),
                 description: "".into(),
                 name: "Foo".into(),
                 object_override: mir::ObjectOverride::Register(mir::RegisterOverride {
@@ -1575,7 +1575,7 @@ mod tests {
             .unwrap()
             .objects,
             &[mir::Object::Ref(mir::RefObject {
-                cfg_attr: None,
+                cfg_attr: mir::Cfg::new(None),
                 description: "".into(),
                 name: "Foo".into(),
                 object_override: mir::ObjectOverride::Command(mir::CommandOverride {
@@ -1600,7 +1600,7 @@ mod tests {
             .unwrap()
             .objects,
             &[mir::Object::Ref(mir::RefObject {
-                cfg_attr: None,
+                cfg_attr: mir::Cfg::new(None),
                 description: "".into(),
                 name: "Foo".into(),
                 object_override: mir::ObjectOverride::Command(mir::CommandOverride {
@@ -1630,7 +1630,7 @@ mod tests {
             .unwrap()
             .objects,
             &[mir::Object::Ref(mir::RefObject {
-                cfg_attr: None,
+                cfg_attr: mir::Cfg::new(None),
                 description: "".into(),
                 name: "Foo".into(),
                 object_override: mir::ObjectOverride::Command(mir::CommandOverride {
@@ -1662,7 +1662,7 @@ mod tests {
             .unwrap()
             .objects,
             &[mir::Object::Ref(mir::RefObject {
-                cfg_attr: None,
+                cfg_attr: mir::Cfg::new(None),
                 description: "".into(),
                 name: "Foo".into(),
                 object_override: mir::ObjectOverride::Command(mir::CommandOverride {
@@ -1847,7 +1847,7 @@ mod tests {
             .unwrap()
             .objects,
             &[mir::Object::Ref(mir::RefObject {
-                cfg_attr: None,
+                cfg_attr: mir::Cfg::new(None),
                 description: "".into(),
                 name: "Foo".into(),
                 object_override: mir::ObjectOverride::Block(mir::BlockOverride {
@@ -1906,7 +1906,7 @@ mod tests {
             .unwrap()
             .objects,
             &[mir::Object::Ref(mir::RefObject {
-                cfg_attr: Some("bla".into()),
+                cfg_attr: mir::Cfg::new(Some("bla")),
                 description: " Hi!".into(),
                 name: "Foo".into(),
                 object_override: mir::ObjectOverride::Block(mir::BlockOverride {
@@ -1934,7 +1934,7 @@ mod tests {
             .unwrap()
             .objects,
             &[mir::Object::Ref(mir::RefObject {
-                cfg_attr: None,
+                cfg_attr: mir::Cfg::new(None),
                 description: "".into(),
                 name: "Foo".into(),
                 object_override: mir::ObjectOverride::Block(mir::BlockOverride {
@@ -1991,7 +1991,7 @@ mod tests {
             .unwrap()
             .objects,
             &[mir::Object::Block(mir::Block {
-                cfg_attr: Some("bar".into()),
+                cfg_attr: mir::Cfg::new(Some("bar")),
                 description: " Hello!".into(),
                 name: "Foo".into(),
                 address_offset: 0x500,

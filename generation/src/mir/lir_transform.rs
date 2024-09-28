@@ -23,7 +23,7 @@ pub fn transform(device: mir::Device, driver_name: &str) -> anyhow::Result<lir::
     // Create a root block and pass the device objects to it
     let blocks = collect_into_blocks(
         BorrowedBlock {
-            cfg_attr: &None,
+            cfg_attr: &mir::Cfg::new(None),
             description: &format!("Root block of the {driver_name} driver"),
             name: &driver_name.into(),
             address_offset: &0,
@@ -60,7 +60,7 @@ fn collect_into_blocks(
         objects,
     } = block;
 
-    let cfg_attr = cfg_attr_string_to_tokens(cfg_attr.as_deref())?;
+    let cfg_attr = cfg_attr_string_to_tokens(cfg_attr)?;
 
     let mut methods = Vec::new();
 
@@ -117,7 +117,7 @@ fn get_method(
             )?);
 
             lir::BlockMethod {
-                cfg_attr: cfg_attr_string_to_tokens(cfg_attr.as_deref())?,
+                cfg_attr: cfg_attr_string_to_tokens(cfg_attr)?,
                 doc_attr: quote! { #[doc = #description] },
                 name: format_ident!("{}", name.to_case(convert_case::Case::Snake)),
                 address: Literal::i64_unsuffixed(*address_offset),
@@ -138,7 +138,7 @@ fn get_method(
             repeat,
             ..
         }) => lir::BlockMethod {
-            cfg_attr: cfg_attr_string_to_tokens(cfg_attr.as_deref())?,
+            cfg_attr: cfg_attr_string_to_tokens(cfg_attr)?,
             doc_attr: quote! { #[doc = #description] },
             name: format_ident!("{}", name.to_case(convert_case::Case::Snake)),
             address: Literal::i64_unsuffixed(*address),
@@ -165,7 +165,7 @@ fn get_method(
             out_fields,
             ..
         }) => lir::BlockMethod {
-            cfg_attr: cfg_attr_string_to_tokens(cfg_attr.as_deref())?,
+            cfg_attr: cfg_attr_string_to_tokens(cfg_attr)?,
             doc_attr: quote! { #[doc = #description] },
             name: format_ident!("{}", name.to_case(convert_case::Case::Snake)),
             address: Literal::i64_unsuffixed(*address),
@@ -193,7 +193,7 @@ fn get_method(
             access,
             address,
         }) => lir::BlockMethod {
-            cfg_attr: cfg_attr_string_to_tokens(cfg_attr.as_deref())?,
+            cfg_attr: cfg_attr_string_to_tokens(cfg_attr)?,
             doc_attr: quote! { #[doc = #description] },
             name: format_ident!("{}", name.to_case(convert_case::Case::Snake)),
             address: Literal::i64_unsuffixed(*address),
@@ -316,7 +316,7 @@ fn transform_field_sets<'a>(
                 field_sets.push(transform_field_set(
                     &r.fields,
                     format_ident!("{}", r.name),
-                    r.cfg_attr.as_deref(),
+                    &r.cfg_attr,
                     &r.description,
                     r.byte_order.unwrap(),
                     r.bit_order,
@@ -332,7 +332,7 @@ fn transform_field_sets<'a>(
                 field_sets.push(transform_field_set(
                     &c.in_fields,
                     format_ident!("{}In", c.name),
-                    c.cfg_attr.as_deref(),
+                    &c.cfg_attr,
                     &c.description,
                     c.byte_order.unwrap(),
                     c.bit_order,
@@ -344,7 +344,7 @@ fn transform_field_sets<'a>(
                 field_sets.push(transform_field_set(
                     &c.out_fields,
                     format_ident!("{}Out", c.name),
-                    c.cfg_attr.as_deref(),
+                    &c.cfg_attr,
                     &c.description,
                     c.byte_order.unwrap(),
                     c.bit_order,
@@ -367,7 +367,7 @@ fn transform_field_sets<'a>(
 fn transform_field_set<'a>(
     field_set: &[mir::Field],
     field_set_name: proc_macro2::Ident,
-    cfg_attr: Option<&str>,
+    cfg_attr: &mir::Cfg,
     description: &str,
     byte_order: mir::ByteOrder,
     bit_order: mir::BitOrder,
@@ -391,7 +391,7 @@ fn transform_field_set<'a>(
                 field_address,
             } = field;
 
-            let cfg_attr = cfg_attr_string_to_tokens(cfg_attr.as_deref())?;
+            let cfg_attr = cfg_attr_string_to_tokens(cfg_attr)?;
 
             let address = Literal::u32_unsuffixed(field_address.start)
                 ..Literal::u32_unsuffixed(field_address.end);
@@ -510,7 +510,7 @@ fn transform_enum(
         generation_style: _,
     } = e;
 
-    let cfg_attr = cfg_attr_string_to_tokens(cfg_attr.as_deref())?;
+    let cfg_attr = cfg_attr_string_to_tokens(cfg_attr)?;
 
     let base_type = match (base_type, size_bits) {
         (mir::BaseType::Bool, _) => format_ident!("u8"),
@@ -529,7 +529,7 @@ fn transform_enum(
                 value,
             } = v;
 
-            let cfg_attr = cfg_attr_string_to_tokens(cfg_attr.as_deref())?;
+            let cfg_attr = cfg_attr_string_to_tokens(cfg_attr)?;
 
             let number = match value {
                 mir::EnumValue::Unspecified
@@ -565,8 +565,8 @@ fn transform_enum(
     })
 }
 
-fn cfg_attr_string_to_tokens(cfg_attr: Option<&str>) -> anyhow::Result<TokenStream> {
-    match cfg_attr {
+fn cfg_attr_string_to_tokens(cfg_attr: &mir::Cfg) -> anyhow::Result<TokenStream> {
+    match cfg_attr.inner() {
         Some(val) => {
             let cfg_content = syn::parse_str::<proc_macro2::TokenStream>(val)?;
             Ok(quote! { #[cfg(#cfg_content)] })
@@ -587,7 +587,7 @@ fn repeat_to_method_kind(repeat: &Option<mir::Repeat>) -> lir::BlockMethodKind {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BorrowedBlock<'o> {
-    pub cfg_attr: &'o Option<String>,
+    pub cfg_attr: &'o mir::Cfg,
     pub description: &'o String,
     pub name: &'o String,
     pub address_offset: &'o i64,

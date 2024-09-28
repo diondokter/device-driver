@@ -175,13 +175,13 @@ impl Object {
     }
 
     /// Get a reference to the cfg of the specific object
-    pub(self) fn cfg_attr(&self) -> Option<&String> {
+    pub(self) fn cfg_attr_mut(&mut self) -> &mut Cfg {
         match self {
-            Object::Block(val) => val.cfg_attr.as_ref(),
-            Object::Register(val) => val.cfg_attr.as_ref(),
-            Object::Command(val) => val.cfg_attr.as_ref(),
-            Object::Buffer(val) => val.cfg_attr.as_ref(),
-            Object::Ref(val) => val.cfg_attr.as_ref(),
+            Object::Block(val) => &mut val.cfg_attr,
+            Object::Register(val) => &mut val.cfg_attr,
+            Object::Command(val) => &mut val.cfg_attr,
+            Object::Buffer(val) => &mut val.cfg_attr,
+            Object::Ref(val) => &mut val.cfg_attr,
         }
     }
 
@@ -273,7 +273,7 @@ impl Object {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Block {
-    pub cfg_attr: Option<String>,
+    pub cfg_attr: Cfg,
     pub description: String,
     pub name: String,
     pub address_offset: i64,
@@ -289,7 +289,7 @@ pub struct Repeat {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Register {
-    pub cfg_attr: Option<String>,
+    pub cfg_attr: Cfg,
     pub description: String,
     pub name: String,
     pub access: Access,
@@ -306,7 +306,7 @@ pub struct Register {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Field {
-    pub cfg_attr: Option<String>,
+    pub cfg_attr: Cfg,
     pub description: String,
     pub name: String,
     pub access: Access,
@@ -347,7 +347,7 @@ impl FieldConversion {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Enum {
-    pub cfg_attr: Option<String>,
+    pub cfg_attr: Cfg,
     pub description: String,
     pub name: String,
     pub variants: Vec<EnumVariant>,
@@ -356,7 +356,7 @@ pub struct Enum {
 
 impl Enum {
     pub fn new(
-        cfg_attr: Option<String>,
+        cfg_attr: Cfg,
         description: String,
         name: String,
         variants: Vec<EnumVariant>,
@@ -372,7 +372,7 @@ impl Enum {
 
     #[cfg(test)]
     fn new_with_style(
-        cfg_attr: Option<String>,
+        cfg_attr: Cfg,
         description: String,
         name: String,
         variants: Vec<EnumVariant>,
@@ -396,7 +396,7 @@ pub enum EnumGenerationStyle {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct EnumVariant {
-    pub cfg_attr: Option<String>,
+    pub cfg_attr: Cfg,
     pub description: String,
     pub name: String,
     pub value: EnumValue,
@@ -413,7 +413,7 @@ pub enum EnumValue {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Command {
-    pub cfg_attr: Option<String>,
+    pub cfg_attr: Cfg,
     pub description: String,
     pub name: String,
     pub address: i64,
@@ -430,7 +430,7 @@ pub struct Command {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Buffer {
-    pub cfg_attr: Option<String>,
+    pub cfg_attr: Cfg,
     pub description: String,
     pub name: String,
     pub access: Access,
@@ -439,7 +439,7 @@ pub struct Buffer {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RefObject {
-    pub cfg_attr: Option<String>,
+    pub cfg_attr: Cfg,
     pub description: String,
     pub name: String,
     pub object_override: ObjectOverride,
@@ -462,6 +462,14 @@ impl ObjectOverride {
     }
 
     pub fn as_register(&self) -> Option<&RegisterOverride> {
+        if let Self::Register(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_register_mut(&mut self) -> Option<&mut RegisterOverride> {
         if let Self::Register(v) = self {
             Some(v)
         } else {
@@ -507,6 +515,83 @@ impl ResetValue {
             Some(v)
         } else {
             None
+        }
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Default, Hash)]
+pub struct Cfg {
+    value: Option<String>,
+}
+
+impl Cfg {
+    pub fn new(value: Option<&str>) -> Self {
+        Self {
+            value: value.map(|v| v.into()),
+        }
+    }
+
+    #[must_use]
+    pub fn combine(&self, other: &Self) -> Self {
+        match (&self.value, &other.value) {
+            (None, None) => Self { value: None },
+            (None, Some(val)) => Self {
+                value: Some(val.clone()),
+            },
+            (Some(val), None) => Self {
+                value: Some(val.clone()),
+            },
+            (Some(val1), Some(val2)) if val1 == val2 => Self {
+                value: Some(val1.clone()),
+            },
+            (Some(val1), Some(val2)) => Self {
+                value: Some(format!("all({val1}, {val2})")),
+            },
+        }
+    }
+
+    pub fn inner(&self) -> Option<&str> {
+        self.value.as_deref()
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub struct UniqueId {
+    object_name: String,
+    object_cfg: Cfg,
+}
+
+pub trait Unique {
+    fn id(&self) -> UniqueId;
+}
+
+macro_rules! impl_unique {
+    ($t:ty) => {
+        impl Unique for $t {
+            fn id(&self) -> UniqueId {
+                UniqueId {
+                    object_name: self.name.clone(),
+                    object_cfg: self.cfg_attr.clone(),
+                }
+            }
+        }
+    };
+}
+
+impl_unique!(Register);
+impl_unique!(Command);
+impl_unique!(Buffer);
+impl_unique!(RefObject);
+impl_unique!(Block);
+
+impl Unique for Object {
+    fn id(&self) -> UniqueId {
+        match self {
+            Object::Block(val) => val.id(),
+            Object::Register(val) => val.id(),
+            Object::Command(val) => val.id(),
+            Object::Buffer(val) => val.id(),
+            Object::Ref(val) => val.id(),
         }
     }
 }

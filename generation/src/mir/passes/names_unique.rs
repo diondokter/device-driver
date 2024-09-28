@@ -1,18 +1,18 @@
 use std::collections::HashSet;
 
-use crate::mir::{Device, Enum, FieldConversion};
+use crate::mir::{Device, Enum, FieldConversion, Unique};
 
 use super::recurse_objects_mut;
 
 /// Checks if all names are unique to prevent later name collisions.
 /// If there is a collision an error is returned.
 pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
-    let mut seen_object_names = HashSet::new();
+    let mut seen_object_ids = HashSet::new();
     let mut generated_type_names = HashSet::new();
 
     recurse_objects_mut(&mut device.objects, &mut |object| {
         anyhow::ensure!(
-            seen_object_names.insert((object.name().to_string(), object.cfg_attr().cloned())),
+            seen_object_ids.insert(object.id()),
             "Duplicate object name found: \"{}\"",
             object.name()
         );

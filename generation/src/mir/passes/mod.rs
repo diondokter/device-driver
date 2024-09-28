@@ -8,10 +8,12 @@ mod byte_order_specified;
 mod enum_values_checked;
 mod names_normalized;
 mod names_unique;
+mod propagate_cfg;
 mod refs_validated;
 mod reset_values_converted;
 
 pub fn run_passes(device: &mut Device) -> anyhow::Result<()> {
+    propagate_cfg::run_pass(device)?;
     names_normalized::run_pass(device)?;
     names_unique::run_pass(device)?;
     enum_values_checked::run_pass(device)?;
@@ -30,15 +32,30 @@ pub(crate) fn recurse_objects_mut(
     objects: &mut [Object],
     f: &mut impl FnMut(&mut Object) -> anyhow::Result<()>,
 ) -> anyhow::Result<()> {
-    for object in objects.iter_mut() {
-        f(object)?;
+    recurse_objects_with_depth_mut(objects, &mut |o, _| f(o))
+}
 
-        if let Some(objects) = object.get_block_object_list_mut() {
-            recurse_objects_mut(objects, f)?;
+pub(crate) fn recurse_objects_with_depth_mut(
+    objects: &mut [Object],
+    f: &mut impl FnMut(&mut Object, usize) -> anyhow::Result<()>,
+) -> anyhow::Result<()> {
+    fn recurse_objects_with_depth_mut(
+        objects: &mut [Object],
+        f: &mut impl FnMut(&mut Object, usize) -> anyhow::Result<()>,
+        depth: usize,
+    ) -> anyhow::Result<()> {
+        for object in objects.iter_mut() {
+            f(object, depth)?;
+
+            if let Some(objects) = object.get_block_object_list_mut() {
+                recurse_objects_with_depth_mut(objects, f, depth + 1)?;
+            }
         }
+
+        Ok(())
     }
 
-    Ok(())
+    recurse_objects_with_depth_mut(objects, f, 0)
 }
 
 pub(crate) fn recurse_objects<'o>(

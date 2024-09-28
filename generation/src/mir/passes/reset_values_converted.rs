@@ -7,7 +7,7 @@ use bitvec::{
 };
 
 use crate::mir::{
-    BitOrder, ByteOrder, Device, Object, ObjectOverride, RefObject, Register, ResetValue,
+    BitOrder, ByteOrder, Device, Object, ObjectOverride, RefObject, Register, ResetValue, Unique,
 };
 
 use super::{recurse_objects, recurse_objects_mut, search_object};
@@ -38,17 +38,23 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
                         &reg.name,
                         target_byte_order,
                     )?;
-                    new_reset_values.insert(reg.name.clone(), new_reset_value);
+                    assert_eq!(
+                        new_reset_values.insert(reg.id(), new_reset_value),
+                        None,
+                        "All names must be unique"
+                    );
                     Ok(())
                 }
                 None => Ok(()),
             }
         }
-        Object::Ref(RefObject {
-            name,
-            object_override: ObjectOverride::Register(reg_override),
-            ..
-        }) => match reg_override.reset_value.as_ref() {
+        Object::Ref(
+            ref_object @ RefObject {
+                name,
+                object_override: ObjectOverride::Register(reg_override),
+                ..
+            },
+        ) => match reg_override.reset_value.as_ref() {
             Some(reset_value) => {
                 let base_reg = search_object(&reg_override.name, &device.objects)
                     .expect("Refs have been validated already for existance")
@@ -65,7 +71,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
                     name,
                     target_byte_order,
                 )?;
-                new_reset_values.insert(name.clone(), new_reset_value);
+                new_reset_values.insert(ref_object.id(), new_reset_value);
                 Ok(())
             }
             None => Ok(()),
@@ -75,19 +81,24 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
 
     recurse_objects_mut(&mut device.objects, &mut |object| match object {
         Object::Register(register) => {
-            if let Some(new_reset_value) = new_reset_values.remove(&register.name) {
+            if let Some(new_reset_value) = new_reset_values.remove(&register.id()) {
                 register.reset_value = Some(new_reset_value);
             }
 
             Ok(())
         }
-        Object::Ref(RefObject {
-            name,
-            object_override: ObjectOverride::Register(reg_override),
-            ..
-        }) => {
-            if let Some(new_reset_value) = new_reset_values.remove(name) {
-                reg_override.reset_value = Some(new_reset_value);
+        Object::Ref(
+            ref_object @ RefObject {
+                object_override: ObjectOverride::Register(_),
+                ..
+            },
+        ) => {
+            if let Some(new_reset_value) = new_reset_values.remove(&ref_object.id()) {
+                ref_object
+                    .object_override
+                    .as_register_mut()
+                    .unwrap()
+                    .reset_value = Some(new_reset_value);
             }
             Ok(())
         }
