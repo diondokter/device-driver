@@ -1,29 +1,58 @@
 # Intro
 
-- [Intro](#intro)
-  - [The old ways](#the-old-ways)
-  - [The goal](#the-goal)
-  - [Meeting the goals](#meeting-the-goals)
-    - [Input](#input)
-    - [Device interface](#device-interface)
-    - [Docs](#docs)
-  - [How to continue](#how-to-continue)
-
 We deserve better drivers. Rust has shown that we don't need to stick to old principles and that we as an industry can do better.
 
 While the Rust language provides many opportunities to improve the way we write drivers, it doesn't mean those are easy to use. There are two issues:
 1. Figuring out how to create registers (and more) using the type system well is hard
 2. It takes more time to write more elaborate definitions
 
-While there could be a crate that could figure out the first issue, the latter issue would still be there.
-
 By using this toolkit, you get both 1 and 2 solved.
 
 This is done with inspiration from other parts of the ecosystem and 5 years of iteration. It has led to an awesome representation of a device using the type system that is coupled with the ease of code generation.
 
+Together this all means that instead of doing a lot of manual writing and still not getting a great driver api, you can just write this:
+
+```rust
+device_driver::create_device!(
+    device_name: MyDevice,
+    dsl: {
+        config {
+            type RegisterAddressType = u8;
+        }
+        /// This is the Foo register
+        register Foo {
+            const ADDRESS = 0;
+            const SIZE_BITS = 8;
+
+            /// This is a bool at bit 0!
+            value0: bool = 0,
+            /// Integrated enum generation
+            value1: int as enum GeneratedEnum {
+              A,
+              /// Variant B
+              B,
+              C = default,
+            } = 1..4,
+            /// This is a 4-bit integer
+            value2: uint = 4..8,
+        },
+    }
+);
+```
+
+Note how we get to the point quickly and are able to document everything.
+This can then be used like this:
+
+```rust
+let mut device = MyDevice::new(device_interface);
+device.foo().write(|reg| reg.set_value_1(GeneratedEnum::B)).unwrap();
+```
+
+We instantly get a nice and familiar API. There's a bunch more features to discover, so read on!
+
 ## The old ways
 
-So a typical driver in C (or a simple driver in Rust) will have some constants or an enum for the registers.
+A typical driver in C (or a simple driver in Rust) will have some constants or an enum for the registers.
 
 ```rust
 #[repr(u8)]
@@ -40,7 +69,7 @@ pub enum Register {
 
 Then we need a way to read and write the registers. In Rust this is typically done in a struct.
 
-```rust
+```rust,ignore
 pub struct Device<Bus> {
     bus: Bus,
 }
@@ -88,9 +117,9 @@ The goals are:
 3. Get a driver that is well documented
    - (assuming the input spec gives docs)
 
-## Meeting the goals
+### Meeting the goals
 
-### Input
+#### Input
 
 To meet the goals, this toolkit provides a way to generate a driver based on a dense and precise input language.
 
@@ -98,8 +127,10 @@ There are three options:
 
 - DSL
   - Rust-like code
-- YAML
-- JSON
+- Manifest format
+  - YAML
+  - JSON
+  - TOML
 
 For example, defining a register looks like this in the DSL:
 
@@ -124,13 +155,11 @@ register Foo {
 
 There are loads more powerful options like bit and byte ordering specification, repeated registers, fallible and infallible type conversion, name normalization to make copying from the datasheet easier and more.
 
-Many correctness checks are done so there's no overlap in register addresses and field bit addresses. (On by default)
-
-This all is carried over to commands and buffers as well.
+Many correctness checks are done so there's no overlap in register addresses and field bit addresses. (On by default) This all is carried over to commands and buffers as well.
 
 The exact details are discussed in further chapters.
 
-### Device interface
+#### Device interface
 
 Of course some register definitions don't magically know how to talk to a device. For that you need to create an interface struct and implement one of the traits.
 
@@ -138,7 +167,7 @@ There are traits for register, command and buffer interfaces, and each of them h
 
 More of this is explained in the interface chapter.
 
-### Docs
+#### Docs
 
 Everything is or can be documented.
 
