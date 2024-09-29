@@ -1,10 +1,19 @@
-mod format;
-pub use format::*;
-
 use std::{
     error::Error,
     fmt::{Debug, Display},
 };
+
+#[cfg(feature = "json")]
+pub type JsonValue = serde_json::Value;
+#[cfg(feature = "yaml")]
+pub type YamlValue = yaml_rust2::Yaml;
+#[cfg(feature = "toml")]
+pub type TomlValue = toml::Value;
+
+/// Parse the source into the value type object
+pub fn parse_manifest<V: Value>(source: &str) -> Result<V, Box<dyn Error>> {
+    V::from_string(source)
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ValueError {
@@ -36,8 +45,11 @@ pub trait Value: Debug + Clone + Sized {
     fn as_string(&self) -> Result<&str, ValueError>;
     fn as_array(&self) -> Result<&[Self], ValueError>;
     fn as_map(&self) -> Result<&Self::MapType, ValueError>;
+
+    fn from_string(source: &str) -> Result<Self, Box<dyn Error>>;
 }
 
+#[cfg(feature = "json")]
 impl Value for serde_json::Value {
     type MapType = serde_json::Map<String, serde_json::Value>;
 
@@ -112,8 +124,13 @@ impl Value for serde_json::Value {
             actual: self.type_name(),
         })
     }
+
+    fn from_string(source: &str) -> Result<Self, Box<dyn Error>> {
+        Ok(serde_json::from_str(source)?)
+    }
 }
 
+#[cfg(feature = "yaml")]
 impl Value for yaml_rust2::Yaml {
     type MapType = yaml_rust2::yaml::Hash;
 
@@ -191,8 +208,13 @@ impl Value for yaml_rust2::Yaml {
             actual: self.type_name(),
         })
     }
+
+    fn from_string(source: &str) -> Result<Self, Box<dyn Error>> {
+        Ok(yaml_rust2::YamlLoader::load_from_str(source)?.remove(0))
+    }
 }
 
+#[cfg(feature = "toml")]
 impl Value for toml::Value {
     type MapType = toml::value::Table;
 
@@ -268,6 +290,10 @@ impl Value for toml::Value {
             actual: self.type_name(),
         })
     }
+
+    fn from_string(source: &str) -> Result<Self, Box<dyn Error>> {
+        Ok(toml::from_str(source)?)
+    }
 }
 
 pub trait Map {
@@ -278,6 +304,7 @@ pub trait Map {
     fn contains_key(&self, key: &str) -> bool;
 }
 
+#[cfg(feature = "json")]
 impl Map for serde_json::Map<String, serde_json::Value> {
     type Value = serde_json::Value;
 
@@ -294,6 +321,7 @@ impl Map for serde_json::Map<String, serde_json::Value> {
     }
 }
 
+#[cfg(feature = "yaml")]
 impl Map for yaml_rust2::yaml::Hash {
     type Value = yaml_rust2::Yaml;
 
@@ -310,6 +338,7 @@ impl Map for yaml_rust2::yaml::Hash {
     }
 }
 
+#[cfg(feature = "toml")]
 impl Map for toml::Table {
     type Value = toml::Value;
 
