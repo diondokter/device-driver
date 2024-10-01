@@ -100,6 +100,7 @@ _RefObject_:
     type: string oneof("ref"),
     cfg?: string,
     description?: string,
+    target: string,
     override: _Object_,
 }
 ```

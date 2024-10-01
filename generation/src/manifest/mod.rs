@@ -156,6 +156,73 @@ fn transform_name_word_boundaries(value: &impl Value) -> anyhow::Result<Vec<Boun
 }
 
 fn transform_object((key, value): (&str, &impl Value)) -> anyhow::Result<mir::Object> {
+    let try_ = || {
+        let object_map = value.as_map()?;
+
+        let object_type = object_map
+            .get("type")
+            .ok_or_else(|| anyhow!("No 'type' field present"))?
+            .as_string()?;
+
+        match object_type {
+            "block" => Ok(mir::Object::Block(transform_block(key, object_map)?)),
+            "register" => Ok(mir::Object::Register(transform_register(key, object_map)?)),
+            "command" => Ok(mir::Object::Command(transform_command(key, object_map)?)),
+            "buffer" => Ok(mir::Object::Buffer(transform_buffer(key, object_map)?)),
+            "ref" => Ok(mir::Object::Ref(transform_ref(key, object_map)?)),
+            val => Err(anyhow!("Unexpected object type '{val}'. Select one of \"block\", \"register\", \"command\", \"buffer\" or \"ref\""))
+        }
+    };
+
+    try_().with_context(|| format!("Parsing object `{key}`"))
+}
+
+fn transform_block(name: &str, map: &impl Map) -> anyhow::Result<mir::Block> {
+    let mut block = mir::Block {
+        name: name.into(),
+        ..Default::default()
+    };
+
+    for (key, value) in map.iter() {
+        match key {
+            "type" => {},
+            "cfg" => block.cfg_attr = mir::Cfg::new(Some(value.as_string().context("Parsing error for 'cfg'")?)),
+            "description" => block.description = value.as_string().context("Parsing error for 'description'")?.into(),
+            "address_offset" => block.address_offset = value.as_int().context("Parsing error for 'address_offset'")?.into(),
+            "repeat" => block.repeat = Some(transform_repeat(value)).context("Parsing error for 'repeat'")?.into(),
+            "objects" => block.objects = 
+                value
+                    .as_map().map_err(|e| anyhow::Error::from(e))
+                    .map(|object_map| object_map
+                        .iter()
+                        .map(transform_object)
+                        .collect::<Result<_, _>>()
+                    )
+                    .and_then(std::convert::identity)
+                    .context("Parsing error for 'repeat'")?
+                    .into(),
+            val => bail!(
+                "Unexpected key found: '{val}'. Choose one of \"type\", \"cfg\", \"description\", \"address_offset\", \"repeat\" or \"objects\""
+            ),
+        }
+    }
+
+    Ok(block)
+}
+
+fn transform_register(name: &str, map: &impl Map) -> anyhow::Result<mir::Register> {
+    todo!()
+}
+
+fn transform_command(name: &str, map: &impl Map) -> anyhow::Result<mir::Command> {
+    todo!()
+}
+
+fn transform_buffer(name: &str, map: &impl Map) -> anyhow::Result<mir::Buffer> {
+    todo!()
+}
+
+fn transform_ref(name: &str, map: &impl Map) -> anyhow::Result<mir::RefObject> {
     todo!()
 }
 

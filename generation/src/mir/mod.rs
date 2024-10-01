@@ -271,7 +271,7 @@ impl Object {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Block {
     pub cfg_attr: Cfg,
     pub description: String,
