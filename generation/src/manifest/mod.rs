@@ -184,23 +184,27 @@ fn transform_block(name: &str, map: &impl Map) -> anyhow::Result<mir::Block> {
     };
 
     for (key, value) in map.iter() {
+        let read_objects = || {
+            value
+                .as_map()
+                .map_err(anyhow::Error::from)
+                .map(|object_map| {
+                    object_map
+                        .iter()
+                        .map(transform_object)
+                        .collect::<Result<Vec<mir::Object>, anyhow::Error>>()
+                })
+                .and_then(std::convert::identity)
+                .context("Parsing error for 'objects'")
+        };
+
         match key {
             "type" => {},
             "cfg" => block.cfg_attr = mir::Cfg::new(Some(value.as_string().context("Parsing error for 'cfg'")?)),
             "description" => block.description = value.as_string().context("Parsing error for 'description'")?.into(),
-            "address_offset" => block.address_offset = value.as_int().context("Parsing error for 'address_offset'")?.into(),
-            "repeat" => block.repeat = Some(transform_repeat(value)).context("Parsing error for 'repeat'")?.into(),
-            "objects" => block.objects = 
-                value
-                    .as_map().map_err(|e| anyhow::Error::from(e))
-                    .map(|object_map| object_map
-                        .iter()
-                        .map(transform_object)
-                        .collect::<Result<_, _>>()
-                    )
-                    .and_then(std::convert::identity)
-                    .context("Parsing error for 'repeat'")?
-                    .into(),
+            "address_offset" => block.address_offset = value.as_int().context("Parsing error for 'address_offset'")?,
+            "repeat" => block.repeat = Some(transform_repeat(value).context("Parsing error for 'repeat'")?),
+            "objects" => block.objects = read_objects()?,
             val => bail!(
                 "Unexpected key found: '{val}'. Choose one of \"type\", \"cfg\", \"description\", \"address_offset\", \"repeat\" or \"objects\""
             ),
@@ -211,6 +215,72 @@ fn transform_block(name: &str, map: &impl Map) -> anyhow::Result<mir::Block> {
 }
 
 fn transform_register(name: &str, map: &impl Map) -> anyhow::Result<mir::Register> {
+    let mut register = mir::Register {
+        name: name.into(),
+        ..Default::default()
+    };
+
+    for required_key in ["address", "size_bits"] {
+        if !map.contains_key(required_key) {
+            bail!("Register definition must contain the '{required_key}' field");
+        }
+    }
+
+    for (key, value) in map.iter() {
+        match key {
+            "type" => {}
+            "cfg" => {
+                register.cfg_attr =
+                    mir::Cfg::new(Some(value.as_string().context("Parsing error for 'cfg'")?))
+            }
+            "description" => {
+                register.description = value
+                    .as_string()
+                    .context("Parsing error for 'description'")?
+                    .into()
+            }
+            "access" => {
+                register.access = transform_access(value).context("Parsing error for 'access'")?;
+            }
+            "byte_order" => {
+                register.byte_order =
+                    Some(transform_byte_order(value).context("Parsing error for 'byte_order'")?);
+            }
+            "bit_order" => {
+                register.bit_order =
+                    transform_bit_order(value).context("Parsing error for 'bit_order'")?;
+            }
+            "address" => {
+                register.address = value.as_int().context("Parsing error for 'address'")?;
+            }
+            "size_bits" => {
+                register.size_bits = value
+                    .as_uint()
+                    .context("Parsing error for 'size_bits'")?
+                    .try_into()
+                    .context("Parsing error for 'size_bits'")?;
+            }
+            "reset_value" => {
+                todo!()
+            }
+            "repeat" => {
+                todo!()
+            }
+            "allow_bit_overlap" => {
+                todo!()
+            }
+            "allow_address_overlap" => {
+                todo!()
+            }
+            "fields" => {
+                todo!()
+            }
+            val => {
+                bail!("Unexpected key found: '{val}'")
+            }
+        }
+    }
+
     todo!()
 }
 
@@ -224,6 +294,31 @@ fn transform_buffer(name: &str, map: &impl Map) -> anyhow::Result<mir::Buffer> {
 
 fn transform_ref(name: &str, map: &impl Map) -> anyhow::Result<mir::RefObject> {
     todo!()
+}
+
+fn transform_repeat(value: &impl Value) -> anyhow::Result<mir::Repeat> {
+    let map = value.as_map()?;
+
+    let count = map
+        .get("count")
+        .ok_or_else(|| anyhow!("Missing field 'count'"))?
+        .as_uint()
+        .context("Parsing field 'count'")?;
+    let stride = map
+        .get("stride")
+        .ok_or_else(|| anyhow!("Missing field 'stride'"))?
+        .as_int()
+        .context("Parsing field 'stride'")?;
+
+    // Check for fields we don't know
+    if let Some((key, _)) = map
+        .iter()
+        .find(|(key, _)| *key != "count" && *key != "stride")
+    {
+        bail!("Unrecognized key: '{key}'. Only 'count' and 'stride' are valid fields")
+    }
+
+    Ok(mir::Repeat { count, stride })
 }
 
 #[cfg(test)]
