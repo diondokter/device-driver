@@ -1,6 +1,9 @@
 config:
   register_address_type: u8
   default_byte_order: LE
+  name_word_boundaries:
+    - Hyphen
+    - Underscore
 
 Bar:
   type: block
@@ -8,7 +11,6 @@ Bar:
   repeat:
     count: 2
     stride: 20
-  
   objects:
     Foo:
       type: register

@@ -2,6 +2,9 @@
 config {
     type RegisterAddressType = u8;
     type DefaultByteOrder = LE;
+    type NameWordBoundaries = [
+        Hyphen, Underscore
+    ];
 }
 block Bar {
     const ADDRESS_OFFSET = 10;
