@@ -19,8 +19,8 @@ embedded-io = "0.6.1"
 embedded-io-async = "0.6.1"
 
 [features]
-default = ["macros"]
+default = ["macros", "json", "yaml", "toml"]
 macros = ["dep:device-driver-macros"]
-# json = ["device-driver-macros/json"]
-# yaml = ["device-driver-macros/yaml"]
-
+json = ["macros", "device-driver-macros/json"]
+yaml = ["macros", "device-driver-macros/yaml"]
+toml = ["macros", "device-driver-macros/toml"]

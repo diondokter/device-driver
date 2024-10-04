@@ -45,17 +45,35 @@ pub fn create_device(item: TokenStream) -> TokenStream {
                         ))?;
 
                 match extension.deref() {
+                    #[cfg(feature = "json")]
                     "json" => Ok(device_driver_generation::transform_json(
                         &file_contents,
                         &input.device_name.to_string(),
                     )),
+                    #[cfg(not(feature = "json"))]
+                    "json" => Err(syn::Error::new(
+                        Span::call_site(),
+                        format!("The json feature is not enabled"),
+                    )),
+                    #[cfg(feature = "yaml")]
                     "yaml" => Ok(device_driver_generation::transform_yaml(
                         &file_contents,
                         &input.device_name.to_string(),
                     )),
+                    #[cfg(not(feature = "yaml"))]
+                    "yaml" => Err(syn::Error::new(
+                        Span::call_site(),
+                        format!("The yaml feature is not enabled"),
+                    )),
+                    #[cfg(feature = "toml")]
                     "toml" => Ok(device_driver_generation::transform_toml(
                         &file_contents,
                         &input.device_name.to_string(),
+                    )),
+                    #[cfg(not(feature = "toml"))]
+                    "toml" => Err(syn::Error::new(
+                        Span::call_site(),
+                        format!("The toml feature is not enabled"),
                     )),
                     "dsl" => Ok(device_driver_generation::transform_dsl(
                         syn::parse_str(&file_contents)?,

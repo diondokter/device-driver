@@ -1,9 +1,8 @@
 #![doc = include_str!(concat!("../", env!("CARGO_PKG_README")))]
 
-use proc_macro2::Span;
-
 mod dsl_hir;
 mod lir;
+#[cfg(feature = "manifest")]
 mod manifest;
 mod mir;
 
@@ -40,16 +39,18 @@ pub fn _private_transform_dsl_mir(
 ///
 /// The `driver_name` arg is used to name the root block of the driver.
 /// It should be given in `PascalCase` form.
+#[cfg(feature = "json")]
 pub fn transform_json(source: &str, driver_name: &str) -> proc_macro2::TokenStream {
     let mir = match _private_transform_json_mir(source) {
         Ok(mir) => mir,
-        Err(e) => return syn::Error::new(Span::call_site(), e).into_compile_error(),
+        Err(e) => return syn::Error::new(proc_macro2::Span::call_site(), e).into_compile_error(),
     };
 
     transform_mir(mir, driver_name)
 }
 
 #[doc(hidden)]
+#[cfg(feature = "json")]
 pub fn _private_transform_json_mir(source: &str) -> anyhow::Result<mir::Device> {
     let value = dd_manifest_tree::parse_manifest::<dd_manifest_tree::JsonValue>(source)?;
     let mir = manifest::transform(value)?;
@@ -61,16 +62,18 @@ pub fn _private_transform_json_mir(source: &str) -> anyhow::Result<mir::Device> 
 ///
 /// The `driver_name` arg is used to name the root block of the driver.
 /// It should be given in `PascalCase` form.
+#[cfg(feature = "yaml")]
 pub fn transform_yaml(source: &str, driver_name: &str) -> proc_macro2::TokenStream {
     let mir = match _private_transform_yaml_mir(source) {
         Ok(mir) => mir,
-        Err(e) => return syn::Error::new(Span::call_site(), e).into_compile_error(),
+        Err(e) => return syn::Error::new(proc_macro2::Span::call_site(), e).into_compile_error(),
     };
 
     transform_mir(mir, driver_name)
 }
 
 #[doc(hidden)]
+#[cfg(feature = "yaml")]
 pub fn _private_transform_yaml_mir(source: &str) -> anyhow::Result<mir::Device> {
     let value = dd_manifest_tree::parse_manifest::<dd_manifest_tree::YamlValue>(source)?;
     let mir = manifest::transform(value)?;
@@ -82,16 +85,18 @@ pub fn _private_transform_yaml_mir(source: &str) -> anyhow::Result<mir::Device> 
 ///
 /// The `driver_name` arg is used to name the root block of the driver.
 /// It should be given in `PascalCase` form.
+#[cfg(feature = "toml")]
 pub fn transform_toml(source: &str, driver_name: &str) -> proc_macro2::TokenStream {
     let mir = match _private_transform_toml_mir(source) {
         Ok(mir) => mir,
-        Err(e) => return syn::Error::new(Span::call_site(), e).into_compile_error(),
+        Err(e) => return syn::Error::new(proc_macro2::Span::call_site(), e).into_compile_error(),
     };
 
     transform_mir(mir, driver_name)
 }
 
 #[doc(hidden)]
+#[cfg(feature = "toml")]
 pub fn _private_transform_toml_mir(source: &str) -> anyhow::Result<mir::Device> {
     let value = dd_manifest_tree::parse_manifest::<dd_manifest_tree::TomlValue>(source)?;
     let mir = manifest::transform(value)?;
