@@ -281,8 +281,14 @@ fn try_out() {
 <p>Oh! We get an error!<br />
 Luckily the compiler already gives us the answer.
 The problem is that if we want to do something with registers, we have to know how to read and write them.</p>
+<div class="mdbook-alerts mdbook-alerts-important">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  important
+</p>
 <p>This is done by implementing the right traits on our interface type.
 There's a whole bunch of them: <a href="https://docs.rs/device-driver/latest/device_driver/#traits">docs</a></p>
+</div>
 <p>To be able to use registers, you need to implement the <code>RegisterInterface</code> trait.
 For commands you need <code>CommandInterface</code> and for buffers you need <code>BufferInterface</code>.</p>
 <p>Of each of these is an async version too. Implement those and you're able to use the async version of all operations. They've got the same name as the normal operations, except they end with <code>_async</code>. The register <code>.read()</code> then becomes <code>.read_async()</code>.</p>
@@ -323,10 +329,10 @@ async fn try_out_sync() {
 <span class="boring">}</span></code></pre></pre>
 <p>Great! You've now learned how to create an interface type and implement the interface trait you need on it.</p>
 <p>Some chips can have multiple interfaces, like both SPI and I2C or SPI and QSPI. In that case you might want to create two different interface types for your driver.</p>
-<div class="mdbook-alerts mdbook-alerts-note">
+<div class="mdbook-alerts mdbook-alerts-tip">
 <p class="mdbook-alerts-title">
   <span class="mdbook-alerts-icon"></span>
-  note
+  tip
 </p>
 <p>You can make your interface type as complex or as simple as you need. What exactly it will look like depends on your chip and your requirements.</p>
 </div>

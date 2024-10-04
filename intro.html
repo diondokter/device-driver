@@ -244,13 +244,39 @@
 
 </style>
 <h1 id="intro"><a class="header" href="#intro">Intro</a></h1>
+<div class="mdbook-alerts mdbook-alerts-important">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  important
+</p>
 <p>We deserve better drivers. Rust has shown that we don't need to stick to old principles and that we as an industry can do better.</p>
+</div>
 <p>While the Rust language provides many opportunities to improve the way we write drivers, it doesn't mean those are easy to use. There are two issues:</p>
 <ol>
 <li>Figuring out how to create registers (and more) using the type system well is hard</li>
 <li>It takes more time to write more elaborate definitions</li>
 </ol>
 <p>By using this toolkit, you get both 1 and 2 solved.</p>
+<hr />
+<ul>
+<li><a href="#intro">Intro</a>
+<ul>
+<li><a href="#the-old-ways">The old ways</a></li>
+<li><a href="#the-goal">The goal</a>
+<ul>
+<li><a href="#meeting-the-goals">Meeting the goals</a>
+<ul>
+<li><a href="#input">Input</a></li>
+<li><a href="#device-interface">Device interface</a></li>
+<li><a href="#docs">Docs</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#how-to-continue">How to continue</a></li>
+</ul>
+</li>
+</ul>
 <p>This is done with inspiration from other parts of the ecosystem and 5 years of iteration. It has led to an awesome representation of a device using the type system that is coupled with the ease of code generation.</p>
 <p>Together this all means that instead of doing a lot of manual writing and still not getting a great driver api, you can just write this:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -288,7 +314,7 @@ This can then be used like this:</p>
 </span>let mut device = MyDevice::new(device_interface);
 device.foo().write(|reg| reg.set_value_1(GeneratedEnum::B)).unwrap();
 <span class="boring">}</span></code></pre></pre>
-<p>We instantly get a nice and familiar API. There's a bunch more features to discover, so read on!</p>
+<p>Instantly we get a nice and familiar API. There's a bunch more features to discover, so read on!</p>
 <h2 id="the-old-ways"><a class="header" href="#the-old-ways">The old ways</a></h2>
 <p>A typical driver in C (or a simple driver in Rust) will have some constants or an enum for the registers.</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]

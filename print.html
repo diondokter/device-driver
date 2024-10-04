@@ -250,12 +250,12 @@
 <p>A toolkit to write better device drivers, faster.</p>
 </blockquote>
 <p>This book aims to guide you to write your own device drivers using the device-driver toolkit.
-It is not a replacement of the <a href="(https://docs.rs/device-driver)">docs</a> though. The documentation describes all the small details while this book is concerned with more big-picture concepts and the description of the DSL and manifest (JSON &amp; YAML) inputs.</p>
+It is not a replacement of the <a href="(https://docs.rs/device-driver)">docs</a> though. The documentation describes all the small details while this book is concerned with more big-picture concepts and the description of the DSL and manifest (JSON, YAML and TOML) inputs.</p>
 <ul>
 <li>The intro chapter describes the goal of the toolkit, what it does for you and why you may want to use it instead of writing the driver manually.</li>
 <li>After the intro are two chapters about how to generate and then import the driver code into your project. This can be done during compilation through a proc-macro or ahead of time with the CLI and <code>include!</code>.</li>
 <li>Next is a chapter about creating a driver interface where you'll see how to implement the right traits so the generated driver can talk with your device.</li>
-<li>Then the actual definition of the driver is covered. These chapters teach what options there are for defining registers, commands, buffers and more using either the DSL or a manifest language like YAML or JSON.</li>
+<li>Then the actual definition of the driver is covered. These chapters teach what options there are for defining registers, commands, buffers and more using either the DSL or a manifest language like YAML.</li>
 <li>Lastly the generation output is covered so you know what you can expect from the generated code of your driver.</li>
 </ul>
 <p>The addendum contains more things that mostly provide useful background informations.</p>
@@ -335,13 +335,39 @@ If you do find something out of place, missing or simply wrong, please open an i
 
 </style>
 <h1 id="intro"><a class="header" href="#intro">Intro</a></h1>
+<div class="mdbook-alerts mdbook-alerts-important">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  important
+</p>
 <p>We deserve better drivers. Rust has shown that we don't need to stick to old principles and that we as an industry can do better.</p>
+</div>
 <p>While the Rust language provides many opportunities to improve the way we write drivers, it doesn't mean those are easy to use. There are two issues:</p>
 <ol>
 <li>Figuring out how to create registers (and more) using the type system well is hard</li>
 <li>It takes more time to write more elaborate definitions</li>
 </ol>
 <p>By using this toolkit, you get both 1 and 2 solved.</p>
+<hr />
+<ul>
+<li><a href="intro.html#intro">Intro</a>
+<ul>
+<li><a href="intro.html#the-old-ways">The old ways</a></li>
+<li><a href="intro.html#the-goal">The goal</a>
+<ul>
+<li><a href="intro.html#meeting-the-goals">Meeting the goals</a>
+<ul>
+<li><a href="intro.html#input">Input</a></li>
+<li><a href="intro.html#device-interface">Device interface</a></li>
+<li><a href="intro.html#docs">Docs</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="intro.html#how-to-continue">How to continue</a></li>
+</ul>
+</li>
+</ul>
 <p>This is done with inspiration from other parts of the ecosystem and 5 years of iteration. It has led to an awesome representation of a device using the type system that is coupled with the ease of code generation.</p>
 <p>Together this all means that instead of doing a lot of manual writing and still not getting a great driver api, you can just write this:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -379,7 +405,7 @@ This can then be used like this:</p>
 </span>let mut device = MyDevice::new(device_interface);
 device.foo().write(|reg| reg.set_value_1(GeneratedEnum::B)).unwrap();
 <span class="boring">}</span></code></pre></pre>
-<p>We instantly get a nice and familiar API. There's a bunch more features to discover, so read on!</p>
+<p>Instantly we get a nice and familiar API. There's a bunch more features to discover, so read on!</p>
 <h2 id="the-old-ways"><a class="header" href="#the-old-ways">The old ways</a></h2>
 <p>A typical driver in C (or a simple driver in Rust) will have some constants or an enum for the registers.</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -616,9 +642,28 @@ appropriate for a low level layer. For example: 'Registers' or 'LowLevel'</li>
 <li>dsl</li>
 </ul>
 <h2 id="output"><a class="header" href="#output">Output</a></h2>
+<div class="mdbook-alerts mdbook-alerts-tip">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  tip
+</p>
 <p>The generated code is placed exactly where the macro is invoked. This means you can decide to contain everything in its own module. This is recommended to do, but not required.</p>
+</div>
+<p>Read the chapter about the output to learn more about the generated code.</p>
+<div class="mdbook-alerts mdbook-alerts-caution">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  caution
+</p>
 <p>Code in the same module as the generated code is able to access the private API of the generated code. It is discouraged to make use of the private API since it's not considered as part of the SemVer guarantees and it's designed in a way where you shouldn't need to.</p>
+</div>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
 <p>If you feel part of the private API should be stabilized, then please open an issue to discuss it. If you really need to access the private API, consider pinning the exact device-driver versions and make sure to pin the sub crates too, including the generation and the macros crate.</p>
+</div>
 <h2 id="optimizing-compile-times"><a class="header" href="#optimizing-compile-times">Optimizing compile times</a></h2>
 <p>The device-driver crate has features for turning on the json, yaml and toml parsers. These are enabled by default for your convenience.</p>
 <p>Once you've settled on a format, you can optimize the compile times for you and your dependents by disabling the default features and adding back the features you need.</p>
@@ -649,7 +694,13 @@ appropriate for a low level layer. For example: 'Registers' or 'LowLevel'</li>
 </ul>
 </li>
 </ul>
+<div class="mdbook-alerts mdbook-alerts-tip">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  tip
+</p>
 <p>With these steps the compile times should be acceptable. However, they can be further optimized by getting rid of the macro alltogether. This is explained in the cli chapter.</p>
+</div>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -823,8 +874,14 @@ fn try_out() {
 <p>Oh! We get an error!<br />
 Luckily the compiler already gives us the answer.
 The problem is that if we want to do something with registers, we have to know how to read and write them.</p>
+<div class="mdbook-alerts mdbook-alerts-important">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  important
+</p>
 <p>This is done by implementing the right traits on our interface type.
 There's a whole bunch of them: <a href="https://docs.rs/device-driver/latest/device_driver/#traits">docs</a></p>
+</div>
 <p>To be able to use registers, you need to implement the <code>RegisterInterface</code> trait.
 For commands you need <code>CommandInterface</code> and for buffers you need <code>BufferInterface</code>.</p>
 <p>Of each of these is an async version too. Implement those and you're able to use the async version of all operations. They've got the same name as the normal operations, except they end with <code>_async</code>. The register <code>.read()</code> then becomes <code>.read_async()</code>.</p>
@@ -865,10 +922,10 @@ async fn try_out_sync() {
 <span class="boring">}</span></code></pre></pre>
 <p>Great! You've now learned how to create an interface type and implement the interface trait you need on it.</p>
 <p>Some chips can have multiple interfaces, like both SPI and I2C or SPI and QSPI. In that case you might want to create two different interface types for your driver.</p>
-<div class="mdbook-alerts mdbook-alerts-note">
+<div class="mdbook-alerts mdbook-alerts-tip">
 <p class="mdbook-alerts-title">
   <span class="mdbook-alerts-icon"></span>
-  note
+  tip
 </p>
 <p>You can make your interface type as complex or as simple as you need. What exactly it will look like depends on your chip and your requirements.</p>
 </div>
@@ -2094,7 +2151,13 @@ There's two options:</p>
 </li>
 </ul>
 <h3 id="together"><a class="header" href="#together">Together</a></h3>
-<p>Together the bit and byte order determine where a given bit is in an array of bytes.</p>
+<div class="mdbook-alerts mdbook-alerts-important">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  important
+</p>
+<p>Together, the bit and byte order determine where a given bit is in an array of bytes.</p>
+</div>
 <p>Bit <code>0</code> is defined as the <code>0th</code> bit on the <code>0th</code> byte.<br />
 Bit <code>10</code> is defined as the <code>2nd</code> bit on the <code>1st</code> byte.</p>
 <p>Here are the options for when only bit 0 is high in a 2-byte array:</p>
@@ -2140,16 +2203,28 @@ BE, MSB0:
    ^^^^^^^^^^^               &lt;- Byte 1
 </code></pre>
 <h2 id="the-memories-of-device-driver"><a class="header" href="#the-memories-of-device-driver">The memories of device-driver</a></h2>
+<div class="mdbook-alerts mdbook-alerts-important">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  important
+</p>
 <p>Here's the tricky part. The data of a register can be present in three places:</p>
 <ul>
 <li>On the device</li>
 <li>On the transport bus (e.g. while writing/reading it over SPI)</li>
 <li>In RAM on your microcontroller</li>
 </ul>
+</div>
 <p>The first two we don't have any influence over. But we can create our own model with this crate that fits the device.</p>
 <p>Let's do some examples for real existing devices.
 If there's a device that does things a bit different, feel free to PR this file!</p>
-<p>Remember: If all registers have the same behaviour (which is the case usually), you can set the bit and byte orders in the global config too so it applies to all registers that don't explicitly have it set.</p>
+<div class="mdbook-alerts mdbook-alerts-tip">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  tip
+</p>
+<p>If all registers have the same behaviour (which is the case usually), you can set the bit and byte orders in the global config too so it applies to all registers that don't explicitly have it set.</p>
+</div>
 <h3 id="example-lis3dh---multi-register-le-lsb0"><a class="header" href="#example-lis3dh---multi-register-le-lsb0">Example LIS3DH - Multi-register LE, LSB0</a></h3>
 <p>The LIS3DH accelerometer is one byte per register, but there are some multi-register values that we may want to model as one two-byte register. This can be done because the address will auto increment after any reads/writes.</p>
 <p>In the datasheet we find the registers:</p>

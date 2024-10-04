@@ -306,7 +306,13 @@ There's two options:</p>
 </li>
 </ul>
 <h3 id="together"><a class="header" href="#together">Together</a></h3>
-<p>Together the bit and byte order determine where a given bit is in an array of bytes.</p>
+<div class="mdbook-alerts mdbook-alerts-important">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  important
+</p>
+<p>Together, the bit and byte order determine where a given bit is in an array of bytes.</p>
+</div>
 <p>Bit <code>0</code> is defined as the <code>0th</code> bit on the <code>0th</code> byte.<br />
 Bit <code>10</code> is defined as the <code>2nd</code> bit on the <code>1st</code> byte.</p>
 <p>Here are the options for when only bit 0 is high in a 2-byte array:</p>
@@ -352,16 +358,28 @@ BE, MSB0:
    ^^^^^^^^^^^               &lt;- Byte 1
 </code></pre>
 <h2 id="the-memories-of-device-driver"><a class="header" href="#the-memories-of-device-driver">The memories of device-driver</a></h2>
+<div class="mdbook-alerts mdbook-alerts-important">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  important
+</p>
 <p>Here's the tricky part. The data of a register can be present in three places:</p>
 <ul>
 <li>On the device</li>
 <li>On the transport bus (e.g. while writing/reading it over SPI)</li>
 <li>In RAM on your microcontroller</li>
 </ul>
+</div>
 <p>The first two we don't have any influence over. But we can create our own model with this crate that fits the device.</p>
 <p>Let's do some examples for real existing devices.
 If there's a device that does things a bit different, feel free to PR this file!</p>
-<p>Remember: If all registers have the same behaviour (which is the case usually), you can set the bit and byte orders in the global config too so it applies to all registers that don't explicitly have it set.</p>
+<div class="mdbook-alerts mdbook-alerts-tip">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  tip
+</p>
+<p>If all registers have the same behaviour (which is the case usually), you can set the bit and byte orders in the global config too so it applies to all registers that don't explicitly have it set.</p>
+</div>
 <h3 id="example-lis3dh---multi-register-le-lsb0"><a class="header" href="#example-lis3dh---multi-register-le-lsb0">Example LIS3DH - Multi-register LE, LSB0</a></h3>
 <p>The LIS3DH accelerometer is one byte per register, but there are some multi-register values that we may want to model as one two-byte register. This can be done because the address will auto increment after any reads/writes.</p>
 <p>In the datasheet we find the registers:</p>
