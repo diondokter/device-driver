@@ -1,12 +1,24 @@
 # Intro
 
-We deserve better drivers. Rust has shown that we don't need to stick to old principles and that we as an industry can do better.
+> [!IMPORTANT]
+> We deserve better drivers. Rust has shown that we don't need to stick to old principles and that we as an industry can do better.
 
 While the Rust language provides many opportunities to improve the way we write drivers, it doesn't mean those are easy to use. There are two issues:
 1. Figuring out how to create registers (and more) using the type system well is hard
 2. It takes more time to write more elaborate definitions
 
 By using this toolkit, you get both 1 and 2 solved.
+
+---
+
+- [Intro](#intro)
+  - [The old ways](#the-old-ways)
+  - [The goal](#the-goal)
+    - [Meeting the goals](#meeting-the-goals)
+      - [Input](#input)
+      - [Device interface](#device-interface)
+      - [Docs](#docs)
+  - [How to continue](#how-to-continue)
 
 This is done with inspiration from other parts of the ecosystem and 5 years of iteration. It has led to an awesome representation of a device using the type system that is coupled with the ease of code generation.
 
@@ -48,7 +60,7 @@ let mut device = MyDevice::new(device_interface);
 device.foo().write(|reg| reg.set_value_1(GeneratedEnum::B)).unwrap();
 ```
 
-We instantly get a nice and familiar API. There's a bunch more features to discover, so read on!
+Instantly we get a nice and familiar API. There's a bunch more features to discover, so read on!
 
 ## The old ways
 

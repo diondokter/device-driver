@@ -41,8 +41,9 @@ Oh! We get an error!
 Luckily the compiler already gives us the answer.
 The problem is that if we want to do something with registers, we have to know how to read and write them.
 
-This is done by implementing the right traits on our interface type.
-There's a whole bunch of them: [docs](https://docs.rs/device-driver/latest/device_driver/#traits)
+> [!IMPORTANT]
+> This is done by implementing the right traits on our interface type.
+> There's a whole bunch of them: [docs](https://docs.rs/device-driver/latest/device_driver/#traits)
 
 To be able to use registers, you need to implement the `RegisterInterface` trait.
 For commands you need `CommandInterface` and for buffers you need `BufferInterface`.
@@ -89,5 +90,5 @@ Great! You've now learned how to create an interface type and implement the inte
 
 Some chips can have multiple interfaces, like both SPI and I2C or SPI and QSPI. In that case you might want to create two different interface types for your driver.
 
-> [!NOTE]
+> [!TIP]
 > You can make your interface type as complex or as simple as you need. What exactly it will look like depends on your chip and your requirements.

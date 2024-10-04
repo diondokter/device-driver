@@ -45,7 +45,8 @@ There's two options:
 
 ### Together
 
-Together the bit and byte order determine where a given bit is in an array of bytes.
+> [!IMPORTANT]
+> Together, the bit and byte order determine where a given bit is in an array of bytes.
 
 Bit `0` is defined as the `0th` bit on the `0th` byte.  
 Bit `10` is defined as the `2nd` bit on the `1st` byte.
@@ -100,18 +101,20 @@ BE, MSB0:
 
 ## The memories of device-driver
 
-Here's the tricky part. The data of a register can be present in three places:
-
-- On the device
-- On the transport bus (e.g. while writing/reading it over SPI)
-- In RAM on your microcontroller
+> [!IMPORTANT]
+> Here's the tricky part. The data of a register can be present in three places:
+> 
+> - On the device
+> - On the transport bus (e.g. while writing/reading it over SPI)
+> - In RAM on your microcontroller
 
 The first two we don't have any influence over. But we can create our own model with this crate that fits the device.
 
 Let's do some examples for real existing devices.
 If there's a device that does things a bit different, feel free to PR this file!
 
-Remember: If all registers have the same behaviour (which is the case usually), you can set the bit and byte orders in the global config too so it applies to all registers that don't explicitly have it set.
+> [!TIP]
+> If all registers have the same behaviour (which is the case usually), you can set the bit and byte orders in the global config too so it applies to all registers that don't explicitly have it set.
 
 ### Example LIS3DH - Multi-register LE, LSB0
 

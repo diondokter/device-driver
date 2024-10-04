@@ -51,11 +51,16 @@ The options are:
 
 ## Output
 
-The generated code is placed exactly where the macro is invoked. This means you can decide to contain everything in its own module. This is recommended to do, but not required.
+> [!tip]
+> The generated code is placed exactly where the macro is invoked. This means you can decide to contain everything in its own module. This is recommended to do, but not required.
 
-Code in the same module as the generated code is able to access the private API of the generated code. It is discouraged to make use of the private API since it's not considered as part of the SemVer guarantees and it's designed in a way where you shouldn't need to.
+Read the chapter about the output to learn more about the generated code.
 
-If you feel part of the private API should be stabilized, then please open an issue to discuss it. If you really need to access the private API, consider pinning the exact device-driver versions and make sure to pin the sub crates too, including the generation and the macros crate.
+> [!CAUTION]
+> Code in the same module as the generated code is able to access the private API of the generated code. It is discouraged to make use of the private API since it's not considered as part of the SemVer guarantees and it's designed in a way where you shouldn't need to.
+
+> [!NOTE]
+> If you feel part of the private API should be stabilized, then please open an issue to discuss it. If you really need to access the private API, consider pinning the exact device-driver versions and make sure to pin the sub crates too, including the generation and the macros crate.
 
 ## Optimizing compile times
 
@@ -77,4 +82,5 @@ Suggestions:
   - `default-features = false`
   - `features = ["toml"]`
 
-With these steps the compile times should be acceptable. However, they can be further optimized by getting rid of the macro alltogether. This is explained in the cli chapter.
+> [!tip]
+> With these steps the compile times should be acceptable. However, they can be further optimized by getting rid of the macro alltogether. This is explained in the cli chapter.
