@@ -356,13 +356,12 @@ pub struct Enum {
 
 impl Enum {
     pub fn new(
-        cfg_attr: Cfg,
         description: String,
         name: String,
         variants: Vec<EnumVariant>,
     ) -> Self {
         Self {
-            cfg_attr,
+            cfg_attr: Cfg::default(),
             description,
             name,
             variants,
@@ -371,15 +370,14 @@ impl Enum {
     }
 
     #[cfg(test)]
-    fn new_with_style(
-        cfg_attr: Cfg,
+    pub fn new_with_style(
         description: String,
         name: String,
         variants: Vec<EnumVariant>,
         generation_style: EnumGenerationStyle,
     ) -> Self {
         Self {
-            cfg_attr,
+            cfg_attr: Cfg::default(),
             description,
             name,
             variants,

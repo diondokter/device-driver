@@ -113,7 +113,6 @@ mod tests {
                     field_conversion: Some(FieldConversion::Enum {
                         enum_value: Enum::new(
                             Default::default(),
-                            Default::default(),
                             "MyEnum".into(),
                             vec![
                                 EnumVariant {
@@ -154,7 +153,6 @@ mod tests {
                 out_fields: vec![Field {
                     field_conversion: Some(FieldConversion::Enum {
                         enum_value: Enum::new_with_style(
-                            Default::default(),
                             Default::default(),
                             "MyEnum".into(),
                             vec![
@@ -205,7 +203,6 @@ mod tests {
                     field_conversion: Some(FieldConversion::Enum {
                         enum_value: Enum::new(
                             Default::default(),
-                            Default::default(),
                             "MyEnum".into(),
                             vec![
                                 EnumVariant {
@@ -236,7 +233,6 @@ mod tests {
                 out_fields: vec![Field {
                     field_conversion: Some(FieldConversion::Enum {
                         enum_value: Enum::new_with_style(
-                            Default::default(),
                             Default::default(),
                             "MyEnum".into(),
                             vec![
@@ -277,7 +273,6 @@ mod tests {
                     field_conversion: Some(FieldConversion::Enum {
                         enum_value: Enum::new(
                             Default::default(),
-                            Default::default(),
                             "MyEnum".into(),
                             vec![EnumVariant {
                                 name: "var0".into(),
@@ -301,7 +296,6 @@ mod tests {
                 out_fields: vec![Field {
                     field_conversion: Some(FieldConversion::Enum {
                         enum_value: Enum::new_with_style(
-                            Default::default(),
                             Default::default(),
                             "MyEnum".into(),
                             vec![EnumVariant {
@@ -335,7 +329,6 @@ mod tests {
                     name: "MyField".into(),
                     field_conversion: Some(FieldConversion::Enum {
                         enum_value: Enum::new(
-                            Default::default(),
                             Default::default(),
                             "MyEnum".into(),
                             vec![
@@ -383,7 +376,6 @@ mod tests {
                     name: "MyField".into(),
                     field_conversion: Some(FieldConversion::Enum {
                         enum_value: Enum::new(
-                            Default::default(),
                             Default::default(),
                             "MyEnum".into(),
                             vec![

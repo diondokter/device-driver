@@ -518,7 +518,7 @@ fn transform_field(
         base_type: field.base_type.into(),
         field_conversion: field.field_conversion
             .as_ref()
-            .map(|fc| transform_field_conversion(field_cfg_attr, field_description, fc))
+            .map(|fc| transform_field_conversion(field_description, fc))
             .transpose()?,
         field_address: match &field.field_address {
             dsl_hir::FieldAddress::Integer(start) if field.base_type.is_bool() =>
@@ -542,7 +542,6 @@ fn transform_field(
 }
 
 fn transform_field_conversion(
-    field_cfg_attr: mir::Cfg,
     field_description: String,
     field_conversion: &dsl_hir::FieldConversion,
 ) -> Result<mir::FieldConversion, syn::Error> {
@@ -560,7 +559,6 @@ fn transform_field_conversion(
             use_try,
         } => Ok(mir::FieldConversion::Enum {
             enum_value: mir::Enum::new(
-                field_cfg_attr,
                 field_description,
                 identifier.to_string(),
                 enum_variant_list
@@ -1148,7 +1146,6 @@ mod tests {
                     base_type: mir::BaseType::Int,
                     field_conversion: Some(mir::FieldConversion::Enum {
                         enum_value: mir::Enum::new(
-                            mir::Cfg::new(None),
                             Default::default(),
                             "Val".into(),
                             vec![

@@ -173,6 +173,7 @@ oneof(
     string,
     {
         name: string,
+        description?: string,
         *: _EnumVariant_
     }
 )
@@ -185,7 +186,7 @@ oneof(
     {
         cfg?: string,
         description?: string,
-        value: _EnumValue_
+        value?: _EnumValue_
     }
 )
 ```

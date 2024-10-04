@@ -1,8 +1,10 @@
+use std::convert::identity;
+
 use anyhow::{anyhow, bail, Context};
 use convert_case::Boundary;
 use dd_manifest_tree::{Map, Value};
 
-use crate::mir;
+use crate::mir::{self, Cfg};
 
 pub fn transform(value: impl Value) -> anyhow::Result<mir::Device> {
     let device_map = value.as_map()?;
@@ -261,27 +263,52 @@ fn transform_register(name: &str, map: &impl Map) -> anyhow::Result<mir::Registe
                     .context("Parsing error for 'size_bits'")?;
             }
             "reset_value" => {
-                todo!()
+                register.reset_value = Some(if let Ok(rv) = value.as_uint() {
+                    mir::ResetValue::Integer(rv as u128)
+                } else if let Ok(rv) = value.as_array() {
+                    match rv
+                        .iter()
+                        .map(|inner| {
+                            inner
+                                .as_uint()
+                                .context("Array must contain bytes")
+                                .map(|val| u8::try_from(val).context("Array must contain bytes"))
+                                .and_then(identity)
+                        })
+                        .collect::<Result<Vec<_>, _>>()
+                    {
+                        Ok(val) => mir::ResetValue::Array(val),
+                        Err(e) => return Err(e.context("Parsing error for 'reset_value")),
+                    }
+                } else {
+                    return Err(anyhow!("Field must be an integer or an array")
+                        .context("Parsing error for 'reset_value"));
+                })
             }
             "repeat" => {
-                todo!()
+                register.repeat =
+                    Some(transform_repeat(value).context("Parsing error for 'repeat")?);
             }
             "allow_bit_overlap" => {
-                todo!()
+                register.allow_bit_overlap = value
+                    .as_bool()
+                    .context("Parsing error for 'allow_bit_overlap'")?;
             }
             "allow_address_overlap" => {
-                todo!()
+                register.allow_address_overlap = value
+                    .as_bool()
+                    .context("Parsing error for 'allow_address_overlap'")?;
             }
             "fields" => {
-                todo!()
+                register.fields = transform_fields(value).context("Parsing error for 'fields'")?;
             }
             val => {
-                bail!("Unexpected key found: '{val}'")
+                bail!("Unexpected key: '{val}'")
             }
         }
     }
 
-    todo!()
+    Ok(register)
 }
 
 fn transform_command(name: &str, map: &impl Map) -> anyhow::Result<mir::Command> {
@@ -321,8 +348,200 @@ fn transform_repeat(value: &impl Value) -> anyhow::Result<mir::Repeat> {
     Ok(mir::Repeat { count, stride })
 }
 
+fn transform_fields(value: &impl Value) -> anyhow::Result<Vec<mir::Field>> {
+    value
+        .as_map()?
+        .iter()
+        .map(|kv| transform_field(kv).with_context(|| format!("Parsing field '{}'", kv.0)))
+        .collect()
+}
+
+fn transform_field((field_name, field_value): (&str, &impl Value)) -> anyhow::Result<mir::Field> {
+    let mut field = mir::Field {
+        name: field_name.into(),
+        ..Default::default()
+    };
+
+    let field_map = field_value.as_map()?;
+
+    for required_key in ["base", "start"] {
+        if !field_map.contains_key(required_key) {
+            bail!("Field definition must contain the '{required_key}' field");
+        }
+    }
+
+    for (key, value) in field_map.iter() {
+        match key {
+            "cfg" => {
+                field.cfg_attr =
+                    Cfg::new(Some(value.as_string().context("Parsing error for 'cfg'")?))
+            }
+            "description" => {
+                field.description = value
+                    .as_string()
+                    .context("Parsing error for 'description'")?
+                    .into()
+            }
+            "access" => {
+                field.access = transform_access(value).context("Parsing error for 'access'")?
+            }
+            "base" => {
+                field.base_type = transform_base_type(value).context("Parsing error for 'base'")?
+            }
+            "conversion" => {
+                field.field_conversion = Some(
+                    transform_field_conversion(value, false)
+                        .context("Parsing error for 'conversion'")?,
+                )
+            }
+            "try_conversion" => {
+                field.field_conversion = Some(
+                    transform_field_conversion(value, true)
+                        .context("Parsing error for 'try_conversion'")?,
+                )
+            }
+            "start" => {
+                field.field_address.start = value
+                    .as_uint()
+                    .context("Parsing error for 'start'")?
+                    .try_into()
+                    .context("Parsing error for 'start'")?;
+
+                if !field_map.contains_key("end") {
+                    field.field_address.end = field.field_address.start;
+                }
+            }
+            "end" => {
+                field.field_address.end = value
+                    .as_uint()
+                    .context("Parsing error for 'end'")?
+                    .try_into()
+                    .context("Parsing error for 'end'")?
+            }
+            val => {
+                bail!("Unexpected key: '{val}'")
+            }
+        }
+    }
+
+    Ok(field)
+}
+
+fn transform_base_type(value: &impl Value) -> anyhow::Result<mir::BaseType> {
+    match value.as_string()? {
+        "bool" => Ok(mir::BaseType::Bool),
+        "int" => Ok(mir::BaseType::Int),
+        "uint" => Ok(mir::BaseType::Uint),
+        val => Err(anyhow!(
+            "Unexpected value: '{val}'. Choose one of 'bool', 'int' or 'uint'"
+        )),
+    }
+}
+
+fn transform_field_conversion(
+    value: &impl Value,
+    use_try: bool,
+) -> anyhow::Result<mir::FieldConversion> {
+    if let Ok(type_name) = value.as_string() {
+        Ok(mir::FieldConversion::Direct {
+            type_name: type_name.into(),
+            use_try,
+        })
+    } else if let Ok(enum_map) = value.as_map() {
+        let name = enum_map
+            .get("name")
+            .ok_or_else(|| anyhow!("Missing 'name' field"))?
+            .as_string()?;
+        let description = enum_map
+            .get("description")
+            .map(|description| description.as_string())
+            .transpose()?;
+        let variants = enum_map
+            .iter()
+            .filter(|(key, _)| *key != "name" && *key != "description")
+            .map(|kv| {
+                transform_enum_variant(kv).with_context(|| format!("Parsing variant '{}'", kv.0))
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .context("Parsing error for enum variant")?;
+
+        Ok(mir::FieldConversion::Enum {
+            enum_value: mir::Enum::new(
+                description.unwrap_or_default().into(),
+                name.into(),
+                variants,
+            ),
+            use_try,
+        })
+    } else {
+        Err(anyhow!(
+            "Value must a string (to denote an existing type) or a map (to generate a new enum)"
+        ))
+    }
+}
+
+fn transform_enum_variant(
+    (variant_name, variant_value): (&str, &impl Value),
+) -> anyhow::Result<mir::EnumVariant> {
+    if let Ok(value) = transform_enum_value(variant_value) {
+        Ok(mir::EnumVariant {
+            name: variant_name.into(),
+            value: value,
+            ..Default::default()
+        })
+    } else if let Ok(map) = variant_value.as_map() {
+        let cfg = map
+            .get("cfg")
+            .map(|cfg| cfg.as_string())
+            .transpose()
+            .context("Parsing 'cfg'")?;
+        let description = map
+            .get("description")
+            .map(|descr| descr.as_string())
+            .transpose()
+            .context("Parsing 'description'")?;
+        let value = map
+            .get("value")
+            .map(|value| transform_enum_value(value))
+            .transpose()
+            .context("Parsing 'description'")?;
+
+        Ok(mir::EnumVariant {
+            name: variant_name.into(),
+            value: value.unwrap_or_default(),
+            description: description.unwrap_or_default().into(),
+            cfg_attr: Cfg::new(cfg),
+        })
+    } else {
+        Err(anyhow!(
+            "Enum variant '{variant_name}' not recognized. Must be one of 'null', 'int', 'string' or 'map'"
+        ))
+    }
+}
+
+fn transform_enum_value(value: &impl Value) -> anyhow::Result<mir::EnumValue> {
+    if value.as_null().is_ok() {
+        Ok(mir::EnumValue::Unspecified)
+    } else if let Ok(specified) = value.as_int() {
+        Ok(mir::EnumValue::Specified(specified as i128))
+    } else if let Ok(specified) = value.as_string() {
+        match specified {
+            "default" => Ok(mir::EnumValue::Default),
+            "catch_all" => Ok(mir::EnumValue::CatchAll),
+            val => Err(anyhow!(
+                "Unexpected value: '{val}'. Choose one of 'default' or 'catch_all'"
+            )),
+        }
+    } else {
+        Err(anyhow!(
+            "Enum variant value not recognized. Must be one of 'null', 'int' or 'string'"
+        ))
+    }
+}
 #[cfg(test)]
 mod tests {
+    use mir::{ByteOrder, Cfg, Enum, EnumVariant, Field, Object, Register, Repeat, ResetValue};
+
     use super::*;
 
     #[test]
@@ -426,6 +645,219 @@ mod tests {
             )
             .unwrap_err().root_cause().to_string(),
             "Value had an unexpected type. `string` was expected, but the actual value was `(u)int`"
+        );
+    }
+
+    #[test]
+    fn register_parsed() {
+        assert_eq!(
+            transform_object((
+                "my_register",
+                &dd_manifest_tree::parse_manifest::<dd_manifest_tree::YamlValue>(
+                    "
+                        type: register
+                    "
+                )
+                .unwrap()
+            ))
+            .unwrap_err()
+            .root_cause()
+            .to_string(),
+            "Register definition must contain the 'address' field"
+        );
+
+        assert_eq!(
+            transform_object((
+                "my_register",
+                &dd_manifest_tree::parse_manifest::<dd_manifest_tree::YamlValue>(
+                    "
+                        type: register
+                        address: 42
+                    "
+                )
+                .unwrap()
+            ))
+            .unwrap_err()
+            .root_cause()
+            .to_string(),
+            "Register definition must contain the 'size_bits' field"
+        );
+
+        assert_eq!(
+            transform_object((
+                "my_register",
+                &dd_manifest_tree::parse_manifest::<dd_manifest_tree::YamlValue>(
+                    "
+                        type: register
+                        address: 42
+                        size_bits: 8
+                    "
+                )
+                .unwrap()
+            ))
+            .unwrap(),
+            Object::Register(Register {
+                name: "my_register".into(),
+                address: 42,
+                size_bits: 8,
+                ..Default::default()
+            })
+        );
+
+        assert_eq!(
+            transform_object((
+                "my_register",
+                &dd_manifest_tree::parse_manifest::<dd_manifest_tree::YamlValue>(
+                    "
+                        type: register
+                        address: 42
+                        size_bits: 8
+                        access: WO
+                        allow_address_overlap: true
+                        allow_bit_overlap: true
+                        bit_order: MSB0
+                        byte_order: BE
+                        repeat:
+                            count: 12
+                            stride: -3
+                        reset_value: [1, 2, 3]
+                        description: hello!
+                        cfg: windows
+                    "
+                )
+                .unwrap()
+            ))
+            .unwrap(),
+            Object::Register(Register {
+                name: "my_register".into(),
+                address: 42,
+                size_bits: 8,
+                access: mir::Access::WO,
+                allow_address_overlap: true,
+                allow_bit_overlap: true,
+                bit_order: mir::BitOrder::MSB0,
+                byte_order: Some(ByteOrder::BE),
+                repeat: Some(Repeat {
+                    count: 12,
+                    stride: -3
+                }),
+                reset_value: Some(ResetValue::Array(vec![1, 2, 3])),
+                description: "hello!".into(),
+                cfg_attr: Cfg::new(Some("windows")),
+                ..Default::default()
+            })
+        );
+
+        pretty_assertions::assert_eq!(
+            transform_object((
+                "my_register",
+                &dd_manifest_tree::parse_manifest::<dd_manifest_tree::YamlValue>(
+                    "
+                        type: register
+                        address: 42
+                        size_bits: 9
+                        fields:
+                            test:
+                                cfg: unix
+                                description: The test field
+                                base: int
+                                access: RO
+                                start: 0
+                                end: 3
+                            test2:
+                                base: uint
+                                start: 3
+                                end: 6
+                                try_conversion: MyStruct
+                            test3:
+                                base: int
+                                start: 6
+                                end: 9
+                                conversion:
+                                    name: MyEnum
+                                    description: This is my enum
+                                    var1: 1
+                                    varEmpty:
+                                    varDefault: default
+                                    varDocumented:
+                                        cfg: feature = \"foo\"
+                                        description: This one is documented
+                                        value: catch_all
+                    "
+                )
+                .unwrap()
+            ))
+            .unwrap(),
+            Object::Register(Register {
+                name: "my_register".into(),
+                address: 42,
+                size_bits: 9,
+                fields: vec![
+                    Field {
+                        cfg_attr: Cfg::new(Some("unix")),
+                        description: "The test field".into(),
+                        name: "test".into(),
+                        access: mir::Access::RO,
+                        base_type: mir::BaseType::Int,
+                        field_conversion: None,
+                        field_address: 0..3,
+                    },
+                    Field {
+                        cfg_attr: Default::default(),
+                        description: Default::default(),
+                        name: "test2".into(),
+                        access: Default::default(),
+                        base_type: mir::BaseType::Uint,
+                        field_conversion: Some(mir::FieldConversion::Direct {
+                            type_name: "MyStruct".into(),
+                            use_try: true
+                        }),
+                        field_address: 3..6
+                    },
+                    Field {
+                        cfg_attr: Default::default(),
+                        description: Default::default(),
+                        name: "test3".into(),
+                        access: Default::default(),
+                        base_type: mir::BaseType::Int,
+                        field_conversion: Some(mir::FieldConversion::Enum {
+                            enum_value: Enum::new(
+                                "This is my enum".into(),
+                                "MyEnum".into(),
+                                vec![
+                                    EnumVariant {
+                                        cfg_attr: Default::default(),
+                                        description: Default::default(),
+                                        name: "var1".into(),
+                                        value: mir::EnumValue::Specified(1),
+                                    },
+                                    EnumVariant {
+                                        cfg_attr: Default::default(),
+                                        description: Default::default(),
+                                        name: "varEmpty".into(),
+                                        value: mir::EnumValue::Unspecified,
+                                    },
+                                    EnumVariant {
+                                        cfg_attr: Default::default(),
+                                        description: Default::default(),
+                                        name: "varDefault".into(),
+                                        value: mir::EnumValue::Default,
+                                    },
+                                    EnumVariant {
+                                        cfg_attr: Cfg::new(Some("feature = \"foo\"")),
+                                        description: "This one is documented".into(),
+                                        name: "varDocumented".into(),
+                                        value: mir::EnumValue::CatchAll,
+                                    }
+                                ]
+                            ),
+                            use_try: false
+                        }),
+                        field_address: 6..9
+                    }
+                ],
+                ..Default::default()
+            })
         );
     }
 }
