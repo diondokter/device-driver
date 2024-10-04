@@ -14,8 +14,15 @@ pub fn create_device(item: TokenStream) -> TokenStream {
     };
 
     match input.generation_type {
+        #[cfg(feature = "dsl")]
         GenerationType::Dsl(tokens) => {
             device_driver_generation::transform_dsl(tokens, &input.device_name.to_string()).into()
+        }
+        #[cfg(not(feature = "dsl"))]
+        GenerationType::Dsl(tokens) => {
+            syn::Error::new(Span::call_site(), format!("The dsl feature is not enabled"))
+                .into_compile_error()
+                .into()
         }
         GenerationType::Manifest(path) => {
             let result: Result<proc_macro2::TokenStream, syn::Error> = (|| {

@@ -28,8 +28,9 @@ indoc = "2.0.5"
 dd-manifest-tree = { path = "../dd-manifest-tree", features = ["preserve_order"] }
 
 [features]
-default = ["json", "yaml", "toml"]
+default = ["dsl", "json", "yaml", "toml"]
 manifest = ["dep:dd-manifest-tree"]
+dsl = []
 json = ["manifest", "dd-manifest-tree/json"]
 yaml = ["manifest", "dd-manifest-tree/yaml"]
 toml = ["manifest", "dd-manifest-tree/toml"]

@@ -1,5 +1,6 @@
 #![doc = include_str!(concat!("../", env!("CARGO_PKG_README")))]
 
+#[cfg(feature = "dsl")]
 mod dsl_hir;
 mod lir;
 #[cfg(feature = "manifest")]
@@ -10,6 +11,7 @@ mod mir;
 ///
 /// The `driver_name` arg is used to name the root block of the driver.
 /// It should be given in `PascalCase` form.
+#[cfg(feature = "dsl")]
 pub fn transform_dsl(
     input: proc_macro2::TokenStream,
     driver_name: &str,
@@ -23,6 +25,7 @@ pub fn transform_dsl(
 }
 
 #[doc(hidden)]
+#[cfg(feature = "dsl")]
 pub fn _private_transform_dsl_mir(
     input: proc_macro2::TokenStream,
 ) -> Result<mir::Device, syn::Error> {
