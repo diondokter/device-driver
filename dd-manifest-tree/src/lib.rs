@@ -11,7 +11,7 @@ pub type YamlValue = yaml_rust2::Yaml;
 pub type TomlValue = toml::Value;
 
 /// Parse the source into the value type object
-pub fn parse_manifest<V: Value>(source: &str) -> Result<V, Box<dyn Error>> {
+pub fn parse_manifest<V: Value>(source: &str) -> Result<V, V::Error> {
     V::from_string(source)
 }
 
@@ -34,6 +34,7 @@ impl Display for ValueError {
 impl Error for ValueError {}
 
 pub trait Value: Debug + Clone + Sized {
+    type Error: std::error::Error;
     type MapType: Map<Value = Self>;
 
     fn type_name(&self) -> &'static str;
@@ -46,11 +47,12 @@ pub trait Value: Debug + Clone + Sized {
     fn as_array(&self) -> Result<&[Self], ValueError>;
     fn as_map(&self) -> Result<&Self::MapType, ValueError>;
 
-    fn from_string(source: &str) -> Result<Self, Box<dyn Error>>;
+    fn from_string(source: &str) -> Result<Self, Self::Error>;
 }
 
 #[cfg(feature = "json")]
 impl Value for serde_json::Value {
+    type Error = serde_json::Error;
     type MapType = serde_json::Map<String, serde_json::Value>;
 
     fn type_name(&self) -> &'static str {
@@ -125,13 +127,14 @@ impl Value for serde_json::Value {
         })
     }
 
-    fn from_string(source: &str) -> Result<Self, Box<dyn Error>> {
-        Ok(serde_json::from_str(source)?)
+    fn from_string(source: &str) -> Result<Self, Self::Error> {
+        serde_json::from_str(source)
     }
 }
 
 #[cfg(feature = "yaml")]
 impl Value for yaml_rust2::Yaml {
+    type Error = yaml_rust2::ScanError;
     type MapType = yaml_rust2::yaml::Hash;
 
     fn type_name(&self) -> &'static str {
@@ -209,13 +212,14 @@ impl Value for yaml_rust2::Yaml {
         })
     }
 
-    fn from_string(source: &str) -> Result<Self, Box<dyn Error>> {
+    fn from_string(source: &str) -> Result<Self, Self::Error> {
         Ok(yaml_rust2::YamlLoader::load_from_str(source)?.remove(0))
     }
 }
 
 #[cfg(feature = "toml")]
 impl Value for toml::Value {
+    type Error = toml::de::Error;
     type MapType = toml::value::Table;
 
     fn type_name(&self) -> &'static str {
@@ -291,8 +295,8 @@ impl Value for toml::Value {
         })
     }
 
-    fn from_string(source: &str) -> Result<Self, Box<dyn Error>> {
-        Ok(toml::from_str(source)?)
+    fn from_string(source: &str) -> Result<Self, Self::Error> {
+        toml::from_str(source)
     }
 }
 

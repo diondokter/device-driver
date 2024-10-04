@@ -28,8 +28,6 @@ pub fn transform(value: impl Value) -> anyhow::Result<mir::Device> {
 }
 
 fn transform_global_config(value: &impl Value) -> anyhow::Result<mir::GlobalConfig> {
-    println!("{value:?}");
-
     let config_map = value.as_map()?;
     let mut global_config = mir::GlobalConfig::default();
 
@@ -380,7 +378,7 @@ fn transform_command(name: &str, map: &impl Map) -> anyhow::Result<mir::Command>
                     transform_fields(value).context("Parsing error for 'fields_in'")?;
             }
             "fields_out" => {
-                command.in_fields =
+                command.out_fields =
                     transform_fields(value).context("Parsing error for 'fields_out'")?;
             }
             val => {
@@ -783,7 +781,7 @@ fn transform_enum_variant(
     if let Ok(value) = transform_enum_value(variant_value) {
         Ok(mir::EnumVariant {
             name: variant_name.into(),
-            value: value,
+            value,
             ..Default::default()
         })
     } else if let Ok(map) = variant_value.as_map() {

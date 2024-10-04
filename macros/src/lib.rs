@@ -1,6 +1,9 @@
 #![doc = include_str!(concat!("../", env!("CARGO_PKG_README")))]
 
+use std::{fs::File, io::Read, ops::Deref, path::PathBuf};
+
 use proc_macro::TokenStream;
+use proc_macro2::Span;
 use syn::{braced, Ident, LitStr};
 
 #[proc_macro]
@@ -14,8 +17,62 @@ pub fn create_device(item: TokenStream) -> TokenStream {
         GenerationType::Dsl(tokens) => {
             device_driver_generation::transform_dsl(tokens, &input.device_name.to_string()).into()
         }
-        GenerationType::Json(_) => todo!(),
-        GenerationType::Yaml(_) => todo!(),
+        GenerationType::Manifest(path) => {
+            let result: Result<proc_macro2::TokenStream, syn::Error> = (|| {
+                let mut path = PathBuf::from(path.value());
+                if path.is_relative() {
+                    let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
+                    path = manifest_dir.join(path);
+                }
+
+                let mut file_contents = String::new();
+                File::open(&path)
+                    .map_err(|e| {
+                        syn::Error::new(
+                            Span::call_site(),
+                            format!("Could open the manifest file at '{}': {e}", path.display()),
+                        )
+                    })?
+                    .read_to_string(&mut file_contents)
+                    .unwrap();
+
+                let extension =
+                    path.extension()
+                        .map(|ext| ext.to_string_lossy())
+                        .ok_or(syn::Error::new(
+                            Span::call_site(),
+                            "Manifest file has no file extension",
+                        ))?;
+
+                match extension.deref() {
+                    "json" => Ok(device_driver_generation::transform_json(
+                        &file_contents,
+                        &input.device_name.to_string(),
+                    )),
+                    "yaml" => Ok(device_driver_generation::transform_yaml(
+                        &file_contents,
+                        &input.device_name.to_string(),
+                    )),
+                    "toml" => Ok(device_driver_generation::transform_toml(
+                        &file_contents,
+                        &input.device_name.to_string(),
+                    )),
+                    "dsl" => Ok(device_driver_generation::transform_dsl(
+                        syn::parse_str(&file_contents)?,
+                        &input.device_name.to_string(),
+                    )),
+                    unknown => Err(syn::Error::new(
+                        Span::call_site(),
+                        format!("Unknown manifest file extension: '{unknown}'"),
+                    )),
+                }
+            })();
+
+            match result {
+                Ok(tokens) => tokens.into(),
+                Err(e) => e.into_compile_error().into(),
+            }
+        }
     }
 }
 
@@ -26,10 +83,7 @@ struct Input {
 
 enum GenerationType {
     Dsl(proc_macro2::TokenStream),
-    #[allow(dead_code)]
-    Json(LitStr),
-    #[allow(dead_code)]
-    Yaml(LitStr),
+    Manifest(LitStr),
 }
 
 impl syn::parse::Parse for Input {
@@ -54,25 +108,15 @@ impl syn::parse::Parse for Input {
                 device_name,
                 generation_type: GenerationType::Dsl(tokens),
             })
-        } else if look.peek(kw::json) {
-            input.parse::<kw::json>()?;
+        } else if look.peek(kw::manifest) {
+            input.parse::<kw::manifest>()?;
             input.parse::<syn::Token![:]>()?;
 
             let path = input.parse()?;
 
             Ok(Self {
                 device_name,
-                generation_type: GenerationType::Json(path),
-            })
-        } else if look.peek(kw::yaml) {
-            input.parse::<kw::yaml>()?;
-            input.parse::<syn::Token![:]>()?;
-
-            let path = input.parse()?;
-
-            Ok(Self {
-                device_name,
-                generation_type: GenerationType::Yaml(path),
+                generation_type: GenerationType::Manifest(path),
             })
         } else {
             Err(look.error())
@@ -83,6 +127,5 @@ impl syn::parse::Parse for Input {
 mod kw {
     syn::custom_keyword!(device_name);
     syn::custom_keyword!(dsl);
-    syn::custom_keyword!(json);
-    syn::custom_keyword!(yaml);
+    syn::custom_keyword!(manifest);
 }

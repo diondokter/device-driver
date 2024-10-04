@@ -25,6 +25,7 @@ dd-manifest-tree = { path = "../dd-manifest-tree", optional = true }
 prettyplease = "0.2.15"
 pretty_assertions = "1.4.0"
 indoc = "2.0.5"
+dd-manifest-tree = { path = "../dd-manifest-tree", features = ["preserve_order"] }
 
 [features]
 default = ["json", "yaml", "toml"]
