@@ -570,6 +570,86 @@ register Foo {
 
 </style>
 <h1 id="using-the-macro"><a class="header" href="#using-the-macro">Using the macro</a></h1>
+<p>The macro is the main way of generating a driver. It is defined in the <code>device-driver-macros</code> crate which is re-exported in the <code>device-driver</code> crate by default. You don't have import the macros crate yourself.</p>
+<p>The macro can be used in two forms.</p>
+<h2 id="inline-dsl"><a class="header" href="#inline-dsl">Inline DSL</a></h2>
+<p>The first form is for writing the register definitions using the DSL right in the source of your project.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>device_driver::create_device!(
+    device_name: MyTestDevice,
+    dsl: {
+        // DSL code goes here
+    }
+)
+<span class="boring">}</span></code></pre></pre>
+<p>It consists of two parts:</p>
+<ul>
+<li><code>device_name</code>: This will be the name of the root block that will take ownership of the device interface.
+<ul>
+<li>The name should be provided in PascalCase</li>
+<li>If you're going to distribute this as the main part of your driver, then it's recommended to use the name
+of the chip this driver is for. For example: 'Lis3dh'</li>
+<li>If you're going to write a higher level wrapper around it, then it's recommended to name it something
+appropriate for a low level layer. For example: 'Registers' or 'LowLevel'</li>
+</ul>
+</li>
+<li><code>dsl</code>: This selects the option to write DSL code in the macro</li>
+</ul>
+<p>Using the DSL in this way allows for nice error messages and keeps the definitions close to your code.</p>
+<h2 id="manifest-file"><a class="header" href="#manifest-file">Manifest file</a></h2>
+<p>The second form uses an external manifest file.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>device_driver::create_device!(
+    device_name: MyTestDevice,
+    manifest: "driver-manifest.yaml"
+)
+<span class="boring">}</span></code></pre></pre>
+<p>You can provide an absolute path or a relative path to the file. If it's relative, then the base path is the value of the <a href="https://doc.rust-lang.org/cargo/reference/environment-variables.html"><code>CARGO_MANIFEST_DIR</code> environment variable</a>. This is the same directory as your <code>Cargo.toml</code> is in.</p>
+<p>The extension of the file determines which parser is used.</p>
+<p>The options are:</p>
+<ul>
+<li>yaml</li>
+<li>json</li>
+<li>toml</li>
+<li>dsl</li>
+</ul>
+<h2 id="output"><a class="header" href="#output">Output</a></h2>
+<p>The generated code is placed exactly where the macro is invoked. This means you can decide to contain everything in its own module. This is recommended to do, but not required.</p>
+<p>Code in the same module as the generated code is able to access the private API of the generated code. It is discouraged to make use of the private API since it's not considered as part of the SemVer guarantees and it's designed in a way where you shouldn't need to.</p>
+<p>If you feel part of the private API should be stabilized, then please open an issue to discuss it. If you really need to access the private API, consider pinning the exact device-driver versions and make sure to pin the sub crates too, including the generation and the macros crate.</p>
+<h2 id="optimizing-compile-times"><a class="header" href="#optimizing-compile-times">Optimizing compile times</a></h2>
+<p>The device-driver crate has features for turning on the json, yaml and toml parsers. These are enabled by default for your convenience.</p>
+<p>Once you've settled on a format, you can optimize the compile times for you and your dependents by disabling the default features and adding back the features you need.</p>
+<p>Suggestions:</p>
+<ul>
+<li>When using the DSL (inline or as manifest)
+<ul>
+<li><code>default-features = false</code></li>
+<li><code>features = ["dsl"]</code></li>
+</ul>
+</li>
+<li>When using yaml
+<ul>
+<li><code>default-features = false</code></li>
+<li><code>features = ["yaml"]</code></li>
+</ul>
+</li>
+<li>When using json
+<ul>
+<li><code>default-features = false</code></li>
+<li><code>features = ["json"]</code></li>
+</ul>
+</li>
+<li>When using toml
+<ul>
+<li><code>default-features = false</code></li>
+<li><code>features = ["toml"]</code></li>
+</ul>
+</li>
+</ul>
+<p>With these steps the compile times should be acceptable. However, they can be further optimized by getting rid of the macro alltogether. This is explained in the cli chapter.</p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -1883,7 +1963,7 @@ The key of the object will become the name of it</p>
 }
 
 </style>
-<h1 id="output"><a class="header" href="#output">Output</a></h1>
+<h1 id="output-1"><a class="header" href="#output-1">Output</a></h1>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
