@@ -355,11 +355,7 @@ pub struct Enum {
 }
 
 impl Enum {
-    pub fn new(
-        description: String,
-        name: String,
-        variants: Vec<EnumVariant>,
-    ) -> Self {
+    pub fn new(description: String, name: String, variants: Vec<EnumVariant>) -> Self {
         Self {
             cfg_attr: Cfg::default(),
             description,
@@ -435,7 +431,7 @@ pub struct Buffer {
     pub address: i64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct RefObject {
     pub cfg_attr: Cfg,
     pub description: String,
@@ -448,6 +444,12 @@ pub enum ObjectOverride {
     Block(BlockOverride),
     Register(RegisterOverride),
     Command(CommandOverride),
+}
+
+impl Default for ObjectOverride {
+    fn default() -> Self {
+        Self::Register(Default::default())
+    }
 }
 
 impl ObjectOverride {

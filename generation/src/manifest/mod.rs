@@ -312,15 +312,312 @@ fn transform_register(name: &str, map: &impl Map) -> anyhow::Result<mir::Registe
 }
 
 fn transform_command(name: &str, map: &impl Map) -> anyhow::Result<mir::Command> {
-    todo!()
+    let mut command = mir::Command {
+        name: name.into(),
+        ..Default::default()
+    };
+
+    for required_key in ["address"] {
+        if !map.contains_key(required_key) {
+            bail!("Command definition must contain the '{required_key}' field");
+        }
+    }
+
+    for (key, value) in map.iter() {
+        match key {
+            "type" => {}
+            "cfg" => {
+                command.cfg_attr =
+                    mir::Cfg::new(Some(value.as_string().context("Parsing error for 'cfg'")?))
+            }
+            "description" => {
+                command.description = value
+                    .as_string()
+                    .context("Parsing error for 'description'")?
+                    .into()
+            }
+            "byte_order" => {
+                command.byte_order =
+                    Some(transform_byte_order(value).context("Parsing error for 'byte_order'")?);
+            }
+            "bit_order" => {
+                command.bit_order =
+                    transform_bit_order(value).context("Parsing error for 'bit_order'")?;
+            }
+            "address" => {
+                command.address = value.as_int().context("Parsing error for 'address'")?;
+            }
+            "size_bits_in" => {
+                command.size_bits_in = value
+                    .as_uint()
+                    .context("Parsing error for 'size_bits_in'")?
+                    .try_into()
+                    .context("Parsing error for 'size_bits_in'")?;
+            }
+            "size_bits_out" => {
+                command.size_bits_out = value
+                    .as_uint()
+                    .context("Parsing error for 'size_bits_out'")?
+                    .try_into()
+                    .context("Parsing error for 'size_bits_out'")?;
+            }
+            "repeat" => {
+                command.repeat =
+                    Some(transform_repeat(value).context("Parsing error for 'repeat")?);
+            }
+            "allow_bit_overlap" => {
+                command.allow_bit_overlap = value
+                    .as_bool()
+                    .context("Parsing error for 'allow_bit_overlap'")?;
+            }
+            "allow_address_overlap" => {
+                command.allow_address_overlap = value
+                    .as_bool()
+                    .context("Parsing error for 'allow_address_overlap'")?;
+            }
+            "fields_in" => {
+                command.in_fields =
+                    transform_fields(value).context("Parsing error for 'fields_in'")?;
+            }
+            "fields_out" => {
+                command.in_fields =
+                    transform_fields(value).context("Parsing error for 'fields_out'")?;
+            }
+            val => {
+                bail!("Unexpected key: '{val}'")
+            }
+        }
+    }
+
+    Ok(command)
 }
 
 fn transform_buffer(name: &str, map: &impl Map) -> anyhow::Result<mir::Buffer> {
-    todo!()
+    let mut buffer = mir::Buffer {
+        name: name.into(),
+        ..Default::default()
+    };
+
+    for required_key in ["address"] {
+        if !map.contains_key(required_key) {
+            bail!("Buffer definition must contain the '{required_key}' field");
+        }
+    }
+
+    for (key, value) in map.iter() {
+        match key {
+            "type" => {}
+            "cfg" => {
+                buffer.cfg_attr =
+                    mir::Cfg::new(Some(value.as_string().context("Parsing error for 'cfg'")?))
+            }
+            "description" => {
+                buffer.description = value
+                    .as_string()
+                    .context("Parsing error for 'description'")?
+                    .into()
+            }
+            "access" => {
+                buffer.access = transform_access(value).context("Parsing error for 'access'")?;
+            }
+            "address" => {
+                buffer.address = value.as_int().context("Parsing error for 'address'")?;
+            }
+            val => {
+                bail!("Unexpected key: '{val}'")
+            }
+        }
+    }
+
+    Ok(buffer)
 }
 
 fn transform_ref(name: &str, map: &impl Map) -> anyhow::Result<mir::RefObject> {
-    todo!()
+    let mut ref_object = mir::RefObject {
+        name: name.into(),
+        ..Default::default()
+    };
+
+    for required_key in ["target", "override"] {
+        if !map.contains_key(required_key) {
+            bail!("Ref definition must contain the '{required_key}' field");
+        }
+    }
+
+    let target = map
+        .get("target")
+        .unwrap()
+        .as_string()
+        .context("Parsing error for 'target'")?;
+    let override_value = map.get("override").unwrap();
+
+    for (key, value) in map.iter() {
+        match key {
+            "type" => {}
+            "cfg" => {
+                ref_object.cfg_attr =
+                    mir::Cfg::new(Some(value.as_string().context("Parsing error for 'cfg'")?))
+            }
+            "description" => {
+                ref_object.description = value
+                    .as_string()
+                    .context("Parsing error for 'description'")?
+                    .into()
+            }
+            "target" => {}
+            "override" => {}
+            val => {
+                bail!("Unexpected key: '{val}'")
+            }
+        }
+    }
+
+    ref_object.object_override = transform_object_override(target, override_value)
+        .context("Parsing error for 'override'")?;
+
+    Ok(ref_object)
+}
+
+fn transform_object_override(
+    target: &str,
+    override_value: &impl Value,
+) -> anyhow::Result<mir::ObjectOverride> {
+    let override_map = override_value.as_map()?;
+
+    let object_type = override_map
+        .get("type")
+        .ok_or_else(|| anyhow!("No 'type' field present"))?
+        .as_string()?;
+
+    match object_type {
+        "block" => Ok(mir::ObjectOverride::Block(transform_block_override(
+            target,
+            override_map,
+        )?)),
+        "register" => Ok(mir::ObjectOverride::Register(transform_register_override(
+            target,
+            override_map,
+        )?)),
+        "command" => Ok(mir::ObjectOverride::Command(transform_command_override(
+            target,
+            override_map,
+        )?)),
+        "buffer" => Err(anyhow!("Cannot make refs to 'buffer's")),
+        "ref" => Err(anyhow!("Cannot make refs to 'ref's")),
+        val => Err(anyhow!(
+            "Unexpected object type '{val}'. Select one of \"block\", \"register\" or \"command\""
+        )),
+    }
+}
+
+fn transform_block_override(name: &str, map: &impl Map) -> anyhow::Result<mir::BlockOverride> {
+    let mut block = mir::BlockOverride {
+        name: name.into(),
+        ..Default::default()
+    };
+
+    for (key, value) in map.iter() {
+        match key {
+            "type" => {},
+            "address_offset" => block.address_offset = Some(value.as_int().context("Parsing error for 'address_offset'")?),
+            "repeat" => block.repeat = Some(transform_repeat(value).context("Parsing error for 'repeat'")?),
+            val => bail!(
+                "Unexpected key found: '{val}'. Choose one of \"type\", \"address_offset\" or \"repeat\""
+            ),
+        }
+    }
+
+    Ok(block)
+}
+
+fn transform_register_override(
+    name: &str,
+    map: &impl Map,
+) -> anyhow::Result<mir::RegisterOverride> {
+    let mut register = mir::RegisterOverride {
+        name: name.into(),
+        ..Default::default()
+    };
+
+    for (key, value) in map.iter() {
+        match key {
+            "type" => {}
+            "access" => {
+                register.access =
+                    Some(transform_access(value).context("Parsing error for 'access'")?);
+            }
+            "address" => {
+                register.address = Some(value.as_int().context("Parsing error for 'address'")?);
+            }
+            "reset_value" => {
+                register.reset_value = Some(if let Ok(rv) = value.as_uint() {
+                    mir::ResetValue::Integer(rv as u128)
+                } else if let Ok(rv) = value.as_array() {
+                    match rv
+                        .iter()
+                        .map(|inner| {
+                            inner
+                                .as_uint()
+                                .context("Array must contain bytes")
+                                .map(|val| u8::try_from(val).context("Array must contain bytes"))
+                                .and_then(identity)
+                        })
+                        .collect::<Result<Vec<_>, _>>()
+                    {
+                        Ok(val) => mir::ResetValue::Array(val),
+                        Err(e) => return Err(e.context("Parsing error for 'reset_value")),
+                    }
+                } else {
+                    return Err(anyhow!("Field must be an integer or an array")
+                        .context("Parsing error for 'reset_value"));
+                })
+            }
+            "repeat" => {
+                register.repeat =
+                    Some(transform_repeat(value).context("Parsing error for 'repeat")?);
+            }
+            "allow_address_overlap" => {
+                register.allow_address_overlap = value
+                    .as_bool()
+                    .context("Parsing error for 'allow_address_overlap'")?;
+            }
+            val => {
+                bail!("Unexpected key: '{val}'")
+            }
+        }
+    }
+
+    Ok(register)
+}
+
+fn transform_command_override(name: &str, map: &impl Map) -> anyhow::Result<mir::CommandOverride> {
+    let mut command = mir::CommandOverride {
+        name: name.into(),
+        ..Default::default()
+    };
+
+    for (key, value) in map.iter() {
+        match key {
+            "type" => {}
+            "address" => {
+                command.address = Some(value.as_int().context("Parsing error for 'address'")?);
+            }
+            "repeat" => {
+                command.repeat =
+                    Some(transform_repeat(value).context("Parsing error for 'repeat")?);
+            }
+            "allow_address_overlap" => {
+                command.allow_address_overlap = value
+                    .as_bool()
+                    .context("Parsing error for 'allow_address_overlap'")?;
+            }
+            val => {
+                bail!("Unexpected key: '{val}'")
+            }
+        }
+    }
+
+    Ok(command)
 }
 
 fn transform_repeat(value: &impl Value) -> anyhow::Result<mir::Repeat> {
