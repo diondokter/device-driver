@@ -895,6 +895,7 @@ It is good practice, though, to inform the driver users of this with docs and ex
 <p>The registers, commands and buffers can be grouped into blocks.</p>
 <p>Except for buffers all of them can be repeated and ref'ed. Repeats take the same object and repeat them for a repeat count with an address stride.
 A 'ref' object copies another object and allows to override some values like the address and access.</p>
+<p>The registers, commands, buffers, blocks and refs are all called 'objects' in this project.</p>
 <p>To configure the driver, there's the global config. In it you can define the address types, various defaults for e.g. byte ordering and the method used for name normalization.</p>
 <p>These concepts and how you can use them in your driver are described in more detail in their own chapter.</p>
 <div style="break-before: page; page-break-before: always;"></div><style>
@@ -965,6 +966,151 @@ A 'ref' object copies another object and allows to override some values like the
 
 </style>
 <h1 id="global-config"><a class="header" href="#global-config">Global config</a></h1>
+<p>The global config exists to house three kinds of configs:</p>
+<ol>
+<li>Required</li>
+<li>Defaults</li>
+<li>Transformations</li>
+</ol>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+</div>
+<p>A driver can only have one global config.</p>
+<p>Below is a short overview for the DSL format and the manifest format of the global config and their defaults (or <code>_</code> for no default). The last chapters describe the options in more detail.</p>
+<div class="mdbook-alerts mdbook-alerts-tip">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  tip
+</p>
+<p>Use the available default values to your advantage to cut back having to specify things on each individual register, command or buffer.</p>
+</div>
+<ul>
+<li><a href="global-config.html#global-config">Global config</a>
+<ul>
+<li><a href="global-config.html#dsl">DSL</a></li>
+<li><a href="global-config.html#manifest">Manifest</a></li>
+<li><a href="global-config.html#required">Required</a>
+<ul>
+<li><a href="global-config.html#register_address_type"><code>register_address_type</code></a></li>
+<li><a href="global-config.html#command_address_type"><code>command_address_type</code></a></li>
+<li><a href="global-config.html#buffer_address_type"><code>buffer_address_type</code></a></li>
+</ul>
+</li>
+<li><a href="global-config.html#defaults">Defaults</a>
+<ul>
+<li><a href="global-config.html#default_register_access"><code>default_register_access</code></a></li>
+<li><a href="global-config.html#default_field_access"><code>default_field_access</code></a></li>
+<li><a href="global-config.html#default_buffer_access"><code>default_buffer_access</code></a></li>
+<li><a href="global-config.html#default_byte_order"><code>default_byte_order</code></a></li>
+<li><a href="global-config.html#default_bit_order"><code>default_bit_order</code></a></li>
+</ul>
+</li>
+<li><a href="global-config.html#transformations">Transformations</a>
+<ul>
+<li><a href="global-config.html#name_word_boundaries"><code>name_word_boundaries</code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="dsl"><a class="header" href="#dsl">DSL</a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>config {
+    type DefaultRegisterAccess = RW;
+    type DefaultFieldAccess = RW;
+    type DefaultBufferAccess = RW;
+    type DefaultByteOrder = _;
+    type DefaultBitOrder = LSB0;
+    type RegisterAddressType = _;
+    type CommandAddressType = _;
+    type BufferAddressType = _;
+    type NameWordBoundaries = [
+        Underscore, Hyphen, Space, LowerUpper,
+        UpperDigit, DigitUpper, DigitLower,
+        LowerDigit, Acronym,
+    ];
+}
+<span class="boring">}</span></code></pre></pre>
+<h2 id="manifest"><a class="header" href="#manifest">Manifest</a></h2>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>Example is written in json, but works for yaml and toml too when literally translated.</p>
+</div>
+<pre><code class="language-json">"config": {
+    "default_register_access": "RW",
+    "default_field_access": "RW",
+    "default_buffer_access": "RW",
+    "default_byte_order": "_",
+    "default_bit_order": "LSB0",
+    "register_address_type": "_",
+    "command_address_type": "_",
+    "buffer_address_type": "_",
+    "name_word_boundaries": [
+        "Underscore", "Hyphen", "Space", "LowerUpper",
+        "UpperDigit", "DigitUpper", "DigitLower",
+        "LowerDigit", "Acronym"
+    ]
+}
+</code></pre>
+<h2 id="required"><a class="header" href="#required">Required</a></h2>
+<h3 id="register_address_type"><a class="header" href="#register_address_type"><code>register_address_type</code></a></h3>
+<p>Specifies the integer type used to represent the address of a register. It is required once a register has been defined.</p>
+<p>The value is a string in manifest form or an integer type in DLS form.</p>
+<p>Options are: <code>u8</code>, <code>u16</code>, <code>u32</code>, <code>i8</code>, <code>i16</code>, <code>i32</code>, <code>i64</code></p>
+<h3 id="command_address_type"><a class="header" href="#command_address_type"><code>command_address_type</code></a></h3>
+<p>Specifies the integer type used to represent the address of a command. It is required once a command has been defined.</p>
+<p>The value is a string in manifest form or an integer type in DLS form.</p>
+<p>Options are: <code>u8</code>, <code>u16</code>, <code>u32</code>, <code>i8</code>, <code>i16</code>, <code>i32</code>, <code>i64</code></p>
+<h3 id="buffer_address_type"><a class="header" href="#buffer_address_type"><code>buffer_address_type</code></a></h3>
+<p>Specifies the integer type used to represent the address of a buffer. It is required once a buffer has been defined.</p>
+<p>The value is a string in manifest form or an integer type in DLS form.</p>
+<p>Options are: <code>u8</code>, <code>u16</code>, <code>u32</code>, <code>i8</code>, <code>i16</code>, <code>i32</code>, <code>i64</code></p>
+<h2 id="defaults"><a class="header" href="#defaults">Defaults</a></h2>
+<h3 id="default_register_access"><a class="header" href="#default_register_access"><code>default_register_access</code></a></h3>
+<p>Provides a default to the access type of registers. Any register can override this.</p>
+<p>The value is a string in manifest form or written 'as is' in the DSL.</p>
+<p>Options are: <code>RW</code> (default), <code>ReadWrite</code>, <code>RO</code>, <code>ReadOnly</code>, <code>WO</code>, <code>WriteOnly</code></p>
+<h3 id="default_field_access"><a class="header" href="#default_field_access"><code>default_field_access</code></a></h3>
+<p>Provides a default to the access type of fields. Any field can override this.</p>
+<p>The value is a string in manifest form or written 'as is' in the DSL.</p>
+<p>Options are: <code>RW</code> (default), <code>ReadWrite</code>, <code>RO</code>, <code>ReadOnly</code>, <code>WO</code>, <code>WriteOnly</code></p>
+<h3 id="default_buffer_access"><a class="header" href="#default_buffer_access"><code>default_buffer_access</code></a></h3>
+<p>Provides a default to the access type of buffers. Any buffer can override this.</p>
+<p>The value is a string in manifest form or written 'as is' in the DSL.</p>
+<p>Options are: <code>RW</code> (default), <code>ReadWrite</code>, <code>RO</code>, <code>ReadOnly</code>, <code>WO</code>, <code>WriteOnly</code></p>
+<h3 id="default_byte_order"><a class="header" href="#default_byte_order"><code>default_byte_order</code></a></h3>
+<p>Sets the global byte order. This is used for the register and command fieldsets.
+Any command or register can override it.</p>
+<p>The value is a string in manifest form or written 'as is' in the DSL.</p>
+<p>Options are: <code>LE</code>, <code>BE</code></p>
+<h3 id="default_bit_order"><a class="header" href="#default_bit_order"><code>default_bit_order</code></a></h3>
+<p>Sets the global bit order. This is used for the register and command fieldsets.
+Any command or register can override it.</p>
+<p>The value is a string in manifest form or written 'as is' in the DSL.</p>
+<p>Options are: <code>LSB0</code> (default), <code>MSB0</code></p>
+<h2 id="transformations"><a class="header" href="#transformations">Transformations</a></h2>
+<h3 id="name_word_boundaries"><a class="header" href="#name_word_boundaries"><code>name_word_boundaries</code></a></h3>
+<p>All object, field, enum and enum variant names are converted to the correct casing for where it's used in the generated code. This is because some of them have dual use like the object names which are used as struct names (PascalCase) and function names (snake_case).</p>
+<p>This also aids when copying names from datasheets since they're often weird, inconsistent, wrong or all three in regards to casing.</p>
+<div class="mdbook-alerts mdbook-alerts-important">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  important
+</p>
+<p>To do proper casing, it must be known when a new word starts. The transition from one word to the next is called a boundary.</p>
+</div>
+<p>The conversions are done using the <code>convert_case</code> crate. With this config option you can specify the boundaries the crate uses to do the conversions.</p>
+<p>Options are: <code>[Boundary]</code> or <code>string</code></p>
+<p>The available boundries can be found in <a href="https://docs.rs/convert_case/0.6.0/convert_case/enum.Boundary.html">the docs</a> of the crate. The boundary names should be specified as strings in the manifest and 'as is' in the DSL.</p>
+<p>The string is converted to an array of boundaries using <a href="https://docs.rs/convert_case/0.6.0/convert_case/enum.Boundary.html#method.list_from">this function</a> which is a really easy way to define it.</p>
+<p>The default value is also provided by the crate from <a href="https://docs.rs/convert_case/0.6.0/convert_case/enum.Boundary.html#method.defaults">this function</a>.</p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -1373,19 +1519,19 @@ A 'ref' object copies another object and allows to override some values like the
 
 </style>
 <h1 id="dsl-syntax"><a class="header" href="#dsl-syntax">Dsl syntax</a></h1>
-<div class="mdbook-alerts mdbook-alerts-important">
+<div class="mdbook-alerts mdbook-alerts-caution">
 <p class="mdbook-alerts-title">
   <span class="mdbook-alerts-icon"></span>
-  important
+  caution
 </p>
 <p>This doc is written manually. The implementation may differ.
 If it does, then either this doc is wrong or the implementation is wrong.
 In any case, them disagreeing is a bug. Please file an issue!</p>
 </div>
-<div class="mdbook-alerts mdbook-alerts-note">
+<div class="mdbook-alerts mdbook-alerts-warning">
 <p class="mdbook-alerts-title">
   <span class="mdbook-alerts-icon"></span>
-  note
+  warning
 </p>
 <p>While something may be valid to be parsed, it may not be valid as a construct
 and may generate an error deeper down.</p>
@@ -1644,19 +1790,19 @@ If no in fields, then no data is sent. If no out fields, then no data is returne
 
 </style>
 <h1 id="manifest-syntax"><a class="header" href="#manifest-syntax">Manifest syntax</a></h1>
-<div class="mdbook-alerts mdbook-alerts-important">
+<div class="mdbook-alerts mdbook-alerts-caution">
 <p class="mdbook-alerts-title">
   <span class="mdbook-alerts-icon"></span>
-  important
+  caution
 </p>
 <p>This doc is written manually. The implementation may differ.
 If it does, then either this doc is wrong or the implementation is wrong.
 In any case, them disagreeing is a bug. Please file an issue!</p>
 </div>
-<div class="mdbook-alerts mdbook-alerts-note">
+<div class="mdbook-alerts mdbook-alerts-warning">
 <p class="mdbook-alerts-title">
   <span class="mdbook-alerts-icon"></span>
-  note
+  warning
 </p>
 <p>While something may be valid to be parsed, it may not be valid as a construct
 and may generate an error deeper down.</p>
