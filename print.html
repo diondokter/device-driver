@@ -878,6 +878,17 @@ async fn try_out_sync() {
 
 </style>
 <h1 id="defining-the-device"><a class="header" href="#defining-the-device">Defining the device</a></h1>
+<p>This toolkit brings three different kinds of concepts you can use to build various aspects of your driver.</p>
+<ul>
+<li>The register is some memory located at an address on the device. It contains fields, may have a reset value and could be restrictive in its read and write access.</li>
+<li>The command can model multiple things. It can be an event to send to the device so it changes state or it could be an RPC-like call. It can send data and receive back an answer.</li>
+<li>The buffer is anything that you'd like to have a <code>Write</code> or <code>Read</code> interface to. A good example is a fifo buffer in a radio chip.</li>
+</ul>
+<p>The registers, commands and buffers can be grouped into blocks.</p>
+<p>Except for buffers all of them can be repeated and ref'ed. Repeats take the same object and repeat them for a repeat count with an address stride.
+A 'ref' object copies another object and allows to override some values like the address and access.</p>
+<p>To configure the driver, there's the global config. In it you can define the address types, various defaults for e.g. byte ordering and the method used for name normalization.</p>
+<p>These concepts and how you can use them in your driver are described in more detail in their own chapter.</p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
