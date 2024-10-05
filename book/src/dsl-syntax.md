@@ -1,11 +1,11 @@
 # Dsl syntax
 
-> [!IMPORTANT]
+> [!CAUTION]
 > This doc is written manually. The implementation may differ.
 > If it does, then either this doc is wrong or the implementation is wrong.
 > In any case, them disagreeing is a bug. Please file an issue!
 
-> [!NOTE]
+> [!WARNING]
 > While something may be valid to be parsed, it may not be valid as a construct
 > and may generate an error deeper down.
 
