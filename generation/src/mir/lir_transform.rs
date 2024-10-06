@@ -175,11 +175,11 @@ fn get_method(
                 field_set_name_in: in_fields
                     .is_empty()
                     .not()
-                    .then(|| format_ident!("{name}In")),
+                    .then(|| format_ident!("{name}FieldsIn")),
                 field_set_name_out: out_fields
                     .is_empty()
                     .not()
-                    .then(|| format_ident!("{name}Out")),
+                    .then(|| format_ident!("{name}FieldsOut")),
                 address_type: global_config
                     .command_address_type
                     .expect("The presence of the address type is already checked in a mir pass")
@@ -331,7 +331,7 @@ fn transform_field_sets<'a>(
             mir::Object::Command(c) => {
                 field_sets.push(transform_field_set(
                     &c.in_fields,
-                    format_ident!("{}In", c.name),
+                    format_ident!("{}FieldsIn", c.name),
                     &c.cfg_attr,
                     &c.description,
                     c.byte_order.unwrap(),
@@ -343,7 +343,7 @@ fn transform_field_sets<'a>(
                 )?);
                 field_sets.push(transform_field_set(
                     &c.out_fields,
-                    format_ident!("{}Out", c.name),
+                    format_ident!("{}FieldsOut", c.name),
                     &c.cfg_attr,
                     &c.description,
                     c.byte_order.unwrap(),
