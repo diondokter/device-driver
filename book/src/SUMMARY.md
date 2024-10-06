@@ -12,6 +12,7 @@
   - [Global config](./global-config.md)
   - [Registers](./registers.md)
   - [Commands](./commands.md)
+  - [Field sets](./field-sets.md)
   - [Buffers](./buffers.md)
   - [Blocks](./blocks.md)
   - [Refs](./refs.md)
