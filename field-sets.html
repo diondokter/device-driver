@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Defining the device - device-driver-book</title>
+        <title>Field sets - device-driver-book</title>
 
 
         <!-- Custom HTML head -->
@@ -88,7 +88,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="preface.html">Preface</a></li><li class="chapter-item expanded affix "><li class="spacer"></li><li class="chapter-item expanded "><a href="intro.html"><strong aria-hidden="true">1.</strong> Intro</a></li><li class="chapter-item expanded "><a href="using-the-macro.html"><strong aria-hidden="true">2.</strong> Using the macro</a></li><li class="chapter-item expanded "><a href="using-the-cli.html"><strong aria-hidden="true">3.</strong> Using the cli</a></li><li class="chapter-item expanded "><a href="writing-an-interface.html"><strong aria-hidden="true">4.</strong> Writing an interface</a></li><li class="chapter-item expanded "><a href="defining-the-device.html" class="active"><strong aria-hidden="true">5.</strong> Defining the device</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="global-config.html"><strong aria-hidden="true">5.1.</strong> Global config</a></li><li class="chapter-item expanded "><a href="registers.html"><strong aria-hidden="true">5.2.</strong> Registers</a></li><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">5.3.</strong> Commands</a></li><li class="chapter-item expanded "><a href="field-sets.html"><strong aria-hidden="true">5.4.</strong> Field sets</a></li><li class="chapter-item expanded "><a href="buffers.html"><strong aria-hidden="true">5.5.</strong> Buffers</a></li><li class="chapter-item expanded "><a href="blocks.html"><strong aria-hidden="true">5.6.</strong> Blocks</a></li><li class="chapter-item expanded "><a href="refs.html"><strong aria-hidden="true">5.7.</strong> Refs</a></li><li class="chapter-item expanded "><a href="dsl-syntax.html"><strong aria-hidden="true">5.8.</strong> DSL syntax</a></li><li class="chapter-item expanded "><a href="manifest-syntax.html"><strong aria-hidden="true">5.9.</strong> Manifest syntax</a></li></ol></li><li class="chapter-item expanded "><a href="output.html"><strong aria-hidden="true">6.</strong> Output</a></li><li class="chapter-item expanded "><div><strong aria-hidden="true">7.</strong> Addendum</div></li><li><ol class="section"><li class="chapter-item expanded "><a href="memory.html"><strong aria-hidden="true">7.1.</strong> Memory</a></li><li class="chapter-item expanded "><a href="cfg.html"><strong aria-hidden="true">7.2.</strong> Cfg</a></li></ol></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="preface.html">Preface</a></li><li class="chapter-item expanded affix "><li class="spacer"></li><li class="chapter-item expanded "><a href="intro.html"><strong aria-hidden="true">1.</strong> Intro</a></li><li class="chapter-item expanded "><a href="using-the-macro.html"><strong aria-hidden="true">2.</strong> Using the macro</a></li><li class="chapter-item expanded "><a href="using-the-cli.html"><strong aria-hidden="true">3.</strong> Using the cli</a></li><li class="chapter-item expanded "><a href="writing-an-interface.html"><strong aria-hidden="true">4.</strong> Writing an interface</a></li><li class="chapter-item expanded "><a href="defining-the-device.html"><strong aria-hidden="true">5.</strong> Defining the device</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="global-config.html"><strong aria-hidden="true">5.1.</strong> Global config</a></li><li class="chapter-item expanded "><a href="registers.html"><strong aria-hidden="true">5.2.</strong> Registers</a></li><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">5.3.</strong> Commands</a></li><li class="chapter-item expanded "><a href="field-sets.html" class="active"><strong aria-hidden="true">5.4.</strong> Field sets</a></li><li class="chapter-item expanded "><a href="buffers.html"><strong aria-hidden="true">5.5.</strong> Buffers</a></li><li class="chapter-item expanded "><a href="blocks.html"><strong aria-hidden="true">5.6.</strong> Blocks</a></li><li class="chapter-item expanded "><a href="refs.html"><strong aria-hidden="true">5.7.</strong> Refs</a></li><li class="chapter-item expanded "><a href="dsl-syntax.html"><strong aria-hidden="true">5.8.</strong> DSL syntax</a></li><li class="chapter-item expanded "><a href="manifest-syntax.html"><strong aria-hidden="true">5.9.</strong> Manifest syntax</a></li></ol></li><li class="chapter-item expanded "><a href="output.html"><strong aria-hidden="true">6.</strong> Output</a></li><li class="chapter-item expanded "><div><strong aria-hidden="true">7.</strong> Addendum</div></li><li><ol class="section"><li class="chapter-item expanded "><a href="memory.html"><strong aria-hidden="true">7.1.</strong> Memory</a></li><li class="chapter-item expanded "><a href="cfg.html"><strong aria-hidden="true">7.2.</strong> Cfg</a></li></ol></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
@@ -243,29 +243,17 @@
 }
 
 </style>
-<h1 id="defining-the-device"><a class="header" href="#defining-the-device">Defining the device</a></h1>
-<p>This toolkit brings three different kinds of concepts you can use to build various aspects of your driver.</p>
-<ul>
-<li>The register is some memory located at an address on the device. It contains fields, may have a reset value and could be restrictive in its read and write access.</li>
-<li>The command can model multiple things. It can be an event to send to the device so it changes state or it could be an RPC-like call. It can send data and receive back an answer.</li>
-<li>The buffer is anything that you'd like to have a <code>Write</code> or <code>Read</code> interface to. A good example is a fifo buffer in a radio chip.</li>
-</ul>
-<p>The registers, commands and buffers can be grouped into blocks.</p>
-<p>Except for buffers all of them can be repeated and ref'ed. Repeats take the same object and repeat them for a repeat count with an address stride.
-A 'ref' object copies another object and allows to override some values like the address and access.</p>
-<p>The registers, commands, buffers, blocks and refs are all called 'objects' in this project.</p>
-<p>To configure the driver, there's the global config. In it you can define the address types, various defaults for e.g. byte ordering and the method used for name normalization.</p>
-<p>These concepts and how you can use them in your driver are described in more detail in their own chapter.</p>
+<h1 id="field-sets"><a class="header" href="#field-sets">Field sets</a></h1>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="writing-an-interface.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="commands.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="global-config.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="buffers.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -275,11 +263,11 @@ A 'ref' object copies another object and allows to override some values like the
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="writing-an-interface.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="commands.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="global-config.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="buffers.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
