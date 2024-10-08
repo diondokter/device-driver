@@ -256,6 +256,35 @@ assert_eq!(device.foo().read().unwrap().bar(), 12345);
 <span class="boring">}</span></code></pre></pre>
 <p>Below are minimal and full examples of how registers can be defined.
 Only one field is shown, but more can be added. Details about the fields can be read in their own chapter.</p>
+<ul>
+<li><a href="#registers">Registers</a>
+<ul>
+<li><a href="#dsl">DSL</a></li>
+<li><a href="#manifest">Manifest</a></li>
+<li><a href="#required">Required</a>
+<ul>
+<li><a href="#address"><code>address</code></a></li>
+<li><a href="#size_bits"><code>size_bits</code></a></li>
+<li><a href="#type-manifest-only"><code>type</code> (manifest only)</a></li>
+</ul>
+</li>
+<li><a href="#optional">Optional</a>
+<ul>
+<li><a href="#cfg-or-cfg"><code>cfg</code> or <code>#[cfg(...)]</code></a></li>
+<li><a href="#description-or-doc--"><code>description</code> or <code>#[doc = ""]</code></a></li>
+<li><a href="#access"><code>access</code></a></li>
+<li><a href="#byte_order"><code>byte_order</code></a></li>
+<li><a href="#bit_order"><code>bit_order</code></a></li>
+<li><a href="#reset_value"><code>reset_value</code></a></li>
+<li><a href="#repeat"><code>repeat</code></a></li>
+<li><a href="#allow_bit_overlap"><code>allow_bit_overlap</code></a></li>
+<li><a href="#allow_address_overlap"><code>allow_address_overlap</code></a></li>
+<li><a href="#fields-manifest-only"><code>fields</code> (manifest only)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
 <h2 id="dsl"><a class="header" href="#dsl">DSL</a></h2>
 <p>Minimal:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -294,7 +323,7 @@ register Foo {
   <span class="mdbook-alerts-icon"></span>
   tip
 </p>
-<p><code>type</code> and <code>const</code>?<br />
+<p><code>type</code> or <code>const</code>, which one is it?<br />
 It's <code>type</code> if it's overriding a global config and <code>const</code> if it's not.</p>
 </div>
 <h2 id="manifest"><a class="header" href="#manifest">Manifest</a></h2>
@@ -335,7 +364,7 @@ It's <code>type</code> if it's overriding a global config and <code>const</code>
         "stride": 2
     },
     "allow_bit_overlap": false,
-    "allow_byte_overlap": false,
+    "allow_address_overlap": false,
     "fields": {
         "value": {
             "base": "uint",
@@ -345,6 +374,69 @@ It's <code>type</code> if it's overriding a global config and <code>const</code>
     }
 }
 </code></pre>
+<h2 id="required"><a class="header" href="#required">Required</a></h2>
+<h3 id="address"><a class="header" href="#address"><code>address</code></a></h3>
+<p>The address of the register.</p>
+<p>Integer value that must fit in the given address type in the global config and can be negative.</p>
+<h3 id="size_bits"><a class="header" href="#size_bits"><code>size_bits</code></a></h3>
+<p>The size of the register in bits.</p>
+<p>Positive integer value. No fields can exceed the size of the register.</p>
+<h3 id="type-manifest-only"><a class="header" href="#type-manifest-only"><code>type</code> (manifest only)</a></h3>
+<p>The type of the object.</p>
+<p>For registers this field is a string with the contents <code>"register"</code>.</p>
+<h2 id="optional"><a class="header" href="#optional">Optional</a></h2>
+<h3 id="cfg-or-cfg"><a class="header" href="#cfg-or-cfg"><code>cfg</code> or <code>#[cfg(...)]</code></a></h3>
+<p>Allows for cfg-gating the register.</p>
+<p>In the DSL, the normal Rust syntax is used. Just put the attribute on the register definition. Only one attribute is allowed.</p>
+<p>In the manifest it is configured with a string.
+The string only defines the inner part: <code>#[cfg(foo)]</code> = <code>"cfg": "foo",</code>.</p>
+<div class="mdbook-alerts mdbook-alerts-warning">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  warning
+</p>
+<p>Check the chapter on cfg for more information. The cfg's are not checked by the toolkit and only passed to the generated code and so there are some oddities to be aware of.</p>
+</div>
+<h3 id="description-or-doc--"><a class="header" href="#description-or-doc--"><code>description</code> or <code>#[doc = ""]</code></a></h3>
+<p>The doc comments for the generated code.</p>
+<p>For the DSL, use the normal doc attributes or triple slash <code>///</code>.
+Multiple attributes get concatenated with a newline (just like normal Rust does).</p>
+<p>For the manifest, this is a string.</p>
+<p>The description is added as normal doc comments to the generated code. So it supports markdown and all other features you're used to. The description is used on the generated register struct and on the function to access the register.</p>
+<h3 id="access"><a class="header" href="#access"><code>access</code></a></h3>
+<p>Overrides the default register access.</p>
+<p>Options are: <code>RW</code>, <code>ReadWrite</code>, <code>WO</code>, <code>WriteOnly</code>, <code>RO</code>, <code>ReadOnly</code>.<br />
+They are written 'as is' in the DSL and as a string in the manifest.</p>
+<h3 id="byte_order"><a class="header" href="#byte_order"><code>byte_order</code></a></h3>
+<p>Overrides the default byte order.</p>
+<p>Options are: <code>LE</code>, <code>BE</code>.<br />
+They are written 'as is' in the DSL and as a string in the manifest.</p>
+<p>When the size of a register is &gt; 8 bits (more than one byte), then either the byte order has to be defined globally as a default or the register needs to define it.</p>
+<h3 id="bit_order"><a class="header" href="#bit_order"><code>bit_order</code></a></h3>
+<p>Overrides the default byte order. If the global config does not define it, it's <code>LSB0</code>.</p>
+<p>Options are: <code>LSB0</code>, <code>MSB0</code>.<br />
+They are written 'as is' in the DSL and as a string in the manifest.</p>
+<h3 id="reset_value"><a class="header" href="#reset_value"><code>reset_value</code></a></h3>
+<p>Defines the reset or default value of the register.</p>
+<p>Can be a number or an array of bytes.</p>
+<div class="mdbook-alerts mdbook-alerts-warning">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  warning
+</p>
+<p>When specified as an array, this must be formatted as the bytes that are returned by the <code>RegisterInterface</code> implementation. This means that when the register has little endian byte order, the reset value number <code>0x1234</code> would be encoded as <code>[0x34, 0x12]</code> in the array form.<br />
+The same concern is there for the bit order.</p>
+</div>
+<p>It is used in the <code>.write</code> function. To reset a register to the default value, it'd look like <code>.write(|_|())</code>. When a zero value is desired instead of the default, you can use the <code>.write_with_zero</code> function instead.</p>
+<h3 id="repeat"><a class="header" href="#repeat"><code>repeat</code></a></h3>
+<p>TODO</p>
+<h3 id="allow_bit_overlap"><a class="header" href="#allow_bit_overlap"><code>allow_bit_overlap</code></a></h3>
+<p>TODO</p>
+<h3 id="allow_address_overlap"><a class="header" href="#allow_address_overlap"><code>allow_address_overlap</code></a></h3>
+<p>TODO</p>
+<h3 id="fields-manifest-only"><a class="header" href="#fields-manifest-only"><code>fields</code> (manifest only)</a></h3>
+<p>The fields of the register.</p>
+<p>A map where the keys are the names of the fields. All values must be fields.</p>
 
                     </main>
 
