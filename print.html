@@ -1364,11 +1364,22 @@ The same concern is there for the bit order.</p>
 </div>
 <p>It is used in the <code>.write</code> function. To reset a register to the default value, it'd look like <code>.write(|_|())</code>. When a zero value is desired instead of the default, you can use the <code>.write_with_zero</code> function instead.</p>
 <h3 id="repeat"><a class="header" href="#repeat"><code>repeat</code></a></h3>
-<p>TODO</p>
+<p>Repeat the register a number of times at different addresses.</p>
+<p>It is specified with two fields:</p>
+<ul>
+<li>Count: unsigned integer, the amount of times the register is repeated</li>
+<li>Stride: signed integer, the amount the address changes per repeat</li>
+</ul>
+<p>The calculation is <code>address = base_address + index * stride</code>.</p>
+<p>When the repeat field is present, the function to do a register operation will have an extra parameter for the index.</p>
 <h3 id="allow_bit_overlap"><a class="header" href="#allow_bit_overlap"><code>allow_bit_overlap</code></a></h3>
-<p>TODO</p>
+<p>Allow field addresses to overlap.</p>
+<p>This bool value is false by default.</p>
 <h3 id="allow_address_overlap"><a class="header" href="#allow_address_overlap"><code>allow_address_overlap</code></a></h3>
-<p>TODO</p>
+<p>Allow this register to have an address that is equal to another register address.
+This calculation is also done for any repeat addresses.</p>
+<p>Only exact address matches are checked.</p>
+<p>This bool value is false by default.</p>
 <h3 id="fields-manifest-only"><a class="header" href="#fields-manifest-only"><code>fields</code> (manifest only)</a></h3>
 <p>The fields of the register.</p>
 <p>A map where the keys are the names of the fields. All values must be fields.</p>
