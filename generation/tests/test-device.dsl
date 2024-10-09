@@ -1,6 +1,8 @@
 
 config {
     type RegisterAddressType = u8;
+    type CommandAddressType = u16;
+    type BufferAddressType = u32;
     type DefaultByteOrder = LE;
     type NameWordBoundaries = [
         Hyphen, Underscore

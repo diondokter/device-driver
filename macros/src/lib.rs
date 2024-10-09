@@ -7,9 +7,9 @@ use proc_macro2::Span;
 use syn::{braced, Ident, LitStr};
 
 /// Macro to implement the device driver.
-/// 
+///
 /// ## Usage:
-/// 
+///
 /// DSL:
 /// ```rust
 /// # use device_driver_macros::create_device;
@@ -20,7 +20,7 @@ use syn::{braced, Ident, LitStr};
 ///     }
 /// );
 /// ```
-/// 
+///
 /// Manifest:
 /// ```rust,ignore
 /// # use device_driver_macros::create_device;

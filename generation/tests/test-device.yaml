@@ -1,5 +1,7 @@
 config:
   register_address_type: u8
+  command_address_type: u16
+  buffer_address_type: u32
   default_byte_order: LE
   name_word_boundaries:
     - Hyphen

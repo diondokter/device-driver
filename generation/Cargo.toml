@@ -19,13 +19,12 @@ proc-macro2 = "1.0.70"
 quote = "1.0.33"
 syn = { version = "2.0", features = ["extra-traits"] }
 bitvec = "1.0.1"
-dd-manifest-tree = { path = "../dd-manifest-tree", optional = true }
+dd-manifest-tree = { path = "../dd-manifest-tree", optional = true, features = ["preserve_order"] }
 
 [dev-dependencies]
 prettyplease = "0.2.15"
 pretty_assertions = "1.4.0"
 indoc = "2.0.5"
-dd-manifest-tree = { path = "../dd-manifest-tree", features = ["preserve_order"] }
 
 [features]
 default = ["dsl", "json", "yaml", "toml"]
