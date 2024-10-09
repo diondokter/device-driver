@@ -7,7 +7,7 @@ The global config exists to house three kinds of configs:
 3. Transformations
 
 > [!NOTE]
-A driver can only have one global config.
+> A driver can only have one global config.
 
 Below is a short overview for the DSL format and the manifest format of the global config and their defaults (or `_` for no default). The last chapters describe the options in more detail.
 
