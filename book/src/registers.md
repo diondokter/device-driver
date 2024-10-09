@@ -203,15 +203,30 @@ It is used in the `.write` function. To reset a register to the default value, i
 
 ### `repeat`
 
-TODO
+Repeat the register a number of times at different addresses.
+
+It is specified with two fields:
+- Count: unsigned integer, the amount of times the register is repeated
+- Stride: signed integer, the amount the address changes per repeat
+
+The calculation is `address = base_address + index * stride`.
+
+When the repeat field is present, the function to do a register operation will have an extra parameter for the index.
 
 ### `allow_bit_overlap`
 
-TODO
+Allow field addresses to overlap.
+
+This bool value is false by default.
 
 ### `allow_address_overlap`
 
-TODO
+Allow this register to have an address that is equal to another register address.
+This calculation is also done for any repeat addresses.
+
+Only exact address matches are checked.
+
+This bool value is false by default.
 
 ### `fields` (manifest only)
 
