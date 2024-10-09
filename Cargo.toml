@@ -6,4 +6,3 @@ members = [
     "macros",
     "dd-manifest-tree"
 ]
-package.readme = "README.md"

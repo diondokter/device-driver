@@ -1,3 +1,5 @@
+#![doc = include_str!(concat!("../", env!("CARGO_PKG_README")))]
+
 use std::{
     error::Error,
     fmt::{Debug, Display},

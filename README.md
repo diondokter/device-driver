@@ -14,6 +14,7 @@ This crate consists of three parts:
   inputs and generates the device driver.
 - `device-driver-macros`: A small frontend to the generation crate. It can take the dsl token stream or open a text file
   and feed that to the compiler and it outputs the compiler output.
+- `dd-manifest-tree`: A small abstraction over json, yaml and toml crates to unify their value types.
 
 ## Semver
 

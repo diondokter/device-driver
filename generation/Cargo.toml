@@ -7,9 +7,9 @@ license = "MIT OR Apache-2.0"
 homepage = "https://github.com/diondokter/device-driver"
 repository = "https://github.com/diondokter/device-driver"
 keywords = ["no_std", "device", "driver", "toolkit"]
-categories = ["embedded", "hardware-support", "no-std"]
+categories = ["embedded", "hardware-support", "no-std::no-alloc", "no-std"]
 description = "Code generation for the `device-driver` crate"
-readme.workspace = true
+readme = "README.md"
 
 [dependencies]
 anyhow = "1.0.86"

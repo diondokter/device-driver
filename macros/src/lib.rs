@@ -6,6 +6,29 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use syn::{braced, Ident, LitStr};
 
+/// Macro to implement the device driver.
+/// 
+/// ## Usage:
+/// 
+/// DSL:
+/// ```rust
+/// # use device_driver_macros::create_device;
+/// create_device!(
+///     device_name: MyTestDevice,
+///     dsl: {
+///         // DSL
+///     }
+/// );
+/// ```
+/// 
+/// Manifest:
+/// ```rust,ignore
+/// # use device_driver_macros::create_device;
+/// create_device!(
+///     device_name: MyTestDevice,
+///     manifest: "path/to/manifest/file.json"
+/// );
+/// ```
 #[proc_macro]
 pub fn create_device(item: TokenStream) -> TokenStream {
     let input = match syn::parse::<Input>(item) {
