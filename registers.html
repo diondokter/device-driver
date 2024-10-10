@@ -332,7 +332,7 @@ It's <code>type</code> if it's overriding a global config and <code>const</code>
   <span class="mdbook-alerts-icon"></span>
   note
 </p>
-<p>The biggest differences with the DSL are the additional <code>type</code> field to specify why type of object this is and the <code>fields</code> field that houses all fields.</p>
+<p>The biggest differences with the DSL are the additional <code>type</code> field to specify which type of object this is and the <code>fields</code> field that houses all fields.</p>
 </div>
 <p>Minimal (json):</p>
 <pre><code class="language-json">"Foo": {
@@ -413,7 +413,7 @@ They are written 'as is' in the DSL and as a string in the manifest.</p>
 They are written 'as is' in the DSL and as a string in the manifest.</p>
 <p>When the size of a register is &gt; 8 bits (more than one byte), then either the byte order has to be defined globally as a default or the register needs to define it.</p>
 <h3 id="bit_order"><a class="header" href="#bit_order"><code>bit_order</code></a></h3>
-<p>Overrides the default byte order. If the global config does not define it, it's <code>LSB0</code>.</p>
+<p>Overrides the default bit order. If the global config does not define it, it's <code>LSB0</code>.</p>
 <p>Options are: <code>LSB0</code>, <code>MSB0</code>.<br />
 They are written 'as is' in the DSL and as a string in the manifest.</p>
 <h3 id="reset_value"><a class="header" href="#reset_value"><code>reset_value</code></a></h3>

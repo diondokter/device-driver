@@ -244,6 +244,253 @@
 
 </style>
 <h1 id="commands"><a class="header" href="#commands">Commands</a></h1>
+<p>A command is a call to do something. This can be to e.g. change the chip state, do an RPC-like call or to start a radio transmission.</p>
+<p>It is accessed as a function on the block it's part of. The function returns a <a href="https://docs.rs/device-driver/latest/device_driver/struct.CommandOperation.html"><code>CommandOperation</code></a> which can be used to dispatch the command.</p>
+<p>Example usage:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let mut device = MyDevice::new(DeviceInterface::new());
+
+device.foo().dispatch().unwrap();
+// Commands can carry data too
+let result = device.bar().dispatch(|data| data.set_val(1234)).unwrap();
+assert_eq!(result.xeno(), true);
+<span class="boring">}</span></code></pre></pre>
+<p>Below are minimal and full examples of how commands can be defined.
+Only one field is shown, but more can be added. Details about the fields can be read in their own chapter.</p>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>A command can have only input, only output, both input and output, or no fields.</p>
+<ul>
+<li>When input fields are defined, the dispatch function will have a closure parameter to set up the input value.</li>
+<li>When output fields are defined, the dispatch function return the data that was read back from the device.</li>
+</ul>
+</div>
+<ul>
+<li><a href="#commands">Commands</a>
+<ul>
+<li><a href="#dsl">DSL</a></li>
+<li><a href="#manifest">Manifest</a></li>
+<li><a href="#required">Required</a>
+<ul>
+<li><a href="#address"><code>address</code></a></li>
+<li><a href="#size_bits_in--size_bits_out"><code>size_bits_in</code> &amp; <code>size_bits_out</code></a></li>
+<li><a href="#type-manifest-only"><code>type</code> (manifest only)</a></li>
+</ul>
+</li>
+<li><a href="#optional">Optional</a>
+<ul>
+<li><a href="#cfg-or-cfg"><code>cfg</code> or <code>#[cfg(...)]</code></a></li>
+<li><a href="#description-or-doc--"><code>description</code> or <code>#[doc = ""]</code></a></li>
+<li><a href="#byte_order"><code>byte_order</code></a></li>
+<li><a href="#bit_order"><code>bit_order</code></a></li>
+<li><a href="#repeat"><code>repeat</code></a></li>
+<li><a href="#allow_bit_overlap"><code>allow_bit_overlap</code></a></li>
+<li><a href="#allow_address_overlap"><code>allow_address_overlap</code></a></li>
+<li><a href="#in-dsl-or-fields_in-manifest"><code>in</code> (dsl) or <code>fields_in</code> (manifest)</a></li>
+<li><a href="#out-dsl-or-fields_out-manifest"><code>out</code> (dsl) or <code>fields_out</code> (manifest)</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="dsl"><a class="header" href="#dsl">DSL</a></h2>
+<p>Minimal without fields (with address 5):</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>command Foo = 5,
+<span class="boring">}</span></code></pre></pre>
+<p>Minimal with in and out fields:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>command Foo {
+    const ADDRESS = 5;
+    const SIZE_BITS_IN = 8;
+    const SIZE_BITS_OUT = 16;
+
+    in {
+        value: uint = 0..8,
+    },
+    out {
+        value: uint = 0..16,
+    }
+},
+<span class="boring">}</span></code></pre></pre>
+<p>Full:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// Foo docs
+#[cfg(feature = "blah")]
+command Foo {
+    type ByteOrder = LE;
+    type BitOrder = LSB0;
+    const ADDRESS = 5;
+    const SIZE_BITS_IN = 8;
+    const SIZE_BITS_OUT = 16;
+    const REPEAT = {
+        count: 4,
+        stride: 2
+    };
+    const ALLOW_BIT_OVERLAP = false;
+    const ALLOW_ADDRESS_OVERLAP = false;
+
+    in {
+        value: uint = 0..8,
+    },
+    out {
+        value: uint = 0..16,
+    }
+},
+<span class="boring">}</span></code></pre></pre>
+<div class="mdbook-alerts mdbook-alerts-tip">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  tip
+</p>
+<p><code>type</code> or <code>const</code>, which one is it?<br />
+It's <code>type</code> if it's overriding a global config and <code>const</code> if it's not.</p>
+</div>
+<h2 id="manifest"><a class="header" href="#manifest">Manifest</a></h2>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>The biggest difference with the DSL is the additional <code>type</code> field to specify which type of object this is and the absence of the super short hand.</p>
+</div>
+<p>Minimal with no fields (json):</p>
+<pre><code class="language-json">"Foo": {
+    "type": "command",
+    "address": 5
+}
+</code></pre>
+<p>Minimal (json):</p>
+<pre><code class="language-json">"Foo": {
+    "type": "command",
+    "address": 5,
+    "size_bits_in": 8,
+    "fields_in": {
+        "value": {
+            "base": "uint",
+            "start": 0,
+            "end": 8
+        }
+    },
+    "size_bits_out": 16,
+    "fields_out": {
+        "value": {
+            "base": "uint",
+            "start": 0,
+            "end": 16
+        }
+    },
+}
+</code></pre>
+<p>Full (json):</p>
+<pre><code class="language-json">"Foo": {
+    "type": "command",
+    "cfg": "feature = \"blah\"",
+    "description": "Foo docs",
+    "byte_order": "LE",
+    "bit_order": "LSB0",
+    "address": 5,
+    "repeat": {
+        "count": 4,
+        "stride": 2
+    },
+    "allow_bit_overlap": false,
+    "allow_address_overlap": false,
+    "size_bits_in": 8,
+    "fields_in": {
+        "value": {
+            "base": "uint",
+            "start": 0,
+            "end": 8
+        }
+    },
+    "size_bits_out": 16,
+    "fields_out": {
+        "value": {
+            "base": "uint",
+            "start": 0,
+            "end": 16
+        }
+    },
+}
+</code></pre>
+<h2 id="required"><a class="header" href="#required">Required</a></h2>
+<h3 id="address"><a class="header" href="#address"><code>address</code></a></h3>
+<p>The address of the command.</p>
+<p>Integer value that must fit in the given address type in the global config and can be negative.</p>
+<h3 id="size_bits_in--size_bits_out"><a class="header" href="#size_bits_in--size_bits_out"><code>size_bits_in</code> &amp; <code>size_bits_out</code></a></h3>
+<p>The size of the command in bits for their respective field sets.</p>
+<p>Positive integer value. No fields can exceed the specified size.</p>
+<p>Only required when their respective field sets are defined.</p>
+<h3 id="type-manifest-only"><a class="header" href="#type-manifest-only"><code>type</code> (manifest only)</a></h3>
+<p>The type of the object.</p>
+<p>For commands this field is a string with the contents <code>"command"</code>.</p>
+<h2 id="optional"><a class="header" href="#optional">Optional</a></h2>
+<h3 id="cfg-or-cfg"><a class="header" href="#cfg-or-cfg"><code>cfg</code> or <code>#[cfg(...)]</code></a></h3>
+<p>Allows for cfg-gating the command.</p>
+<p>In the DSL, the normal Rust syntax is used. Just put the attribute on the command definition. Only one attribute is allowed.</p>
+<p>In the manifest it is configured with a string.
+The string only defines the inner part: <code>#[cfg(foo)]</code> = <code>"cfg": "foo",</code>.</p>
+<div class="mdbook-alerts mdbook-alerts-warning">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  warning
+</p>
+<p>Check the chapter on cfg for more information. The cfg's are not checked by the toolkit and only passed to the generated code and so there are some oddities to be aware of.</p>
+</div>
+<h3 id="description-or-doc--"><a class="header" href="#description-or-doc--"><code>description</code> or <code>#[doc = ""]</code></a></h3>
+<p>The doc comments for the generated code.</p>
+<p>For the DSL, use the normal doc attributes or triple slash <code>///</code>.
+Multiple attributes get concatenated with a newline (just like normal Rust does).</p>
+<p>For the manifest, this is a string.</p>
+<p>The description is added as normal doc comments to the generated code. So it supports markdown and all other features you're used to. The description is used on the generated command input and output structs and on the function to access the command.</p>
+<h3 id="byte_order"><a class="header" href="#byte_order"><code>byte_order</code></a></h3>
+<p>Overrides the default byte order.</p>
+<p>Options are: <code>LE</code>, <code>BE</code>.<br />
+They are written 'as is' in the DSL and as a string in the manifest.</p>
+<p>When the size of a command input or output is &gt; 8 bits (more than one byte), then either the byte order has to be defined globally as a default or the command needs to define it.</p>
+<p>The value is applied to both the input and output fieldsets.</p>
+<h3 id="bit_order"><a class="header" href="#bit_order"><code>bit_order</code></a></h3>
+<p>Overrides the default bit order. If the global config does not define it, it's <code>LSB0</code>.</p>
+<p>Options are: <code>LSB0</code>, <code>MSB0</code>.<br />
+They are written 'as is' in the DSL and as a string in the manifest.</p>
+<p>The value is applied to both the input and output fieldsets.</p>
+<h3 id="repeat"><a class="header" href="#repeat"><code>repeat</code></a></h3>
+<p>Repeat the command a number of times at different addresses.</p>
+<p>It is specified with two fields:</p>
+<ul>
+<li>Count: unsigned integer, the amount of times the command is repeated</li>
+<li>Stride: signed integer, the amount the address changes per repeat</li>
+</ul>
+<p>The calculation is <code>address = base_address + index * stride</code>.</p>
+<p>When the repeat field is present, the function to do a command operation will have an extra parameter for the index.</p>
+<h3 id="allow_bit_overlap"><a class="header" href="#allow_bit_overlap"><code>allow_bit_overlap</code></a></h3>
+<p>Allow field addresses to overlap.</p>
+<p>This bool value is false by default.</p>
+<h3 id="allow_address_overlap"><a class="header" href="#allow_address_overlap"><code>allow_address_overlap</code></a></h3>
+<p>Allow this command to have an address that is equal to another command address.
+This calculation is also done for any repeat addresses.</p>
+<p>Only exact address matches are checked.</p>
+<p>This bool value is false by default.</p>
+<h3 id="in-dsl-or-fields_in-manifest"><a class="header" href="#in-dsl-or-fields_in-manifest"><code>in</code> (dsl) or <code>fields_in</code> (manifest)</a></h3>
+<p>The input fields of the command.</p>
+<ul>
+<li>For the dsl, a list of fields.</li>
+<li>For manifest, a map where the keys are the names of the fields All values must be fields.</li>
+</ul>
+<h3 id="out-dsl-or-fields_out-manifest"><a class="header" href="#out-dsl-or-fields_out-manifest"><code>out</code> (dsl) or <code>fields_out</code> (manifest)</a></h3>
+<p>The output fields of the command.</p>
+<ul>
+<li>For the dsl, a list of fields.</li>
+<li>For manifest, a map where the keys are the names of the fields All values must be fields.</li>
+</ul>
 
                     </main>
 
