@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "device-driver",
     "generation",
-    "macros"
+    "macros",
+    "dd-manifest-tree",
+    "cli",
 ]
-package.readme = "README.md"
