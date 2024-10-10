@@ -75,7 +75,7 @@ register Foo {
 ## Manifest
 
 > [!NOTE]
-> The biggest differences with the DSL are the additional `type` field to specify why type of object this is and the `fields` field that houses all fields.
+> The biggest differences with the DSL are the additional `type` field to specify which type of object this is and the `fields` field that houses all fields.
 
 Minimal (json):
 ```json
@@ -184,7 +184,7 @@ When the size of a register is > 8 bits (more than one byte), then either the by
 
 ### `bit_order`
 
-Overrides the default byte order. If the global config does not define it, it's `LSB0`.
+Overrides the default bit order. If the global config does not define it, it's `LSB0`.
 
 Options are: `LSB0`, `MSB0`.  
 They are written 'as is' in the DSL and as a string in the manifest.
