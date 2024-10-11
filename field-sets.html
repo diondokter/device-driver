@@ -244,6 +244,50 @@
 
 </style>
 <h1 id="field-sets"><a class="header" href="#field-sets">Field sets</a></h1>
+<p>A field set is a collection of fields that make up the data of a register, command input or command output.</p>
+<p>Each field set generates to a struct where each of the fields are accesible through functions with the names of the fields.</p>
+<p>A field set can be created using the <code>new</code> function and will be initialized with the reset value (or zero if there is no reset value). When it's desired to get an all-zero version of the field set, you can call <code>new_zero</code>.<br />
+When a ref object overrides the reset value, the field set will have an extra constructor <code>new_as_&lt;ref name&gt;</code> that will use the reset value override for the initial value.</p>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>As a user you should not have to construct your field sets manually in normal use. But it's available to you for special cases.</p>
+</div>
+<p>Example usage:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let mut reg = MyFieldSet::new();
+reg.set_foo(1234);
+let foo = reg.foo();
+<span class="boring">}</span></code></pre></pre>
+<p>Field sets also implement all bitwise operators for easier manipulation. These operations are done on <em>all</em> underlying bits, even ones that are not part of a field.</p>
+<p>There's also an <code>Into</code> and <code>From</code> implementation to the smallest byte array that can fit the entire field set.</p>
+<p>Example usage:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let all_ones = !MyFieldSet::new_zero();
+let lowest_byte_set = MyFieldSet::from([0xFF, 0x00]);
+let lowest_byte_inverted = all_ones ^ lowest_byte_set;
+<span class="boring">}</span></code></pre></pre>
+<p>Below are minimal and full examples of how fields can be defined. There are three major variants:</p>
+<ul>
+<li>Base type</li>
+<li>Converted to custom type</li>
+<li>Converted to generated enum</li>
+</ul>
+<p>The conversions can be fallible or infallible. When the fallible <code>try</code> option is used, reading the field will return a result instead of the type directly. For generated enums, even though they might not be generally infallible when converted from their base type, the toolkit uses extra range information to see if it can safely present an infallible interface regardless.</p>
+<ul>
+<li><a href="#field-sets">Field sets</a>
+<ul>
+<li><a href="#dsl">DSL</a></li>
+<li><a href="#manifest">Manifest</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="dsl"><a class="header" href="#dsl">DSL</a></h2>
+<h2 id="manifest"><a class="header" href="#manifest">Manifest</a></h2>
 
                     </main>
 
