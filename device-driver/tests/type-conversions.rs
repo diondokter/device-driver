@@ -62,7 +62,10 @@ device_driver::create_device!(
             convert_generated: uint as enum GenEnum {
                 A,
                 B,
-                C,
+                #[cfg(windows)]
+                C = 2,
+                #[cfg(unix)]
+                C = 2,
                 D
             } = 6..8,
             /// No try needed since default

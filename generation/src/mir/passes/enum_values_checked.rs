@@ -1,7 +1,7 @@
 use anyhow::{bail, ensure};
 use itertools::Itertools;
 
-use crate::mir::{Device, EnumGenerationStyle, EnumValue, FieldConversion};
+use crate::mir::{Device, EnumGenerationStyle, EnumValue, FieldConversion, Unique};
 
 use super::recurse_objects_mut;
 
@@ -39,20 +39,25 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
                             let assigned_value =
                                 seen_values.last().map(|(val, _)| *val + 1).unwrap_or(0);
                             *val = EnumValue::Specified(assigned_value);
-                            seen_values.push((assigned_value, variant.name.clone()));
+                            seen_values.push((assigned_value, variant.id()));
                         }
                         EnumValue::Specified(num) => {
-                            seen_values.push((*num, variant.name.clone()));
+                            seen_values.push((*num, variant.id()));
                         }
                         EnumValue::Default | EnumValue::CatchAll => {
                             let assigned_value =
                                 seen_values.last().map(|(val, _)| *val + 1).unwrap_or(0);
-                            seen_values.push((assigned_value, variant.name.clone()));
+                            seen_values.push((assigned_value, variant.id()));
                         }
                     }
                 }
 
-                let duplicates = seen_values.iter().duplicates().collect::<Vec<_>>();
+                let duplicates = seen_values
+                    .iter()
+                    .duplicates()
+                    .map(|(num, name)| format!("{name}: {num}"))
+                    .collect::<Vec<_>>();
+
                 ensure!(
                     duplicates.is_empty(),
                     "Duplicated assigned value(s) for enum \"{}\" in object \"{}\" on field \"{}\": {duplicates:?}",
@@ -404,7 +409,7 @@ mod tests {
             run_pass(&mut start_mir)
                 .unwrap_err()
                 .to_string(),
-            "Duplicated assigned value(s) for enum \"MyEnum\" in object \"MyCommand\" on field \"MyField\": [(0, \"var0\")]"
+            "Duplicated assigned value(s) for enum \"MyEnum\" in object \"MyCommand\" on field \"MyField\": [\"var0: 0\"]"
         );
     }
 }

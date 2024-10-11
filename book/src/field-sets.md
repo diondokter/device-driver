@@ -41,4 +41,106 @@ The conversions can be fallible or infallible. When the fallible `try` option is
 
 ## DSL
 
+Simple (base type only):
+```rust
+foo: uint = 0..5,
+bar: bool = 5,
+zoof: int = 6..=20,
+```
+
+With attributes and access specifier:
+```rust
+/// Field comment!
+#[cfg(blah)]
+foo: WO uint = 0..5,
+```
+
+With conversion to custom type:
+```rust
+foo: uint as crate::MyCustomType = 0..16,
+bar: int as try crate::MyCustomType2 = 16..32,
+```
+
+With conversion to generated enum:
+```rust
+foo: uint as enum GeneratedEnum {
+    A,
+    B = 5,
+    /// Default value
+    C = default,
+    D = catch_all,
+} = 0..8,
+```
+
 ## Manifest
+
+Simple (base type only) (json):
+```json
+{
+  "foo": { 
+    "base": "uint",
+    "start": 0,
+    "end": 5
+  },
+  "bar": { 
+    "base": "bool",
+    "start": 5,
+  },
+  "zoof": { 
+    "base": "int",
+    "start": 6,
+    "end": 21
+  }
+}
+```
+
+With attributes and access specifier:
+```json
+{
+  "foo": {
+    "cfg": "blah",
+    "description": "Field comment!",
+    "access": "WO",
+    "base": "uint",
+    "start": 0,
+    "end": 5
+  }
+}
+```
+
+With conversion to custom type:
+```json
+{
+  "foo": {
+    "base": "uint",
+    "conversion": "crate::MyCustomType",
+    "start": 0,
+    "end": 16
+  },
+  "bar": {
+    "base": "int",
+    "try_conversion": "crate::MyCustomType2",
+    "start": 16,
+    "end": 32
+  }
+}
+```
+
+With conversion to generated enum:
+```json
+{
+  "foo": {
+    "base": "uint",
+    "conversion": {
+      "name": "GeneratedEnum",
+      "A": null,
+      "B": 5,
+      "C": {
+        "description": "Default value",
+        "value": "default"
+      },
+      "D": "catch_all"
+    }
+  }
+}
+```

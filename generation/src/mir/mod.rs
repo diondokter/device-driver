@@ -561,6 +561,15 @@ pub struct UniqueId {
     object_cfg: Cfg,
 }
 
+impl Display for UniqueId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.object_cfg.inner() {
+            Some(cfg) => write!(f, "{}(cfg=`{}`)", self.object_name, cfg),
+            None => write!(f, "{}", self.object_name),
+        }
+    }
+}
+
 pub trait Unique {
     fn id(&self) -> UniqueId;
 }
@@ -584,6 +593,7 @@ impl_unique!(Buffer);
 impl_unique!(RefObject);
 impl_unique!(Block);
 impl_unique!(Enum);
+impl_unique!(EnumVariant);
 
 impl Unique for Object {
     fn id(&self) -> UniqueId {

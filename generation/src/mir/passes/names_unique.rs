@@ -44,7 +44,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
 
                     for v in variants.iter() {
                         anyhow::ensure!(
-                        seen_variant_names.insert(v.name.clone()),
+                        seen_variant_names.insert(v.id()),
                         "Duplicate field \"{}\" found in generated enum \"{}\" in object \"{}\" on field \"{}\"",
                         v.name,
                         name,
@@ -64,7 +64,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
 mod tests {
     use convert_case::Boundary;
 
-    use crate::mir::{Buffer, EnumVariant, Field, GlobalConfig, Object, Register};
+    use crate::mir::{Buffer, Cfg, EnumVariant, Field, GlobalConfig, Object, Register};
 
     use super::*;
 
@@ -223,6 +223,54 @@ mod tests {
                                 },
                                 EnumVariant {
                                     name: "Variant".into(),
+                                    ..Default::default()
+                                },
+                            ],
+                            ..Default::default()
+                        },
+                        use_try: false,
+                    }),
+                    ..Default::default()
+                }],
+                ..Default::default()
+            })],
+        };
+
+        run_pass(&mut start_mir).unwrap();
+    }
+
+    #[test]
+    fn duplicate_cfg_generated_enum_variants() {
+        let global_config = GlobalConfig {
+            default_register_access: Default::default(),
+            default_field_access: Default::default(),
+            default_buffer_access: Default::default(),
+            default_byte_order: Default::default(),
+            default_bit_order: Default::default(),
+            register_address_type: Default::default(),
+            command_address_type: Default::default(),
+            buffer_address_type: Default::default(),
+            name_word_boundaries: Boundary::list_from("-"),
+        };
+
+        let mut start_mir = Device {
+            global_config,
+            objects: vec![Object::Register(Register {
+                name: "Reg".into(),
+                fields: vec![Field {
+                    name: "field".into(),
+                    field_conversion: Some(FieldConversion::Enum {
+                        enum_value: Enum {
+                            name: "Enum".into(),
+                            variants: vec![
+                                EnumVariant {
+                                    name: "Variant".into(),
+                                    cfg_attr: Cfg::new(Some("windows")),
+                                    ..Default::default()
+                                },
+                                EnumVariant {
+                                    name: "Variant".into(),
+                                    cfg_attr: Cfg::new(Some("unix")),
                                     ..Default::default()
                                 },
                             ],

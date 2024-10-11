@@ -75,11 +75,19 @@ pub fn generate_enum(value: &Enum) -> TokenStream {
         let from_variants = variants
             .iter()
             .filter(|v| !v.catch_all)
-            .map(|EnumVariant { name, number, .. }| {
-                quote! {
-                    #number => Self::#name
-                }
-            })
+            .map(
+                |EnumVariant {
+                     name,
+                     number,
+                     cfg_attr,
+                     ..
+                 }| {
+                    quote! {
+                        #cfg_attr
+                        #number => Self::#name
+                    }
+                },
+            )
             .chain(Some(from_fallback_variant));
 
         quote! {
@@ -98,11 +106,19 @@ pub fn generate_enum(value: &Enum) -> TokenStream {
         let try_from_variants = variants
             .iter()
             .filter(|v| !v.catch_all)
-            .map(|EnumVariant { name, number, .. }| {
-                quote! {
-                    #number => Ok(Self::#name)
-                }
-            })
+            .map(
+                |EnumVariant {
+                     name,
+                     number,
+                     cfg_attr,
+                     ..
+                 }| {
+                    quote! {
+                        #cfg_attr
+                        #number => Ok(Self::#name)
+                    }
+                },
+            )
             .chain(Some(try_from_fallback_variant));
 
         quote! {
@@ -124,14 +140,17 @@ pub fn generate_enum(value: &Enum) -> TokenStream {
                  name: var_name,
                  number,
                  catch_all,
+                 cfg_attr,
                  ..
              }| {
                 if *catch_all {
                     quote! {
+                        #cfg_attr
                         #name::#var_name(num) => num
                     }
                 } else {
                     quote! {
+                        #cfg_attr
                         #name::#var_name => #number
                     }
                 }
@@ -238,6 +257,7 @@ mod tests {
                 impl From<u8> for MyEnum {
                     fn from(val: u8) -> Self {
                         match val {
+                            #[cfg(unix)]
                             0 => Self::MyField,
                             1 => Self::MyField1,
                             val => Self::MyField2(val),
@@ -248,6 +268,7 @@ mod tests {
                 impl From<MyEnum> for u8 {
                     fn from(val: MyEnum) -> Self {
                         match val {
+                            #[cfg(unix)]
                             MyEnum::MyField => 0,
                             MyEnum::MyField1 => 1,
                             MyEnum::MyField2(num) => num,

@@ -1,6 +1,6 @@
 use std::convert::identity;
 
-use anyhow::{anyhow, bail, Context};
+use anyhow::{anyhow, bail, ensure, Context};
 use convert_case::Boundary;
 use dd_manifest_tree::{Map, Value};
 
@@ -690,6 +690,11 @@ fn transform_field((field_name, field_value): (&str, &impl Value)) -> anyhow::Re
                 )
             }
             "try_conversion" => {
+                ensure!(
+                    !field_map.contains_key("conversion"),
+                    "Cannot have both 'conversion' and 'try_conversion' on a field. Pick one."
+                );
+
                 field.field_conversion = Some(
                     transform_field_conversion(value, true)
                         .context("Parsing error for 'try_conversion'")?,
