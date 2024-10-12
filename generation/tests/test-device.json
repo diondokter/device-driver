@@ -1,0 +1,84 @@
+{
+  "config": {
+    "register_address_type": "u8",
+    "command_address_type": "u16",
+    "buffer_address_type": "u32",
+    "default_byte_order": "LE",
+    "name_word_boundaries": [
+      "Hyphen",
+      "Underscore"
+    ]
+  },
+  "Bar": {
+    "type": "block",
+    "address_offset": 10,
+    "repeat": {
+      "count": 2,
+      "stride": 20
+    },
+    "objects": {
+      "Foo": {
+        "type": "register",
+        "address": 0,
+        "size_bits": 24,
+        "description": "This is the Foo register",
+        "fields": {
+          "value0": {
+            "description": "This is a bool!",
+            "base": "bool",
+            "start": 0,
+            "end": 1
+          },
+          "value1": {
+            "base": "uint",
+            "start": 1,
+            "end": 16
+          },
+          "value2": {
+            "base": "int",
+            "start": 16,
+            "end": 24
+          }
+        }
+      }
+    }
+  },
+  "InOut": {
+    "type": "command",
+    "address": 3,
+    "size_bits_in": 16,
+    "size_bits_out": 8,
+    "description": "A command with inputs and outputs",
+    "fields_in": {
+      "val": {
+        "description": "The value!",
+        "base": "uint",
+        "start": 0,
+        "end": 16
+      }
+    },
+    "fields_out": {
+      "val": {
+        "description": "The value!",
+        "base": "uint",
+        "start": 0,
+        "end": 8
+      }
+    }
+  },
+  "WoBuf": {
+    "type": "buffer",
+    "access": "WO",
+    "address": 1
+  },
+  "FooRef": {
+    "type": "ref",
+    "target": "Foo",
+    "description": "This is the Foo ref",
+    "override": {
+      "type": "register",
+      "address": 3,
+      "reset_value": 2
+    }
+  }
+}
