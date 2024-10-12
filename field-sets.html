@@ -283,6 +283,25 @@ let lowest_byte_inverted = all_ones ^ lowest_byte_set;
 <ul>
 <li><a href="#dsl">DSL</a></li>
 <li><a href="#manifest">Manifest</a></li>
+<li><a href="#required">Required</a>
+<ul>
+<li><a href="#base"><code>base</code></a></li>
+<li><a href="#start-end--address-range"><code>start</code>, <code>end</code> &amp; address range</a></li>
+</ul>
+</li>
+<li><a href="#optional">Optional</a>
+<ul>
+<li><a href="#cfg-or-cfg"><code>cfg</code> or <code>#[cfg(...)]</code></a></li>
+<li><a href="#description-or-doc--"><code>description</code> or <code>#[doc = ""]</code></a></li>
+<li><a href="#access"><code>access</code></a></li>
+<li><a href="#conversion">Conversion</a>
+<ul>
+<li><a href="#to-custom-type">To custom type</a></li>
+<li><a href="#to-generated-enum">To generated enum</a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -378,10 +397,145 @@ bar: int as try crate::MyCustomType2 = 16..32,
         "value": "default"
       },
       "D": "catch_all"
-    }
+    },
+    "start": 0,
+    "end": 8
   }
 }
 </code></pre>
+<h2 id="required"><a class="header" href="#required">Required</a></h2>
+<h3 id="base"><a class="header" href="#base"><code>base</code></a></h3>
+<p>The base type denotes the primitve type used to convert the bits in the address range to a value.</p>
+<p>Options:</p>
+<ul>
+<li>uint - unsigned integer</li>
+<li>int - two's complement signed integer</li>
+<li>bool - low or high, only available for 1 bit values</li>
+</ul>
+<p>The integer options will generate to the smallest signed or unsigned Rust integers that can fit the value. So a 10-bit uint will become a <code>u16</code>.</p>
+<p>The value is specified as a string in the manifest format and is written 'as is' in the DSL.</p>
+<h3 id="start-end--address-range"><a class="header" href="#start-end--address-range"><code>start</code>, <code>end</code> &amp; address range</a></h3>
+<p>Every field must specified the bitrange it covers. The way this is done differs a bit between the DSL and the manifest but boil down to the same.</p>
+<p>The DLS uses <code>= &lt;ADDRESS&gt;</code> as the syntax. Valid options for the address are:</p>
+<ul>
+<li>Exclusive range: <code>0..16</code></li>
+<li>Inclusive range: <code>0..=16</code></li>
+<li>Single address: <code>0</code>
+<ul>
+<li>Only in combination with bool base types</li>
+</ul>
+</li>
+</ul>
+<p>The manifest has two fields <code>start</code> and <code>end</code>, both containing unsigned integers:</p>
+<ul>
+<li>The <code>start</code> is the starting bit of the field</li>
+<li>The <code>end</code> is the exclusive end bit of the field
+<ul>
+<li>Not required for bool base types</li>
+</ul>
+</li>
+</ul>
+<p>The address must lie fully within the size of the defining object and no fields may overlap unless the defining object has the <code>AllowBitOverlap</code> property set to true.</p>
+<h2 id="optional"><a class="header" href="#optional">Optional</a></h2>
+<h3 id="cfg-or-cfg"><a class="header" href="#cfg-or-cfg"><code>cfg</code> or <code>#[cfg(...)]</code></a></h3>
+<p>Allows for cfg-gating the command.</p>
+<p>In the DSL, the normal Rust syntax is used. Just put the attribute on the field definition. Only one attribute is allowed.</p>
+<p>In the manifest it is configured with a string.
+The string only defines the inner part: <code>#[cfg(foo)]</code> = <code>"cfg": "foo",</code>.</p>
+<div class="mdbook-alerts mdbook-alerts-warning">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  warning
+</p>
+<p>Check the chapter on cfg for more information. The cfg's are not checked by the toolkit and only passed to the generated code and so there are some oddities to be aware of.</p>
+</div>
+<h3 id="description-or-doc--"><a class="header" href="#description-or-doc--"><code>description</code> or <code>#[doc = ""]</code></a></h3>
+<p>The doc comments for the generated code.</p>
+<p>For the DSL, use the normal doc attributes or triple slash <code>///</code>.
+Multiple attributes get concatenated with a newline (just like normal Rust does).</p>
+<p>For the manifest, this is a string.</p>
+<p>The description is added as normal doc comments to the generated code. So it supports markdown and all other features you're used to. The description is used on the generated field getter and setter.</p>
+<h3 id="access"><a class="header" href="#access"><code>access</code></a></h3>
+<p>Overrides the default field access.</p>
+<p>Options are: <code>RW</code>, <code>ReadWrite</code>, <code>WO</code>, <code>WriteOnly</code>, <code>RO</code>, <code>ReadOnly</code>.<br />
+They are written 'as is' in the DSL and as a string in the manifest.</p>
+<p>If the specified access can do read, a getter is generated with the name of the field. If the specied access do write, a setter is generated with the <code>set_</code> prefix followed by the name of the field.</p>
+<h3 id="conversion"><a class="header" href="#conversion">Conversion</a></h3>
+<p>If the base type of a field is an integer, the value can be converted to a further higher level type. There are two options for this:</p>
+<ul>
+<li>Conversion to a custom user-defined type</li>
+<li>Conversion to an inline defined enum value</li>
+</ul>
+<p>The conversion can be specified as infallible or fallible. When infallible, the field getter will call on the <code>From&lt;INTEGER&gt;</code> trait to convert the base value to the conversion value after which the value is returned. When fallible, the field getter will use the <code>TryFrom&lt;INTEGER&gt;</code> trait instead and will return the result value from it.</p>
+<p>In the DSL the conversion is specified using the <code>as &lt;TARGET&gt;</code> or <code>as try &lt;TARGET&gt;</code> keywords for the infallible and fallible variants respectively.</p>
+<p>The manifest has two possible fields <code>conversion</code> and <code>try_conversion</code> for the infallible and fallible variants respectively.</p>
+<h4 id="to-custom-type"><a class="header" href="#to-custom-type">To custom type</a></h4>
+<p>When a type path is given as the DSL <code>&lt;TARGET&gt;</code> or as string in the manifest <code>conversion</code> field, the conversion will be done using the specified type.</p>
+<p>The type path is used as is in the generated code, so you need to make sure that the type is in scope.</p>
+<p>Furthermore the type must implement the <code>From&lt;INTEGER&gt;</code> or <code>TryFrom&lt;INTEGER&gt;</code> traits for the infallible or fallible conversions respectively when the field has read access. When the field has write access, the type must implement the <code>Into&lt;INTEGER&gt;</code> trait.</p>
+<h4 id="to-generated-enum"><a class="header" href="#to-generated-enum">To generated enum</a></h4>
+<p>Instead of a custom type, the toolkit can also generate an enum inline.</p>
+<p>In the DSL the format for <code>&lt;TARGET&gt;</code> is:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>enum Foo {
+    A,
+    B = 5, // Also supports bit and hex specification
+    /// Comment
+    C
+}
+<span class="boring">}</span></code></pre></pre>
+<p>The enum is written pretty much as a normal Rust enum including setting the value of every variant and writing docs on every variant. In this example, the number value of <code>C</code> would be 6.</p>
+<p>The generated enum will have the same docs as the field (if any).</p>
+<p>In the manifest, the same enum would be specified like so:</p>
+<pre><code class="language-json">"conversion": {
+  "name": "Foo",
+  "description": "Enum docs", // In manifest, enum can be separately documented
+  "A": null,
+  "B": 5,
+  "C": {
+    "description": "Comment",
+    "value": null
+  }
+}
+</code></pre>
+<p>The values for each variant can be the following:</p>
+<ul>
+<li>Empty or null
+<ul>
+<li>Use auto counting starting at 0 for the first variant and one higher than the previous variant</li>
+</ul>
+</li>
+<li>Signed integer
+<ul>
+<li>To manually specify the value</li>
+</ul>
+</li>
+<li><code>default</code>
+<ul>
+<li>To specify a default value</li>
+<li>When the conversion is of a number that doesn't match any variant, the default variant will be returned</li>
+<li>In DSL specified 'as is'</li>
+<li>In manifest specified as a string</li>
+<li>Also implements the <code>Default</code> trait for the enum</li>
+</ul>
+</li>
+<li><code>catch_all</code>
+<ul>
+<li>Similar to default, but makes the variant contain the raw value (like <code>Catch(u8)</code>)</li>
+<li>When the conversion is of a number that doesn't match any variant, the catch all will be returned with the raw value</li>
+<li>In DSL specified 'as is'</li>
+<li>In manifest specified as a string</li>
+</ul>
+</li>
+</ul>
+<p>When an enum contains both a catch all and a default, the catch all value is used to return unknown numbers.</p>
+<p>A generated enum can be used infallibly when any of these properties hold:</p>
+<ul>
+<li>Any bitpattern of the field is covered by an enum variant</li>
+<li>The enum has a default value</li>
+<li>The enum has a catch all value</li>
+</ul>
 
                     </main>
 
