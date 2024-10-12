@@ -95,6 +95,24 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
                         too_big_variant.0
                     )
                 }
+
+                // Check whether the enum has more than one default
+                ensure!(
+                    ec.variants.iter().filter(|v| v.value.is_default()).count() < 2,
+                    "More than one default defined on enum \"{}\" in object \"{}\" on field \"{}\"",
+                    &ec.name,
+                    object_name,
+                    &field.name
+                );
+
+                // Check whether the enum has more than one catch all
+                ensure!(
+                    ec.variants.iter().filter(|v| v.value.is_catch_all()).count() < 2,
+                    "More than one catch all defined on enum \"{}\" in object \"{}\" on field \"{}\"",
+                    &ec.name,
+                    object_name,
+                    &field.name
+                );
             }
         }
 

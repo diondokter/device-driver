@@ -405,6 +405,24 @@ pub enum EnumValue {
     CatchAll,
 }
 
+impl EnumValue {
+    /// Returns `true` if the enum value is [`Default`].
+    ///
+    /// [`Default`]: EnumValue::Default
+    #[must_use]
+    pub fn is_default(&self) -> bool {
+        matches!(self, Self::Default)
+    }
+
+    /// Returns `true` if the enum value is [`CatchAll`].
+    ///
+    /// [`CatchAll`]: EnumValue::CatchAll
+    #[must_use]
+    pub fn is_catch_all(&self) -> bool {
+        matches!(self, Self::CatchAll)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Command {
     pub cfg_attr: Cfg,
