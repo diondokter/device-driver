@@ -7,22 +7,23 @@ license = "MIT OR Apache-2.0"
 homepage = "https://github.com/diondokter/device-driver"
 repository = "https://github.com/diondokter/device-driver"
 keywords = ["no_std", "device", "driver", "toolkit"]
-categories = ["embedded", "hardware-support", "no-std"]
+categories = ["embedded", "hardware-support", "no-std::no-alloc", "no-std"]
 description = "Proc macro implementation for the `device-driver` crate"
-readme.workspace = true
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
 proc-macro = true
 
 [dependencies]
-device-driver-generation = { version = "0.7.0", path = "../generation" }
-syn = { version = "2.0", features = ["extra-traits"] }
-serde_json = { version = "1.0", optional = true }
-serde_yaml = { version = "0.9", optional = true }
+device-driver-generation = { version = "0.7.0", path = "../generation", default-features = false }
+syn = { version = "2.0" }
 proc-macro2 = "1.0"
-quote = "1.0"
 
 [features]
-json = ["dep:serde_json"]
-yaml = ["dep:serde_yaml"]
+default = ["dsl", "json", "yaml", "toml"]
+manifest = []
+dsl = ["device-driver-generation/dsl"]
+json = ["manifest", "device-driver-generation/json"]
+yaml = ["manifest", "device-driver-generation/yaml"]
+toml = ["manifest", "device-driver-generation/toml"]
