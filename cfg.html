@@ -88,7 +88,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="preface.html">Preface</a></li><li class="chapter-item expanded affix "><li class="spacer"></li><li class="chapter-item expanded "><a href="intro.html"><strong aria-hidden="true">1.</strong> Intro</a></li><li class="chapter-item expanded "><a href="using-the-macro.html"><strong aria-hidden="true">2.</strong> Using the macro</a></li><li class="chapter-item expanded "><a href="using-the-cli.html"><strong aria-hidden="true">3.</strong> Using the cli</a></li><li class="chapter-item expanded "><a href="writing-an-interface.html"><strong aria-hidden="true">4.</strong> Writing an interface</a></li><li class="chapter-item expanded "><a href="defining-the-device.html"><strong aria-hidden="true">5.</strong> Defining the device</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="global-config.html"><strong aria-hidden="true">5.1.</strong> Global config</a></li><li class="chapter-item expanded "><a href="registers.html"><strong aria-hidden="true">5.2.</strong> Registers</a></li><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">5.3.</strong> Commands</a></li><li class="chapter-item expanded "><a href="field-sets.html"><strong aria-hidden="true">5.4.</strong> Field sets</a></li><li class="chapter-item expanded "><a href="buffers.html"><strong aria-hidden="true">5.5.</strong> Buffers</a></li><li class="chapter-item expanded "><a href="blocks.html"><strong aria-hidden="true">5.6.</strong> Blocks</a></li><li class="chapter-item expanded "><a href="refs.html"><strong aria-hidden="true">5.7.</strong> Refs</a></li><li class="chapter-item expanded "><a href="dsl-syntax.html"><strong aria-hidden="true">5.8.</strong> DSL syntax</a></li><li class="chapter-item expanded "><a href="manifest-syntax.html"><strong aria-hidden="true">5.9.</strong> Manifest syntax</a></li></ol></li><li class="chapter-item expanded "><a href="output.html"><strong aria-hidden="true">6.</strong> Output</a></li><li class="chapter-item expanded "><div><strong aria-hidden="true">7.</strong> Addendum</div></li><li><ol class="section"><li class="chapter-item expanded "><a href="memory.html"><strong aria-hidden="true">7.1.</strong> Memory</a></li><li class="chapter-item expanded "><a href="cfg.html" class="active"><strong aria-hidden="true">7.2.</strong> Cfg</a></li></ol></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="preface.html">Preface</a></li><li class="chapter-item expanded affix "><li class="spacer"></li><li class="chapter-item expanded "><a href="intro.html"><strong aria-hidden="true">1.</strong> Intro</a></li><li class="chapter-item expanded "><a href="using-the-macro.html"><strong aria-hidden="true">2.</strong> Using the macro</a></li><li class="chapter-item expanded "><a href="using-the-cli.html"><strong aria-hidden="true">3.</strong> Using the cli</a></li><li class="chapter-item expanded "><a href="writing-an-interface.html"><strong aria-hidden="true">4.</strong> Writing an interface</a></li><li class="chapter-item expanded "><a href="defining-the-device.html"><strong aria-hidden="true">5.</strong> Defining the device</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="global-config.html"><strong aria-hidden="true">5.1.</strong> Global config</a></li><li class="chapter-item expanded "><a href="registers.html"><strong aria-hidden="true">5.2.</strong> Registers</a></li><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">5.3.</strong> Commands</a></li><li class="chapter-item expanded "><a href="field-sets.html"><strong aria-hidden="true">5.4.</strong> Field sets</a></li><li class="chapter-item expanded "><a href="buffers.html"><strong aria-hidden="true">5.5.</strong> Buffers</a></li><li class="chapter-item expanded "><a href="blocks.html"><strong aria-hidden="true">5.6.</strong> Blocks</a></li><li class="chapter-item expanded "><a href="refs.html"><strong aria-hidden="true">5.7.</strong> Refs</a></li><li class="chapter-item expanded "><a href="dsl-syntax.html"><strong aria-hidden="true">5.8.</strong> DSL syntax</a></li><li class="chapter-item expanded "><a href="manifest-syntax.html"><strong aria-hidden="true">5.9.</strong> Manifest syntax</a></li></ol></li><li class="chapter-item expanded "><div><strong aria-hidden="true">6.</strong> Addendum</div></li><li><ol class="section"><li class="chapter-item expanded "><a href="memory.html"><strong aria-hidden="true">6.1.</strong> Memory</a></li><li class="chapter-item expanded "><a href="cfg.html" class="active"><strong aria-hidden="true">6.2.</strong> Cfg</a></li></ol></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
@@ -244,6 +244,43 @@
 
 </style>
 <h1 id="cfg"><a class="header" href="#cfg">Cfg</a></h1>
+<p>Pretty much anywhere you can put docs/description, you can also put some cfg. They use the same syntax as the inside of the cfg attribute, e.g. <code>feature = "blah"</code>.</p>
+<div class="mdbook-alerts mdbook-alerts-important">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  important
+</p>
+<p>The cfg's have no impact on the code generation other than forwarding the cfg's as attributes on items.</p>
+</div>
+<p>This presents a couple of challenges:</p>
+<ul>
+<li>It's quite hard to check whether a driver can compile with any combination of cfg's.</li>
+<li>The cfg's are resolved after code generation, so the toolkit can't check anything.</li>
+<li>It's hard to predict how the cfg attributes on various items interact.</li>
+</ul>
+<p>So what does this all mean?</p>
+<div class="mdbook-alerts mdbook-alerts-caution">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  caution
+</p>
+<ul>
+<li>The support for cfg's are best effort only. Expect things to be weird or something to work against you.</li>
+<li>Some analysis may not be done on objects with cfg which can lead to weird errors in the generated code since problems are not caught beforehand.</li>
+</ul>
+</div>
+<div class="mdbook-alerts mdbook-alerts-warning">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  warning
+</p>
+<ul>
+<li>If you use cfg's, check the generated code to see if everything looks alright.</li>
+<li>Use cfg's only sparingly.</li>
+<li>Test all realistic cfg combinations, preferrably even in CI.</li>
+</ul>
+</div>
+<p>If there is a problem and the toolkit can do better, then please make an issue!</p>
 
                     </main>
 
