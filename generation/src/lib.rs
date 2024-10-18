@@ -46,7 +46,7 @@ pub fn _private_transform_dsl_mir(
 pub fn transform_json(source: &str, driver_name: &str) -> proc_macro2::TokenStream {
     let mir = match _private_transform_json_mir(source) {
         Ok(mir) => mir,
-        Err(e) => return syn::Error::new(proc_macro2::Span::call_site(), e).into_compile_error(),
+        Err(e) => return anyhow_error_to_compile_error(e),
     };
 
     transform_mir(mir, driver_name)
@@ -69,7 +69,7 @@ pub fn _private_transform_json_mir(source: &str) -> anyhow::Result<mir::Device> 
 pub fn transform_yaml(source: &str, driver_name: &str) -> proc_macro2::TokenStream {
     let mir = match _private_transform_yaml_mir(source) {
         Ok(mir) => mir,
-        Err(e) => return syn::Error::new(proc_macro2::Span::call_site(), e).into_compile_error(),
+        Err(e) => return anyhow_error_to_compile_error(e),
     };
 
     transform_mir(mir, driver_name)
@@ -92,7 +92,7 @@ pub fn _private_transform_yaml_mir(source: &str) -> anyhow::Result<mir::Device> 
 pub fn transform_toml(source: &str, driver_name: &str) -> proc_macro2::TokenStream {
     let mir = match _private_transform_toml_mir(source) {
         Ok(mir) => mir,
-        Err(e) => return syn::Error::new(proc_macro2::Span::call_site(), e).into_compile_error(),
+        Err(e) => return anyhow_error_to_compile_error(e),
     };
 
     transform_mir(mir, driver_name)
@@ -111,21 +111,25 @@ fn transform_mir(mut mir: mir::Device, driver_name: &str) -> proc_macro2::TokenS
     // Run the MIR passes
     match mir::passes::run_passes(&mut mir) {
         Ok(()) => {}
-        Err(e) => return syn::Error::new(proc_macro2::Span::call_site(), e).into_compile_error(),
+        Err(e) => return anyhow_error_to_compile_error(e),
     }
 
     // Transform into LIR
     let mut lir = match mir::lir_transform::transform(mir, driver_name) {
         Ok(lir) => lir,
-        Err(e) => return syn::Error::new(proc_macro2::Span::call_site(), e).into_compile_error(),
+        Err(e) => return anyhow_error_to_compile_error(e),
     };
 
     // Run the LIR passes
     match lir::passes::run_passes(&mut lir) {
         Ok(()) => {}
-        Err(e) => return syn::Error::new(proc_macro2::Span::call_site(), e).into_compile_error(),
+        Err(e) => return anyhow_error_to_compile_error(e),
     };
 
     // Transform into Rust source token output
     lir::token_transform::transform(lir)
+}
+
+fn anyhow_error_to_compile_error(error: anyhow::Error) -> proc_macro2::TokenStream {
+    syn::Error::new(proc_macro2::Span::call_site(), format!("{error:#}")).into_compile_error()
 }
