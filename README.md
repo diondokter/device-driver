@@ -6,14 +6,15 @@ Read [the book](diondokter.github.io/device-driver) to learn about how to use th
 
 ## Architecture
 
-This crate consists of three parts:
+This toolkit consists of these parts:
 
 - `device-driver`: The main crate you as the writer of a driver should include in your project.
-  It defines a set of types used by the generated and (by default) reexports the macros.
+  It defines a set of types used by the generated code and (by default) reexports the macros.
 - `device-driver-generation`: The generation crate contains the device-driver compiler. It takes the tokentree or textual
   inputs and generates the device driver.
 - `device-driver-macros`: A small frontend to the generation crate. It can take the dsl token stream or open a text file
   and feed that to the compiler and it outputs the compiler output.
+- `device-driver-cli`: A small command line interface that uses the generation crate. It allows you to generate the driver in advance to reduce compile times.
 - `dd-manifest-tree`: A small abstraction over json, yaml and toml crates to unify their value types.
 
 ## Semver
