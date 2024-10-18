@@ -244,6 +244,37 @@
 
 </style>
 <h1 id="using-the-cli"><a class="header" href="#using-the-cli">Using the cli</a></h1>
+<p>The cli is there to optimize compile times for your driver users. Instead of having to compile the device-driver macros and run them, you can generate the code ahead of time and then <code>include!</code> or make a module out of it.</p>
+<div class="mdbook-alerts mdbook-alerts-tip">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  tip
+</p>
+<p>During development using the proc macro will be lots easier since the code generation won't go out of sync with the driver definitions. Then once the development is done, you may want to use the CLI as an optimization.</p>
+</div>
+<h2 id="installation"><a class="header" href="#installation">Installation</a></h2>
+<p>The cli can be installed using cargo:</p>
+<pre><code class="language-bash">cargo install device-driver-cli
+</code></pre>
+<p>This always supports all input formats.</p>
+<h2 id="usage"><a class="header" href="#usage">Usage</a></h2>
+<p>The CLI is written with clap and has a minimal and simple interface.</p>
+<p>To see all options, use:</p>
+<pre><code class="language-bash">device-driver-cli --help
+</code></pre>
+<p>To do the code generation three things are required:</p>
+<ul>
+<li><code>-m</code> or <code>--manifest</code>: The path to the manifest file</li>
+<li><code>-o</code> or <code>--output</code>: The path to the to be generated rust file</li>
+<li><code>-d</code> or <code>--device-name</code>: The name the toolkit will use for the generated device</li>
+</ul>
+<h2 id="using-the-output"><a class="header" href="#using-the-output">Using the output</a></h2>
+<p>Exactly how you include the generated rust file is up to you. You could generate it into your <code>/src</code> folder and declare it a module, which would be nice for Rust analyzer but forces the generated code to be its own module. Or to include it in an existing module you can use the <a href="https://doc.rust-lang.org/core/macro.include.html"><code>include!</code></a> macro.</p>
+<p>However you choose to include it, don't forget to track the file in your git repo.</p>
+<p>The generated code still depends on the device-driver crate, but since we don't depend on the proc macro anymore we can turn off the default features. So in your <code>Cargo.toml</code> you can now import the toolkit as:</p>
+<pre><code class="language-toml">device-driver = { version = &lt;VERSION&gt;, default-features = false }
+</code></pre>
+<p>This makes it so all unused dependencies are gone.</p>
 
                     </main>
 
