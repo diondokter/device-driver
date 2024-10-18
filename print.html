@@ -2157,6 +2157,63 @@ They are written 'as is' in the DSL and as a string in the manifest.</p>
 
 </style>
 <h1 id="buffers"><a class="header" href="#buffers">Buffers</a></h1>
+<p>A buffer is used to represent an stream of bytes on a device. This could for example be a fifo for a radio.
+It's quite a simple construct and thus is limited in configuration options.</p>
+<p>It is accessed as a function on the block it's part of. The function returns a <a href="https://docs.rs/device-driver/latest/device_driver/struct.BufferOperation.html">BufferOperation</a> which can be used to read and write from/to the buffer. This operation type also implements the <a href="https://crates.io/crates/embedded-io">embedded-io</a> traits.</p>
+<p>Example usage:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let mut device = MyDevice::new(DeviceInterface::new());
+
+device.foo().write_all(&amp;[0, 1, 2, 3]).unwrap();
+let mut buffer = [0; 8];
+let len = device.bar().read(&amp;mut buffer).unwrap();
+<span class="boring">}</span></code></pre></pre>
+<p>Below are minimal and full examples of how buffers can be defined.</p>
+<ul>
+<li><a href="buffers.html#buffers">Buffers</a>
+<ul>
+<li><a href="buffers.html#dsl">DSL</a></li>
+<li><a href="buffers.html#manifest">Manifest</a></li>
+<li><a href="buffers.html#required">Required</a></li>
+<li><a href="buffers.html#optional">Optional</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="dsl-4"><a class="header" href="#dsl-4">DSL</a></h2>
+<p>Minimal:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>buffer Foo = 5,
+<span class="boring">}</span></code></pre></pre>
+<p>Full:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// A foo buffer
+#[cfg(bar)]
+buffer Foo: WO = 5,
+<span class="boring">}</span></code></pre></pre>
+<h2 id="manifest-4"><a class="header" href="#manifest-4">Manifest</a></h2>
+<p>Full:</p>
+<pre><code class="language-json">"Foo": {
+    "type": "buffer",
+    "cfg": "bar",
+    "description": "A foo buffer",
+    "access": "WO",
+    "address": 5
+},
+</code></pre>
+<p>Full:</p>
+<pre><code class="language-json">"Foo": {
+    "type": "buffer",
+    "cfg": "bar",
+    "description": "A foo buffer",
+    "access": "WO",
+    "address": 5
+},
+</code></pre>
+<h2 id="required-4"><a class="header" href="#required-4">Required</a></h2>
+<h2 id="optional-3"><a class="header" href="#optional-3">Optional</a></h2>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
