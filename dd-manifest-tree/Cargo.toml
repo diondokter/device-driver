@@ -7,8 +7,8 @@ license = "MIT OR Apache-2.0"
 homepage = "https://github.com/diondokter/device-driver"
 repository = "https://github.com/diondokter/device-driver"
 keywords = ["yaml", "json", "toml", "value"]
-categories = ["embedded", "hardware-support", "no-std"]
-description = "A toolkit to write better device drivers, faster"
+categories = ["parsing"]
+description = "Crate to unify the 'Value' tree types of json, yaml and toml"
 readme = "README.md"
 
 [dependencies]
