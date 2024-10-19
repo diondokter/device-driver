@@ -62,7 +62,7 @@ pub fn generate_block(value: &Block, internal_address_type: &Ident) -> TokenStre
                 }
             }
 
-            pub(crate) const fn interface(&mut self) -> &mut I {
+            pub(crate) fn interface(&mut self) -> &mut I {
                 #interface_borrow
             }
 
