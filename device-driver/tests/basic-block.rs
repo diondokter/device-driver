@@ -45,6 +45,8 @@ device_driver::create_device!(
             type RegisterAddressType = u8;
             type DefaultByteOrder = LE;
         }
+        /// Block description
+        #[cfg(not(blah))]
         block Bar {
             const ADDRESS_OFFSET = 10;
             const REPEAT = {

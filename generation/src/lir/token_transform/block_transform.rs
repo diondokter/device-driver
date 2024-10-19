@@ -35,10 +35,10 @@ pub fn generate_block(value: &Block, internal_address_type: &Ident) -> TokenStre
         .iter()
         .map(|m| generate_method(m, internal_address_type));
 
-    let (new_hidden_if_not_root, new_access) = if *root {
-        (quote! {}, quote! { pub })
+    let (new_hidden_if_not_root, new_access, new_const) = if *root {
+        (quote! {}, quote! { pub }, quote! { const })
     } else {
-        (quote! { #[doc(hidden)] }, quote! {})
+        (quote! { #[doc(hidden)] }, quote! {}, quote! {})
     };
 
     quote! {
@@ -55,7 +55,7 @@ pub fn generate_block(value: &Block, internal_address_type: &Ident) -> TokenStre
         impl<#generics> #name<#generics> {
             /// Create a new instance of the block based on device interface
             #new_hidden_if_not_root
-            #new_access const fn new(interface: #interface_decleration, #address_param) -> Self {
+            #new_access #new_const fn new(interface: #interface_decleration, #address_param) -> Self {
                 Self {
                     interface,
                     base_address: #address_specifier,
@@ -277,7 +277,7 @@ mod tests {
                 impl<'i, I> AnyBlock<'i, I> {
                     /// Create a new instance of the block based on device interface
                     #[doc(hidden)]
-                    const fn new(interface: &'i mut I, base_address: u8) -> Self {
+                    fn new(interface: &'i mut I, base_address: u8) -> Self {
                         Self {
                             interface,
                             base_address: base_address,
