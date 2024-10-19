@@ -36,6 +36,11 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
             }
         }
 
+        if let Some(ref_object) = object.as_ref_object_mut() {
+            *ref_object.object_override.name_mut() =
+                pascal_converter.convert(ref_object.object_override.name_mut());
+        }
+
         Ok(())
     })
 }

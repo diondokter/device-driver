@@ -269,6 +269,14 @@ impl Object {
             },
         }
     }
+
+    pub fn as_ref_object_mut(&mut self) -> Option<&mut RefObject> {
+        if let Self::Ref(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -486,6 +494,14 @@ impl ObjectOverride {
             ObjectOverride::Block(v) => &v.name,
             ObjectOverride::Register(v) => &v.name,
             ObjectOverride::Command(v) => &v.name,
+        }
+    }
+
+    fn name_mut(&mut self) -> &mut String {
+        match self {
+            ObjectOverride::Block(v) => &mut v.name,
+            ObjectOverride::Register(v) => &mut v.name,
+            ObjectOverride::Command(v) => &mut v.name,
         }
     }
 
