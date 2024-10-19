@@ -11,8 +11,10 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
         let object_name = object.name().to_string();
 
         for field in object.field_sets_mut().flatten() {
-            if let Some(FieldConversion::Enum { enum_value: ec, .. }) =
-                field.field_conversion.as_mut()
+            if let Some(FieldConversion::Enum {
+                enum_value: ec,
+                use_try,
+            }) = field.field_conversion.as_mut()
             {
                 let field_bits = field.field_address.clone().count();
                 let highest_value = (1 << field_bits) - 1;
@@ -113,6 +115,15 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
                     object_name,
                     &field.name
                 );
+
+                if ec.generation_style.as_ref().unwrap().is_fallible() && !*use_try {
+                    bail!(
+                        "Not all bitpatterns are covered on non-try conversion enum \"{}\" in object \"{}\" on field \"{}\"",
+                        &ec.name,
+                        object_name,
+                        &field.name
+                    );
+                }
             }
         }
 
@@ -303,7 +314,7 @@ mod tests {
                                 ..Default::default()
                             }],
                         ),
-                        use_try: false,
+                        use_try: true,
                     }),
                     field_address: 0..2,
                     ..Default::default()
@@ -328,7 +339,7 @@ mod tests {
                             }],
                             EnumGenerationStyle::Fallible,
                         ),
-                        use_try: false,
+                        use_try: true,
                     }),
                     field_address: 0..2,
                     ..Default::default()

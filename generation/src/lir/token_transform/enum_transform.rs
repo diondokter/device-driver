@@ -101,8 +101,8 @@ pub fn generate_enum(value: &Enum) -> TokenStream {
             }
         }
     } else {
-        let try_from_fallback_variant =
-            quote! { val => Err(::device_driver::ConversionError(val)) };
+        let enum_name = name.to_string();
+        let try_from_fallback_variant = quote! { val => Err(::device_driver::ConversionError { source: val, target: #enum_name }) };
         let try_from_variants = variants
             .iter()
             .filter(|v| !v.catch_all)

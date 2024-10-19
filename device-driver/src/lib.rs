@@ -35,13 +35,21 @@ pub trait FieldSet {
 
 /// The error returned by the generated [TryFrom]s.
 /// It contains the base type of the enum.
-#[repr(transparent)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct ConversionError<T>(pub T);
+pub struct ConversionError<T> {
+    /// The value of the thing that was tried to be converted
+    pub source: T,
+    /// The name of the target type
+    pub target: &'static str,
+}
 
 impl<T: Display> Display for ConversionError<T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "Could not convert value from `{}`", self.0)
+        write!(
+            f,
+            "Could not convert value from `{}` to type `{}`",
+            self.source, self.target
+        )
     }
 }
 

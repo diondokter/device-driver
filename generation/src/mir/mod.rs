@@ -388,6 +388,16 @@ pub enum EnumGenerationStyle {
     Infallible { bit_size: u32 },
 }
 
+impl EnumGenerationStyle {
+    /// Returns `true` if the enum generation style is [`Fallible`].
+    ///
+    /// [`Fallible`]: EnumGenerationStyle::Fallible
+    #[must_use]
+    pub fn is_fallible(&self) -> bool {
+        matches!(self, Self::Fallible)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct EnumVariant {
     pub cfg_attr: Cfg,

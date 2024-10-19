@@ -818,7 +818,7 @@ fn transform_enum_variant(
             Err(e) => {
                 Err(anyhow!(
                     "Enum variant '{variant_name}' not recognized. Must be a 'map' for the extended definition. Cannot parse value as value directly: {e:#}"
-                ))        
+                ))
             },
         }
     }
