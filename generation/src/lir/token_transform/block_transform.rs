@@ -213,7 +213,7 @@ mod tests {
                     pub const fn new(interface: I) -> Self {
                         Self { interface, base_address: 0 }
                     }
-                    pub(crate) const fn interface(&mut self) -> &mut I {
+                    pub(crate) fn interface(&mut self) -> &mut I {
                         &mut self.interface
                     }
                     ///42 is the answer
@@ -283,7 +283,7 @@ mod tests {
                             base_address: base_address,
                         }
                     }
-                    pub(crate) const fn interface(&mut self) -> &mut I {
+                    pub(crate) fn interface(&mut self) -> &mut I {
                         self.interface
                     }
                     ///42 is the answer
