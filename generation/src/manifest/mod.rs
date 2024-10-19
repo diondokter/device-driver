@@ -783,13 +783,7 @@ fn transform_field_conversion(
 fn transform_enum_variant(
     (variant_name, variant_value): (&str, &impl Value),
 ) -> anyhow::Result<mir::EnumVariant> {
-    if let Ok(value) = transform_enum_value(variant_value) {
-        Ok(mir::EnumVariant {
-            name: variant_name.into(),
-            value,
-            ..Default::default()
-        })
-    } else if let Ok(map) = variant_value.as_map() {
+    if let Ok(map) = variant_value.as_map() {
         let cfg = map
             .get("cfg")
             .map(|cfg| cfg.as_string())
@@ -813,9 +807,20 @@ fn transform_enum_variant(
             cfg_attr: Cfg::new(cfg),
         })
     } else {
-        Err(anyhow!(
-            "Enum variant '{variant_name}' not recognized. Must be one of 'null', 'int', 'string' or 'map'"
-        ))
+        match transform_enum_value(variant_value) {
+            Ok(value) => {
+                Ok(mir::EnumVariant {
+                    name: variant_name.into(),
+                    value,
+                    ..Default::default()
+                })
+            }
+            Err(e) => {
+                Err(anyhow!(
+                    "Enum variant '{variant_name}' not recognized. Must be a 'map' for the extended definition. Cannot parse value as value directly: {e:#}"
+                ))        
+            },
+        }
     }
 }
 
@@ -829,7 +834,7 @@ fn transform_enum_value(value: &impl Value) -> anyhow::Result<mir::EnumValue> {
             "default" => Ok(mir::EnumValue::Default),
             "catch_all" => Ok(mir::EnumValue::CatchAll),
             val => Err(anyhow!(
-                "Unexpected value: '{val}'. Choose one of 'default' or 'catch_all'"
+                "Unexpected string value: '{val}'. Choose one of 'default' or 'catch_all'"
             )),
         }
     } else {
