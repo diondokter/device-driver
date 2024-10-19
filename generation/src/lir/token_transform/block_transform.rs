@@ -55,14 +55,14 @@ pub fn generate_block(value: &Block, internal_address_type: &Ident) -> TokenStre
         impl<#generics> #name<#generics> {
             /// Create a new instance of the block based on device interface
             #new_hidden_if_not_root
-            #new_access fn new(interface: #interface_decleration, #address_param) -> Self {
+            #new_access const fn new(interface: #interface_decleration, #address_param) -> Self {
                 Self {
                     interface,
                     base_address: #address_specifier,
                 }
             }
 
-            pub(crate) fn interface(&mut self) -> &mut I {
+            pub(crate) const fn interface(&mut self) -> &mut I {
                 #interface_borrow
             }
 
@@ -210,10 +210,10 @@ mod tests {
                 #[cfg(unix)]
                 impl<I> RootBlock<I> {
                     /// Create a new instance of the block based on device interface
-                    pub fn new(interface: I) -> Self {
+                    pub const fn new(interface: I) -> Self {
                         Self { interface, base_address: 0 }
                     }
-                    pub(crate) fn interface(&mut self) -> &mut I {
+                    pub(crate) const fn interface(&mut self) -> &mut I {
                         &mut self.interface
                     }
                     ///42 is the answer
@@ -277,13 +277,13 @@ mod tests {
                 impl<'i, I> AnyBlock<'i, I> {
                     /// Create a new instance of the block based on device interface
                     #[doc(hidden)]
-                    fn new(interface: &'i mut I, base_address: u8) -> Self {
+                    const fn new(interface: &'i mut I, base_address: u8) -> Self {
                         Self {
                             interface,
                             base_address: base_address,
                         }
                     }
-                    pub(crate) fn interface(&mut self) -> &mut I {
+                    pub(crate) const fn interface(&mut self) -> &mut I {
                         self.interface
                     }
                     ///42 is the answer
