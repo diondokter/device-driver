@@ -2525,6 +2525,143 @@ Multiple attributes get concatenated with a newline (just like normal Rust does)
 
 </style>
 <h1 id="refs"><a class="header" href="#refs">Refs</a></h1>
+<p>A ref is a copy of another object where parts of that object are overridden with a new value.</p>
+<p>For example, you may have two different registers that have the same fields but reside at different addresses. You may not want to use a repeat if they are not logically repeated.</p>
+<p>Refs can target registers, commands and blocks. Buffers can't be reffed because they're so simple there's nothing worth overriding. You also can't ref other refs since that would open the gates of hell in the toolkit implementation.</p>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>Using a ref is exactly the same as using the original, just with the new name. The only difference in API is that if the reset value of a field set is overridden, that fieldset gets an extra constructor with which you can initialize it with the overridden reset value.</p>
+<p>The possible overrides are all of the object properties that <em>don't</em> specify things about the field set. For example, <code>size_bits</code>, <code>fields</code>, <code>byte_order</code> and more can't be overridden.</p>
+</div>
+<p>Below are minimal and full examples of how refs can be defined. The examples all override a register and its address.</p>
+<ul>
+<li><a href="refs.html#refs">Refs</a>
+<ul>
+<li><a href="refs.html#dsl">DSL</a></li>
+<li><a href="refs.html#manifest">Manifest</a></li>
+<li><a href="refs.html#required">Required</a>
+<ul>
+<li><a href="refs.html#target-manifest-only"><code>target</code> (manifest only)</a></li>
+<li><a href="refs.html#type-manifest-only"><code>type</code> (manifest only)</a></li>
+<li><a href="refs.html#override-or---"><code>override</code> or <code>{ .. }</code></a></li>
+</ul>
+</li>
+<li><a href="refs.html#optional">Optional</a>
+<ul>
+<li><a href="refs.html#cfg-or-cfg"><code>cfg</code> or <code>#[cfg(...)]</code></a></li>
+<li><a href="refs.html#description-or-doc--"><code>description</code> or <code>#[doc = ""]</code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="dsl-6"><a class="header" href="#dsl-6">DSL</a></h2>
+<p>Minimal:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>register Foo {
+    const ADDRESS = 3;
+    const SIZE_BITS = 16;
+
+    value: uint = 0..16,
+},
+ref Bar = register Foo {
+    const ADDRESS = 5;
+},
+<span class="boring">}</span></code></pre></pre>
+<p>Full:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>register Foo {
+    const ADDRESS = 3;
+    const SIZE_BITS = 16;
+
+    value: uint = 0..16,
+},
+/// This is a copy of Foo, but now with address 5!
+#[cfg(feature = "bar-enabled")]
+ref Bar = register Foo {
+    const ADDRESS = 5;
+},
+<span class="boring">}</span></code></pre></pre>
+<h2 id="manifest-6"><a class="header" href="#manifest-6">Manifest</a></h2>
+<p>Minimal:</p>
+<pre><code class="language-json">"Foo": {
+    "type": "register",
+    "address": 3,
+    "size_bits": 16,
+    "fields": {
+        "value": {
+            "base": "uint",
+            "start": 0,
+            "end": 16
+        }
+    }
+},
+"Bar": {
+    "type": "ref",
+    "target": "Foo",
+    "override": {
+        "type": "register",
+        "address": 3,
+    }
+}
+</code></pre>
+<p>Full:</p>
+<pre><code class="language-json">"Foo": {
+    "type": "register",
+    "address": 3,
+    "size_bits": 16,
+    "fields": {
+        "value": {
+            "base": "uint",
+            "start": 0,
+            "end": 16
+        }
+    }
+},
+"Bar": {
+    "type": "ref",
+    "target": "Foo",
+    "description": "This is a copy of Foo, but now with address 5!",
+    "cfg": "feature = \"bar-enabled\"",
+    "override": {
+        "type": "register",
+        "address": 3,
+    }
+}
+</code></pre>
+<h2 id="required-6"><a class="header" href="#required-6">Required</a></h2>
+<h3 id="target-manifest-only"><a class="header" href="#target-manifest-only"><code>target</code> (manifest only)</a></h3>
+<p>The (string) name of the reffed object.</p>
+<h3 id="type-manifest-only-4"><a class="header" href="#type-manifest-only-4"><code>type</code> (manifest only)</a></h3>
+<p>The type of the object.</p>
+<p>For refs this field is a string with the contents <code>"ref"</code>.</p>
+<h3 id="override-or---"><a class="header" href="#override-or---"><code>override</code> or <code>{ .. }</code></a></h3>
+<p>Contains the override fields of the ref.</p>
+<p>This is formatted as an object normally is, but some fields will be rejected.</p>
+<h2 id="optional-5"><a class="header" href="#optional-5">Optional</a></h2>
+<h3 id="cfg-or-cfg-5"><a class="header" href="#cfg-or-cfg-5"><code>cfg</code> or <code>#[cfg(...)]</code></a></h3>
+<p>Allows for cfg-gating the ref.</p>
+<p>In the DSL, the normal Rust syntax is used. Just put the attribute on the ref definition. Only one attribute is allowed.</p>
+<p>In the manifest it is configured with a string.
+The string only defines the inner part: <code>#[cfg(foo)]</code> = <code>"cfg": "foo",</code>.</p>
+<div class="mdbook-alerts mdbook-alerts-warning">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  warning
+</p>
+<p>Check the chapter on cfg for more information. The cfg's are not checked by the toolkit and only passed to the generated code and so there are some oddities to be aware of.</p>
+</div>
+<h3 id="description-or-doc---5"><a class="header" href="#description-or-doc---5"><code>description</code> or <code>#[doc = ""]</code></a></h3>
+<p>The doc comments for the generated code.</p>
+<p>For the DSL, use the normal doc attributes or triple slash <code>///</code>.
+Multiple attributes get concatenated with a newline (just like normal Rust does).</p>
+<p>For the manifest, this is a string.</p>
+<p>The description is added as normal doc comments to the generated code. So it supports markdown and all other features you're used to. The description is used on the generated ref struct and on the function to access the ref.</p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
