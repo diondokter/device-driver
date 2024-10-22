@@ -7,20 +7,29 @@ license = "MIT OR Apache-2.0"
 homepage = "https://github.com/diondokter/device-driver"
 repository = "https://github.com/diondokter/device-driver"
 keywords = ["no_std", "device", "driver", "toolkit"]
-categories = ["embedded", "hardware-support", "no-std"]
+categories = ["embedded", "hardware-support", "no-std::no-alloc", "no-std"]
 description = "Code generation for the `device-driver` crate"
-readme.workspace = true
+readme = "README.md"
 
 [dependencies]
+anyhow = "1.0.86"
 convert_case = "0.6.0"
-indexmap = { version = "2.1.0", features = ["serde"] }
-prettyplease = "0.2.15"
+itertools = "0.13.0"
 proc-macro2 = "1.0.70"
 quote = "1.0.33"
-serde = { version = "1.0.193", features = ["derive"] }
 syn = { version = "2.0", features = ["extra-traits"] }
+bitvec = "1.0.1"
+dd-manifest-tree = { path = "../dd-manifest-tree", optional = true, features = ["preserve_order"] }
 
 [dev-dependencies]
-serde_json = "1.0.108"
-serde_yaml = "0.9.27"
+prettyplease = "0.2.15"
 pretty_assertions = "1.4.0"
+indoc = "2.0.5"
+
+[features]
+default = ["dsl", "json", "yaml", "toml"]
+manifest = ["dep:dd-manifest-tree"]
+dsl = []
+json = ["manifest", "dd-manifest-tree/json"]
+yaml = ["manifest", "dd-manifest-tree/yaml"]
+toml = ["manifest", "dd-manifest-tree/toml"]
