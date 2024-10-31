@@ -42,7 +42,7 @@ pub fn create_device(item: TokenStream) -> TokenStream {
             device_driver_generation::transform_dsl(tokens, &input.device_name.to_string()).into()
         }
         #[cfg(not(feature = "dsl"))]
-        GenerationType::Dsl(tokens) => {
+        GenerationType::Dsl(_tokens) => {
             syn::Error::new(Span::call_site(), format!("The dsl feature is not enabled"))
                 .into_compile_error()
                 .into()
@@ -105,9 +105,15 @@ pub fn create_device(item: TokenStream) -> TokenStream {
                         Span::call_site(),
                         format!("The toml feature is not enabled"),
                     )),
+                    #[cfg(feature = "dsl")]
                     "dsl" => Ok(device_driver_generation::transform_dsl(
                         syn::parse_str(&file_contents)?,
                         &input.device_name.to_string(),
+                    )),
+                    #[cfg(not(feature = "dsl"))]
+                    "dsl" => Err(syn::Error::new(
+                        Span::call_site(),
+                        format!("The dsl feature is not enabled"),
                     )),
                     unknown => Err(syn::Error::new(
                         Span::call_site(),
