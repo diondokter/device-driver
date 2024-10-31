@@ -12,13 +12,12 @@ description = "Crate to unify the 'Value' tree types of json, yaml and toml"
 readme = "README.md"
 
 [dependencies]
-serde_json = { version = "1.0.128", optional = true }
+serde_json = { version = "1.0.128", features = ["preserve_order"], optional = true }
 yaml-rust2 = { version = "0.9.0", optional = true }
-toml = { version = "0.8.19", optional = true }
+toml = { version = "0.8.19", features = ["preserve_order"], optional = true }
 
 [features]
 default = ["json", "yaml", "toml"]
 json = ["dep:serde_json"]
 yaml = ["dep:yaml-rust2"]
 toml = ["dep:toml"]
-preserve_order = ["serde_json/preserve_order", "toml/preserve_order"]
