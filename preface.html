@@ -250,12 +250,32 @@
 </blockquote>
 <p>This book aims to guide you to write your own device drivers using the device-driver toolkit.
 It is not a replacement of the <a href="https://docs.rs/device-driver">docs</a> though. The documentation describes all the small details while this book is concerned with more big-picture concepts and the description of the DSL and manifest (JSON, YAML and TOML) inputs.</p>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>Definitions are important!<br />
+The name <code>device-driver</code> conists of two parts:</p>
+<ul>
+<li><code>driver</code>: Code to enable the use of hardware.</li>
+<li><code>device</code>: A chip or peripheral you can talk to over a bus.</li>
+</ul>
+<p>Examples of good targets for using this toolkit:</p>
+<ul>
+<li>An I2C accelerometer</li>
+<li>A SPI radio transceiver</li>
+<li>A screen/display with parallel bus</li>
+</ul>
+<p>The driver is usable in any no-std context and can be made to work with the <code>embedded-hal</code> crate or any custom interfaces.</p>
+</div>
+<p>(In theory this toolkit can be used for memory-mapped peripherals too, but there are likely better crates to use for that like <code>svd2rust</code> and <code>chiptool</code>. The major difference is that this toolkit assumes device interfaces to be fallible.)</p>
+<h2 id="book-overview"><a class="header" href="#book-overview">Book overview:</a></h2>
 <ul>
 <li>The intro chapter describes the goal of the toolkit, what it does for you and why you may want to use it instead of writing the driver manually.</li>
-<li>After the intro are two chapters about how to generate and then import the driver code into your project. This can be done during compilation through a proc-macro or ahead of time with the CLI and <code>include!</code>.</li>
+<li>After the intro are chapters about how to generate and then import the driver code into your project. This can be done during compilation through a proc-macro or ahead of time with the CLI and <code>include!</code>.</li>
 <li>Next is a chapter about creating a driver interface where you'll see how to implement the right traits so the generated driver can talk with your device.</li>
 <li>Then the actual definition of the driver is covered. These chapters teach what options there are for defining registers, commands, buffers and more using either the DSL or a manifest language like YAML.</li>
-<li>Lastly the generation output is covered so you know what you can expect from the generated code of your driver.</li>
 </ul>
 <p>The addendum contains more things that mostly provide useful background informations.</p>
 <div class="mdbook-alerts mdbook-alerts-caution">
