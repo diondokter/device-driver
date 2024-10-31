@@ -3,6 +3,8 @@
 > [!IMPORTANT]
 > We deserve better drivers. Rust has shown that we don't need to stick to old principles and that we as an industry can do better.
 
+Device-driver is a Rust toolkit that generates safe, documented interfaces for hardware devices, handling bit-packed registers and device commands through an expressive macro DSL or config file.
+
 While the Rust language provides many opportunities to improve the way we write drivers, it doesn't mean those are easy to use. There are two issues:
 1. Creating good datastructures to represent the driver is hard
 2. Writing the definitions by hand takes a lot of thankless work
