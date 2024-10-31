@@ -54,8 +54,6 @@ The options are:
 > [!tip]
 > The generated code is placed exactly where the macro is invoked. This means you can decide to contain everything in its own module. This is recommended to do, but not required.
 
-Read the chapter about the output to learn more about the generated code.
-
 > [!CAUTION]
 > Code in the same module as the generated code is able to access the private API of the generated code. It is discouraged to make use of the private API since it's not considered as part of the SemVer guarantees and it's designed in a way where you shouldn't need to.
 
