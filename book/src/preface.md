@@ -4,7 +4,7 @@
 > A toolkit to write better device drivers, faster.
 
 This book aims to guide you to write your own device drivers using the device-driver toolkit.
-It is not a replacement of the [docs]((https://docs.rs/device-driver)) though. The documentation describes all the small details while this book is concerned with more big-picture concepts and the description of the DSL and manifest (JSON, YAML and TOML) inputs.
+It is not a replacement of the [docs](https://docs.rs/device-driver) though. The documentation describes all the small details while this book is concerned with more big-picture concepts and the description of the DSL and manifest (JSON, YAML and TOML) inputs.
 
 - The intro chapter describes the goal of the toolkit, what it does for you and why you may want to use it instead of writing the driver manually.
 - After the intro are two chapters about how to generate and then import the driver code into your project. This can be done during compilation through a proc-macro or ahead of time with the CLI and `include!`.
