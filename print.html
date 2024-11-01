@@ -1062,6 +1062,7 @@ A 'ref' object copies another object and allows to override some values like the
 <li><a href="global-config.html#transformations">Transformations</a>
 <ul>
 <li><a href="global-config.html#name_word_boundaries"><code>name_word_boundaries</code></a></li>
+<li><a href="global-config.html#defmt_feature"><code>defmt_feature</code></a></li>
 </ul>
 </li>
 </ul>
@@ -1084,6 +1085,7 @@ A 'ref' object copies another object and allows to override some values like the
         UpperDigit, DigitUpper, DigitLower,
         LowerDigit, Acronym,
     ];
+    type DefmtFeature = "my-feature";
 }
 <span class="boring">}</span></code></pre></pre>
 <h2 id="manifest"><a class="header" href="#manifest">Manifest</a></h2>
@@ -1107,7 +1109,8 @@ A 'ref' object copies another object and allows to override some values like the
         "Underscore", "Hyphen", "Space", "LowerUpper",
         "UpperDigit", "DigitUpper", "DigitLower",
         "LowerDigit", "Acronym"
-    ]
+    ],
+    "defmt_feature": "my-feature"
 }
 </code></pre>
 <h2 id="required"><a class="header" href="#required">Required</a></h2>
@@ -1162,6 +1165,11 @@ Any command or register can override it.</p>
 <p>The available boundries can be found in <a href="https://docs.rs/convert_case/0.6.0/convert_case/enum.Boundary.html">the docs</a> of the crate. The boundary names should be specified as strings in the manifest and 'as is' in the DSL.</p>
 <p>The string is converted to an array of boundaries using <a href="https://docs.rs/convert_case/0.6.0/convert_case/enum.Boundary.html#method.list_from">this function</a> which is a really easy way to define it.</p>
 <p>The default value is also provided by the crate from <a href="https://docs.rs/convert_case/0.6.0/convert_case/enum.Boundary.html#method.defaults">this function</a>.</p>
+<h3 id="defmt_feature"><a class="header" href="#defmt_feature"><code>defmt_feature</code></a></h3>
+<p>When defined the generated code will have defmt implementations on the types gated behind the feature configured with this option.
+The feature gate looks like: <code>#[cfg(feature = "&lt;VALUE&gt;")]</code>.
+This allows you, the driver author, to optionally include defmt support.</p>
+<p>The value is a string in manifest form and also written as a string in the DSL.</p>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
   padding: 8px 16px;
@@ -2795,7 +2803,8 @@ and may generate an error deeper down.</p>
 | (<code>type</code> <code>RegisterAddressType</code> <code>=</code> <em>IntegerType</em><code>;</code>)<br />
 | (<code>type</code> <code>CommandAddressType</code> <code>=</code> <em>IntegerType</em><code>;</code>)<br />
 | (<code>type</code> <code>BufferAddressType</code> <code>=</code> <em>IntegerType</em><code>;</code>)<br />
-| (<code>type</code> <code>NameWordBoundaries</code> <code>=</code> <em>NameWordBoundaries</em><code>;</code>)</p>
+| (<code>type</code> <code>NameWordBoundaries</code> <code>=</code> <em>NameWordBoundaries</em><code>;</code>)<br />
+| (<code>type</code> <code>DefmtFeature</code> <code>=</code> <em>String</em><code>;</code>)</p>
 </blockquote>
 <p><em>NameWordBoundaries</em>:
 This specifies the input, not the output. Only applies to object and field names.</p>
@@ -3088,6 +3097,7 @@ The key of the object will become the name of it</p>
     command_address_type?: _IntegerType_,
     buffer_address_type?: _IntegerType_,
     name_word_boundaries?: _NameWordBoundaries_
+    defmt_feature?: string
 }
 </code></pre>
 <p><em>Access</em>:</p>
