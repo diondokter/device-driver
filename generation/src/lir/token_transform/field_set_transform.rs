@@ -104,7 +104,7 @@ pub fn generate_field_set(value: &FieldSet, defmt_feature: Option<&str>) -> Toke
                 .map(|f| format!("{}: {{}}", f.name.to_string()))
                 .join(", ");
 
-            let type_format_string = format!("{} {{ {} }}", name.to_string(), fields_format_string);
+            let type_format_string = format!("{} {{{{ {} }}}}", name.to_string(), fields_format_string);
 
             let field_calls = fields.iter().map(|f| {
                 let name = &f.name;
@@ -518,7 +518,7 @@ mod tests {
             impl defmt::Format for MyRegister {
                 fn format(&self, f: defmt::Formatter) {
                     defmt::write!(
-                        \"MyRegister { my_field: {}, my_field2: {} }\",
+                        \"MyRegister {{ my_field: {}, my_field2: {} }}\",
                         self.my_field(),
                         self.my_field2(),
                     )
