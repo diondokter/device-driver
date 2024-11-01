@@ -132,6 +132,9 @@ impl TryFrom<dsl_hir::GlobalConfigList> for mir::GlobalConfig {
                 dsl_hir::GlobalConfig::NameWordBoundaries(value) => {
                     global_config.name_word_boundaries = value
                 }
+                dsl_hir::GlobalConfig::DefmtFeature(lit_str) => {
+                    global_config.defmt_feature = Some(lit_str.value())
+                }
             }
         }
 
@@ -951,6 +954,7 @@ mod tests {
                 type CommandAddressType = i64;
                 type BufferAddressType = u32;
                 type NameWordBoundaries = \"-\";
+                type DefmtFeature = \"defmt-03\";
             }",
         )
         .unwrap();
@@ -969,6 +973,7 @@ mod tests {
                 command_address_type: Some(mir::Integer::I64),
                 buffer_address_type: Some(mir::Integer::U32),
                 name_word_boundaries: vec![Boundary::Hyphen],
+                defmt_feature: Some("defmt-03".into()),
             }
         );
     }

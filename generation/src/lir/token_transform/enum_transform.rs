@@ -5,7 +5,7 @@ use crate::lir::EnumVariant;
 
 use super::Enum;
 
-pub fn generate_enum(value: &Enum) -> TokenStream {
+pub fn generate_enum(value: &Enum, defmt_feature: Option<&str>) -> TokenStream {
     let Enum {
         cfg_attr,
         doc_attr,
@@ -169,14 +169,19 @@ pub fn generate_enum(value: &Enum) -> TokenStream {
         }
     };
 
-    // TODO:
-    // - Add defmt impl
+    let defmt_attr = match defmt_feature {
+        Some(feature_name) => {
+            quote! { #[cfg_attr(feature = #feature_name, derive(defmt::Format))] }
+        }
+        None => quote! {},
+    };
 
     quote! {
         #doc_attr
         #cfg_attr
         #[repr(#base_type)]
         #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+        #defmt_attr
         pub enum #name {
             #(#variant_quotes),*
         }
@@ -200,38 +205,41 @@ mod tests {
 
     #[test]
     fn enum_correct() {
-        let output = generate_enum(&Enum {
-            cfg_attr: quote! { #[cfg(windows)] },
-            doc_attr: quote! { #[doc = "Docs are important!"] },
-            name: format_ident!("MyEnum"),
-            base_type: format_ident!("u8"),
-            variants: vec![
-                EnumVariant {
-                    cfg_attr: quote! {#[cfg(unix)]},
-                    doc_attr: quote! {#[doc="Field!"]},
-                    name: format_ident!("MyField"),
-                    number: Literal::u8_unsuffixed(0),
-                    default: false,
-                    catch_all: false,
-                },
-                EnumVariant {
-                    cfg_attr: quote! {},
-                    doc_attr: quote! {},
-                    name: format_ident!("MyField1"),
-                    number: Literal::u8_unsuffixed(1),
-                    default: true,
-                    catch_all: false,
-                },
-                EnumVariant {
-                    cfg_attr: quote! {},
-                    doc_attr: quote! {},
-                    name: format_ident!("MyField2"),
-                    number: Literal::u8_unsuffixed(4),
-                    default: false,
-                    catch_all: true,
-                },
-            ],
-        });
+        let output = generate_enum(
+            &Enum {
+                cfg_attr: quote! { #[cfg(windows)] },
+                doc_attr: quote! { #[doc = "Docs are important!"] },
+                name: format_ident!("MyEnum"),
+                base_type: format_ident!("u8"),
+                variants: vec![
+                    EnumVariant {
+                        cfg_attr: quote! {#[cfg(unix)]},
+                        doc_attr: quote! {#[doc="Field!"]},
+                        name: format_ident!("MyField"),
+                        number: Literal::u8_unsuffixed(0),
+                        default: false,
+                        catch_all: false,
+                    },
+                    EnumVariant {
+                        cfg_attr: quote! {},
+                        doc_attr: quote! {},
+                        name: format_ident!("MyField1"),
+                        number: Literal::u8_unsuffixed(1),
+                        default: true,
+                        catch_all: false,
+                    },
+                    EnumVariant {
+                        cfg_attr: quote! {},
+                        doc_attr: quote! {},
+                        name: format_ident!("MyField2"),
+                        number: Literal::u8_unsuffixed(4),
+                        default: false,
+                        catch_all: true,
+                    },
+                ],
+            },
+            Some("defmt-03"),
+        );
 
         pretty_assertions::assert_eq!(
             prettyplease::unparse(&syn::parse2(output).unwrap()),
@@ -240,6 +248,7 @@ mod tests {
                 #[cfg(windows)]
                 #[repr(u8)]
                 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+                #[cfg_attr(feature = \"defmt-03\", derive(defmt::Format))]
                 pub enum MyEnum {
                     ///Field!
                     #[cfg(unix)]

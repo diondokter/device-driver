@@ -26,6 +26,7 @@ pub struct GlobalConfig {
     pub command_address_type: Option<Integer>,
     pub buffer_address_type: Option<Integer>,
     pub name_word_boundaries: Vec<Boundary>,
+    pub defmt_feature: Option<String>,
 }
 
 impl Default for GlobalConfig {
@@ -40,6 +41,7 @@ impl Default for GlobalConfig {
             command_address_type: Default::default(),
             buffer_address_type: Default::default(),
             name_word_boundaries: convert_case::Boundary::defaults(),
+            defmt_feature: Default::default(),
         }
     }
 }

@@ -36,6 +36,7 @@ _GlobalConfig_:
 > | (`type` `CommandAddressType` `=` _IntegerType_`;`)  
 > | (`type` `BufferAddressType` `=` _IntegerType_`;`)  
 > | (`type` `NameWordBoundaries` `=` _NameWordBoundaries_`;`)  
+> | (`type` `DefmtFeature` `=` _String_`;`)  
 
 _NameWordBoundaries_:
 This specifies the input, not the output. Only applies to object and field names.

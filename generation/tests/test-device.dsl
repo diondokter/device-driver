@@ -7,6 +7,7 @@ config {
     type NameWordBoundaries = [
         Hyphen, Underscore
     ];
+    type DefmtFeature = "blah";
 }
 block Bar {
     const ADDRESS_OFFSET = 10;

@@ -12,6 +12,7 @@ pub struct Device {
     pub blocks: Vec<Block>,
     pub field_sets: Vec<FieldSet>,
     pub enums: Vec<Enum>,
+    pub defmt_feature: Option<String>,
 }
 
 pub struct Block {

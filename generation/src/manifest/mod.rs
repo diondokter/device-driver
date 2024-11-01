@@ -77,6 +77,14 @@ fn transform_global_config(value: &impl Value) -> anyhow::Result<mir::GlobalConf
                 global_config.name_word_boundaries = transform_name_word_boundaries(value)
                     .with_context(|| format!("Parsing error for {key}"))?
             }
+            "defmt_feature" => {
+                global_config.defmt_feature = Some(
+                    value
+                        .as_string()
+                        .with_context(|| format!("Parsing error for {key}"))?
+                        .into(),
+                )
+            }
             _ => bail!("No config with key `{key}` is recognized"),
         }
     }

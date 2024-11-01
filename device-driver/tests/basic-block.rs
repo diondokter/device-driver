@@ -4,6 +4,12 @@ pub struct DeviceInterface {
     device_memory: [u8; 128],
 }
 
+impl Default for DeviceInterface {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DeviceInterface {
     pub const fn new() -> Self {
         Self {
@@ -77,7 +83,7 @@ fn test_basic_read_modify_write() {
     bar.foo().write(|reg| reg.set_value_1(12345)).unwrap();
     let reg = bar.foo().read().unwrap();
 
-    assert_eq!(reg.value_0(), false);
+    assert!(!reg.value_0());
     assert_eq!(reg.value_1(), 12345);
     assert_eq!(reg.value_2(), 0i8);
 
@@ -90,7 +96,7 @@ fn test_basic_read_modify_write() {
 
     let reg = bar.foo().read().unwrap();
 
-    assert_eq!(reg.value_0(), true);
+    assert!(reg.value_0());
     assert_eq!(reg.value_1(), 12345);
     assert_eq!(reg.value_2(), -1);
 

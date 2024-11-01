@@ -40,6 +40,7 @@ pub fn transform(device: mir::Device, driver_name: &str) -> anyhow::Result<lir::
         blocks,
         field_sets,
         enums: lir_enums,
+        defmt_feature: device.global_config.defmt_feature,
     })
 }
 

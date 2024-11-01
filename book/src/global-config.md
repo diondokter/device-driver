@@ -29,6 +29,7 @@ Below is a short overview for the DSL format and the manifest format of the glob
     - [`default_bit_order`](#default_bit_order)
   - [Transformations](#transformations)
     - [`name_word_boundaries`](#name_word_boundaries)
+    - [`defmt_feature`](#defmt_feature)
 
 ## DSL
 
@@ -47,6 +48,7 @@ config {
         UpperDigit, DigitUpper, DigitLower,
         LowerDigit, Acronym,
     ];
+    type DefmtFeature = "my-feature";
 }
 ```
 
@@ -69,7 +71,8 @@ config {
         "Underscore", "Hyphen", "Space", "LowerUpper",
         "UpperDigit", "DigitUpper", "DigitLower",
         "LowerDigit", "Acronym"
-    ]
+    ],
+    "defmt_feature": "my-feature"
 }
 ```
 
@@ -163,3 +166,11 @@ The available boundries can be found in [the docs](https://docs.rs/convert_case/
 The string is converted to an array of boundaries using [this function](https://docs.rs/convert_case/0.6.0/convert_case/enum.Boundary.html#method.list_from) which is a really easy way to define it.
 
 The default value is also provided by the crate from [this function](https://docs.rs/convert_case/0.6.0/convert_case/enum.Boundary.html#method.defaults).
+
+### `defmt_feature`
+
+When defined the generated code will have defmt implementations on the types gated behind the feature configured with this option.
+The feature gate looks like: `#[cfg(feature = "<VALUE>")]`.
+This allows you, the driver author, to optionally include defmt support.
+
+The value is a string in manifest form and also written as a string in the DSL.

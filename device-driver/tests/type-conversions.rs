@@ -4,6 +4,12 @@ pub struct DeviceInterface {
     device_memory: [u8; 128],
 }
 
+impl Default for DeviceInterface {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DeviceInterface {
     pub const fn new() -> Self {
         Self {

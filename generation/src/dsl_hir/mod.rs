@@ -65,6 +65,7 @@ pub enum GlobalConfig {
     CommandAddressType(syn::Ident),
     BufferAddressType(syn::Ident),
     NameWordBoundaries(Vec<Boundary>),
+    DefmtFeature(syn::LitStr),
 }
 
 impl Parse for GlobalConfig {
@@ -157,6 +158,12 @@ impl Parse for GlobalConfig {
 
             input.parse::<Token![;]>()?;
             Ok(Self::NameWordBoundaries(value))
+        } else if lookahead.peek(kw::DefmtFeature) {
+            input.parse::<kw::DefmtFeature>()?;
+            input.parse::<Token![=]>()?;
+            let value = input.parse()?;
+            input.parse::<Token![;]>()?;
+            Ok(Self::DefmtFeature(value))
         } else {
             Err(lookahead.error())
         }
@@ -1300,6 +1307,7 @@ mod kw {
     syn::custom_keyword!(CommandAddressType);
     syn::custom_keyword!(BufferAddressType);
     syn::custom_keyword!(NameWordBoundaries);
+    syn::custom_keyword!(DefmtFeature);
 
     // Access
     syn::custom_keyword!(Access);
@@ -2203,7 +2211,7 @@ mod tests {
             syn::parse_str::<GlobalConfigList>("config { type DefaultRegisterAccesssss = RW; }")
                 .unwrap_err()
                 .to_string(),
-            "expected one of: `DefaultRegisterAccess`, `DefaultFieldAccess`, `DefaultBufferAccess`, `DefaultByteOrder`, `DefaultBitOrder`, `RegisterAddressType`, `CommandAddressType`, `BufferAddressType`, `NameWordBoundaries`"
+            "expected one of: `DefaultRegisterAccess`, `DefaultFieldAccess`, `DefaultBufferAccess`, `DefaultByteOrder`, `DefaultBitOrder`, `RegisterAddressType`, `CommandAddressType`, `BufferAddressType`, `NameWordBoundaries`, `DefmtFeature`"
         );
     }
 

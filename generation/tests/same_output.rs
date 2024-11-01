@@ -2,7 +2,7 @@
 fn same_output() {
     let dsl_text = include_str!("test-device.dsl");
     let dsl_output =
-        device_driver_generation::_private_transform_dsl_mir(syn::parse_str(&dsl_text).unwrap())
+        device_driver_generation::_private_transform_dsl_mir(syn::parse_str(dsl_text).unwrap())
             .unwrap();
 
     let json_text = include_str!("test-device.json");
