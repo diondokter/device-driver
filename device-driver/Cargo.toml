@@ -17,6 +17,7 @@ device-driver-macros = { version = "0.7.0", path = "../macros", default-features
 bitvec = { version = "1.0.1", default-features = false }
 embedded-io = "0.6.1"
 embedded-io-async = "0.6.1"
+defmt = { version = "0.3", optional = true }
 
 [features]
 default = ["dsl", "json", "yaml", "toml"]
@@ -24,6 +25,6 @@ dsl = ["_macros", "device-driver-macros/dsl"]
 json = ["_macros", "device-driver-macros/json"]
 yaml = ["_macros", "device-driver-macros/yaml"]
 toml = ["_macros", "device-driver-macros/toml"]
-defmt-03 = ["embedded-io/defmt-03"]
+defmt-03 = ["dep:defmt", "embedded-io/defmt-03"]
 
 _macros = ["dep:device-driver-macros"]
