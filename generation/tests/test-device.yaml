@@ -6,6 +6,7 @@ config:
   name_word_boundaries:
     - Hyphen
     - Underscore
+  defmt_feature: blah
 
 Bar:
   type: block

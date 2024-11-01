@@ -1,4 +1,5 @@
 use convert_case::Casing;
+use itertools::Itertools;
 use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote, ToTokens};
 
@@ -7,7 +8,7 @@ use crate::{
     mir::{Access, BitOrder, ByteOrder},
 };
 
-pub fn generate_field_set(value: &FieldSet) -> TokenStream {
+pub fn generate_field_set(value: &FieldSet, defmt_feature: Option<&str>) -> TokenStream {
     let FieldSet {
         cfg_attr,
         doc_attr,
@@ -96,6 +97,42 @@ pub fn generate_field_set(value: &FieldSet) -> TokenStream {
         }
     };
 
+    let defmt_impl = match defmt_feature {
+        Some(feature_name) => {
+            let fields_format_string = fields
+                .iter()
+                .map(|f| format!("{}: {{}}", f.name.to_string()))
+                .join(", ");
+
+            let type_format_string = format!("{} {{ {} }}", name.to_string(), fields_format_string);
+
+            let field_calls = fields.iter().map(|f| {
+                let name = &f.name;
+                quote! { self.#name() }
+            });
+
+            let separator = if fields.is_empty() {
+                quote! {}
+            } else {
+                quote! { , }
+            };
+
+            quote! {
+                #cfg_attr
+                #[cfg(feature = #feature_name)]
+                impl defmt::Format for #name {
+                    fn format(&self, f: defmt::Formatter) {
+                        defmt::write!(
+                            #type_format_string #separator
+                            #(#field_calls),*
+                        )
+                    }
+                }
+            }
+        }
+        None => quote! {},
+    };
+
     let ref_value_constructors = {
         ref_reset_overrides.iter().map(|(ref_name, reset_value)| {
             let name = format_ident!("new_as_{}", ref_name.to_case(convert_case::Case::Snake));
@@ -115,9 +152,6 @@ pub fn generate_field_set(value: &FieldSet) -> TokenStream {
             }
         })
     };
-
-    // TODO:
-    // - Add defmt impl
 
     quote! {
         #doc_attr
@@ -167,6 +201,7 @@ pub fn generate_field_set(value: &FieldSet) -> TokenStream {
         #from_impl
         #into_impl
         #debug_impl
+        #defmt_impl
 
         #cfg_attr
         impl core::ops::BitAnd for #name {
@@ -344,36 +379,39 @@ mod tests {
 
     #[test]
     fn field_set_correct() {
-        let output = generate_field_set(&FieldSet {
-            cfg_attr: quote! { #[cfg(windows)] },
-            doc_attr: quote! { #[doc = "Hiya!"] },
-            name: format_ident!("MyRegister"),
-            byte_order: ByteOrder::BE,
-            bit_order: BitOrder::LSB0,
-            size_bits: 20,
-            reset_value: vec![1, 2, 3],
-            ref_reset_overrides: vec![("MyRef".into(), vec![0, 1, 2])],
-            fields: vec![
-                Field {
-                    cfg_attr: quote! { #[cfg(linux)] },
-                    doc_attr: quote! { #[doc = "Hiya again!"] },
-                    name: format_ident!("my_field"),
-                    address: Literal::u64_unsuffixed(0)..Literal::u64_unsuffixed(4),
-                    base_type: format_ident!("u8"),
-                    conversion_method: FieldConversionMethod::UnsafeInto(quote! { FieldEnum }),
-                    access: Access::RW,
-                },
-                Field {
-                    cfg_attr: quote! {},
-                    doc_attr: quote! {},
-                    name: format_ident!("my_field2"),
-                    address: Literal::u64_unsuffixed(4)..Literal::u64_unsuffixed(16),
-                    base_type: format_ident!("i16"),
-                    conversion_method: FieldConversionMethod::None,
-                    access: Access::WO,
-                },
-            ],
-        });
+        let output = generate_field_set(
+            &FieldSet {
+                cfg_attr: quote! { #[cfg(windows)] },
+                doc_attr: quote! { #[doc = "Hiya!"] },
+                name: format_ident!("MyRegister"),
+                byte_order: ByteOrder::BE,
+                bit_order: BitOrder::LSB0,
+                size_bits: 20,
+                reset_value: vec![1, 2, 3],
+                ref_reset_overrides: vec![("MyRef".into(), vec![0, 1, 2])],
+                fields: vec![
+                    Field {
+                        cfg_attr: quote! { #[cfg(linux)] },
+                        doc_attr: quote! { #[doc = "Hiya again!"] },
+                        name: format_ident!("my_field"),
+                        address: Literal::u64_unsuffixed(0)..Literal::u64_unsuffixed(4),
+                        base_type: format_ident!("u8"),
+                        conversion_method: FieldConversionMethod::UnsafeInto(quote! { FieldEnum }),
+                        access: Access::RW,
+                    },
+                    Field {
+                        cfg_attr: quote! {},
+                        doc_attr: quote! {},
+                        name: format_ident!("my_field2"),
+                        address: Literal::u64_unsuffixed(4)..Literal::u64_unsuffixed(16),
+                        base_type: format_ident!("i16"),
+                        conversion_method: FieldConversionMethod::None,
+                        access: Access::WO,
+                    },
+                ],
+            },
+            Some("defmt-03"),
+        );
 
         pretty_assertions::assert_eq!(
             prettyplease::unparse(&syn::parse2(output).unwrap()),
@@ -473,6 +511,17 @@ mod tests {
                         .field(\"my_field\", &self.my_field())
                         .field(\"my_field2\", &self.my_field2())
                         .finish()
+                }
+            }
+            #[cfg(windows)]
+            #[cfg(feature = \"defmt-03\")]
+            impl defmt::Format for MyRegister {
+                fn format(&self, f: defmt::Formatter) {
+                    defmt::write!(
+                        \"MyRegister { my_field: {}, my_field2: {} }\",
+                        self.my_field(),
+                        self.my_field2(),
+                    )
                 }
             }
             #[cfg(windows)]

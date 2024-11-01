@@ -203,6 +203,7 @@ mod tests {
             ],
             field_sets: Vec::new(),
             enums: Vec::new(),
+            defmt_feature: None,
         };
 
         pretty_assertions::assert_eq!(

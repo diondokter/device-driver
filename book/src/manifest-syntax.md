@@ -55,6 +55,7 @@ _GlobalConfig_:
     command_address_type?: _IntegerType_,
     buffer_address_type?: _IntegerType_,
     name_word_boundaries?: _NameWordBoundaries_
+    defmt_feature?: string
 }
 ```
 

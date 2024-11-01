@@ -72,15 +72,8 @@ mod tests {
     #[should_panic(expected = "Duplicate object name found: \"MyBuffer\"")]
     fn object_names_not_unique() {
         let global_config = GlobalConfig {
-            default_register_access: Default::default(),
-            default_field_access: Default::default(),
-            default_buffer_access: Default::default(),
-            default_byte_order: Default::default(),
-            default_bit_order: Default::default(),
-            register_address_type: Default::default(),
-            command_address_type: Default::default(),
-            buffer_address_type: Default::default(),
             name_word_boundaries: Boundary::list_from("-"),
+            ..Default::default()
         };
 
         let mut start_mir = Device {
@@ -104,15 +97,8 @@ mod tests {
     #[should_panic(expected = "Duplicate field name found in object \"Reg\": \"field\"")]
     fn field_names_not_unique() {
         let global_config = GlobalConfig {
-            default_register_access: Default::default(),
-            default_field_access: Default::default(),
-            default_buffer_access: Default::default(),
-            default_byte_order: Default::default(),
-            default_bit_order: Default::default(),
-            register_address_type: Default::default(),
-            command_address_type: Default::default(),
-            buffer_address_type: Default::default(),
             name_word_boundaries: Boundary::list_from("-"),
+            ..Default::default()
         };
 
         let mut start_mir = Device {
@@ -142,15 +128,8 @@ mod tests {
     )]
     fn duplicate_generated_enums() {
         let global_config = GlobalConfig {
-            default_register_access: Default::default(),
-            default_field_access: Default::default(),
-            default_buffer_access: Default::default(),
-            default_byte_order: Default::default(),
-            default_bit_order: Default::default(),
-            register_address_type: Default::default(),
-            command_address_type: Default::default(),
-            buffer_address_type: Default::default(),
             name_word_boundaries: Boundary::list_from("-"),
+            ..Default::default()
         };
 
         let mut start_mir = Device {
@@ -196,15 +175,8 @@ mod tests {
     )]
     fn duplicate_generated_enum_variants() {
         let global_config = GlobalConfig {
-            default_register_access: Default::default(),
-            default_field_access: Default::default(),
-            default_buffer_access: Default::default(),
-            default_byte_order: Default::default(),
-            default_bit_order: Default::default(),
-            register_address_type: Default::default(),
-            command_address_type: Default::default(),
-            buffer_address_type: Default::default(),
             name_word_boundaries: Boundary::list_from("-"),
+            ..Default::default()
         };
 
         let mut start_mir = Device {
@@ -242,15 +214,8 @@ mod tests {
     #[test]
     fn duplicate_cfg_generated_enum_variants() {
         let global_config = GlobalConfig {
-            default_register_access: Default::default(),
-            default_field_access: Default::default(),
-            default_buffer_access: Default::default(),
-            default_byte_order: Default::default(),
-            default_bit_order: Default::default(),
-            register_address_type: Default::default(),
-            command_address_type: Default::default(),
-            buffer_address_type: Default::default(),
             name_word_boundaries: Boundary::list_from("-"),
+            ..Default::default()
         };
 
         let mut start_mir = Device {

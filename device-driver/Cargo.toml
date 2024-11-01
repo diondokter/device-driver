@@ -24,5 +24,6 @@ dsl = ["_macros", "device-driver-macros/dsl"]
 json = ["_macros", "device-driver-macros/json"]
 yaml = ["_macros", "device-driver-macros/yaml"]
 toml = ["_macros", "device-driver-macros/toml"]
+defmt-03 = ["embedded-io/defmt-03"]
 
 _macros = ["dep:device-driver-macros"]
