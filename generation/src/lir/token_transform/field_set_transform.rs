@@ -123,6 +123,7 @@ pub fn generate_field_set(value: &FieldSet, defmt_feature: Option<&str>) -> Toke
                 impl defmt::Format for #name {
                     fn format(&self, f: defmt::Formatter) {
                         defmt::write!(
+                            f,
                             #type_format_string #separator
                             #(#field_calls),*
                         )
@@ -518,6 +519,7 @@ mod tests {
             impl defmt::Format for MyRegister {
                 fn format(&self, f: defmt::Formatter) {
                     defmt::write!(
+                        f,
                         \"MyRegister {{ my_field: {}, my_field2: {} }}\",
                         self.my_field(),
                         self.my_field2(),
