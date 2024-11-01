@@ -17,7 +17,10 @@ pub fn transform(device: Device) -> TokenStream {
     }
 
     for field_set in &device.field_sets {
-        tokens.extend(generate_field_set(field_set, device.defmt_feature.as_deref()));
+        tokens.extend(generate_field_set(
+            field_set,
+            device.defmt_feature.as_deref(),
+        ));
     }
 
     for enum_value in &device.enums {

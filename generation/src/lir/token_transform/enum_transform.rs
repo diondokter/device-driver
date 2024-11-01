@@ -170,7 +170,9 @@ pub fn generate_enum(value: &Enum, defmt_feature: Option<&str>) -> TokenStream {
     };
 
     let defmt_attr = match defmt_feature {
-        Some(feature_name) => quote! { #[cfg_attr(feature = #feature_name, derive(defmt::Format))] },
+        Some(feature_name) => {
+            quote! { #[cfg_attr(feature = #feature_name, derive(defmt::Format))] }
+        }
         None => quote! {},
     };
 
