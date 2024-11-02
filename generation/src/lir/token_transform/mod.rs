@@ -1,5 +1,6 @@
 use block_transform::generate_block;
 use enum_transform::generate_enum;
+use field_set_enum_generator::generate_field_set_enum;
 use field_set_transform::generate_field_set;
 use proc_macro2::TokenStream;
 
@@ -7,6 +8,7 @@ use super::{Device, Enum};
 
 mod block_transform;
 mod enum_transform;
+mod field_set_enum_generator;
 mod field_set_transform;
 
 pub fn transform(device: Device) -> TokenStream {
@@ -26,6 +28,11 @@ pub fn transform(device: Device) -> TokenStream {
     for enum_value in &device.enums {
         tokens.extend(generate_enum(enum_value, device.defmt_feature.as_deref()));
     }
+
+    tokens.extend(generate_field_set_enum(
+        &device.field_sets,
+        device.defmt_feature.as_deref(),
+    ));
 
     tokens
 }
