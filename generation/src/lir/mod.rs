@@ -9,6 +9,7 @@ pub mod token_transform;
 
 pub struct Device {
     pub internal_address_type: Ident,
+    pub register_address_type: Ident,
     pub blocks: Vec<Block>,
     pub field_sets: Vec<FieldSet>,
     pub enums: Vec<Enum>,

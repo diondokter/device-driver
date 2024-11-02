@@ -140,6 +140,7 @@ mod tests {
     fn deep_overlap_detected() {
         let mut device = Device {
             internal_address_type: format_ident!("u8"),
+            register_address_type: format_ident!("u8"),
             blocks: vec![
                 Block {
                     cfg_attr: Default::default(),
