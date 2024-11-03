@@ -138,7 +138,7 @@ pub fn generate_block(
             #read_all_docs
             pub fn read_all_registers(
                 &mut self,
-                mut callback: impl FnMut(#register_address_type, &str, FieldSetValue)
+                mut callback: impl FnMut(#register_address_type, &'static str, FieldSetValue)
             ) -> Result<(), I::Error>
                 where I: ::device_driver::RegisterInterface<AddressType = #register_address_type>
             {
@@ -149,7 +149,7 @@ pub fn generate_block(
             #read_all_docs
             pub async fn read_all_registers_async(
                 &mut self,
-                mut callback: impl FnMut(#register_address_type, &str, FieldSetValue)
+                mut callback: impl FnMut(#register_address_type, &'static str, FieldSetValue)
             ) -> Result<(), I::Error>
                 where I: ::device_driver::AsyncRegisterInterface<AddressType = #register_address_type>
             {
@@ -323,7 +323,7 @@ mod tests {
                     /// the lies within so it can be printed without matching on it.
                     pub fn read_all_registers(
                         &mut self,
-                        mut callback: impl FnMut(u8, &str, FieldSetValue),
+                        mut callback: impl FnMut(u8, &'static str, FieldSetValue),
                     ) -> Result<(), I::Error>
                     where
                         I: ::device_driver::RegisterInterface<AddressType = u8>,
@@ -347,7 +347,7 @@ mod tests {
                     /// the lies within so it can be printed without matching on it.
                     pub async fn read_all_registers_async(
                         &mut self,
-                        mut callback: impl FnMut(u8, &str, FieldSetValue),
+                        mut callback: impl FnMut(u8, &'static str, FieldSetValue),
                     ) -> Result<(), I::Error>
                     where
                         I: ::device_driver::AsyncRegisterInterface<AddressType = u8>,
@@ -442,7 +442,7 @@ mod tests {
                     /// the lies within so it can be printed without matching on it.
                     pub fn read_all_registers(
                         &mut self,
-                        mut callback: impl FnMut(u8, &str, FieldSetValue),
+                        mut callback: impl FnMut(u8, &'static str, FieldSetValue),
                     ) -> Result<(), I::Error>
                     where
                         I: ::device_driver::RegisterInterface<AddressType = u8>,
@@ -464,7 +464,7 @@ mod tests {
                     /// the lies within so it can be printed without matching on it.
                     pub async fn read_all_registers_async(
                         &mut self,
-                        mut callback: impl FnMut(u8, &str, FieldSetValue),
+                        mut callback: impl FnMut(u8, &'static str, FieldSetValue),
                     ) -> Result<(), I::Error>
                     where
                         I: ::device_driver::AsyncRegisterInterface<AddressType = u8>,
