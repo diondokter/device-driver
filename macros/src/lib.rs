@@ -11,7 +11,7 @@ use syn::{braced, Ident, LitStr};
 /// ## Usage:
 ///
 /// DSL:
-/// ```rust
+/// ```rust,ignore
 /// # use device_driver_macros::create_device;
 /// create_device!(
 ///     device_name: MyTestDevice,

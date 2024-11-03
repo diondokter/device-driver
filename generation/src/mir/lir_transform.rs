@@ -37,6 +37,11 @@ pub fn transform(device: mir::Device, driver_name: &str) -> anyhow::Result<lir::
 
     Ok(lir::Device {
         internal_address_type: find_best_internal_address(&device),
+        register_address_type: device
+            .global_config
+            .register_address_type
+            .unwrap_or(mir::Integer::U8)
+            .into(),
         blocks,
         field_sets,
         enums: lir_enums,

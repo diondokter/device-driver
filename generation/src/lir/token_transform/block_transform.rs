@@ -1,9 +1,16 @@
 use proc_macro2::{Ident, Literal, TokenStream};
 use quote::{quote, ToTokens};
 
-use crate::lir::{Block, BlockMethod, BlockMethodKind, BlockMethodType};
+use crate::{
+    lir::{Block, BlockMethod, BlockMethodKind, BlockMethodType},
+    mir,
+};
 
-pub fn generate_block(value: &Block, internal_address_type: &Ident) -> TokenStream {
+pub fn generate_block(
+    value: &Block,
+    internal_address_type: &Ident,
+    register_address_type: &Ident,
+) -> TokenStream {
     let Block {
         cfg_attr,
         doc_attr,
@@ -31,7 +38,7 @@ pub fn generate_block(value: &Block, internal_address_type: &Ident) -> TokenStre
             )
         };
 
-    let methods = methods
+    let method_impls = methods
         .iter()
         .map(|m| generate_method(m, internal_address_type));
 
@@ -39,6 +46,68 @@ pub fn generate_block(value: &Block, internal_address_type: &Ident) -> TokenStre
         (quote! {}, quote! { pub }, quote! { const })
     } else {
         (quote! { #[doc(hidden)] }, quote! {}, quote! {})
+    };
+
+    let generate_read_all_registers_items = |use_async: bool| {
+        methods
+            .iter()
+            .filter_map(move |m| match &m.method_type {
+                BlockMethodType::Register {
+                    access: mir::Access::RO | mir::Access::RW,
+                    ..
+                } => {
+                    let register_name = &m.name;
+                    let address = &m.address;
+
+                    let read_function = match use_async {
+                        true => quote! { read_async().await },
+                        false => quote! { read() },
+                    };
+
+                    let (count, stride, index_required) = match &m.kind {
+                        BlockMethodKind::Normal => (1i64, Literal::i64_unsuffixed(0), false),
+                        BlockMethodKind::Repeated { count, stride } => {
+                            (count.to_string().parse().unwrap(), stride.clone(), true)
+                        }
+                    };
+
+                    Some((0..count).map(move |index| {
+                    let (index_param, register_display_name) = match index_required {
+                        true => {
+                            let index_param = Literal::i64_unsuffixed(index);
+                            (quote! { #index_param }, format!("{}[{index}]", m.name))
+                        }
+                        false => (quote! {}, m.name.to_string()),
+                    };
+                    let index = Literal::i64_unsuffixed(index);
+                    quote! {
+                        let reg = self.#register_name(#index_param).#read_function?;
+                        callback(#address + #index * #stride, #register_display_name, reg.into());
+                    }
+                }))
+                }
+                _ => None,
+            })
+            .flatten()
+    };
+
+    let read_all_registers_items = generate_read_all_registers_items(false);
+    let read_async_all_registers_items = generate_read_all_registers_items(true);
+
+    let read_all_docs = quote! {
+        /// Read all readable register values in this block from the device.
+        /// The callback is called for each of them.
+        /// Any registers in child blocks are not included.
+        ///
+        /// The callback has three arguments:
+        ///
+        /// - The address of the register
+        /// - The name of the register (with index for repeated registers)
+        /// - The read value from the register
+        ///
+        /// This is useful for e.g. debug printing all values.
+        /// The given [FieldSetValue] has a Debug and Format implementation that forwards to the concrete type
+        /// the lies within so it can be printed without matching on it.
     };
 
     quote! {
@@ -66,7 +135,29 @@ pub fn generate_block(value: &Block, internal_address_type: &Ident) -> TokenStre
                 #interface_borrow
             }
 
-            #(#methods)*
+            #read_all_docs
+            pub fn read_all_registers(
+                &mut self,
+                mut callback: impl FnMut(#register_address_type, &'static str, FieldSetValue)
+            ) -> Result<(), I::Error>
+                where I: ::device_driver::RegisterInterface<AddressType = #register_address_type>
+            {
+                #(#read_all_registers_items)*
+                Ok(())
+            }
+
+            #read_all_docs
+            pub async fn read_all_registers_async(
+                &mut self,
+                mut callback: impl FnMut(#register_address_type, &'static str, FieldSetValue)
+            ) -> Result<(), I::Error>
+                where I: ::device_driver::AsyncRegisterInterface<AddressType = #register_address_type>
+            {
+                #(#read_async_all_registers_items)*
+                Ok(())
+            }
+
+            #(#method_impls)*
         }
     }
 }
@@ -194,6 +285,7 @@ mod tests {
                 }],
             },
             &format_ident!("u8"),
+            &format_ident!("u8"),
         );
 
         pretty_assertions::assert_eq!(
@@ -215,6 +307,54 @@ mod tests {
                     }
                     pub(crate) fn interface(&mut self) -> &mut I {
                         &mut self.interface
+                    }
+                    /// Read all readable register values in this block from the device.
+                    /// The callback is called for each of them.
+                    /// Any registers in child blocks are not included.
+                    ///
+                    /// The callback has three arguments:
+                    ///
+                    /// - The address of the register
+                    /// - The name of the register (with index for repeated registers)
+                    /// - The read value from the register
+                    ///
+                    /// This is useful for e.g. debug printing all values.
+                    /// The given [FieldSetValue] has a Debug and Format implementation that forwards to the concrete type
+                    /// the lies within so it can be printed without matching on it.
+                    pub fn read_all_registers(
+                        &mut self,
+                        mut callback: impl FnMut(u8, &'static str, FieldSetValue),
+                    ) -> Result<(), I::Error>
+                    where
+                        I: ::device_driver::RegisterInterface<AddressType = u8>,
+                    {
+                        let reg = self.my_register1().read()?;
+                        callback(5 + 0 * 0, \"my_register1\", reg.into());
+                        Ok(())
+                    }
+                    /// Read all readable register values in this block from the device.
+                    /// The callback is called for each of them.
+                    /// Any registers in child blocks are not included.
+                    ///
+                    /// The callback has three arguments:
+                    ///
+                    /// - The address of the register
+                    /// - The name of the register (with index for repeated registers)
+                    /// - The read value from the register
+                    ///
+                    /// This is useful for e.g. debug printing all values.
+                    /// The given [FieldSetValue] has a Debug and Format implementation that forwards to the concrete type
+                    /// the lies within so it can be printed without matching on it.
+                    pub async fn read_all_registers_async(
+                        &mut self,
+                        mut callback: impl FnMut(u8, &'static str, FieldSetValue),
+                    ) -> Result<(), I::Error>
+                    where
+                        I: ::device_driver::AsyncRegisterInterface<AddressType = u8>,
+                    {
+                        let reg = self.my_register1().read_async().await?;
+                        callback(5 + 0 * 0, \"my_register1\", reg.into());
+                        Ok(())
                     }
                     ///42 is the answer
                     #[cfg(unix)]
@@ -260,6 +400,7 @@ mod tests {
                 }],
             },
             &format_ident!("u8"),
+            &format_ident!("u8"),
         );
 
         pretty_assertions::assert_eq!(
@@ -285,6 +426,50 @@ mod tests {
                     }
                     pub(crate) fn interface(&mut self) -> &mut I {
                         self.interface
+                    }
+                    /// Read all readable register values in this block from the device.
+                    /// The callback is called for each of them.
+                    /// Any registers in child blocks are not included.
+                    ///
+                    /// The callback has three arguments:
+                    ///
+                    /// - The address of the register
+                    /// - The name of the register (with index for repeated registers)
+                    /// - The read value from the register
+                    ///
+                    /// This is useful for e.g. debug printing all values.
+                    /// The given [FieldSetValue] has a Debug and Format implementation that forwards to the concrete type
+                    /// the lies within so it can be printed without matching on it.
+                    pub fn read_all_registers(
+                        &mut self,
+                        mut callback: impl FnMut(u8, &'static str, FieldSetValue),
+                    ) -> Result<(), I::Error>
+                    where
+                        I: ::device_driver::RegisterInterface<AddressType = u8>,
+                    {
+                        Ok(())
+                    }
+                    /// Read all readable register values in this block from the device.
+                    /// The callback is called for each of them.
+                    /// Any registers in child blocks are not included.
+                    ///
+                    /// The callback has three arguments:
+                    ///
+                    /// - The address of the register
+                    /// - The name of the register (with index for repeated registers)
+                    /// - The read value from the register
+                    ///
+                    /// This is useful for e.g. debug printing all values.
+                    /// The given [FieldSetValue] has a Debug and Format implementation that forwards to the concrete type
+                    /// the lies within so it can be printed without matching on it.
+                    pub async fn read_all_registers_async(
+                        &mut self,
+                        mut callback: impl FnMut(u8, &'static str, FieldSetValue),
+                    ) -> Result<(), I::Error>
+                    where
+                        I: ::device_driver::AsyncRegisterInterface<AddressType = u8>,
+                    {
+                        Ok(())
                     }
                     ///42 is the answer
                     ///
