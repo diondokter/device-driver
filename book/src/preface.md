@@ -21,6 +21,38 @@ It is not a replacement of the [docs](https://docs.rs/device-driver) though. The
 
 (In theory this toolkit can be used for memory-mapped peripherals too, but there are likely better crates to use for that like `svd2rust` and `chiptool`. The major difference is that this toolkit assumes device interfaces to be fallible.)
 
+<details>
+  <summary>Sneak peak of yaml register definition</summary>
+
+```yaml
+SYNT:
+  type: register
+  address: 0x05
+  size_bits: 32
+  reset_value: 0x42162762
+  fields:
+    PLL_CP_ISEL:
+      base: uint
+      start: 29
+      end: 32
+      description: Set the charge pump current according to the XTAL frequency (see Table 37. Table 34).
+    BS:
+      base: bool
+      start: 28
+      description: |
+        Synthesizer band select. This parameter selects the out-of loop
+        divide factor of the synthesizer:
+        - false: 4, band select factor for high band
+        - true: 8, band select factor for middle band
+        (see Section 5.3.1 RF channel frequency settings).
+    SYNT:
+      base: uint
+      start: 0
+      end: 28
+      description: The PLL programmable divider (see Section 5.3.1 RF channel frequency settings).
+```
+</details>
+
 ## Book overview:
 
 - The intro chapter describes the goal of the toolkit, what it does for you and why you may want to use it instead of writing the driver manually.
@@ -33,3 +65,13 @@ The addendum contains more things that mostly provide useful background informat
 > [!CAUTION]
 > It's hard to keep book like this up-to-date with reality. Small errors might creep in despite my best effort.  
 > If you do find something out of place, missing or simply wrong, please open an issue, even if it's just for a typo! I'd really appreciate it and helps out everyone.
+
+## Known drivers using the toolkit:
+
+It's nice to have examples:
+
+- [S2-LP radio](https://github.com/diondokter/s2lp)
+- [iqs323 inductive/capacitive sensing controller](https://github.com/tactile-eng/iqs323-driver)
+- [VCNL36825T proximity sensor](https://github.com/LeFrenchPOC/vcnl36825t-rs)
+
+Feel free to add to this list!
