@@ -2,6 +2,34 @@
 
 ### Unreleased
 
+### 1.0.0-rc.0 (10-11-24)
+
+- *Beaking*: A lot, complete rewrite
+  - Generated fields now use chiptool/embassy-style code
+    - Getters have no prefix
+    - Setters use `set_` as the prefix
+  - Added a global config
+    - Address types are now put in there
+    - Option to provide defaults for memory ordering
+    - Provides a way to change the name normalization options
+  - Generated code no longer depends on `num_enum`
+  - No more `R` and `W` structs. Everything is done on the main generated fieldset.
+  - Formalized blocks
+  - Added refs
+  - Added repeats
+  - Added many analysis steps to reduce the chance of mistakes
+  - Fixed memory ordering oddities
+  - Added toml support
+  - Added an optional CLI to pregenerate the driver instead of using the macros
+  - Split the interface from the driver
+  - Type conversions are strict by default now, but generated enums are also more likely to qualify
+  - Added optional defmt generation
+  - Added an option to read all registers of a device (for debugging purposes)
+  - All object types (register, command, buffer, block and ref) can now be mixed
+    - In yaml and json, this changes the structure a bit and every object must have an extra `type` field to denote its object type
+
+And more! Read the book linked in the readme to find all documentation.
+
 ### 0.7.0 (22-08-24)
 
 - *Breaking*: Improved the API for dispatching commands
