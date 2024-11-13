@@ -173,6 +173,15 @@ Overrides the default register access.
 Options are: `RW`, `ReadWrite`, `WO`, `WriteOnly`, `RO`, `ReadOnly`.  
 They are written 'as is' in the DSL and as a string in the manifest.
 
+Anything that is not `ReadWrite` will limit the functions you can call for the registers. `.write` is only available when the register has write access, `.read` only when the register has read access and `.modify` only when the register has full access.
+
+> [!NOTE]
+> This only affects the capability of a register being read or written.
+> It does not affect the `access` specified on the fields.
+>
+> This means you can have a register you cannot write, but does have setters for one or more fields.  
+> That won't be harmful or break things, but might look weird.
+
 ### `byte_order`
 
 Overrides the default byte order.
