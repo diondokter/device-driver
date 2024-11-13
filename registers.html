@@ -386,6 +386,17 @@ Multiple attributes get concatenated with a newline (just like normal Rust does)
 <p>Overrides the default register access.</p>
 <p>Options are: <code>RW</code>, <code>ReadWrite</code>, <code>WO</code>, <code>WriteOnly</code>, <code>RO</code>, <code>ReadOnly</code>.<br />
 They are written 'as is' in the DSL and as a string in the manifest.</p>
+<p>Anything that is not <code>ReadWrite</code> will limit the functions you can call for the registers. <code>.write</code> is only available when the register has write access, <code>.read</code> only when the register has read access and <code>.modify</code> only when the register has full access.</p>
+<div class="mdbook-alerts mdbook-alerts-note">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  note
+</p>
+<p>This only affects the capability of a register being read or written.
+It does not affect the <code>access</code> specified on the fields.</p>
+<p>This means you can have a register you cannot write, but does have setters for one or more fields.<br />
+That won't be harmful or break things, but might look weird.</p>
+</div>
 <h3 id="byte_order"><a class="header" href="#byte_order"><code>byte_order</code></a></h3>
 <p>Overrides the default byte order.</p>
 <p>Options are: <code>LE</code>, <code>BE</code>.<br />
