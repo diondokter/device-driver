@@ -78,7 +78,31 @@ impl<'i, Interface, AddressType: Copy, Register: FieldSet, Access>
             _phantom: PhantomData,
         }
     }
+
+    /// The address this operation will use
+    pub fn address(&self) -> AddressType {
+        self.address
+    }
+
+    /// Blah
+    pub fn new_fs(&self) -> Register {
+        (self.register_new_with_reset)()
+    }
 }
+
+// impl<'i, AddressType: Copy, Register: FieldSet, Access>
+//     RegisterOperation<'i, (), AddressType, Register, Access>
+// {
+//     pub fn as_static(self) -> RegisterOperation<'static, (), AddressType, Register, Access> {
+//         static mut UNIT: () = ();
+//         RegisterOperation {
+//             interface: unsafe { &mut UNIT },
+//             address: self.address,
+//             register_new_with_reset: self.register_new_with_reset,
+//             _phantom: PhantomData,
+//         }
+//     }
+// }
 
 impl<'i, Interface, AddressType: Copy, Register: FieldSet, Access>
     RegisterOperation<'i, Interface, AddressType, Register, Access>
