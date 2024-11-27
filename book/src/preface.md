@@ -71,6 +71,7 @@ The addendum contains more things that mostly provide useful background informat
 It's nice to have examples:
 
 - [S2-LP radio](https://github.com/diondokter/s2lp)
+- [Nordic nPM1300 Power Management IC](https://github.com/thermigo/npm1300-rs)
 - [iqs323 inductive/capacitive sensing controller](https://github.com/tactile-eng/iqs323-driver)
 - [VCNL36825T proximity sensor](https://github.com/LeFrenchPOC/vcnl36825t-rs)
 
