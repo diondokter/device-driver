@@ -1862,12 +1862,14 @@ When a ref object overrides the reset value, the field set will have an extra co
   <span class="mdbook-alerts-icon"></span>
   note
 </p>
-<p>As a user you should not have to construct your field sets manually in normal use. But it's available to you for special cases.</p>
+<p>As a user you should not have to construct your field sets manually in normal use. But it's available to you for special cases in the generated <code>field_sets</code> module.</p>
 </div>
 <p>Example usage:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>let mut reg = MyFieldSet::new();
+</span>use field_sets::MyFieldSet;
+
+let mut reg = MyFieldSet::new();
 reg.set_foo(1234);
 let foo = reg.foo();
 <span class="boring">}</span></code></pre></pre>
@@ -1876,7 +1878,9 @@ let foo = reg.foo();
 <p>Example usage:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>let all_ones = !MyFieldSet::new_zero();
+</span>use field_sets::MyFieldSet;
+
+let all_ones = !MyFieldSet::new_zero();
 let lowest_byte_set = MyFieldSet::from([0xFF, 0x00]);
 let lowest_byte_inverted = all_ones ^ lowest_byte_set;
 <span class="boring">}</span></code></pre></pre>
@@ -2080,7 +2084,9 @@ They are written 'as is' in the DSL and as a string in the manifest.</p>
 <p>The manifest has two possible fields <code>conversion</code> and <code>try_conversion</code> for the infallible and fallible variants respectively.</p>
 <h4 id="to-existing-type"><a class="header" href="#to-existing-type">To existing type</a></h4>
 <p>When a type path is given as the DSL <code>&lt;TARGET&gt;</code> or as string in the manifest <code>conversion</code> field, the conversion will be done using the specified type.</p>
-<p>The type path is used as is in the generated code, so you need to make sure that the type is in scope.</p>
+<p>The type path is used as is in the generated code, so you need to make sure that the type is in scope.
+Due to how the generated modules are structured, the specified paths get <code>super::</code> prepended to them.
+To be able to still use extern crates and absolute paths this isn't done when the path starts with <code>::</code> or <code>crate</code>.</p>
 <p>Furthermore the type must implement the <code>From&lt;INTEGER&gt;</code> or <code>TryFrom&lt;INTEGER&gt;</code> traits for the infallible or fallible conversions respectively when the field has read access. When the field has write access, the type must implement the <code>Into&lt;INTEGER&gt;</code> trait.</p>
 <div class="mdbook-alerts mdbook-alerts-tip">
 <p class="mdbook-alerts-title">
