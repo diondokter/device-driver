@@ -1,6 +1,6 @@
 [package]
 name = "dd-manifest-tree"
-version = "1.0.0-rc.0"
+version = "1.0.0-rc.1"
 authors = ["Dion Dokter <diondokter@gmail.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"

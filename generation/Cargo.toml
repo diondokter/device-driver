@@ -1,6 +1,6 @@
 [package]
 name = "device-driver-generation"
-version = "1.0.0-rc.0"
+version = "1.0.0-rc.1"
 authors = ["Dion Dokter <diondokter@gmail.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -19,7 +19,7 @@ proc-macro2 = "1.0.70"
 quote = "1.0.33"
 syn = { version = "2.0", features = ["extra-traits"] }
 bitvec = "1.0.1"
-dd-manifest-tree = { version = "1.0.0-rc.0", path = "../dd-manifest-tree", optional = true, default-features = false }
+dd-manifest-tree = { version = "1.0.0-rc.1", path = "../dd-manifest-tree", optional = true, default-features = false }
 
 [dev-dependencies]
 prettyplease = "0.2.15"

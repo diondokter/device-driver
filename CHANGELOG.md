@@ -2,8 +2,12 @@
 
 ### Unreleased
 
+### 1.0.0-rc.1 (29-11-24)
+
 - *Breaking*: Generated fieldsets are now put in a `field_sets` module.
   - Type conversion paths now get `super::` prepended unless they start with `::` or `crate`
+- Fixed some broken links
+- Made clarifications in the book
 
 ### 1.0.0-rc.0 (10-11-24)
 
