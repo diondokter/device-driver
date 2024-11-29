@@ -73,7 +73,7 @@ impl<'i, Interface, AddressType: Copy, InFieldSet, OutFieldSet>
 }
 
 /// Simple command
-impl<'i, Interface, AddressType: Copy> CommandOperation<'i, Interface, AddressType, (), ()>
+impl<Interface, AddressType: Copy> CommandOperation<'_, Interface, AddressType, (), ()>
 where
     Interface: CommandInterface<AddressType = AddressType>,
 {
@@ -85,8 +85,8 @@ where
 }
 
 /// Only input
-impl<'i, Interface, AddressType: Copy, InFieldSet: FieldSet>
-    CommandOperation<'i, Interface, AddressType, InFieldSet, ()>
+impl<Interface, AddressType: Copy, InFieldSet: FieldSet>
+    CommandOperation<'_, Interface, AddressType, InFieldSet, ()>
 where
     Interface: CommandInterface<AddressType = AddressType>,
 {
@@ -106,8 +106,8 @@ where
 }
 
 /// Only output
-impl<'i, Interface, AddressType: Copy, OutFieldSet: FieldSet>
-    CommandOperation<'i, Interface, AddressType, (), OutFieldSet>
+impl<Interface, AddressType: Copy, OutFieldSet: FieldSet>
+    CommandOperation<'_, Interface, AddressType, (), OutFieldSet>
 where
     Interface: CommandInterface<AddressType = AddressType>,
 {
@@ -128,8 +128,8 @@ where
 }
 
 /// Input and output
-impl<'i, Interface, AddressType: Copy, InFieldSet: FieldSet, OutFieldSet: FieldSet>
-    CommandOperation<'i, Interface, AddressType, InFieldSet, OutFieldSet>
+impl<Interface, AddressType: Copy, InFieldSet: FieldSet, OutFieldSet: FieldSet>
+    CommandOperation<'_, Interface, AddressType, InFieldSet, OutFieldSet>
 where
     Interface: CommandInterface<AddressType = AddressType>,
 {

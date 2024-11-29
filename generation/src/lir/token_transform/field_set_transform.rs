@@ -286,12 +286,16 @@ fn get_read_function(field: &Field) -> TokenStream {
         return TokenStream::new();
     }
 
+    let super_token = get_super_token(conversion_method);
+
     let return_type = match conversion_method {
         FieldConversionMethod::None => base_type.to_token_stream(),
         FieldConversionMethod::Into(conversion_type)
-        | FieldConversionMethod::UnsafeInto(conversion_type) => conversion_type.to_token_stream(),
+        | FieldConversionMethod::UnsafeInto(conversion_type) => {
+            quote! { #super_token #conversion_type }
+        }
         FieldConversionMethod::TryInto(conversion_type) => {
-            quote! { Result<#conversion_type, <#conversion_type as TryFrom<#base_type>>::Error> }
+            quote! { Result<#super_token #conversion_type, <#super_token #conversion_type as TryFrom<#base_type>>::Error> }
         }
         FieldConversionMethod::Bool => format_ident!("bool").into_token_stream(),
     };
@@ -339,6 +343,8 @@ fn get_write_function(field: &Field) -> TokenStream {
         return TokenStream::new();
     }
 
+    let super_token = get_super_token(conversion_method);
+
     let input_type = match conversion_method {
         FieldConversionMethod::None => &base_type.to_token_stream(),
         FieldConversionMethod::Into(conversion_type)
@@ -364,11 +370,27 @@ fn get_write_function(field: &Field) -> TokenStream {
         #[doc = ""]
         #doc_attr
         #cfg_attr
-        pub fn #function_name(&mut self, value: #input_type) {
+        pub fn #function_name(&mut self, value: #super_token #input_type) {
             use ::device_driver::bitvec::field::BitField;
             let raw = #conversion;
             self.bits[#start_bit..#end_bit].store_le::<#base_type>(raw);
         }
+    }
+}
+
+fn get_super_token(conversion_method: &FieldConversionMethod) -> TokenStream {
+    match conversion_method.conversion_type() {
+        Some(ct)
+            if syn::parse2::<syn::TypePath>(ct.clone())
+                .map(|tp| {
+                    tp.path.leading_colon.is_none()
+                        && tp.path.segments.first().unwrap().ident != format_ident!("crate")
+                })
+                .unwrap_or_default() =>
+        {
+            quote! { super:: }
+        }
+        _ => quote! {},
     }
 }
 
@@ -466,7 +488,7 @@ mod tests {
                 ///
                 ///Hiya again!
                 #[cfg(linux)]
-                pub fn my_field(&self) -> FieldEnum {
+                pub fn my_field(&self) -> super::FieldEnum {
                     use ::device_driver::bitvec::field::BitField;
                     let raw = self.bits[0..4].load_le::<u8>();
                     unsafe { raw.try_into().unwrap_unchecked() }
@@ -475,7 +497,7 @@ mod tests {
                 ///
                 ///Hiya again!
                 #[cfg(linux)]
-                pub fn set_my_field(&mut self, value: FieldEnum) {
+                pub fn set_my_field(&mut self, value: super::FieldEnum) {
                     use ::device_driver::bitvec::field::BitField;
                     let raw = value.into();
                     self.bits[0..4].store_le::<u8>(raw);

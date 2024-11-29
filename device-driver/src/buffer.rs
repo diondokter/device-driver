@@ -75,7 +75,7 @@ impl<'i, Interface, AddressType: Copy, Access> BufferOperation<'i, Interface, Ad
     }
 }
 
-impl<'i, Interface, AddressType: Copy, Access> BufferOperation<'i, Interface, AddressType, Access>
+impl<Interface, AddressType: Copy, Access> BufferOperation<'_, Interface, AddressType, Access>
 where
     Interface: BufferInterface<AddressType = AddressType>,
     Access: WriteCapability,
@@ -111,7 +111,7 @@ where
     }
 }
 
-impl<'i, Interface, AddressType: Copy, Access> BufferOperation<'i, Interface, AddressType, Access>
+impl<Interface, AddressType: Copy, Access> BufferOperation<'_, Interface, AddressType, Access>
 where
     Interface: BufferInterface<AddressType = AddressType>,
     Access: ReadCapability,
@@ -220,8 +220,8 @@ where
 
 // ------- embedded-io impls -------
 
-impl<'i, Interface, AddressType: Copy, Access> embedded_io::ErrorType
-    for BufferOperation<'i, Interface, AddressType, Access>
+impl<Interface, AddressType: Copy, Access> embedded_io::ErrorType
+    for BufferOperation<'_, Interface, AddressType, Access>
 where
     Interface: BufferInterfaceError,
     Interface::Error: embedded_io::Error,
@@ -229,8 +229,8 @@ where
     type Error = Interface::Error;
 }
 
-impl<'i, Interface, AddressType: Copy, Access> embedded_io::Write
-    for BufferOperation<'i, Interface, AddressType, Access>
+impl<Interface, AddressType: Copy, Access> embedded_io::Write
+    for BufferOperation<'_, Interface, AddressType, Access>
 where
     Interface: BufferInterface<AddressType = AddressType>,
     Interface::Error: embedded_io::Error,
@@ -245,8 +245,8 @@ where
     }
 }
 
-impl<'i, Interface, AddressType: Copy, Access> embedded_io::Read
-    for BufferOperation<'i, Interface, AddressType, Access>
+impl<Interface, AddressType: Copy, Access> embedded_io::Read
+    for BufferOperation<'_, Interface, AddressType, Access>
 where
     Interface: BufferInterface<AddressType = AddressType>,
     Interface::Error: embedded_io::Error,
