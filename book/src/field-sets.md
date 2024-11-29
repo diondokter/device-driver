@@ -8,10 +8,12 @@ A field set can be created using the `new` function and will be initialized with
 When a ref object overrides the reset value, the field set will have an extra constructor `new_as_<ref name>` that will use the reset value override for the initial value.
 
 > [!NOTE]
-> As a user you should not have to construct your field sets manually in normal use. But it's available to you for special cases.
+> As a user you should not have to construct your field sets manually in normal use. But it's available to you for special cases in the generated `field_sets` module.
 
 Example usage:
 ```rust
+use field_sets::MyFieldSet;
+
 let mut reg = MyFieldSet::new();
 reg.set_foo(1234);
 let foo = reg.foo();
@@ -23,6 +25,8 @@ There's also an `Into` and `From` implementation to the smallest byte array that
 
 Example usage:
 ```rust
+use field_sets::MyFieldSet;
+
 let all_ones = !MyFieldSet::new_zero();
 let lowest_byte_set = MyFieldSet::from([0xFF, 0x00]);
 let lowest_byte_inverted = all_ones ^ lowest_byte_set;
@@ -240,6 +244,8 @@ The manifest has two possible fields `conversion` and `try_conversion` for the i
 When a type path is given as the DSL `<TARGET>` or as string in the manifest `conversion` field, the conversion will be done using the specified type.
 
 The type path is used as is in the generated code, so you need to make sure that the type is in scope.
+Due to how the generated modules are structured, the specified paths get `super::` prepended to them.
+To be able to still use extern crates and absolute paths this isn't done when the path starts with `::` or `crate`.
 
 Furthermore the type must implement the `From<INTEGER>` or `TryFrom<INTEGER>` traits for the infallible or fallible conversions respectively when the field has read access. When the field has write access, the type must implement the `Into<INTEGER>` trait.
 

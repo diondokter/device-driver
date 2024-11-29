@@ -2,9 +2,12 @@
 
 ### Unreleased
 
+- *Breaking*: Generated fieldsets are now put in a `field_sets` module.
+  - Type conversion paths now get `super::` prepended unless they start with `::` or `crate`
+
 ### 1.0.0-rc.0 (10-11-24)
 
-- *Beaking*: A lot, complete rewrite
+- *Breaking*: A lot, complete rewrite
   - Generated fields now use chiptool/embassy-style code
     - Getters have no prefix
     - Setters use `set_` as the prefix
