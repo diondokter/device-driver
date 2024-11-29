@@ -97,9 +97,9 @@ impl FieldConversionMethod {
     pub fn conversion_type(&self) -> Option<&TokenStream> {
         match self {
             FieldConversionMethod::None => None,
-            FieldConversionMethod::Into(token_stream) => Some(&token_stream),
-            FieldConversionMethod::UnsafeInto(token_stream) => Some(&token_stream),
-            FieldConversionMethod::TryInto(token_stream) => Some(&token_stream),
+            FieldConversionMethod::Into(token_stream) => Some(token_stream),
+            FieldConversionMethod::UnsafeInto(token_stream) => Some(token_stream),
+            FieldConversionMethod::TryInto(token_stream) => Some(token_stream),
             FieldConversionMethod::Bool => None,
         }
     }

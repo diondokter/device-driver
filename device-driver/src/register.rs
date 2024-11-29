@@ -80,8 +80,8 @@ impl<'i, Interface, AddressType: Copy, Register: FieldSet, Access>
     }
 }
 
-impl<'i, Interface, AddressType: Copy, Register: FieldSet, Access>
-    RegisterOperation<'i, Interface, AddressType, Register, Access>
+impl<Interface, AddressType: Copy, Register: FieldSet, Access>
+    RegisterOperation<'_, Interface, AddressType, Register, Access>
 where
     Interface: RegisterInterface<AddressType = AddressType>,
     Access: WriteCapability,
@@ -118,8 +118,8 @@ where
     }
 }
 
-impl<'i, Interface, AddressType: Copy, Register: FieldSet, Access>
-    RegisterOperation<'i, Interface, AddressType, Register, Access>
+impl<Interface, AddressType: Copy, Register: FieldSet, Access>
+    RegisterOperation<'_, Interface, AddressType, Register, Access>
 where
     Interface: RegisterInterface<AddressType = AddressType>,
     Access: ReadCapability,
@@ -134,8 +134,8 @@ where
     }
 }
 
-impl<'i, Interface, AddressType: Copy, Register: FieldSet, Access>
-    RegisterOperation<'i, Interface, AddressType, Register, Access>
+impl<Interface, AddressType: Copy, Register: FieldSet, Access>
+    RegisterOperation<'_, Interface, AddressType, Register, Access>
 where
     Interface: RegisterInterface<AddressType = AddressType>,
     Access: ReadCapability + WriteCapability,
