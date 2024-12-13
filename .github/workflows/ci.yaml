@@ -28,3 +28,10 @@ jobs:
     - uses: actions/checkout@v3
     - uses: dtolnay/rust-toolchain@stable
     - run: cargo clippy -- -D warnings
+
+  run-cli:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: dtolnay/rust-toolchain@stable
+    - run: cargo run -- --manifest device-driver/tests/basic-register.yaml --output generated.rs --device-name MyTestDevice

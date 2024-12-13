@@ -19,7 +19,7 @@ device_driver::create_device!(
 
 It consists of two parts:
 - `device_name`: This will be the name of the root block that will take ownership of the device interface.
-  - The name should be provided in PascalCase
+  - The name must be provided in PascalCase
   - If you're going to distribute this as the main part of your driver, then it's recommended to use the name
     of the chip this driver is for. For example: 'Lis3dh'
   - If you're going to write a higher level wrapper around it, then it's recommended to name it something
