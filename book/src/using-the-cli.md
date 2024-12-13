@@ -29,7 +29,7 @@ To do the code generation three things are required:
 
 - `-m` or `--manifest`: The path to the manifest file
 - `-o` or `--output`: The path to the to be generated rust file
-- `-d` or `--device-name`: The name the toolkit will use for the generated device
+- `-d` or `--device-name`: The name the toolkit will use for the generated device. This must be specified in PascalCase
 
 ## Using the output
 

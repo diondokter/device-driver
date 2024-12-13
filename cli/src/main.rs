@@ -11,7 +11,7 @@ struct Args {
     /// Path to output location. Any existing file is overwritten.
     #[arg(short = 'o', long = "output", value_name = "FILE")]
     output_path: PathBuf,
-    /// The name of the device to be generated
+    /// The name of the device to be generated. Must be PascalCase
     #[arg(short = 'd', long = "device-name", value_name = "NAME")]
     device_name: String,
 }

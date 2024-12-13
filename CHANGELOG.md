@@ -2,6 +2,9 @@
 
 ### Unreleased
 
+- Enforce PascalCase for device name
+- Improve CLI error display
+
 ### 1.0.0-rc.1 (29-11-24)
 
 - *Breaking*: Generated fieldsets are now put in a `field_sets` module.
