@@ -532,7 +532,7 @@ device.foo().write(|reg| reg.set_value_1(GeneratedEnum::B)).unwrap();
 <ul>
 <li><code>device_name</code>: This will be the name of the root block that will take ownership of the device interface.
 <ul>
-<li>The name should be provided in PascalCase</li>
+<li>The name must be provided in PascalCase</li>
 <li>If you're going to distribute this as the main part of your driver, then it's recommended to use the name
 of the chip this driver is for. For example: 'Lis3dh'</li>
 <li>If you're going to write a higher level wrapper around it, then it's recommended to name it something
@@ -709,7 +709,7 @@ appropriate for a low level layer. For example: 'Registers' or 'LowLevel'</li>
 <ul>
 <li><code>-m</code> or <code>--manifest</code>: The path to the manifest file</li>
 <li><code>-o</code> or <code>--output</code>: The path to the to be generated rust file</li>
-<li><code>-d</code> or <code>--device-name</code>: The name the toolkit will use for the generated device</li>
+<li><code>-d</code> or <code>--device-name</code>: The name the toolkit will use for the generated device. This must be specified in PascalCase</li>
 </ul>
 <h2 id="using-the-output"><a class="header" href="#using-the-output">Using the output</a></h2>
 <p>Exactly how you include the generated rust file is up to you. You could generate it into your <code>/src</code> folder and declare it a module, which would be nice for Rust analyzer but forces the generated code to be its own module. Or to include it in an existing module you can use the <a href="https://doc.rust-lang.org/core/macro.include.html"><code>include!</code></a> macro.</p>
