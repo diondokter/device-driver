@@ -20,7 +20,7 @@ Only one field is shown, but more can be added. Details about the fields can be 
 > [!NOTE]
 > A command can have only input, only output, both input and output, or no fields.
 > - When input fields are defined, the dispatch function will have a closure parameter to set up the input value.
-> - When output fields are defined, the dispatch function return the data that was read back from the device.
+> - When output fields are defined, the dispatch function returns the data that was read back from the device.
 
 - [Commands](#commands)
   - [DSL](#dsl)

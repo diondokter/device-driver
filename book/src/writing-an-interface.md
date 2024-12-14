@@ -81,7 +81,7 @@ fn try_out_sync() {
     let _ = my_device.foo().read();
 }
 
-async fn try_out_sync() {
+async fn try_out_async() {
     let bus = init_async_bus(); // Implements the async I2c trait
     let interface = MyDeviceI2cInterface { bus };
 
