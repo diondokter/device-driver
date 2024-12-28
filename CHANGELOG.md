@@ -2,6 +2,8 @@
 
 ### Unreleased
 
+### 1.0.0 (28-12-24)
+
 - Enforce PascalCase for device name
 - Improve CLI error display
 
