@@ -2,6 +2,8 @@
 
 ### Unreleased
 
+- Make defmt impls for fieldsets a bit more efficient by using type hints
+
 ### 1.0.0 (28-12-24)
 
 - Enforce PascalCase for device name

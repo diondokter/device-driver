@@ -101,7 +101,18 @@ pub fn generate_field_set(value: &FieldSet, defmt_feature: Option<&str>) -> Toke
         Some(feature_name) => {
             let fields_format_string = fields
                 .iter()
-                .map(|f| format!("{}: {{}}", f.name))
+                .map(|f| {
+                    let defmt_type_hint = match f.conversion_method {
+                        FieldConversionMethod::None => {
+                            let base_type = &f.base_type;
+                            format!("={base_type}")
+                        }
+                        FieldConversionMethod::Bool => "=bool".into(),
+                        _ => String::new(),
+                    };
+
+                    format!("{}: {{{}}}", f.name, defmt_type_hint)
+                })
                 .join(", ");
 
             let type_format_string = format!("{} {{{{ {} }}}}", name, fields_format_string);
@@ -542,7 +553,7 @@ mod tests {
                 fn format(&self, f: defmt::Formatter) {
                     defmt::write!(
                         f,
-                        \"MyRegister {{ my_field: {}, my_field2: {} }}\",
+                        \"MyRegister {{ my_field: {}, my_field2: {=i16} }}\",
                         self.my_field(),
                         self.my_field2(),
                     )
