@@ -1,6 +1,6 @@
 [package]
 name = "device-driver-macros"
-version = "1.0.0"
+version = "1.0.1"
 authors = ["Dion Dokter <diondokter@gmail.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -16,7 +16,7 @@ readme = "README.md"
 proc-macro = true
 
 [dependencies]
-device-driver-generation = { version = "1.0.0", path = "../generation", default-features = false }
+device-driver-generation = { version = "=1.0.1", path = "../generation", default-features = false }
 syn = { version = "2.0" }
 proc-macro2 = "1.0"
 

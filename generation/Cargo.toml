@@ -1,6 +1,6 @@
 [package]
 name = "device-driver-generation"
-version = "1.0.0"
+version = "1.0.1"
 authors = ["Dion Dokter <diondokter@gmail.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -14,7 +14,7 @@ readme = "README.md"
 [dependencies]
 anyhow = "1.0.86"
 convert_case = "0.6.0"
-itertools = "0.13.0"
+itertools = "0.14.0"
 proc-macro2 = "1.0.70"
 quote = "1.0.33"
 syn = { version = "2.0", features = ["extra-traits"] }

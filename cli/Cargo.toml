@@ -1,6 +1,6 @@
 [package]
 name = "device-driver-cli"
-version = "1.0.0"
+version = "1.0.1"
 authors = ["Dion Dokter <diondokter@gmail.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -13,6 +13,6 @@ readme = "README.md"
 
 [dependencies]
 clap = { version = "4.5.20", features = ["derive"] }
-device-driver-generation = { version = "1.0.0", path = "../generation" }
+device-driver-generation = { version = "=1.0.1", path = "../generation" }
 prettyplease = { version = "0.2.22", features = ["verbatim"] }
 syn = { version = "2.0" }

@@ -2,6 +2,8 @@
 
 ### Unreleased
 
+### 1.0.1 (02-01-25)
+
 - Make defmt impls for fieldsets a bit more efficient by using type hints
 - Fixed cfg problem in the `read_all_registers` function
 
