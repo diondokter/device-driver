@@ -58,6 +58,7 @@ pub fn generate_block(
                 } => {
                     let register_name = &m.name;
                     let address = &m.address;
+                    let cfg_attr = &m.cfg_attr;
 
                     let read_function = match use_async {
                         true => quote! { read_async().await },
@@ -81,7 +82,9 @@ pub fn generate_block(
                     };
                     let index = Literal::i64_unsuffixed(index);
                     quote! {
+                        #cfg_attr
                         let reg = self.#register_name(#index_param).#read_function?;
+                        #cfg_attr
                         callback(#address + #index * #stride, #register_display_name, reg.into());
                     }
                 }))
@@ -328,8 +331,9 @@ mod tests {
                     where
                         I: ::device_driver::RegisterInterface<AddressType = u8>,
                     {
+                        #[cfg(unix)]
                         let reg = self.my_register1().read()?;
-                        callback(5 + 0 * 0, \"my_register1\", reg.into());
+                        #[cfg(unix)] callback(5 + 0 * 0, \"my_register1\", reg.into());
                         Ok(())
                     }
                     /// Read all readable register values in this block from the device.
@@ -352,8 +356,9 @@ mod tests {
                     where
                         I: ::device_driver::AsyncRegisterInterface<AddressType = u8>,
                     {
+                        #[cfg(unix)]
                         let reg = self.my_register1().read_async().await?;
-                        callback(5 + 0 * 0, \"my_register1\", reg.into());
+                        #[cfg(unix)] callback(5 + 0 * 0, \"my_register1\", reg.into());
                         Ok(())
                     }
                     ///42 is the answer
