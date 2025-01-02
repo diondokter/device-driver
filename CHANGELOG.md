@@ -3,6 +3,7 @@
 ### Unreleased
 
 - Make defmt impls for fieldsets a bit more efficient by using type hints
+- Fixed cfg problem in the `read_all_registers` function
 
 ### 1.0.0 (28-12-24)
 
