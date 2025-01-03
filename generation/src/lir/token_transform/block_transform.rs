@@ -134,6 +134,7 @@ pub fn generate_block(
                 }
             }
 
+            /// A reference to the interface used to communicate with the device
             pub(crate) fn interface(&mut self) -> &mut I {
                 #interface_borrow
             }
@@ -308,6 +309,7 @@ mod tests {
                     pub const fn new(interface: I) -> Self {
                         Self { interface, base_address: 0 }
                     }
+                    /// A reference to the interface used to communicate with the device
                     pub(crate) fn interface(&mut self) -> &mut I {
                         &mut self.interface
                     }
@@ -435,6 +437,7 @@ mod tests {
                             base_address: base_address,
                         }
                     }
+                    /// A reference to the interface used to communicate with the device
                     pub(crate) fn interface(&mut self) -> &mut I {
                         self.interface
                     }

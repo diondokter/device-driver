@@ -37,6 +37,7 @@ pub fn transform(device: Device) -> TokenStream {
     ));
 
     tokens.extend(quote! {
+        /// Module containing the generated fieldsets of the registers and commands
         pub mod field_sets {
             use super::*;
 
