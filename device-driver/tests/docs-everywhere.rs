@@ -8,6 +8,7 @@ device_driver::create_device!(
         config {
             type RegisterAddressType = u8;
             type CommandAddressType = u8;
+            type BufferAddressType = u8;
         }
         register Foo {
             const ADDRESS = 0;
@@ -27,5 +28,12 @@ device_driver::create_device!(
                 value0: bool = 0,
             }
         },
+        buffer Baz = 0,
+        block B {
+
+        },
+        ref R = register Foo {
+            const ADDRESS = 1;
+        }
     }
 );
