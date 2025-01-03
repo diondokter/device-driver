@@ -2,6 +2,10 @@
 
 ### Unreleased
 
+### 1.0.2 (03-01-25)
+
+- Add more docs to generated code so it passes the `missing_docs` lint
+
 ### 1.0.1 (02-01-25)
 
 - Make defmt impls for fieldsets a bit more efficient by using type hints
