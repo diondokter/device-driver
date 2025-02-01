@@ -52,7 +52,7 @@ device_driver::create_device!(
             type DefaultByteOrder = LE;
         }
         /// Block description
-        #[cfg(not(blah))]
+        #[cfg(test)]
         block Bar {
             const ADDRESS_OFFSET = 10;
             const REPEAT = {
