@@ -19,6 +19,9 @@ embedded-io = "0.6.1"
 embedded-io-async = "0.6.1"
 defmt = { version = "0.3", optional = true }
 
+[dev-dependencies]
+rand = "0.9"
+
 [features]
 default = ["dsl", "json", "yaml", "toml"]
 dsl = ["_macros", "device-driver-macros/dsl"]
