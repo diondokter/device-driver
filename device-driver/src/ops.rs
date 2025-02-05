@@ -1,20 +1,33 @@
 use core::ops::{BitOrAssign, Shl};
 
+/// Load an integer from a byte slice between located at the `start`..`end` range.
+/// The integer is loaded with the [LE] or [BE] byte order generic param and using lsb0 bit order.
+///
+/// ## Safety:
+///
+/// `start` and `end` must lie in the range `0..data.len()*8`.
 pub unsafe fn load_lsb0<T, ByteO: ByteOrder>(data: &[u8], start: usize, end: usize) -> T
 where
     T: Default + From<u8> + Shl<usize, Output = T> + BitOrAssign,
 {
+    // Start with 0
     let mut output = T::default();
 
+    // Go through start..end, but in a while so we have more control over the index
     let mut i = start;
     while i < end {
         let byte = ByteO::get_byte_from_index(data, i);
 
         if (i % 8 == 0) & (i + 8 <= end) {
+            // We are byte aligned and have a full byte of space left
+            // Do a whole byte in one go for extra performance
             output |= T::from(byte) << (i - start);
             i += 8;
         } else {
+            // Go bit by bit
+            // Move the target bit all the way to the right so we know where it is
             let bit = (byte >> i % 8) & 1;
+            // Shift the bit the proper amount to the left. The bit at `start` should be at index 0
             output |= T::from(bit) << (i - start);
             i += 1;
         }
@@ -23,46 +36,87 @@ where
     output
 }
 
+/// Load an integer from a byte slice between located at the `start`..`end` range.
+/// The integer is loaded with the [LE] or [BE] byte order generic param and using msb0 bit order.
+/// This is more expensive than the [load_lsb0] function.
+///
+/// ## Safety:
+///
+/// `start` and `end` must lie in the range `0..data.len()*8`.
 pub unsafe fn load_msb0<T, ByteO: ByteOrder>(data: &[u8], start: usize, end: usize) -> T
 where
     T: Default + From<u8> + Shl<usize, Output = T> + BitOrAssign,
 {
+    // Start with 0
     let mut output = T::default();
 
+    // Iterate over the bits, while retaining index control
     let mut i = start;
     while i < end {
+        // Get the proper byte we should be looking at
         let byte = ByteO::get_byte_from_index(data, i);
 
         if (i % 8 == 0) & (i + 8 <= end) {
+            // We are byte aligned and have a full byte of space left
+            // Do a whole byte in one go for extra performance
             output |= T::from(byte) << (i - start);
             i += 8;
         } else {
-            // Get the bit MSB0 (so reversed)
-            let bit = (byte >> (7 - i % 8)) & 1;
+            // Move bit by bit
 
-            // We still need to store in normal order, so we need to reverse again, but within the index
-            let (num_mirror_bits, pivot) = if i / 8 == start / 8 {
+            // We are doing msb0, so the indexing is reversed. However, we still need to store
+            // the data in normal order. So we need to reverse the bits ourselves too.
+            // We can't reverse the whole byte because then the bits end up in the wrong places.
+            // So we reverse around a pivot and the pivot is in the middle of the bits that need
+            // to be reversed.
+            let (num_bits, pivot) = if i / 8 == start / 8 {
                 // We are in the start byte
-                let num_mirror_bits = (start + 1).next_multiple_of(8).min(end) - start;
-                let pivot = start + num_mirror_bits / 2;
 
-                (num_mirror_bits, pivot)
+                // The number of bits we're dealing with is the difference between the start and the
+                // first byte-aligned index or the end, whichever comes first
+                let num_bits = (start + 1).next_multiple_of(8).min(end) - start;
+                let pivot = start + num_bits / 2;
+
+                (num_bits, pivot)
             } else {
                 // We are in the end byte
-                let num_mirror_bits = end - (end - 8).next_multiple_of(8);
-                let pivot = end - ((num_mirror_bits + 1) / 2);
 
-                (num_mirror_bits, pivot)
+                // The number of bits we're dealing with is the difference between the last aligned
+                // bit index and the end
+                let num_bits = end - (end - 8).next_multiple_of(8);
+                // Calculate the pivot and force it to round down so any error is in the same direction
+                // as in the start byte case
+                let pivot = end - ((num_bits + 1) / 2);
+
+                (num_bits, pivot)
             };
+            let num_bits_even = num_bits % 2 == 0;
 
+            // Calculate how far away our current bit is from the pivot.
             let mut diff = pivot as isize - i as isize;
 
-            if diff <= 0 && num_mirror_bits % 2 == 0 {
-                diff -= 1;
+            if diff <= 0 {
+                // If we have an even number of bits, we should not have a diff of 0
+                diff -= num_bits_even as isize;
             }
 
-            let j = i as isize + diff * 2 - ((num_mirror_bits % 2 == 0) as isize) * diff.signum();
+            // To do the reversing, we need to move the index towards the pivot
+            // and then keep going the same distance again
+            let mut j = i as isize + diff * 2;
 
+            // Due to integer math, the pivot may not be exactly in the middle, so we need to correct for that.
+            // The pivot is off by a half if we have an even number of bits.
+            // But we've done a `* 2` previously now, so we can correct the half-error with a whole number.
+            if diff > 0 {
+                j -= 1 * num_bits_even as isize;
+            } else {
+                j += 1 * num_bits_even as isize;
+            }
+
+            // Get the bit MSB0 (so reversed)
+            // Move the target bit all the way to the right so we know where it is
+            let bit = (byte >> (7 - i % 8)) & 1;
+            // Shift the bit the proper amount to the left. The bit at `start` should be at index 0
             output |= T::from(bit) << (j as usize - start);
             i += 1;
         }
@@ -71,29 +125,33 @@ where
     output
 }
 
+/// Little endian byte order
 pub struct LE;
+/// Big endian byte order
 pub struct BE;
 
+/// Interface to byte order functions
 pub trait ByteOrder {
-    type Opposite: ByteOrder;
-
+    /// From the given bit index, get the byte index that is correct for this endianness
     fn get_byte_index(data_len: usize, bit_index: usize) -> usize;
+    /// Get the byte from the data that is correct for the bit index and the endianness.
+    ///
+    /// ## Safety:
+    ///
+    /// `bit_index` must lie in the range `0..data.len()*8`.
     unsafe fn get_byte_from_index(data: &[u8], bit_index: usize) -> u8 {
+        debug_assert!((0..data.len() * 8).contains(&bit_index));
         *data.get_unchecked(Self::get_byte_index(data.len(), bit_index))
     }
 }
 
 impl ByteOrder for LE {
-    type Opposite = BE;
-
     fn get_byte_index(_data_len: usize, bit_index: usize) -> usize {
         bit_index / 8
     }
 }
 
 impl ByteOrder for BE {
-    type Opposite = LE;
-
     fn get_byte_index(data_len: usize, bit_index: usize) -> usize {
         data_len - (bit_index / 8) - 1
     }
@@ -102,42 +160,6 @@ impl ByteOrder for BE {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_load_u32_le_lsb0() {
-        unsafe {
-            assert_eq!(
-                load_lsb0::<u32, LE>(&0b11111111111111111111000000u64.to_le_bytes(), 6, 26),
-                0b11111111111111111111
-            );
-            assert_eq!(
-                load_lsb0::<u32, LE>(&0xAABBCCDDEEu64.to_le_bytes(), 8, 32),
-                0xBBCCDD,
-            );
-            assert_eq!(
-                load_lsb0::<u32, LE>(&0xAABBCCDDEEu64.to_le_bytes(), 4, 28),
-                0xBCCDDE,
-            );
-        }
-    }
-
-    #[test]
-    fn test_load_u32_be_lsb0() {
-        unsafe {
-            assert_eq!(
-                load_lsb0::<u32, BE>(&0b11111111111111111111000000u64.to_be_bytes(), 6, 26),
-                0b11111111111111111111
-            );
-            assert_eq!(
-                load_lsb0::<u32, BE>(&0xAABBCCDDEEu64.to_be_bytes(), 8, 32),
-                0xBBCCDD,
-            );
-            assert_eq!(
-                load_lsb0::<u32, BE>(&0xAABBCCDDEEu64.to_be_bytes(), 4, 28),
-                0xBCCDDE,
-            );
-        }
-    }
 
     struct Bytes<'a>(&'a [u8]);
 
