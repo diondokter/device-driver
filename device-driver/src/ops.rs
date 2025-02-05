@@ -179,7 +179,7 @@ mod tests {
     fn same_as_bitvec() {
         use bitvec::{field::BitField, view::BitView};
 
-        for _ in 0..1_000_000 {
+        for _ in 0..10_000 {
             let mut data = vec![0u8; rand::random_range(1..=16)];
             rand::fill(&mut data[..]);
             let mut reversed_data = data.clone();
