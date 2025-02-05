@@ -18,7 +18,7 @@ itertools = "0.14.0"
 proc-macro2 = "1.0.70"
 quote = "1.0.33"
 syn = { version = "2.0", features = ["extra-traits"] }
-bitvec = "1.0.1"
+bitvec = { git = "https://github.com/alexanderkjall/bitvec", branch = "upgrade-radium-to-1" }
 dd-manifest-tree = { version = "1.0.0", path = "../dd-manifest-tree", optional = true, default-features = false }
 
 [dev-dependencies]
