@@ -1,6 +1,6 @@
 use core::ops::{BitOrAssign, Shl, Shr};
 
-/// Load an integer from a byte slice between located at the `start`..`end` range.
+/// Load an integer from a byte slice located at the `start`..`end` range.
 /// The integer is loaded with the [LE] or [BE] byte order generic param and using lsb0 bit order.
 ///
 /// ## Safety:
@@ -8,57 +8,85 @@ use core::ops::{BitOrAssign, Shl, Shr};
 /// `start` and `end` must lie in the range `0..data.len()*8`.
 pub unsafe fn load_lsb0<T, ByteO: ByteOrder>(data: &[u8], start: usize, end: usize) -> T
 where
-    T: Default + From<u8> + Shl<usize, Output = T> + BitOrAssign,
+    T: Default + From<u8> + Shl<usize, Output = T> + BitOrAssign + DedupCast,
 {
-    // Start with 0
-    let mut output = T::default();
+    unsafe fn inner<T, ByteO: ByteOrder>(data: &[u8], start: usize, end: usize) -> T
+    where
+        T: Default + From<u8> + Shl<usize, Output = T> + BitOrAssign,
+    {
+        // Start with 0
+        let mut output = T::default();
 
-    // Go through start..end, but in a while so we have more control over the index
-    let mut i = start;
-    while i < end {
-        let byte = ByteO::get_byte_from_index(data, i);
+        // Go through start..end, but in a while so we have more control over the index
+        let mut i = start;
+        while i < end {
+            let byte = ByteO::get_byte_from_index(data, i);
 
-        if (i % 8 == 0) & (i + 8 <= end) {
-            // We are byte aligned and have a full byte of space left
-            // Do a whole byte in one go for extra performance
-            output |= T::from(byte) << (i - start);
-            i += 8;
-        } else {
-            // Go bit by bit
-            // Move the target bit all the way to the right so we know where it is
-            let bit = (byte >> i % 8) & 1;
-            // Shift the bit the proper amount to the left. The bit at `start` should be at index 0
-            output |= T::from(bit) << (i - start);
-            i += 1;
+            if (i % 8 == 0) & (i + 8 <= end) {
+                // We are byte aligned and have a full byte of space left
+                // Do a whole byte in one go for extra performance
+                output |= T::from(byte) << (i - start);
+                i += 8;
+            } else {
+                // Go bit by bit
+                // Move the target bit all the way to the right so we know where it is
+                let bit = (byte >> i % 8) & 1;
+                // Shift the bit the proper amount to the left. The bit at `start` should be at index 0
+                output |= T::from(bit) << (i - start);
+                i += 1;
+            }
         }
+
+        output
     }
 
-    output
+    T::cast_back(inner::<T::DedupType, ByteO>(data, start, end))
 }
 
+/// Store an integer into a byte slice located at the `start`..`end` range.
+/// The integer is stored with the [LE] or [BE] byte order generic param and using lsb0 bit order.
+///
+/// ## Safety:
+///
+/// `start` and `end` must lie in the range `0..data.len()*8`.
 pub unsafe fn store_lsb0<T, ByteO: ByteOrder>(value: T, start: usize, end: usize, data: &mut [u8])
 where
-    T: Copy + TruncateToU8 + Shr<usize, Output = T>,
+    T: Copy + TruncateToU8 + Shr<usize, Output = T> + DedupCast,
 {
-    let mut i = start;
-    while i < end {
-        let byte = ByteO::get_byte_from_index_mut(data, i);
+    unsafe fn inner<T, ByteO: ByteOrder>(value: T, start: usize, end: usize, data: &mut [u8])
+    where
+        T: Copy + TruncateToU8 + Shr<usize, Output = T>,
+    {
+        // Go through start..end, but in a while so we have more control over the index
+        let mut i = start;
+        while i < end {
+            let byte = ByteO::get_byte_from_index_mut(data, i);
 
-        if (i % 8 == 0) & (i + 8 <= end) {
-            *byte = (value >> (i - start)).truncate();
-            i += 8;
-        } else {
-            let bit = (value >> (i - start)).truncate() & 1;
+            if (i % 8 == 0) & (i + 8 <= end) {
+                // We are byte aligned and have a full byte of space left
+                // Do a whole byte in one go for extra performance
+                *byte = (value >> (i - start)).truncate();
+                i += 8;
+            } else {
+                // Go bit by bit
+                // Move the target bit all the way to the right so we know where it is
+                let bit = (value >> (i - start)).truncate() & 1;
 
-            *byte &= !(1 << i % 8);
-            *byte |= bit << i % 8;
+                // Clear the bit
+                *byte &= !(1 << i % 8);
+                // If the bit is set, set the bit in the byte
+                // Not if statement here since this is faster and smaller
+                *byte |= bit << i % 8;
 
-            i += 1;
+                i += 1;
+            }
         }
     }
+
+    inner::<T::DedupType, ByteO>(value.cast(), start, end, data)
 }
 
-/// Load an integer from a byte slice between located at the `start`..`end` range.
+/// Load an integer from a byte slice located at the `start`..`end` range.
 /// The integer is loaded with the [LE] or [BE] byte order generic param and using msb0 bit order.
 /// This is more expensive than the [load_lsb0] function.
 ///
@@ -67,84 +95,91 @@ where
 /// `start` and `end` must lie in the range `0..data.len()*8`.
 pub unsafe fn load_msb0<T, ByteO: ByteOrder>(data: &[u8], start: usize, end: usize) -> T
 where
-    T: Default + From<u8> + Shl<usize, Output = T> + BitOrAssign,
+    T: Default + From<u8> + Shl<usize, Output = T> + BitOrAssign + DedupCast,
 {
-    // Start with 0
-    let mut output = T::default();
+    unsafe fn inner<T, ByteO: ByteOrder>(data: &[u8], start: usize, end: usize) -> T
+    where
+        T: Default + From<u8> + Shl<usize, Output = T> + BitOrAssign,
+    {
+        // Start with 0
+        let mut output = T::default();
 
-    // Iterate over the bits, while retaining index control
-    let mut i = start;
-    while i < end {
-        // Get the proper byte we should be looking at
-        let byte = ByteO::get_byte_from_index(data, i);
+        // Iterate over the bits, while retaining index control
+        let mut i = start;
+        while i < end {
+            // Get the proper byte we should be looking at
+            let byte = ByteO::get_byte_from_index(data, i);
 
-        if (i % 8 == 0) & (i + 8 <= end) {
-            // We are byte aligned and have a full byte of space left
-            // Do a whole byte in one go for extra performance
-            output |= T::from(byte) << (i - start);
-            i += 8;
-        } else {
-            // Move bit by bit
-
-            // We are doing msb0, so the indexing is reversed. However, we still need to store
-            // the data in normal order. So we need to reverse the bits ourselves too.
-            // We can't reverse the whole byte because then the bits end up in the wrong places.
-            // So we reverse around a pivot and the pivot is in the middle of the bits that need
-            // to be reversed.
-            let (num_bits, pivot) = if i / 8 == start / 8 {
-                // We are in the start byte
-
-                // The number of bits we're dealing with is the difference between the start and the
-                // first byte-aligned index or the end, whichever comes first
-                let num_bits = (start + 1).next_multiple_of(8).min(end) - start;
-                let pivot = start + num_bits / 2;
-
-                (num_bits, pivot)
+            if (i % 8 == 0) & (i + 8 <= end) {
+                // We are byte aligned and have a full byte of space left
+                // Do a whole byte in one go for extra performance
+                output |= T::from(byte) << (i - start);
+                i += 8;
             } else {
-                // We are in the end byte
+                // Move bit by bit
 
-                // The number of bits we're dealing with is the difference between the last aligned
-                // bit index and the end
-                let num_bits = end - (end - 8).next_multiple_of(8);
-                // Calculate the pivot and force it to round down so any error is in the same direction
-                // as in the start byte case
-                let pivot = end - ((num_bits + 1) / 2);
+                // We are doing msb0, so the indexing is reversed. However, we still need to store
+                // the data in normal order. So we need to reverse the bits ourselves too.
+                // We can't reverse the whole byte because then the bits end up in the wrong places.
+                // So we reverse around a pivot and the pivot is in the middle of the bits that need
+                // to be reversed.
+                let (num_bits, pivot) = if i / 8 == start / 8 {
+                    // We are in the start byte
 
-                (num_bits, pivot)
-            };
-            let num_bits_even = num_bits % 2 == 0;
+                    // The number of bits we're dealing with is the difference between the start and the
+                    // first byte-aligned index or the end, whichever comes first
+                    let num_bits = (start + 1).next_multiple_of(8).min(end) - start;
+                    let pivot = start + num_bits / 2;
 
-            // Calculate how far away our current bit is from the pivot.
-            let mut diff = pivot as isize - i as isize;
+                    (num_bits, pivot)
+                } else {
+                    // We are in the end byte
 
-            if diff <= 0 {
-                // If we have an even number of bits, we should not have a diff of 0
-                diff -= num_bits_even as isize;
+                    // The number of bits we're dealing with is the difference between the last aligned
+                    // bit index and the end
+                    let num_bits = end - (end - 8).next_multiple_of(8);
+                    // Calculate the pivot and force it to round down so any error is in the same direction
+                    // as in the start byte case
+                    let pivot = end - ((num_bits + 1) / 2);
+
+                    (num_bits, pivot)
+                };
+                let num_bits_even = num_bits % 2 == 0;
+
+                // Calculate how far away our current bit is from the pivot.
+                let mut diff = pivot as isize - i as isize;
+
+                if diff <= 0 {
+                    // If we have an even number of bits, we should not have a diff of 0
+                    diff -= num_bits_even as isize;
+                }
+
+                // To do the reversing, we need to move the index towards the pivot
+                // and then keep going the same distance again
+                let mut j = i as isize + diff * 2;
+
+                // Due to integer math, the pivot may not be exactly in the middle, so we need to correct for that.
+                // The pivot is off by a half if we have an even number of bits.
+                // But we've done a `* 2` previously now, so we can correct the half-error with a whole number.
+                if diff > 0 {
+                    j -= 1 * num_bits_even as isize;
+                } else {
+                    j += 1 * num_bits_even as isize;
+                }
+
+                // Get the bit MSB0 (so reversed)
+                // Move the target bit all the way to the right so we know where it is
+                let bit = (byte >> (7 - i % 8)) & 1;
+                // Shift the bit the proper amount to the left. The bit at `start` should be at index 0
+                output |= T::from(bit) << (j as usize - start);
+                i += 1;
             }
-
-            // To do the reversing, we need to move the index towards the pivot
-            // and then keep going the same distance again
-            let mut j = i as isize + diff * 2;
-
-            // Due to integer math, the pivot may not be exactly in the middle, so we need to correct for that.
-            // The pivot is off by a half if we have an even number of bits.
-            // But we've done a `* 2` previously now, so we can correct the half-error with a whole number.
-            if diff > 0 {
-                j -= 1 * num_bits_even as isize;
-            } else {
-                j += 1 * num_bits_even as isize;
-            }
-
-            // Get the bit MSB0 (so reversed)
-            // Move the target bit all the way to the right so we know where it is
-            let bit = (byte >> (7 - i % 8)) & 1;
-            // Shift the bit the proper amount to the left. The bit at `start` should be at index 0
-            output |= T::from(bit) << (j as usize - start);
-            i += 1;
         }
+
+        output
     }
 
-    output
+    T::cast_back(inner::<T::DedupType, ByteO>(data, start, end))
 }
 
 /// Little endian byte order
@@ -205,7 +240,59 @@ macro_rules! impl_truncate_to_u8 {
     };
 }
 
-impl_truncate_to_u8!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128);
+impl_truncate_to_u8!(u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
+
+pub trait DedupCast {
+    type DedupType: Default
+        + From<u8>
+        + Shl<usize, Output = Self::DedupType>
+        + BitOrAssign
+        + Copy
+        + TruncateToU8
+        + Shr<usize, Output = Self::DedupType>;
+
+    fn cast(self) -> Self::DedupType;
+    fn cast_back(val: Self::DedupType) -> Self;
+}
+
+macro_rules! impl_dedup_cast {
+    ($target:ty, $dedup:ty) => {
+        impl DedupCast for $target {
+            type DedupType = $dedup;
+
+            fn cast(self) -> Self::DedupType {
+                self as _
+            }
+
+            fn cast_back(val: Self::DedupType) -> Self {
+                val as _
+            }
+        }
+    };
+    ($target:ty, $dedup:ty, $cfg:meta) => {
+        #[$cfg]
+        impl_dedup_cast!($target, $dedup);
+    };
+}
+
+impl_dedup_cast!(u8, usize);
+impl_dedup_cast!(u16, usize);
+impl_dedup_cast!(u32, u32, cfg(target_pointer_width = "16"));
+impl_dedup_cast!(u32, usize, cfg(not(target_pointer_width = "16")));
+impl_dedup_cast!(u64, u64, cfg(target_pointer_width = "16"));
+impl_dedup_cast!(u64, u64, cfg(target_pointer_width = "32"));
+impl_dedup_cast!(u64, usize, cfg(target_pointer_width = "64"));
+impl_dedup_cast!(u128, u128);
+impl_dedup_cast!(usize, usize);
+impl_dedup_cast!(i8, isize);
+impl_dedup_cast!(i16, isize);
+impl_dedup_cast!(i32, i32, cfg(target_pointer_width = "16"));
+impl_dedup_cast!(i32, isize, cfg(not(target_pointer_width = "16")));
+impl_dedup_cast!(i64, i64, cfg(target_pointer_width = "16"));
+impl_dedup_cast!(i64, i64, cfg(target_pointer_width = "32"));
+impl_dedup_cast!(i64, isize, cfg(target_pointer_width = "64"));
+impl_dedup_cast!(i128, i128);
+impl_dedup_cast!(isize, isize);
 
 #[cfg(test)]
 mod tests {
