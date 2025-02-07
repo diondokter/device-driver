@@ -1,4 +1,4 @@
-use core::ops::{BitOrAssign, Shl};
+use core::ops::{BitOrAssign, Shl, Shr};
 
 /// Load an integer from a byte slice between located at the `start`..`end` range.
 /// The integer is loaded with the [LE] or [BE] byte order generic param and using lsb0 bit order.
@@ -34,6 +34,28 @@ where
     }
 
     output
+}
+
+pub unsafe fn store_lsb0<T, ByteO: ByteOrder>(value: T, start: usize, end: usize, data: &mut [u8])
+where
+    T: Copy + TruncateToU8 + Shr<usize, Output = T>,
+{
+    let mut i = start;
+    while i < end {
+        let byte = ByteO::get_byte_from_index_mut(data, i);
+
+        if (i % 8 == 0) & (i + 8 <= end) {
+            *byte = (value >> (i - start)).truncate();
+            i += 8;
+        } else {
+            let bit = (value >> (i - start)).truncate() & 1;
+
+            *byte &= !(1 << i % 8);
+            *byte |= bit << i % 8;
+
+            i += 1;
+        }
+    }
 }
 
 /// Load an integer from a byte slice between located at the `start`..`end` range.
@@ -143,6 +165,16 @@ pub trait ByteOrder {
         debug_assert!((0..data.len() * 8).contains(&bit_index));
         *data.get_unchecked(Self::get_byte_index(data.len(), bit_index))
     }
+
+    /// Get a mutable reference to the byte from the data that is correct for the bit index and the endianness.
+    ///
+    /// ## Safety:
+    ///
+    /// `bit_index` must lie in the range `0..data.len()*8`.
+    unsafe fn get_byte_from_index_mut(data: &mut [u8], bit_index: usize) -> &mut u8 {
+        debug_assert!((0..data.len() * 8).contains(&bit_index));
+        data.get_unchecked_mut(Self::get_byte_index(data.len(), bit_index))
+    }
 }
 
 impl ByteOrder for LE {
@@ -156,6 +188,24 @@ impl ByteOrder for BE {
         data_len - (bit_index / 8) - 1
     }
 }
+
+pub trait TruncateToU8 {
+    fn truncate(self) -> u8;
+}
+
+macro_rules! impl_truncate_to_u8 {
+    ($($target:ty),*) => {
+        $(
+            impl TruncateToU8 for $target {
+                fn truncate(self) -> u8 {
+                    self as u8
+                }
+            }
+        )*
+    };
+}
+
+impl_truncate_to_u8!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128);
 
 #[cfg(test)]
 mod tests {
@@ -176,7 +226,7 @@ mod tests {
     }
 
     #[test]
-    fn same_as_bitvec() {
+    fn load_same_as_bitvec() {
         use bitvec::{field::BitField, view::BitView};
 
         for _ in 0..10_000 {
@@ -205,20 +255,56 @@ mod tests {
             println!("BE Lsb0: {:016b}", test_value);
             assert_eq!(test_value, check_value);
 
-            let test_value_le_msb0 = unsafe { load_msb0::<u32, LE>(&data, start, end) };
-            let check_value_le_msb0 =
-                data.view_bits::<bitvec::order::Msb0>()[start..end].load_le::<u32>();
-            println!("LE Msb0: {:016b} *", check_value_le_msb0);
-            println!("LE Msb0: {:016b}", test_value_le_msb0);
+            let test_value = unsafe { load_msb0::<u32, LE>(&data, start, end) };
+            let check_value = data.view_bits::<bitvec::order::Msb0>()[start..end].load_le::<u32>();
+            println!("LE Msb0: {:016b} *", check_value);
+            println!("LE Msb0: {:016b}", test_value);
+            assert_eq!(test_value, check_value);
 
-            let test_value_be_msb0 = unsafe { load_msb0::<u32, BE>(&data, start, end) };
-            let check_value_be_msb0 =
+            let test_value = unsafe { load_msb0::<u32, BE>(&data, start, end) };
+            let check_value =
                 reversed_data.view_bits::<bitvec::order::Msb0>()[start..end].load_le::<u32>();
-            println!("BE Msb0: {:016b} *", check_value_be_msb0);
-            println!("BE Msb0: {:016b}", test_value_be_msb0);
+            println!("BE Msb0: {:016b} *", check_value);
+            println!("BE Msb0: {:016b}", test_value);
+            assert_eq!(test_value, check_value);
+        }
+    }
 
-            assert_eq!(test_value_le_msb0, check_value_le_msb0);
-            assert_eq!(test_value_be_msb0, check_value_be_msb0);
+    #[test]
+    fn store_same_as_bitvec() {
+        use bitvec::{field::BitField, view::BitView};
+
+        for _ in 0..10_000 {
+            let mut data = vec![0u8; rand::random_range(1..=1)];
+            rand::fill(&mut data[..]);
+            let mut reversed_data = data.clone();
+            reversed_data.reverse();
+
+            let total_bits = data.len() * 8;
+            let start = rand::random_range(0..total_bits - 1);
+            let end = start + rand::random_range(1..=total_bits - start).min(32);
+
+            let input_data = rand::random::<u32>();
+            println!(
+                "{input_data:#034b} -> {start}..{end} @ {:#010b}",
+                Bytes(&data)
+            );
+
+            let mut test_data = data.clone();
+            unsafe { store_lsb0::<_, LE>(input_data, start, end, &mut test_data) };
+            let mut check_data = data.clone();
+            check_data.view_bits_mut::<bitvec::order::Lsb0>()[start..end].store_le(input_data);
+            println!("LE Lsb0: {:#010b} *", Bytes(&check_data));
+            println!("LE Lsb0: {:#010b}", Bytes(&test_data));
+            assert_eq!(test_data, check_data);
+
+            let mut test_data = data.clone();
+            unsafe { store_lsb0::<_, BE>(input_data, start, end, &mut test_data) };
+            let mut check_data = reversed_data.clone();
+            check_data.view_bits_mut::<bitvec::order::Lsb0>()[start..end].store_le(input_data);
+            println!("BE Lsb0: {:#010b} *", Bytes(&check_data));
+            println!("BE Lsb0: {:#010b}", Bytes(&test_data));
+            assert_eq!(test_data, check_data);
         }
     }
 }
