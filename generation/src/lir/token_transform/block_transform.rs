@@ -19,7 +19,7 @@ pub fn generate_block(
         methods,
     } = value;
 
-    let (generics, interface_decleration, address_param, address_specifier, interface_borrow) =
+    let (generics, interface_declaration, address_param, address_specifier, interface_borrow) =
         if *root {
             (
                 quote! { I },
@@ -118,7 +118,7 @@ pub fn generate_block(
         #cfg_attr
         #[derive(Debug)]
         pub struct #name<#generics> {
-            pub(crate) interface: #interface_decleration,
+            pub(crate) interface: #interface_declaration,
             #[doc(hidden)]
             base_address: #internal_address_type,
         }
@@ -127,7 +127,7 @@ pub fn generate_block(
         impl<#generics> #name<#generics> {
             /// Create a new instance of the block based on device interface
             #new_hidden_if_not_root
-            #new_access #new_const fn new(interface: #interface_decleration, #address_param) -> Self {
+            #new_access #new_const fn new(interface: #interface_declaration, #address_param) -> Self {
                 Self {
                     interface,
                     base_address: #address_specifier,
