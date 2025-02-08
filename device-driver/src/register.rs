@@ -135,7 +135,7 @@ where
             Register::SIZE_BITS,
             register.get_inner_buffer_mut(),
         )?;
-        Ok(register.into())
+        Ok(register)
     }
 }
 
@@ -161,8 +161,8 @@ where
     }
 }
 
-impl<'i, Interface, AddressType: Copy, Register: FieldSet, Access>
-    RegisterOperation<'i, Interface, AddressType, Register, Access>
+impl<Interface, AddressType: Copy, Register: FieldSet, Access>
+    RegisterOperation<'_, Interface, AddressType, Register, Access>
 where
     Interface: AsyncRegisterInterface<AddressType = AddressType>,
     Access: WriteCapability,
@@ -208,8 +208,8 @@ where
     }
 }
 
-impl<'i, Interface, AddressType: Copy, Register: FieldSet, Access>
-    RegisterOperation<'i, Interface, AddressType, Register, Access>
+impl<Interface, AddressType: Copy, Register: FieldSet, Access>
+    RegisterOperation<'_, Interface, AddressType, Register, Access>
 where
     Interface: AsyncRegisterInterface<AddressType = AddressType>,
     Access: ReadCapability,
@@ -225,12 +225,12 @@ where
                 register.get_inner_buffer_mut(),
             )
             .await?;
-        Ok(register.into())
+        Ok(register)
     }
 }
 
-impl<'i, Interface, AddressType: Copy, Register: FieldSet, Access>
-    RegisterOperation<'i, Interface, AddressType, Register, Access>
+impl<Interface, AddressType: Copy, Register: FieldSet, Access>
+    RegisterOperation<'_, Interface, AddressType, Register, Access>
 where
     Interface: AsyncRegisterInterface<AddressType = AddressType>,
     Access: ReadCapability + WriteCapability,

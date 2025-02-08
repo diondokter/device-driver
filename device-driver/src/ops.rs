@@ -32,7 +32,7 @@ where
             } else {
                 // Go bit by bit
                 // Move the target bit all the way to the right so we know where it is
-                let bit = (byte >> i % 8) & 1;
+                let bit = (byte >> (i % 8)) & 1;
                 // Shift the bit the proper amount to the left. The bit at `start` should be at index 0
                 output |= T::detruncate(bit) << (i - start);
                 i += 1;
@@ -77,10 +77,10 @@ where
                 let bit = (value >> (i - start)).truncate() & 1;
 
                 // Clear the bit
-                *byte &= !(1 << i % 8);
+                *byte &= !(1 << (i % 8));
                 // If the bit is set, set the bit in the byte
                 // Not if statement here since this is faster and smaller
-                *byte |= bit << i % 8;
+                *byte |= bit << (i % 8);
 
                 i += 1;
             }
@@ -130,7 +130,7 @@ where
                 // Move the target bit all the way to the right so we know where it is
                 let bit = (byte >> (7 - i % 8)) & 1;
                 // Shift the bit the proper amount to the left. The bit at `start` should be at index 0
-                output |= T::detruncate(bit) << (j as usize - start);
+                output |= T::detruncate(bit) << (j - start);
                 i += 1;
             }
         }
@@ -238,9 +238,9 @@ fn pivot_msb0(start: usize, end: usize, i: usize) -> usize {
     // The pivot is off by a half if we have an even number of bits.
     // But we've done a `* 2` previously now, so we can correct the half-error with a whole number.
     if diff > 0 {
-        j -= 1 * num_bits_even as isize;
+        j -= num_bits_even as isize;
     } else {
-        j += 1 * num_bits_even as isize;
+        j += num_bits_even as isize;
     }
 
     j as usize
@@ -368,7 +368,7 @@ mod tests {
 
     struct Bytes<'a>(&'a [u8]);
 
-    impl<'a> std::fmt::Binary for Bytes<'a> {
+    impl std::fmt::Binary for Bytes<'_> {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             write!(f, "[")?;
             for byte in self.0 {

@@ -146,7 +146,7 @@ where
     }
 }
 
-impl<'i, Interface, AddressType: Copy, Access> BufferOperation<'i, Interface, AddressType, Access>
+impl<Interface, AddressType: Copy, Access> BufferOperation<'_, Interface, AddressType, Access>
 where
     Interface: AsyncBufferInterface<AddressType = AddressType>,
     Access: WriteCapability,
@@ -182,7 +182,7 @@ where
     }
 }
 
-impl<'i, Interface, AddressType: Copy, Access> BufferOperation<'i, Interface, AddressType, Access>
+impl<Interface, AddressType: Copy, Access> BufferOperation<'_, Interface, AddressType, Access>
 where
     Interface: AsyncBufferInterface<AddressType = AddressType>,
     Access: ReadCapability,
@@ -257,8 +257,8 @@ where
     }
 }
 
-impl<'i, Interface, AddressType: Copy, Access> embedded_io_async::Write
-    for BufferOperation<'i, Interface, AddressType, Access>
+impl<Interface, AddressType: Copy, Access> embedded_io_async::Write
+    for BufferOperation<'_, Interface, AddressType, Access>
 where
     Interface: AsyncBufferInterface<AddressType = AddressType>,
     Interface::Error: embedded_io::Error,
@@ -273,8 +273,8 @@ where
     }
 }
 
-impl<'i, Interface, AddressType: Copy, Access> embedded_io_async::Read
-    for BufferOperation<'i, Interface, AddressType, Access>
+impl<Interface, AddressType: Copy, Access> embedded_io_async::Read
+    for BufferOperation<'_, Interface, AddressType, Access>
 where
     Interface: AsyncBufferInterface<AddressType = AddressType>,
     Interface::Error: embedded_io::Error,

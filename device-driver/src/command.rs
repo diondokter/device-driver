@@ -123,7 +123,7 @@ where
             out_fields.get_inner_buffer_mut(),
         )?;
 
-        Ok(out_fields.into())
+        Ok(out_fields)
     }
 }
 
@@ -151,12 +151,12 @@ where
             out_fields.get_inner_buffer_mut(),
         )?;
 
-        Ok(out_fields.into())
+        Ok(out_fields)
     }
 }
 
 /// Simple command async
-impl<'i, Interface, AddressType: Copy> CommandOperation<'i, Interface, AddressType, (), ()>
+impl<Interface, AddressType: Copy> CommandOperation<'_, Interface, AddressType, (), ()>
 where
     Interface: AsyncCommandInterface<AddressType = AddressType>,
 {
@@ -169,8 +169,8 @@ where
 }
 
 /// Only input async
-impl<'i, Interface, AddressType: Copy, InFieldSet: FieldSet>
-    CommandOperation<'i, Interface, AddressType, InFieldSet, ()>
+impl<Interface, AddressType: Copy, InFieldSet: FieldSet>
+    CommandOperation<'_, Interface, AddressType, InFieldSet, ()>
 where
     Interface: AsyncCommandInterface<AddressType = AddressType>,
 {
@@ -195,8 +195,8 @@ where
 }
 
 /// Only output async
-impl<'i, Interface, AddressType: Copy, OutFieldSet: FieldSet>
-    CommandOperation<'i, Interface, AddressType, (), OutFieldSet>
+impl<Interface, AddressType: Copy, OutFieldSet: FieldSet>
+    CommandOperation<'_, Interface, AddressType, (), OutFieldSet>
 where
     Interface: AsyncCommandInterface<AddressType = AddressType>,
 {
@@ -214,13 +214,13 @@ where
             )
             .await?;
 
-        Ok(out_fields.into())
+        Ok(out_fields)
     }
 }
 
 /// Input and output async
-impl<'i, Interface, AddressType: Copy, InFieldSet: FieldSet, OutFieldSet: FieldSet>
-    CommandOperation<'i, Interface, AddressType, InFieldSet, OutFieldSet>
+impl<Interface, AddressType: Copy, InFieldSet: FieldSet, OutFieldSet: FieldSet>
+    CommandOperation<'_, Interface, AddressType, InFieldSet, OutFieldSet>
 where
     Interface: AsyncCommandInterface<AddressType = AddressType>,
 {
@@ -244,6 +244,6 @@ where
             )
             .await?;
 
-        Ok(out_fields.into())
+        Ok(out_fields)
     }
 }
