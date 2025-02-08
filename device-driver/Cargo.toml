@@ -14,12 +14,12 @@ readme = "README.md"
 [dependencies]
 device-driver-macros = { version = "=1.0.2", path = "../macros", default-features = false, optional = true }
 
-bitvec = { version = "1.0.1", default-features = false }
 embedded-io = "0.6.1"
 embedded-io-async = "0.6.1"
 defmt = { version = "0.3", optional = true }
 
 [dev-dependencies]
+bitvec = { version = "1.0.1", default-features = false }
 rand = "0.9"
 
 [features]

@@ -28,29 +28,21 @@ pub fn generate_field_set(value: &FieldSet, defmt_feature: Option<&str>) -> Toke
 
     let size_bytes = Literal::u32_unsuffixed(size_bits.div_ceil(8));
     let size_bits = Literal::u32_unsuffixed(*size_bits);
-    let bit_order = match bit_order {
-        BitOrder::LSB0 => format_ident!("Lsb0"),
-        BitOrder::MSB0 => format_ident!("Msb0"),
-    };
 
-    let read_functions = fields.iter().map(get_read_function);
-    let write_functions = fields.iter().map(get_write_function);
+    let read_functions = fields
+        .iter()
+        .map(|field| get_read_function(field, *byte_order, *bit_order));
+    let write_functions = fields
+        .iter()
+        .map(|field| get_write_function(field, *byte_order, *bit_order));
 
     let from_impl = {
-        let be_reverse = match byte_order {
-            ByteOrder::LE => quote! {},
-            ByteOrder::BE => quote! {
-                val[..].reverse();
-            },
-        };
-
         quote! {
             #cfg_attr
             impl From<[u8; #size_bytes]> for #name {
-                fn from(mut val: [u8; #size_bytes]) -> Self {
-                    #be_reverse
+                fn from(bits: [u8; #size_bytes]) -> Self {
                     Self {
-                        bits: ::device_driver::bitvec::array::BitArray::new(val),
+                        bits,
                     }
                 }
             }
@@ -58,20 +50,11 @@ pub fn generate_field_set(value: &FieldSet, defmt_feature: Option<&str>) -> Toke
     };
 
     let into_impl = {
-        let be_reverse = match byte_order {
-            ByteOrder::LE => quote! {},
-            ByteOrder::BE => quote! {
-                val[..].reverse();
-            },
-        };
-
         quote! {
             #cfg_attr
             impl From<#name> for [u8; #size_bytes] {
                 fn from(val: #name) -> Self {
-                    let mut val = val.bits.into_inner();
-                    #be_reverse
-                    val
+                    val.bits
                 }
             }
         }
@@ -155,9 +138,8 @@ pub fn generate_field_set(value: &FieldSet, defmt_feature: Option<&str>) -> Toke
             quote! {
                 #[doc = #docs]
                 pub const fn #name() -> Self {
-                    use ::device_driver::bitvec::array::BitArray;
                     Self {
-                        bits: BitArray { data: [#(#reset_value),*], ..BitArray::ZERO },
+                        bits: [#(#reset_value),*],
                     }
                 }
 
@@ -170,18 +152,23 @@ pub fn generate_field_set(value: &FieldSet, defmt_feature: Option<&str>) -> Toke
         #cfg_attr
         #[derive(Copy, Clone, Eq, PartialEq)]
         pub struct #name {
-            /// The internal bits. Always LE format
-            bits: ::device_driver::bitvec::array::BitArray<[u8; #size_bytes], ::device_driver::bitvec::order::#bit_order>,
+            /// The internal bits
+            bits: [u8; #size_bytes],
         }
 
         #cfg_attr
         impl ::device_driver::FieldSet for #name {
-            type BUFFER = [u8; #size_bytes];
-
             const SIZE_BITS: u32 = #size_bits;
 
             fn new_with_zero() -> Self {
                 Self::new_zero()
+            }
+
+            fn get_inner_buffer(&self) -> &[u8] {
+                &self.bits
+            }
+            fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
+                &mut self.bits
             }
         }
 
@@ -189,17 +176,15 @@ pub fn generate_field_set(value: &FieldSet, defmt_feature: Option<&str>) -> Toke
         impl #name {
             /// Create a new instance, loaded with the reset value (if any)
             pub const fn new() -> Self {
-                use ::device_driver::bitvec::array::BitArray;
                 Self {
-                    bits: BitArray { data: [#(#reset_value),*], ..BitArray::ZERO },
+                    bits: [#(#reset_value),*],
                 }
             }
 
             /// Create a new instance, loaded with all zeroes
             pub const fn new_zero() -> Self {
-                use ::device_driver::bitvec::array::BitArray;
                 Self {
-                    bits: BitArray::ZERO,
+                    bits: [0; #size_bytes],
                 }
             }
 
@@ -219,17 +204,18 @@ pub fn generate_field_set(value: &FieldSet, defmt_feature: Option<&str>) -> Toke
         impl core::ops::BitAnd for #name {
             type Output = Self;
 
-            fn bitand(self, rhs: Self) -> Self::Output {
-                Self {
-                    bits: self.bits & rhs.bits
-                }
+            fn bitand(mut self, rhs: Self) -> Self::Output {
+                self &= rhs;
+                self
             }
         }
 
         #cfg_attr
         impl core::ops::BitAndAssign for #name {
             fn bitand_assign(&mut self, rhs: Self) {
-                self.bits &= rhs.bits;
+                for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
+                    *l &= *r;
+                }
             }
         }
 
@@ -237,17 +223,18 @@ pub fn generate_field_set(value: &FieldSet, defmt_feature: Option<&str>) -> Toke
         impl core::ops::BitOr for #name {
             type Output = Self;
 
-            fn bitor(self, rhs: Self) -> Self::Output {
-                Self {
-                    bits: self.bits | rhs.bits
-                }
+            fn bitor(mut self, rhs: Self) -> Self::Output {
+                self |= rhs;
+                self
             }
         }
 
         #cfg_attr
         impl core::ops::BitOrAssign for #name {
             fn bitor_assign(&mut self, rhs: Self) {
-                self.bits |= rhs.bits;
+                for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
+                    *l |= *r;
+                }
             }
         }
 
@@ -255,17 +242,18 @@ pub fn generate_field_set(value: &FieldSet, defmt_feature: Option<&str>) -> Toke
         impl core::ops::BitXor for #name {
             type Output = Self;
 
-            fn bitxor(self, rhs: Self) -> Self::Output {
-                Self {
-                    bits: self.bits ^ rhs.bits
-                }
+            fn bitxor(mut self, rhs: Self) -> Self::Output {
+                self ^= rhs;
+                self
             }
         }
 
         #cfg_attr
         impl core::ops::BitXorAssign for #name {
             fn bitxor_assign(&mut self, rhs: Self) {
-                self.bits ^= rhs.bits;
+                for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
+                    *l ^= *r;
+                }
             }
         }
 
@@ -273,16 +261,17 @@ pub fn generate_field_set(value: &FieldSet, defmt_feature: Option<&str>) -> Toke
         impl core::ops::Not for #name {
             type Output = Self;
 
-            fn not(self) -> Self::Output {
-                Self {
-                    bits: !self.bits
+            fn not(mut self) -> Self::Output {
+                for val in self.bits.iter_mut() {
+                    *val = !*val;
                 }
+                self
             }
         }
     }
 }
 
-fn get_read_function(field: &Field) -> TokenStream {
+fn get_read_function(field: &Field, byte_order: ByteOrder, bit_order: BitOrder) -> TokenStream {
     let Field {
         cfg_attr,
         doc_attr,
@@ -296,6 +285,21 @@ fn get_read_function(field: &Field) -> TokenStream {
     if !matches!(access, Access::RW | Access::RO) {
         return TokenStream::new();
     }
+
+    let load_function = match (byte_order, bit_order) {
+        (ByteOrder::LE, BitOrder::LSB0) => {
+            quote! { ::device_driver::ops::load_lsb0::<#base_type, ::device_driver::ops::LE> }
+        }
+        (ByteOrder::LE, BitOrder::MSB0) => {
+            quote! { ::device_driver::ops::load_msb0::<#base_type, ::device_driver::ops::LE> }
+        }
+        (ByteOrder::BE, BitOrder::LSB0) => {
+            quote! { ::device_driver::ops::load_lsb0::<#base_type, ::device_driver::ops::BE> }
+        }
+        (ByteOrder::BE, BitOrder::MSB0) => {
+            quote! { ::device_driver::ops::load_msb0::<#base_type, ::device_driver::ops::BE> }
+        }
+    };
 
     let super_token = get_super_token(conversion_method);
 
@@ -332,14 +336,13 @@ fn get_read_function(field: &Field) -> TokenStream {
         #doc_attr
         #cfg_attr
         pub fn #name(&self) -> #return_type {
-            use ::device_driver::bitvec::field::BitField;
-            let raw = self.bits[#start_bit..#end_bit].load_le::<#base_type>();
+            let raw = unsafe { #load_function(&self.bits, #start_bit, #end_bit) };
             #conversion
         }
     }
 }
 
-fn get_write_function(field: &Field) -> TokenStream {
+fn get_write_function(field: &Field, byte_order: ByteOrder, bit_order: BitOrder) -> TokenStream {
     let Field {
         cfg_attr,
         doc_attr,
@@ -353,6 +356,21 @@ fn get_write_function(field: &Field) -> TokenStream {
     if !matches!(access, Access::RW | Access::WO) {
         return TokenStream::new();
     }
+
+    let store_function = match (byte_order, bit_order) {
+        (ByteOrder::LE, BitOrder::LSB0) => {
+            quote! { ::device_driver::ops::store_lsb0::<#base_type, ::device_driver::ops::LE> }
+        }
+        (ByteOrder::LE, BitOrder::MSB0) => {
+            quote! { ::device_driver::ops::store_msb0::<#base_type, ::device_driver::ops::LE> }
+        }
+        (ByteOrder::BE, BitOrder::LSB0) => {
+            quote! { ::device_driver::ops::store_lsb0::<#base_type, ::device_driver::ops::BE> }
+        }
+        (ByteOrder::BE, BitOrder::MSB0) => {
+            quote! { ::device_driver::ops::store_msb0::<#base_type, ::device_driver::ops::BE> }
+        }
+    };
 
     let super_token = get_super_token(conversion_method);
 
@@ -382,9 +400,8 @@ fn get_write_function(field: &Field) -> TokenStream {
         #doc_attr
         #cfg_attr
         pub fn #function_name(&mut self, value: #super_token #input_type) {
-            use ::device_driver::bitvec::field::BitField;
             let raw = #conversion;
-            self.bits[#start_bit..#end_bit].store_le::<#base_type>(raw);
+            unsafe { #store_function(raw, #start_bit, #end_bit, &mut self.bits) };
         }
     }
 }
@@ -454,54 +471,47 @@ mod tests {
             #[cfg(windows)]
             #[derive(Copy, Clone, Eq, PartialEq)]
             pub struct MyRegister {
-                /// The internal bits. Always LE format
-                bits: ::device_driver::bitvec::array::BitArray<
-                    [u8; 3],
-                    ::device_driver::bitvec::order::Lsb0,
-                >,
+                /// The internal bits
+                bits: [u8; 3],
             }
             #[cfg(windows)]
             impl ::device_driver::FieldSet for MyRegister {
-                type BUFFER = [u8; 3];
                 const SIZE_BITS: u32 = 20;
                 fn new_with_zero() -> Self {
                     Self::new_zero()
+                }
+                fn get_inner_buffer(&self) -> &[u8] {
+                    &self.bits
+                }
+                fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
+                    &mut self.bits
                 }
             }
             #[cfg(windows)]
             impl MyRegister {
                 /// Create a new instance, loaded with the reset value (if any)
                 pub const fn new() -> Self {
-                    use ::device_driver::bitvec::array::BitArray;
-                    Self {
-                        bits: BitArray {
-                            data: [1u8, 2u8, 3u8],
-                            ..BitArray::ZERO
-                        },
-                    }
+                    Self { bits: [1u8, 2u8, 3u8] }
                 }
                 /// Create a new instance, loaded with all zeroes
                 pub const fn new_zero() -> Self {
-                    use ::device_driver::bitvec::array::BitArray;
-                    Self { bits: BitArray::ZERO }
+                    Self { bits: [0; 3] }
                 }
                 ///Create a new instance, loaded with the reset value of the `MyRef` ref
                 pub const fn new_as_my_ref() -> Self {
-                    use ::device_driver::bitvec::array::BitArray;
-                    Self {
-                        bits: BitArray {
-                            data: [0u8, 1u8, 2u8],
-                            ..BitArray::ZERO
-                        },
-                    }
+                    Self { bits: [0u8, 1u8, 2u8] }
                 }
                 ///Read the `my_field` field of the register.
                 ///
                 ///Hiya again!
                 #[cfg(linux)]
                 pub fn my_field(&self) -> super::FieldEnum {
-                    use ::device_driver::bitvec::field::BitField;
-                    let raw = self.bits[0..4].load_le::<u8>();
+                    let raw = unsafe {
+                        ::device_driver::ops::load_lsb0::<
+                            u8,
+                            ::device_driver::ops::BE,
+                        >(&self.bits, 0, 4)
+                    };
                     unsafe { raw.try_into().unwrap_unchecked() }
                 }
                 ///Write the `my_field` field of the register.
@@ -509,33 +519,36 @@ mod tests {
                 ///Hiya again!
                 #[cfg(linux)]
                 pub fn set_my_field(&mut self, value: super::FieldEnum) {
-                    use ::device_driver::bitvec::field::BitField;
                     let raw = value.into();
-                    self.bits[0..4].store_le::<u8>(raw);
+                    unsafe {
+                        ::device_driver::ops::store_lsb0::<
+                            u8,
+                            ::device_driver::ops::BE,
+                        >(raw, 0, 4, &mut self.bits)
+                    };
                 }
                 ///Write the `my_field2` field of the register.
                 ///
                 pub fn set_my_field2(&mut self, value: i16) {
-                    use ::device_driver::bitvec::field::BitField;
                     let raw = value;
-                    self.bits[4..16].store_le::<i16>(raw);
+                    unsafe {
+                        ::device_driver::ops::store_lsb0::<
+                            i16,
+                            ::device_driver::ops::BE,
+                        >(raw, 4, 16, &mut self.bits)
+                    };
                 }
             }
             #[cfg(windows)]
             impl From<[u8; 3]> for MyRegister {
-                fn from(mut val: [u8; 3]) -> Self {
-                    val[..].reverse();
-                    Self {
-                        bits: ::device_driver::bitvec::array::BitArray::new(val),
-                    }
+                fn from(bits: [u8; 3]) -> Self {
+                    Self { bits }
                 }
             }
             #[cfg(windows)]
             impl From<MyRegister> for [u8; 3] {
                 fn from(val: MyRegister) -> Self {
-                    let mut val = val.bits.into_inner();
-                    val[..].reverse();
-                    val
+                    val.bits
                 }
             }
             #[cfg(windows)]
@@ -562,47 +575,59 @@ mod tests {
             #[cfg(windows)]
             impl core::ops::BitAnd for MyRegister {
                 type Output = Self;
-                fn bitand(self, rhs: Self) -> Self::Output {
-                    Self { bits: self.bits & rhs.bits }
+                fn bitand(mut self, rhs: Self) -> Self::Output {
+                    self &= rhs;
+                    self
                 }
             }
             #[cfg(windows)]
             impl core::ops::BitAndAssign for MyRegister {
                 fn bitand_assign(&mut self, rhs: Self) {
-                    self.bits &= rhs.bits;
+                    for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
+                        *l &= *r;
+                    }
                 }
             }
             #[cfg(windows)]
             impl core::ops::BitOr for MyRegister {
                 type Output = Self;
-                fn bitor(self, rhs: Self) -> Self::Output {
-                    Self { bits: self.bits | rhs.bits }
+                fn bitor(mut self, rhs: Self) -> Self::Output {
+                    self |= rhs;
+                    self
                 }
             }
             #[cfg(windows)]
             impl core::ops::BitOrAssign for MyRegister {
                 fn bitor_assign(&mut self, rhs: Self) {
-                    self.bits |= rhs.bits;
+                    for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
+                        *l |= *r;
+                    }
                 }
             }
             #[cfg(windows)]
             impl core::ops::BitXor for MyRegister {
                 type Output = Self;
-                fn bitxor(self, rhs: Self) -> Self::Output {
-                    Self { bits: self.bits ^ rhs.bits }
+                fn bitxor(mut self, rhs: Self) -> Self::Output {
+                    self ^= rhs;
+                    self
                 }
             }
             #[cfg(windows)]
             impl core::ops::BitXorAssign for MyRegister {
                 fn bitxor_assign(&mut self, rhs: Self) {
-                    self.bits ^= rhs.bits;
+                    for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
+                        *l ^= *r;
+                    }
                 }
             }
             #[cfg(windows)]
             impl core::ops::Not for MyRegister {
                 type Output = Self;
-                fn not(self) -> Self::Output {
-                    Self { bits: !self.bits }
+                fn not(mut self) -> Self::Output {
+                    for val in self.bits.iter_mut() {
+                        *val = !*val;
+                    }
+                    self
                 }
             }
             "}

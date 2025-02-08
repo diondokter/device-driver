@@ -98,7 +98,7 @@ where
         self.interface.dispatch_command(
             self.address,
             InFieldSet::SIZE_BITS,
-            InFieldSet::BUFFER::from(in_fields).as_ref(),
+            in_fields.get_inner_buffer(),
             0,
             &mut [],
         )
@@ -113,17 +113,17 @@ where
 {
     /// Dispatch the command to the device
     pub fn dispatch(self) -> Result<OutFieldSet, Interface::Error> {
-        let mut buffer = OutFieldSet::BUFFER::from(OutFieldSet::new_with_zero());
+        let mut out_fields = OutFieldSet::new_with_zero();
 
         self.interface.dispatch_command(
             self.address,
             0,
             &[],
             OutFieldSet::SIZE_BITS,
-            buffer.as_mut(),
+            out_fields.get_inner_buffer_mut(),
         )?;
 
-        Ok(buffer.into())
+        Ok(out_fields.into())
     }
 }
 
@@ -141,17 +141,17 @@ where
         let mut in_fields = InFieldSet::new_with_zero();
         f(&mut in_fields);
 
-        let mut buffer = OutFieldSet::BUFFER::from(OutFieldSet::new_with_zero());
+        let mut out_fields = OutFieldSet::new_with_zero();
 
         self.interface.dispatch_command(
             self.address,
             InFieldSet::SIZE_BITS,
-            InFieldSet::BUFFER::from(in_fields).as_ref(),
+            in_fields.get_inner_buffer(),
             OutFieldSet::SIZE_BITS,
-            buffer.as_mut(),
+            out_fields.get_inner_buffer_mut(),
         )?;
 
-        Ok(buffer.into())
+        Ok(out_fields.into())
     }
 }
 
@@ -186,7 +186,7 @@ where
             .dispatch_command(
                 self.address,
                 InFieldSet::SIZE_BITS,
-                InFieldSet::BUFFER::from(in_fields).as_ref(),
+                in_fields.get_inner_buffer(),
                 0,
                 &mut [],
             )
@@ -202,7 +202,7 @@ where
 {
     /// Dispatch the command to the device
     pub async fn dispatch_async(self) -> Result<OutFieldSet, Interface::Error> {
-        let mut buffer = OutFieldSet::BUFFER::from(OutFieldSet::new_with_zero());
+        let mut out_fields = OutFieldSet::new_with_zero();
 
         self.interface
             .dispatch_command(
@@ -210,11 +210,11 @@ where
                 0,
                 &[],
                 OutFieldSet::SIZE_BITS,
-                buffer.as_mut(),
+                out_fields.get_inner_buffer_mut(),
             )
             .await?;
 
-        Ok(buffer.into())
+        Ok(out_fields.into())
     }
 }
 
@@ -232,18 +232,18 @@ where
         let mut in_fields = InFieldSet::new_with_zero();
         f(&mut in_fields);
 
-        let mut buffer = OutFieldSet::BUFFER::from(OutFieldSet::new_with_zero());
+        let mut out_fields = OutFieldSet::new_with_zero();
 
         self.interface
             .dispatch_command(
                 self.address,
                 InFieldSet::SIZE_BITS,
-                InFieldSet::BUFFER::from(in_fields).as_ref(),
+                in_fields.get_inner_buffer(),
                 OutFieldSet::SIZE_BITS,
-                buffer.as_mut(),
+                out_fields.get_inner_buffer_mut(),
             )
             .await?;
 
-        Ok(buffer.into())
+        Ok(out_fields.into())
     }
 }

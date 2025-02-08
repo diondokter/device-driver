@@ -16,8 +16,7 @@ use super::{recurse_objects, recurse_objects_mut, search_object};
 /// Also converts integer values to the array representation using the correct bit and byte order.
 ///
 /// For the array representation, the rule is that the input must have the same spec as the bit and byte order.
-/// The reset values are left with the specified bit order, but always in the little endian byte order to match
-/// the behaviour of bitvec.
+/// The reset values are left with the specified bit order and byte order.
 ///
 /// This function assumes all register have a valid byte order, and so depends on [super::byte_order_specified::run_pass]
 /// having been run.
@@ -153,6 +152,11 @@ fn convert_reset_value(
                 final_array.iter_mut().for_each(|b| *b = b.reverse_bits());
             }
 
+            // Convert to big endian if required. Bitvec's output is always little endian
+            if target_byte_order == ByteOrder::BE {
+                final_array.reverse();
+            }
+
             Ok(ResetValue::Array(final_array))
         }
         ResetValue::Array(mut array) => {
@@ -163,7 +167,7 @@ fn convert_reset_value(
                 array.len(),
             );
 
-            // Convert to little endian since that's the output we need
+            // Convert to little endian to do the check since that's what bitvec needs
             if target_byte_order == ByteOrder::BE {
                 array.reverse();
             }
@@ -187,6 +191,11 @@ fn convert_reset_value(
                         size_bits,
                     );
                 }
+            }
+
+            // Convert back to big endian
+            if target_byte_order == ByteOrder::BE {
+                array.reverse();
             }
 
             Ok(ResetValue::Array(array))
@@ -299,7 +308,7 @@ mod tests {
                 name: "Reg".into(),
                 size_bits: 11,
                 byte_order: Some(ByteOrder::BE),
-                reset_value: Some(ResetValue::Array(vec![0x23, 0x04])),
+                reset_value: Some(ResetValue::Array(vec![0x04, 0x23])),
                 ..Default::default()
             })],
         };
@@ -327,7 +336,7 @@ mod tests {
                 size_bits: 11,
                 byte_order: Some(ByteOrder::BE),
                 bit_order: BitOrder::MSB0,
-                reset_value: Some(ResetValue::Array(vec![0xC4, 0x20])),
+                reset_value: Some(ResetValue::Array(vec![0x20, 0xC4])),
                 ..Default::default()
             })],
         };

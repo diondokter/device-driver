@@ -5,7 +5,6 @@
 
 use core::fmt::{Debug, Display};
 
-pub use bitvec;
 pub use embedded_io;
 pub use embedded_io_async;
 
@@ -24,16 +23,14 @@ pub use device_driver_macros::*;
 
 #[doc(hidden)]
 pub trait FieldSet {
-    /// The inner buffer type
-    type BUFFER: From<Self> + Into<Self> + AsMut<[u8]> + AsRef<[u8]>
-    where
-        Self: Sized;
-
     /// The size of the field set in number of bits
     const SIZE_BITS: u32;
 
     /// Create a new instance, loaded all 0's
     fn new_with_zero() -> Self;
+
+    fn get_inner_buffer(&self) -> &[u8];
+    fn get_inner_buffer_mut(&mut self) -> &mut [u8];
 }
 
 /// The error returned by the generated [TryFrom]s.

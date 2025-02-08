@@ -9,12 +9,12 @@ use core::ops::{BitOrAssign, Shl, Shr};
 #[inline(always)]
 pub unsafe fn load_lsb0<T, ByteO: ByteOrder>(data: &[u8], start: usize, end: usize) -> T
 where
-    T: Default + From<u8> + Shl<usize, Output = T> + BitOrAssign + DedupCast,
+    T: Default + Shl<usize, Output = T> + BitOrAssign + DedupCast + TruncateToU8,
 {
     #[inline(never)]
     unsafe fn inner<T, ByteO: ByteOrder>(data: &[u8], start: usize, end: usize) -> T
     where
-        T: Default + From<u8> + Shl<usize, Output = T> + BitOrAssign,
+        T: Default + Shl<usize, Output = T> + BitOrAssign + TruncateToU8,
     {
         // Start with 0
         let mut output = T::default();
@@ -27,14 +27,14 @@ where
             if (i % 8 == 0) & (i + 8 <= end) {
                 // We are byte aligned and have a full byte of space left
                 // Do a whole byte in one go for extra performance
-                output |= T::from(byte) << (i - start);
+                output |= T::detruncate(byte) << (i - start);
                 i += 8;
             } else {
                 // Go bit by bit
                 // Move the target bit all the way to the right so we know where it is
                 let bit = (byte >> i % 8) & 1;
                 // Shift the bit the proper amount to the left. The bit at `start` should be at index 0
-                output |= T::from(bit) << (i - start);
+                output |= T::detruncate(bit) << (i - start);
                 i += 1;
             }
         }
@@ -100,12 +100,12 @@ where
 #[inline(always)]
 pub unsafe fn load_msb0<T, ByteO: ByteOrder>(data: &[u8], start: usize, end: usize) -> T
 where
-    T: Default + From<u8> + Shl<usize, Output = T> + BitOrAssign + DedupCast,
+    T: Default + Shl<usize, Output = T> + BitOrAssign + DedupCast + TruncateToU8,
 {
     #[inline(never)]
     unsafe fn inner<T, ByteO: ByteOrder>(data: &[u8], start: usize, end: usize) -> T
     where
-        T: Default + From<u8> + Shl<usize, Output = T> + BitOrAssign,
+        T: Default + Shl<usize, Output = T> + BitOrAssign + TruncateToU8,
     {
         // Start with 0
         let mut output = T::default();
@@ -119,7 +119,7 @@ where
             if (i % 8 == 0) & (i + 8 <= end) {
                 // We are byte aligned and have a full byte of space left
                 // Do a whole byte in one go for extra performance
-                output |= T::from(byte) << (i - start);
+                output |= T::detruncate(byte) << (i - start);
                 i += 8;
             } else {
                 // Move bit by bit
@@ -130,7 +130,7 @@ where
                 // Move the target bit all the way to the right so we know where it is
                 let bit = (byte >> (7 - i % 8)) & 1;
                 // Shift the bit the proper amount to the left. The bit at `start` should be at index 0
-                output |= T::from(bit) << (j as usize - start);
+                output |= T::detruncate(bit) << (j as usize - start);
                 i += 1;
             }
         }
@@ -290,6 +290,7 @@ impl ByteOrder for BE {
 
 pub trait TruncateToU8 {
     fn truncate(self) -> u8;
+    fn detruncate(val: u8) -> Self;
 }
 
 macro_rules! impl_truncate_to_u8 {
@@ -298,6 +299,9 @@ macro_rules! impl_truncate_to_u8 {
             impl TruncateToU8 for $target {
                 fn truncate(self) -> u8 {
                     self as u8
+                }
+                fn detruncate(val: u8) -> Self {
+                    val as Self
                 }
             }
         )*
