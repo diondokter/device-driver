@@ -1,6 +1,6 @@
 [package]
 name = "device-driver"
-version = "1.0.2"
+version = "1.0.3"
 authors = ["Dion Dokter <diondokter@gmail.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -12,7 +12,7 @@ description = "A toolkit to write better device drivers, faster"
 readme = "README.md"
 
 [dependencies]
-device-driver-macros = { version = "=1.0.2", path = "../macros", default-features = false, optional = true }
+device-driver-macros = { version = "=1.0.3", path = "../macros", default-features = false, optional = true }
 
 embedded-io = "0.6.1"
 embedded-io-async = "0.6.1"

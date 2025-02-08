@@ -2,6 +2,8 @@
 
 ### Unreleased
 
+### 1.0.3 (08-02-25)
+
 - *(Technically breaking)*: removed the `pub use bitvec;` in the root of the crate.
   - It was an oversight to have that still there without `#[doc(hidden)]`
   - There was no reason for anyone to use it
