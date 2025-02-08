@@ -94,9 +94,11 @@ where
         let mut register = (self.register_new_with_reset)();
         let returned = f(&mut register);
 
-        let buffer = Register::BUFFER::from(register);
-        self.interface
-            .write_register(self.address, Register::SIZE_BITS, buffer.as_ref())?;
+        self.interface.write_register(
+            self.address,
+            Register::SIZE_BITS,
+            register.get_inner_buffer(),
+        )?;
         Ok(returned)
     }
 
@@ -112,7 +114,7 @@ where
         self.interface.write_register(
             self.address,
             Register::SIZE_BITS,
-            Register::BUFFER::from(register).as_mut(),
+            register.get_inner_buffer_mut(),
         )?;
         Ok(returned)
     }
@@ -126,11 +128,14 @@ where
 {
     /// Read the register from the device
     pub fn read(&mut self) -> Result<Register, Interface::Error> {
-        let mut buffer = Register::BUFFER::from(Register::new_with_zero());
+        let mut register = Register::new_with_zero();
 
-        self.interface
-            .read_register(self.address, Register::SIZE_BITS, buffer.as_mut())?;
-        Ok(buffer.into())
+        self.interface.read_register(
+            self.address,
+            Register::SIZE_BITS,
+            register.get_inner_buffer_mut(),
+        )?;
+        Ok(register)
     }
 }
 
@@ -150,14 +155,14 @@ where
         self.interface.write_register(
             self.address,
             Register::SIZE_BITS,
-            Register::BUFFER::from(register).as_mut(),
+            register.get_inner_buffer_mut(),
         )?;
         Ok(returned)
     }
 }
 
-impl<'i, Interface, AddressType: Copy, Register: FieldSet, Access>
-    RegisterOperation<'i, Interface, AddressType, Register, Access>
+impl<Interface, AddressType: Copy, Register: FieldSet, Access>
+    RegisterOperation<'_, Interface, AddressType, Register, Access>
 where
     Interface: AsyncRegisterInterface<AddressType = AddressType>,
     Access: WriteCapability,
@@ -173,9 +178,12 @@ where
         let mut register = (self.register_new_with_reset)();
         let returned = f(&mut register);
 
-        let buffer = Register::BUFFER::from(register);
         self.interface
-            .write_register(self.address, Register::SIZE_BITS, buffer.as_ref())
+            .write_register(
+                self.address,
+                Register::SIZE_BITS,
+                register.get_inner_buffer(),
+            )
             .await?;
         Ok(returned)
     }
@@ -193,32 +201,36 @@ where
             .write_register(
                 self.address,
                 Register::SIZE_BITS,
-                Register::BUFFER::from(register).as_mut(),
+                register.get_inner_buffer_mut(),
             )
             .await?;
         Ok(returned)
     }
 }
 
-impl<'i, Interface, AddressType: Copy, Register: FieldSet, Access>
-    RegisterOperation<'i, Interface, AddressType, Register, Access>
+impl<Interface, AddressType: Copy, Register: FieldSet, Access>
+    RegisterOperation<'_, Interface, AddressType, Register, Access>
 where
     Interface: AsyncRegisterInterface<AddressType = AddressType>,
     Access: ReadCapability,
 {
     /// Read the register from the device
     pub async fn read_async(&mut self) -> Result<Register, Interface::Error> {
-        let mut buffer = Register::BUFFER::from(Register::new_with_zero());
+        let mut register = Register::new_with_zero();
 
         self.interface
-            .read_register(self.address, Register::SIZE_BITS, buffer.as_mut())
+            .read_register(
+                self.address,
+                Register::SIZE_BITS,
+                register.get_inner_buffer_mut(),
+            )
             .await?;
-        Ok(buffer.into())
+        Ok(register)
     }
 }
 
-impl<'i, Interface, AddressType: Copy, Register: FieldSet, Access>
-    RegisterOperation<'i, Interface, AddressType, Register, Access>
+impl<Interface, AddressType: Copy, Register: FieldSet, Access>
+    RegisterOperation<'_, Interface, AddressType, Register, Access>
 where
     Interface: AsyncRegisterInterface<AddressType = AddressType>,
     Access: ReadCapability + WriteCapability,
@@ -237,7 +249,7 @@ where
             .write_register(
                 self.address,
                 Register::SIZE_BITS,
-                Register::BUFFER::from(register).as_mut(),
+                register.get_inner_buffer(),
             )
             .await?;
         Ok(returned)

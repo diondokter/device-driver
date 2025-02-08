@@ -2,6 +2,15 @@
 
 ### Unreleased
 
+- *(Technically breaking)*: removed the `pub use bitvec;` in the root of the crate.
+  - It was an oversight to have that still there without `#[doc(hidden)]`
+  - There was no reason for anyone to use it
+  - Nothing publicly on github is using it
+  - So we're doing 'scream testing'. If this impacts you, message me! I'll yank the release immediately
+- Replaced bitvec with custom logic
+  - Bitvec doesn't compile for Xtensa arch due to it being unmaintained
+  - Custom logic is smaller and saves program size
+
 ### 1.0.2 (03-01-25)
 
 - Add more docs to generated code so it passes the `missing_docs` lint

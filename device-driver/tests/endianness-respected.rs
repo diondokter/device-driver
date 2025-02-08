@@ -6,7 +6,6 @@ impl RegisterInterface for DeviceInterface {
     type Error = ();
     type AddressType = u8;
 
-    #[track_caller]
     fn write_register(
         &mut self,
         _address: Self::AddressType,
