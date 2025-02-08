@@ -277,12 +277,14 @@ pub trait ByteOrder {
 }
 
 impl ByteOrder for LE {
+    #[inline]
     fn get_byte_index(_data_len: usize, bit_index: usize) -> usize {
         bit_index / 8
     }
 }
 
 impl ByteOrder for BE {
+    #[inline]
     fn get_byte_index(data_len: usize, bit_index: usize) -> usize {
         data_len - (bit_index / 8) - 1
     }
