@@ -6,10 +6,12 @@ use core::ops::{BitOrAssign, Shl, Shr};
 /// ## Safety:
 ///
 /// `start` and `end` must lie in the range `0..data.len()*8`.
+#[inline(always)]
 pub unsafe fn load_lsb0<T, ByteO: ByteOrder>(data: &[u8], start: usize, end: usize) -> T
 where
     T: Default + From<u8> + Shl<usize, Output = T> + BitOrAssign + DedupCast,
 {
+    #[inline(never)]
     unsafe fn inner<T, ByteO: ByteOrder>(data: &[u8], start: usize, end: usize) -> T
     where
         T: Default + From<u8> + Shl<usize, Output = T> + BitOrAssign,
@@ -49,10 +51,12 @@ where
 /// ## Safety:
 ///
 /// `start` and `end` must lie in the range `0..data.len()*8`.
+#[inline(always)]
 pub unsafe fn store_lsb0<T, ByteO: ByteOrder>(value: T, start: usize, end: usize, data: &mut [u8])
 where
     T: Copy + TruncateToU8 + Shr<usize, Output = T> + DedupCast,
 {
+    #[inline(never)]
     unsafe fn inner<T, ByteO: ByteOrder>(value: T, start: usize, end: usize, data: &mut [u8])
     where
         T: Copy + TruncateToU8 + Shr<usize, Output = T>,
@@ -93,10 +97,12 @@ where
 /// ## Safety:
 ///
 /// `start` and `end` must lie in the range `0..data.len()*8`.
+#[inline(always)]
 pub unsafe fn load_msb0<T, ByteO: ByteOrder>(data: &[u8], start: usize, end: usize) -> T
 where
     T: Default + From<u8> + Shl<usize, Output = T> + BitOrAssign + DedupCast,
 {
+    #[inline(never)]
     unsafe fn inner<T, ByteO: ByteOrder>(data: &[u8], start: usize, end: usize) -> T
     where
         T: Default + From<u8> + Shl<usize, Output = T> + BitOrAssign,
@@ -118,54 +124,7 @@ where
             } else {
                 // Move bit by bit
 
-                // We are doing msb0, so the indexing is reversed. However, we still need to store
-                // the data in normal order. So we need to reverse the bits ourselves too.
-                // We can't reverse the whole byte because then the bits end up in the wrong places.
-                // So we reverse around a pivot and the pivot is in the middle of the bits that need
-                // to be reversed.
-                let (num_bits, pivot) = if i / 8 == start / 8 {
-                    // We are in the start byte
-
-                    // The number of bits we're dealing with is the difference between the start and the
-                    // first byte-aligned index or the end, whichever comes first
-                    let num_bits = (start + 1).next_multiple_of(8).min(end) - start;
-                    let pivot = start + num_bits / 2;
-
-                    (num_bits, pivot)
-                } else {
-                    // We are in the end byte
-
-                    // The number of bits we're dealing with is the difference between the last aligned
-                    // bit index and the end
-                    let num_bits = end - (end - 8).next_multiple_of(8);
-                    // Calculate the pivot and force it to round down so any error is in the same direction
-                    // as in the start byte case
-                    let pivot = end - ((num_bits + 1) / 2);
-
-                    (num_bits, pivot)
-                };
-                let num_bits_even = num_bits % 2 == 0;
-
-                // Calculate how far away our current bit is from the pivot.
-                let mut diff = pivot as isize - i as isize;
-
-                if diff <= 0 {
-                    // If we have an even number of bits, we should not have a diff of 0
-                    diff -= num_bits_even as isize;
-                }
-
-                // To do the reversing, we need to move the index towards the pivot
-                // and then keep going the same distance again
-                let mut j = i as isize + diff * 2;
-
-                // Due to integer math, the pivot may not be exactly in the middle, so we need to correct for that.
-                // The pivot is off by a half if we have an even number of bits.
-                // But we've done a `* 2` previously now, so we can correct the half-error with a whole number.
-                if diff > 0 {
-                    j -= 1 * num_bits_even as isize;
-                } else {
-                    j += 1 * num_bits_even as isize;
-                }
+                let j = pivot_msb0(start, end, i);
 
                 // Get the bit MSB0 (so reversed)
                 // Move the target bit all the way to the right so we know where it is
@@ -180,6 +139,111 @@ where
     }
 
     T::cast_back(inner::<T::DedupType, ByteO>(data, start, end))
+}
+
+/// Store an integer into byte slice located at the `start`..`end` range.
+/// The integer is stored with the [LE] or [BE] byte order generic param and using msb0 bit order.
+/// This is more expensive than the [store_lsb0] function.
+///
+/// ## Safety:
+///
+/// `start` and `end` must lie in the range `0..data.len()*8`.
+#[inline(always)]
+pub unsafe fn store_msb0<T, ByteO: ByteOrder>(value: T, start: usize, end: usize, data: &mut [u8])
+where
+    T: Copy + TruncateToU8 + Shr<usize, Output = T> + DedupCast,
+{
+    #[inline(never)]
+    unsafe fn inner<T, ByteO: ByteOrder>(value: T, start: usize, end: usize, data: &mut [u8])
+    where
+        T: Copy + TruncateToU8 + Shr<usize, Output = T>,
+    {
+        // Iterate over the bits, while retaining index control
+        let mut i = start;
+        while i < end {
+            // Get the proper byte we should be looking at
+            let byte = ByteO::get_byte_from_index_mut(data, i);
+
+            if (i % 8 == 0) & (i + 8 <= end) {
+                // We are byte aligned and have a full byte of space left
+                // Do a whole byte in one go for extra performance
+                *byte = (value >> (i - start)).truncate();
+                i += 8;
+            } else {
+                // Move bit by bit
+
+                let j = pivot_msb0(start, end, i);
+
+                // Get the bit MSB0 (so reversed)
+                // Move the target bit all the way to the right so we know where it is
+                let bit = (value >> (j - start)).truncate() & 1;
+
+                // Clear the bit
+                *byte &= !(1 << (7 - i % 8));
+                // If the bit is set, set the bit in the byte
+                // Not if statement here since this is faster and smaller
+                *byte |= bit << (7 - i % 8);
+
+                i += 1;
+            }
+        }
+    }
+
+    inner::<T::DedupType, ByteO>(value.cast(), start, end, data)
+}
+
+#[inline]
+fn pivot_msb0(start: usize, end: usize, i: usize) -> usize {
+    // We are doing msb0, so the indexing is reversed. However, we still need to store
+    // the data in normal order. So we need to reverse the bits ourselves too.
+    // We can't reverse the whole byte because then the bits end up in the wrong places.
+    // So we reverse around a pivot and the pivot is in the middle of the bits that need
+    // to be reversed.
+    let (num_bits, pivot) = if i / 8 == start / 8 {
+        // We are in the start byte
+
+        // The number of bits we're dealing with is the difference between the start and the
+        // first byte-aligned index or the end, whichever comes first
+        let num_bits = (start + 1).next_multiple_of(8).min(end) - start;
+        let pivot = start + num_bits / 2;
+
+        (num_bits, pivot)
+    } else {
+        // We are in the end byte
+
+        // The number of bits we're dealing with is the difference between the last aligned
+        // bit index and the end
+        let num_bits = end - (end - 8).next_multiple_of(8);
+        // Calculate the pivot and force it to round down so any error is in the same direction
+        // as in the start byte case
+        let pivot = end - ((num_bits + 1) / 2);
+
+        (num_bits, pivot)
+    };
+    let num_bits_even = num_bits % 2 == 0;
+
+    // Calculate how far away our current bit is from the pivot.
+    let mut diff = pivot as isize - i as isize;
+
+    if diff <= 0 {
+        // If we have an even number of bits, we should not have a diff of 0
+        diff -= num_bits_even as isize;
+    }
+
+    // To do the reversing, we need to move the index towards the pivot
+    // and then keep going the same distance again
+    let mut j = i as isize + diff * 2;
+
+    // Due to integer math, the pivot may not be exactly in the middle, so we need to correct for that.
+    // The pivot is off by a half if we have an even number of bits.
+    // But we've done a `* 2` previously now, so we can correct the half-error with a whole number.
+    if diff > 0 {
+        j -= 1 * num_bits_even as isize;
+    } else {
+        j += 1 * num_bits_even as isize;
+    }
+
+    j as usize
 }
 
 /// Little endian byte order
@@ -362,7 +426,7 @@ mod tests {
         use bitvec::{field::BitField, view::BitView};
 
         for _ in 0..10_000 {
-            let mut data = vec![0u8; rand::random_range(1..=1)];
+            let mut data = vec![0u8; rand::random_range(1..=16)];
             rand::fill(&mut data[..]);
             let mut reversed_data = data.clone();
             reversed_data.reverse();
@@ -389,9 +453,27 @@ mod tests {
             unsafe { store_lsb0::<_, BE>(input_data, start, end, &mut test_data) };
             let mut check_data = reversed_data.clone();
             check_data.view_bits_mut::<bitvec::order::Lsb0>()[start..end].store_le(input_data);
+            check_data.reverse();
             println!("BE Lsb0: {:#010b} *", Bytes(&check_data));
             println!("BE Lsb0: {:#010b}", Bytes(&test_data));
             assert_eq!(test_data, check_data);
+
+            let mut test_data = data.clone();
+            unsafe { store_msb0::<_, LE>(input_data, start, end, &mut test_data) };
+            let mut check_data = data.clone();
+            check_data.view_bits_mut::<bitvec::order::Msb0>()[start..end].store_le(input_data);
+            println!("LE Msb0: {:#010b} *", Bytes(&check_data));
+            println!("LE Msb0: {:#010b}", Bytes(&test_data));
+
+            let mut test_data1 = data.clone();
+            unsafe { store_msb0::<_, BE>(input_data, start, end, &mut test_data1) };
+            let mut check_data1 = reversed_data.clone();
+            check_data1.view_bits_mut::<bitvec::order::Msb0>()[start..end].store_le(input_data);
+            check_data1.reverse();
+            println!("BE Msb0: {:#010b} *", Bytes(&check_data1));
+            println!("BE Msb0: {:#010b}", Bytes(&test_data1));
+            assert_eq!(test_data, check_data);
+            assert_eq!(test_data1, check_data1);
         }
     }
 }
