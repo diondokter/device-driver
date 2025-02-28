@@ -1,7 +1,6 @@
 use std::ops::{Add, Not};
 
 use anyhow::ensure;
-use convert_case::Casing;
 use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
 use syn::Ident;
@@ -14,9 +13,15 @@ use crate::{
 use super::passes::{find_min_max_addresses, recurse_objects};
 
 pub fn transform(device: mir::Device, driver_name: &str) -> anyhow::Result<lir::Device> {
+    let lenient_pascal_converter = convert_case::Converter::new()
+        .set_boundaries(&convert_case::Boundary::list_from("aA:AAa:_:-: :a1:A1"))
+        .set_pattern(convert_case::Pattern::Capital);
+    let converted_driver_name = lenient_pascal_converter.convert(driver_name);
+
     ensure!(
-        driver_name.is_case(convert_case::Case::Pascal),
-        "The device name must be given in PascalCase"
+        driver_name == converted_driver_name,
+        "The device name must be given in PascalCase, e.g. \"{}\"",
+        converted_driver_name
     );
 
     let mir_enums = collect_enums(&device)?;
