@@ -2,6 +2,9 @@
 
 ### Unreleased
 
+- The driver name input is now a bit less strict about what 'PascalCase' means
+  - It now also gives a value based on the input that would be accepted
+
 ### 1.0.3 (08-02-25)
 
 - *(Technically breaking)*: removed the `pub use bitvec;` in the root of the crate.
