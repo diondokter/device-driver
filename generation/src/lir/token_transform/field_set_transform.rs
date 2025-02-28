@@ -1,7 +1,7 @@
 use convert_case::Casing;
 use itertools::Itertools;
 use proc_macro2::{Literal, TokenStream};
-use quote::{format_ident, quote, ToTokens};
+use quote::{ToTokens, format_ident, quote};
 
 use crate::{
     lir::{Field, FieldConversionMethod, FieldSet},

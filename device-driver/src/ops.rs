@@ -22,7 +22,7 @@ where
         // Go through start..end, but in a while so we have more control over the index
         let mut i = start;
         while i < end {
-            let byte = ByteO::get_byte_from_index(data, i);
+            let byte = unsafe { ByteO::get_byte_from_index(data, i) };
 
             if (i % 8 == 0) & (i + 8 <= end) {
                 // We are byte aligned and have a full byte of space left
@@ -42,7 +42,7 @@ where
         output
     }
 
-    T::cast_back(inner::<T::DedupType, ByteO>(data, start, end))
+    T::cast_back(unsafe { inner::<T::DedupType, ByteO>(data, start, end) })
 }
 
 /// Store an integer into a byte slice located at the `start`..`end` range.
@@ -64,7 +64,7 @@ where
         // Go through start..end, but in a while so we have more control over the index
         let mut i = start;
         while i < end {
-            let byte = ByteO::get_byte_from_index_mut(data, i);
+            let byte = unsafe { ByteO::get_byte_from_index_mut(data, i) };
 
             if (i % 8 == 0) & (i + 8 <= end) {
                 // We are byte aligned and have a full byte of space left
@@ -87,7 +87,7 @@ where
         }
     }
 
-    inner::<T::DedupType, ByteO>(value.cast(), start, end, data)
+    unsafe { inner::<T::DedupType, ByteO>(value.cast(), start, end, data) }
 }
 
 /// Load an integer from a byte slice located at the `start`..`end` range.
@@ -114,7 +114,7 @@ where
         let mut i = start;
         while i < end {
             // Get the proper byte we should be looking at
-            let byte = ByteO::get_byte_from_index(data, i);
+            let byte = unsafe { ByteO::get_byte_from_index(data, i) };
 
             if (i % 8 == 0) & (i + 8 <= end) {
                 // We are byte aligned and have a full byte of space left
@@ -138,7 +138,7 @@ where
         output
     }
 
-    T::cast_back(inner::<T::DedupType, ByteO>(data, start, end))
+    T::cast_back(unsafe { inner::<T::DedupType, ByteO>(data, start, end) })
 }
 
 /// Store an integer into byte slice located at the `start`..`end` range.
@@ -162,7 +162,7 @@ where
         let mut i = start;
         while i < end {
             // Get the proper byte we should be looking at
-            let byte = ByteO::get_byte_from_index_mut(data, i);
+            let byte = unsafe { ByteO::get_byte_from_index_mut(data, i) };
 
             if (i % 8 == 0) & (i + 8 <= end) {
                 // We are byte aligned and have a full byte of space left
@@ -189,7 +189,7 @@ where
         }
     }
 
-    inner::<T::DedupType, ByteO>(value.cast(), start, end, data)
+    unsafe { inner::<T::DedupType, ByteO>(value.cast(), start, end, data) }
 }
 
 #[inline]
@@ -262,7 +262,7 @@ pub trait ByteOrder {
     /// `bit_index` must lie in the range `0..data.len()*8`.
     unsafe fn get_byte_from_index(data: &[u8], bit_index: usize) -> u8 {
         debug_assert!((0..data.len() * 8).contains(&bit_index));
-        *data.get_unchecked(Self::get_byte_index(data.len(), bit_index))
+        unsafe { *data.get_unchecked(Self::get_byte_index(data.len(), bit_index)) }
     }
 
     /// Get a mutable reference to the byte from the data that is correct for the bit index and the endianness.
@@ -272,7 +272,7 @@ pub trait ByteOrder {
     /// `bit_index` must lie in the range `0..data.len()*8`.
     unsafe fn get_byte_from_index_mut(data: &mut [u8], bit_index: usize) -> &mut u8 {
         debug_assert!((0..data.len() * 8).contains(&bit_index));
-        data.get_unchecked_mut(Self::get_byte_index(data.len(), bit_index))
+        unsafe { data.get_unchecked_mut(Self::get_byte_index(data.len(), bit_index)) }
     }
 }
 
@@ -310,7 +310,9 @@ macro_rules! impl_truncate_to_u8 {
     };
 }
 
-impl_truncate_to_u8!(u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
+impl_truncate_to_u8!(
+    u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize
+);
 
 pub trait DedupCast {
     type DedupType: Default

@@ -4,7 +4,7 @@ use std::{fs::File, io::Read, ops::Deref, path::PathBuf};
 
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use syn::{braced, Ident, LitStr};
+use syn::{Ident, LitStr, braced};
 
 /// Macro to implement the device driver.
 ///

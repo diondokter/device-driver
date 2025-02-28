@@ -7,3 +7,10 @@ members = [
     "dd-manifest-tree",
     "cli",
 ]
+
+package.version = "1.0.4"
+package.authors = ["Dion Dokter <diondokter@gmail.com>"]
+package.license = "MIT OR Apache-2.0"
+package.homepage = "https://github.com/diondokter/device-driver"
+package.repository = "https://github.com/diondokter/device-driver"
+package.edition = "2024"

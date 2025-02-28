@@ -1,6 +1,6 @@
 use std::convert::identity;
 
-use anyhow::{anyhow, bail, ensure, Context};
+use anyhow::{Context, anyhow, bail, ensure};
 use convert_case::Boundary;
 use dd_manifest_tree::{Map, Value};
 
@@ -97,7 +97,9 @@ fn transform_access(value: &impl Value) -> anyhow::Result<mir::Access> {
         "ReadWrite" | "RW" => Ok(mir::Access::RW),
         "ReadOnly" | "RO" => Ok(mir::Access::RO),
         "WriteOnly" | "WO" => Ok(mir::Access::WO),
-        val => Err(anyhow::anyhow!("No access value `{val}` exists. Values are limited to \"ReadWrite\", \"RW\", \"ReadOnly\", \"RO\", \"WriteOnly\", \"WO\"")),
+        val => Err(anyhow::anyhow!(
+            "No access value `{val}` exists. Values are limited to \"ReadWrite\", \"RW\", \"ReadOnly\", \"RO\", \"WriteOnly\", \"WO\""
+        )),
     }
 }
 
@@ -178,7 +180,9 @@ fn transform_object((key, value): (&str, &impl Value)) -> anyhow::Result<mir::Ob
             "command" => Ok(mir::Object::Command(transform_command(key, object_map)?)),
             "buffer" => Ok(mir::Object::Buffer(transform_buffer(key, object_map)?)),
             "ref" => Ok(mir::Object::Ref(transform_ref(key, object_map)?)),
-            val => Err(anyhow!("Unexpected object type '{val}'. Select one of \"block\", \"register\", \"command\", \"buffer\" or \"ref\""))
+            val => Err(anyhow!(
+                "Unexpected object type '{val}'. Select one of \"block\", \"register\", \"command\", \"buffer\" or \"ref\""
+            )),
         }
     };
 
@@ -207,11 +211,25 @@ fn transform_block(name: &str, map: &impl Map) -> anyhow::Result<mir::Block> {
         };
 
         match key {
-            "type" => {},
-            "cfg" => block.cfg_attr = mir::Cfg::new(Some(value.as_string().context("Parsing error for 'cfg'")?)),
-            "description" => block.description = value.as_string().context("Parsing error for 'description'")?.into(),
-            "address_offset" => block.address_offset = value.as_int().context("Parsing error for 'address_offset'")?,
-            "repeat" => block.repeat = Some(transform_repeat(value).context("Parsing error for 'repeat'")?),
+            "type" => {}
+            "cfg" => {
+                block.cfg_attr =
+                    mir::Cfg::new(Some(value.as_string().context("Parsing error for 'cfg'")?))
+            }
+            "description" => {
+                block.description = value
+                    .as_string()
+                    .context("Parsing error for 'description'")?
+                    .into()
+            }
+            "address_offset" => {
+                block.address_offset = value
+                    .as_int()
+                    .context("Parsing error for 'address_offset'")?
+            }
+            "repeat" => {
+                block.repeat = Some(transform_repeat(value).context("Parsing error for 'repeat'")?)
+            }
             "objects" => block.objects = read_objects()?,
             val => bail!(
                 "Unexpected key found: '{val}'. Choose one of \"type\", \"cfg\", \"description\", \"address_offset\", \"repeat\" or \"objects\""
@@ -524,9 +542,17 @@ fn transform_block_override(name: &str, map: &impl Map) -> anyhow::Result<mir::B
 
     for (key, value) in map.iter() {
         match key {
-            "type" => {},
-            "address_offset" => block.address_offset = Some(value.as_int().context("Parsing error for 'address_offset'")?),
-            "repeat" => block.repeat = Some(transform_repeat(value).context("Parsing error for 'repeat'")?),
+            "type" => {}
+            "address_offset" => {
+                block.address_offset = Some(
+                    value
+                        .as_int()
+                        .context("Parsing error for 'address_offset'")?,
+                )
+            }
+            "repeat" => {
+                block.repeat = Some(transform_repeat(value).context("Parsing error for 'repeat'")?)
+            }
             val => bail!(
                 "Unexpected key found: '{val}'. Choose one of \"type\", \"address_offset\" or \"repeat\""
             ),
@@ -816,18 +842,14 @@ fn transform_enum_variant(
         })
     } else {
         match transform_enum_value(variant_value) {
-            Ok(value) => {
-                Ok(mir::EnumVariant {
-                    name: variant_name.into(),
-                    value,
-                    ..Default::default()
-                })
-            }
-            Err(e) => {
-                Err(anyhow!(
-                    "Enum variant '{variant_name}' not recognized. Must be a 'map' for the extended definition. Cannot parse value as value directly: {e:#}"
-                ))
-            },
+            Ok(value) => Ok(mir::EnumVariant {
+                name: variant_name.into(),
+                value,
+                ..Default::default()
+            }),
+            Err(e) => Err(anyhow!(
+                "Enum variant '{variant_name}' not recognized. Must be a 'map' for the extended definition. Cannot parse value as value directly: {e:#}"
+            )),
         }
     }
 }
@@ -943,7 +965,9 @@ mod tests {
                 )
                 .unwrap()
             )
-            .unwrap_err().root_cause().to_string(),
+            .unwrap_err()
+            .root_cause()
+            .to_string(),
             "No access value `Blah` exists. Values are limited to \"ReadWrite\", \"RW\", \"ReadOnly\", \"RO\", \"WriteOnly\", \"WO\""
         );
 
@@ -956,7 +980,9 @@ mod tests {
                 )
                 .unwrap()
             )
-            .unwrap_err().root_cause().to_string(),
+            .unwrap_err()
+            .root_cause()
+            .to_string(),
             "Value had an unexpected type. `string` was expected, but the actual value was `(u)int`"
         );
     }

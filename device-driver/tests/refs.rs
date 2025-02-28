@@ -94,8 +94,6 @@ fn type_id_of<T: 'static + ?Sized>(_: &T) -> TypeId {
 }
 
 #[test]
-#[inline(never)]
-#[no_mangle]
 fn refs_have_own_reset_value() {
     let mut device = MyTestDevice::new(DeviceInterface::new());
 

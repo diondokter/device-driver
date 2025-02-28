@@ -44,13 +44,13 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
 
                     for v in variants.iter() {
                         anyhow::ensure!(
-                        seen_variant_names.insert(v.id()),
-                        "Duplicate field \"{}\" found in generated enum \"{}\" in object \"{}\" on field \"{}\"",
-                        v.name,
-                        name,
-                        object.name(),
-                        field.name,
-                    );
+                            seen_variant_names.insert(v.id()),
+                            "Duplicate field \"{}\" found in generated enum \"{}\" in object \"{}\" on field \"{}\"",
+                            v.name,
+                            name,
+                            object.name(),
+                            field.name,
+                        );
                     }
                 }
             }

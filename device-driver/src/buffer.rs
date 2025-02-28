@@ -39,7 +39,7 @@ pub trait AsyncBufferInterface: BufferInterfaceError {
     ///
     /// This interface must adhere to [embedded_io_async::Write::write].
     async fn write(&mut self, address: Self::AddressType, buf: &[u8])
-        -> Result<usize, Self::Error>;
+    -> Result<usize, Self::Error>;
     /// Flush this output stream with the given address.
     ///
     /// This interface must adhere to [embedded_io_async::Write::flush].

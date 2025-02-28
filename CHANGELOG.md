@@ -2,8 +2,11 @@
 
 ### Unreleased
 
+### 1.0.4 (28-02-25)
+
 - The driver name input is now a bit less strict about what 'PascalCase' means
   - It now also gives a value based on the input that would be accepted
+- Update to edition 2024
 
 ### 1.0.3 (08-02-25)
 

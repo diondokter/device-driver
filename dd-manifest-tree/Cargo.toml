@@ -1,11 +1,11 @@
 [package]
 name = "dd-manifest-tree"
 version = "1.0.0"
-authors = ["Dion Dokter <diondokter@gmail.com>"]
-edition = "2021"
-license = "MIT OR Apache-2.0"
-homepage = "https://github.com/diondokter/device-driver"
-repository = "https://github.com/diondokter/device-driver"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
 keywords = ["yaml", "json", "toml", "value"]
 categories = ["parsing"]
 description = "Crate to unify the 'Value' tree types of json, yaml and toml"

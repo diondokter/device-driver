@@ -49,7 +49,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             syn::parse_str(&manifest_contents).expect("Could not (syn) parse the DSL"),
             &args.device_name.to_string(),
         ),
-        unknown => panic!("Unknown manifest file extension: '{unknown}'. Only 'dsl', 'json', 'yaml' and 'toml' are allowed."),
+        unknown => panic!(
+            "Unknown manifest file extension: '{unknown}'. Only 'dsl', 'json', 'yaml' and 'toml' are allowed."
+        ),
     };
 
     let pretty_output = prettyplease::unparse(&syn::parse2(output).unwrap());

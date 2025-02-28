@@ -3,11 +3,10 @@ use std::mem::Discriminant;
 use convert_case::Boundary;
 use proc_macro2::Span;
 use syn::{
-    braced, bracketed,
+    Ident, LitBool, LitInt, LitStr, Token, braced, bracketed,
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
     spanned::Spanned,
-    Ident, LitBool, LitInt, LitStr, Token,
 };
 
 pub mod mir_transform;
@@ -2189,7 +2188,8 @@ mod tests {
 
         assert_eq!(
             syn::parse_str::<GlobalConfigList>("config { type NameWordBoundaries = [lol]; }")
-                .unwrap_err().to_string(),
+                .unwrap_err()
+                .to_string(),
             "`lol` is not a valid boundary name. One of the following was expected: [Hyphen, Underscore, Space, LowerUpper, UpperLower, DigitUpper, UpperDigit, DigitLower, LowerDigit, Acronym]"
         );
 

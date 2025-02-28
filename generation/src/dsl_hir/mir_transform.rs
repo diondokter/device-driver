@@ -153,11 +153,7 @@ fn get_description(attrs: &dsl_hir::AttributeList) -> Option<String> {
         .collect::<Vec<_>>()
         .join("\n");
 
-    if str.is_empty() {
-        None
-    } else {
-        Some(str)
-    }
+    if str.is_empty() { None } else { Some(str) }
 }
 
 fn get_cfg_attr(attrs: &dsl_hir::AttributeList) -> Result<mir::Cfg, syn::Error> {
@@ -519,21 +515,24 @@ fn transform_field(
             .map(Into::into)
             .unwrap_or(global_config.default_field_access),
         base_type: field.base_type.into(),
-        field_conversion: field.field_conversion
+        field_conversion: field
+            .field_conversion
             .as_ref()
             .map(|fc| transform_field_conversion(field_description, fc))
             .transpose()?,
         field_address: match &field.field_address {
-            dsl_hir::FieldAddress::Integer(start) if field.base_type.is_bool() =>
-                start.base10_parse()?..start.base10_parse()?,
-            dsl_hir::FieldAddress::Integer(_) =>
+            dsl_hir::FieldAddress::Integer(start) if field.base_type.is_bool() => {
+                start.base10_parse()?..start.base10_parse()?
+            }
+            dsl_hir::FieldAddress::Integer(_) => {
                 return Err(syn::Error::new(
                     field.identifier.span(),
                     format!(
                         "Field `{}` has a non-bool base type and must specify the start and the end address",
                         field.identifier
-                    )
-                )),
+                    ),
+                ));
+            }
             dsl_hir::FieldAddress::Range { start, end } => {
                 start.base10_parse()?..end.base10_parse()?
             }
@@ -632,7 +631,7 @@ fn transform_ref(ref_object: dsl_hir::RefObject) -> Result<mir::RefObject, syn::
                 return Err(syn::Error::new(
                     ref_object.identifier.span(),
                     format!("Ref `{}` cannot ref a buffer", ref_object.identifier),
-                ))
+                ));
             }
             dsl_hir::Object::Ref(_) => {
                 return Err(syn::Error::new(
@@ -641,7 +640,7 @@ fn transform_ref(ref_object: dsl_hir::RefObject) -> Result<mir::RefObject, syn::
                         "Ref `{}` cannot ref another ref object",
                         ref_object.identifier
                     ),
-                ))
+                ));
             }
         },
     })
@@ -712,25 +711,25 @@ fn transform_register_override(
                 return Err(syn::Error::new(
                     register_override.identifier.span(),
                     "No `ByteOrder` is allowed on register overrides",
-                ))
+                ));
             }
             dsl_hir::RegisterItem::BitOrder(_) => {
                 return Err(syn::Error::new(
                     register_override.identifier.span(),
                     "No `BitOrder` is allowed on register overrides",
-                ))
+                ));
             }
             dsl_hir::RegisterItem::SizeBits(_) => {
                 return Err(syn::Error::new(
                     register_override.identifier.span(),
                     "No `SizeBits` is allowed on register overrides",
-                ))
+                ));
             }
             dsl_hir::RegisterItem::AllowBitOverlap(_) => {
                 return Err(syn::Error::new(
                     register_override.identifier.span(),
                     "No `AllowBitOverlap` is allowed on register overrides",
-                ))
+                ));
             }
             dsl_hir::RegisterItem::Access(_) => {}
             dsl_hir::RegisterItem::Address(_) => {}
@@ -822,7 +821,7 @@ fn transform_command_override(
             return Err(syn::Error::new(
                 command_override.identifier.span(),
                 "No `in` field list is allowed on command overrides",
-            ))
+            ));
         }
         Some(dsl_hir::CommandValue::Extended {
             out_field_list: Some(_),
@@ -831,7 +830,7 @@ fn transform_command_override(
             return Err(syn::Error::new(
                 command_override.identifier.span(),
                 "No `out` field list is allowed on command overrides",
-            ))
+            ));
         }
         Some(dsl_hir::CommandValue::Extended {
             command_item_list,
@@ -844,31 +843,31 @@ fn transform_command_override(
                         return Err(syn::Error::new(
                             command_override.identifier.span(),
                             "No `ByteOrder` is allowed on command overrides",
-                        ))
+                        ));
                     }
                     dsl_hir::CommandItem::BitOrder(_) => {
                         return Err(syn::Error::new(
                             command_override.identifier.span(),
                             "No `BitOrder` is allowed on command overrides",
-                        ))
+                        ));
                     }
                     dsl_hir::CommandItem::SizeBitsIn(_) => {
                         return Err(syn::Error::new(
                             command_override.identifier.span(),
                             "No `SizeBitsIn` is allowed on command overrides",
-                        ))
+                        ));
                     }
                     dsl_hir::CommandItem::SizeBitsOut(_) => {
                         return Err(syn::Error::new(
                             command_override.identifier.span(),
                             "No `SizeBitsOut` is allowed on command overrides",
-                        ))
+                        ));
                     }
                     dsl_hir::CommandItem::AllowBitOverlap(_) => {
                         return Err(syn::Error::new(
                             command_override.identifier.span(),
                             "No `AllowBitOverlap` is allowed on command overrides",
-                        ))
+                        ));
                     }
                     dsl_hir::CommandItem::AllowAddressOverlap(_) => {}
                     dsl_hir::CommandItem::Repeat(_) => {}
@@ -1701,8 +1700,8 @@ mod tests {
                 )
                 .unwrap()
             )
-            .unwrap_err().to_string()
-            ,
+            .unwrap_err()
+            .to_string(),
             "No basic address specifier is allowed on command overrides. Use the extended syntax with `{ }` instead"
         );
 

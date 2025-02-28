@@ -1,11 +1,11 @@
 [package]
 name = "device-driver-macros"
-version = "1.0.3"
-authors = ["Dion Dokter <diondokter@gmail.com>"]
-edition = "2021"
-license = "MIT OR Apache-2.0"
-homepage = "https://github.com/diondokter/device-driver"
-repository = "https://github.com/diondokter/device-driver"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
 keywords = ["no_std", "device", "driver", "toolkit"]
 categories = ["embedded", "hardware-support", "no-std::no-alloc", "no-std"]
 description = "Proc macro implementation for the `device-driver` crate"
@@ -16,7 +16,7 @@ readme = "README.md"
 proc-macro = true
 
 [dependencies]
-device-driver-generation = { version = "=1.0.3", path = "../generation", default-features = false }
+device-driver-generation = { version = "=1.0.4", path = "../generation", default-features = false }
 syn = { version = "2.0" }
 proc-macro2 = "1.0"
 

@@ -109,7 +109,11 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
 
                 // Check whether the enum has more than one catch all
                 ensure!(
-                    ec.variants.iter().filter(|v| v.value.is_catch_all()).count() < 2,
+                    ec.variants
+                        .iter()
+                        .filter(|v| v.value.is_catch_all())
+                        .count()
+                        < 2,
                     "More than one catch all defined on enum \"{}\" in object \"{}\" on field \"{}\"",
                     &ec.name,
                     object_name,
@@ -393,9 +397,7 @@ mod tests {
         };
 
         assert_eq!(
-            run_pass(&mut start_mir)
-                .unwrap_err()
-                .to_string(),
+            run_pass(&mut start_mir).unwrap_err().to_string(),
             "The value of variant \"var0\" is too high for enum \"MyEnum\" in object \"MyCommand\" on field \"MyField\": 2 (max = 1)"
         );
     }
@@ -435,9 +437,7 @@ mod tests {
         };
 
         assert_eq!(
-            run_pass(&mut start_mir)
-                .unwrap_err()
-                .to_string(),
+            run_pass(&mut start_mir).unwrap_err().to_string(),
             "Duplicated assigned value(s) for enum \"MyEnum\" in object \"MyCommand\" on field \"MyField\": [\"var0: 0\"]"
         );
     }
