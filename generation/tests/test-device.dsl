@@ -26,6 +26,24 @@ block Bar {
         value1: uint = 1..16,
         value2: int = 16..24,
     },
+
+    register FooRepeated {
+        const ADDRESS = 1;
+        const SIZE_BITS = 8;
+        const REPEAT = {
+            count: usize as enum Repeater { A, B, C = 10 },
+            stride: 1,
+        };
+    },
+
+    register FooRepeatedCustom {
+        const ADDRESS = 1;
+        const SIZE_BITS = 8;
+        const REPEAT = {
+            count: usize as CustomRepeater,
+            stride: 1,
+        };
+    },
 },
 ///A command with inputs and outputs
 command InOut {

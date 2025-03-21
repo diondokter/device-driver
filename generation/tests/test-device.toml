@@ -36,6 +36,29 @@ description = "This is the Foo register"
     start = 16
     end = 24
 
+[Bar.objects.FooRepeated]
+type = "register"
+address = 1
+size_bits = 8
+
+  [Bar.objects.FooRepeated.repeat]
+  stride = 1
+    [Bar.objects.FooRepeated.repeat.count]
+    name = "Repeater"
+    description = "Indexing type for FooRepeated"
+    A = {}
+    B = {}
+    C = 10
+
+[Bar.objects.FooRepeatedCustom]
+type = "register"
+address = 1
+size_bits = 8
+
+  [Bar.objects.FooRepeatedCustom.repeat]
+  count = "CustomRepeater"
+  stride = 1
+
 [InOut]
 type = "command"
 address = 3
