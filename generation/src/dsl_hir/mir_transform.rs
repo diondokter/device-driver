@@ -61,15 +61,24 @@ impl TryFrom<syn::Ident> for mir::Integer {
     }
 }
 
-impl TryFrom<dsl_hir::Repeat> for mir::Repeat {
-    type Error = syn::Error;
-
-    fn try_from(value: dsl_hir::Repeat) -> Result<Self, Self::Error> {
-        Ok(Self {
-            count: value.count.base10_parse()?,
-            stride: value.stride.base10_parse()?,
-        })
-    }
+fn transform_repeat(
+    repeat: &dsl_hir::Repeat,
+    containing_type_name: &syn::Ident,
+) -> Result<mir::Repeat, syn::Error> {
+    Ok(mir::Repeat {
+        count: match &repeat.count {
+            dsl_hir::RepeatCount::Value(lit_int) => {
+                mir::RepeatCount::Value(lit_int.base10_parse()?)
+            }
+            dsl_hir::RepeatCount::Conversion(conversion) => {
+                mir::RepeatCount::Conversion(transform_conversion(
+                    format!("Indexing type for {containing_type_name}"),
+                    conversion,
+                )?)
+            }
+        },
+        stride: repeat.stride.base10_parse()?,
+    })
 }
 
 impl From<dsl_hir::BaseType> for mir::BaseType {
@@ -230,7 +239,9 @@ fn transform_block(
             .block_items
             .iter()
             .find_map(|item| match item {
-                dsl_hir::BlockItem::Repeat(repeat) => Some(repeat.clone().try_into()),
+                dsl_hir::BlockItem::Repeat(repeat) => {
+                    Some(transform_repeat(repeat, &block.identifier))
+                }
                 _ => None,
             })
             .transpose()?,
@@ -351,7 +362,9 @@ fn transform_register(
             .register_items
             .iter()
             .find_map(|i| match i {
-                dsl_hir::RegisterItem::Repeat(repeat) => Some(repeat.clone().try_into()),
+                dsl_hir::RegisterItem::Repeat(repeat) => {
+                    Some(transform_repeat(repeat, &register.identifier))
+                }
                 _ => None,
             })
             .transpose()?,
@@ -461,7 +474,9 @@ fn transform_command(
             dsl_hir::CommandValue::Extended {
                 command_item_list, ..
             } => command_item_list.items.iter().find_map(|item| match item {
-                dsl_hir::CommandItem::Repeat(repeat) => Some(repeat.clone().try_into()),
+                dsl_hir::CommandItem::Repeat(repeat) => {
+                    Some(transform_repeat(repeat, &command.identifier))
+                }
                 _ => None,
             }),
         }
@@ -515,10 +530,10 @@ fn transform_field(
             .map(Into::into)
             .unwrap_or(global_config.default_field_access),
         base_type: field.base_type.into(),
-        field_conversion: field
-            .field_conversion
+        conversion: field
+            .conversion
             .as_ref()
-            .map(|fc| transform_field_conversion(field_description, fc))
+            .map(|fc| transform_conversion(field_description, fc))
             .transpose()?,
         field_address: match &field.field_address {
             dsl_hir::FieldAddress::Integer(start) if field.base_type.is_bool() => {
@@ -543,25 +558,25 @@ fn transform_field(
     })
 }
 
-fn transform_field_conversion(
-    field_description: String,
-    field_conversion: &dsl_hir::FieldConversion,
-) -> Result<mir::FieldConversion, syn::Error> {
-    match field_conversion {
-        dsl_hir::FieldConversion::Direct { path, use_try } => Ok(mir::FieldConversion::Direct {
+fn transform_conversion(
+    description: String,
+    conversion: &dsl_hir::Conversion,
+) -> Result<mir::Conversion, syn::Error> {
+    match conversion {
+        dsl_hir::Conversion::Direct { path, use_try } => Ok(mir::Conversion::Direct {
             type_name: path
                 .to_token_stream()
                 .to_string()
                 .replace(char::is_whitespace, ""),
             use_try: *use_try,
         }),
-        dsl_hir::FieldConversion::Enum {
+        dsl_hir::Conversion::Enum {
             identifier,
             enum_variant_list,
             use_try,
-        } => Ok(mir::FieldConversion::Enum {
+        } => Ok(mir::Conversion::Enum {
             enum_value: mir::Enum::new(
-                field_description,
+                description,
                 identifier.to_string(),
                 enum_variant_list
                     .variants
@@ -681,7 +696,9 @@ fn transform_block_override(
             .block_items
             .iter()
             .find_map(|item| match item {
-                dsl_hir::BlockItem::Repeat(repeat) => Some(repeat.clone().try_into()),
+                dsl_hir::BlockItem::Repeat(repeat) => {
+                    Some(transform_repeat(repeat, &block_override.identifier))
+                }
                 _ => None,
             })
             .transpose()?,
@@ -796,7 +813,9 @@ fn transform_register_override(
             .register_items
             .iter()
             .find_map(|i| match i {
-                dsl_hir::RegisterItem::Repeat(repeat) => Some(repeat.clone().try_into()),
+                dsl_hir::RegisterItem::Repeat(repeat) => {
+                    Some(transform_repeat(repeat, &register_override.identifier))
+                }
                 _ => None,
             })
             .transpose()?,
@@ -914,7 +933,9 @@ fn transform_command_override(
             .items
             .iter()
             .find_map(|item| match item {
-                dsl_hir::CommandItem::Repeat(repeat) => Some(mir::Repeat::try_from(repeat.clone())),
+                dsl_hir::CommandItem::Repeat(repeat) => {
+                    Some(transform_repeat(repeat, &command_override.identifier))
+                }
                 _ => None,
             })
             .transpose()?,
@@ -1116,7 +1137,7 @@ mod tests {
                 size_bits_in: 32,
                 size_bits_out: 16,
                 repeat: Some(mir::Repeat {
-                    count: 4,
+                    count: mir::RepeatCount::Value(4),
                     stride: 16
                 }),
                 in_fields: vec![
@@ -1126,7 +1147,7 @@ mod tests {
                         name: "val".into(),
                         access: mir::Access::WO,
                         base_type: mir::BaseType::Bool,
-                        field_conversion: None,
+                        conversion: None,
                         field_address: 0..0,
                     },
                     mir::Field {
@@ -1135,7 +1156,7 @@ mod tests {
                         name: "foo".into(),
                         access: mir::Access::RO,
                         base_type: mir::BaseType::Uint,
-                        field_conversion: Some(mir::FieldConversion::Direct {
+                        conversion: Some(mir::Conversion::Direct {
                             type_name: "crate::my_mod::MyStruct".into(),
                             use_try: false,
                         }),
@@ -1148,7 +1169,7 @@ mod tests {
                     name: "val".into(),
                     access: mir::Access::RO,
                     base_type: mir::BaseType::Int,
-                    field_conversion: Some(mir::FieldConversion::Enum {
+                    conversion: Some(mir::Conversion::Enum {
                         enum_value: mir::Enum::new(
                             Default::default(),
                             "Val".into(),
@@ -1241,7 +1262,7 @@ mod tests {
                     name: "val".into(),
                     access: mir::Access::default(),
                     base_type: mir::BaseType::Bool,
-                    field_conversion: None,
+                    conversion: None,
                     field_address: 0..0,
                 },],
                 ..Default::default()
@@ -1414,7 +1435,7 @@ mod tests {
                     name: "Bar".into(),
                     address: Some(5),
                     repeat: Some(mir::Repeat {
-                        count: 5,
+                        count: mir::RepeatCount::Value(5),
                         stride: 1
                     }),
                     access: Some(mir::Access::WO),
@@ -1638,7 +1659,7 @@ mod tests {
                     name: "Bar".into(),
                     address: Some(7),
                     repeat: Some(mir::Repeat {
-                        count: 4,
+                        count: mir::RepeatCount::Value(4),
                         stride: 4
                     }),
                     ..Default::default()
@@ -1669,7 +1690,7 @@ mod tests {
                 object_override: mir::ObjectOverride::Command(mir::CommandOverride {
                     name: "Bar".into(),
                     repeat: Some(mir::Repeat {
-                        count: 4,
+                        count: mir::RepeatCount::Value(4),
                         stride: 4
                     }),
                     ..Default::default()
@@ -1942,7 +1963,7 @@ mod tests {
                     name: "Bar".into(),
                     address_offset: None,
                     repeat: Some(mir::Repeat {
-                        count: 6,
+                        count: mir::RepeatCount::Value(6),
                         stride: 2
                     })
                 })
@@ -2029,7 +2050,7 @@ mod tests {
                 name: "Foo".into(),
                 address_offset: 0,
                 repeat: Some(mir::Repeat {
-                    count: 4,
+                    count: mir::RepeatCount::Value(4),
                     stride: 4
                 }),
                 objects: Default::default(),
@@ -2128,7 +2149,7 @@ mod tests {
                 size_bits: 16,
                 reset_value: Some(mir::ResetValue::Integer(0x1234)),
                 repeat: Some(mir::Repeat {
-                    count: 2,
+                    count: mir::RepeatCount::Value(2),
                     stride: 120
                 }),
                 fields: vec![mir::Field {
@@ -2137,7 +2158,7 @@ mod tests {
                     name: "val".into(),
                     access: Default::default(),
                     base_type: mir::BaseType::Int,
-                    field_conversion: Default::default(),
+                    conversion: Default::default(),
                     field_address: 0..16
                 }],
                 ..Default::default()

@@ -1,7 +1,7 @@
 use anyhow::{bail, ensure};
 use itertools::Itertools;
 
-use crate::mir::{Device, EnumGenerationStyle, EnumValue, FieldConversion, Unique};
+use crate::mir::{Conversion, Device, EnumGenerationStyle, EnumValue, Unique};
 
 use super::recurse_objects_mut;
 
@@ -11,10 +11,10 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
         let object_name = object.name().to_string();
 
         for field in object.field_sets_mut().flatten() {
-            if let Some(FieldConversion::Enum {
+            if let Some(Conversion::Enum {
                 enum_value: ec,
                 use_try,
-            }) = field.field_conversion.as_mut()
+            }) = field.conversion.as_mut()
             {
                 let field_bits = field.field_address.clone().count();
                 let highest_value = (1 << field_bits) - 1;
@@ -148,7 +148,7 @@ mod tests {
             objects: vec![Object::Command(Command {
                 name: "MyCommand".into(),
                 out_fields: vec![Field {
-                    field_conversion: Some(FieldConversion::Enum {
+                    conversion: Some(Conversion::Enum {
                         enum_value: Enum::new(
                             Default::default(),
                             "MyEnum".into(),
@@ -189,7 +189,7 @@ mod tests {
             objects: vec![Object::Command(Command {
                 name: "MyCommand".into(),
                 out_fields: vec![Field {
-                    field_conversion: Some(FieldConversion::Enum {
+                    conversion: Some(Conversion::Enum {
                         enum_value: Enum::new_with_style(
                             Default::default(),
                             "MyEnum".into(),
@@ -238,7 +238,7 @@ mod tests {
             objects: vec![Object::Command(Command {
                 name: "MyCommand".into(),
                 out_fields: vec![Field {
-                    field_conversion: Some(FieldConversion::Enum {
+                    conversion: Some(Conversion::Enum {
                         enum_value: Enum::new(
                             Default::default(),
                             "MyEnum".into(),
@@ -269,7 +269,7 @@ mod tests {
             objects: vec![Object::Command(Command {
                 name: "MyCommand".into(),
                 out_fields: vec![Field {
-                    field_conversion: Some(FieldConversion::Enum {
+                    conversion: Some(Conversion::Enum {
                         enum_value: Enum::new_with_style(
                             Default::default(),
                             "MyEnum".into(),
@@ -308,7 +308,7 @@ mod tests {
             objects: vec![Object::Command(Command {
                 name: "MyCommand".into(),
                 out_fields: vec![Field {
-                    field_conversion: Some(FieldConversion::Enum {
+                    conversion: Some(Conversion::Enum {
                         enum_value: Enum::new(
                             Default::default(),
                             "MyEnum".into(),
@@ -332,7 +332,7 @@ mod tests {
             objects: vec![Object::Command(Command {
                 name: "MyCommand".into(),
                 out_fields: vec![Field {
-                    field_conversion: Some(FieldConversion::Enum {
+                    conversion: Some(Conversion::Enum {
                         enum_value: Enum::new_with_style(
                             Default::default(),
                             "MyEnum".into(),
@@ -365,7 +365,7 @@ mod tests {
                 name: "MyCommand".into(),
                 out_fields: vec![Field {
                     name: "MyField".into(),
-                    field_conversion: Some(FieldConversion::Enum {
+                    conversion: Some(Conversion::Enum {
                         enum_value: Enum::new(
                             Default::default(),
                             "MyEnum".into(),
@@ -410,7 +410,7 @@ mod tests {
                 name: "MyCommand".into(),
                 out_fields: vec![Field {
                     name: "MyField".into(),
-                    field_conversion: Some(FieldConversion::Enum {
+                    conversion: Some(Conversion::Enum {
                         enum_value: Enum::new(
                             Default::default(),
                             "MyEnum".into(),

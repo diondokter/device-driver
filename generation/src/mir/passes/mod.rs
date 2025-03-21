@@ -5,18 +5,20 @@ mod address_types_specified;
 mod bit_ranges_validated;
 mod bool_fields_checked;
 mod byte_order_specified;
-mod enum_values_checked;
+mod field_conversion_enum_values_checked;
 mod names_normalized;
 mod names_unique;
 mod propagate_cfg;
 mod refs_validated;
+mod repeat_conversion_values_checked;
 mod reset_values_converted;
 
 pub fn run_passes(device: &mut Device) -> anyhow::Result<()> {
     propagate_cfg::run_pass(device)?;
     names_normalized::run_pass(device)?;
     names_unique::run_pass(device)?;
-    enum_values_checked::run_pass(device)?;
+    field_conversion_enum_values_checked::run_pass(device)?;
+    repeat_conversion_values_checked::run_pass(device)?;
     byte_order_specified::run_pass(device)?;
     reset_values_converted::run_pass(device)?;
     bool_fields_checked::run_pass(device)?;
@@ -109,16 +111,16 @@ pub(crate) fn find_min_max_addresses(
         }
 
         if let Some(address) = object.address() {
-            let repeat = object.repeat().unwrap_or(Repeat {
-                count: 1,
+            let repeat = object.repeat().cloned().unwrap_or(Repeat {
+                count: super::RepeatCount::Value(1),
                 stride: 0,
             });
 
             let total_address_offsets = address_offsets.iter().sum::<i64>();
 
             let count_0_address = total_address_offsets + address;
-            let count_max_address =
-                count_0_address + (repeat.count.saturating_sub(1) as i64 * repeat.stride);
+            let count_max_address = count_0_address
+                + (repeat.count.total_count().saturating_sub(1) as i64 * repeat.stride);
 
             min_address_found = min_address_found
                 .min(count_0_address)

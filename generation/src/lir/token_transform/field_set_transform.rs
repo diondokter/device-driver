@@ -4,7 +4,7 @@ use proc_macro2::{Literal, TokenStream};
 use quote::{ToTokens, format_ident, quote};
 
 use crate::{
-    lir::{Field, FieldConversionMethod, FieldSet},
+    lir::{ConversionMethod, Field, FieldSet},
     mir::{Access, BitOrder, ByteOrder},
 };
 
@@ -86,11 +86,11 @@ pub fn generate_field_set(value: &FieldSet, defmt_feature: Option<&str>) -> Toke
                 .iter()
                 .map(|f| {
                     let defmt_type_hint = match f.conversion_method {
-                        FieldConversionMethod::None => {
+                        ConversionMethod::None => {
                             let base_type = &f.base_type;
                             format!("={base_type}")
                         }
-                        FieldConversionMethod::Bool => "=bool".into(),
+                        ConversionMethod::Bool => "=bool".into(),
                         _ => String::new(),
                     };
 
@@ -304,28 +304,27 @@ fn get_read_function(field: &Field, byte_order: ByteOrder, bit_order: BitOrder) 
     let super_token = get_super_token(conversion_method);
 
     let return_type = match conversion_method {
-        FieldConversionMethod::None => base_type.to_token_stream(),
-        FieldConversionMethod::Into(conversion_type)
-        | FieldConversionMethod::UnsafeInto(conversion_type) => {
+        ConversionMethod::None => base_type.to_token_stream(),
+        ConversionMethod::Into(conversion_type) | ConversionMethod::UnsafeInto(conversion_type) => {
             quote! { #super_token #conversion_type }
         }
-        FieldConversionMethod::TryInto(conversion_type) => {
+        ConversionMethod::TryInto(conversion_type) => {
             quote! { Result<#super_token #conversion_type, <#super_token #conversion_type as TryFrom<#base_type>>::Error> }
         }
-        FieldConversionMethod::Bool => format_ident!("bool").into_token_stream(),
+        ConversionMethod::Bool => format_ident!("bool").into_token_stream(),
     };
 
     let start_bit = &address.start;
     let end_bit = &address.end;
 
     let conversion = match conversion_method {
-        FieldConversionMethod::None => quote! { raw },
-        FieldConversionMethod::Into(_) => quote! { raw.into() },
-        FieldConversionMethod::UnsafeInto(_) => {
+        ConversionMethod::None => quote! { raw },
+        ConversionMethod::Into(_) => quote! { raw.into() },
+        ConversionMethod::UnsafeInto(_) => {
             quote! { unsafe { raw.try_into().unwrap_unchecked() } }
         }
-        FieldConversionMethod::TryInto(_) => quote! { raw.try_into() },
-        FieldConversionMethod::Bool => quote! { raw > 0 },
+        ConversionMethod::TryInto(_) => quote! { raw.try_into() },
+        ConversionMethod::Bool => quote! { raw > 0 },
     };
 
     let function_description = format!("Read the `{name}` field of the register.");
@@ -375,19 +374,19 @@ fn get_write_function(field: &Field, byte_order: ByteOrder, bit_order: BitOrder)
     let super_token = get_super_token(conversion_method);
 
     let input_type = match conversion_method {
-        FieldConversionMethod::None => &base_type.to_token_stream(),
-        FieldConversionMethod::Into(conversion_type)
-        | FieldConversionMethod::UnsafeInto(conversion_type)
-        | FieldConversionMethod::TryInto(conversion_type) => conversion_type,
-        FieldConversionMethod::Bool => &quote! { bool },
+        ConversionMethod::None => &base_type.to_token_stream(),
+        ConversionMethod::Into(conversion_type)
+        | ConversionMethod::UnsafeInto(conversion_type)
+        | ConversionMethod::TryInto(conversion_type) => conversion_type,
+        ConversionMethod::Bool => &quote! { bool },
     };
 
     let start_bit = &address.start;
     let end_bit = &address.end;
 
     let conversion = match conversion_method {
-        FieldConversionMethod::None => quote! { value },
-        FieldConversionMethod::Bool => quote! { value as _ },
+        ConversionMethod::None => quote! { value },
+        ConversionMethod::Bool => quote! { value as _ },
         _ => quote! { value.into() },
     };
 
@@ -406,7 +405,7 @@ fn get_write_function(field: &Field, byte_order: ByteOrder, bit_order: BitOrder)
     }
 }
 
-fn get_super_token(conversion_method: &FieldConversionMethod) -> TokenStream {
+fn get_super_token(conversion_method: &ConversionMethod) -> TokenStream {
     match conversion_method.conversion_type() {
         Some(ct)
             if syn::parse2::<syn::TypePath>(ct.clone())
@@ -447,7 +446,7 @@ mod tests {
                         name: format_ident!("my_field"),
                         address: Literal::u64_unsuffixed(0)..Literal::u64_unsuffixed(4),
                         base_type: format_ident!("u8"),
-                        conversion_method: FieldConversionMethod::UnsafeInto(quote! { FieldEnum }),
+                        conversion_method: ConversionMethod::UnsafeInto(quote! { FieldEnum }),
                         access: Access::RW,
                     },
                     Field {
@@ -456,7 +455,7 @@ mod tests {
                         name: format_ident!("my_field2"),
                         address: Literal::u64_unsuffixed(4)..Literal::u64_unsuffixed(16),
                         base_type: format_ident!("i16"),
-                        conversion_method: FieldConversionMethod::None,
+                        conversion_method: ConversionMethod::None,
                         access: Access::WO,
                     },
                 ],

@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::mir::{Device, Enum, FieldConversion, Unique};
+use crate::mir::{Conversion, Device, Enum, Repeat, RepeatCount, Unique};
 
 use super::recurse_objects_mut;
 
@@ -17,6 +17,36 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
             object.name()
         );
 
+        // Check the generated repeat count enum if it's there
+        if let Some(Repeat {
+            count:
+                RepeatCount::Conversion(Conversion::Enum {
+                    enum_value: enum_value @ Enum { name, variants, .. },
+                    ..
+                }),
+            ..
+        }) = object.repeat()
+        {
+            let mut seen_variant_names = HashSet::new();
+
+            anyhow::ensure!(
+                generated_type_ids.insert(enum_value.id()),
+                "Duplicate generated repeat count enum name \"{}\" found in object \"{}\"",
+                name,
+                object.name(),
+            );
+
+            for v in variants.iter() {
+                anyhow::ensure!(
+                    seen_variant_names.insert(v.id()),
+                    "Duplicate field \"{}\" found in generated repeat count enum \"{}\" in object \"{}\"",
+                    v.name,
+                    name,
+                    object.name(),
+                );
+            }
+        }
+
         for field_set in object.field_sets() {
             let mut seen_field_names = HashSet::new();
             for field in field_set {
@@ -27,10 +57,10 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
                     field.name
                 );
 
-                if let Some(FieldConversion::Enum {
+                if let Some(Conversion::Enum {
                     enum_value: enum_value @ Enum { name, variants, .. },
                     ..
-                }) = field.field_conversion.as_ref()
+                }) = field.conversion.as_ref()
                 {
                     let mut seen_variant_names = HashSet::new();
 
@@ -139,7 +169,7 @@ mod tests {
                 fields: vec![
                     Field {
                         name: "field".into(),
-                        field_conversion: Some(FieldConversion::Enum {
+                        conversion: Some(Conversion::Enum {
                             enum_value: Enum {
                                 name: "Enum".into(),
                                 variants: Default::default(),
@@ -151,7 +181,7 @@ mod tests {
                     },
                     Field {
                         name: "field2".into(),
-                        field_conversion: Some(FieldConversion::Enum {
+                        conversion: Some(Conversion::Enum {
                             enum_value: Enum {
                                 name: "Enum".into(),
                                 variants: Default::default(),
@@ -185,7 +215,7 @@ mod tests {
                 name: "Reg".into(),
                 fields: vec![Field {
                     name: "field".into(),
-                    field_conversion: Some(FieldConversion::Enum {
+                    conversion: Some(Conversion::Enum {
                         enum_value: Enum {
                             name: "Enum".into(),
                             variants: vec![
@@ -224,7 +254,7 @@ mod tests {
                 name: "Reg".into(),
                 fields: vec![Field {
                     name: "field".into(),
-                    field_conversion: Some(FieldConversion::Enum {
+                    conversion: Some(Conversion::Enum {
                         enum_value: Enum {
                             name: "Enum".into(),
                             variants: vec![

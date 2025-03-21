@@ -2,7 +2,7 @@ use std::ops::{Add, Not};
 
 use anyhow::ensure;
 use proc_macro2::{Literal, TokenStream};
-use quote::{format_ident, quote};
+use quote::{ToTokens, format_ident, quote};
 use syn::Ident;
 
 use crate::{
@@ -246,7 +246,7 @@ fn get_method(
                     if let Some(address_offset) = override_values.address_offset {
                         reffed_object.address_offset = address_offset;
                     }
-                    if let Some(repeat) = override_values.repeat {
+                    if let Some(repeat) = override_values.repeat.clone() {
                         reffed_object.repeat = Some(repeat);
                     }
                 }
@@ -268,7 +268,7 @@ fn get_method(
                         register_reset_value_function =
                             format_ident!("new_as_{}", name.to_case(convert_case::Case::Snake));
                     }
-                    if let Some(repeat) = override_values.repeat {
+                    if let Some(repeat) = override_values.repeat.clone() {
                         reffed_object.repeat = Some(repeat);
                     }
                 }
@@ -282,7 +282,7 @@ fn get_method(
                     if let Some(address) = override_values.address {
                         reffed_object.address = address;
                     }
-                    if let Some(repeat) = override_values.repeat {
+                    if let Some(repeat) = override_values.repeat.clone() {
                         reffed_object.repeat = Some(repeat);
                     }
                 }
@@ -405,7 +405,7 @@ fn transform_field_set<'a>(
                 name,
                 access,
                 base_type,
-                field_conversion,
+                conversion,
                 field_address,
             } = field;
 
@@ -414,61 +414,58 @@ fn transform_field_set<'a>(
             let address = Literal::u32_unsuffixed(field_address.start)
                 ..Literal::u32_unsuffixed(field_address.end);
 
-            let (base_type, conversion_method) = match (
-                base_type,
-                field.field_address.clone().count(),
-                field_conversion,
-            ) {
-                (mir::BaseType::Bool, 1, None) => {
-                    (format_ident!("u8"), lir::FieldConversionMethod::Bool)
-                }
-                (mir::BaseType::Bool, _, _) => unreachable!(
-                    "Checked in a MIR pass. Bools can only be 1 bit and have no conversion"
-                ),
-                (mir::BaseType::Uint | mir::BaseType::Int, val, None) => (
-                    format_ident!(
-                        "{}{}",
-                        match base_type {
-                            mir::BaseType::Bool => unreachable!(),
-                            mir::BaseType::Uint => 'u',
-                            mir::BaseType::Int => 'i',
-                        },
-                        val.max(8).next_power_of_two()
+            let (base_type, conversion_method) =
+                match (base_type, field.field_address.clone().count(), conversion) {
+                    (mir::BaseType::Bool, 1, None) => {
+                        (format_ident!("u8"), lir::ConversionMethod::Bool)
+                    }
+                    (mir::BaseType::Bool, _, _) => unreachable!(
+                        "Checked in a MIR pass. Bools can only be 1 bit and have no conversion"
                     ),
-                    lir::FieldConversionMethod::None,
-                ),
-                (mir::BaseType::Uint | mir::BaseType::Int, val, Some(fc)) => (
-                    format_ident!(
-                        "{}{}",
-                        match base_type {
-                            mir::BaseType::Bool => unreachable!(),
-                            mir::BaseType::Uint => 'u',
-                            mir::BaseType::Int => 'i',
-                        },
-                        val.max(8).next_power_of_two()
+                    (mir::BaseType::Uint | mir::BaseType::Int, val, None) => (
+                        format_ident!(
+                            "{}{}",
+                            match base_type {
+                                mir::BaseType::Bool => unreachable!(),
+                                mir::BaseType::Uint => 'u',
+                                mir::BaseType::Int => 'i',
+                            },
+                            val.max(8).next_power_of_two()
+                        ),
+                        lir::ConversionMethod::None,
                     ),
-                    {
-                        let type_name = syn::parse_str::<syn::Path>(fc.type_name()).unwrap();
-                        match enum_list.clone().find(|e| e.name == fc.type_name()) {
-                            // Always use try if that's specified
-                            _ if fc.use_try() => {
-                                lir::FieldConversionMethod::TryInto(quote! { #type_name })
+                    (mir::BaseType::Uint | mir::BaseType::Int, val, Some(fc)) => (
+                        format_ident!(
+                            "{}{}",
+                            match base_type {
+                                mir::BaseType::Bool => unreachable!(),
+                                mir::BaseType::Uint => 'u',
+                                mir::BaseType::Int => 'i',
+                            },
+                            val.max(8).next_power_of_two()
+                        ),
+                        {
+                            let type_name = syn::parse_str::<syn::Path>(fc.type_name()).unwrap();
+                            match enum_list.clone().find(|e| e.name == fc.type_name()) {
+                                // Always use try if that's specified
+                                _ if fc.use_try() => {
+                                    lir::ConversionMethod::TryInto(quote! { #type_name })
+                                }
+                                // There is an enum we generate so we can look at its metadata
+                                Some(mir::Enum {
+                                    generation_style:
+                                        Some(mir::EnumGenerationStyle::Infallible { bit_size }),
+                                    ..
+                                }) if field.field_address.clone().count() <= *bit_size as usize => {
+                                    // This field is equal or smaller in bits than the infallible enum. So we can do the unsafe into
+                                    lir::ConversionMethod::UnsafeInto(quote! { #type_name })
+                                }
+                                // Fallback is to require the into trait
+                                _ => lir::ConversionMethod::Into(quote! { #type_name }),
                             }
-                            // There is an enum we generate so we can look at its metadata
-                            Some(mir::Enum {
-                                generation_style:
-                                    Some(mir::EnumGenerationStyle::Infallible { bit_size }),
-                                ..
-                            }) if field.field_address.clone().count() <= *bit_size as usize => {
-                                // This field is equal or smaller in bits than the infallible enum. So we can do the unsafe into
-                                lir::FieldConversionMethod::UnsafeInto(quote! { #type_name })
-                            }
-                            // Fallback is to require the into trait
-                            _ => lir::FieldConversionMethod::Into(quote! { #type_name }),
-                        }
-                    },
-                ),
-            };
+                        },
+                    ),
+                };
 
             Ok(lir::Field {
                 cfg_attr,
@@ -499,8 +496,16 @@ fn collect_enums(device: &mir::Device) -> anyhow::Result<Vec<(mir::Enum, mir::Ba
     let mut enums = Vec::new();
 
     recurse_objects(&device.objects, &mut |object| {
+        if let Some(mir::Repeat {
+            count: mir::RepeatCount::Conversion(mir::Conversion::Enum { enum_value, .. }),
+            ..
+        }) = object.repeat()
+        {
+            enums.push((enum_value.clone(), mir::BaseType::Uint, usize::MAX));
+        }
+
         for field in object.field_sets().flatten() {
-            if let Some(mir::FieldConversion::Enum { enum_value, .. }) = &field.field_conversion {
+            if let Some(mir::Conversion::Enum { enum_value, .. }) = &field.conversion {
                 enums.push((
                     enum_value.clone(),
                     field.base_type,
@@ -532,6 +537,8 @@ fn transform_enum(
 
     let base_type = match (base_type, size_bits) {
         (mir::BaseType::Bool, _) => format_ident!("u8"),
+        (mir::BaseType::Uint, usize::MAX) => format_ident!("usize"),
+        (mir::BaseType::Int, usize::MAX) => format_ident!("isize"),
         (mir::BaseType::Uint, val) => format_ident!("u{}", val.max(8).next_power_of_two()),
         (mir::BaseType::Int, val) => format_ident!("i{}", val.max(8).next_power_of_two()),
     };
@@ -595,8 +602,20 @@ fn cfg_attr_string_to_tokens(cfg_attr: &mir::Cfg) -> anyhow::Result<TokenStream>
 
 fn repeat_to_method_kind(repeat: &Option<mir::Repeat>) -> lir::BlockMethodKind {
     match repeat {
-        Some(mir::Repeat { count, stride }) => lir::BlockMethodKind::Repeated {
+        Some(mir::Repeat {
+            count: mir::RepeatCount::Value(count),
+            stride,
+        }) => lir::BlockMethodKind::RepeatedNumber {
             count: Literal::u64_unsuffixed(*count),
+            stride: Literal::i64_unsuffixed(*stride),
+        },
+        Some(mir::Repeat {
+            count: mir::RepeatCount::Conversion(conversion),
+            stride,
+        }) => lir::BlockMethodKind::RepeatedFromType {
+            path: syn::parse_str::<syn::Path>(conversion.type_name())
+                .unwrap()
+                .to_token_stream(),
             stride: Literal::i64_unsuffixed(*stride),
         },
         None => lir::BlockMethodKind::Normal,

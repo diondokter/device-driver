@@ -67,27 +67,31 @@ pub fn generate_block(
 
                     let (count, stride, index_required) = match &m.kind {
                         BlockMethodKind::Normal => (1i64, Literal::i64_unsuffixed(0), false),
-                        BlockMethodKind::Repeated { count, stride } => {
+                        BlockMethodKind::RepeatedNumber { count, stride } => {
                             (count.to_string().parse().unwrap(), stride.clone(), true)
+                        }
+                        BlockMethodKind::RepeatedFromType { .. } => {
+                            // We don't know all of the possible indices for this type, so we're gonna have to skip this
+                            return None;
                         }
                     };
 
                     Some((0..count).map(move |index| {
-                    let (index_param, register_display_name) = match index_required {
-                        true => {
-                            let index_param = Literal::i64_unsuffixed(index);
-                            (quote! { #index_param }, format!("{}[{index}]", m.name))
+                        let (index_param, register_display_name) = match index_required {
+                            true => {
+                                let index_param = Literal::i64_unsuffixed(index);
+                                (quote! { #index_param }, format!("{}[{index}]", m.name))
+                            }
+                            false => (quote! {}, m.name.to_string()),
+                        };
+                        let index = Literal::i64_unsuffixed(index);
+                        quote! {
+                            #cfg_attr
+                            let reg = self.#register_name(#index_param).#read_function?;
+                            #cfg_attr
+                            callback(#address + #index * #stride, #register_display_name, reg.into());
                         }
-                        false => (quote! {}, m.name.to_string()),
-                    };
-                    let index = Literal::i64_unsuffixed(index);
-                    quote! {
-                        #cfg_attr
-                        let reg = self.#register_name(#index_param).#read_function?;
-                        #cfg_attr
-                        callback(#address + #index * #stride, #register_display_name, reg.into());
-                    }
-                }))
+                    }))
                 }
                 _ => None,
             })
@@ -220,7 +224,7 @@ fn generate_method(method: &BlockMethod, internal_address_type: &Ident) -> Token
 
     let (index_param, address_calc, index_doc) = match kind {
         BlockMethodKind::Normal => (None, quote! { self.base_address + #address }, None),
-        BlockMethodKind::Repeated { count, stride } => {
+        BlockMethodKind::RepeatedNumber { count, stride } => {
             let doc = format!("Valid index range: 0..{count}");
 
             let stride = stride.to_string().parse::<i64>().unwrap();
@@ -243,6 +247,25 @@ fn generate_method(method: &BlockMethod, internal_address_type: &Ident) -> Token
                     #[doc = ""]
                     #[doc = #doc]
                 }),
+            )
+        }
+        BlockMethodKind::RepeatedFromType { path, stride } => {
+            let stride = stride.to_string().parse::<i64>().unwrap();
+
+            let operator = if stride.is_negative() {
+                quote! { - }
+            } else {
+                quote! { + }
+            };
+
+            let stride = Literal::u64_unsuffixed(stride.unsigned_abs());
+
+            (
+                Some(quote! { index: #path, }),
+                quote! { {
+                    self.base_address + #address #operator usize::from(index) as #internal_address_type * #stride
+                } },
+                None,
             )
         }
     };
@@ -402,7 +425,7 @@ mod tests {
                     name: format_ident!("my_buffer"),
                     address: Literal::i64_unsuffixed(5),
                     allow_address_overlap: false,
-                    kind: BlockMethodKind::Repeated {
+                    kind: BlockMethodKind::RepeatedNumber {
                         count: Literal::i64_unsuffixed(4),
                         stride: Literal::i64_unsuffixed(1),
                     },

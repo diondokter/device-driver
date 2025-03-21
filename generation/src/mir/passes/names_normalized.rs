@@ -1,6 +1,6 @@
 use convert_case::Case;
 
-use crate::mir::{Device, Enum, FieldConversion};
+use crate::mir::{Conversion, Device, Enum};
 
 use super::recurse_objects_mut;
 
@@ -23,10 +23,10 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
 
         for field in object.field_sets_mut().flatten() {
             field.name = snake_converter.convert(&field.name);
-            if let Some(FieldConversion::Enum {
+            if let Some(Conversion::Enum {
                 enum_value: Enum { name, variants, .. },
                 ..
-            }) = field.field_conversion.as_mut()
+            }) = field.conversion.as_mut()
             {
                 *name = pascal_converter.convert(&*name);
 
@@ -72,7 +72,7 @@ mod tests {
                         },
                         Field {
                             name: "my-fielD2".into(),
-                            field_conversion: Some(FieldConversion::Enum {
+                            conversion: Some(Conversion::Enum {
                                 enum_value: Enum {
                                     name: "mY-enum".into(),
                                     variants: vec![EnumVariant {
@@ -107,7 +107,7 @@ mod tests {
                         },
                         Field {
                             name: "my_field2".into(),
-                            field_conversion: Some(FieldConversion::Enum {
+                            conversion: Some(Conversion::Enum {
                                 enum_value: Enum {
                                     name: "MyEnum".into(),
                                     variants: vec![EnumVariant {

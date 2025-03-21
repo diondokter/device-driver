@@ -38,7 +38,15 @@ pub struct BlockMethod {
 
 pub enum BlockMethodKind {
     Normal,
-    Repeated { count: Literal, stride: Literal },
+    RepeatedNumber {
+        count: Literal,
+        stride: Literal,
+    },
+    /// Repeat from a type that implements `Into<usize>`
+    RepeatedFromType {
+        path: TokenStream,
+        stride: Literal,
+    },
 }
 
 pub enum BlockMethodType {
@@ -81,11 +89,11 @@ pub struct Field {
     pub name: Ident,
     pub address: Range<Literal>,
     pub base_type: Ident,
-    pub conversion_method: FieldConversionMethod,
+    pub conversion_method: ConversionMethod,
     pub access: mir::Access,
 }
 
-pub enum FieldConversionMethod {
+pub enum ConversionMethod {
     None,
     Into(TokenStream),
     UnsafeInto(TokenStream),
@@ -93,14 +101,14 @@ pub enum FieldConversionMethod {
     Bool,
 }
 
-impl FieldConversionMethod {
+impl ConversionMethod {
     pub fn conversion_type(&self) -> Option<&TokenStream> {
         match self {
-            FieldConversionMethod::None => None,
-            FieldConversionMethod::Into(token_stream) => Some(token_stream),
-            FieldConversionMethod::UnsafeInto(token_stream) => Some(token_stream),
-            FieldConversionMethod::TryInto(token_stream) => Some(token_stream),
-            FieldConversionMethod::Bool => None,
+            ConversionMethod::None => None,
+            ConversionMethod::Into(token_stream) => Some(token_stream),
+            ConversionMethod::UnsafeInto(token_stream) => Some(token_stream),
+            ConversionMethod::TryInto(token_stream) => Some(token_stream),
+            ConversionMethod::Bool => None,
         }
     }
 }
