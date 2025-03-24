@@ -8,7 +8,7 @@ struct Args {
     /// The type of file is determined from the file extension.
     #[arg(short = 'm', long = "manifest", value_name = "FILE")]
     manifest_path: PathBuf,
-    /// Path to output location. Any existing file is overwritten. Defaults to stdout.
+    /// Path to output location. Any existing file is overwritten. If not provided, the output is written to stdout.
     #[arg(short = 'o', long = "output", value_name = "FILE")]
     output_path: Option<PathBuf>,
     /// The name of the device to be generated. Must be PascalCase
