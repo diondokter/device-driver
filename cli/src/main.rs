@@ -57,8 +57,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     let pretty_output = prettyplease::unparse(&syn::parse2(output).unwrap());
 
     let output: &mut dyn Write = match &args.output_path {
-        Some(path) => &mut std::fs::File::create(path)
-            .unwrap_or_else(|_| panic!("Could not create the output file at: {}. Does its directory exist?", path.display())),
+        Some(path) => &mut std::fs::File::create(path).unwrap_or_else(|_| {
+            panic!(
+                "Could not create the output file at: {}. Does its directory exist?",
+                path.display()
+            )
+        }),
         None => &mut std::io::stdout().lock(),
     };
 
