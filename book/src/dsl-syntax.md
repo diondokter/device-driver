@@ -111,9 +111,9 @@ _FieldList_:
 
 _Field_:
 > _AttributeList_  
-> _IDENTIFIER_`:` _Access_? _BaseType_ _FieldConversion_? `=` _FieldAddress_
+> _IDENTIFIER_`:` _Access_? _BaseType_ _Conversion_? `=` _FieldAddress_
 
-_FieldConversion_:
+_Conversion_:
 > (`as` `try`? _TYPE_PATH_)  
 > | (`as` `try`? `enum` _IDENTIFIER_ `{` _EnumVariantList_`}`)
 
@@ -159,7 +159,11 @@ If no in fields, then no data is sent. If no out fields, then no data is returne
 > | (`const` `ALLOW_ADDRESS_OVERLAP` = _BOOL_`;`)
 
 _Repeat_:
-> `REPEAT` `=` `{` `count` `:` _INTEGER_`,` `stride` `:` _INTEGER_`,`? `}` `;`
+> `REPEAT` `=` `{` `count` `:` _RepeatCount_ `,` `stride` `:` _INTEGER_`,`? `}` `;`
+
+_RepeatCount_
+> _INTEGER_
+> | `usize` _Conversion_
 
 _Buffer_:
 > _AttributeList_  

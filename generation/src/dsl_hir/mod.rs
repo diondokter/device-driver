@@ -380,7 +380,7 @@ impl Parse for BlockItemList {
                 err_if_contains(
                     &block_items,
                     core::mem::discriminant(&BlockItem::Repeat(Repeat {
-                        count: LitInt::new("0", Span::call_site()),
+                        count: RepeatCount::Value(LitInt::new("0", Span::call_site())),
                         stride: LitInt::new("0", Span::call_site()),
                     })),
                     input.span(),
@@ -587,7 +587,7 @@ impl Parse for RegisterItemList {
                     err_if_contains(
                         &register_items,
                         core::mem::discriminant(&RegisterItem::Repeat(Repeat {
-                            count: LitInt::new("0", Span::call_site()),
+                            count: RepeatCount::Value(LitInt::new("0", Span::call_site())),
                             stride: LitInt::new("0", Span::call_site()),
                         })),
                         input.span(),
@@ -757,7 +757,7 @@ pub struct Field {
     pub identifier: syn::Ident,
     pub access: Option<Access>,
     pub base_type: BaseType,
-    pub field_conversion: Option<FieldConversion>,
+    pub conversion: Option<Conversion>,
     pub field_address: FieldAddress,
 }
 
@@ -769,7 +769,7 @@ impl Parse for Field {
         let access = input.parse::<Access>().ok();
         let base_type = input.parse()?;
 
-        let field_conversion = if input.peek(Token![as]) {
+        let conversion = if input.peek(Token![as]) {
             Some(input.parse()?)
         } else {
             None
@@ -783,7 +783,7 @@ impl Parse for Field {
             attribute_list,
             identifier,
             base_type,
-            field_conversion,
+            conversion,
             access,
             field_address,
         })
@@ -791,7 +791,7 @@ impl Parse for Field {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum FieldConversion {
+pub enum Conversion {
     Direct {
         path: syn::Path,
         use_try: bool,
@@ -803,7 +803,7 @@ pub enum FieldConversion {
     },
 }
 
-impl Parse for FieldConversion {
+impl Parse for Conversion {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         input.parse::<Token![as]>()?;
 
@@ -1156,7 +1156,7 @@ impl Parse for CommandItemList {
                     err_if_contains(
                         &items,
                         core::mem::discriminant(&CommandItem::Repeat(Repeat {
-                            count: LitInt::new("0", Span::call_site()),
+                            count: RepeatCount::Value(LitInt::new("0", Span::call_site())),
                             stride: LitInt::new("0", Span::call_site()),
                         })),
                         input.span(),
@@ -1207,7 +1207,7 @@ impl Parse for CommandItemList {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Repeat {
-    pub count: LitInt,
+    pub count: RepeatCount,
     pub stride: LitInt,
 }
 
@@ -1234,6 +1234,23 @@ impl Parse for Repeat {
         input.parse::<Token![;]>()?;
 
         Ok(Repeat { count, stride })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RepeatCount {
+    Value(LitInt),
+    Conversion(Conversion),
+}
+
+impl Parse for RepeatCount {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        if input.peek(LitInt) {
+            Ok(RepeatCount::Value(input.parse()?))
+        } else {
+            input.parse::<kw::usize>()?;
+            Ok(RepeatCount::Conversion(input.parse()?))
+        }
     }
 }
 
@@ -1331,6 +1348,7 @@ mod kw {
     syn::custom_keyword!(bool);
     syn::custom_keyword!(uint);
     syn::custom_keyword!(int);
+    syn::custom_keyword!(usize);
 
     // EnumValue
     syn::custom_keyword!(default);
@@ -1343,7 +1361,8 @@ mod kw {
 #[cfg(test)]
 mod tests {
     use proc_macro2::Span;
-    use syn::Ident;
+    use quote::format_ident;
+    use syn::{Ident, parse_quote};
 
     use super::*;
 
@@ -1422,14 +1441,14 @@ mod tests {
         assert_eq!(
             syn::parse_str::<Repeat>("REPEAT = { count: 55, stride: 0x123, };").unwrap(),
             Repeat {
-                count: LitInt::new("55", Span::call_site()),
+                count: RepeatCount::Value(LitInt::new("55", Span::call_site())),
                 stride: LitInt::new("0x123", Span::call_site())
             }
         );
         assert_eq!(
             syn::parse_str::<Repeat>("REPEAT = { count: 55, stride: 0x123 };").unwrap(),
             Repeat {
-                count: LitInt::new("55", Span::call_site()),
+                count: RepeatCount::Value(LitInt::new("55", Span::call_site())),
                 stride: LitInt::new("0x123", Span::call_site())
             }
         );
@@ -1449,6 +1468,45 @@ mod tests {
                 .unwrap_err()
                 .to_string(),
             "unexpected end of input, expected curly braces"
+        );
+
+        assert_eq!(
+            syn::parse_str::<Repeat>(
+                "REPEAT = { count: usize as enum R { A, B }, stride: 0x123 };"
+            )
+            .unwrap(),
+            Repeat {
+                count: RepeatCount::Conversion(Conversion::Enum {
+                    identifier: format_ident!("R"),
+                    enum_variant_list: EnumVariantList {
+                        variants: vec![
+                            EnumVariant {
+                                attribute_list: AttributeList::default(),
+                                identifier: format_ident!("A"),
+                                enum_value: None
+                            },
+                            EnumVariant {
+                                attribute_list: AttributeList::default(),
+                                identifier: format_ident!("B"),
+                                enum_value: None
+                            }
+                        ]
+                    },
+                    use_try: false
+                }),
+                stride: LitInt::new("0x123", Span::call_site())
+            }
+        );
+
+        assert_eq!(
+            syn::parse_str::<Repeat>("REPEAT = { count: usize as Foo, stride: 0x123 };").unwrap(),
+            Repeat {
+                count: RepeatCount::Conversion(Conversion::Direct {
+                    path: parse_quote!(Foo),
+                    use_try: false
+                }),
+                stride: LitInt::new("0x123", Span::call_site())
+            }
         );
     }
 
@@ -1487,7 +1545,7 @@ mod tests {
                     CommandItem::SizeBitsIn(LitInt::new("16", Span::call_site())),
                     CommandItem::SizeBitsOut(LitInt::new("32", Span::call_site())),
                     CommandItem::Repeat(Repeat {
-                        count: LitInt::new("2", Span::call_site()),
+                        count: RepeatCount::Value(LitInt::new("2", Span::call_site())),
                         stride: LitInt::new("2", Span::call_site())
                     })
                 ]
@@ -1606,7 +1664,7 @@ mod tests {
                 identifier: Ident::new("TestField", Span::call_site()),
                 access: Some(Access::RO),
                 base_type: BaseType::Int,
-                field_conversion: None,
+                conversion: None,
                 field_address: FieldAddress::Integer(LitInt::new("0x123", Span::call_site()))
             }
         );
@@ -1619,7 +1677,7 @@ mod tests {
                 identifier: Ident::new("ExsitingType", Span::call_site()),
                 access: Some(Access::RW),
                 base_type: BaseType::Uint,
-                field_conversion: Some(FieldConversion::Direct {
+                conversion: Some(Conversion::Direct {
                     path: syn::parse_str("crate::module::foo::Bar").unwrap(),
                     use_try: false,
                 }),
@@ -1637,7 +1695,7 @@ mod tests {
                 identifier: Ident::new("ExsitingType", Span::call_site()),
                 access: Some(Access::RW),
                 base_type: BaseType::Uint,
-                field_conversion: Some(FieldConversion::Direct {
+                conversion: Some(Conversion::Direct {
                     path: syn::parse_str("crate::module::foo::Bar").unwrap(),
                     use_try: true,
                 }),
@@ -1661,7 +1719,7 @@ mod tests {
                 identifier: Ident::new("ExsitingType", Span::call_site()),
                 access: Some(Access::RW),
                 base_type: BaseType::Uint,
-                field_conversion: Some(FieldConversion::Enum {
+                conversion: Some(Conversion::Enum {
                     identifier: Ident::new("Bar", Span::call_site()),
                     enum_variant_list: EnumVariantList {
                         variants: Vec::new()
@@ -1783,7 +1841,7 @@ mod tests {
                             identifier: Ident::new("foo", Span::call_site()),
                             access: None,
                             base_type: BaseType::Bool,
-                            field_conversion: None,
+                            conversion: None,
                             field_address: FieldAddress::Integer(LitInt::new(
                                 "0",
                                 Span::call_site()
@@ -1891,7 +1949,7 @@ mod tests {
             syn::parse_str::<RegisterItemList>("const REPEAT = { count: 0, stride: 0 };").unwrap(),
             RegisterItemList {
                 register_items: vec![RegisterItem::Repeat(Repeat {
-                    count: LitInt::new("0", Span::call_site()),
+                    count: RepeatCount::Value(LitInt::new("0", Span::call_site())),
                     stride: LitInt::new("0", Span::call_site())
                 })]
             }
@@ -2010,7 +2068,7 @@ mod tests {
                         identifier: Ident::new("TestField", Span::call_site()),
                         access: Some(Access::RW),
                         base_type: BaseType::Int,
-                        field_conversion: None,
+                        conversion: None,
                         field_address: FieldAddress::Integer(LitInt::new(
                             "0x123",
                             Span::call_site()
@@ -2049,7 +2107,7 @@ mod tests {
                 block_items: vec![
                     BlockItem::AddressOffset(LitInt::new("2", Span::call_site())),
                     BlockItem::Repeat(Repeat {
-                        count: LitInt::new("0", Span::call_site()),
+                        count: RepeatCount::Value(LitInt::new("0", Span::call_site())),
                         stride: LitInt::new("0", Span::call_site())
                     })
                 ]
