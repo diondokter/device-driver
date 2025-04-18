@@ -31,10 +31,11 @@
         <!-- Custom theme stylesheets -->
 
 
-        <!-- Provide site root to javascript -->
+        <!-- Provide site root and default themes to javascript -->
         <script>
-            var path_to_root = "";
-            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc.js"></script>
@@ -44,8 +45,8 @@
         <!-- Work around some values being stored in localStorage wrapped in quotes -->
         <script>
             try {
-                var theme = localStorage.getItem('mdbook-theme');
-                var sidebar = localStorage.getItem('mdbook-sidebar');
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
 
                 if (theme.startsWith('"') && theme.endsWith('"')) {
                     localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
@@ -59,7 +60,8 @@
 
         <!-- Set the theme before any content is loaded, prevents flash -->
         <script>
-            var theme;
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
@@ -72,8 +74,8 @@
 
         <!-- Hide / unhide sidebar before it is displayed -->
         <script>
-            var sidebar = null;
-            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
             if (document.body.clientWidth >= 1080) {
                 try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
                 sidebar = sidebar || 'visible';
@@ -109,6 +111,7 @@
                             <i class="fa fa-paint-brush"></i>
                         </button>
                         <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
@@ -224,7 +227,7 @@
 </style>
 <h1 id="field-sets"><a class="header" href="#field-sets">Field sets</a></h1>
 <p>A field set is a collection of fields that make up the data of a register, command input or command output.</p>
-<p>Each field set generates to a struct where each of the fields are accesible through functions with the names of the fields.</p>
+<p>Each field set generates to a struct where each of the fields are accessible through functions with the names of the fields.</p>
 <p>A field set can be created using the <code>new</code> function and will be initialized with the reset value (or zero if there is no reset value). When it's desired to get an all-zero version of the field set, you can call <code>new_zero</code>.<br />
 When a ref object overrides the reset value, the field set will have an extra constructor <code>new_as_&lt;ref name&gt;</code> that will use the reset value override for the initial value.</p>
 <div class="mdbook-alerts mdbook-alerts-note">
@@ -388,7 +391,7 @@ bar: int as try crate::MyCustomType2 = 16..32,
 </code></pre>
 <h2 id="required"><a class="header" href="#required">Required</a></h2>
 <h3 id="base"><a class="header" href="#base"><code>base</code></a></h3>
-<p>The base type denotes the primitve type used to convert the bits in the address range to a value.</p>
+<p>The base type denotes the primitive type used to convert the bits in the address range to a value.</p>
 <p>Options:</p>
 <ul>
 <li>uint - unsigned integer</li>
@@ -442,7 +445,7 @@ Multiple attributes get concatenated with a newline (just like normal Rust does)
 <p>Overrides the default field access.</p>
 <p>Options are: <code>RW</code>, <code>ReadWrite</code>, <code>WO</code>, <code>WriteOnly</code>, <code>RO</code>, <code>ReadOnly</code>.<br />
 They are written 'as is' in the DSL and as a string in the manifest.</p>
-<p>If the specified access can do read, a getter is generated with the name of the field. If the specied access do write, a setter is generated with the <code>set_</code> prefix followed by the name of the field.</p>
+<p>If the specified access can do read, a getter is generated with the name of the field. If the specified access do write, a setter is generated with the <code>set_</code> prefix followed by the name of the field.</p>
 <h3 id="conversion"><a class="header" href="#conversion">Conversion</a></h3>
 <p>If the base type of a field is an integer, the value can be converted to a further higher level type. There are two options for this:</p>
 <ul>

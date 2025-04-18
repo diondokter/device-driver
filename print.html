@@ -32,10 +32,11 @@
         <!-- Custom theme stylesheets -->
 
 
-        <!-- Provide site root to javascript -->
+        <!-- Provide site root and default themes to javascript -->
         <script>
-            var path_to_root = "";
-            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc.js"></script>
@@ -45,8 +46,8 @@
         <!-- Work around some values being stored in localStorage wrapped in quotes -->
         <script>
             try {
-                var theme = localStorage.getItem('mdbook-theme');
-                var sidebar = localStorage.getItem('mdbook-sidebar');
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
 
                 if (theme.startsWith('"') && theme.endsWith('"')) {
                     localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
@@ -60,7 +61,8 @@
 
         <!-- Set the theme before any content is loaded, prevents flash -->
         <script>
-            var theme;
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
@@ -73,8 +75,8 @@
 
         <!-- Hide / unhide sidebar before it is displayed -->
         <script>
-            var sidebar = null;
-            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
             if (document.body.clientWidth >= 1080) {
                 try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
                 sidebar = sidebar || 'visible';
@@ -110,6 +112,7 @@
                             <i class="fa fa-paint-brush"></i>
                         </button>
                         <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
@@ -236,7 +239,7 @@ It is not a replacement of the <a href="https://docs.rs/device-driver">docs</a> 
   note
 </p>
 <p>Definitions are important!<br />
-The name <code>device-driver</code> conists of two parts:</p>
+The name <code>device-driver</code> consists of two parts:</p>
 <ul>
 <li><code>driver</code>: Code to enable the use of hardware.</li>
 <li><code>device</code>: A chip or peripheral you can talk to over a bus.</li>
@@ -286,7 +289,7 @@ The name <code>device-driver</code> conists of two parts:</p>
 <li>Next is a chapter about creating a driver interface where you'll see how to implement the right traits so the generated driver can talk with your device.</li>
 <li>Then the actual definition of the driver is covered. These chapters teach what options there are for defining registers, commands, buffers and more using either the DSL or a manifest language like YAML.</li>
 </ul>
-<p>The addendum contains more things that mostly provide useful background informations.</p>
+<p>The addendum contains more things that mostly provide useful background information.</p>
 <div class="mdbook-alerts mdbook-alerts-caution">
 <p class="mdbook-alerts-title">
   <span class="mdbook-alerts-icon"></span>
@@ -617,7 +620,7 @@ appropriate for a low level layer. For example: 'Registers' or 'LowLevel'</li>
   <span class="mdbook-alerts-icon"></span>
   tip
 </p>
-<p>With these steps the compile times should be acceptable. However, they can be further optimized by getting rid of the macro alltogether. This is explained in the cli chapter.</p>
+<p>With these steps the compile times should be acceptable. However, they can be further optimized by getting rid of the macro altogether. This is explained in the cli chapter.</p>
 </div>
 <div style="break-before: page; page-break-before: always;"></div><style>
 .mdbook-alerts {
@@ -1179,7 +1182,7 @@ Any command or register can override it.</p>
 </div>
 <p>The conversions are done using the <code>convert_case</code> crate. With this config option you can specify the boundaries the crate uses to do the conversions.</p>
 <p>Options are: <code>[Boundary]</code> or <code>string</code></p>
-<p>The available boundries can be found in <a href="https://docs.rs/convert_case/0.6.0/convert_case/enum.Boundary.html">the docs</a> of the crate. The boundary names should be specified as strings in the manifest and 'as is' in the DSL.</p>
+<p>The available boundaries can be found in <a href="https://docs.rs/convert_case/0.6.0/convert_case/enum.Boundary.html">the docs</a> of the crate. The boundary names should be specified as strings in the manifest and 'as is' in the DSL.</p>
 <p>The string is converted to an array of boundaries using <a href="https://docs.rs/convert_case/0.6.0/convert_case/enum.Boundary.html#method.list_from">this function</a> which is a really easy way to define it.</p>
 <p>The default value is also provided by the crate from <a href="https://docs.rs/convert_case/0.6.0/convert_case/enum.Boundary.html#method.defaults">this function</a>.</p>
 <h3 id="defmt_feature"><a class="header" href="#defmt_feature"><code>defmt_feature</code></a></h3>
@@ -1854,7 +1857,7 @@ This calculation is also done for any repeat addresses.</p>
 </style>
 <h1 id="field-sets"><a class="header" href="#field-sets">Field sets</a></h1>
 <p>A field set is a collection of fields that make up the data of a register, command input or command output.</p>
-<p>Each field set generates to a struct where each of the fields are accesible through functions with the names of the fields.</p>
+<p>Each field set generates to a struct where each of the fields are accessible through functions with the names of the fields.</p>
 <p>A field set can be created using the <code>new</code> function and will be initialized with the reset value (or zero if there is no reset value). When it's desired to get an all-zero version of the field set, you can call <code>new_zero</code>.<br />
 When a ref object overrides the reset value, the field set will have an extra constructor <code>new_as_&lt;ref name&gt;</code> that will use the reset value override for the initial value.</p>
 <div class="mdbook-alerts mdbook-alerts-note">
@@ -2018,7 +2021,7 @@ bar: int as try crate::MyCustomType2 = 16..32,
 </code></pre>
 <h2 id="required-3"><a class="header" href="#required-3">Required</a></h2>
 <h3 id="base"><a class="header" href="#base"><code>base</code></a></h3>
-<p>The base type denotes the primitve type used to convert the bits in the address range to a value.</p>
+<p>The base type denotes the primitive type used to convert the bits in the address range to a value.</p>
 <p>Options:</p>
 <ul>
 <li>uint - unsigned integer</li>
@@ -2072,7 +2075,7 @@ Multiple attributes get concatenated with a newline (just like normal Rust does)
 <p>Overrides the default field access.</p>
 <p>Options are: <code>RW</code>, <code>ReadWrite</code>, <code>WO</code>, <code>WriteOnly</code>, <code>RO</code>, <code>ReadOnly</code>.<br />
 They are written 'as is' in the DSL and as a string in the manifest.</p>
-<p>If the specified access can do read, a getter is generated with the name of the field. If the specied access do write, a setter is generated with the <code>set_</code> prefix followed by the name of the field.</p>
+<p>If the specified access can do read, a getter is generated with the name of the field. If the specified access do write, a setter is generated with the <code>set_</code> prefix followed by the name of the field.</p>
 <h3 id="conversion"><a class="header" href="#conversion">Conversion</a></h3>
 <p>If the base type of a field is an integer, the value can be converted to a further higher level type. There are two options for this:</p>
 <ul>
@@ -2823,7 +2826,7 @@ and may generate an error deeper down.</p>
 <li>'?' is used to signal 0 or 1 instances.</li>
 <li>'|' is used as an 'or'. One of the options in the chain can be used.</li>
 <li>'( )' is used to group things together.</li>
-<li>Any <code>keyword</code> or brackets in the grammer use backticks just like word 'keyword' on this line.</li>
+<li>Any <code>keyword</code> or brackets in the grammar use backticks just like word 'keyword' on this line.</li>
 </ul>
 <p>This doesn't map perfectly on the YAML and JSON inputs, but they should be made as close as possible.</p>
 <p><em>Device</em>:</p>
@@ -3715,7 +3718,7 @@ So even a single register must take care of byte ordering.</p>
 <ul>
 <li>If you use cfg's, check the generated code to see if everything looks alright.</li>
 <li>Use cfg's only sparingly.</li>
-<li>Test all realistic cfg combinations, preferrably even in CI.</li>
+<li>Test all realistic cfg combinations, preferably even in CI.</li>
 </ul>
 </div>
 <p>If there is a problem and the toolkit can do better, then please make an issue!</p>
