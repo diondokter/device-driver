@@ -8,7 +8,7 @@ It is not a replacement of the [docs](https://docs.rs/device-driver) though. The
 
 > [!NOTE]
 > Definitions are important!  
-> The name `device-driver` conists of two parts:
+> The name `device-driver` consists of two parts:
 > - `driver`: Code to enable the use of hardware.
 > - `device`: A chip or peripheral you can talk to over a bus.
 >
@@ -60,7 +60,7 @@ SYNT:
 - Next is a chapter about creating a driver interface where you'll see how to implement the right traits so the generated driver can talk with your device.
 - Then the actual definition of the driver is covered. These chapters teach what options there are for defining registers, commands, buffers and more using either the DSL or a manifest language like YAML.
 
-The addendum contains more things that mostly provide useful background informations.
+The addendum contains more things that mostly provide useful background information.
 
 > [!CAUTION]
 > It's hard to keep book like this up-to-date with reality. Small errors might creep in despite my best effort.  

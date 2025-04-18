@@ -15,7 +15,7 @@ Top-level item is _Device_.
 - '?' is used to signal 0 or 1 instances.
 - '|' is used as an 'or'. One of the options in the chain can be used.
 - '( )' is used to group things together.
-- Any `keyword` or brackets in the grammer use backticks just like word 'keyword' on this line.
+- Any `keyword` or brackets in the grammar use backticks just like word 'keyword' on this line.
 
 This doesn't map perfectly on the YAML and JSON inputs, but they should be made as close as possible.
 

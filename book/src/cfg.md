@@ -20,6 +20,6 @@ So what does this all mean?
 > [!WARNING]
 > - If you use cfg's, check the generated code to see if everything looks alright.
 > - Use cfg's only sparingly.
-> - Test all realistic cfg combinations, preferrably even in CI.
+> - Test all realistic cfg combinations, preferably even in CI.
 
 If there is a problem and the toolkit can do better, then please make an issue!
