@@ -1,0 +1,15 @@
+[default.extend-identifiers]
+# You can add exceptions here
+ORDR = "ORDR"
+
+[files]
+extend-exclude = [
+    "cli",
+    # There are some typos within the `src` directory, but they need a closer look
+    "cli/src",
+    "cli/Cargo.toml",
+    "dd-manifest-tree",
+    "device-driver",
+    "generation",
+    "macros",
+]
