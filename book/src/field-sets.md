@@ -2,7 +2,7 @@
 
 A field set is a collection of fields that make up the data of a register, command input or command output.
 
-Each field set generates to a struct where each of the fields are accesible through functions with the names of the fields.
+Each field set generates to a struct where each of the fields are accessible through functions with the names of the fields.
 
 A field set can be created using the `new` function and will be initialized with the reset value (or zero if there is no reset value). When it's desired to get an all-zero version of the field set, you can call `new_zero`.  
 When a ref object overrides the reset value, the field set will have an extra constructor `new_as_<ref name>` that will use the reset value override for the initial value.
@@ -165,7 +165,7 @@ With conversion to generated enum:
 
 ### `base`
 
-The base type denotes the primitve type used to convert the bits in the address range to a value.
+The base type denotes the primitive type used to convert the bits in the address range to a value.
 
 Options:
 - uint - unsigned integer
@@ -225,7 +225,7 @@ Overrides the default field access.
 Options are: `RW`, `ReadWrite`, `WO`, `WriteOnly`, `RO`, `ReadOnly`.  
 They are written 'as is' in the DSL and as a string in the manifest.
 
-If the specified access can do read, a getter is generated with the name of the field. If the specied access do write, a setter is generated with the `set_` prefix followed by the name of the field.
+If the specified access can do read, a getter is generated with the name of the field. If the specified access do write, a setter is generated with the `set_` prefix followed by the name of the field.
 
 ### Conversion
 

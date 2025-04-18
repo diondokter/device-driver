@@ -161,7 +161,7 @@ The conversions are done using the `convert_case` crate. With this config option
 
 Options are: `[Boundary]` or `string`
 
-The available boundries can be found in [the docs](https://docs.rs/convert_case/0.6.0/convert_case/enum.Boundary.html) of the crate. The boundary names should be specified as strings in the manifest and 'as is' in the DSL.
+The available boundaries can be found in [the docs](https://docs.rs/convert_case/0.6.0/convert_case/enum.Boundary.html) of the crate. The boundary names should be specified as strings in the manifest and 'as is' in the DSL.
 
 The string is converted to an array of boundaries using [this function](https://docs.rs/convert_case/0.6.0/convert_case/enum.Boundary.html#method.list_from) which is a really easy way to define it.
 

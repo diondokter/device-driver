@@ -81,4 +81,4 @@ Suggestions:
   - `features = ["toml"]`
 
 > [!tip]
-> With these steps the compile times should be acceptable. However, they can be further optimized by getting rid of the macro alltogether. This is explained in the cli chapter.
+> With these steps the compile times should be acceptable. However, they can be further optimized by getting rid of the macro altogether. This is explained in the cli chapter.
