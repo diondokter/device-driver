@@ -216,7 +216,7 @@ fn pivot_msb0(start: usize, end: usize, i: usize) -> usize {
         let num_bits = end - (end - 8).next_multiple_of(8);
         // Calculate the pivot and force it to round down so any error is in the same direction
         // as in the start byte case
-        let pivot = end - ((num_bits + 1) / 2);
+        let pivot = end - num_bits.div_ceil(2);
 
         (num_bits, pivot)
     };
