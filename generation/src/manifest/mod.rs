@@ -655,11 +655,23 @@ fn transform_command_override(name: &str, map: &impl Map) -> anyhow::Result<mir:
 fn transform_repeat(value: &impl Value) -> anyhow::Result<mir::Repeat> {
     let map = value.as_map()?;
 
-    let count = map
+    let count_field = map
         .get("count")
-        .ok_or_else(|| anyhow!("Missing field 'count'"))?
-        .as_uint()
-        .context("Parsing field 'count'")?;
+        .ok_or_else(|| anyhow!("Missing field 'count'"))?;
+
+    let count = if let Ok(count_value) = count_field.as_uint() {
+        mir::RepeatCount::Value(count_value)
+    } else if let Ok(conversion) = transform_conversion(count_field, false) {
+        mir::RepeatCount::Conversion(conversion)
+    } else {
+        let uint_error = count_field.as_uint().unwrap_err();
+        let conversion_error = transform_conversion(count_field, false).unwrap_err();
+
+        return Err(anyhow!("Could not parse the 'count' value")
+            .context(uint_error)
+            .context(conversion_error));
+    };
+
     let stride = map
         .get("stride")
         .ok_or_else(|| anyhow!("Missing field 'stride'"))?
@@ -718,9 +730,8 @@ fn transform_field((field_name, field_value): (&str, &impl Value)) -> anyhow::Re
                 field.base_type = transform_base_type(value).context("Parsing error for 'base'")?
             }
             "conversion" => {
-                field.field_conversion = Some(
-                    transform_field_conversion(value, false)
-                        .context("Parsing error for 'conversion'")?,
+                field.conversion = Some(
+                    transform_conversion(value, false).context("Parsing error for 'conversion'")?,
                 )
             }
             "try_conversion" => {
@@ -729,8 +740,8 @@ fn transform_field((field_name, field_value): (&str, &impl Value)) -> anyhow::Re
                     "Cannot have both 'conversion' and 'try_conversion' on a field. Pick one."
                 );
 
-                field.field_conversion = Some(
-                    transform_field_conversion(value, true)
+                field.conversion = Some(
+                    transform_conversion(value, true)
                         .context("Parsing error for 'try_conversion'")?,
                 )
             }
@@ -772,12 +783,9 @@ fn transform_base_type(value: &impl Value) -> anyhow::Result<mir::BaseType> {
     }
 }
 
-fn transform_field_conversion(
-    value: &impl Value,
-    use_try: bool,
-) -> anyhow::Result<mir::FieldConversion> {
+fn transform_conversion(value: &impl Value, use_try: bool) -> anyhow::Result<mir::Conversion> {
     if let Ok(type_name) = value.as_string() {
-        Ok(mir::FieldConversion::Direct {
+        Ok(mir::Conversion::Direct {
             type_name: type_name.into(),
             use_try,
         })
@@ -799,7 +807,7 @@ fn transform_field_conversion(
             .collect::<Result<Vec<_>, _>>()
             .context("Parsing error for enum variant")?;
 
-        Ok(mir::FieldConversion::Enum {
+        Ok(mir::Conversion::Enum {
             enum_value: mir::Enum::new(
                 description.unwrap_or_default().into(),
                 name.into(),
@@ -1077,12 +1085,92 @@ mod tests {
                 bit_order: mir::BitOrder::MSB0,
                 byte_order: Some(ByteOrder::BE),
                 repeat: Some(Repeat {
-                    count: 12,
+                    count: mir::RepeatCount::Value(12),
                     stride: -3
                 }),
                 reset_value: Some(ResetValue::Array(vec![1, 2, 3])),
                 description: "hello!".into(),
                 cfg_attr: Cfg::new(Some("windows")),
+                ..Default::default()
+            })
+        );
+
+        assert_eq!(
+            transform_object((
+                "my_register",
+                &dd_manifest_tree::parse_manifest::<dd_manifest_tree::YamlValue>(
+                    "
+                        type: register
+                        address: 42
+                        size_bits: 8
+                        repeat:
+                            count: Foo
+                            stride: -3
+                    "
+                )
+                .unwrap()
+            ))
+            .unwrap(),
+            Object::Register(Register {
+                name: "my_register".into(),
+                address: 42,
+                size_bits: 8,
+                repeat: Some(Repeat {
+                    count: mir::RepeatCount::Conversion(mir::Conversion::Direct {
+                        type_name: "Foo".into(),
+                        use_try: false
+                    }),
+                    stride: -3
+                }),
+                ..Default::default()
+            })
+        );
+
+        assert_eq!(
+            transform_object((
+                "my_register",
+                &dd_manifest_tree::parse_manifest::<dd_manifest_tree::YamlValue>(
+                    "
+                        type: register
+                        address: 42
+                        size_bits: 8
+                        repeat:
+                            count:
+                                name: Foo
+                                A: null
+                                B: null
+                            stride: -3
+                    "
+                )
+                .unwrap()
+            ))
+            .unwrap(),
+            Object::Register(Register {
+                name: "my_register".into(),
+                address: 42,
+                size_bits: 8,
+                repeat: Some(Repeat {
+                    count: mir::RepeatCount::Conversion(mir::Conversion::Enum {
+                        enum_value: Enum::new(
+                            "".into(),
+                            "Foo".into(),
+                            vec![
+                                EnumVariant {
+                                    name: "A".into(),
+                                    value: mir::EnumValue::Unspecified,
+                                    ..Default::default()
+                                },
+                                EnumVariant {
+                                    name: "B".into(),
+                                    value: mir::EnumValue::Unspecified,
+                                    ..Default::default()
+                                }
+                            ]
+                        ),
+                        use_try: false
+                    }),
+                    stride: -3
+                }),
                 ..Default::default()
             })
         );
@@ -1138,7 +1226,7 @@ mod tests {
                         name: "test".into(),
                         access: mir::Access::RO,
                         base_type: mir::BaseType::Int,
-                        field_conversion: None,
+                        conversion: None,
                         field_address: 0..3,
                     },
                     Field {
@@ -1147,7 +1235,7 @@ mod tests {
                         name: "test2".into(),
                         access: Default::default(),
                         base_type: mir::BaseType::Uint,
-                        field_conversion: Some(mir::FieldConversion::Direct {
+                        conversion: Some(mir::Conversion::Direct {
                             type_name: "MyStruct".into(),
                             use_try: true
                         }),
@@ -1159,7 +1247,7 @@ mod tests {
                         name: "test3".into(),
                         access: Default::default(),
                         base_type: mir::BaseType::Int,
-                        field_conversion: Some(mir::FieldConversion::Enum {
+                        conversion: Some(mir::Conversion::Enum {
                             enum_value: Enum::new(
                                 "This is my enum".into(),
                                 "MyEnum".into(),

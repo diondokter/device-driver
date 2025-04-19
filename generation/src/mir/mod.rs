@@ -258,16 +258,31 @@ impl Object {
     }
 
     /// Return the repeat value if it exists
-    fn repeat(&self) -> Option<Repeat> {
+    fn repeat(&self) -> Option<&Repeat> {
         match self {
-            Object::Block(block) => block.repeat,
-            Object::Register(register) => register.repeat,
-            Object::Command(command) => command.repeat,
+            Object::Block(block) => block.repeat.as_ref(),
+            Object::Register(register) => register.repeat.as_ref(),
+            Object::Command(command) => command.repeat.as_ref(),
             Object::Buffer(_) => None,
             Object::Ref(ref_object) => match &ref_object.object_override {
-                ObjectOverride::Block(block_override) => block_override.repeat,
-                ObjectOverride::Register(register_override) => register_override.repeat,
-                ObjectOverride::Command(command_override) => command_override.repeat,
+                ObjectOverride::Block(block_override) => block_override.repeat.as_ref(),
+                ObjectOverride::Register(register_override) => register_override.repeat.as_ref(),
+                ObjectOverride::Command(command_override) => command_override.repeat.as_ref(),
+            },
+        }
+    }
+
+    /// Return the repeat value if it exists
+    fn repeat_mut(&mut self) -> Option<&mut Repeat> {
+        match self {
+            Object::Block(block) => block.repeat.as_mut(),
+            Object::Register(register) => register.repeat.as_mut(),
+            Object::Command(command) => command.repeat.as_mut(),
+            Object::Buffer(_) => None,
+            Object::Ref(ref_object) => match &mut ref_object.object_override {
+                ObjectOverride::Block(block_override) => block_override.repeat.as_mut(),
+                ObjectOverride::Register(register_override) => register_override.repeat.as_mut(),
+                ObjectOverride::Command(command_override) => command_override.repeat.as_mut(),
             },
         }
     }
@@ -291,10 +306,46 @@ pub struct Block {
     pub objects: Vec<Object>,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Repeat {
-    pub count: u64,
+    pub count: RepeatCount,
     pub stride: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RepeatCount {
+    Value(u64),
+    Conversion(Conversion),
+}
+
+impl RepeatCount {
+    /// Get the count value if it's a simple value or the max count value from the conversion if that can be calculated (or else 1)
+    pub fn total_count(&self) -> u64 {
+        match self {
+            RepeatCount::Value(count) => *count,
+            RepeatCount::Conversion(Conversion::Direct { .. }) => 1, // We can't know the value...
+            RepeatCount::Conversion(Conversion::Enum {
+                enum_value: Enum { variants, .. },
+                ..
+            }) => {
+                let mut running_value = 0;
+                let mut max_value = 0;
+
+                for variant in variants {
+                    match variant.value {
+                        EnumValue::Unspecified => running_value += 1,
+                        EnumValue::Specified(value) => running_value = value as u128 as u64 + 1,
+                        EnumValue::Default => running_value += 1,
+                        EnumValue::CatchAll => running_value += 1,
+                    }
+
+                    max_value = max_value.max(running_value);
+                }
+
+                max_value
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -321,7 +372,7 @@ pub struct Field {
     pub name: String,
     pub access: Access,
     pub base_type: BaseType,
-    pub field_conversion: Option<FieldConversion>,
+    pub conversion: Option<Conversion>,
     pub field_address: Range<u32>,
 }
 
@@ -334,23 +385,23 @@ pub enum BaseType {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum FieldConversion {
+pub enum Conversion {
     Direct { type_name: String, use_try: bool },
     Enum { enum_value: Enum, use_try: bool },
 }
 
-impl FieldConversion {
+impl Conversion {
     pub const fn use_try(&self) -> bool {
         match self {
-            FieldConversion::Direct { use_try, .. } => *use_try,
-            FieldConversion::Enum { use_try, .. } => *use_try,
+            Conversion::Direct { use_try, .. } => *use_try,
+            Conversion::Enum { use_try, .. } => *use_try,
         }
     }
 
     pub fn type_name(&self) -> &str {
         match self {
-            FieldConversion::Direct { type_name, .. } => type_name,
-            FieldConversion::Enum { enum_value, .. } => &enum_value.name,
+            Conversion::Direct { type_name, .. } => type_name,
+            Conversion::Enum { enum_value, .. } => &enum_value.name,
         }
     }
 }
@@ -395,7 +446,11 @@ impl Enum {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EnumGenerationStyle {
     Fallible,
-    Infallible { bit_size: u32 },
+    Infallible {
+        bit_size: u32,
+    },
+    /// This is an index enum used by the repeat
+    Index,
 }
 
 impl EnumGenerationStyle {

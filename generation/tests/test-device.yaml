@@ -34,6 +34,25 @@ Bar:
           base: int
           start: 16
           end: 24
+    FooRepeated:
+      type: register
+      address: 1
+      size_bits: 8
+      repeat:
+        count:
+          name: Repeater
+          description: Indexing type for FooRepeated
+          A: null
+          B: null
+          C: 10
+        stride: 1
+    FooRepeatedCustom:
+      type: register
+      address: 1
+      size_bits: 8
+      repeat:
+        count: CustomRepeater
+        stride: 1
 InOut:
   type: command
   address: 3

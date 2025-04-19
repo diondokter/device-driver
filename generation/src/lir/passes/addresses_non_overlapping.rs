@@ -53,11 +53,13 @@ fn get_block_claimed_addresses(
 
         let (repeat_count, repeat_stride, repeat): (i64, i64, bool) = match &method.kind {
             BlockMethodKind::Normal => (1, 0, false),
-            BlockMethodKind::Repeated { count, stride } => (
+            BlockMethodKind::RepeatedNumber { count, stride } => (
                 count.to_string().parse().unwrap(),
                 stride.to_string().parse().unwrap(),
                 true,
             ),
+            // We don't know the possibilities of this type, so we can't really check
+            BlockMethodKind::RepeatedFromType { .. } => continue,
         };
 
         let claimed_address_type = match &method.method_type {
@@ -154,7 +156,7 @@ mod tests {
                             name: format_ident!("second_block"),
                             address: Literal::i64_unsuffixed(10),
                             allow_address_overlap: false,
-                            kind: BlockMethodKind::Repeated {
+                            kind: BlockMethodKind::RepeatedNumber {
                                 count: Literal::i64_unsuffixed(10),
                                 stride: Literal::i64_unsuffixed(10),
                             },
@@ -168,7 +170,7 @@ mod tests {
                             name: format_ident!("register0"),
                             address: Literal::i64_unsuffixed(75),
                             allow_address_overlap: false,
-                            kind: BlockMethodKind::Repeated {
+                            kind: BlockMethodKind::RepeatedNumber {
                                 count: Literal::i64_unsuffixed(2),
                                 stride: Literal::i64_unsuffixed(5),
                             },

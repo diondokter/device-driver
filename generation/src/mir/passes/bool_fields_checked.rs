@@ -22,7 +22,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
                 );
 
                 ensure!(
-                    field.field_conversion.is_none(),
+                    field.conversion.is_none(),
                     "Object \"{}\" has field \"{}\" which is of base type `bool` and has specified a conversion. This is not supported for bools.",
                     object_name,
                     field.name

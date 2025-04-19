@@ -123,9 +123,17 @@ _Block_:
 _Repeat_:
 ```
 {
-    count: uint,
+    count: _RepeatCount_,
     stride: int
 }
+```
+
+_RepeatCount_:
+```
+oneof(
+    uint,
+    _Conversion_
+)
 ```
 
 _Register_:
@@ -156,8 +164,8 @@ _Field_:
     description?: string,
     access?: _Access_,
     base: _BaseType_,
-    conversion?: _FieldConversion_,
-    try_conversion?: _FieldConversion_,
+    conversion?: _Conversion_,
+    try_conversion?: _Conversion_,
     start: int,
     end?: int,
 }
@@ -168,7 +176,7 @@ _BaseType_:
 string oneof("bool", "int", "uint")
 ```
 
-_FieldConversion_:
+_Conversion_:
 ```
 oneof(
     string,
