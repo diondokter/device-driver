@@ -16,14 +16,14 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
 
                 ensure!(
                     field.field_address.clone().count() == 1,
-                    "Object \"{}\" has field \"{}\" which is of base type `bool` and is larger than 1 bit. A bool can only be zero or one bit.",
+                    "Object `{}` has field `{}` which is of base type `bool` and is larger than 1 bit. A bool can only be zero or one bit.",
                     object_name,
                     field.name
                 );
 
                 ensure!(
                     field.field_conversion.is_none(),
-                    "Object \"{}\" has field \"{}\" which is of base type `bool` and has specified a conversion. This is not supported for bools.",
+                    "Object `{}` has field `{}` which is of base type `bool` and has specified a conversion. This is not supported for bools.",
                     object_name,
                     field.name
                 );

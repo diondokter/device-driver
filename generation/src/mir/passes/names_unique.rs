@@ -13,7 +13,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
     recurse_objects_mut(&mut device.objects, &mut |object| {
         anyhow::ensure!(
             seen_object_ids.insert(object.id()),
-            "Duplicate object name found: \"{}\"",
+            "Duplicate object name found: `{}`",
             object.name()
         );
 
@@ -22,7 +22,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
             for field in field_set {
                 anyhow::ensure!(
                     seen_field_names.insert(field.name.clone()),
-                    "Duplicate field name found in object \"{}\": \"{}\"",
+                    "Duplicate field name found in object `{}`: `{}`",
                     object.name(),
                     field.name
                 );
@@ -36,7 +36,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
 
                     anyhow::ensure!(
                         generated_type_ids.insert(enum_value.id()),
-                        "Duplicate generated enum name \"{}\" found in object \"{}\" on field \"{}\"",
+                        "Duplicate generated enum name `{}` found in object `{}` on field `{}`",
                         name,
                         object.name(),
                         field.name,
@@ -45,7 +45,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
                     for v in variants.iter() {
                         anyhow::ensure!(
                             seen_variant_names.insert(v.id()),
-                            "Duplicate field \"{}\" found in generated enum \"{}\" in object \"{}\" on field \"{}\"",
+                            "Duplicate field `{}` found in generated enum `{}` in object `{}` on field `{}`",
                             v.name,
                             name,
                             object.name(),
@@ -69,7 +69,7 @@ mod tests {
     use super::*;
 
     #[test]
-    #[should_panic(expected = "Duplicate object name found: \"MyBuffer\"")]
+    #[should_panic(expected = "Duplicate object name found: `MyBuffer`")]
     fn object_names_not_unique() {
         let global_config = GlobalConfig {
             name_word_boundaries: Boundary::list_from("-"),
@@ -94,7 +94,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Duplicate field name found in object \"Reg\": \"field\"")]
+    #[should_panic(expected = "Duplicate field name found in object `Reg`: `field`")]
     fn field_names_not_unique() {
         let global_config = GlobalConfig {
             name_word_boundaries: Boundary::list_from("-"),
@@ -124,7 +124,7 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "Duplicate generated enum name \"Enum\" found in object \"Reg\" on field \"field2\""
+        expected = "Duplicate generated enum name `Enum` found in object `Reg` on field `field2`"
     )]
     fn duplicate_generated_enums() {
         let global_config = GlobalConfig {
@@ -171,7 +171,7 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "Duplicate field \"Variant\" found in generated enum \"Enum\" in object \"Reg\" on field \"field\""
+        expected = "Duplicate field `Variant` found in generated enum `Enum` in object `Reg` on field `field`"
     )]
     fn duplicate_generated_enum_variants() {
         let global_config = GlobalConfig {

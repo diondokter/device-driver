@@ -38,13 +38,13 @@ fn validate_len(field_set: &[Field], size_bits: u32, object_name: &str) -> anyho
     for field in field_set {
         ensure!(
             field.field_address.end <= size_bits,
-            "Object \"{object_name}\" has field \"{}\" who's address exceeds the given max size bits",
+            "Object `{object_name}` has field `{}` who's address exceeds the given max size bits",
             field.name
         );
 
         ensure!(
             field.field_address.clone().count() > 0,
-            "Object \"{object_name}\" has field \"{}\" that is 0 bits. This is likely a mistake",
+            "Object `{object_name}` has field `{}` that is 0 bits. This is likely a mistake",
             field.name
         );
     }
@@ -57,7 +57,7 @@ fn validate_overlap(field_set: &[Field], object_name: &str) -> anyhow::Result<()
         for second_field in &field_set[(i + 1).min(field_set.len())..] {
             ensure!(
                 !ranges_overlap(&field.field_address, &second_field.field_address),
-                "Object \"{object_name}\" has two overlapping fields: \"{}\" and \"{}\". If this is intended, set the `AllowBitOverlap` option to true",
+                "Object `{object_name}` has two overlapping fields: `{}` and `{}`. If this is intended, set the `AllowBitOverlap` option to true",
                 field.name,
                 second_field.name
             )
@@ -111,7 +111,7 @@ mod tests {
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
-            "Object \"MyReg\" has field \"my_field\" who's address exceeds the given max size bits"
+            "Object `MyReg` has field `my_field` who's address exceeds the given max size bits"
         );
 
         let mut start_mir = Device {
@@ -146,7 +146,7 @@ mod tests {
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
-            "Object \"MyReg (in)\" has field \"my_field\" who's address exceeds the given max size bits"
+            "Object `MyReg (in)` has field `my_field` who's address exceeds the given max size bits"
         );
 
         let mut start_mir = Device {
@@ -181,7 +181,7 @@ mod tests {
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
-            "Object \"MyReg (out)\" has field \"my_field\" who's address exceeds the given max size bits"
+            "Object `MyReg (out)` has field `my_field` who's address exceeds the given max size bits"
         );
     }
 
@@ -257,7 +257,7 @@ mod tests {
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
-            "Object \"MyReg\" has two overlapping fields: \"my_field\" and \"my_field2\". If this is intended, set the `AllowBitOverlap` option to true"
+            "Object `MyReg` has two overlapping fields: `my_field` and `my_field2`. If this is intended, set the `AllowBitOverlap` option to true"
         );
     }
 
@@ -333,7 +333,7 @@ mod tests {
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
-            "Object \"MyReg (in)\" has two overlapping fields: \"my_field\" and \"my_field2\". If this is intended, set the `AllowBitOverlap` option to true"
+            "Object `MyReg (in)` has two overlapping fields: `my_field` and `my_field2`. If this is intended, set the `AllowBitOverlap` option to true"
         );
     }
 
@@ -409,7 +409,7 @@ mod tests {
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
-            "Object \"MyReg (out)\" has two overlapping fields: \"my_field\" and \"my_field2\". If this is intended, set the `AllowBitOverlap` option to true"
+            "Object `MyReg (out)` has two overlapping fields: `my_field` and `my_field2`. If this is intended, set the `AllowBitOverlap` option to true"
         );
     }
 }

@@ -48,21 +48,21 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
     for (ref_target_name, reffer_name) in reffed_blocks {
         ensure!(
             real_blocks.contains(&ref_target_name),
-            "Block ref \"{reffer_name}\" refers to unknown block \"{ref_target_name}\""
+            "Block ref `{reffer_name}` refers to unknown block `{ref_target_name}`"
         );
     }
 
     for (ref_target_name, reffer_name) in reffed_registers {
         ensure!(
             real_registers.contains(&ref_target_name),
-            "Register ref \"{reffer_name}\" refers to unknown register \"{ref_target_name}\""
+            "Register ref `{reffer_name}` refers to unknown register `{ref_target_name}`"
         );
     }
 
     for (ref_target_name, reffer_name) in reffed_commands {
         ensure!(
             real_commands.contains(&ref_target_name),
-            "Command ref \"{reffer_name}\" refers to unknown command \"{ref_target_name}\""
+            "Command ref `{reffer_name}` refers to unknown command `{ref_target_name}`"
         );
     }
 
@@ -118,7 +118,7 @@ mod tests {
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
-            "Register ref \"MyRef\" refers to unknown register \"MyReg2\""
+            "Register ref `MyRef` refers to unknown register `MyReg2`"
         );
     }
 
@@ -139,7 +139,7 @@ mod tests {
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
-            "Block ref \"MyRef\" refers to unknown block \"MyBlock2\""
+            "Block ref `MyRef` refers to unknown block `MyBlock2`"
         );
     }
 
@@ -160,7 +160,7 @@ mod tests {
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
-            "Command ref \"MyRef\" refers to unknown command \"MyComm2\""
+            "Command ref `MyRef` refers to unknown command `MyComm2`"
         );
     }
 }

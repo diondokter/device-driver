@@ -25,7 +25,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
     recurse_objects_mut(&mut device.objects, &mut |object| match object {
         Object::Register(r) if r.size_bits > 8 && r.byte_order.is_none() => {
             bail!(
-                "No byte order is specified for register \"{}\" while it's big enough that byte order is important. Specify it on the register or in the global config",
+                "No byte order is specified for register `{}` while it's big enough that byte order is important. Specify it on the register or in the global config",
                 r.name
             );
         }
@@ -38,7 +38,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
             if (c.size_bits_in > 8 || c.size_bits_out > 8) && c.byte_order.is_none() =>
         {
             bail!(
-                "No byte order is specified for command \"{}\" while it's big enough that byte order is important. Specify it on the command or in the global config",
+                "No byte order is specified for command `{}` while it's big enough that byte order is important. Specify it on the command or in the global config",
                 c.name
             );
         }
@@ -108,7 +108,7 @@ mod tests {
 
         assert_eq!(
             run_pass(&mut input).unwrap_err().to_string(),
-            "No byte order is specified for register \"MyRegister\" while it's big enough that byte order is important. Specify it on the register or in the global config"
+            "No byte order is specified for register `MyRegister` while it's big enough that byte order is important. Specify it on the register or in the global config"
         );
 
         let mut input = Device {
@@ -122,7 +122,7 @@ mod tests {
 
         assert_eq!(
             run_pass(&mut input).unwrap_err().to_string(),
-            "No byte order is specified for command \"MyCommand\" while it's big enough that byte order is important. Specify it on the command or in the global config"
+            "No byte order is specified for command `MyCommand` while it's big enough that byte order is important. Specify it on the command or in the global config"
         );
 
         let mut input = Device {
@@ -136,7 +136,7 @@ mod tests {
 
         assert_eq!(
             run_pass(&mut input).unwrap_err().to_string(),
-            "No byte order is specified for command \"MyCommand\" while it's big enough that byte order is important. Specify it on the command or in the global config"
+            "No byte order is specified for command `MyCommand` while it's big enough that byte order is important. Specify it on the command or in the global config"
         );
     }
 

@@ -139,7 +139,7 @@ fn convert_reset_value(
             // Check if the value is not too big
             ensure!(
                 !array_view[size_bits as usize..].any(),
-                "The reset value of {object_type_name} \"{}\" has (a) bit(s) specified above the size of the register. \
+                "The reset value of {object_type_name} `{}` has (a) bit(s) specified above the size of the register. \
                 While you can specify them, this is likely a mistake and thus not accepted. Keep the bits `{}..` all at zero",
                 object_name,
                 size_bits,
@@ -162,7 +162,7 @@ fn convert_reset_value(
         ResetValue::Array(mut array) => {
             ensure!(
                 array.len() == target_byte_size,
-                "The reset value of {object_type_name} \"{}\" has the incorrect length. It must be specified as {target_byte_size} bytes, but now only has {} elements",
+                "The reset value of {object_type_name} `{}` has the incorrect length. It must be specified as {target_byte_size} bytes, but now only has {} elements",
                 object_name,
                 array.len(),
             );
@@ -176,7 +176,7 @@ fn convert_reset_value(
                 BitOrder::LSB0 => {
                     ensure!(
                         !array.view_bits::<Lsb0>()[size_bits as usize..].any(),
-                        "The reset value of {object_type_name} \"{}\" has (a) bit(s) specified above the size of the register. \
+                        "The reset value of {object_type_name} `{}` has (a) bit(s) specified above the size of the register. \
                         While you can specify them, this is likely a mistake and thus not accepted. Keep the bits `{}..` all at zero",
                         object_name,
                         size_bits,
@@ -185,7 +185,7 @@ fn convert_reset_value(
                 BitOrder::MSB0 => {
                     ensure!(
                         !array.view_bits::<Msb0>()[size_bits as usize..].any(),
-                        "The reset value of {object_type_name} \"{}\" has (a) bit(s) specified above the size of the register. \
+                        "The reset value of {object_type_name} `{}` has (a) bit(s) specified above the size of the register. \
                         While you can specify them, this is likely a mistake and thus not accepted. Keep the bits `{}..` all at zero",
                         object_name,
                         size_bits,
@@ -361,7 +361,7 @@ mod tests {
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
-            "The reset value of register \"Reg\" has (a) bit(s) specified above the size of the register. While you can specify them, this is likely a mistake and thus not accepted. Keep the bits `10..` all at zero"
+            "The reset value of register `Reg` has (a) bit(s) specified above the size of the register. While you can specify them, this is likely a mistake and thus not accepted. Keep the bits `10..` all at zero"
         );
 
         let mut start_mir = Device {
@@ -377,7 +377,7 @@ mod tests {
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
-            "The reset value of register \"Reg\" has (a) bit(s) specified above the size of the register. While you can specify them, this is likely a mistake and thus not accepted. Keep the bits `10..` all at zero"
+            "The reset value of register `Reg` has (a) bit(s) specified above the size of the register. While you can specify them, this is likely a mistake and thus not accepted. Keep the bits `10..` all at zero"
         );
 
         let mut start_mir = Device {
@@ -394,7 +394,7 @@ mod tests {
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
-            "The reset value of register \"Reg\" has (a) bit(s) specified above the size of the register. While you can specify them, this is likely a mistake and thus not accepted. Keep the bits `10..` all at zero"
+            "The reset value of register `Reg` has (a) bit(s) specified above the size of the register. While you can specify them, this is likely a mistake and thus not accepted. Keep the bits `10..` all at zero"
         );
     }
 
@@ -413,7 +413,7 @@ mod tests {
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
-            "The reset value of register \"Reg\" has the incorrect length. It must be specified as 4 bytes, but now only has 3 elements"
+            "The reset value of register `Reg` has the incorrect length. It must be specified as 4 bytes, but now only has 3 elements"
         );
     }
 
