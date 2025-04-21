@@ -72,13 +72,44 @@ fn main() -> Result<(), Box<dyn Error>> {
         .expect("Could not write the output");
 
     if pretty_output.starts_with("::core::compile_error!") {
-        let error_output = pretty_output
-            .strip_prefix("::core::compile_error!(\"")
-            .unwrap()
-            .strip_suffix("\");\n")
-            .unwrap();
-        return Err(error_output.into());
+        return Err(strip_compile_error(&pretty_output).into());
     }
 
     Ok(())
+}
+
+fn strip_compile_error(mut error: &str) -> &str {
+    error = error
+        .strip_prefix("::core::compile_error!(")
+        .unwrap_or(error)
+        .trim();
+    error = error.strip_prefix("\"").unwrap_or(error).trim();
+    error = error.strip_suffix(";").unwrap_or(error).trim();
+    error = error.strip_suffix(")").unwrap_or(error).trim();
+    error = error.strip_suffix(",").unwrap_or(error).trim();
+    error = error.strip_suffix("\"").unwrap_or(error).trim();
+
+    error
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn compile_error_stripping() {
+        assert_eq!(
+            strip_compile_error(
+                "::core::compile_error!(\"simple key expect ':' at byte 354 line 21 column 11\");"
+            ),
+            "simple key expect ':' at byte 354 line 21 column 11",
+        );
+
+        assert_eq!(
+            strip_compile_error(
+                "::core::compile_error!(\n    \"Parsing object `DOWNLOAD_POSTMORTEM`: Parsing error for 'fields_in': Parsing field 'LENGTH': Unexpected key: 'default'\",\n)\n"
+            ),
+            "Parsing object `DOWNLOAD_POSTMORTEM`: Parsing error for 'fields_in': Parsing field 'LENGTH': Unexpected key: 'default'"
+        );
+    }
 }
