@@ -39,7 +39,9 @@ pub fn create_device(item: TokenStream) -> TokenStream {
     match input.generation_type {
         #[cfg(feature = "dsl")]
         GenerationType::Dsl(tokens) => {
-            device_driver_generation::transform_dsl(tokens, &input.device_name.to_string()).into()
+            device_driver_generation::transform_dsl(tokens, &input.device_name.to_string())
+                .parse()
+                .unwrap()
         }
         #[cfg(not(feature = "dsl"))]
         GenerationType::Dsl(_tokens) => {
@@ -48,82 +50,83 @@ pub fn create_device(item: TokenStream) -> TokenStream {
                 .into()
         }
         GenerationType::Manifest(path) => {
-            let result: Result<proc_macro2::TokenStream, syn::Error> = (|| {
-                let mut path = PathBuf::from(path.value());
-                if path.is_relative() {
-                    let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
-                    path = manifest_dir.join(path);
-                }
+            let result: Result<String, syn::Error> =
+                (|| {
+                    let mut path = PathBuf::from(path.value());
+                    if path.is_relative() {
+                        let manifest_dir =
+                            PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
+                        path = manifest_dir.join(path);
+                    }
 
-                let mut file_contents = String::new();
-                File::open(&path)
-                    .map_err(|e| {
-                        syn::Error::new(
+                    let mut file_contents = String::new();
+                    File::open(&path)
+                        .map_err(|e| {
+                            syn::Error::new(
+                                Span::call_site(),
+                                format!(
+                                    "Could not open the manifest file at '{}': {e}",
+                                    path.display()
+                                ),
+                            )
+                        })?
+                        .read_to_string(&mut file_contents)
+                        .unwrap();
+
+                    let extension = path.extension().map(|ext| ext.to_string_lossy()).ok_or(
+                        syn::Error::new(Span::call_site(), "Manifest file has no file extension"),
+                    )?;
+
+                    match extension.deref() {
+                        #[cfg(feature = "json")]
+                        "json" => Ok(device_driver_generation::transform_json(
+                            &file_contents,
+                            &input.device_name.to_string(),
+                        )),
+                        #[cfg(not(feature = "json"))]
+                        "json" => Err(syn::Error::new(
                             Span::call_site(),
-                            format!("Could open the manifest file at '{}': {e}", path.display()),
-                        )
-                    })?
-                    .read_to_string(&mut file_contents)
-                    .unwrap();
-
-                let extension =
-                    path.extension()
-                        .map(|ext| ext.to_string_lossy())
-                        .ok_or(syn::Error::new(
+                            format!("The json feature is not enabled"),
+                        )),
+                        #[cfg(feature = "yaml")]
+                        "yaml" => Ok(device_driver_generation::transform_yaml(
+                            &file_contents,
+                            &input.device_name.to_string(),
+                        )),
+                        #[cfg(not(feature = "yaml"))]
+                        "yaml" => Err(syn::Error::new(
                             Span::call_site(),
-                            "Manifest file has no file extension",
-                        ))?;
-
-                match extension.deref() {
-                    #[cfg(feature = "json")]
-                    "json" => Ok(device_driver_generation::transform_json(
-                        &file_contents,
-                        &input.device_name.to_string(),
-                    )),
-                    #[cfg(not(feature = "json"))]
-                    "json" => Err(syn::Error::new(
-                        Span::call_site(),
-                        format!("The json feature is not enabled"),
-                    )),
-                    #[cfg(feature = "yaml")]
-                    "yaml" => Ok(device_driver_generation::transform_yaml(
-                        &file_contents,
-                        &input.device_name.to_string(),
-                    )),
-                    #[cfg(not(feature = "yaml"))]
-                    "yaml" => Err(syn::Error::new(
-                        Span::call_site(),
-                        format!("The yaml feature is not enabled"),
-                    )),
-                    #[cfg(feature = "toml")]
-                    "toml" => Ok(device_driver_generation::transform_toml(
-                        &file_contents,
-                        &input.device_name.to_string(),
-                    )),
-                    #[cfg(not(feature = "toml"))]
-                    "toml" => Err(syn::Error::new(
-                        Span::call_site(),
-                        format!("The toml feature is not enabled"),
-                    )),
-                    #[cfg(feature = "dsl")]
-                    "dsl" => Ok(device_driver_generation::transform_dsl(
-                        syn::parse_str(&file_contents)?,
-                        &input.device_name.to_string(),
-                    )),
-                    #[cfg(not(feature = "dsl"))]
-                    "dsl" => Err(syn::Error::new(
-                        Span::call_site(),
-                        format!("The dsl feature is not enabled"),
-                    )),
-                    unknown => Err(syn::Error::new(
-                        Span::call_site(),
-                        format!("Unknown manifest file extension: '{unknown}'"),
-                    )),
-                }
-            })();
+                            format!("The yaml feature is not enabled"),
+                        )),
+                        #[cfg(feature = "toml")]
+                        "toml" => Ok(device_driver_generation::transform_toml(
+                            &file_contents,
+                            &input.device_name.to_string(),
+                        )),
+                        #[cfg(not(feature = "toml"))]
+                        "toml" => Err(syn::Error::new(
+                            Span::call_site(),
+                            format!("The toml feature is not enabled"),
+                        )),
+                        #[cfg(feature = "dsl")]
+                        "dsl" => Ok(device_driver_generation::transform_dsl(
+                            syn::parse_str(&file_contents)?,
+                            &input.device_name.to_string(),
+                        )),
+                        #[cfg(not(feature = "dsl"))]
+                        "dsl" => Err(syn::Error::new(
+                            Span::call_site(),
+                            format!("The dsl feature is not enabled"),
+                        )),
+                        unknown => Err(syn::Error::new(
+                            Span::call_site(),
+                            format!("Unknown manifest file extension: '{unknown}'"),
+                        )),
+                    }
+                })();
 
             match result {
-                Ok(tokens) => tokens.into(),
+                Ok(tokens) => tokens.parse().unwrap(),
                 Err(e) => e.into_compile_error().into(),
             }
         }
