@@ -1,39 +1,47 @@
 use std::iter::once;
 
-use proc_macro2::TokenStream;
-use quote::quote;
+use itertools::Itertools;
 
 use crate::lir::FieldSet;
 
-pub fn generate_field_set_enum(
-    field_sets: &[FieldSet],
-    defmt_feature: Option<&str>,
-) -> TokenStream {
+pub fn generate_field_set_enum(field_sets: &[FieldSet], defmt_feature: Option<&str>) -> String {
     let filter = |fs: &&FieldSet| fs.size_bits > 0;
 
-    let fields = field_sets.iter().filter(filter).map(|fs| {
-        let name = &fs.name;
-        let cfg = &fs.cfg_attr;
-        let doc = &fs.doc_attr;
-        quote! {
-            #cfg
-            #doc
-            #name(#name)
-        }
-    });
+    let fields = field_sets
+        .iter()
+        .filter(filter)
+        .map(|fs| {
+            let name = &fs.name;
+            let cfg = &fs.cfg_attr;
+            let doc = &fs.doc_attr;
+            format!(
+                "
+                    {cfg}
+                    {doc}
+                    {name}({name})
+                "
+            )
+        })
+        .join(",\n");
 
-    let from_impls = field_sets.iter().filter(filter).map(|fs| {
-        let name = &fs.name;
-        let cfg = &fs.cfg_attr;
-        quote! {
-            #cfg
-            impl From<#name> for FieldSetValue {
-                fn from(val: #name) -> Self {
-                    Self::#name(val)
-                }
-            }
-        }
-    });
+    let from_impls = field_sets
+        .iter()
+        .filter(filter)
+        .map(|fs| {
+            let name = &fs.name;
+            let cfg = &fs.cfg_attr;
+            format!(
+                "
+                {cfg}
+                impl From<{name}> for FieldSetValue {{
+                    fn from(val: {name}) -> Self {{
+                        Self::{name}(val)
+                    }}
+                }}
+            "
+            )
+        })
+        .join("\n");
 
     let debug_forward_calls = field_sets
         .iter()
@@ -41,22 +49,27 @@ pub fn generate_field_set_enum(
         .map(|fs| {
             let name = &fs.name;
             let cfg = &fs.cfg_attr;
-            quote! {
-                #cfg
-                Self::#name(val) => core::fmt::Debug::fmt(val, f)
-            }
+            format!(
+                "
+                {cfg}
+                Self::{name}(val) => core::fmt::Debug::fmt(val, f)
+                "
+            )
         })
-        .chain(once(quote! { _ => unreachable!() }));
+        .chain(once(format!("_ => unreachable!()")))
+        .join(",\n");
 
-    let debug_impl = quote! {
-        impl core::fmt::Debug for FieldSetValue {
-            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-                match self {
-                    #(#debug_forward_calls),*
-                }
-            }
-        }
-    };
+    let debug_impl = format!(
+        "
+        impl core::fmt::Debug for FieldSetValue {{
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {{
+                match self {{
+                    {debug_forward_calls}
+                }}
+            }}
+        }}
+    "
+    );
 
     let defmt_forward_calls = field_sets
         .iter()
@@ -64,37 +77,44 @@ pub fn generate_field_set_enum(
         .map(|fs| {
             let name = &fs.name;
             let cfg = &fs.cfg_attr;
-            quote! {
-                #cfg
-                Self::#name(val) => defmt::Format::format(val, f)
-            }
+            format!(
+                "
+                {cfg}
+                Self::{name}(val) => defmt::Format::format(val, f)
+            "
+            )
         })
-        .chain(once(quote! { _ => unreachable!() }));
+        .chain(once(format!("_ => unreachable!()")))
+        .join(",\n");
 
     let defmt_impl = if let Some(defmt_feature) = defmt_feature {
-        quote! {
-            #[cfg(feature = #defmt_feature)]
-            impl defmt::Format for FieldSetValue {
-                fn format(&self, f: defmt::Formatter) {
-                    match self {
-                        #(#defmt_forward_calls),*
-                    }
-                }
-            }
-        }
+        format!(
+            "
+            #[cfg(feature = \"{defmt_feature}\")]
+            impl defmt::Format for FieldSetValue {{
+                fn format(&self, f: defmt::Formatter) {{
+                    match self {{
+                        {defmt_forward_calls}
+                    }}
+                }}
+            }}
+        "
+        )
     } else {
-        quote! {}
+        format!("")
     };
 
-    quote! {
+    format!(
+        "
         /// Enum containing all possible field set types
-        pub enum FieldSetValue {
-            #(#fields),*
-        }
+        pub enum FieldSetValue {{
+            {fields}
+        }}
 
-        #debug_impl
-        #defmt_impl
+        {debug_impl}
+        {defmt_impl}
 
-        #(#from_impls)*
-    }
+        {from_impls}
+    "
+    )
 }

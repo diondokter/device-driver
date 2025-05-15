@@ -1,16 +1,15 @@
-use proc_macro2::{Ident, Literal, TokenStream};
-use quote::quote;
+use itertools::Itertools;
 
 use crate::{
     lir::{Block, BlockMethod, BlockMethodKind, BlockMethodType},
-    mir,
+    mir::{self, Integer},
 };
 
 pub fn generate_block(
     value: &Block,
-    internal_address_type: &Ident,
-    register_address_type: &Ident,
-) -> TokenStream {
+    internal_address_type: &Integer,
+    register_address_type: &Integer,
+) -> String {
     let Block {
         cfg_attr,
         doc_attr,
@@ -22,30 +21,31 @@ pub fn generate_block(
     let (generics, interface_declaration, address_param, address_specifier, interface_borrow) =
         if *root {
             (
-                quote! { I },
-                quote! { I },
-                None,
-                quote! { 0 },
-                quote! { &mut self.interface },
+                format!("I"),
+                format!("I"),
+                format!(""),
+                format!("0"),
+                format!("&mut self.interface"),
             )
         } else {
             (
-                quote! { 'i, I },
-                quote! { &'i mut I },
-                Some(quote! { base_address: #internal_address_type }),
-                quote! { base_address },
-                quote! { self.interface },
+                format!("'i, I"),
+                format!("&'i mut I"),
+                format!("base_address: {internal_address_type}"),
+                format!("base_address"),
+                format!("self.interface"),
             )
         };
 
     let method_impls = methods
         .iter()
-        .map(|m| generate_method(m, internal_address_type));
+        .map(|m| generate_method(m, internal_address_type))
+        .join("\n");
 
     let (new_hidden_if_not_root, new_access, new_const) = if *root {
-        (quote! {}, quote! { pub }, quote! { const })
+        ("", "pub", "const")
     } else {
-        (quote! { #[doc(hidden)] }, quote! {}, quote! {})
+        ("#[doc(hidden)]", "", "")
     };
 
     let generate_read_all_registers_items = |use_async: bool| {
@@ -61,43 +61,41 @@ pub fn generate_block(
                     let cfg_attr = &m.cfg_attr;
 
                     let read_function = match use_async {
-                        true => quote! { read_async().await },
-                        false => quote! { read() },
+                        true => "read_async().await",
+                        false => "read()",
                     };
 
                     let (count, stride, index_required) = match &m.kind {
-                        BlockMethodKind::Normal => (1i64, Literal::i64_unsuffixed(0), false),
+                        BlockMethodKind::Normal => (1i64, 0, false),
                         BlockMethodKind::Repeated { count, stride } => {
                             (count.to_string().parse().unwrap(), stride.clone(), true)
                         }
                     };
 
                     Some((0..count).map(move |index| {
-                    let (index_param, register_display_name) = match index_required {
-                        true => {
-                            let index_param = Literal::i64_unsuffixed(index);
-                            (quote! { #index_param }, format!("{}[{index}]", m.name))
-                        }
-                        false => (quote! {}, m.name.to_string()),
-                    };
-                    let index = Literal::i64_unsuffixed(index);
-                    quote! {
-                        #cfg_attr
-                        let reg = self.#register_name(#index_param).#read_function?;
-                        #cfg_attr
-                        callback(#address + #index * #stride, #register_display_name, reg.into());
-                    }
-                }))
+                        let (index_param, register_display_name) = match index_required {
+                            true => {
+                                (format!("{index}"), format!("{}[{index}]", m.name))
+                            }
+                            false => (format!(""), m.name.to_string()),
+                        };
+                        format!("
+                            {cfg_attr}
+                            let reg = self.{register_name}({index_param}).{read_function}?;
+                            {cfg_attr}
+                            callback({address} + {index} * {stride}, \"{register_display_name}\", reg.into());
+                        ")
+                    }))
                 }
                 _ => None,
             })
             .flatten()
     };
 
-    let read_all_registers_items = generate_read_all_registers_items(false);
-    let read_async_all_registers_items = generate_read_all_registers_items(true);
+    let read_all_registers_items = generate_read_all_registers_items(false).join("\n");
+    let read_async_all_registers_items = generate_read_all_registers_items(true).join("\n");
 
-    let read_all_docs = quote! {
+    let read_all_docs = format!("
         /// Read all readable register values in this block from the device.
         /// The callback is called for each of them.
         /// Any registers in child blocks are not included.
@@ -111,62 +109,62 @@ pub fn generate_block(
         /// This is useful for e.g. debug printing all values.
         /// The given [field_sets::FieldSetValue] has a Debug and Format implementation that forwards to the concrete type
         /// the lies within so it can be printed without matching on it.
-    };
+    ");
 
-    quote! {
-        #doc_attr
-        #cfg_attr
+    format!("
+        {doc_attr}
+        {cfg_attr}
         #[derive(Debug)]
-        pub struct #name<#generics> {
-            pub(crate) interface: #interface_declaration,
+        pub struct {name}<{generics}> {{
+            pub(crate) interface: {interface_declaration},
             #[doc(hidden)]
-            base_address: #internal_address_type,
-        }
+            base_address: {internal_address_type},
+        }}
 
-        #cfg_attr
-        impl<#generics> #name<#generics> {
+        {cfg_attr}
+        impl<{generics}> {name}<{generics}> {{
             /// Create a new instance of the block based on device interface
-            #new_hidden_if_not_root
-            #new_access #new_const fn new(interface: #interface_declaration, #address_param) -> Self {
-                Self {
+            {new_hidden_if_not_root}
+            {new_access} {new_const} fn new(interface: {interface_declaration}, {address_param}) -> Self {{
+                Self {{
                     interface,
-                    base_address: #address_specifier,
-                }
-            }
+                    base_address: {address_specifier},
+                }}
+            }}
 
             /// A reference to the interface used to communicate with the device
-            pub(crate) fn interface(&mut self) -> &mut I {
-                #interface_borrow
-            }
+            pub(crate) fn interface(&mut self) -> &mut I {{
+                {interface_borrow}
+            }}
 
-            #read_all_docs
+            {read_all_docs}
             pub fn read_all_registers(
                 &mut self,
-                mut callback: impl FnMut(#register_address_type, &'static str, field_sets::FieldSetValue)
+                mut callback: impl FnMut({register_address_type}, &'static str, field_sets::FieldSetValue)
             ) -> Result<(), I::Error>
-                where I: ::device_driver::RegisterInterface<AddressType = #register_address_type>
-            {
-                #(#read_all_registers_items)*
+                where I: ::device_driver::RegisterInterface<AddressType = {register_address_type}>
+            {{
+                {read_all_registers_items}
                 Ok(())
-            }
+            }}
 
-            #read_all_docs
+            {read_all_docs}
             pub async fn read_all_registers_async(
                 &mut self,
-                mut callback: impl FnMut(#register_address_type, &'static str, field_sets::FieldSetValue)
+                mut callback: impl FnMut({register_address_type}, &'static str, field_sets::FieldSetValue)
             ) -> Result<(), I::Error>
-                where I: ::device_driver::AsyncRegisterInterface<AddressType = #register_address_type>
-            {
-                #(#read_async_all_registers_items)*
+                where I: ::device_driver::AsyncRegisterInterface<AddressType = {register_address_type}>
+            {{
+                {read_async_all_registers_items}
                 Ok(())
-            }
+            }}
 
-            #(#method_impls)*
-        }
-    }
+            {method_impls}
+        }}
+    ")
 }
 
-fn generate_method(method: &BlockMethod, internal_address_type: &Ident) -> TokenStream {
+fn generate_method(method: &BlockMethod, internal_address_type: &Integer) -> String {
     let BlockMethod {
         cfg_attr,
         doc_attr,
@@ -178,16 +176,18 @@ fn generate_method(method: &BlockMethod, internal_address_type: &Ident) -> Token
     } = method;
 
     let (return_type, address_conversion, default_arg) = match method_type {
-        BlockMethodType::Block { name } => (quote! { #name::<'_, I> }, quote! {}, quote! {}),
+        BlockMethodType::Block { name } => (format!("{name}::<'_, I>"), format!(""), format!("")),
         BlockMethodType::Register {
             field_set_name,
             access,
             address_type,
             reset_value_function: default_value_function_name,
         } => (
-            quote! { ::device_driver::RegisterOperation::<'_, I, #address_type, field_sets::#field_set_name, ::device_driver::#access>  },
-            quote! { as #address_type },
-            quote! { , field_sets::#field_set_name::#default_value_function_name },
+            format!(
+                "::device_driver::RegisterOperation::<'_, I, {address_type}, field_sets::{field_set_name}, ::device_driver::{access}>"
+            ),
+            format!("as {address_type}"),
+            format!(", field_sets::{field_set_name}::{default_value_function_name}"),
         ),
         BlockMethodType::Command {
             field_set_name_in,
@@ -195,75 +195,80 @@ fn generate_method(method: &BlockMethod, internal_address_type: &Ident) -> Token
             address_type,
         } => {
             let field_set_name_in = match field_set_name_in {
-                Some(val) => quote! { field_sets::#val },
-                None => quote! { () },
+                Some(val) => format!("field_sets::{val}"),
+                None => format!("()"),
             };
             let field_set_name_out = match field_set_name_out {
-                Some(val) => quote! { field_sets::#val },
-                None => quote! { () },
+                Some(val) => format!("field_sets::{val}"),
+                None => format!("()"),
             };
             (
-                quote! { ::device_driver::CommandOperation::<'_, I, #address_type, #field_set_name_in, #field_set_name_out>  },
-                quote! { as #address_type },
-                quote! {},
+                format!(
+                    "::device_driver::CommandOperation::<'_, I, {address_type}, {field_set_name_in}, {field_set_name_out}>"
+                ),
+                format!("as {address_type}"),
+                format!(""),
             )
         }
         BlockMethodType::Buffer {
             access,
             address_type,
         } => (
-            quote! { ::device_driver::BufferOperation::<'_, I, #address_type, ::device_driver::#access>  },
-            quote! { as #address_type },
-            quote! {},
+            format!(
+                "::device_driver::BufferOperation::<'_, I, {address_type}, ::device_driver::{access}>"
+            ),
+            format!("as {address_type}"),
+            format!(""),
         ),
     };
 
     let (index_param, address_calc, index_doc) = match kind {
-        BlockMethodKind::Normal => (None, quote! { self.base_address + #address }, None),
+        BlockMethodKind::Normal => (
+            format!(""),
+            format!("self.base_address + {address}"),
+            format!(""),
+        ),
         BlockMethodKind::Repeated { count, stride } => {
             let doc = format!("Valid index range: 0..{count}");
 
             let stride = stride.to_string().parse::<i64>().unwrap();
 
-            let operator = if stride.is_negative() {
-                quote! { - }
-            } else {
-                quote! { + }
-            };
+            let operator = if stride.is_negative() { "-" } else { "+" };
 
-            let stride = Literal::u64_unsuffixed(stride.unsigned_abs());
+            let stride = stride.unsigned_abs();
 
             (
-                Some(quote! { index: usize, }),
-                quote! { {
-                    assert!(index < #count);
-                    self.base_address + #address #operator index as #internal_address_type * #stride
-                } },
-                Some(quote! {
-                    #[doc = ""]
-                    #[doc = #doc]
-                }),
+                format!("index: usize,"),
+                format!("{{
+                    assert!(index < {count});
+                    self.base_address + {address} {operator} index as {internal_address_type} * {stride}
+                }}"),
+                format!("
+                    #[doc = \"\"]
+                    #[doc = \"{doc}\"]
+                "),
             )
         }
     };
 
-    quote! {
-        #doc_attr
-        #index_doc
-        #cfg_attr
-        pub fn #name(&mut self, #index_param) -> #return_type {
-            let address = #address_calc;
-            #return_type::new(self.interface(), address #address_conversion #default_arg)
-        }
-    }
+    format!(
+        "
+        {doc_attr}
+        {index_doc}
+        {cfg_attr}
+        pub fn {name}(&mut self, {index_param}) -> {return_type} {{
+            let address = {address_calc};
+            {return_type}::new(self.interface(), address {address_conversion} {default_arg})
+        }}
+    "
+    )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use indoc::indoc;
-    use proc_macro2::Literal;
-    use quote::format_ident;
+    use quote::quote;
 
     #[test]
     fn root_block_correct() {
@@ -272,28 +277,28 @@ mod tests {
                 cfg_attr: quote! { #[cfg(unix)] },
                 doc_attr: quote! { #[doc = "Hello!"] },
                 root: true,
-                name: format_ident!("RootBlock"),
+                name: format!("RootBlock"),
                 methods: vec![BlockMethod {
                     cfg_attr: quote! { #[cfg(unix)] },
                     doc_attr: quote! { #[doc = "42 is the answer"] },
-                    name: format_ident!("my_register1"),
-                    address: Literal::i64_unsuffixed(5),
+                    name: format!("my_register1"),
+                    address: 5,
                     allow_address_overlap: false,
                     kind: BlockMethodKind::Normal,
                     method_type: BlockMethodType::Register {
-                        field_set_name: format_ident!("MyRegister"),
+                        field_set_name: format!("MyRegister"),
                         access: crate::mir::Access::RW,
-                        address_type: format_ident!("u8"),
-                        reset_value_function: format_ident!("new"),
+                        address_type: mir::Integer::U8,
+                        reset_value_function: format!("new"),
                     },
                 }],
             },
-            &format_ident!("u8"),
-            &format_ident!("u8"),
+            &mir::Integer::U8,
+            &mir::Integer::U8,
         );
 
         pretty_assertions::assert_eq!(
-            prettyplease::unparse(&syn::parse2(output).unwrap()),
+            prettyplease::unparse(&syn::parse_str(&output).unwrap()),
             indoc! {"
                 ///Hello!
                 #[cfg(unix)]
@@ -395,29 +400,29 @@ mod tests {
                 cfg_attr: quote! { #[cfg(unix)] },
                 doc_attr: quote! { #[doc = "Hello!"] },
                 root: false,
-                name: format_ident!("AnyBlock"),
+                name: format!("AnyBlock"),
                 methods: vec![BlockMethod {
                     cfg_attr: quote! { #[cfg(unix)] },
                     doc_attr: quote! { #[doc = "42 is the answer"] },
-                    name: format_ident!("my_buffer"),
-                    address: Literal::i64_unsuffixed(5),
+                    name: format!("my_buffer"),
+                    address: 5,
                     allow_address_overlap: false,
                     kind: BlockMethodKind::Repeated {
-                        count: Literal::i64_unsuffixed(4),
-                        stride: Literal::i64_unsuffixed(1),
+                        count: 4,
+                        stride: 1,
                     },
                     method_type: BlockMethodType::Buffer {
                         access: crate::mir::Access::RO,
-                        address_type: format_ident!("i16"),
+                        address_type: Integer::I16,
                     },
                 }],
             },
-            &format_ident!("u8"),
-            &format_ident!("u8"),
+            &Integer::U8,
+            &Integer::U8,
         );
 
         pretty_assertions::assert_eq!(
-            prettyplease::unparse(&syn::parse2(output).unwrap()),
+            prettyplease::unparse(&syn::parse_str(&output).unwrap()),
             indoc! {"
                 ///Hello!
                 #[cfg(unix)]

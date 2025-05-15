@@ -1,11 +1,10 @@
-use proc_macro2::TokenStream;
-use quote::quote;
+use itertools::Itertools;
 
 use crate::lir::EnumVariant;
 
 use super::Enum;
 
-pub fn generate_enum(value: &Enum, defmt_feature: Option<&str>) -> TokenStream {
+pub fn generate_enum(value: &Enum, defmt_feature: Option<&str>) -> String {
     let Enum {
         cfg_attr,
         doc_attr,
@@ -16,30 +15,37 @@ pub fn generate_enum(value: &Enum, defmt_feature: Option<&str>) -> TokenStream {
     let default_variant = variants.iter().find(|v| v.default);
     let catch_all_variant = variants.iter().find(|v| v.catch_all);
 
-    let variant_quotes = variants.iter().map(|var| {
-        let EnumVariant {
-            cfg_attr,
-            doc_attr,
-            name,
-            number,
-            catch_all,
-            ..
-        } = var;
+    let variant_quotes = variants
+        .iter()
+        .map(|var| {
+            let EnumVariant {
+                cfg_attr,
+                doc_attr,
+                name,
+                number,
+                catch_all,
+                ..
+            } = var;
 
-        let enum_field = if *catch_all {
-            quote! {
-                (#base_type)
-            }
-        } else {
-            quote! {}
-        };
+            let enum_field = if *catch_all {
+                format!(
+                    "
+                ({base_type})
+            "
+                )
+            } else {
+                format!("")
+            };
 
-        quote! {
-            #doc_attr
-            #cfg_attr
-            #name #enum_field = #number
-        }
-    });
+            format!(
+                "
+            {doc_attr}
+            {cfg_attr}
+            {name} {enum_field} = {number}
+        "
+            )
+        })
+        .join(",\n");
 
     let default_impl = if let Some(EnumVariant {
         name: var_name,
@@ -49,28 +55,30 @@ pub fn generate_enum(value: &Enum, defmt_feature: Option<&str>) -> TokenStream {
     }) = default_variant
     {
         let catch_all_extension = if *catch_all {
-            quote! { (#number) }
+            format!("({number})")
         } else {
-            quote! {}
+            format!("")
         };
 
-        quote! {
-            #cfg_attr
-            impl Default for #name {
-                fn default() -> Self {
-                    Self::#var_name #catch_all_extension
-                }
-            }
-        }
+        format!(
+            "
+            {cfg_attr}
+            impl Default for {name} {{
+                fn default() -> Self {{
+                    Self::{var_name} {catch_all_extension}
+                }}
+            }}
+        "
+        )
     } else {
-        quote! {}
+        format!("")
     };
 
     let from_impl = if catch_all_variant.is_some() || default_variant.is_some() {
         let from_fallback_variant = match (catch_all_variant, default_variant) {
             (None, None) => unreachable!(),
-            (None, Some(_)) => quote! { _ => Self::default() },
-            (Some(EnumVariant { name, .. }), _) => quote! { val => Self::#name(val) },
+            (None, Some(_)) => format!("_ => Self::default()"),
+            (Some(EnumVariant { name, .. }), _) => format!("val => Self::{name}(val)"),
         };
         let from_variants = variants
             .iter()
@@ -82,27 +90,34 @@ pub fn generate_enum(value: &Enum, defmt_feature: Option<&str>) -> TokenStream {
                      cfg_attr,
                      ..
                  }| {
-                    quote! {
-                        #cfg_attr
-                        #number => Self::#name
-                    }
+                    format!(
+                        "
+                        {cfg_attr}
+                        {number} => Self::{name}
+                    "
+                    )
                 },
             )
-            .chain(Some(from_fallback_variant));
+            .chain(Some(from_fallback_variant))
+            .join(",\n");
 
-        quote! {
-            #cfg_attr
-            impl From<#base_type> for #name {
-                fn from(val: #base_type) -> Self {
-                    match val {
-                        #(#from_variants),*
-                    }
-                }
-            }
-        }
+        format!(
+            "
+            {cfg_attr}
+            impl From<{base_type}> for {name} {{
+                fn from(val: {base_type}) -> Self {{
+                    match val {{
+                        {from_variants}
+                    }}
+                }}
+            }}
+        "
+        )
     } else {
         let enum_name = name.to_string();
-        let try_from_fallback_variant = quote! { val => Err(::device_driver::ConversionError { source: val, target: #enum_name }) };
+        let try_from_fallback_variant = format!(
+            "val => Err(::device_driver::ConversionError {{ source: val, target: \"{enum_name}\" }})"
+        );
         let try_from_variants = variants
             .iter()
             .filter(|v| !v.catch_all)
@@ -113,85 +128,101 @@ pub fn generate_enum(value: &Enum, defmt_feature: Option<&str>) -> TokenStream {
                      cfg_attr,
                      ..
                  }| {
-                    quote! {
-                        #cfg_attr
-                        #number => Ok(Self::#name)
-                    }
+                    format!(
+                        "
+                        {cfg_attr}
+                        {number} => Ok(Self::{name})
+                    "
+                    )
                 },
             )
-            .chain(Some(try_from_fallback_variant));
+            .chain(Some(try_from_fallback_variant))
+            .join(",\n");
 
-        quote! {
-            #cfg_attr
-            impl core::convert::TryFrom<#base_type> for #name {
-                type Error = ::device_driver::ConversionError<#base_type>;
-                fn try_from(val: #base_type) -> Result<Self, Self::Error> {
-                    match val {
-                        #(#try_from_variants),*
-                    }
-                }
-            }
-        }
+        format!(
+            "
+            {cfg_attr}
+            impl core::convert::TryFrom<{base_type}> for {name} {{
+                type Error = ::device_driver::ConversionError<{base_type}>;
+                fn try_from(val: {base_type}) -> Result<Self, Self::Error> {{
+                    match val {{
+                        {try_from_variants}
+                    }}
+                }}
+            }}
+        "
+        )
     };
 
     let into_impl = {
-        let into_variants = variants.iter().map(
-            |EnumVariant {
-                 name: var_name,
-                 number,
-                 catch_all,
-                 cfg_attr,
-                 ..
-             }| {
-                if *catch_all {
-                    quote! {
-                        #cfg_attr
-                        #name::#var_name(num) => num
+        let into_variants = variants
+            .iter()
+            .map(
+                |EnumVariant {
+                     name: var_name,
+                     number,
+                     catch_all,
+                     cfg_attr,
+                     ..
+                 }| {
+                    if *catch_all {
+                        format!(
+                            "
+                        {cfg_attr}
+                        {name}::{var_name}(num) => num
+                    "
+                        )
+                    } else {
+                        format!(
+                            "
+                        {cfg_attr}
+                        {name}::{var_name} => {number}
+                    "
+                        )
                     }
-                } else {
-                    quote! {
-                        #cfg_attr
-                        #name::#var_name => #number
-                    }
-                }
-            },
-        );
+                },
+            )
+            .join(",\n");
 
-        quote! {
-            #cfg_attr
-            impl From<#name> for #base_type {
-                fn from(val: #name) -> Self {
-                    match val {
-                        #(#into_variants),*
-                    }
-                }
-            }
-        }
+        format!(
+            "
+            {cfg_attr}
+            impl From<{name}> for {base_type} {{
+                fn from(val: {name}) -> Self {{
+                    match val {{
+                        {into_variants}
+                    }}
+                }}
+            }}
+        "
+        )
     };
 
     let defmt_attr = match defmt_feature {
         Some(feature_name) => {
-            quote! { #[cfg_attr(feature = #feature_name, derive(defmt::Format))] }
+            format!("#[cfg_attr(feature = \"{feature_name}\", derive(defmt::Format))]")
         }
-        None => quote! {},
+        None => format!(""),
     };
 
-    quote! {
-        #doc_attr
-        #cfg_attr
-        #[repr(#base_type)]
+    format!(
+        "
+        {doc_attr}
+        {cfg_attr}
+        #[repr({base_type})]
         #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
-        #defmt_attr
-        pub enum #name {
-            #(#variant_quotes),*
-        }
+        {defmt_attr}
+        pub enum {name} {{
+            {variant_quotes}
+        }}
 
-        #default_impl
+        {default_impl}
 
-        #from_impl
+        {from_impl}
 
-        #into_impl
-    }
+        {into_impl}
+    "
+    )
 }
 
 #[cfg(test)]
@@ -201,7 +232,7 @@ mod tests {
     use super::*;
     use indoc::indoc;
     use proc_macro2::Literal;
-    use quote::format_ident;
+    use quote::quote;
 
     #[test]
     fn enum_correct() {
@@ -209,13 +240,13 @@ mod tests {
             &Enum {
                 cfg_attr: quote! { #[cfg(windows)] },
                 doc_attr: quote! { #[doc = "Docs are important!"] },
-                name: format_ident!("MyEnum"),
-                base_type: format_ident!("u8"),
+                name: format!("MyEnum"),
+                base_type: format!("u8"),
                 variants: vec![
                     EnumVariant {
                         cfg_attr: quote! {#[cfg(unix)]},
                         doc_attr: quote! {#[doc="Field!"]},
-                        name: format_ident!("MyField"),
+                        name: format!("MyField"),
                         number: Literal::u8_unsuffixed(0),
                         default: false,
                         catch_all: false,
@@ -223,7 +254,7 @@ mod tests {
                     EnumVariant {
                         cfg_attr: quote! {},
                         doc_attr: quote! {},
-                        name: format_ident!("MyField1"),
+                        name: format!("MyField1"),
                         number: Literal::u8_unsuffixed(1),
                         default: true,
                         catch_all: false,
@@ -231,7 +262,7 @@ mod tests {
                     EnumVariant {
                         cfg_attr: quote! {},
                         doc_attr: quote! {},
-                        name: format_ident!("MyField2"),
+                        name: format!("MyField2"),
                         number: Literal::u8_unsuffixed(4),
                         default: false,
                         catch_all: true,
@@ -242,7 +273,7 @@ mod tests {
         );
 
         pretty_assertions::assert_eq!(
-            prettyplease::unparse(&syn::parse2(output).unwrap()),
+            prettyplease::unparse(&syn::parse_str(&output).unwrap()),
             indoc! {"
                 ///Docs are important!
                 #[cfg(windows)]

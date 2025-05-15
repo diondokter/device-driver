@@ -12,13 +12,10 @@ mod mir;
 /// The `driver_name` arg is used to name the root block of the driver.
 /// It should be given in `PascalCase` form.
 #[cfg(feature = "dsl")]
-pub fn transform_dsl(
-    input: proc_macro2::TokenStream,
-    driver_name: &str,
-) -> proc_macro2::TokenStream {
+pub fn transform_dsl(input: proc_macro2::TokenStream, driver_name: &str) -> String {
     let mir = match _private_transform_dsl_mir(input) {
         Ok(mir) => mir,
-        Err(e) => return e.into_compile_error(),
+        Err(e) => return e.into_compile_error().to_string(),
     };
 
     transform_mir(mir, driver_name)
@@ -43,7 +40,7 @@ pub fn _private_transform_dsl_mir(
 /// The `driver_name` arg is used to name the root block of the driver.
 /// It should be given in `PascalCase` form.
 #[cfg(feature = "json")]
-pub fn transform_json(source: &str, driver_name: &str) -> proc_macro2::TokenStream {
+pub fn transform_json(source: &str, driver_name: &str) -> String {
     let mir = match _private_transform_json_mir(source) {
         Ok(mir) => mir,
         Err(e) => return anyhow_error_to_compile_error(e),
@@ -66,7 +63,7 @@ pub fn _private_transform_json_mir(source: &str) -> anyhow::Result<mir::Device> 
 /// The `driver_name` arg is used to name the root block of the driver.
 /// It should be given in `PascalCase` form.
 #[cfg(feature = "yaml")]
-pub fn transform_yaml(source: &str, driver_name: &str) -> proc_macro2::TokenStream {
+pub fn transform_yaml(source: &str, driver_name: &str) -> String {
     let mir = match _private_transform_yaml_mir(source) {
         Ok(mir) => mir,
         Err(e) => return anyhow_error_to_compile_error(e),
@@ -89,7 +86,7 @@ pub fn _private_transform_yaml_mir(source: &str) -> anyhow::Result<mir::Device> 
 /// The `driver_name` arg is used to name the root block of the driver.
 /// It should be given in `PascalCase` form.
 #[cfg(feature = "toml")]
-pub fn transform_toml(source: &str, driver_name: &str) -> proc_macro2::TokenStream {
+pub fn transform_toml(source: &str, driver_name: &str) -> String {
     let mir = match _private_transform_toml_mir(source) {
         Ok(mir) => mir,
         Err(e) => return anyhow_error_to_compile_error(e),
@@ -107,7 +104,7 @@ pub fn _private_transform_toml_mir(source: &str) -> anyhow::Result<mir::Device> 
     Ok(mir)
 }
 
-fn transform_mir(mut mir: mir::Device, driver_name: &str) -> proc_macro2::TokenStream {
+fn transform_mir(mut mir: mir::Device, driver_name: &str) -> String {
     // Run the MIR passes
     match mir::passes::run_passes(&mut mir) {
         Ok(()) => {}
@@ -130,6 +127,8 @@ fn transform_mir(mut mir: mir::Device, driver_name: &str) -> proc_macro2::TokenS
     lir::token_transform::transform(lir)
 }
 
-fn anyhow_error_to_compile_error(error: anyhow::Error) -> proc_macro2::TokenStream {
-    syn::Error::new(proc_macro2::Span::call_site(), format!("{error:#}")).into_compile_error()
+fn anyhow_error_to_compile_error(error: anyhow::Error) -> String {
+    syn::Error::new(proc_macro2::Span::call_site(), format!("{error:#}"))
+        .into_compile_error()
+        .to_string()
 }

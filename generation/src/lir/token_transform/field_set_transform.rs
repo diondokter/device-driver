@@ -1,14 +1,12 @@
 use convert_case::Casing;
 use itertools::Itertools;
-use proc_macro2::{Literal, TokenStream};
-use quote::{ToTokens, format_ident, quote};
 
 use crate::{
     lir::{Field, FieldConversionMethod, FieldSet},
     mir::{Access, BitOrder, ByteOrder},
 };
 
-pub fn generate_field_set(value: &FieldSet, defmt_feature: Option<&str>) -> TokenStream {
+pub fn generate_field_set(value: &FieldSet, defmt_feature: Option<&str>) -> String {
     let FieldSet {
         cfg_attr,
         doc_attr,
@@ -23,61 +21,69 @@ pub fn generate_field_set(value: &FieldSet, defmt_feature: Option<&str>) -> Toke
 
     if *size_bits == 0 {
         // No need to generate this. All uses are covered with the unit type
-        return TokenStream::new();
+        return String::new();
     }
 
-    let size_bytes = Literal::u32_unsuffixed(size_bits.div_ceil(8));
-    let size_bits = Literal::u32_unsuffixed(*size_bits);
+    let size_bytes = size_bits.div_ceil(8);
 
     let read_functions = fields
         .iter()
-        .map(|field| get_read_function(field, *byte_order, *bit_order));
+        .map(|field| get_read_function(field, *byte_order, *bit_order))
+        .join("\n");
     let write_functions = fields
         .iter()
-        .map(|field| get_write_function(field, *byte_order, *bit_order));
+        .map(|field| get_write_function(field, *byte_order, *bit_order))
+        .join("\n");
 
     let from_impl = {
-        quote! {
-            #cfg_attr
-            impl From<[u8; #size_bytes]> for #name {
-                fn from(bits: [u8; #size_bytes]) -> Self {
-                    Self {
+        format!(
+            "
+            {cfg_attr}
+            impl From<[u8; {size_bytes}]> for {name} {{
+                fn from(bits: [u8; {size_bytes}]) -> Self {{
+                    Self {{
                         bits,
-                    }
-                }
-            }
-        }
+                }}
+            }}
+        }}
+        "
+        )
     };
 
     let into_impl = {
-        quote! {
-            #cfg_attr
-            impl From<#name> for [u8; #size_bytes] {
-                fn from(val: #name) -> Self {
+        format!(
+            "
+            {cfg_attr}
+            impl From<{name}> for [u8; {size_bytes}] {{
+                fn from(val: {name}) -> Self {{
                     val.bits
-                }
-            }
-        }
+                }}
+            }}
+        "
+        )
     };
 
     let debug_impl = {
-        let debug_field_calls = fields.iter().map(|f| {
-            let name = &f.name;
-            let name_string = name.to_string();
-            quote! {.field(#name_string, &self.#name()) }
-        });
+        let debug_field_calls = fields
+            .iter()
+            .map(|f| {
+                let name = &f.name;
+                format!(".field(\"{name}\", &self.{name}())")
+            })
+            .join("\n");
 
-        let name_string = name.to_string();
-        quote! {
-            #cfg_attr
-            impl core::fmt::Debug for #name {
-                fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
-                    f.debug_struct(#name_string)
-                        #(#debug_field_calls)*
+        format!(
+            "
+            {cfg_attr}
+            impl core::fmt::Debug for {name} {{
+                fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {{
+                    f.debug_struct(\"{name}\")
+                        {debug_field_calls}
                         .finish()
-                }
-            }
-        }
+                }}
+            }}
+        "
+        )
     };
 
     let defmt_impl = match defmt_feature {
@@ -100,178 +106,187 @@ pub fn generate_field_set(value: &FieldSet, defmt_feature: Option<&str>) -> Toke
 
             let type_format_string = format!("{} {{{{ {} }}}}", name, fields_format_string);
 
-            let field_calls = fields.iter().map(|f| {
-                let name = &f.name;
-                quote! { self.#name() }
-            });
+            let field_calls = fields
+                .iter()
+                .map(|f| {
+                    let name = &f.name;
+                    format!("self.{name}()")
+                })
+                .join(",\n");
 
-            let separator = if fields.is_empty() {
-                quote! {}
-            } else {
-                quote! { , }
-            };
+            let separator = if fields.is_empty() { "" } else { "," };
 
-            quote! {
-                #cfg_attr
-                #[cfg(feature = #feature_name)]
-                impl defmt::Format for #name {
-                    fn format(&self, f: defmt::Formatter) {
+            format!(
+                "
+                {cfg_attr}
+                #[cfg(feature = \"{feature_name}\")]
+                impl defmt::Format for {name} {{
+                    fn format(&self, f: defmt::Formatter) {{
                         defmt::write!(
                             f,
-                            #type_format_string #separator
-                            #(#field_calls),*
+                            \"{type_format_string}\" {separator}
+                            {field_calls}
                         )
-                    }
-                }
-            }
+                    }}
+                }}
+            "
+            )
         }
-        None => quote! {},
+        None => format!(""),
     };
 
-    let ref_value_constructors = {
-        ref_reset_overrides.iter().map(|(ref_name, reset_value)| {
-            let name = format_ident!("new_as_{}", ref_name.to_case(convert_case::Case::Snake));
+    let ref_value_constructors = ref_reset_overrides
+        .iter()
+        .map(|(ref_name, reset_value)| {
+            let name = format!("new_as_{}", ref_name.to_case(convert_case::Case::Snake));
             let docs: String = format!(
                 "Create a new instance, loaded with the reset value of the `{ref_name}` ref"
             );
 
-            quote! {
-                #[doc = #docs]
-                pub const fn #name() -> Self {
-                    Self {
-                        bits: [#(#reset_value),*],
-                    }
-                }
+            let reset_value = reset_value.iter().join(",");
 
-            }
+            format!(
+                "
+                    #[doc = \"{docs}\"]
+                    pub const fn {name}() -> Self {{
+                        Self {{
+                            bits: [{reset_value}],
+                        }}
+                    }}
+                "
+            )
         })
-    };
+        .join("\n");
 
-    quote! {
-        #doc_attr
-        #cfg_attr
+    let reset_value = reset_value.iter().join(",");
+
+    format!(
+        "
+        {doc_attr}
+        {cfg_attr}
         #[derive(Copy, Clone, Eq, PartialEq)]
-        pub struct #name {
+        pub struct {name} {{
             /// The internal bits
-            bits: [u8; #size_bytes],
-        }
+            bits: [u8; {size_bytes}],
+        }}
 
-        #cfg_attr
-        impl ::device_driver::FieldSet for #name {
-            const SIZE_BITS: u32 = #size_bits;
+        {cfg_attr}
+        impl ::device_driver::FieldSet for {name} {{
+            const SIZE_BITS: u32 = {size_bits};
 
-            fn new_with_zero() -> Self {
+            fn new_with_zero() -> Self {{
                 Self::new_zero()
-            }
+            }}
 
-            fn get_inner_buffer(&self) -> &[u8] {
+            fn get_inner_buffer(&self) -> &[u8] {{
                 &self.bits
-            }
-            fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
+            }}
+            fn get_inner_buffer_mut(&mut self) -> &mut [u8] {{
                 &mut self.bits
-            }
-        }
+            }}
+        }}
 
-        #cfg_attr
-        impl #name {
+        {cfg_attr}
+        impl {name} {{
             /// Create a new instance, loaded with the reset value (if any)
-            pub const fn new() -> Self {
-                Self {
-                    bits: [#(#reset_value),*],
-                }
-            }
+            pub const fn new() -> Self {{
+                Self {{
+                    bits: [{reset_value}],
+                }}
+            }}
 
             /// Create a new instance, loaded with all zeroes
-            pub const fn new_zero() -> Self {
-                Self {
-                    bits: [0; #size_bytes],
-                }
-            }
+            pub const fn new_zero() -> Self {{
+                Self {{
+                    bits: [0; {size_bytes}],
+                }}
+            }}
 
-            #(#ref_value_constructors)*
+            {ref_value_constructors}
 
-            #(#read_functions)*
+            {read_functions}
 
-            #(#write_functions)*
-        }
+            {write_functions}
+        }}
 
-        #from_impl
-        #into_impl
-        #debug_impl
-        #defmt_impl
+        {from_impl}
+        {into_impl}
+        {debug_impl}
+        {defmt_impl}
 
-        #cfg_attr
-        impl core::ops::BitAnd for #name {
+        {cfg_attr}
+        impl core::ops::BitAnd for {name} {{
             type Output = Self;
 
-            fn bitand(mut self, rhs: Self) -> Self::Output {
+            fn bitand(mut self, rhs: Self) -> Self::Output {{
                 self &= rhs;
                 self
-            }
-        }
+            }}
+        }}
 
-        #cfg_attr
-        impl core::ops::BitAndAssign for #name {
-            fn bitand_assign(&mut self, rhs: Self) {
-                for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
+        {cfg_attr}
+        impl core::ops::BitAndAssign for {name} {{
+            fn bitand_assign(&mut self, rhs: Self) {{
+                for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {{
                     *l &= *r;
-                }
-            }
-        }
+                }}
+            }}
+        }}
 
-        #cfg_attr
-        impl core::ops::BitOr for #name {
+        {cfg_attr}
+        impl core::ops::BitOr for {name} {{
             type Output = Self;
 
-            fn bitor(mut self, rhs: Self) -> Self::Output {
+            fn bitor(mut self, rhs: Self) -> Self::Output {{
                 self |= rhs;
                 self
-            }
-        }
+            }}
+        }}
 
-        #cfg_attr
-        impl core::ops::BitOrAssign for #name {
-            fn bitor_assign(&mut self, rhs: Self) {
-                for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
+        {cfg_attr}
+        impl core::ops::BitOrAssign for {name} {{
+            fn bitor_assign(&mut self, rhs: Self) {{
+                for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {{
                     *l |= *r;
-                }
-            }
-        }
+                }}
+            }}
+        }}
 
-        #cfg_attr
-        impl core::ops::BitXor for #name {
+        {cfg_attr}
+        impl core::ops::BitXor for {name} {{
             type Output = Self;
 
-            fn bitxor(mut self, rhs: Self) -> Self::Output {
+            fn bitxor(mut self, rhs: Self) -> Self::Output {{
                 self ^= rhs;
                 self
-            }
-        }
+            }}
+        }}
 
-        #cfg_attr
-        impl core::ops::BitXorAssign for #name {
-            fn bitxor_assign(&mut self, rhs: Self) {
-                for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
+        {cfg_attr}
+        impl core::ops::BitXorAssign for {name} {{
+            fn bitxor_assign(&mut self, rhs: Self) {{
+                for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {{
                     *l ^= *r;
-                }
-            }
-        }
+                }}
+            }}
+        }}
 
-        #cfg_attr
-        impl core::ops::Not for #name {
+        {cfg_attr}
+        impl core::ops::Not for {name} {{
             type Output = Self;
 
-            fn not(mut self) -> Self::Output {
-                for val in self.bits.iter_mut() {
+            fn not(mut self) -> Self::Output {{
+                for val in self.bits.iter_mut() {{
                     *val = !*val;
-                }
+                }}
                 self
-            }
-        }
-    }
+            }}
+        }}
+    "
+    )
 }
 
-fn get_read_function(field: &Field, byte_order: ByteOrder, bit_order: BitOrder) -> TokenStream {
+fn get_read_function(field: &Field, byte_order: ByteOrder, bit_order: BitOrder) -> String {
     let Field {
         cfg_attr,
         doc_attr,
@@ -283,66 +298,68 @@ fn get_read_function(field: &Field, byte_order: ByteOrder, bit_order: BitOrder) 
     } = field;
 
     if !matches!(access, Access::RW | Access::RO) {
-        return TokenStream::new();
+        return String::new();
     }
 
     let load_function = match (byte_order, bit_order) {
         (ByteOrder::LE, BitOrder::LSB0) => {
-            quote! { ::device_driver::ops::load_lsb0::<#base_type, ::device_driver::ops::LE> }
+            format!("::device_driver::ops::load_lsb0::<{base_type}, ::device_driver::ops::LE>")
         }
         (ByteOrder::LE, BitOrder::MSB0) => {
-            quote! { ::device_driver::ops::load_msb0::<#base_type, ::device_driver::ops::LE> }
+            format!("::device_driver::ops::load_msb0::<{base_type}, ::device_driver::ops::LE>")
         }
         (ByteOrder::BE, BitOrder::LSB0) => {
-            quote! { ::device_driver::ops::load_lsb0::<#base_type, ::device_driver::ops::BE> }
+            format!("::device_driver::ops::load_lsb0::<{base_type}, ::device_driver::ops::BE>")
         }
         (ByteOrder::BE, BitOrder::MSB0) => {
-            quote! { ::device_driver::ops::load_msb0::<#base_type, ::device_driver::ops::BE> }
+            format!("::device_driver::ops::load_msb0::<{base_type}, ::device_driver::ops::BE>")
         }
     };
 
     let super_token = get_super_token(conversion_method);
 
     let return_type = match conversion_method {
-        FieldConversionMethod::None => base_type.to_token_stream(),
+        FieldConversionMethod::None => base_type.clone(),
         FieldConversionMethod::Into(conversion_type)
         | FieldConversionMethod::UnsafeInto(conversion_type) => {
-            quote! { #super_token #conversion_type }
+            format!("{super_token} {conversion_type}")
         }
         FieldConversionMethod::TryInto(conversion_type) => {
-            quote! { Result<#super_token #conversion_type, <#super_token #conversion_type as TryFrom<#base_type>>::Error> }
+            format!(
+                "Result<{super_token} {conversion_type}, <{super_token} {conversion_type} as TryFrom<{base_type}>>::Error>"
+            )
         }
-        FieldConversionMethod::Bool => format_ident!("bool").into_token_stream(),
+        FieldConversionMethod::Bool => format!("bool"),
     };
 
     let start_bit = &address.start;
     let end_bit = &address.end;
 
     let conversion = match conversion_method {
-        FieldConversionMethod::None => quote! { raw },
-        FieldConversionMethod::Into(_) => quote! { raw.into() },
-        FieldConversionMethod::UnsafeInto(_) => {
-            quote! { unsafe { raw.try_into().unwrap_unchecked() } }
-        }
-        FieldConversionMethod::TryInto(_) => quote! { raw.try_into() },
-        FieldConversionMethod::Bool => quote! { raw > 0 },
+        FieldConversionMethod::None => "raw",
+        FieldConversionMethod::Into(_) => "raw.into()",
+        FieldConversionMethod::UnsafeInto(_) => "unsafe { raw.try_into().unwrap_unchecked() }",
+        FieldConversionMethod::TryInto(_) => "raw.try_into()",
+        FieldConversionMethod::Bool => "raw > 0",
     };
 
     let function_description = format!("Read the `{name}` field of the register.");
 
-    quote! {
-        #[doc = #function_description]
-        #[doc = ""]
-        #doc_attr
-        #cfg_attr
-        pub fn #name(&self) -> #return_type {
-            let raw = unsafe { #load_function(&self.bits, #start_bit, #end_bit) };
-            #conversion
-        }
-    }
+    format!(
+        "
+        #[doc = \"{function_description}\"]
+        #[doc = \"\"]
+        {doc_attr}
+        {cfg_attr}
+        pub fn {name}(&self) -> {return_type} {{
+            let raw = unsafe {{ {load_function}(&self.bits, {start_bit}, {end_bit}) }};
+            {conversion}
+        }}
+    "
+    )
 }
 
-fn get_write_function(field: &Field, byte_order: ByteOrder, bit_order: BitOrder) -> TokenStream {
+fn get_write_function(field: &Field, byte_order: ByteOrder, bit_order: BitOrder) -> String {
     let Field {
         cfg_attr,
         doc_attr,
@@ -354,71 +371,66 @@ fn get_write_function(field: &Field, byte_order: ByteOrder, bit_order: BitOrder)
     } = field;
 
     if !matches!(access, Access::RW | Access::WO) {
-        return TokenStream::new();
+        return String::new();
     }
 
     let store_function = match (byte_order, bit_order) {
         (ByteOrder::LE, BitOrder::LSB0) => {
-            quote! { ::device_driver::ops::store_lsb0::<#base_type, ::device_driver::ops::LE> }
+            format!("::device_driver::ops::store_lsb0::<{base_type}, ::device_driver::ops::LE>")
         }
         (ByteOrder::LE, BitOrder::MSB0) => {
-            quote! { ::device_driver::ops::store_msb0::<#base_type, ::device_driver::ops::LE> }
+            format!("::device_driver::ops::store_msb0::<{base_type}, ::device_driver::ops::LE>")
         }
         (ByteOrder::BE, BitOrder::LSB0) => {
-            quote! { ::device_driver::ops::store_lsb0::<#base_type, ::device_driver::ops::BE> }
+            format!("::device_driver::ops::store_lsb0::<{base_type}, ::device_driver::ops::BE>")
         }
         (ByteOrder::BE, BitOrder::MSB0) => {
-            quote! { ::device_driver::ops::store_msb0::<#base_type, ::device_driver::ops::BE> }
+            format!("::device_driver::ops::store_msb0::<{base_type}, ::device_driver::ops::BE>")
         }
     };
 
     let super_token = get_super_token(conversion_method);
 
     let input_type = match conversion_method {
-        FieldConversionMethod::None => &base_type.to_token_stream(),
+        FieldConversionMethod::None => base_type,
         FieldConversionMethod::Into(conversion_type)
         | FieldConversionMethod::UnsafeInto(conversion_type)
         | FieldConversionMethod::TryInto(conversion_type) => conversion_type,
-        FieldConversionMethod::Bool => &quote! { bool },
+        FieldConversionMethod::Bool => "bool",
     };
 
     let start_bit = &address.start;
     let end_bit = &address.end;
 
     let conversion = match conversion_method {
-        FieldConversionMethod::None => quote! { value },
-        FieldConversionMethod::Bool => quote! { value as _ },
-        _ => quote! { value.into() },
+        FieldConversionMethod::None => "value",
+        FieldConversionMethod::Bool => "value as _",
+        _ => "value.into()",
     };
 
     let function_description = format!("Write the `{name}` field of the register.");
-    let function_name = format_ident!("set_{name}");
+    let function_name = format!("set_{name}");
 
-    quote! {
-        #[doc = #function_description]
-        #[doc = ""]
-        #doc_attr
-        #cfg_attr
-        pub fn #function_name(&mut self, value: #super_token #input_type) {
-            let raw = #conversion;
-            unsafe { #store_function(raw, #start_bit, #end_bit, &mut self.bits) };
-        }
-    }
+    format!(
+        "
+        #[doc = \"{function_description}\"]
+        #[doc = \"\"]
+        {doc_attr}
+        {cfg_attr}
+        pub fn {function_name}(&mut self, value: {super_token} {input_type}) {{
+            let raw = {conversion};
+            unsafe {{ {store_function}(raw, {start_bit}, {end_bit}, &mut self.bits) }};
+        }}
+    "
+    )
 }
 
-fn get_super_token(conversion_method: &FieldConversionMethod) -> TokenStream {
+fn get_super_token(conversion_method: &FieldConversionMethod) -> &'static str {
     match conversion_method.conversion_type() {
-        Some(ct)
-            if syn::parse2::<syn::TypePath>(ct.clone())
-                .map(|tp| {
-                    tp.path.leading_colon.is_none()
-                        && tp.path.segments.first().unwrap().ident != format_ident!("crate")
-                })
-                .unwrap_or_default() =>
-        {
-            quote! { super:: }
+        Some(ct) if !ct.trim_start().starts_with("::") && !ct.trim_start().starts_with("crate") => {
+            "super::"
         }
-        _ => quote! {},
+        _ => "",
     }
 }
 
@@ -426,7 +438,7 @@ fn get_super_token(conversion_method: &FieldConversionMethod) -> TokenStream {
 mod tests {
     use super::*;
     use indoc::indoc;
-    use proc_macro2::Literal;
+    use quote::quote;
 
     #[test]
     fn field_set_correct() {
@@ -434,7 +446,7 @@ mod tests {
             &FieldSet {
                 cfg_attr: quote! { #[cfg(windows)] },
                 doc_attr: quote! { #[doc = "Hiya!"] },
-                name: format_ident!("MyRegister"),
+                name: format!("MyRegister"),
                 byte_order: ByteOrder::BE,
                 bit_order: BitOrder::LSB0,
                 size_bits: 20,
@@ -444,18 +456,18 @@ mod tests {
                     Field {
                         cfg_attr: quote! { #[cfg(linux)] },
                         doc_attr: quote! { #[doc = "Hiya again!"] },
-                        name: format_ident!("my_field"),
-                        address: Literal::u64_unsuffixed(0)..Literal::u64_unsuffixed(4),
-                        base_type: format_ident!("u8"),
-                        conversion_method: FieldConversionMethod::UnsafeInto(quote! { FieldEnum }),
+                        name: format!("my_field"),
+                        address: 0..4,
+                        base_type: format!("u8"),
+                        conversion_method: FieldConversionMethod::UnsafeInto(format!("FieldEnum")),
                         access: Access::RW,
                     },
                     Field {
                         cfg_attr: quote! {},
                         doc_attr: quote! {},
-                        name: format_ident!("my_field2"),
-                        address: Literal::u64_unsuffixed(4)..Literal::u64_unsuffixed(16),
-                        base_type: format_ident!("i16"),
+                        name: format!("my_field2"),
+                        address: 4..16,
+                        base_type: format!("i16"),
                         conversion_method: FieldConversionMethod::None,
                         access: Access::WO,
                     },
@@ -465,7 +477,7 @@ mod tests {
         );
 
         pretty_assertions::assert_eq!(
-            prettyplease::unparse(&syn::parse2(output).unwrap()),
+            prettyplease::unparse(&syn::parse_str(&output).unwrap()),
             indoc! {"
             ///Hiya!
             #[cfg(windows)]
@@ -491,7 +503,7 @@ mod tests {
             impl MyRegister {
                 /// Create a new instance, loaded with the reset value (if any)
                 pub const fn new() -> Self {
-                    Self { bits: [1u8, 2u8, 3u8] }
+                    Self { bits: [1, 2, 3] }
                 }
                 /// Create a new instance, loaded with all zeroes
                 pub const fn new_zero() -> Self {
@@ -499,7 +511,7 @@ mod tests {
                 }
                 ///Create a new instance, loaded with the reset value of the `MyRef` ref
                 pub const fn new_as_my_ref() -> Self {
-                    Self { bits: [0u8, 1u8, 2u8] }
+                    Self { bits: [0, 1, 2] }
                 }
                 ///Read the `my_field` field of the register.
                 ///
