@@ -231,7 +231,6 @@ mod tests {
 
     use super::*;
     use indoc::indoc;
-    use proc_macro2::Literal;
     use quote::quote;
 
     #[test]
@@ -247,7 +246,7 @@ mod tests {
                         cfg_attr: quote! {#[cfg(unix)]},
                         doc_attr: quote! {#[doc="Field!"]},
                         name: "MyField".to_string(),
-                        number: Literal::u8_unsuffixed(0),
+                        number: 0,
                         default: false,
                         catch_all: false,
                     },
@@ -255,7 +254,7 @@ mod tests {
                         cfg_attr: quote! {},
                         doc_attr: quote! {},
                         name: "MyField1".to_string(),
-                        number: Literal::u8_unsuffixed(1),
+                        number: 1,
                         default: true,
                         catch_all: false,
                     },
@@ -263,7 +262,7 @@ mod tests {
                         cfg_attr: quote! {},
                         doc_attr: quote! {},
                         name: "MyField2".to_string(),
-                        number: Literal::u8_unsuffixed(4),
+                        number: 4,
                         default: false,
                         catch_all: true,
                     },

@@ -1,7 +1,7 @@
 use std::ops::{Add, Not};
 
 use anyhow::ensure;
-use proc_macro2::{Literal, TokenStream};
+use proc_macro2::TokenStream;
 use quote::quote;
 
 use crate::{
@@ -561,7 +561,7 @@ fn transform_enum(
                 cfg_attr,
                 doc_attr: quote! { #[doc = #description] },
                 name: name.to_string(),
-                number: Literal::i128_unsuffixed(number),
+                number,
                 default: matches!(value, mir::EnumValue::Default),
                 catch_all: matches!(value, mir::EnumValue::CatchAll),
             })

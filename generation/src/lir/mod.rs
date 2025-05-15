@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use proc_macro2::{Literal, TokenStream};
+use proc_macro2::TokenStream;
 
 use crate::mir::{self, Access, BitOrder, ByteOrder, Integer};
 
@@ -117,7 +117,7 @@ pub struct EnumVariant {
     pub cfg_attr: TokenStream,
     pub doc_attr: TokenStream,
     pub name: String,
-    pub number: Literal,
+    pub number: i128,
     pub default: bool,
     pub catch_all: bool,
 }
