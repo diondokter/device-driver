@@ -144,12 +144,12 @@ mod tests {
                     cfg_attr: Default::default(),
                     doc_attr: Default::default(),
                     root: true,
-                    name: format!("Root"),
+                    name: "Root".to_string(),
                     methods: vec![
                         BlockMethod {
                             cfg_attr: Default::default(),
                             doc_attr: Default::default(),
-                            name: format!("second_block"),
+                            name: "second_block".to_string(),
                             address: 10,
                             allow_address_overlap: false,
                             kind: BlockMethodKind::Repeated {
@@ -157,13 +157,13 @@ mod tests {
                                 stride: 10,
                             },
                             method_type: BlockMethodType::Block {
-                                name: format!("SecondBlock"),
+                                name: "SecondBlock".to_string(),
                             },
                         },
                         BlockMethod {
                             cfg_attr: Default::default(),
                             doc_attr: Default::default(),
-                            name: format!("register0"),
+                            name: "register0".to_string(),
                             address: 75,
                             allow_address_overlap: false,
                             kind: BlockMethodKind::Repeated {
@@ -171,10 +171,10 @@ mod tests {
                                 stride: 5,
                             },
                             method_type: BlockMethodType::Register {
-                                field_set_name: format!("bla"),
+                                field_set_name: "bla".to_string(),
                                 access: crate::mir::Access::RW,
                                 address_type: crate::mir::Integer::U8,
-                                reset_value_function: format!("new"),
+                                reset_value_function: "new".to_string(),
                             },
                         },
                     ],
@@ -183,19 +183,19 @@ mod tests {
                     cfg_attr: Default::default(),
                     doc_attr: Default::default(),
                     root: true,
-                    name: format!("SecondBlock"),
+                    name: "SecondBlock".to_string(),
                     methods: vec![BlockMethod {
                         cfg_attr: Default::default(),
                         doc_attr: Default::default(),
-                        name: format!("register1"),
+                        name: "register1".to_string(),
                         address: 0,
                         allow_address_overlap: false,
                         kind: BlockMethodKind::Normal,
                         method_type: BlockMethodType::Register {
-                            field_set_name: format!("bla"),
+                            field_set_name: "bla".to_string(),
                             access: crate::mir::Access::RW,
                             address_type: crate::mir::Integer::U8,
-                            reset_value_function: format!("new"),
+                            reset_value_function: "new".to_string(),
                         },
                     }],
                 },

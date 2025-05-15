@@ -132,7 +132,7 @@ pub fn generate_field_set(value: &FieldSet, defmt_feature: Option<&str>) -> Stri
             "
             )
         }
-        None => format!(""),
+        None => String::new(),
     };
 
     let ref_value_constructors = ref_reset_overrides
@@ -329,7 +329,7 @@ fn get_read_function(field: &Field, byte_order: ByteOrder, bit_order: BitOrder) 
                 "Result<{super_token} {conversion_type}, <{super_token} {conversion_type} as TryFrom<{base_type}>>::Error>"
             )
         }
-        FieldConversionMethod::Bool => format!("bool"),
+        FieldConversionMethod::Bool => "bool".to_string(),
     };
 
     let start_bit = &address.start;
@@ -446,7 +446,7 @@ mod tests {
             &FieldSet {
                 cfg_attr: quote! { #[cfg(windows)] },
                 doc_attr: quote! { #[doc = "Hiya!"] },
-                name: format!("MyRegister"),
+                name: "MyRegister".to_string(),
                 byte_order: ByteOrder::BE,
                 bit_order: BitOrder::LSB0,
                 size_bits: 20,
@@ -456,18 +456,20 @@ mod tests {
                     Field {
                         cfg_attr: quote! { #[cfg(linux)] },
                         doc_attr: quote! { #[doc = "Hiya again!"] },
-                        name: format!("my_field"),
+                        name: "my_field".to_string(),
                         address: 0..4,
-                        base_type: format!("u8"),
-                        conversion_method: FieldConversionMethod::UnsafeInto(format!("FieldEnum")),
+                        base_type: "u8".to_string(),
+                        conversion_method: FieldConversionMethod::UnsafeInto(
+                            "FieldEnum".to_string(),
+                        ),
                         access: Access::RW,
                     },
                     Field {
                         cfg_attr: quote! {},
                         doc_attr: quote! {},
-                        name: format!("my_field2"),
+                        name: "my_field2".to_string(),
                         address: 4..16,
-                        base_type: format!("i16"),
+                        base_type: "i16".to_string(),
                         conversion_method: FieldConversionMethod::None,
                         access: Access::WO,
                     },

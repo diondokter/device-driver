@@ -89,7 +89,7 @@ fn collect_into_blocks(
             &mut blocks,
             global_config,
             device_objects,
-            format!("new"),
+            "new".to_string(),
         )?;
 
         methods.push(method);
@@ -99,7 +99,7 @@ fn collect_into_blocks(
         cfg_attr,
         doc_attr: quote! { #[doc = #description] },
         root: is_root,
-        name: format!("{name}"),
+        name: name.to_string(),
         methods,
     };
 
@@ -138,12 +138,12 @@ fn get_method(
             lir::BlockMethod {
                 cfg_attr: cfg_attr_string_to_tokens(cfg_attr)?,
                 doc_attr: quote! { #[doc = #description] },
-                name: format!("{}", name.to_case(convert_case::Case::Snake)),
+                name: name.to_case(convert_case::Case::Snake),
                 address: *address_offset,
                 allow_address_overlap: false,
                 kind: repeat_to_method_kind(repeat),
                 method_type: lir::BlockMethodType::Block {
-                    name: format!("{name}"),
+                    name: name.to_string(),
                 },
             }
         }
@@ -159,12 +159,12 @@ fn get_method(
         }) => lir::BlockMethod {
             cfg_attr: cfg_attr_string_to_tokens(cfg_attr)?,
             doc_attr: quote! { #[doc = #description] },
-            name: format!("{}", name.to_case(convert_case::Case::Snake)),
+            name: name.to_case(convert_case::Case::Snake),
             address: *address,
             allow_address_overlap: *allow_address_overlap,
             kind: repeat_to_method_kind(repeat),
             method_type: lir::BlockMethodType::Register {
-                field_set_name: format!("{name}"),
+                field_set_name: name.to_string(),
                 access: *access,
                 address_type: global_config
                     .register_address_type
@@ -185,7 +185,7 @@ fn get_method(
         }) => lir::BlockMethod {
             cfg_attr: cfg_attr_string_to_tokens(cfg_attr)?,
             doc_attr: quote! { #[doc = #description] },
-            name: format!("{}", name.to_case(convert_case::Case::Snake)),
+            name: name.to_case(convert_case::Case::Snake),
             address: *address,
             allow_address_overlap: *allow_address_overlap,
             kind: repeat_to_method_kind(repeat),
@@ -212,7 +212,7 @@ fn get_method(
         }) => lir::BlockMethod {
             cfg_attr: cfg_attr_string_to_tokens(cfg_attr)?,
             doc_attr: quote! { #[doc = #description] },
-            name: format!("{}", name.to_case(convert_case::Case::Snake)),
+            name: name.to_case(convert_case::Case::Snake),
             address: *address,
             allow_address_overlap: false,
             kind: lir::BlockMethodKind::Normal, // Buffers can't be repeated (for now?)
@@ -220,8 +220,7 @@ fn get_method(
                 access: *access,
                 address_type: global_config
                     .buffer_address_type
-                    .expect("The presence of the address type is already checked in a mir pass")
-                    .into(),
+                    .expect("The presence of the address type is already checked in a mir pass"),
             },
         },
         mir::Object::Ref(mir::RefObject {
@@ -415,7 +414,9 @@ fn transform_field_set<'a>(
                 field.field_address.clone().count(),
                 field_conversion,
             ) {
-                (mir::BaseType::Bool, 1, None) => (format!("u8"), lir::FieldConversionMethod::Bool),
+                (mir::BaseType::Bool, 1, None) => {
+                    ("u8".to_string(), lir::FieldConversionMethod::Bool)
+                }
                 (mir::BaseType::Bool, _, _) => unreachable!(
                     "Checked in a MIR pass. Bools can only be 1 bit and have no conversion"
                 ),
@@ -524,7 +525,7 @@ fn transform_enum(
     let cfg_attr = cfg_attr_string_to_tokens(cfg_attr)?;
 
     let base_type = match (base_type, size_bits) {
-        (mir::BaseType::Bool, _) => format!("u8"),
+        (mir::BaseType::Bool, _) => "u8".to_string(),
         (mir::BaseType::Uint, val) => format!("u{}", val.max(8).next_power_of_two()),
         (mir::BaseType::Int, val) => format!("i{}", val.max(8).next_power_of_two()),
     };
@@ -559,7 +560,7 @@ fn transform_enum(
             Ok(lir::EnumVariant {
                 cfg_attr,
                 doc_attr: quote! { #[doc = #description] },
-                name: format!("{name}"),
+                name: name.to_string(),
                 number: Literal::i128_unsuffixed(number),
                 default: matches!(value, mir::EnumValue::Default),
                 catch_all: matches!(value, mir::EnumValue::CatchAll),
@@ -570,7 +571,7 @@ fn transform_enum(
     Ok(lir::Enum {
         cfg_attr,
         doc_attr: quote! { #[doc = #description] },
-        name: format!("{name}"),
+        name: name.to_string(),
         base_type,
         variants,
     })

@@ -34,7 +34,7 @@ pub fn generate_enum(value: &Enum, defmt_feature: Option<&str>) -> String {
             "
                 )
             } else {
-                format!("")
+                String::new()
             };
 
             format!(
@@ -57,7 +57,7 @@ pub fn generate_enum(value: &Enum, defmt_feature: Option<&str>) -> String {
         let catch_all_extension = if *catch_all {
             format!("({number})")
         } else {
-            format!("")
+            String::new()
         };
 
         format!(
@@ -71,13 +71,13 @@ pub fn generate_enum(value: &Enum, defmt_feature: Option<&str>) -> String {
         "
         )
     } else {
-        format!("")
+        String::new()
     };
 
     let from_impl = if catch_all_variant.is_some() || default_variant.is_some() {
         let from_fallback_variant = match (catch_all_variant, default_variant) {
             (None, None) => unreachable!(),
-            (None, Some(_)) => format!("_ => Self::default()"),
+            (None, Some(_)) => "_ => Self::default()".to_string(),
             (Some(EnumVariant { name, .. }), _) => format!("val => Self::{name}(val)"),
         };
         let from_variants = variants
@@ -202,7 +202,7 @@ pub fn generate_enum(value: &Enum, defmt_feature: Option<&str>) -> String {
         Some(feature_name) => {
             format!("#[cfg_attr(feature = \"{feature_name}\", derive(defmt::Format))]")
         }
-        None => format!(""),
+        None => String::new(),
     };
 
     format!(
@@ -240,13 +240,13 @@ mod tests {
             &Enum {
                 cfg_attr: quote! { #[cfg(windows)] },
                 doc_attr: quote! { #[doc = "Docs are important!"] },
-                name: format!("MyEnum"),
-                base_type: format!("u8"),
+                name: "MyEnum".to_string(),
+                base_type: "u8".to_string(),
                 variants: vec![
                     EnumVariant {
                         cfg_attr: quote! {#[cfg(unix)]},
                         doc_attr: quote! {#[doc="Field!"]},
-                        name: format!("MyField"),
+                        name: "MyField".to_string(),
                         number: Literal::u8_unsuffixed(0),
                         default: false,
                         catch_all: false,
@@ -254,7 +254,7 @@ mod tests {
                     EnumVariant {
                         cfg_attr: quote! {},
                         doc_attr: quote! {},
-                        name: format!("MyField1"),
+                        name: "MyField1".to_string(),
                         number: Literal::u8_unsuffixed(1),
                         default: true,
                         catch_all: false,
@@ -262,7 +262,7 @@ mod tests {
                     EnumVariant {
                         cfg_attr: quote! {},
                         doc_attr: quote! {},
-                        name: format!("MyField2"),
+                        name: "MyField2".to_string(),
                         number: Literal::u8_unsuffixed(4),
                         default: false,
                         catch_all: true,

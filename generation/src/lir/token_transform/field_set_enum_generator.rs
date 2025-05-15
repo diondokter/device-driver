@@ -56,7 +56,7 @@ pub fn generate_field_set_enum(field_sets: &[FieldSet], defmt_feature: Option<&s
                 "
             )
         })
-        .chain(once(format!("_ => unreachable!()")))
+        .chain(once("_ => unreachable!()".to_string()))
         .join(",\n");
 
     let debug_impl = format!(
@@ -84,7 +84,7 @@ pub fn generate_field_set_enum(field_sets: &[FieldSet], defmt_feature: Option<&s
             "
             )
         })
-        .chain(once(format!("_ => unreachable!()")))
+        .chain(once("_ => unreachable!()".to_string()))
         .join(",\n");
 
     let defmt_impl = if let Some(defmt_feature) = defmt_feature {
@@ -101,7 +101,7 @@ pub fn generate_field_set_enum(field_sets: &[FieldSet], defmt_feature: Option<&s
         "
         )
     } else {
-        format!("")
+        String::new()
     };
 
     format!(

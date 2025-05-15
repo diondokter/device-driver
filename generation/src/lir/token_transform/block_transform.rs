@@ -21,19 +21,19 @@ pub fn generate_block(
     let (generics, interface_declaration, address_param, address_specifier, interface_borrow) =
         if *root {
             (
-                format!("I"),
-                format!("I"),
-                format!(""),
-                format!("0"),
-                format!("&mut self.interface"),
+                "I".to_string(),
+                "I".to_string(),
+                String::new(),
+                "0".to_string(),
+                "&mut self.interface".to_string(),
             )
         } else {
             (
-                format!("'i, I"),
-                format!("&'i mut I"),
+                "'i, I".to_string(),
+                "&'i mut I".to_string(),
                 format!("base_address: {internal_address_type}"),
-                format!("base_address"),
-                format!("self.interface"),
+                "base_address".to_string(),
+                "self.interface".to_string(),
             )
         };
 
@@ -68,7 +68,7 @@ pub fn generate_block(
                     let (count, stride, index_required) = match &m.kind {
                         BlockMethodKind::Normal => (1i64, 0, false),
                         BlockMethodKind::Repeated { count, stride } => {
-                            (count.to_string().parse().unwrap(), stride.clone(), true)
+                            (count.to_string().parse().unwrap(), *stride, true)
                         }
                     };
 
@@ -77,7 +77,7 @@ pub fn generate_block(
                             true => {
                                 (format!("{index}"), format!("{}[{index}]", m.name))
                             }
-                            false => (format!(""), m.name.to_string()),
+                            false => (String::new(), m.name.to_string()),
                         };
                         format!("
                             {cfg_attr}
@@ -95,7 +95,7 @@ pub fn generate_block(
     let read_all_registers_items = generate_read_all_registers_items(false).join("\n");
     let read_async_all_registers_items = generate_read_all_registers_items(true).join("\n");
 
-    let read_all_docs = format!("
+    let read_all_docs = "
         /// Read all readable register values in this block from the device.
         /// The callback is called for each of them.
         /// Any registers in child blocks are not included.
@@ -109,7 +109,7 @@ pub fn generate_block(
         /// This is useful for e.g. debug printing all values.
         /// The given [field_sets::FieldSetValue] has a Debug and Format implementation that forwards to the concrete type
         /// the lies within so it can be printed without matching on it.
-    ");
+    ".to_string();
 
     format!("
         {doc_attr}
@@ -176,7 +176,9 @@ fn generate_method(method: &BlockMethod, internal_address_type: &Integer) -> Str
     } = method;
 
     let (return_type, address_conversion, default_arg) = match method_type {
-        BlockMethodType::Block { name } => (format!("{name}::<'_, I>"), format!(""), format!("")),
+        BlockMethodType::Block { name } => {
+            (format!("{name}::<'_, I>"), String::new(), String::new())
+        }
         BlockMethodType::Register {
             field_set_name,
             access,
@@ -196,18 +198,18 @@ fn generate_method(method: &BlockMethod, internal_address_type: &Integer) -> Str
         } => {
             let field_set_name_in = match field_set_name_in {
                 Some(val) => format!("field_sets::{val}"),
-                None => format!("()"),
+                None => "()".to_string(),
             };
             let field_set_name_out = match field_set_name_out {
                 Some(val) => format!("field_sets::{val}"),
-                None => format!("()"),
+                None => "()".to_string(),
             };
             (
                 format!(
                     "::device_driver::CommandOperation::<'_, I, {address_type}, {field_set_name_in}, {field_set_name_out}>"
                 ),
                 format!("as {address_type}"),
-                format!(""),
+                String::new(),
             )
         }
         BlockMethodType::Buffer {
@@ -218,15 +220,15 @@ fn generate_method(method: &BlockMethod, internal_address_type: &Integer) -> Str
                 "::device_driver::BufferOperation::<'_, I, {address_type}, ::device_driver::{access}>"
             ),
             format!("as {address_type}"),
-            format!(""),
+            String::new(),
         ),
     };
 
     let (index_param, address_calc, index_doc) = match kind {
         BlockMethodKind::Normal => (
-            format!(""),
+            String::new(),
             format!("self.base_address + {address}"),
-            format!(""),
+            String::new(),
         ),
         BlockMethodKind::Repeated { count, stride } => {
             let doc = format!("Valid index range: 0..{count}");
@@ -238,7 +240,7 @@ fn generate_method(method: &BlockMethod, internal_address_type: &Integer) -> Str
             let stride = stride.unsigned_abs();
 
             (
-                format!("index: usize,"),
+                "index: usize,".to_string(),
                 format!("{{
                     assert!(index < {count});
                     self.base_address + {address} {operator} index as {internal_address_type} * {stride}
@@ -277,19 +279,19 @@ mod tests {
                 cfg_attr: quote! { #[cfg(unix)] },
                 doc_attr: quote! { #[doc = "Hello!"] },
                 root: true,
-                name: format!("RootBlock"),
+                name: "RootBlock".to_string(),
                 methods: vec![BlockMethod {
                     cfg_attr: quote! { #[cfg(unix)] },
                     doc_attr: quote! { #[doc = "42 is the answer"] },
-                    name: format!("my_register1"),
+                    name: "my_register1".to_string(),
                     address: 5,
                     allow_address_overlap: false,
                     kind: BlockMethodKind::Normal,
                     method_type: BlockMethodType::Register {
-                        field_set_name: format!("MyRegister"),
+                        field_set_name: "MyRegister".to_string(),
                         access: crate::mir::Access::RW,
                         address_type: mir::Integer::U8,
-                        reset_value_function: format!("new"),
+                        reset_value_function: "new".to_string(),
                     },
                 }],
             },
@@ -400,11 +402,11 @@ mod tests {
                 cfg_attr: quote! { #[cfg(unix)] },
                 doc_attr: quote! { #[doc = "Hello!"] },
                 root: false,
-                name: format!("AnyBlock"),
+                name: "AnyBlock".to_string(),
                 methods: vec![BlockMethod {
                     cfg_attr: quote! { #[cfg(unix)] },
                     doc_attr: quote! { #[doc = "42 is the answer"] },
-                    name: format!("my_buffer"),
+                    name: "my_buffer".to_string(),
                     address: 5,
                     allow_address_overlap: false,
                     kind: BlockMethodKind::Repeated {
