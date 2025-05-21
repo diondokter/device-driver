@@ -1,0 +1,102 @@
+{{ block.doc_attr }}
+#[derive(Debug)]
+pub struct {{ block.name }}<I> {
+    pub(crate) interface: I,
+    #[doc(hidden)]
+    base_address: u8,
+}
+
+impl<I> {{ block.name }}<I> {
+    /// Create a new instance of the block based on device interface
+    pub const fn new(interface: I) -> Self {
+        Self { interface, base_address: 0 }
+    }
+    /// A reference to the interface used to communicate with the device
+    pub(crate) fn interface(&mut self) -> &mut I {
+        &mut self.interface
+    }
+
+    /// Read all readable register values in this block from the device.
+    /// The callback is called for each of them.
+    /// Any registers in child blocks are not included.
+    ///
+    /// The callback has three arguments:
+    ///
+    /// - The address of the register
+    /// - The name of the register (with index for repeated registers)
+    /// - The read value from the register
+    ///
+    /// This is useful for e.g. debug printing all values.
+    /// The given [field_sets::FieldSetValue] has a Debug and Format implementation that forwards to the concrete type
+    /// the lies within so it can be printed without matching on it.
+    pub fn read_all_registers(
+        &mut self,
+        mut callback: impl FnMut(u8, &'static str, field_sets::FieldSetValue),
+    ) -> Result<(), I::Error>
+    where
+        I: ::device_driver::RegisterInterface<AddressType = u8>,
+    {
+        Ok(())
+    }
+    
+    /// Read all readable register values in this block from the device.
+    /// The callback is called for each of them.
+    /// Any registers in child blocks are not included.
+    ///
+    /// The callback has three arguments:
+    ///
+    /// - The address of the register
+    /// - The name of the register (with index for repeated registers)
+    /// - The read value from the register
+    ///
+    /// This is useful for e.g. debug printing all values.
+    /// The given [field_sets::FieldSetValue] has a Debug and Format implementation that forwards to the concrete type
+    /// the lies within so it can be printed without matching on it.
+    pub async fn read_all_registers_async(
+        &mut self,
+        mut callback: impl FnMut(u8, &'static str, field_sets::FieldSetValue),
+    ) -> Result<(), I::Error>
+    where
+        I: ::device_driver::AsyncRegisterInterface<AddressType = u8>,
+    {
+        Ok(())
+    }
+
+    {% for method in block.methods %}
+        {% match method.kind %}
+            {% when BlockMethodKind::Normal %}
+            {% when BlockMethodKind::Repeated { count, .. } %} ///Valid index range: 0..{{count}}
+        {% endmatch %}
+        {{ method.doc_attr }}
+        {{ method.cfg_attr }}
+        pub fn {{ method.name }}(
+            &mut self,
+            {% match method.kind %}
+                {% when BlockMethodKind::Normal %}
+                {% when BlockMethodKind::Repeated { .. } %} index: usize
+            {% endmatch %}
+        ) -> 
+        {% match method.method_type %}
+            {% when BlockMethodType::Block { .. } %} ()
+            {% when BlockMethodType::Register { .. } %} ()
+            {% when BlockMethodType::Command { .. } %} ()
+            {% when BlockMethodType::Buffer { access, address_type } %} ::device_driver::BufferOperation<'_, I, {{address_type}}, ::device_driver::{{access}}>
+        {% endmatch %}
+        {
+            {% match method.method_type %}
+                {% when BlockMethodType::Block { .. } %} ()
+                {% when BlockMethodType::Register { .. } %} ()
+                {% when BlockMethodType::Command { .. } %} ()
+                {% when BlockMethodType::Buffer { access, address_type } %}
+                    let address = self.base_address + {{method.address}};
+                    ::device_driver::BufferOperation::<
+                        '_,
+                        I,
+                        {{address_type}},
+                        ::device_driver::{{access}},
+                    >::new(self.interface(), address as {{address_type}})
+                {% endwhen %}
+            {% endmatch %}
+        }
+    {% endfor %}
+}

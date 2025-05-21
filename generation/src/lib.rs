@@ -124,7 +124,18 @@ fn transform_mir(mut mir: mir::Device, driver_name: &str) -> String {
     };
 
     // Transform into Rust source token output
-    lir::token_transform::transform(lir)
+    let output_code_transform = lir::code_transform::DeviceTemplateRust::new(&lir).to_string();
+    let output_token_transform = lir::token_transform::transform(lir);
+
+    println!(
+        "{}",
+        colored_diff::PrettyDifference {
+            expected: &prettyplease::unparse(&syn::parse_file(&output_token_transform).unwrap()),
+            actual: &prettyplease::unparse(&syn::parse_file(&output_code_transform).unwrap()),
+        }
+    );
+
+    output_token_transform
 }
 
 fn anyhow_error_to_compile_error(error: anyhow::Error) -> String {

@@ -4,6 +4,7 @@ use proc_macro2::TokenStream;
 
 use crate::mir::{self, Access, BitOrder, ByteOrder, Integer};
 
+pub mod code_transform;
 pub mod passes;
 pub mod token_transform;
 
