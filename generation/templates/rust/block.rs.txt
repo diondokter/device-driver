@@ -36,6 +36,27 @@ impl<I> {{ block.name }}<I> {
     where
         I: ::device_driver::RegisterInterface<AddressType = u8>,
     {
+        {% for method in block.methods %}
+            {% if matches!(method.method_type, BlockMethodType::Register {..}) %}
+                {% match method.kind %}
+                    {% when BlockMethodKind::Normal %}
+                        {{method.cfg_attr}}
+                        let reg = self.{{method.name}}().read()?;
+                        {{method.cfg_attr}}
+                        callback({{method.address}}, "{{method.name}}", reg.into());
+                    {% endwhen %}
+                    {% when BlockMethodKind::Repeated { count, stride } %}
+                        {% for index in 0..*count %}
+                            {{method.cfg_attr}}
+                            let reg = self.{{method.name}}({{index}}).read()?;
+                            {{method.cfg_attr}}
+                            callback({{method.address}} + {{index}} * {{stride}}, "{{method.name}}[{{index}}]", reg.into());
+                        {% endfor %}
+                    {% endwhen %}
+                {% endmatch %}
+            {% endif %}
+        {% endfor %}
+
         Ok(())
     }
     
@@ -59,15 +80,36 @@ impl<I> {{ block.name }}<I> {
     where
         I: ::device_driver::AsyncRegisterInterface<AddressType = u8>,
     {
+        {% for method in block.methods %}
+            {% if matches!(method.method_type, BlockMethodType::Register {..}) %}
+                {% match method.kind %}
+                    {% when BlockMethodKind::Normal %}
+                        {{method.cfg_attr}}
+                        let reg = self.{{method.name}}().read_async().await?;
+                        {{method.cfg_attr}}
+                        callback({{method.address}}, "{{method.name}}", reg.into());
+                    {% endwhen %}
+                    {% when BlockMethodKind::Repeated { count, stride } %}
+                        {% for index in 0..*count %}
+                            {{method.cfg_attr}}
+                            let reg = self.{{method.name}}({{index}}).read_async().await?;
+                            {{method.cfg_attr}}
+                            callback({{method.address}} + {{index}} * {{stride}}, "{{method.name}}[{{index}}]", reg.into());
+                        {% endfor %}
+                    {% endwhen %}
+                {% endmatch %}
+            {% endif %}
+        {% endfor %}
+
         Ok(())
     }
 
     {% for method in block.methods %}
+        {{ method.doc_attr }}
         {% match method.kind %}
             {% when BlockMethodKind::Normal %}
-            {% when BlockMethodKind::Repeated { count, .. } %} ///Valid index range: 0..{{count}}
+            {% when BlockMethodKind::Repeated { count, .. } %} /// Valid index range: 0..{{count}}
         {% endmatch %}
-        {{ method.doc_attr }}
         {{ method.cfg_attr }}
         pub fn {{ method.name }}(
             &mut self,
@@ -78,14 +120,31 @@ impl<I> {{ block.name }}<I> {
         ) -> 
         {% match method.method_type %}
             {% when BlockMethodType::Block { .. } %} ()
-            {% when BlockMethodType::Register { .. } %} ()
+            {% when BlockMethodType::Register { field_set_name, access, address_type, .. } %} ::device_driver::RegisterOperation<'_, I, {{address_type}}, field_sets::{{field_set_name}}, ::device_driver::{{access}}>
             {% when BlockMethodType::Command { .. } %} ()
             {% when BlockMethodType::Buffer { access, address_type } %} ::device_driver::BufferOperation<'_, I, {{address_type}}, ::device_driver::{{access}}>
         {% endmatch %}
         {
             {% match method.method_type %}
                 {% when BlockMethodType::Block { .. } %} ()
-                {% when BlockMethodType::Register { .. } %} ()
+                {% when BlockMethodType::Register { field_set_name, access, address_type, reset_value_function } %}
+                    {% match method.kind %}
+                        {% when BlockMethodKind::Normal %} let address = self.base_address + {{method.address}};
+                        {% when BlockMethodKind::Repeated { count, stride } %}
+                            let address = {
+                                assert!(index < {{count}});
+                                self.base_address + {{method.address}} + index as {{address_type}} * {{stride}}
+                            };
+                        {% endwhen %}
+                    {% endmatch %}
+                    ::device_driver::RegisterOperation::<
+                        '_,
+                        I,
+                        {{address_type}},
+                        field_sets::{{field_set_name}},
+                        ::device_driver::{{access}},
+                    >::new(self.interface(), address as u8, field_sets::{{field_set_name}}::{{reset_value_function}})
+                {% endwhen %}
                 {% when BlockMethodType::Command { .. } %} ()
                 {% when BlockMethodType::Buffer { access, address_type } %}
                     let address = self.base_address + {{method.address}};

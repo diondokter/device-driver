@@ -127,13 +127,17 @@ fn transform_mir(mut mir: mir::Device, driver_name: &str) -> String {
     let output_code_transform = lir::code_transform::DeviceTemplateRust::new(&lir).to_string();
     let output_token_transform = lir::token_transform::transform(lir);
 
-    println!(
+    let mut lock = std::io::stdout().lock();
+    use std::io::Write;
+    writeln!(
+        lock,
         "{}",
         colored_diff::PrettyDifference {
             expected: &prettyplease::unparse(&syn::parse_file(&output_token_transform).unwrap()),
             actual: &prettyplease::unparse(&syn::parse_file(&output_code_transform).unwrap()),
         }
-    );
+    ).unwrap();
+    lock.flush().unwrap();
 
     output_token_transform
 }
