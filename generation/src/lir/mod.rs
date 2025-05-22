@@ -76,6 +76,12 @@ pub struct FieldSet {
     pub fields: Vec<Field>,
 }
 
+impl FieldSet {
+    pub fn size_bytes(&self) -> u32 {
+        self.size_bits.div_ceil(8)
+    }
+}
+
 pub struct Field {
     pub cfg_attr: TokenStream,
     pub doc_attr: TokenStream,

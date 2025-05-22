@@ -1,5 +1,0 @@
-{% for block in device.blocks %}
-    {% include "block.rs.txt" %}
-{% endfor %}
-
-{% include "fieldsets.rs.txt" %}
