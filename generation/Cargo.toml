@@ -23,6 +23,7 @@ dd-manifest-tree = { version = "1.0.0", path = "../dd-manifest-tree", optional =
 askama = "0.14.0"
 colored-diff = "0.2.3" # TODO remove
 prettyplease = "0.2.15" # TODO remove
+rand = "0.9.1"
 
 [dev-dependencies]
 prettyplease = "0.2.15"

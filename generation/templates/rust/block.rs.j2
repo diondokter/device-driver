@@ -1,20 +1,47 @@
+{% let block_generics %}
+{% if block.root %}
+    {% let block_generics = "<I>" %}
+{% else %}
+    {% let block_generics = "<'i, I>" %}
+{% endif %}
+
 {{ block.doc_attr }}
+{{ block.cfg_attr }}
 #[derive(Debug)]
-pub struct {{ block.name }}<I> {
+pub struct {{ block.name }}{{block_generics}} {
+    {% if block.root %}
     pub(crate) interface: I,
+    {% else %}
+    pub(crate) interface: &'i mut I,
+    {% endif %}
     #[doc(hidden)]
-    base_address: u8,
+    base_address: {{device.internal_address_type}},
 }
 
-impl<I> {{ block.name }}<I> {
+{{ block.cfg_attr }}
+impl{{block_generics}} {{ block.name }}{{block_generics}} {
+    {% if block.root %}
     /// Create a new instance of the block based on device interface
     pub const fn new(interface: I) -> Self {
         Self { interface, base_address: 0 }
     }
+
     /// A reference to the interface used to communicate with the device
     pub(crate) fn interface(&mut self) -> &mut I {
         &mut self.interface
     }
+    {% else %}
+    /// Create a new instance of the block based on device interface
+    #[doc(hidden)]
+    fn new(interface: &'i mut I, base_address: {{device.internal_address_type}}) -> Self {
+        Self { interface, base_address: base_address }
+    }
+
+    /// A reference to the interface used to communicate with the device
+    pub(crate) fn interface(&mut self) -> &mut I {
+        self.interface
+    }
+    {% endif %}
 
     /// Read all readable register values in this block from the device.
     /// The callback is called for each of them.
@@ -108,7 +135,10 @@ impl<I> {{ block.name }}<I> {
         {{ method.doc_attr }}
         {% match method.kind %}
             {% when BlockMethodKind::Normal %}
-            {% when BlockMethodKind::Repeated { count, .. } %} /// Valid index range: 0..{{count}}
+            {% when BlockMethodKind::Repeated { count, .. } %}
+            ///
+            /// Valid index range: 0..{{count}}
+            {% endwhen %}
         {% endmatch %}
         {{ method.cfg_attr }}
         pub fn {{ method.name }}(
@@ -119,14 +149,25 @@ impl<I> {{ block.name }}<I> {
             {% endmatch %}
         ) -> 
         {% match method.method_type %}
-            {% when BlockMethodType::Block { .. } %} ()
+            {% when BlockMethodType::Block { name } %} {{name}}<'_, I>
             {% when BlockMethodType::Register { field_set_name, access, address_type, .. } %} ::device_driver::RegisterOperation<'_, I, {{address_type}}, field_sets::{{field_set_name}}, ::device_driver::{{access}}>
             {% when BlockMethodType::Command { .. } %} ()
             {% when BlockMethodType::Buffer { access, address_type } %} ::device_driver::BufferOperation<'_, I, {{address_type}}, ::device_driver::{{access}}>
         {% endmatch %}
         {
             {% match method.method_type %}
-                {% when BlockMethodType::Block { .. } %} ()
+                {% when BlockMethodType::Block { name } %}
+                    {% match method.kind %}
+                        {% when BlockMethodKind::Normal %} let address = self.base_address + {{method.address}};
+                        {% when BlockMethodKind::Repeated { count, stride } %}
+                            let address = {
+                                assert!(index < {{count}});
+                                self.base_address + {{method.address}} + index as {{device.internal_address_type}} * {{stride}}
+                            };
+                        {% endwhen %}
+                    {% endmatch %}
+                    {{name}}::<'_, I>::new(self.interface(), address)
+                {% endwhen %}
                 {% when BlockMethodType::Register { field_set_name, access, address_type, reset_value_function } %}
                     {% match method.kind %}
                         {% when BlockMethodKind::Normal %} let address = self.base_address + {{method.address}};

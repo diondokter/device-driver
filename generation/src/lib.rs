@@ -1,5 +1,7 @@
 #![doc = include_str!(concat!("../", env!("CARGO_PKG_README")))]
 
+use std::time::Duration;
+
 #[cfg(feature = "dsl")]
 mod dsl_hir;
 mod lir;
@@ -128,6 +130,7 @@ fn transform_mir(mut mir: mir::Device, driver_name: &str) -> String {
     let output_token_transform = lir::token_transform::transform(lir);
 
     let mut lock = std::io::stdout().lock();
+    std::thread::sleep(Duration::from_millis(rand::random_range(0..1000)));
     use std::io::Write;
     writeln!(
         lock,
