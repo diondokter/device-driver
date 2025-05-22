@@ -13,4 +13,6 @@ pub mod field_sets {
     {% include "fieldset_enum.rs.j2" %}
 }
 
-{% include "enums.rs.j2" %}
+{% for enum_value in device.enums %}
+    {% include "enums.rs.j2" %}
+{% endfor %}

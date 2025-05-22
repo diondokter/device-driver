@@ -5,11 +5,8 @@ use itertools::Itertools;
 use crate::lir::FieldSet;
 
 pub fn generate_field_set_enum(field_sets: &[FieldSet], defmt_feature: Option<&str>) -> String {
-    let filter = |fs: &&FieldSet| fs.size_bits > 0;
-
     let fields = field_sets
         .iter()
-        .filter(filter)
         .map(|fs| {
             let name = &fs.name;
             let cfg = &fs.cfg_attr;
@@ -26,7 +23,6 @@ pub fn generate_field_set_enum(field_sets: &[FieldSet], defmt_feature: Option<&s
 
     let from_impls = field_sets
         .iter()
-        .filter(filter)
         .map(|fs| {
             let name = &fs.name;
             let cfg = &fs.cfg_attr;
@@ -45,7 +41,6 @@ pub fn generate_field_set_enum(field_sets: &[FieldSet], defmt_feature: Option<&s
 
     let debug_forward_calls = field_sets
         .iter()
-        .filter(filter)
         .map(|fs| {
             let name = &fs.name;
             let cfg = &fs.cfg_attr;
@@ -73,7 +68,6 @@ pub fn generate_field_set_enum(field_sets: &[FieldSet], defmt_feature: Option<&s
 
     let defmt_forward_calls = field_sets
         .iter()
-        .filter(filter)
         .map(|fs| {
             let name = &fs.name;
             let cfg = &fs.cfg_attr;

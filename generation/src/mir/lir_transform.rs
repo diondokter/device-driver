@@ -345,30 +345,34 @@ fn transform_field_sets<'a>(
                 )?);
             }
             mir::Object::Command(c) => {
-                field_sets.push(transform_field_set(
-                    &c.in_fields,
-                    format!("{}FieldsIn", c.name),
-                    &c.cfg_attr,
-                    &c.description,
-                    c.byte_order.unwrap(),
-                    c.bit_order,
-                    c.size_bits_in,
-                    None,
-                    Vec::new(),
-                    mir_enums.clone(),
-                )?);
-                field_sets.push(transform_field_set(
-                    &c.out_fields,
-                    format!("{}FieldsOut", c.name),
-                    &c.cfg_attr,
-                    &c.description,
-                    c.byte_order.unwrap(),
-                    c.bit_order,
-                    c.size_bits_out,
-                    None,
-                    Vec::new(),
-                    mir_enums.clone(),
-                )?);
+                if c.size_bits_in != 0 {
+                    field_sets.push(transform_field_set(
+                        &c.in_fields,
+                        format!("{}FieldsIn", c.name),
+                        &c.cfg_attr,
+                        &c.description,
+                        c.byte_order.unwrap(),
+                        c.bit_order,
+                        c.size_bits_in,
+                        None,
+                        Vec::new(),
+                        mir_enums.clone(),
+                    )?);
+                }
+                if c.size_bits_out != 0 {
+                    field_sets.push(transform_field_set(
+                        &c.out_fields,
+                        format!("{}FieldsOut", c.name),
+                        &c.cfg_attr,
+                        &c.description,
+                        c.byte_order.unwrap(),
+                        c.bit_order,
+                        c.size_bits_out,
+                        None,
+                        Vec::new(),
+                        mir_enums.clone(),
+                    )?);
+                }
             }
             _ => {}
         }

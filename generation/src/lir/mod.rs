@@ -120,6 +120,16 @@ pub struct Enum {
     pub variants: Vec<EnumVariant>,
 }
 
+impl Enum {
+    pub fn default_variant(&self) -> Option<&EnumVariant> {
+        self.variants.iter().find(|v| v.default)
+    }
+
+    pub fn catch_all_variant(&self) -> Option<&EnumVariant> {
+        self.variants.iter().find(|v| v.catch_all)
+    }
+}
+
 pub struct EnumVariant {
     pub cfg_attr: TokenStream,
     pub doc_attr: TokenStream,
