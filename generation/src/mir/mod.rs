@@ -116,11 +116,23 @@ pub enum ByteOrder {
     BE,
 }
 
+impl Display for ByteOrder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum BitOrder {
     #[default]
     LSB0,
     MSB0,
+}
+
+impl Display for BitOrder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

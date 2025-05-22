@@ -43,7 +43,7 @@ impl<I> {{ block.name }}<I> {
                         {{method.cfg_attr}}
                         let reg = self.{{method.name}}().read()?;
                         {{method.cfg_attr}}
-                        callback({{method.address}}, "{{method.name}}", reg.into());
+                        callback({{method.address}} + 0 * 0, "{{method.name}}", reg.into());
                     {% endwhen %}
                     {% when BlockMethodKind::Repeated { count, stride } %}
                         {% for index in 0..*count %}
@@ -87,7 +87,7 @@ impl<I> {{ block.name }}<I> {
                         {{method.cfg_attr}}
                         let reg = self.{{method.name}}().read_async().await?;
                         {{method.cfg_attr}}
-                        callback({{method.address}}, "{{method.name}}", reg.into());
+                        callback({{method.address}} + 0 * 0, "{{method.name}}", reg.into());
                     {% endwhen %}
                     {% when BlockMethodKind::Repeated { count, stride } %}
                         {% for index in 0..*count %}
