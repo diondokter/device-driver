@@ -9,7 +9,7 @@ pub struct DeviceTemplateRust<'a> {
     device: &'a Device,
 }
 
-impl<'a> DeviceTemplateRust<'a> {
+impl DeviceTemplateRust<'_> {
     fn get_super_prefix(&self, conversion_method: &FieldConversionMethod) -> &'static str {
         match conversion_method.conversion_type() {
             Some(ct)
@@ -25,7 +25,7 @@ impl<'a> DeviceTemplateRust<'a> {
 fn get_command_fieldset_name(fieldset: &Option<String>) -> String {
     match fieldset {
         Some(fs) => format!("field_sets::{fs}"),
-        None => "()".into()
+        None => "()".into(),
     }
 }
 

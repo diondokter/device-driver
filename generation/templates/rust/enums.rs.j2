@@ -34,8 +34,10 @@ impl From<{{enum_value.base_type}}> for {{enum_value.name}} {
     fn from(val: {{enum_value.base_type}}) -> Self {
         match val {
             {% for variant in enum_value.variants %}
-                {{variant.cfg_attr}}
-                {{variant.number}} => Self::{{variant.name}},
+                {% if !(variant.default || variant.catch_all) %}
+                    {{variant.cfg_attr}}
+                    {{variant.number}} => Self::{{variant.name}},
+                {% endif %}
             {% endfor %}
             {% if let Some(_) = default_variant %}
                 _ => Self::default(),

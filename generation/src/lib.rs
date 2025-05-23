@@ -139,7 +139,8 @@ fn transform_mir(mut mir: mir::Device, driver_name: &str) -> String {
             expected: &prettyplease::unparse(&syn::parse_file(&output_token_transform).unwrap()),
             actual: &prettyplease::unparse(&syn::parse_file(&output_code_transform).unwrap()),
         }
-    ).unwrap();
+    )
+    .unwrap();
     lock.flush().unwrap();
 
     output_token_transform
