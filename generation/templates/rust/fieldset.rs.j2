@@ -41,7 +41,7 @@ impl {{field_set.name}} {
     {% endfor %}
 
     {% for field in field_set.fields %}
-        {% let super_prefix = get_super_prefix(&field.conversion_method) %}
+        {% let super_prefix = self::get_super_prefix(&field.conversion_method) %}
 
         {% if matches!(field.access, Access::RW | Access::RO) %}
             ///Read the `{{field.name}}` field of the register.
@@ -75,7 +75,7 @@ impl {{field_set.name}} {
     {% endfor %}
 
     {% for field in field_set.fields %}
-        {% let super_prefix = get_super_prefix(&field.conversion_method) %}
+        {% let super_prefix = self::get_super_prefix(&field.conversion_method) %}
 
         {% if matches!(field.access, Access::RW | Access::WO) %}
             ///Write the `{{field.name}}` field of the register.
