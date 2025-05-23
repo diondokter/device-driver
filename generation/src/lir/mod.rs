@@ -6,7 +6,6 @@ use crate::mir::{self, Access, BitOrder, ByteOrder, Integer};
 
 pub mod code_transform;
 pub mod passes;
-pub mod token_transform;
 
 pub struct Device {
     pub internal_address_type: Integer,

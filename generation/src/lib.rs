@@ -1,7 +1,5 @@
 #![doc = include_str!(concat!("../", env!("CARGO_PKG_README")))]
 
-use std::time::Duration;
-
 #[cfg(feature = "dsl")]
 mod dsl_hir;
 mod lir;
@@ -126,24 +124,7 @@ fn transform_mir(mut mir: mir::Device, driver_name: &str) -> String {
     };
 
     // Transform into Rust source token output
-    let output_code_transform = lir::code_transform::DeviceTemplateRust::new(&lir).to_string();
-    let output_token_transform = lir::token_transform::transform(lir);
-
-    let mut lock = std::io::stdout().lock();
-    std::thread::sleep(Duration::from_millis(rand::random_range(0..1000)));
-    use std::io::Write;
-    writeln!(
-        lock,
-        "{}",
-        colored_diff::PrettyDifference {
-            expected: &prettyplease::unparse(&syn::parse_file(&output_token_transform).unwrap()),
-            actual: &prettyplease::unparse(&syn::parse_file(&output_code_transform).unwrap()),
-        }
-    )
-    .unwrap();
-    lock.flush().unwrap();
-
-    output_token_transform
+    lir::code_transform::DeviceTemplateRust::new(&lir).to_string()
 }
 
 fn anyhow_error_to_compile_error(error: anyhow::Error) -> String {
