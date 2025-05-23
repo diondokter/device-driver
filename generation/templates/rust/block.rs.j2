@@ -151,33 +151,25 @@ impl{{block_generics}} {{ block.name }}{{block_generics}} {
         {% match method.method_type %}
             {% when BlockMethodType::Block { name } %} {{name}}<'_, I>
             {% when BlockMethodType::Register { field_set_name, access, address_type, .. } %} ::device_driver::RegisterOperation<'_, I, {{address_type}}, field_sets::{{field_set_name}}, ::device_driver::{{access}}>
-            {% when BlockMethodType::Command { .. } %} ()
+            {% when BlockMethodType::Command { field_set_name_in, field_set_name_out, address_type } %} ::device_driver::CommandOperation<'_, I, {{address_type}}, {{self::get_command_fieldset_name(field_set_name_in)}}, {{self::get_command_fieldset_name(field_set_name_out)}}>
             {% when BlockMethodType::Buffer { access, address_type } %} ::device_driver::BufferOperation<'_, I, {{address_type}}, ::device_driver::{{access}}>
         {% endmatch %}
         {
+            {% match method.kind %}
+                {% when BlockMethodKind::Normal %} let address = self.base_address + {{method.address}};
+                {% when BlockMethodKind::Repeated { count, stride } %}
+                    let address = {
+                        assert!(index < {{count}});
+                        self.base_address + {{method.address}} + index as {{device.internal_address_type}} * {{stride}}
+                    };
+                {% endwhen %}
+            {% endmatch %}
+
             {% match method.method_type %}
                 {% when BlockMethodType::Block { name } %}
-                    {% match method.kind %}
-                        {% when BlockMethodKind::Normal %} let address = self.base_address + {{method.address}};
-                        {% when BlockMethodKind::Repeated { count, stride } %}
-                            let address = {
-                                assert!(index < {{count}});
-                                self.base_address + {{method.address}} + index as {{device.internal_address_type}} * {{stride}}
-                            };
-                        {% endwhen %}
-                    {% endmatch %}
                     {{name}}::<'_, I>::new(self.interface(), address)
                 {% endwhen %}
                 {% when BlockMethodType::Register { field_set_name, access, address_type, reset_value_function } %}
-                    {% match method.kind %}
-                        {% when BlockMethodKind::Normal %} let address = self.base_address + {{method.address}};
-                        {% when BlockMethodKind::Repeated { count, stride } %}
-                            let address = {
-                                assert!(index < {{count}});
-                                self.base_address + {{method.address}} + index as {{address_type}} * {{stride}}
-                            };
-                        {% endwhen %}
-                    {% endmatch %}
                     ::device_driver::RegisterOperation::<
                         '_,
                         I,
@@ -186,9 +178,16 @@ impl{{block_generics}} {{ block.name }}{{block_generics}} {
                         ::device_driver::{{access}},
                     >::new(self.interface(), address as u8, field_sets::{{field_set_name}}::{{reset_value_function}})
                 {% endwhen %}
-                {% when BlockMethodType::Command { .. } %} ()
+                {% when BlockMethodType::Command { field_set_name_in, field_set_name_out, address_type } %}
+                    ::device_driver::CommandOperation::<
+                        '_,
+                        I,
+                        {{address_type}},
+                        {{self::get_command_fieldset_name(field_set_name_in)}},
+                        {{self::get_command_fieldset_name(field_set_name_out)}},
+                    >::new(self.interface(), address as u8)
+                {% endwhen %}
                 {% when BlockMethodType::Buffer { access, address_type } %}
-                    let address = self.base_address + {{method.address}};
                     ::device_driver::BufferOperation::<
                         '_,
                         I,

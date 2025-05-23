@@ -22,6 +22,13 @@ impl<'a> DeviceTemplateRust<'a> {
     }
 }
 
+fn get_command_fieldset_name(fieldset: &Option<String>) -> String {
+    match fieldset {
+        Some(fs) => format!("field_sets::{fs}"),
+        None => "()".into()
+    }
+}
+
 impl<'a> DeviceTemplateRust<'a> {
     pub fn new(device: &'a Device) -> Self {
         Self { device }
