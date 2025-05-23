@@ -579,8 +579,10 @@ mod tests {
             impl defmt::Format for MyRegister {
                 fn format(&self, f: defmt::Formatter) {
                     defmt::write!(
-                        f, \"MyRegister {{ my_field: {}, my_field2: {=i16} }}\", self.my_field(), self
-                        .my_field2()
+                        f,
+                        \"MyRegister {{ my_field: {}, my_field2: {=i16} }}\",
+                        self.my_field(),
+                        self.my_field2(),
                     )
                 }
             }
