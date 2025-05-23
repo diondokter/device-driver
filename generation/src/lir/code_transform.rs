@@ -32,6 +32,27 @@ fn get_super_prefix(conversion_method: &FieldConversionMethod) -> &'static str {
     }
 }
 
+fn get_defmt_fmt_string(field_set: &FieldSet) -> String {
+    let fields_format_string = field_set
+        .fields
+        .iter()
+        .map(|f| {
+            let defmt_type_hint = match f.conversion_method {
+                FieldConversionMethod::None => {
+                    let base_type = &f.base_type;
+                    format!("={base_type}")
+                }
+                FieldConversionMethod::Bool => "=bool".into(),
+                _ => String::new(),
+            };
+
+            format!("{}: {{{}}}", f.name, defmt_type_hint)
+        })
+        .join(", ");
+
+    format!("{} {{{{ {} }}}}", field_set.name, fields_format_string)
+}
+
 fn get_command_fieldset_name(fieldset: &Option<String>) -> String {
     match fieldset {
         Some(fs) => format!("field_sets::{fs}"),
