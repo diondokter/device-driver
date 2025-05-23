@@ -1,4 +1,5 @@
 use askama::Template;
+use itertools::Itertools;
 
 use super::*;
 use crate::mir::Access;
@@ -13,6 +14,13 @@ impl<'a> DeviceTemplateRust<'a> {
     pub fn new(device: &'a Device) -> Self {
         Self { device }
     }
+}
+
+fn description_to_docstring(description: &str) -> String {
+    description
+        .lines()
+        .map(|line| format!("#[doc = \"{line}\"]"))
+        .join("\n")
 }
 
 fn get_super_prefix(conversion_method: &FieldConversionMethod) -> &'static str {

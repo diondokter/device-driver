@@ -142,13 +142,13 @@ mod tests {
             blocks: vec![
                 Block {
                     cfg_attr: Default::default(),
-                    doc_attr: Default::default(),
+                    description: Default::default(),
                     root: true,
                     name: "Root".to_string(),
                     methods: vec![
                         BlockMethod {
                             cfg_attr: Default::default(),
-                            doc_attr: Default::default(),
+                            description: Default::default(),
                             name: "second_block".to_string(),
                             address: 10,
                             allow_address_overlap: false,
@@ -162,7 +162,7 @@ mod tests {
                         },
                         BlockMethod {
                             cfg_attr: Default::default(),
-                            doc_attr: Default::default(),
+                            description: Default::default(),
                             name: "register0".to_string(),
                             address: 75,
                             allow_address_overlap: false,
@@ -181,12 +181,12 @@ mod tests {
                 },
                 Block {
                     cfg_attr: Default::default(),
-                    doc_attr: Default::default(),
+                    description: Default::default(),
                     root: true,
                     name: "SecondBlock".to_string(),
                     methods: vec![BlockMethod {
                         cfg_attr: Default::default(),
-                        doc_attr: Default::default(),
+                        description: Default::default(),
                         name: "register1".to_string(),
                         address: 0,
                         allow_address_overlap: false,

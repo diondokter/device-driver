@@ -1,4 +1,4 @@
-{{field_set.doc_attr}}
+{{self::description_to_docstring(field_set.description)}}
 {{field_set.cfg_attr}}
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct {{field_set.name}} {
@@ -46,7 +46,7 @@ impl {{field_set.name}} {
         {% if matches!(field.access, Access::RW | Access::RO) %}
             ///Read the `{{field.name}}` field of the register.
             ///
-            {{field.doc_attr}}
+            {{self::description_to_docstring(field.description)}}
             {{field.cfg_attr}}
             pub fn {{field.name}}(&self) -> 
                 {% match field.conversion_method %}
@@ -80,7 +80,7 @@ impl {{field_set.name}} {
         {% if matches!(field.access, Access::RW | Access::WO) %}
             ///Write the `{{field.name}}` field of the register.
             ///
-            {{field.doc_attr}}
+            {{self::description_to_docstring(field.description)}}
             {{field.cfg_attr}}
             pub fn set_{{field.name}}(
                 &mut self,

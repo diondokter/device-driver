@@ -1,8 +1,6 @@
 use std::ops::{Add, Not};
 
 use anyhow::ensure;
-use proc_macro2::TokenStream;
-use quote::quote;
 
 use crate::{
     lir,
@@ -79,8 +77,6 @@ fn collect_into_blocks(
         objects,
     } = block;
 
-    let cfg_attr = cfg_attr_string_to_tokens(cfg_attr)?;
-
     let mut methods = Vec::new();
 
     for object in objects {
@@ -96,8 +92,8 @@ fn collect_into_blocks(
     }
 
     let new_block = lir::Block {
-        cfg_attr,
-        doc_attr: quote! { #[doc = #description] },
+        cfg_attr: cfg_attr.to_string(),
+        description: description.clone(),
         root: is_root,
         name: name.to_string(),
         methods,
@@ -136,8 +132,8 @@ fn get_method(
             )?);
 
             lir::BlockMethod {
-                cfg_attr: cfg_attr_string_to_tokens(cfg_attr)?,
-                doc_attr: quote! { #[doc = #description] },
+                cfg_attr: cfg_attr.to_string(),
+                description: description.clone(),
                 name: name.to_case(convert_case::Case::Snake),
                 address: *address_offset,
                 allow_address_overlap: false,
@@ -157,8 +153,8 @@ fn get_method(
             repeat,
             ..
         }) => lir::BlockMethod {
-            cfg_attr: cfg_attr_string_to_tokens(cfg_attr)?,
-            doc_attr: quote! { #[doc = #description] },
+            cfg_attr: cfg_attr.to_string(),
+            description: description.clone(),
             name: name.to_case(convert_case::Case::Snake),
             address: *address,
             allow_address_overlap: *allow_address_overlap,
@@ -183,8 +179,8 @@ fn get_method(
             out_fields,
             ..
         }) => lir::BlockMethod {
-            cfg_attr: cfg_attr_string_to_tokens(cfg_attr)?,
-            doc_attr: quote! { #[doc = #description] },
+            cfg_attr: cfg_attr.to_string(),
+            description: description.clone(),
             name: name.to_case(convert_case::Case::Snake),
             address: *address,
             allow_address_overlap: *allow_address_overlap,
@@ -210,8 +206,8 @@ fn get_method(
             access,
             address,
         }) => lir::BlockMethod {
-            cfg_attr: cfg_attr_string_to_tokens(cfg_attr)?,
-            doc_attr: quote! { #[doc = #description] },
+            cfg_attr: cfg_attr.to_string(),
+            description: description.clone(),
             name: name.to_case(convert_case::Case::Snake),
             address: *address,
             allow_address_overlap: false,
@@ -396,8 +392,6 @@ fn transform_field_set<'a>(
     ref_reset_overrides: Vec<(String, Vec<u8>)>,
     enum_list: impl Iterator<Item = &'a mir::Enum> + Clone,
 ) -> anyhow::Result<lir::FieldSet> {
-    let cfg_attr = cfg_attr_string_to_tokens(cfg_attr)?;
-
     let fields = field_set
         .iter()
         .map(|field| {
@@ -410,8 +404,6 @@ fn transform_field_set<'a>(
                 field_conversion,
                 field_address,
             } = field;
-
-            let cfg_attr = cfg_attr_string_to_tokens(cfg_attr)?;
 
             let (base_type, conversion_method) = match (
                 base_type,
@@ -469,8 +461,8 @@ fn transform_field_set<'a>(
             };
 
             Ok(lir::Field {
-                cfg_attr,
-                doc_attr: quote! { #[doc = #description] },
+                cfg_attr: cfg_attr.to_string(),
+                description: description.clone(),
                 name: name.clone(),
                 address: field_address.clone(),
                 base_type,
@@ -481,8 +473,8 @@ fn transform_field_set<'a>(
         .collect::<Result<_, anyhow::Error>>()?;
 
     Ok(lir::FieldSet {
-        cfg_attr,
-        doc_attr: quote! { #[doc = #description] },
+        cfg_attr: cfg_attr.to_string(),
+        description: description.into(),
         name: field_set_name.to_string(),
         byte_order,
         bit_order,
@@ -526,8 +518,6 @@ fn transform_enum(
         generation_style: _,
     } = e;
 
-    let cfg_attr = cfg_attr_string_to_tokens(cfg_attr)?;
-
     let base_type = match (base_type, size_bits) {
         (mir::BaseType::Bool, _) => "u8".to_string(),
         (mir::BaseType::Uint, val) => format!("u{}", val.max(8).next_power_of_two()),
@@ -545,8 +535,6 @@ fn transform_enum(
                 value,
             } = v;
 
-            let cfg_attr = cfg_attr_string_to_tokens(cfg_attr)?;
-
             let number = match value {
                 mir::EnumValue::Unspecified
                 | mir::EnumValue::Default
@@ -562,8 +550,8 @@ fn transform_enum(
             };
 
             Ok(lir::EnumVariant {
-                cfg_attr,
-                doc_attr: quote! { #[doc = #description] },
+                cfg_attr: cfg_attr.to_string(),
+                description: description.clone(),
                 name: name.to_string(),
                 number,
                 default: matches!(value, mir::EnumValue::Default),
@@ -573,22 +561,12 @@ fn transform_enum(
         .collect::<Result<_, anyhow::Error>>()?;
 
     Ok(lir::Enum {
-        cfg_attr,
-        doc_attr: quote! { #[doc = #description] },
+        cfg_attr: cfg_attr.to_string(),
+        description: description.clone(),
         name: name.to_string(),
         base_type,
         variants,
     })
-}
-
-fn cfg_attr_string_to_tokens(cfg_attr: &mir::Cfg) -> anyhow::Result<TokenStream> {
-    match cfg_attr.inner() {
-        Some(val) => {
-            let cfg_content = syn::parse_str::<proc_macro2::TokenStream>(val)?;
-            Ok(quote! { #[cfg(#cfg_content)] })
-        }
-        None => Ok(quote! {}),
-    }
 }
 
 fn repeat_to_method_kind(repeat: &Option<mir::Repeat>) -> lir::BlockMethodKind {

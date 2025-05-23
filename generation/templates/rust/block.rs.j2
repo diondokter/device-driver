@@ -5,7 +5,7 @@
     {% let block_generics = "<'i, I>" %}
 {% endif %}
 
-{{ block.doc_attr }}
+{{ self::description_to_docstring(block.description) }}
 {{ block.cfg_attr }}
 #[derive(Debug)]
 pub struct {{ block.name }}{{block_generics}} {
@@ -132,7 +132,7 @@ impl{{block_generics}} {{ block.name }}{{block_generics}} {
     }
 
     {% for method in block.methods %}
-        {{ method.doc_attr }}
+        {{ self::description_to_docstring(method.description) }}
         {% match method.kind %}
             {% when BlockMethodKind::Normal %}
             {% when BlockMethodKind::Repeated { count, .. } %}

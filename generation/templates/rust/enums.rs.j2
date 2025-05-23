@@ -1,4 +1,4 @@
-{{enum_value.doc_attr}}
+{{self::description_to_docstring(enum_value.description)}}
 {{enum_value.cfg_attr}}
 #[repr({{enum_value.base_type}})]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
@@ -7,7 +7,7 @@
 {% endif %}
 pub enum {{enum_value.name}} {
     {% for variant in enum_value.variants %}
-        {{variant.doc_attr}}
+        {{self::description_to_docstring(variant.description)}}
         {{variant.cfg_attr}}
         {{variant.name}} {% if variant.catch_all %} ({{enum_value.base_type}}) {% endif %} = {{variant.number}},
     {% endfor %}

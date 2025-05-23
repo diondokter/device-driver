@@ -1,7 +1,5 @@
 use std::ops::Range;
 
-use proc_macro2::TokenStream;
-
 use crate::mir::{self, Access, BitOrder, ByteOrder, Integer};
 
 pub mod code_transform;
@@ -17,8 +15,8 @@ pub struct Device {
 }
 
 pub struct Block {
-    pub cfg_attr: TokenStream,
-    pub doc_attr: TokenStream,
+    pub cfg_attr: String,
+    pub description: String,
     /// True for the root (top-level) block
     pub root: bool,
     pub name: String,
@@ -26,8 +24,8 @@ pub struct Block {
 }
 
 pub struct BlockMethod {
-    pub cfg_attr: TokenStream,
-    pub doc_attr: TokenStream,
+    pub cfg_attr: String,
+    pub description: String,
     pub name: String,
     pub address: i64,
     // Only used for LIR passes, not codegen
@@ -64,8 +62,8 @@ pub enum BlockMethodType {
 
 /// A set of fields, like a register or command in/out
 pub struct FieldSet {
-    pub cfg_attr: TokenStream,
-    pub doc_attr: TokenStream,
+    pub cfg_attr: String,
+    pub description: String,
     pub name: String,
     pub byte_order: ByteOrder,
     pub bit_order: BitOrder,
@@ -82,8 +80,8 @@ impl FieldSet {
 }
 
 pub struct Field {
-    pub cfg_attr: TokenStream,
-    pub doc_attr: TokenStream,
+    pub cfg_attr: String,
+    pub description: String,
     pub name: String,
     pub address: Range<u32>,
     pub base_type: String,
@@ -112,8 +110,8 @@ impl FieldConversionMethod {
 }
 
 pub struct Enum {
-    pub cfg_attr: TokenStream,
-    pub doc_attr: TokenStream,
+    pub cfg_attr: String,
+    pub description: String,
     pub name: String,
     pub base_type: String,
     pub variants: Vec<EnumVariant>,
@@ -130,8 +128,8 @@ impl Enum {
 }
 
 pub struct EnumVariant {
-    pub cfg_attr: TokenStream,
-    pub doc_attr: TokenStream,
+    pub cfg_attr: String,
+    pub description: String,
     pub name: String,
     pub number: i128,
     pub default: bool,

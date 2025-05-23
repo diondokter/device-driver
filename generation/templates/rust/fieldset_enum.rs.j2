@@ -2,7 +2,7 @@
 pub enum FieldSetValue {
     {% for field_set in device.field_sets %}
         {{field_set.cfg_attr}}
-        {{field_set.doc_attr}}
+        {{self::description_to_docstring(field_set.description)}}
         {{field_set.name}}({{field_set.name}}),
     {% endfor %}
 }

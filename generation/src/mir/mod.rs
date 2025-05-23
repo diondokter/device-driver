@@ -606,6 +606,16 @@ impl Cfg {
     }
 }
 
+impl Display for Cfg {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(value) = self.inner() {
+            write!(f, "#[cfg({value})]")?
+        }
+
+        Ok(())
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct UniqueId {
     object_name: String,
