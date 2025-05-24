@@ -1,0 +1,81 @@
+{{self::description_to_docstring(enum_value.description)}}
+{{enum_value.cfg_attr}}
+#[repr({{enum_value.base_type}})]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+{% if let Some(defmt_feature) = device.defmt_feature %}
+#[cfg_attr(feature = "{{defmt_feature}}", derive(defmt::Format))]
+{% endif %}
+pub enum {{enum_value.name}} {
+    {% for variant in enum_value.variants %}
+        {{self::description_to_docstring(variant.description)}}
+        {{variant.cfg_attr}}
+        {{variant.name}} {% if variant.catch_all %} ({{enum_value.base_type}}) {% endif %} = {{variant.number}},
+    {% endfor %}
+}
+
+{% let default_variant = enum_value.default_variant() %}
+{% let catch_all_variant = enum_value.catch_all_variant() %}
+
+{% if let Some(default_variant) = default_variant %}
+{{enum_value.cfg_attr}}
+impl Default for {{enum_value.name}} {
+    fn default() -> Self {
+        Self::{{default_variant.name}}
+        {% if default_variant.catch_all %}
+            ({{default_variant.number}})
+        {% endif %}
+    }
+}
+{%endif%}
+
+{% if catch_all_variant.is_some() || default_variant.is_some() %}
+{{enum_value.cfg_attr}}
+impl From<{{enum_value.base_type}}> for {{enum_value.name}} {
+    fn from(val: {{enum_value.base_type}}) -> Self {
+        match val {
+            {% for variant in enum_value.variants %}
+                {% if !(variant.default || variant.catch_all) %}
+                    {{variant.cfg_attr}}
+                    {{variant.number}} => Self::{{variant.name}},
+                {% endif %}
+            {% endfor %}
+            {% if let Some(_) = default_variant %}
+                _ => Self::default(),
+            {% endif %}
+            {% if let Some(catch_all_variant) = catch_all_variant %}
+                val => Self::{{catch_all_variant.name}}(val),
+            {% endif %}
+        }
+    }
+}
+{% else %}
+{{enum_value.cfg_attr}}
+impl core::convert::TryFrom<{{enum_value.base_type}}> for {{enum_value.name}} {
+    type Error = ::device_driver::ConversionError<{{enum_value.base_type}}>;
+    fn try_from(val: {{enum_value.base_type}}) -> Result<Self, Self::Error> {
+        match val {
+            {% for variant in enum_value.variants %}
+                {{variant.cfg_attr}}
+                {{variant.number}} => Ok(Self::{{variant.name}}),
+            {% endfor %}
+            val => Err(::device_driver::ConversionError { source: val, target: "{{enum_value.name}}" })
+        }
+    }
+}
+{%endif%}
+
+{{enum_value.cfg_attr}}
+impl From<{{enum_value.name}}> for {{enum_value.base_type}} {
+    fn from(val: {{enum_value.name}}) -> Self {
+        match val {
+            {% for variant in enum_value.variants %}
+                {{variant.cfg_attr}}
+                {% if variant.catch_all %}
+                    {{enum_value.name}}::{{variant.name}}(num) => num,
+                {% else %}
+                    {{enum_value.name}}::{{variant.name}} => {{variant.number}},
+                {% endif %}
+            {% endfor %}
+        }
+    }
+}

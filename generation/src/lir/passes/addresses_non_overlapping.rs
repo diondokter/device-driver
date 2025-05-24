@@ -133,71 +133,69 @@ mod tests {
 
     use super::*;
     use indoc::indoc;
-    use proc_macro2::Literal;
-    use quote::format_ident;
 
     #[test]
     fn deep_overlap_detected() {
         let mut device = Device {
-            internal_address_type: format_ident!("u8"),
-            register_address_type: format_ident!("u8"),
+            internal_address_type: crate::mir::Integer::U8,
+            register_address_type: crate::mir::Integer::U8,
             blocks: vec![
                 Block {
                     cfg_attr: Default::default(),
-                    doc_attr: Default::default(),
+                    description: Default::default(),
                     root: true,
-                    name: format_ident!("Root"),
+                    name: "Root".to_string(),
                     methods: vec![
                         BlockMethod {
                             cfg_attr: Default::default(),
-                            doc_attr: Default::default(),
-                            name: format_ident!("second_block"),
-                            address: Literal::i64_unsuffixed(10),
+                            description: Default::default(),
+                            name: "second_block".to_string(),
+                            address: 10,
                             allow_address_overlap: false,
                             kind: BlockMethodKind::Repeated {
-                                count: Literal::i64_unsuffixed(10),
-                                stride: Literal::i64_unsuffixed(10),
+                                count: 10,
+                                stride: 10,
                             },
                             method_type: BlockMethodType::Block {
-                                name: format_ident!("SecondBlock"),
+                                name: "SecondBlock".to_string(),
                             },
                         },
                         BlockMethod {
                             cfg_attr: Default::default(),
-                            doc_attr: Default::default(),
-                            name: format_ident!("register0"),
-                            address: Literal::i64_unsuffixed(75),
+                            description: Default::default(),
+                            name: "register0".to_string(),
+                            address: 75,
                             allow_address_overlap: false,
                             kind: BlockMethodKind::Repeated {
-                                count: Literal::i64_unsuffixed(2),
-                                stride: Literal::i64_unsuffixed(5),
+                                count: 2,
+                                stride: 5,
                             },
                             method_type: BlockMethodType::Register {
-                                field_set_name: format_ident!("bla"),
+                                field_set_name: "bla".to_string(),
                                 access: crate::mir::Access::RW,
-                                address_type: format_ident!("bla"),
-                                reset_value_function: format_ident!("new"),
+                                address_type: crate::mir::Integer::U8,
+                                reset_value_function: "new".to_string(),
                             },
                         },
                     ],
                 },
                 Block {
                     cfg_attr: Default::default(),
-                    doc_attr: Default::default(),
+                    description: Default::default(),
                     root: true,
-                    name: format_ident!("SecondBlock"),
+                    name: "SecondBlock".to_string(),
                     methods: vec![BlockMethod {
                         cfg_attr: Default::default(),
-                        doc_attr: Default::default(),
-                        name: format_ident!("register1"),
-                        address: Literal::i64_unsuffixed(0),
+                        description: Default::default(),
+                        name: "register1".to_string(),
+                        address: 0,
                         allow_address_overlap: false,
                         kind: BlockMethodKind::Normal,
                         method_type: BlockMethodType::Register {
-                            field_set_name: format_ident!("bla"),
+                            field_set_name: "bla".to_string(),
                             access: crate::mir::Access::RW,
-                            address_type: format_ident!("bla"),
-                            reset_value_function: format_ident!("new"),
+                            address_type: crate::mir::Integer::U8,
+                            reset_value_function: "new".to_string(),
                         },
                     }],
                 },

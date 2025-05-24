@@ -2,4 +2,5 @@
 Cargo.lock
 
 .idea
-.vscode
+.vscode/*
+!.vscode/extensions.json

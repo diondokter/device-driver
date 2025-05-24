@@ -1,0 +1,201 @@
+{% let block_generics %}
+{% if block.root %}
+    {% let block_generics = "<I>" %}
+{% else %}
+    {% let block_generics = "<'i, I>" %}
+{% endif %}
+
+{{ self::description_to_docstring(block.description) }}
+{{ block.cfg_attr }}
+#[derive(Debug)]
+pub struct {{ block.name }}{{block_generics}} {
+    {% if block.root %}
+    pub(crate) interface: I,
+    {% else %}
+    pub(crate) interface: &'i mut I,
+    {% endif %}
+    #[doc(hidden)]
+    base_address: {{device.internal_address_type}},
+}
+
+{{ block.cfg_attr }}
+impl{{block_generics}} {{ block.name }}{{block_generics}} {
+    {% if block.root %}
+    /// Create a new instance of the block based on device interface
+    pub const fn new(interface: I) -> Self {
+        Self { interface, base_address: 0 }
+    }
+
+    /// A reference to the interface used to communicate with the device
+    pub(crate) fn interface(&mut self) -> &mut I {
+        &mut self.interface
+    }
+    {% else %}
+    /// Create a new instance of the block based on device interface
+    #[doc(hidden)]
+    fn new(interface: &'i mut I, base_address: {{device.internal_address_type}}) -> Self {
+        Self { interface, base_address: base_address }
+    }
+
+    /// A reference to the interface used to communicate with the device
+    pub(crate) fn interface(&mut self) -> &mut I {
+        self.interface
+    }
+    {% endif %}
+
+    /// Read all readable register values in this block from the device.
+    /// The callback is called for each of them.
+    /// Any registers in child blocks are not included.
+    ///
+    /// The callback has three arguments:
+    ///
+    /// - The address of the register
+    /// - The name of the register (with index for repeated registers)
+    /// - The read value from the register
+    ///
+    /// This is useful for e.g. debug printing all values.
+    /// The given [field_sets::FieldSetValue] has a Debug and Format implementation that forwards to the concrete type
+    /// the lies within so it can be printed without matching on it.
+    pub fn read_all_registers(
+        &mut self,
+        mut callback: impl FnMut({{device.register_address_type}}, &'static str, field_sets::FieldSetValue),
+    ) -> Result<(), I::Error>
+    where
+        I: ::device_driver::RegisterInterface<AddressType = {{device.register_address_type}}>,
+    {
+        {% for method in block.methods %}
+            {% if matches!(method.method_type, BlockMethodType::Register {..}) %}
+                {% match method.kind %}
+                    {% when BlockMethodKind::Normal %}
+                        {{method.cfg_attr}}
+                        let reg = self.{{method.name}}().read()?;
+                        {{method.cfg_attr}}
+                        callback({{method.address}} + 0 * 0, "{{method.name}}", reg.into());
+                    {% endwhen %}
+                    {% when BlockMethodKind::Repeated { count, stride } %}
+                        {% for index in 0..*count %}
+                            {{method.cfg_attr}}
+                            let reg = self.{{method.name}}({{index}}).read()?;
+                            {{method.cfg_attr}}
+                            callback({{method.address}} + {{index}} * {{stride}}, "{{method.name}}[{{index}}]", reg.into());
+                        {% endfor %}
+                    {% endwhen %}
+                {% endmatch %}
+            {% endif %}
+        {% endfor %}
+
+        Ok(())
+    }
+    
+    /// Read all readable register values in this block from the device.
+    /// The callback is called for each of them.
+    /// Any registers in child blocks are not included.
+    ///
+    /// The callback has three arguments:
+    ///
+    /// - The address of the register
+    /// - The name of the register (with index for repeated registers)
+    /// - The read value from the register
+    ///
+    /// This is useful for e.g. debug printing all values.
+    /// The given [field_sets::FieldSetValue] has a Debug and Format implementation that forwards to the concrete type
+    /// the lies within so it can be printed without matching on it.
+    pub async fn read_all_registers_async(
+        &mut self,
+        mut callback: impl FnMut({{device.register_address_type}}, &'static str, field_sets::FieldSetValue),
+    ) -> Result<(), I::Error>
+    where
+        I: ::device_driver::AsyncRegisterInterface<AddressType = {{device.register_address_type}}>,
+    {
+        {% for method in block.methods %}
+            {% if matches!(method.method_type, BlockMethodType::Register {..}) %}
+                {% match method.kind %}
+                    {% when BlockMethodKind::Normal %}
+                        {{method.cfg_attr}}
+                        let reg = self.{{method.name}}().read_async().await?;
+                        {{method.cfg_attr}}
+                        callback({{method.address}} + 0 * 0, "{{method.name}}", reg.into());
+                    {% endwhen %}
+                    {% when BlockMethodKind::Repeated { count, stride } %}
+                        {% for index in 0..*count %}
+                            {{method.cfg_attr}}
+                            let reg = self.{{method.name}}({{index}}).read_async().await?;
+                            {{method.cfg_attr}}
+                            callback({{method.address}} + {{index}} * {{stride}}, "{{method.name}}[{{index}}]", reg.into());
+                        {% endfor %}
+                    {% endwhen %}
+                {% endmatch %}
+            {% endif %}
+        {% endfor %}
+
+        Ok(())
+    }
+
+    {% for method in block.methods %}
+        {{ self::description_to_docstring(method.description) }}
+        {% match method.kind %}
+            {% when BlockMethodKind::Normal %}
+            {% when BlockMethodKind::Repeated { count, .. } %}
+            ///
+            /// Valid index range: 0..{{count}}
+            {% endwhen %}
+        {% endmatch %}
+        {{ method.cfg_attr }}
+        pub fn {{ method.name }}(
+            &mut self,
+            {% match method.kind %}
+                {% when BlockMethodKind::Normal %}
+                {% when BlockMethodKind::Repeated { .. } %} index: usize
+            {% endmatch %}
+        ) -> 
+        {% match method.method_type %}
+            {% when BlockMethodType::Block { name } %} {{name}}<'_, I>
+            {% when BlockMethodType::Register { field_set_name, access, address_type, .. } %} ::device_driver::RegisterOperation<'_, I, {{address_type}}, field_sets::{{field_set_name}}, ::device_driver::{{access}}>
+            {% when BlockMethodType::Command { field_set_name_in, field_set_name_out, address_type } %} ::device_driver::CommandOperation<'_, I, {{address_type}}, {{self::get_command_fieldset_name(field_set_name_in)}}, {{self::get_command_fieldset_name(field_set_name_out)}}>
+            {% when BlockMethodType::Buffer { access, address_type } %} ::device_driver::BufferOperation<'_, I, {{address_type}}, ::device_driver::{{access}}>
+        {% endmatch %}
+        {
+            {% match method.kind %}
+                {% when BlockMethodKind::Normal %} let address = self.base_address + {{method.address}};
+                {% when BlockMethodKind::Repeated { count, stride } %}
+                    let address = {
+                        assert!(index < {{count}});
+                        self.base_address + {{method.address}} + index as {{device.internal_address_type}} * {{stride}}
+                    };
+                {% endwhen %}
+            {% endmatch %}
+
+            {% match method.method_type %}
+                {% when BlockMethodType::Block { name } %}
+                    {{name}}::<'_, I>::new(self.interface(), address)
+                {% endwhen %}
+                {% when BlockMethodType::Register { field_set_name, access, address_type, reset_value_function } %}
+                    ::device_driver::RegisterOperation::<
+                        '_,
+                        I,
+                        {{address_type}},
+                        field_sets::{{field_set_name}},
+                        ::device_driver::{{access}},
+                    >::new(self.interface(), address as u8, field_sets::{{field_set_name}}::{{reset_value_function}})
+                {% endwhen %}
+                {% when BlockMethodType::Command { field_set_name_in, field_set_name_out, address_type } %}
+                    ::device_driver::CommandOperation::<
+                        '_,
+                        I,
+                        {{address_type}},
+                        {{self::get_command_fieldset_name(field_set_name_in)}},
+                        {{self::get_command_fieldset_name(field_set_name_out)}},
+                    >::new(self.interface(), address as u8)
+                {% endwhen %}
+                {% when BlockMethodType::Buffer { access, address_type } %}
+                    ::device_driver::BufferOperation::<
+                        '_,
+                        I,
+                        {{address_type}},
+                        ::device_driver::{{access}},
+                    >::new(self.interface(), address as {{address_type}})
+                {% endwhen %}
+            {% endmatch %}
+        }
+    {% endfor %}
+}

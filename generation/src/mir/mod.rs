@@ -4,7 +4,6 @@
 use std::{fmt::Display, ops::Range};
 
 use convert_case::Boundary;
-use quote::TokenStreamExt;
 
 pub mod lir_transform;
 pub mod passes;
@@ -97,12 +96,6 @@ impl Display for Integer {
     }
 }
 
-impl From<Integer> for proc_macro2::Ident {
-    fn from(value: Integer) -> Self {
-        quote::format_ident!("{}", value.to_string())
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Access {
     #[default]
@@ -111,9 +104,9 @@ pub enum Access {
     WO,
 }
 
-impl quote::ToTokens for Access {
-    fn to_tokens(&self, tokens: &mut proc_macro2::TokenStream) {
-        tokens.append(quote::format_ident!("{self:?}"));
+impl Display for Access {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
     }
 }
 
@@ -123,11 +116,23 @@ pub enum ByteOrder {
     BE,
 }
 
+impl Display for ByteOrder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum BitOrder {
     #[default]
     LSB0,
     MSB0,
+}
+
+impl Display for BitOrder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -598,6 +603,16 @@ impl Cfg {
 
     pub fn inner(&self) -> Option<&str> {
         self.value.as_deref()
+    }
+}
+
+impl Display for Cfg {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(value) = self.inner() {
+            write!(f, "#[cfg({value})]")?
+        }
+
+        Ok(())
     }
 }
 

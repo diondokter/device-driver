@@ -1,0 +1,18 @@
+{% for block in device.blocks %}
+    {% include "block.rs.j2" %}
+{% endfor %}
+
+/// Module containing the generated fieldsets of the registers and commands
+pub mod field_sets {
+    use super::*;
+
+    {% for field_set in device.field_sets %}
+        {% include "fieldset.rs.j2" %}
+    {% endfor %}
+
+    {% include "fieldset_enum.rs.j2" %}
+}
+
+{% for enum_value in device.enums %}
+    {% include "enums.rs.j2" %}
+{% endfor %}

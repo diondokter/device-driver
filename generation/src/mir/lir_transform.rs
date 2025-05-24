@@ -1,16 +1,16 @@
 use std::ops::{Add, Not};
 
 use anyhow::ensure;
-use proc_macro2::{Literal, TokenStream};
-use quote::{format_ident, quote};
-use syn::Ident;
 
 use crate::{
     lir,
     mir::{self, passes::search_object},
 };
 
-use super::passes::{find_min_max_addresses, recurse_objects};
+use super::{
+    Integer,
+    passes::{find_min_max_addresses, recurse_objects},
+};
 
 pub fn transform(device: mir::Device, driver_name: &str) -> anyhow::Result<lir::Device> {
     let lenient_pascal_converter = convert_case::Converter::new()
@@ -48,12 +48,11 @@ pub fn transform(device: mir::Device, driver_name: &str) -> anyhow::Result<lir::
     )?;
 
     Ok(lir::Device {
-        internal_address_type: find_best_internal_address(&device),
+        internal_address_type: find_best_internal_address_type(&device),
         register_address_type: device
             .global_config
             .register_address_type
-            .unwrap_or(mir::Integer::U8)
-            .into(),
+            .unwrap_or(mir::Integer::U8),
         blocks,
         field_sets,
         enums: lir_enums,
@@ -78,8 +77,6 @@ fn collect_into_blocks(
         objects,
     } = block;
 
-    let cfg_attr = cfg_attr_string_to_tokens(cfg_attr)?;
-
     let mut methods = Vec::new();
 
     for object in objects {
@@ -88,17 +85,17 @@ fn collect_into_blocks(
             &mut blocks,
             global_config,
             device_objects,
-            format_ident!("new"),
+            "new".to_string(),
         )?;
 
         methods.push(method);
     }
 
     let new_block = lir::Block {
-        cfg_attr,
-        doc_attr: quote! { #[doc = #description] },
+        cfg_attr: cfg_attr.to_string(),
+        description: description.clone(),
         root: is_root,
-        name: format_ident!("{name}"),
+        name: name.to_string(),
         methods,
     };
 
@@ -112,7 +109,7 @@ fn get_method(
     blocks: &mut Vec<lir::Block>,
     global_config: &mir::GlobalConfig,
     device_objects: &[mir::Object],
-    mut register_reset_value_function: Ident,
+    mut register_reset_value_function: String,
 ) -> Result<lir::BlockMethod, anyhow::Error> {
     use convert_case::Casing;
 
@@ -135,14 +132,14 @@ fn get_method(
             )?);
 
             lir::BlockMethod {
-                cfg_attr: cfg_attr_string_to_tokens(cfg_attr)?,
-                doc_attr: quote! { #[doc = #description] },
-                name: format_ident!("{}", name.to_case(convert_case::Case::Snake)),
-                address: Literal::i64_unsuffixed(*address_offset),
+                cfg_attr: cfg_attr.to_string(),
+                description: description.clone(),
+                name: name.to_case(convert_case::Case::Snake),
+                address: *address_offset,
                 allow_address_overlap: false,
                 kind: repeat_to_method_kind(repeat),
                 method_type: lir::BlockMethodType::Block {
-                    name: format_ident!("{name}"),
+                    name: name.to_string(),
                 },
             }
         }
@@ -156,19 +153,18 @@ fn get_method(
             repeat,
             ..
         }) => lir::BlockMethod {
-            cfg_attr: cfg_attr_string_to_tokens(cfg_attr)?,
-            doc_attr: quote! { #[doc = #description] },
-            name: format_ident!("{}", name.to_case(convert_case::Case::Snake)),
-            address: Literal::i64_unsuffixed(*address),
+            cfg_attr: cfg_attr.to_string(),
+            description: description.clone(),
+            name: name.to_case(convert_case::Case::Snake),
+            address: *address,
             allow_address_overlap: *allow_address_overlap,
             kind: repeat_to_method_kind(repeat),
             method_type: lir::BlockMethodType::Register {
-                field_set_name: format_ident!("{name}"),
+                field_set_name: name.to_string(),
                 access: *access,
                 address_type: global_config
                     .register_address_type
-                    .expect("The presence of the address type is already checked in a mir pass")
-                    .into(),
+                    .expect("The presence of the address type is already checked in a mir pass"),
                 reset_value_function: register_reset_value_function.clone(),
             },
         },
@@ -183,25 +179,24 @@ fn get_method(
             out_fields,
             ..
         }) => lir::BlockMethod {
-            cfg_attr: cfg_attr_string_to_tokens(cfg_attr)?,
-            doc_attr: quote! { #[doc = #description] },
-            name: format_ident!("{}", name.to_case(convert_case::Case::Snake)),
-            address: Literal::i64_unsuffixed(*address),
+            cfg_attr: cfg_attr.to_string(),
+            description: description.clone(),
+            name: name.to_case(convert_case::Case::Snake),
+            address: *address,
             allow_address_overlap: *allow_address_overlap,
             kind: repeat_to_method_kind(repeat),
             method_type: lir::BlockMethodType::Command {
                 field_set_name_in: in_fields
                     .is_empty()
                     .not()
-                    .then(|| format_ident!("{name}FieldsIn")),
+                    .then(|| format!("{name}FieldsIn")),
                 field_set_name_out: out_fields
                     .is_empty()
                     .not()
-                    .then(|| format_ident!("{name}FieldsOut")),
+                    .then(|| format!("{name}FieldsOut")),
                 address_type: global_config
                     .command_address_type
-                    .expect("The presence of the address type is already checked in a mir pass")
-                    .into(),
+                    .expect("The presence of the address type is already checked in a mir pass"),
             },
         },
         mir::Object::Buffer(mir::Buffer {
@@ -211,18 +206,17 @@ fn get_method(
             access,
             address,
         }) => lir::BlockMethod {
-            cfg_attr: cfg_attr_string_to_tokens(cfg_attr)?,
-            doc_attr: quote! { #[doc = #description] },
-            name: format_ident!("{}", name.to_case(convert_case::Case::Snake)),
-            address: Literal::i64_unsuffixed(*address),
+            cfg_attr: cfg_attr.to_string(),
+            description: description.clone(),
+            name: name.to_case(convert_case::Case::Snake),
+            address: *address,
             allow_address_overlap: false,
             kind: lir::BlockMethodKind::Normal, // Buffers can't be repeated (for now?)
             method_type: lir::BlockMethodType::Buffer {
                 access: *access,
                 address_type: global_config
                     .buffer_address_type
-                    .expect("The presence of the address type is already checked in a mir pass")
-                    .into(),
+                    .expect("The presence of the address type is already checked in a mir pass"),
             },
         },
         mir::Object::Ref(mir::RefObject {
@@ -266,7 +260,7 @@ fn get_method(
                     if let Some(reset_value) = override_values.reset_value.clone() {
                         reffed_object.reset_value = Some(reset_value);
                         register_reset_value_function =
-                            format_ident!("new_as_{}", name.to_case(convert_case::Case::Snake));
+                            format!("new_as_{}", name.to_case(convert_case::Case::Snake));
                     }
                     if let Some(repeat) = override_values.repeat {
                         reffed_object.repeat = Some(repeat);
@@ -298,7 +292,7 @@ fn get_method(
 
             // We kept the old name in the reffed object so it generates with the correct field sets.
             // But we do want to have the name of ref to be the method name.
-            method.name = format_ident!("{}", name.to_case(convert_case::Case::Snake));
+            method.name = name.to_case(convert_case::Case::Snake);
 
             method
         }
@@ -333,7 +327,7 @@ fn transform_field_sets<'a>(
 
                 field_sets.push(transform_field_set(
                     &r.fields,
-                    format_ident!("{}", r.name),
+                    r.name.clone(),
                     &r.cfg_attr,
                     &r.description,
                     r.byte_order.unwrap(),
@@ -347,30 +341,34 @@ fn transform_field_sets<'a>(
                 )?);
             }
             mir::Object::Command(c) => {
-                field_sets.push(transform_field_set(
-                    &c.in_fields,
-                    format_ident!("{}FieldsIn", c.name),
-                    &c.cfg_attr,
-                    &c.description,
-                    c.byte_order.unwrap(),
-                    c.bit_order,
-                    c.size_bits_in,
-                    None,
-                    Vec::new(),
-                    mir_enums.clone(),
-                )?);
-                field_sets.push(transform_field_set(
-                    &c.out_fields,
-                    format_ident!("{}FieldsOut", c.name),
-                    &c.cfg_attr,
-                    &c.description,
-                    c.byte_order.unwrap(),
-                    c.bit_order,
-                    c.size_bits_out,
-                    None,
-                    Vec::new(),
-                    mir_enums.clone(),
-                )?);
+                if c.size_bits_in != 0 {
+                    field_sets.push(transform_field_set(
+                        &c.in_fields,
+                        format!("{}FieldsIn", c.name),
+                        &c.cfg_attr,
+                        &c.description,
+                        c.byte_order.unwrap(),
+                        c.bit_order,
+                        c.size_bits_in,
+                        None,
+                        Vec::new(),
+                        mir_enums.clone(),
+                    )?);
+                }
+                if c.size_bits_out != 0 {
+                    field_sets.push(transform_field_set(
+                        &c.out_fields,
+                        format!("{}FieldsOut", c.name),
+                        &c.cfg_attr,
+                        &c.description,
+                        c.byte_order.unwrap(),
+                        c.bit_order,
+                        c.size_bits_out,
+                        None,
+                        Vec::new(),
+                        mir_enums.clone(),
+                    )?);
+                }
             }
             _ => {}
         }
@@ -384,7 +382,7 @@ fn transform_field_sets<'a>(
 #[allow(clippy::too_many_arguments)] // Though it is correct... it's too many args
 fn transform_field_set<'a>(
     field_set: &[mir::Field],
-    field_set_name: proc_macro2::Ident,
+    field_set_name: String,
     cfg_attr: &mir::Cfg,
     description: &str,
     byte_order: mir::ByteOrder,
@@ -394,8 +392,6 @@ fn transform_field_set<'a>(
     ref_reset_overrides: Vec<(String, Vec<u8>)>,
     enum_list: impl Iterator<Item = &'a mir::Enum> + Clone,
 ) -> anyhow::Result<lir::FieldSet> {
-    let cfg_attr = cfg_attr_string_to_tokens(cfg_attr)?;
-
     let fields = field_set
         .iter()
         .map(|field| {
@@ -409,24 +405,19 @@ fn transform_field_set<'a>(
                 field_address,
             } = field;
 
-            let cfg_attr = cfg_attr_string_to_tokens(cfg_attr)?;
-
-            let address = Literal::u32_unsuffixed(field_address.start)
-                ..Literal::u32_unsuffixed(field_address.end);
-
             let (base_type, conversion_method) = match (
                 base_type,
                 field.field_address.clone().count(),
                 field_conversion,
             ) {
                 (mir::BaseType::Bool, 1, None) => {
-                    (format_ident!("u8"), lir::FieldConversionMethod::Bool)
+                    ("u8".to_string(), lir::FieldConversionMethod::Bool)
                 }
                 (mir::BaseType::Bool, _, _) => unreachable!(
                     "Checked in a MIR pass. Bools can only be 1 bit and have no conversion"
                 ),
                 (mir::BaseType::Uint | mir::BaseType::Int, val, None) => (
-                    format_ident!(
+                    format!(
                         "{}{}",
                         match base_type {
                             mir::BaseType::Bool => unreachable!(),
@@ -438,7 +429,7 @@ fn transform_field_set<'a>(
                     lir::FieldConversionMethod::None,
                 ),
                 (mir::BaseType::Uint | mir::BaseType::Int, val, Some(fc)) => (
-                    format_ident!(
+                    format!(
                         "{}{}",
                         match base_type {
                             mir::BaseType::Bool => unreachable!(),
@@ -448,11 +439,10 @@ fn transform_field_set<'a>(
                         val.max(8).next_power_of_two()
                     ),
                     {
-                        let type_name = syn::parse_str::<syn::Path>(fc.type_name()).unwrap();
                         match enum_list.clone().find(|e| e.name == fc.type_name()) {
                             // Always use try if that's specified
                             _ if fc.use_try() => {
-                                lir::FieldConversionMethod::TryInto(quote! { #type_name })
+                                lir::FieldConversionMethod::TryInto(fc.type_name().into())
                             }
                             // There is an enum we generate so we can look at its metadata
                             Some(mir::Enum {
@@ -461,20 +451,20 @@ fn transform_field_set<'a>(
                                 ..
                             }) if field.field_address.clone().count() <= *bit_size as usize => {
                                 // This field is equal or smaller in bits than the infallible enum. So we can do the unsafe into
-                                lir::FieldConversionMethod::UnsafeInto(quote! { #type_name })
+                                lir::FieldConversionMethod::UnsafeInto(fc.type_name().into())
                             }
                             // Fallback is to require the into trait
-                            _ => lir::FieldConversionMethod::Into(quote! { #type_name }),
+                            _ => lir::FieldConversionMethod::Into(fc.type_name().into()),
                         }
                     },
                 ),
             };
 
             Ok(lir::Field {
-                cfg_attr,
-                doc_attr: quote! { #[doc = #description] },
-                name: format_ident!("{name}"),
-                address,
+                cfg_attr: cfg_attr.to_string(),
+                description: description.clone(),
+                name: name.clone(),
+                address: field_address.clone(),
                 base_type,
                 conversion_method,
                 access: *access,
@@ -483,9 +473,9 @@ fn transform_field_set<'a>(
         .collect::<Result<_, anyhow::Error>>()?;
 
     Ok(lir::FieldSet {
-        cfg_attr,
-        doc_attr: quote! { #[doc = #description] },
-        name: field_set_name,
+        cfg_attr: cfg_attr.to_string(),
+        description: description.into(),
+        name: field_set_name.to_string(),
         byte_order,
         bit_order,
         size_bits,
@@ -528,12 +518,10 @@ fn transform_enum(
         generation_style: _,
     } = e;
 
-    let cfg_attr = cfg_attr_string_to_tokens(cfg_attr)?;
-
     let base_type = match (base_type, size_bits) {
-        (mir::BaseType::Bool, _) => format_ident!("u8"),
-        (mir::BaseType::Uint, val) => format_ident!("u{}", val.max(8).next_power_of_two()),
-        (mir::BaseType::Int, val) => format_ident!("i{}", val.max(8).next_power_of_two()),
+        (mir::BaseType::Bool, _) => "u8".to_string(),
+        (mir::BaseType::Uint, val) => format!("u{}", val.max(8).next_power_of_two()),
+        (mir::BaseType::Int, val) => format!("i{}", val.max(8).next_power_of_two()),
     };
 
     let mut next_variant_number = None;
@@ -546,8 +534,6 @@ fn transform_enum(
                 name,
                 value,
             } = v;
-
-            let cfg_attr = cfg_attr_string_to_tokens(cfg_attr)?;
 
             let number = match value {
                 mir::EnumValue::Unspecified
@@ -564,10 +550,10 @@ fn transform_enum(
             };
 
             Ok(lir::EnumVariant {
-                cfg_attr,
-                doc_attr: quote! { #[doc = #description] },
-                name: format_ident!("{name}"),
-                number: Literal::i128_unsuffixed(number),
+                cfg_attr: cfg_attr.to_string(),
+                description: description.clone(),
+                name: name.to_string(),
+                number,
                 default: matches!(value, mir::EnumValue::Default),
                 catch_all: matches!(value, mir::EnumValue::CatchAll),
             })
@@ -575,29 +561,19 @@ fn transform_enum(
         .collect::<Result<_, anyhow::Error>>()?;
 
     Ok(lir::Enum {
-        cfg_attr,
-        doc_attr: quote! { #[doc = #description] },
-        name: format_ident!("{name}"),
+        cfg_attr: cfg_attr.to_string(),
+        description: description.clone(),
+        name: name.to_string(),
         base_type,
         variants,
     })
 }
 
-fn cfg_attr_string_to_tokens(cfg_attr: &mir::Cfg) -> anyhow::Result<TokenStream> {
-    match cfg_attr.inner() {
-        Some(val) => {
-            let cfg_content = syn::parse_str::<proc_macro2::TokenStream>(val)?;
-            Ok(quote! { #[cfg(#cfg_content)] })
-        }
-        None => Ok(quote! {}),
-    }
-}
-
 fn repeat_to_method_kind(repeat: &Option<mir::Repeat>) -> lir::BlockMethodKind {
     match repeat {
         Some(mir::Repeat { count, stride }) => lir::BlockMethodKind::Repeated {
-            count: Literal::u64_unsuffixed(*count),
-            stride: Literal::i64_unsuffixed(*stride),
+            count: *count,
+            stride: *stride,
         },
         None => lir::BlockMethodKind::Normal,
     }
@@ -635,7 +611,7 @@ impl<'o> From<&'o mir::Block> for BorrowedBlock<'o> {
     }
 }
 
-fn find_best_internal_address(device: &mir::Device) -> proc_macro2::Ident {
+fn find_best_internal_address_type(device: &mir::Device) -> Integer {
     let (min_address_found, max_address_found) = find_min_max_addresses(&device.objects, |_| true);
 
     let needs_signed = min_address_found < 0;
@@ -650,9 +626,20 @@ fn find_best_internal_address(device: &mir::Device) -> proc_macro2::Ident {
         .max(8);
 
     if needs_signed {
-        format_ident!("i{needs_bits}")
+        match needs_bits {
+            8 => Integer::I8,
+            16 => Integer::I16,
+            32 => Integer::I32,
+            64 => Integer::I64,
+            _ => unreachable!(),
+        }
     } else {
-        format_ident!("u{needs_bits}")
+        match needs_bits {
+            8 => Integer::U8,
+            16 => Integer::U16,
+            32 => Integer::U32,
+            _ => unreachable!(),
+        }
     }
 }
 

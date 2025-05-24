@@ -1,0 +1,212 @@
+{{self::description_to_docstring(field_set.description)}}
+{{field_set.cfg_attr}}
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub struct {{field_set.name}} {
+    /// The internal bits
+    bits: [u8; {{field_set.size_bytes()}}]
+}
+
+{{field_set.cfg_attr}}
+impl ::device_driver::FieldSet for {{field_set.name}} {
+    const SIZE_BITS: u32 = {{field_set.size_bits}};
+    fn new_with_zero() -> Self {
+        Self::new_zero()
+    }
+    fn get_inner_buffer(&self) -> &[u8] {
+        &self.bits
+    }
+    fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
+        &mut self.bits
+    }
+}
+
+{{field_set.cfg_attr}}
+impl {{field_set.name}} {
+    /// Create a new instance, loaded with the reset value (if any)
+    pub const fn new() -> Self {
+        Self { bits: [{{field_set.reset_value | join(", ")}}] }
+    }
+    /// Create a new instance, loaded with all zeroes
+    pub const fn new_zero() -> Self {
+        Self { bits: [0; {{field_set.size_bytes()}}] }
+    }
+
+    {% for (override_name, override_reset_value) in field_set.ref_reset_overrides %}
+        {% let override_name_snake = convert_case::Casing::to_case(*override_name, convert_case::Case::Snake) %}
+
+        ///Create a new instance, loaded with the reset value of the `{{override_name}}` ref
+        pub const fn new_as_{{override_name_snake}}() -> Self {
+            Self { bits: [{{override_reset_value | join(", ")}}] }
+        }
+    {% endfor %}
+
+    {% for field in field_set.fields %}
+        {% let super_prefix = self::get_super_prefix(&field.conversion_method) %}
+
+        {% if matches!(field.access, Access::RW | Access::RO) %}
+            ///Read the `{{field.name}}` field of the register.
+            ///
+            {{self::description_to_docstring(field.description)}}
+            {{field.cfg_attr}}
+            pub fn {{field.name}}(&self) -> 
+                {% match field.conversion_method %}
+                    {% when FieldConversionMethod::None %} {{field.base_type}}
+                    {% when FieldConversionMethod::Into(t) | FieldConversionMethod::UnsafeInto(t) %} {{super_prefix}}{{t}}
+                    {% when FieldConversionMethod::TryInto(t) %} Result<{{super_prefix}}{{t}}, <{{super_prefix}}{{t}} as TryFrom<{{field.base_type}}>>::Error>
+                    {% when FieldConversionMethod::Bool %} bool
+                {% endmatch %}
+            {
+                let raw = unsafe {
+                    ::device_driver::ops::load_{{field_set.bit_order | lower}}::<
+                        {{field.base_type}},
+                        ::device_driver::ops::{{field_set.byte_order}},
+                    >(&self.bits, {{field.address.start}}, {{field.address.end}})
+                };
+
+                {% match field.conversion_method %}
+                    {% when FieldConversionMethod::None %} raw
+                    {% when FieldConversionMethod::Into(t) %} raw.into()
+                    {% when FieldConversionMethod::UnsafeInto(t) %} unsafe { raw.try_into().unwrap_unchecked() }
+                    {% when FieldConversionMethod::TryInto(t) %} raw.try_into()
+                    {% when FieldConversionMethod::Bool %} raw > 0
+                {% endmatch %}
+            }
+        {% endif %}
+    {% endfor %}
+
+    {% for field in field_set.fields %}
+        {% let super_prefix = self::get_super_prefix(&field.conversion_method) %}
+
+        {% if matches!(field.access, Access::RW | Access::WO) %}
+            ///Write the `{{field.name}}` field of the register.
+            ///
+            {{self::description_to_docstring(field.description)}}
+            {{field.cfg_attr}}
+            pub fn set_{{field.name}}(
+                &mut self,
+                value: {{super_prefix}}
+                {% match field.conversion_method %}
+                    {% when FieldConversionMethod::None %} {{field.base_type}}
+                    {% when FieldConversionMethod::Into(t) %} {{t}}
+                    {% when FieldConversionMethod::UnsafeInto(t) %} {{t}}
+                    {% when FieldConversionMethod::TryInto(t) %} {{t}}
+                    {% when FieldConversionMethod::Bool %} bool
+                {% endmatch %}
+            ) {
+                let raw = 
+                {% match field.conversion_method %}
+                    {% when FieldConversionMethod::None %} value;
+                    {% when FieldConversionMethod::Bool %} value as _;
+                    {% else %} value.into();
+                {% endmatch %}
+
+                unsafe {
+                    ::device_driver::ops::store_{{field_set.bit_order | lower}}::<
+                        {{field.base_type}},
+                        ::device_driver::ops::{{field_set.byte_order}},
+                    >(raw, {{field.address.start}}, {{field.address.end}}, &mut self.bits)
+                };
+            }
+        {% endif %}
+    {% endfor %}
+}
+
+{{field_set.cfg_attr}}
+impl From<[u8; {{field_set.size_bytes()}}]> for {{field_set.name}} {
+    fn from(bits: [u8; {{field_set.size_bytes()}}]) -> Self {
+        Self { bits }
+    }
+}
+
+{{field_set.cfg_attr}}
+impl From<{{field_set.name}}> for [u8; {{field_set.size_bytes()}}] {
+    fn from(val: {{field_set.name}}) -> Self {
+        val.bits
+    }
+}
+
+{{field_set.cfg_attr}}
+impl core::fmt::Debug for {{field_set.name}} {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+        f.debug_struct("{{field_set.name}}")
+        {% for field in field_set.fields %}
+            .field("{{field.name}}", &self.{{field.name}}())
+        {% endfor %}
+            .finish()
+    }
+}
+
+{% if let Some(defmt_feature) = device.defmt_feature %}
+{{field_set.cfg_attr}}
+#[cfg(feature = "{{defmt_feature}}")]
+impl defmt::Format for {{field_set.name}} {
+    fn format(&self, f: defmt::Formatter) {
+        defmt::write!(
+            f,
+            "{{self::get_defmt_fmt_string(field_set)}}",
+            {% for field in field_set.fields %}
+            &self.{{field.name}}(),
+            {% endfor %}
+        )
+    }
+}
+{% endif %}
+
+{{field_set.cfg_attr}}
+impl core::ops::BitAnd for {{field_set.name}} {
+    type Output = Self;
+    fn bitand(mut self, rhs: Self) -> Self::Output {
+        self &= rhs;
+        self
+    }
+}
+{{field_set.cfg_attr}}
+impl core::ops::BitAndAssign for {{field_set.name}} {
+    fn bitand_assign(&mut self, rhs: Self) {
+        for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
+            *l &= *r;
+        }
+    }
+}
+{{field_set.cfg_attr}}
+impl core::ops::BitOr for {{field_set.name}} {
+    type Output = Self;
+    fn bitor(mut self, rhs: Self) -> Self::Output {
+        self |= rhs;
+        self
+    }
+}
+{{field_set.cfg_attr}}
+impl core::ops::BitOrAssign for {{field_set.name}} {
+    fn bitor_assign(&mut self, rhs: Self) {
+        for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
+            *l |= *r;
+        }
+    }
+}
+{{field_set.cfg_attr}}
+impl core::ops::BitXor for {{field_set.name}} {
+    type Output = Self;
+    fn bitxor(mut self, rhs: Self) -> Self::Output {
+        self ^= rhs;
+        self
+    }
+}
+{{field_set.cfg_attr}}
+impl core::ops::BitXorAssign for {{field_set.name}} {
+    fn bitxor_assign(&mut self, rhs: Self) {
+        for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
+            *l ^= *r;
+        }
+    }
+}
+{{field_set.cfg_attr}}
+impl core::ops::Not for {{field_set.name}} {
+    type Output = Self;
+    fn not(mut self) -> Self::Output {
+        for val in self.bits.iter_mut() {
+            *val = !*val;
+        }
+        self
+    }
+}
