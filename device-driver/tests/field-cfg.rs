@@ -1,5 +1,5 @@
 //! Reproduction of https://github.com/diondokter/device-driver/issues/89
-//! 
+//!
 //! This should compile and make 'value' not show up
 
 use field_sets::Foo;
