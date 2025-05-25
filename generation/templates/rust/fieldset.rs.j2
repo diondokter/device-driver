@@ -128,11 +128,14 @@ impl From<{{field_set.name}}> for [u8; {{field_set.size_bytes()}}] {
 {{field_set.cfg_attr}}
 impl core::fmt::Debug for {{field_set.name}} {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
-        f.debug_struct("{{field_set.name}}")
+        let mut d = f.debug_struct("{{field_set.name}}");
         {% for field in field_set.fields %}
-            .field("{{field.name}}", &self.{{field.name}}())
+            {{field.cfg_attr}}
+            {
+                d.field("{{field.name}}", &self.{{field.name}}());
+            }
         {% endfor %}
-            .finish()
+        d.finish()
     }
 }
 
@@ -141,13 +144,14 @@ impl core::fmt::Debug for {{field_set.name}} {
 #[cfg(feature = "{{defmt_feature}}")]
 impl defmt::Format for {{field_set.name}} {
     fn format(&self, f: defmt::Formatter) {
-        defmt::write!(
-            f,
-            "{{self::get_defmt_fmt_string(field_set)}}",
-            {% for field in field_set.fields %}
-            &self.{{field.name}}(),
-            {% endfor %}
-        )
+        defmt::write!(f, "{{field_set.name}} { ");
+
+        {% for field in field_set.fields %}
+        {{field.cfg_attr}}
+        defmt::write!(f, "{{self::get_defmt_fmt_string(field)}}", &self.{{field.name}}());
+        {% endfor %}
+
+        defmt::write!(f, "}");
     }
 }
 {% endif %}

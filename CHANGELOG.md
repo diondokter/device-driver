@@ -6,6 +6,7 @@
 - CLI: No longer panics when unexpected error output is processed
 - Error messages now more consistently use backticks (`) instead of various other quoting characters like (') and (")
 - Backend code generation switched from quote/syn to askama
+- Fixed cfg gates on fields (didn't compile before)
 
 ### 1.0.4 (28-02-25)
 
