@@ -1,0 +1,244 @@
+//! Transforms the MIR back into KDL that should be identical (in structure) to the input
+//!
+
+use itertools::Itertools;
+use kdl::{KdlDocument, KdlEntry, KdlNode, KdlNodeFormat, KdlValue};
+
+use super::*;
+
+pub fn transform(device: Device) -> String {
+    let mut document = KdlDocument::new();
+
+    document.nodes_mut().push(transform_device(&device));
+
+    document.autoformat();
+    document.to_string()
+}
+
+fn transform_device(device: &Device) -> KdlNode {
+    let mut device_node = KdlNode::new("device");
+    device_node.push(KdlEntry::new(KdlValue::String(
+        device
+            .name
+            .clone()
+            .unwrap_or_else(|| "Device".into())
+            .to_string(),
+    )));
+
+    device_node
+        .ensure_children()
+        .nodes_mut()
+        .append(&mut transform_global_config(&device.global_config));
+
+    for object in device.objects.iter() {
+        device_node
+            .ensure_children()
+            .nodes_mut()
+            .push(transform_object(object));
+    }
+
+    device_node
+}
+
+fn transform_global_config(global_config: &GlobalConfig) -> Vec<KdlNode> {
+    let GlobalConfig {
+        default_register_access,
+        default_field_access,
+        default_buffer_access,
+        default_byte_order,
+        default_bit_order,
+        register_address_type,
+        command_address_type,
+        buffer_address_type,
+        name_word_boundaries,
+        defmt_feature,
+    } = global_config.clone();
+
+    let mut nodes = Vec::new();
+
+    if default_register_access != GlobalConfig::default().default_register_access {
+        let mut config_node = KdlNode::new("config");
+        config_node.push(KdlValue::String("default-register-access".into()));
+        config_node.push(default_register_access.to_string());
+        nodes.push(config_node);
+    }
+    if default_field_access != GlobalConfig::default().default_field_access {
+        let mut config_node = KdlNode::new("config");
+        config_node.push(KdlValue::String("default-field-access".into()));
+        config_node.push(default_field_access.to_string());
+        nodes.push(config_node);
+    }
+    if default_buffer_access != GlobalConfig::default().default_buffer_access {
+        let mut config_node = KdlNode::new("config");
+        config_node.push(KdlValue::String("default-buffer-access".into()));
+        config_node.push(default_buffer_access.to_string());
+        nodes.push(config_node);
+    }
+    if let Some(default_byte_order) = default_byte_order {
+        let mut config_node = KdlNode::new("config");
+        config_node.push(KdlValue::String("default-byte-order".into()));
+        config_node.push(default_byte_order.to_string());
+        nodes.push(config_node);
+    }
+    if default_bit_order != GlobalConfig::default().default_bit_order {
+        let mut config_node = KdlNode::new("config");
+        config_node.push(KdlValue::String("default-bit-order".into()));
+        config_node.push(default_bit_order.to_string());
+        nodes.push(config_node);
+    }
+    if let Some(register_address_type) = register_address_type {
+        let mut config_node = KdlNode::new("config");
+        config_node.push(KdlValue::String("register-address-type".into()));
+        config_node.push(register_address_type.to_string());
+        nodes.push(config_node);
+    }
+    if let Some(command_address_type) = command_address_type {
+        let mut config_node = KdlNode::new("config");
+        config_node.push(KdlValue::String("command-address-type".into()));
+        config_node.push(command_address_type.to_string());
+        nodes.push(config_node);
+    }
+    if let Some(buffer_address_type) = buffer_address_type {
+        let mut config_node = KdlNode::new("config");
+        config_node.push(KdlValue::String("buffer-address-type".into()));
+        config_node.push(buffer_address_type.to_string());
+        nodes.push(config_node);
+    }
+    if name_word_boundaries != GlobalConfig::default().name_word_boundaries {
+        let mut config_node = KdlNode::new("config");
+        config_node.push(KdlValue::String("name-word-boundaries".into()));
+        for boundary in name_word_boundaries {
+            config_node.push(format!("{boundary:?}"));
+        }
+        nodes.push(config_node);
+    }
+    if let Some(defmt_feature) = defmt_feature {
+        let mut config_node = KdlNode::new("config");
+        config_node.push(KdlValue::String("defmt-feature".into()));
+        config_node.push(defmt_feature);
+        nodes.push(config_node);
+    }
+
+    nodes
+}
+
+fn transform_object(object: &Object) -> KdlNode {
+    let (node_type, ref_target) = match object {
+        Object::Block(_) => ("block", None),
+        Object::Register(_) => ("register", None),
+        Object::Command(_) => ("command", None),
+        Object::Buffer(_) => ("buffer", None),
+        Object::Ref(ref_object) => match &ref_object.object_override {
+            ObjectOverride::Block(override_data) => {
+                ("ref", Some(("block-target", override_data.name.clone())))
+            }
+            ObjectOverride::Register(override_data) => {
+                ("ref", Some(("register-target", override_data.name.clone())))
+            }
+            ObjectOverride::Command(override_data) => {
+                ("ref", Some(("command-target", override_data.name.clone())))
+            }
+        },
+    };
+
+    let mut node = KdlNode::new(node_type);
+
+    node.push(object.name());
+    if let Some(ref_target) = ref_target {
+        node.push(ref_target);
+    }
+
+    node.set_format(KdlNodeFormat {
+        leading: object
+            .description()
+            .lines()
+            .map(|line| format!("///{line}"))
+            .join("\n"),
+        ..Default::default()
+    });
+
+    match object {
+        Object::Block(block) => node.set_children(transform_block(block)),
+        Object::Register(register) => {}
+        Object::Command(command) => {}
+        Object::Buffer(buffer) => {}
+        Object::Ref(ref_object) => {}
+    };
+
+    node
+}
+
+fn transform_block(block: &Block) -> KdlDocument {
+    let Block {
+        cfg_attr,
+        description: _,
+        name: _,
+        address_offset,
+        repeat,
+        objects,
+    } = block;
+
+    let mut document = KdlDocument::new();
+
+    if let Some(cfg_node) = transform_cfg_config(cfg_attr) {
+        document.nodes_mut().push(cfg_node);
+    }
+
+    let mut address_offset_node = KdlNode::new("config");
+    address_offset_node.push("address-offset");
+    address_offset_node.push(*address_offset as i128);
+    document.nodes_mut().push(address_offset_node);
+
+    if let Some(repeat) = repeat {
+        document.nodes_mut().push(transform_repeat_config(repeat));
+    }
+
+    for object in objects {
+        document.nodes_mut().push(transform_object(object));
+    }
+
+    document
+}
+
+fn transform_register(register: &Register) -> KdlDocument {
+    let Register {
+        cfg_attr,
+        description: _,
+        name: _,
+        access,
+        byte_order,
+        bit_order,
+        allow_bit_overlap,
+        allow_address_overlap,
+        address,
+        size_bits,
+        reset_value,
+        repeat,
+        fields,
+    } = register;
+
+    let mut document = KdlDocument::new();
+
+    if let Some(cfg_node) = transform_cfg_config(cfg_attr) {
+        document.nodes_mut().push(cfg_node);
+    }
+
+    document
+}
+
+fn transform_cfg_config(cfg: &Cfg) -> Option<KdlNode> {
+    let mut cfg_node = KdlNode::new("config");
+    cfg_node.push("cfg");
+    cfg_node.push(cfg.inner()?);
+
+    Some(cfg_node)
+}
+
+fn transform_repeat_config(repeat: &Repeat) -> KdlNode {
+    let mut repeat_node = KdlNode::new("config");
+    repeat_node.push("repeat");
+    repeat_node.push(("count", repeat.count as i128));
+    repeat_node.push(("stride", repeat.stride as i128));
+
+    repeat_node
+}
