@@ -8,6 +8,7 @@ pub fn transform(device: dsl_hir::Device) -> Result<mir::Device, syn::Error> {
     let objects = transform_object_list(device.object_list, &global_config)?;
 
     Ok(mir::Device {
+        name: None,
         global_config,
         objects,
     })

@@ -144,6 +144,7 @@ mod tests {
     #[test]
     fn enum_values_correct() {
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Command(Command {
                 name: "MyCommand".into(),
@@ -185,6 +186,7 @@ mod tests {
         };
 
         let end_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Command(Command {
                 name: "MyCommand".into(),
@@ -234,6 +236,7 @@ mod tests {
     #[test]
     fn enum_values_infallible_with_fallback() {
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Command(Command {
                 name: "MyCommand".into(),
@@ -265,6 +268,7 @@ mod tests {
         };
 
         let end_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Command(Command {
                 name: "MyCommand".into(),
@@ -304,6 +308,7 @@ mod tests {
     #[test]
     fn enum_values_fallible() {
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Command(Command {
                 name: "MyCommand".into(),
@@ -328,6 +333,7 @@ mod tests {
         };
 
         let end_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Command(Command {
                 name: "MyCommand".into(),
@@ -360,6 +366,7 @@ mod tests {
     #[test]
     fn enum_values_dont_fit() {
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Command(Command {
                 name: "MyCommand".into(),
@@ -405,6 +412,7 @@ mod tests {
     #[test]
     fn enum_values_no_duplicates() {
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Command(Command {
                 name: "MyCommand".into(),

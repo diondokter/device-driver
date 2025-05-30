@@ -10,6 +10,7 @@ pub mod passes;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Device {
+    pub name: Option<String>,
     pub global_config: GlobalConfig,
     pub objects: Vec<Object>,
 }

@@ -80,6 +80,7 @@ mod tests {
     #[test]
     fn max_len_exceeded() {
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "MyReg".into(),
@@ -96,6 +97,7 @@ mod tests {
         run_pass(&mut start_mir).unwrap();
 
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "MyReg".into(),
@@ -115,6 +117,7 @@ mod tests {
         );
 
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Command(Command {
                 name: "MyReg".into(),
@@ -131,6 +134,7 @@ mod tests {
         run_pass(&mut start_mir).unwrap();
 
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Command(Command {
                 name: "MyReg".into(),
@@ -150,6 +154,7 @@ mod tests {
         );
 
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Command(Command {
                 name: "MyReg".into(),
@@ -166,6 +171,7 @@ mod tests {
         run_pass(&mut start_mir).unwrap();
 
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Command(Command {
                 name: "MyReg".into(),
@@ -188,6 +194,7 @@ mod tests {
     #[test]
     fn overlap_register() {
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "MyReg".into(),
@@ -211,6 +218,7 @@ mod tests {
         run_pass(&mut start_mir).unwrap();
 
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "MyReg".into(),
@@ -235,6 +243,7 @@ mod tests {
         run_pass(&mut start_mir).unwrap();
 
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "MyReg".into(),
@@ -264,6 +273,7 @@ mod tests {
     #[test]
     fn overlap_command_in() {
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Command(Command {
                 name: "MyReg".into(),
@@ -287,6 +297,7 @@ mod tests {
         run_pass(&mut start_mir).unwrap();
 
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Command(Command {
                 name: "MyReg".into(),
@@ -311,6 +322,7 @@ mod tests {
         run_pass(&mut start_mir).unwrap();
 
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Command(Command {
                 name: "MyReg".into(),
@@ -340,6 +352,7 @@ mod tests {
     #[test]
     fn overlap_command_out() {
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Command(Command {
                 name: "MyReg".into(),
@@ -363,6 +376,7 @@ mod tests {
         run_pass(&mut start_mir).unwrap();
 
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Command(Command {
                 name: "MyReg".into(),
@@ -387,6 +401,7 @@ mod tests {
         run_pass(&mut start_mir).unwrap();
 
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Command(Command {
                 name: "MyReg".into(),

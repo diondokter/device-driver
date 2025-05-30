@@ -212,6 +212,7 @@ mod tests {
     #[test]
     fn correct_sizes() {
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
@@ -224,6 +225,7 @@ mod tests {
         run_pass(&mut start_mir).unwrap();
 
         let end_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
@@ -236,6 +238,7 @@ mod tests {
         assert_eq!(start_mir, end_mir);
 
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
@@ -248,6 +251,7 @@ mod tests {
         run_pass(&mut start_mir).unwrap();
 
         let end_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
@@ -260,6 +264,7 @@ mod tests {
         assert_eq!(start_mir, end_mir);
 
         let mut start_mir = Device {
+            name: None,
             global_config: GlobalConfig {
                 default_byte_order: Some(ByteOrder::LE),
                 ..Default::default()
@@ -275,6 +280,7 @@ mod tests {
         run_pass(&mut start_mir).unwrap();
 
         let end_mir = Device {
+            name: None,
             global_config: GlobalConfig {
                 default_byte_order: Some(ByteOrder::LE),
                 ..Default::default()
@@ -290,6 +296,7 @@ mod tests {
         assert_eq!(start_mir, end_mir);
 
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
@@ -303,6 +310,7 @@ mod tests {
         run_pass(&mut start_mir).unwrap();
 
         let end_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
@@ -316,6 +324,7 @@ mod tests {
         assert_eq!(start_mir, end_mir);
 
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
@@ -330,6 +339,7 @@ mod tests {
         run_pass(&mut start_mir).unwrap();
 
         let end_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
@@ -347,6 +357,7 @@ mod tests {
     #[test]
     fn incorrect_sizes() {
         let mut start_mir = Device {
+            name: None,
             global_config: GlobalConfig {
                 default_byte_order: Some(ByteOrder::LE),
                 ..Default::default()
@@ -365,6 +376,7 @@ mod tests {
         );
 
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
@@ -381,6 +393,7 @@ mod tests {
         );
 
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
@@ -401,6 +414,7 @@ mod tests {
     #[test]
     fn wrong_num_bytes_arry() {
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
@@ -420,6 +434,7 @@ mod tests {
     #[test]
     fn int_msb0_parsed_correct() {
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
@@ -433,6 +448,7 @@ mod tests {
         run_pass(&mut start_mir).unwrap();
 
         let end_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
