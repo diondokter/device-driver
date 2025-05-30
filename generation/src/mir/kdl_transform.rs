@@ -1,4 +1,4 @@
-//! Transforms the MIR back into KDL that should be identical (in structure) to the input
+//! Transforms the MIR back into KDL that should be identical (in information) to the input
 //!
 
 use itertools::Itertools;
@@ -159,7 +159,7 @@ fn transform_object(object: &Object, global_config: &GlobalConfig) -> KdlNode {
             node.set_children(transform_register(register, global_config))
         }
         Object::Command(command) => {}
-        Object::Buffer(buffer) => {}
+        Object::Buffer(buffer) => node.set_children(transform_buffer(buffer, global_config)),
         Object::Ref(ref_object) => {}
     };
 
@@ -384,4 +384,34 @@ fn description_to_leading_comment(description: &str) -> String {
         .lines()
         .map(|line| format!("///{line}"))
         .join("\n")
+}
+
+fn transform_buffer(buffer: &Buffer, global_config: &GlobalConfig) -> KdlDocument {
+    let Buffer {
+        cfg_attr,
+        description: _,
+        name: _,
+        access,
+        address,
+    } = buffer;
+
+    let mut document = KdlDocument::new();
+
+    if let Some(cfg_node) = transform_cfg_config(&cfg_attr) {
+        document.nodes_mut().push(cfg_node);
+    }
+
+    if *access != global_config.default_buffer_access {
+        let mut node = KdlNode::new("config");
+        node.push("access");
+        node.push(access.to_string());
+        document.nodes_mut().push(node);
+    }
+
+    let mut address_node = KdlNode::new("config");
+    address_node.push("address");
+    address_node.push(*address as i128);
+    document.nodes_mut().push(address_node);
+
+    document
 }
