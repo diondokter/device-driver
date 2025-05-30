@@ -92,16 +92,16 @@ impl GenType {
             GenType::Rust => {
                 let output = match manifest_type {
                     "json" => {
-                        device_driver_generation::transform_json(&manifest_contents, device_name)
+                        device_driver_generation::transform_json(manifest_contents, device_name)
                     }
                     "yaml" => {
-                        device_driver_generation::transform_yaml(&manifest_contents, device_name)
+                        device_driver_generation::transform_yaml(manifest_contents, device_name)
                     }
                     "toml" => {
-                        device_driver_generation::transform_toml(&manifest_contents, device_name)
+                        device_driver_generation::transform_toml(manifest_contents, device_name)
                     }
                     "dsl" => device_driver_generation::transform_dsl(
-                        syn::parse_str(&manifest_contents).expect("Could not (syn) parse the DSL"),
+                        syn::parse_str(manifest_contents).expect("Could not (syn) parse the DSL"),
                         device_name,
                     ),
                     unknown => panic!(
@@ -114,18 +114,18 @@ impl GenType {
             GenType::Kdl => {
                 let mir_device = match manifest_type {
                     "json" => {
-                        device_driver_generation::_private_transform_json_mir(&manifest_contents)
+                        device_driver_generation::_private_transform_json_mir(manifest_contents)
                     }
                     "yaml" => {
-                        device_driver_generation::_private_transform_yaml_mir(&manifest_contents)
+                        device_driver_generation::_private_transform_yaml_mir(manifest_contents)
                     }
                     "toml" => {
-                        device_driver_generation::_private_transform_toml_mir(&manifest_contents)
+                        device_driver_generation::_private_transform_toml_mir(manifest_contents)
                     }
                     "dsl" => device_driver_generation::_private_transform_dsl_mir(
-                        syn::parse_str(&manifest_contents).expect("Could not (syn) parse the DSL"),
+                        syn::parse_str(manifest_contents).expect("Could not (syn) parse the DSL"),
                     )
-                    .map_err(|e| anyhow::Error::new(e)),
+                    .map_err(anyhow::Error::new),
                     unknown => panic!(
                         "Unknown manifest file extension: '{unknown}'. Only 'dsl', 'json', 'yaml' and 'toml' are allowed."
                     ),
