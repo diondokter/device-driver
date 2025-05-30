@@ -5,9 +5,9 @@ use std::{fmt::Display, ops::Range};
 
 use convert_case::Boundary;
 
+pub mod kdl_transform;
 pub mod lir_transform;
 pub mod passes;
-pub mod kdl_transform;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Device {
@@ -345,10 +345,12 @@ pub struct Field {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum BaseType {
+    Unspecified,
     Bool,
     #[default]
     Uint,
     Int,
+    FixedSize(Integer),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

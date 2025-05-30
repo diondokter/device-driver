@@ -34,7 +34,7 @@ fn transform_device(device: &Device) -> KdlNode {
         device_node
             .ensure_children()
             .nodes_mut()
-            .push(transform_object(object));
+            .push(transform_object(object, &device.global_config));
     }
 
     device_node
@@ -122,7 +122,7 @@ fn transform_global_config(global_config: &GlobalConfig) -> Vec<KdlNode> {
     nodes
 }
 
-fn transform_object(object: &Object) -> KdlNode {
+fn transform_object(object: &Object, global_config: &GlobalConfig) -> KdlNode {
     let (node_type, ref_target) = match object {
         Object::Block(_) => ("block", None),
         Object::Register(_) => ("register", None),
@@ -149,17 +149,15 @@ fn transform_object(object: &Object) -> KdlNode {
     }
 
     node.set_format(KdlNodeFormat {
-        leading: object
-            .description()
-            .lines()
-            .map(|line| format!("///{line}"))
-            .join("\n"),
+        leading: description_to_leading_comment(object.description()),
         ..Default::default()
     });
 
     match object {
-        Object::Block(block) => node.set_children(transform_block(block)),
-        Object::Register(register) => {}
+        Object::Block(block) => node.set_children(transform_block(block, global_config)),
+        Object::Register(register) => {
+            node.set_children(transform_register(register, global_config))
+        }
         Object::Command(command) => {}
         Object::Buffer(buffer) => {}
         Object::Ref(ref_object) => {}
@@ -168,7 +166,7 @@ fn transform_object(object: &Object) -> KdlNode {
     node
 }
 
-fn transform_block(block: &Block) -> KdlDocument {
+fn transform_block(block: &Block, global_config: &GlobalConfig) -> KdlDocument {
     let Block {
         cfg_attr,
         description: _,
@@ -194,13 +192,15 @@ fn transform_block(block: &Block) -> KdlDocument {
     }
 
     for object in objects {
-        document.nodes_mut().push(transform_object(object));
+        document
+            .nodes_mut()
+            .push(transform_object(object, global_config));
     }
 
     document
 }
 
-fn transform_register(register: &Register) -> KdlDocument {
+fn transform_register(register: &Register, global_config: &GlobalConfig) -> KdlDocument {
     let Register {
         cfg_attr,
         description: _,
@@ -223,6 +223,71 @@ fn transform_register(register: &Register) -> KdlDocument {
         document.nodes_mut().push(cfg_node);
     }
 
+    if *access != global_config.default_register_access {
+        let mut access_node = KdlNode::new("config");
+        access_node.push("access");
+        access_node.push(access.to_string());
+        document.nodes_mut().push(access_node);
+    }
+
+    if let Some(byte_order) = byte_order {
+        let mut byte_order_node = KdlNode::new("config");
+        byte_order_node.push("byte-order");
+        byte_order_node.push(byte_order.to_string());
+        document.nodes_mut().push(byte_order_node);
+    }
+
+    if *bit_order != global_config.default_bit_order {
+        let mut bit_order_node = KdlNode::new("config");
+        bit_order_node.push("bit-order");
+        bit_order_node.push(bit_order.to_string());
+        document.nodes_mut().push(bit_order_node);
+    }
+
+    if *allow_bit_overlap {
+        let mut bit_overlap_node = KdlNode::new("config");
+        bit_overlap_node.push("allow-bit-overlap");
+        document.nodes_mut().push(bit_overlap_node);
+    }
+
+    if *allow_address_overlap {
+        let mut address_overlap_node = KdlNode::new("config");
+        address_overlap_node.push("allow-address-overlap");
+        document.nodes_mut().push(address_overlap_node);
+    }
+
+    let mut address_node = KdlNode::new("config");
+    address_node.push("address");
+    address_node.push(*address as i128);
+    document.nodes_mut().push(address_node);
+
+    let mut size_bits_node = KdlNode::new("config");
+    size_bits_node.push("size_bits");
+    size_bits_node.push(*size_bits as i128);
+    document.nodes_mut().push(size_bits_node);
+
+    if let Some(reset_value) = reset_value {
+        let mut reset_value_node = KdlNode::new("config");
+        reset_value_node.push("reset-value");
+        match reset_value {
+            ResetValue::Integer(num) => reset_value_node.push(*num as i128),
+            ResetValue::Array(bytes) => {
+                for byte in bytes {
+                    reset_value_node.push(*byte as i128)
+                }
+            }
+        }
+        document.nodes_mut().push(reset_value_node);
+    }
+
+    if let Some(repeat) = repeat {
+        document.nodes_mut().push(transform_repeat_config(repeat));
+    }
+
+    for field in fields {
+        document.nodes_mut().push(transform_field(field));
+    }
+
     document
 }
 
@@ -241,4 +306,82 @@ fn transform_repeat_config(repeat: &Repeat) -> KdlNode {
     repeat_node.push(("stride", repeat.stride as i128));
 
     repeat_node
+}
+
+fn transform_field(field: &Field) -> KdlNode {
+    let Field {
+        cfg_attr,
+        description,
+        name,
+        access,
+        base_type,
+        field_conversion,
+        field_address,
+    } = field;
+
+    let mut node = KdlNode::new(name.as_str());
+
+    node.set_format(KdlNodeFormat {
+        leading: description_to_leading_comment(description),
+        ..Default::default()
+    });
+
+    let base_type_text = match base_type {
+        BaseType::Unspecified => "",
+        BaseType::Bool => "bool",
+        BaseType::Uint => "uint",
+        BaseType::Int => "int",
+        BaseType::FixedSize(integer) => &integer.to_string(),
+    };
+
+    match field_conversion {
+        Some(fc) => node.set_ty(format!(
+            "{}{}{}{}",
+            base_type_text,
+            if base_type_text.is_empty() { "" } else { ":" },
+            fc.type_name(),
+            if fc.use_try() { "?" } else { "" }
+        )),
+        None => node.set_ty(base_type_text),
+    }
+
+    node.push(access.to_string());
+
+    if let Some(cfg) = cfg_attr.inner() {
+        node.push(("cfg", cfg));
+    }
+
+    if field_address.len() == 1 {
+        node.push(format!("@{}", field_address.start))
+    } else {
+        node.push(format!(
+            "@{}:{}",
+            field_address.end - 1,
+            field_address.start
+        ))
+    };
+
+    if let Some(FieldConversion::Enum { enum_value, .. }) = field_conversion {
+        let children = node.ensure_children();
+
+        for variant in &enum_value.variants {
+            let mut variant_node = KdlNode::new(variant.name.as_str());
+            match variant.value {
+                EnumValue::Unspecified => {}
+                EnumValue::Specified(num) => variant_node.push(num),
+                EnumValue::Default => variant_node.push("default"),
+                EnumValue::CatchAll => variant_node.push("catch-all"),
+            }
+            children.nodes_mut().push(variant_node);
+        }
+    }
+
+    node
+}
+
+fn description_to_leading_comment(description: &str) -> String {
+    description
+        .lines()
+        .map(|line| format!("///{line}"))
+        .join("\n")
 }
