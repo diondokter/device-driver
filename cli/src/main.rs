@@ -15,7 +15,7 @@ struct Args {
     #[arg(short = 'd', long = "device-name", value_name = "NAME")]
     device_name: String,
     /// Type of generated output
-    #[arg(short = 'g', long = "gen-type")]
+    #[arg(short = 'g', long = "gen-type", default_value = "rust")]
     gen_type: GenType,
 }
 
