@@ -148,7 +148,7 @@ fn transform_object(object: &Object, global_config: &GlobalConfig) -> KdlNode {
         Object::Register(register) => {
             node.set_children(transform_register(register, global_config))
         }
-        Object::Command(command) => {}
+        Object::Command(command) => node.set_children(transform_command(command, global_config)),
         Object::Buffer(buffer) => node.set_children(transform_buffer(buffer, global_config)),
         Object::Ref(ref_object) => {}
     };
@@ -362,7 +362,7 @@ fn transform_field(field: &Field) -> KdlNode {
             }
 
             variant_node.set_format(KdlNodeFormat {
-                leading: description_to_leading_comment(&description),
+                leading: description_to_leading_comment(description),
                 ..Default::default()
             });
 
@@ -404,6 +404,81 @@ fn transform_buffer(buffer: &Buffer, global_config: &GlobalConfig) -> KdlDocumen
     let mut address_node = KdlNode::new("address");
     address_node.push(*address as i128);
     document.nodes_mut().push(address_node);
+
+    document
+}
+
+fn transform_command(command: &Command, global_config: &GlobalConfig) -> KdlDocument {
+    let Command {
+        cfg_attr,
+        description: _,
+        name: _,
+        address,
+        byte_order,
+        bit_order,
+        allow_bit_overlap,
+        allow_address_overlap,
+        size_bits_in,
+        size_bits_out,
+        repeat,
+        in_fields,
+        out_fields,
+    } = command;
+
+    let mut document = KdlDocument::new();
+    let mut in_fields_node = KdlNode::new("in");
+    let mut out_fields_node = KdlNode::new("out");
+
+    if let Some(cfg_node) = transform_cfg_config(cfg_attr) {
+        document.nodes_mut().push(cfg_node);
+    }
+
+    let mut address_node = KdlNode::new("address");
+    address_node.push(*address as i128);
+    document.nodes_mut().push(address_node);
+
+    if let Some(byte_order) = byte_order {
+        in_fields_node.push(("byte-order", byte_order.to_string()));
+        out_fields_node.push(("byte-order", byte_order.to_string()));
+    }
+
+    if *bit_order != global_config.default_bit_order {
+        in_fields_node.push(("bit-order", bit_order.to_string()));
+        out_fields_node.push(("bit-order", bit_order.to_string()));
+    }
+
+    if *allow_bit_overlap {
+        in_fields_node.push("allow-bit-overlap");
+        out_fields_node.push("allow-bit-overlap");
+    }
+
+    if *allow_address_overlap {
+        let address_overlap_node = KdlNode::new("allow-address-overlap");
+        document.nodes_mut().push(address_overlap_node);
+    }
+
+    in_fields_node.push(("size_bits", *size_bits_in as i128));
+    out_fields_node.push(("size_bits", *size_bits_out as i128));
+
+    if let Some(repeat) = repeat {
+        document.nodes_mut().push(transform_repeat_config(repeat));
+    }
+
+    for field in in_fields {
+        in_fields_node
+            .ensure_children()
+            .nodes_mut()
+            .push(transform_field(field));
+    }
+    document.nodes_mut().push(in_fields_node);
+
+    for field in out_fields {
+        out_fields_node
+            .ensure_children()
+            .nodes_mut()
+            .push(transform_field(field));
+    }
+    document.nodes_mut().push(out_fields_node);
 
     document
 }
