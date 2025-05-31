@@ -22,6 +22,7 @@ pub fn transform(value: impl Value) -> anyhow::Result<mir::Device> {
         .collect::<Result<_, _>>()?;
 
     Ok(mir::Device {
+        name: None,
         global_config,
         objects,
     })

@@ -21,6 +21,7 @@ syn = { version = "2.0", features = ["extra-traits"] }
 bitvec = "1.0.1"
 dd-manifest-tree = { version = "1.0.0", path = "../dd-manifest-tree", optional = true, default-features = false }
 askama = "0.14.0"
+kdl = "6.3.4"
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"

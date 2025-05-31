@@ -77,6 +77,7 @@ mod tests {
         };
 
         let mut start_mir = Device {
+            name: None,
             global_config,
             objects: vec![
                 Object::Buffer(Buffer {
@@ -102,6 +103,7 @@ mod tests {
         };
 
         let mut start_mir = Device {
+            name: None,
             global_config,
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
@@ -133,6 +135,7 @@ mod tests {
         };
 
         let mut start_mir = Device {
+            name: None,
             global_config,
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
@@ -180,6 +183,7 @@ mod tests {
         };
 
         let mut start_mir = Device {
+            name: None,
             global_config,
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
@@ -219,6 +223,7 @@ mod tests {
         };
 
         let mut start_mir = Device {
+            name: None,
             global_config,
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),

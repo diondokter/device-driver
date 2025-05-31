@@ -5,7 +5,7 @@ mod dsl_hir;
 mod lir;
 #[cfg(feature = "manifest")]
 mod manifest;
-mod mir;
+pub mod mir;
 
 /// Transform the tokens of the DSL lang to the generated device driver (or a compile error).
 ///

@@ -80,6 +80,7 @@ mod tests {
     #[test]
     fn ref_found() {
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![
                 Object::Register(Register {
@@ -104,6 +105,7 @@ mod tests {
     #[test]
     fn bad_register_ref() {
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Ref(RefObject {
                 cfg_attr: Default::default(),
@@ -125,6 +127,7 @@ mod tests {
     #[test]
     fn bad_block_ref() {
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Ref(RefObject {
                 cfg_attr: Default::default(),
@@ -146,6 +149,7 @@ mod tests {
     #[test]
     fn bad_command_ref() {
         let mut start_mir = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Ref(RefObject {
                 cfg_attr: Default::default(),

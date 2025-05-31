@@ -85,6 +85,7 @@ mod tests {
     #[test]
     fn not_too_low() {
         let mut start_mir = Device {
+            name: None,
             global_config: GlobalConfig {
                 register_address_type: Some(Integer::I8),
                 ..Default::default()
@@ -105,6 +106,7 @@ mod tests {
     #[test]
     fn not_too_high() {
         let mut start_mir = Device {
+            name: None,
             global_config: GlobalConfig {
                 command_address_type: Some(Integer::U16),
                 ..Default::default()

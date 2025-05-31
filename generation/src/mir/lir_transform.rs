@@ -405,60 +405,58 @@ fn transform_field_set<'a>(
                 field_address,
             } = field;
 
-            let (base_type, conversion_method) = match (
-                base_type,
-                field.field_address.clone().count(),
-                field_conversion,
-            ) {
-                (mir::BaseType::Bool, 1, None) => {
-                    ("u8".to_string(), lir::FieldConversionMethod::Bool)
-                }
-                (mir::BaseType::Bool, _, _) => unreachable!(
-                    "Checked in a MIR pass. Bools can only be 1 bit and have no conversion"
-                ),
-                (mir::BaseType::Uint | mir::BaseType::Int, val, None) => (
-                    format!(
-                        "{}{}",
-                        match base_type {
-                            mir::BaseType::Bool => unreachable!(),
-                            mir::BaseType::Uint => 'u',
-                            mir::BaseType::Int => 'i',
-                        },
-                        val.max(8).next_power_of_two()
+            let (base_type, conversion_method) =
+                match (base_type, field.field_address.len(), field_conversion) {
+                    (mir::BaseType::Unspecified | mir::BaseType::FixedSize(_), _, _) => todo!(),
+                    (mir::BaseType::Bool, 1, None) => {
+                        ("u8".to_string(), lir::FieldConversionMethod::Bool)
+                    }
+                    (mir::BaseType::Bool, _, _) => unreachable!(
+                        "Checked in a MIR pass. Bools can only be 1 bit and have no conversion"
                     ),
-                    lir::FieldConversionMethod::None,
-                ),
-                (mir::BaseType::Uint | mir::BaseType::Int, val, Some(fc)) => (
-                    format!(
-                        "{}{}",
-                        match base_type {
-                            mir::BaseType::Bool => unreachable!(),
-                            mir::BaseType::Uint => 'u',
-                            mir::BaseType::Int => 'i',
-                        },
-                        val.max(8).next_power_of_two()
+                    (mir::BaseType::Uint | mir::BaseType::Int, val, None) => (
+                        format!(
+                            "{}{}",
+                            match base_type {
+                                mir::BaseType::Uint => 'u',
+                                mir::BaseType::Int => 'i',
+                                _ => unreachable!(),
+                            },
+                            val.max(8).next_power_of_two()
+                        ),
+                        lir::FieldConversionMethod::None,
                     ),
-                    {
-                        match enum_list.clone().find(|e| e.name == fc.type_name()) {
-                            // Always use try if that's specified
-                            _ if fc.use_try() => {
-                                lir::FieldConversionMethod::TryInto(fc.type_name().into())
+                    (mir::BaseType::Uint | mir::BaseType::Int, val, Some(fc)) => (
+                        format!(
+                            "{}{}",
+                            match base_type {
+                                mir::BaseType::Uint => 'u',
+                                mir::BaseType::Int => 'i',
+                                _ => unreachable!(),
+                            },
+                            val.max(8).next_power_of_two()
+                        ),
+                        {
+                            match enum_list.clone().find(|e| e.name == fc.type_name()) {
+                                // Always use try if that's specified
+                                _ if fc.use_try() => {
+                                    lir::FieldConversionMethod::TryInto(fc.type_name().into())
+                                }
+                                // There is an enum we generate so we can look at its metadata
+                                Some(mir::Enum {
+                                    generation_style:
+                                        Some(mir::EnumGenerationStyle::Infallible { bit_size }),
+                                    ..
+                                }) if field.field_address.clone().count() <= *bit_size as usize => {
+                                    // This field is equal or smaller in bits than the infallible enum. So we can do the unsafe into
+                                    lir::FieldConversionMethod::UnsafeInto(fc.type_name().into())
+                                }
+                                // Fallback is to require the into trait
+                                _ => lir::FieldConversionMethod::Into(fc.type_name().into()),
                             }
-                            // There is an enum we generate so we can look at its metadata
-                            Some(mir::Enum {
-                                generation_style:
-                                    Some(mir::EnumGenerationStyle::Infallible { bit_size }),
-                                ..
-                            }) if field.field_address.clone().count() <= *bit_size as usize => {
-                                // This field is equal or smaller in bits than the infallible enum. So we can do the unsafe into
-                                lir::FieldConversionMethod::UnsafeInto(fc.type_name().into())
-                            }
-                            // Fallback is to require the into trait
-                            _ => lir::FieldConversionMethod::Into(fc.type_name().into()),
-                        }
-                    },
-                ),
-            };
+                        },
+                    ),
+                };
 
             Ok(lir::Field {
                 cfg_attr: cfg_attr.to_string(),
@@ -522,6 +520,12 @@ fn transform_enum(
         (mir::BaseType::Bool, _) => "u8".to_string(),
         (mir::BaseType::Uint, val) => format!("u{}", val.max(8).next_power_of_two()),
         (mir::BaseType::Int, val) => format!("i{}", val.max(8).next_power_of_two()),
+        (mir::BaseType::Unspecified, _) => {
+            todo!()
+        }
+        (mir::BaseType::FixedSize(_), _) => {
+            todo!()
+        }
     };
 
     let mut next_variant_number = None;
