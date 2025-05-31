@@ -328,7 +328,7 @@ fn transform_field(field: &Field) -> KdlNode {
         node.push(("cfg", cfg));
     }
 
-    if field_address.len() == 1 {
+    if field_address.is_empty() || field_address.len() == 1 {
         node.push(format!("@{}", field_address.start))
     } else {
         node.push(format!(
@@ -342,13 +342,30 @@ fn transform_field(field: &Field) -> KdlNode {
         let children = node.ensure_children();
 
         for variant in &enum_value.variants {
-            let mut variant_node = KdlNode::new(variant.name.as_str());
-            match variant.value {
+            let EnumVariant {
+                cfg_attr,
+                description,
+                name,
+                value,
+            } = variant;
+
+            let mut variant_node = KdlNode::new(name.as_str());
+            match value {
                 EnumValue::Unspecified => {}
-                EnumValue::Specified(num) => variant_node.push(num),
+                EnumValue::Specified(num) => variant_node.push(*num),
                 EnumValue::Default => variant_node.push("default"),
                 EnumValue::CatchAll => variant_node.push("catch-all"),
             }
+
+            if let Some(cfg) = cfg_attr.inner() {
+                variant_node.push(("cfg", cfg));
+            }
+
+            variant_node.set_format(KdlNodeFormat {
+                leading: description_to_leading_comment(&description),
+                ..Default::default()
+            });
+
             children.nodes_mut().push(variant_node);
         }
     }
@@ -359,7 +376,7 @@ fn transform_field(field: &Field) -> KdlNode {
 fn description_to_leading_comment(description: &str) -> String {
     description
         .lines()
-        .map(|line| format!("///{line}"))
+        .map(|line| format!("/// {line}"))
         .join("\n")
 }
 
