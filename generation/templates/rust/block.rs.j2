@@ -64,23 +64,25 @@ impl{{block_generics}} {{ block.name }}{{block_generics}} {
         I: ::device_driver::RegisterInterface<AddressType = {{device.register_address_type}}>,
     {
         {% for method in block.methods %}
-            {% if matches!(method.method_type, BlockMethodType::Register {..}) %}
-                {% match method.kind %}
-                    {% when BlockMethodKind::Normal %}
-                        {{method.cfg_attr}}
-                        let reg = self.{{method.name}}().read()?;
-                        {{method.cfg_attr}}
-                        callback({{method.address}} + 0 * 0, "{{method.name}}", reg.into());
-                    {% endwhen %}
-                    {% when BlockMethodKind::Repeated { count, stride } %}
-                        {% for index in 0..*count %}
+            {% if let BlockMethodType::Register { access, ..} = method.method_type %}
+                {% if access.is_readable() %}
+                    {% match method.kind %}
+                        {% when BlockMethodKind::Normal %}
                             {{method.cfg_attr}}
-                            let reg = self.{{method.name}}({{index}}).read()?;
+                            let reg = self.{{method.name}}().read()?;
                             {{method.cfg_attr}}
-                            callback({{method.address}} + {{index}} * {{stride}}, "{{method.name}}[{{index}}]", reg.into());
-                        {% endfor %}
-                    {% endwhen %}
-                {% endmatch %}
+                            callback({{method.address}} + 0 * 0, "{{method.name}}", reg.into());
+                        {% endwhen %}
+                        {% when BlockMethodKind::Repeated { count, stride } %}
+                            {% for index in 0..*count %}
+                                {{method.cfg_attr}}
+                                let reg = self.{{method.name}}({{index}}).read()?;
+                                {{method.cfg_attr}}
+                                callback({{method.address}} + {{index}} * {{stride}}, "{{method.name}}[{{index}}]", reg.into());
+                            {% endfor %}
+                        {% endwhen %}
+                    {% endmatch %}
+                {% endif %}
             {% endif %}
         {% endfor %}
 
@@ -108,23 +110,25 @@ impl{{block_generics}} {{ block.name }}{{block_generics}} {
         I: ::device_driver::AsyncRegisterInterface<AddressType = {{device.register_address_type}}>,
     {
         {% for method in block.methods %}
-            {% if matches!(method.method_type, BlockMethodType::Register {..}) %}
-                {% match method.kind %}
-                    {% when BlockMethodKind::Normal %}
-                        {{method.cfg_attr}}
-                        let reg = self.{{method.name}}().read_async().await?;
-                        {{method.cfg_attr}}
-                        callback({{method.address}} + 0 * 0, "{{method.name}}", reg.into());
-                    {% endwhen %}
-                    {% when BlockMethodKind::Repeated { count, stride } %}
-                        {% for index in 0..*count %}
+            {% if let BlockMethodType::Register { access, ..} = method.method_type %}
+                {% if access.is_readable() %}
+                    {% match method.kind %}
+                        {% when BlockMethodKind::Normal %}
                             {{method.cfg_attr}}
-                            let reg = self.{{method.name}}({{index}}).read_async().await?;
+                            let reg = self.{{method.name}}().read_async().await?;
                             {{method.cfg_attr}}
-                            callback({{method.address}} + {{index}} * {{stride}}, "{{method.name}}[{{index}}]", reg.into());
-                        {% endfor %}
-                    {% endwhen %}
-                {% endmatch %}
+                            callback({{method.address}} + 0 * 0, "{{method.name}}", reg.into());
+                        {% endwhen %}
+                        {% when BlockMethodKind::Repeated { count, stride } %}
+                            {% for index in 0..*count %}
+                                {{method.cfg_attr}}
+                                let reg = self.{{method.name}}({{index}}).read_async().await?;
+                                {{method.cfg_attr}}
+                                callback({{method.address}} + {{index}} * {{stride}}, "{{method.name}}[{{index}}]", reg.into());
+                            {% endfor %}
+                        {% endwhen %}
+                    {% endmatch %}
+                {% endif %}
             {% endif %}
         {% endfor %}
 
