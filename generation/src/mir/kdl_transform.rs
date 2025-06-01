@@ -143,15 +143,13 @@ fn transform_object(object: &Object, global_config: &GlobalConfig) -> KdlNode {
         ..Default::default()
     });
 
-    match object {
-        Object::Block(block) => node.set_children(transform_block(block, global_config)),
-        Object::Register(register) => {
-            node.set_children(transform_register(register, global_config))
-        }
-        Object::Command(command) => node.set_children(transform_command(command, global_config)),
-        Object::Buffer(buffer) => node.set_children(transform_buffer(buffer, global_config)),
-        Object::Ref(ref_object) => {}
-    };
+    node.set_children(match object {
+        Object::Block(block) => transform_block(block, global_config),
+        Object::Register(register) => transform_register(register, global_config),
+        Object::Command(command) => transform_command(command, global_config),
+        Object::Buffer(buffer) => transform_buffer(buffer, global_config),
+        Object::Ref(ref_object) => transform_ref(ref_object),
+    });
 
     node
 }
@@ -479,6 +477,88 @@ fn transform_command(command: &Command, global_config: &GlobalConfig) -> KdlDocu
             .push(transform_field(field));
     }
     document.nodes_mut().push(out_fields_node);
+
+    document
+}
+
+fn transform_ref(ref_object: &RefObject) -> KdlDocument {
+    let mut document = KdlDocument::new();
+
+    match &ref_object.object_override {
+        ObjectOverride::Block(BlockOverride {
+            name: _,
+            address_offset,
+            repeat,
+        }) => {
+            if let Some(address_offset) = address_offset {
+                let mut node = KdlNode::new("address-offset");
+                node.push(*address_offset as i128);
+                document.nodes_mut().push(node);
+            }
+            if let Some(repeat) = repeat {
+                document.nodes_mut().push(transform_repeat_config(repeat));
+            }
+        }
+        ObjectOverride::Register(RegisterOverride {
+            name: _,
+            access,
+            address,
+            allow_address_overlap,
+            reset_value,
+            repeat,
+        }) => {
+            if let Some(access) = access {
+                let mut node = KdlNode::new("access");
+                node.push(access.to_string());
+                document.nodes_mut().push(node);
+            }
+            if let Some(address) = address {
+                let mut node = KdlNode::new("address");
+                node.push(*address as i128);
+                document.nodes_mut().push(node);
+            }
+            if *allow_address_overlap {
+                document
+                    .nodes_mut()
+                    .push(KdlNode::new("allow-address-overlap"));
+            }
+            if let Some(reset_value) = reset_value {
+                let mut reset_value_node = KdlNode::new("reset-value");
+                match reset_value {
+                    ResetValue::Integer(num) => reset_value_node.push(*num as i128),
+                    ResetValue::Array(bytes) => {
+                        for byte in bytes {
+                            reset_value_node.push(*byte as i128)
+                        }
+                    }
+                }
+                document.nodes_mut().push(reset_value_node);
+            }
+            if let Some(repeat) = repeat {
+                document.nodes_mut().push(transform_repeat_config(repeat));
+            }
+        }
+        ObjectOverride::Command(CommandOverride {
+            name: _,
+            address,
+            allow_address_overlap,
+            repeat,
+        }) => {
+            if let Some(address) = address {
+                let mut node = KdlNode::new("address");
+                node.push(*address as i128);
+                document.nodes_mut().push(node);
+            }
+            if *allow_address_overlap {
+                document
+                    .nodes_mut()
+                    .push(KdlNode::new("allow-address-overlap"));
+            }
+            if let Some(repeat) = repeat {
+                document.nodes_mut().push(transform_repeat_config(repeat));
+            }
+        }
+    }
 
     document
 }
