@@ -261,7 +261,7 @@ fn transform_register(register: &Register, global_config: &GlobalConfig) -> KdlD
         fields_node
             .ensure_children()
             .nodes_mut()
-            .push(transform_field(field));
+            .push(transform_field(field, global_config));
     }
     document.nodes_mut().push(fields_node);
 
@@ -283,7 +283,7 @@ fn transform_repeat_config(repeat: &Repeat) -> KdlNode {
     repeat_node
 }
 
-fn transform_field(field: &Field) -> KdlNode {
+fn transform_field(field: &Field, global_config: &GlobalConfig) -> KdlNode {
     let Field {
         cfg_attr,
         description,
@@ -320,7 +320,9 @@ fn transform_field(field: &Field) -> KdlNode {
         None => node.set_ty(base_type_text),
     }
 
-    node.push(access.to_string());
+    if *access != global_config.default_field_access {
+        node.push(access.to_string());
+    }
 
     if let Some(cfg) = cfg_attr.inner() {
         node.push(("cfg", cfg));
@@ -466,7 +468,7 @@ fn transform_command(command: &Command, global_config: &GlobalConfig) -> KdlDocu
         in_fields_node
             .ensure_children()
             .nodes_mut()
-            .push(transform_field(field));
+            .push(transform_field(field, global_config));
     }
     document.nodes_mut().push(in_fields_node);
 
@@ -474,7 +476,7 @@ fn transform_command(command: &Command, global_config: &GlobalConfig) -> KdlDocu
         out_fields_node
             .ensure_children()
             .nodes_mut()
-            .push(transform_field(field));
+            .push(transform_field(field, global_config));
     }
     document.nodes_mut().push(out_fields_node);
 
