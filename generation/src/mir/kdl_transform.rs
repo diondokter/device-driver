@@ -120,13 +120,13 @@ fn transform_object(object: &Object, global_config: &GlobalConfig) -> KdlNode {
         Object::Buffer(_) => ("buffer", None),
         Object::Ref(ref_object) => match &ref_object.object_override {
             ObjectOverride::Block(override_data) => {
-                ("ref", Some(("block-target", override_data.name.clone())))
+                ("ref", Some(("target-block", override_data.name.clone())))
             }
             ObjectOverride::Register(override_data) => {
-                ("ref", Some(("register-target", override_data.name.clone())))
+                ("ref", Some(("target-register", override_data.name.clone())))
             }
             ObjectOverride::Command(override_data) => {
-                ("ref", Some(("command-target", override_data.name.clone())))
+                ("ref", Some(("target-command", override_data.name.clone())))
             }
         },
     };
