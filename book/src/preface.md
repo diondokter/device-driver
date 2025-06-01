@@ -74,5 +74,6 @@ It's nice to have examples:
 - [Nordic nPM1300 Power Management IC](https://github.com/thermigo/npm1300-rs)
 - [iqs323 inductive/capacitive sensing controller](https://github.com/tactile-eng/iqs323-driver)
 - [VCNL36825T proximity sensor](https://github.com/LeFrenchPOC/vcnl36825t-rs)
+- [AXP192 Power Management IC](https://github.com/okhsunrog/axp192-dd)
 
 Feel free to add to this list!
