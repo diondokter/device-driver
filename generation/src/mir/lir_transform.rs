@@ -14,7 +14,7 @@ use super::{
 
 pub fn transform(device: mir::Device, driver_name: &str) -> anyhow::Result<lir::Device> {
     let lenient_pascal_converter = convert_case::Converter::new()
-        .set_boundaries(&convert_case::Boundary::list_from("aA:AAa:_:-: :a1:A1"))
+        .set_boundaries(&convert_case::Boundary::list_from("aA:AAa:_:-: :a1:A1:1A"))
         .set_pattern(convert_case::Pattern::Capital);
     let converted_driver_name = lenient_pascal_converter.convert(driver_name);
 
