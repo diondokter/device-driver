@@ -104,6 +104,16 @@ pub enum Access {
     WO,
 }
 
+impl Access {
+    pub fn is_readable(&self) -> bool {
+        match self {
+            Access::RW => true,
+            Access::RO => true,
+            Access::WO => false,
+        }
+    }
+}
+
 impl Display for Access {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self:?}")
