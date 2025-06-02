@@ -44,7 +44,7 @@ buffer Foo: WO = 5,
 
 ## Manifest
 
-Full:
+Minimal:
 ```json
 "Foo": {
     "type": "buffer",
