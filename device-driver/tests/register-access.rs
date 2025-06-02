@@ -1,4 +1,4 @@
-//! Having registers with different access specifiers should still compile
+//! Having registers and fields with different access specifiers should still compile
 
 device_driver::create_device!(
     device_name: MyTestDevice,
@@ -20,7 +20,7 @@ device_driver::create_device!(
             type Access = RO;
 
             /// X
-            value0: bool = 0,
+            value0: WO bool = 0,
         },
         register Baz {
             const ADDRESS = 2;
