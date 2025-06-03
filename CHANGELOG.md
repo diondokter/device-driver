@@ -2,12 +2,16 @@
 
 ### Unreleased
 
-- CLI: When no output file is provided, the output is printed to stdout instead
-- CLI: No longer panics when unexpected error output is processed
-- Error messages now more consistently use backticks (`) instead of various other quoting characters like (') and (")
 - Backend code generation switched from quote/syn to askama
 - Fixed cfg gates on fields (didn't compile before)
 - Fixed WO fields (would cause a compile error in generated code)
+- CLI: When no output file is provided, the output is printed to stdout instead
+- CLI: No longer panics when unexpected error output is processed
+- Error messages now more consistently use backticks (`) instead of various other quoting characters like (') and (")
+- CLI: Added a new generation option. It defaults to Rust, but can now also be used to generate a KDL manifest
+  - There's no way to use KDL yet, so this is purely a preview feature and the format might change in the future.
+  - In the future this can be used to convert existing specs into KDL.
+  - Possibly eventually this can be used to generate C code instead of Rust
 
 ### 1.0.4 (28-02-25)
 

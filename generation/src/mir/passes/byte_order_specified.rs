@@ -60,6 +60,7 @@ mod tests {
     #[test]
     fn well_enough_specified() {
         let mut input = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![
                 Object::Register(Register {
@@ -98,6 +99,7 @@ mod tests {
     #[test]
     fn not_enough_specified() {
         let mut input = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "MyRegister".into(),
@@ -112,6 +114,7 @@ mod tests {
         );
 
         let mut input = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Command(Command {
                 name: "MyCommand".into(),
@@ -126,6 +129,7 @@ mod tests {
         );
 
         let mut input = Device {
+            name: None,
             global_config: Default::default(),
             objects: vec![Object::Command(Command {
                 name: "MyCommand".into(),
@@ -148,6 +152,7 @@ mod tests {
         };
 
         let mut input = Device {
+            name: None,
             global_config,
             objects: vec![
                 Object::Register(Register {

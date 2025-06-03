@@ -5,11 +5,13 @@ use std::{fmt::Display, ops::Range};
 
 use convert_case::Boundary;
 
+pub mod kdl_transform;
 pub mod lir_transform;
 pub mod passes;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Device {
+    pub name: Option<String>,
     pub global_config: GlobalConfig,
     pub objects: Vec<Object>,
 }
@@ -191,6 +193,17 @@ impl Object {
         }
     }
 
+    /// Get a reference to the description of the specific object
+    pub(self) fn description(&self) -> &str {
+        match self {
+            Object::Block(val) => &val.description,
+            Object::Register(val) => &val.description,
+            Object::Command(val) => &val.description,
+            Object::Buffer(val) => &val.description,
+            Object::Ref(val) => &val.description,
+        }
+    }
+
     /// Get a reference to the cfg of the specific object
     pub(self) fn cfg_attr_mut(&mut self) -> &mut Cfg {
         match self {
@@ -342,10 +355,12 @@ pub struct Field {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum BaseType {
+    Unspecified,
     Bool,
     #[default]
     Uint,
     Int,
+    FixedSize(Integer),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
