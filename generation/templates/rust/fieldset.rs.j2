@@ -130,10 +130,10 @@ impl core::fmt::Debug for {{field_set.name}} {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
         let mut d = f.debug_struct("{{field_set.name}}");
         {% for field in field_set.fields %}
-            {{field.cfg_attr}}
-            {
+            {% if field.access.is_readable() %}
+                {{field.cfg_attr}}
                 d.field("{{field.name}}", &self.{{field.name}}());
-            }
+            {% endif %}
         {% endfor %}
         d.finish()
     }
@@ -144,14 +144,16 @@ impl core::fmt::Debug for {{field_set.name}} {
 #[cfg(feature = "{{defmt_feature}}")]
 impl defmt::Format for {{field_set.name}} {
     fn format(&self, f: defmt::Formatter) {
-        defmt::write!(f, "{{field_set.name}} { ");
+        defmt::write!(f, "{{field_set.name}} {% raw %}{{{% endraw %} ");
 
         {% for field in field_set.fields %}
-        {{field.cfg_attr}}
-        defmt::write!(f, "{{self::get_defmt_fmt_string(field)}}", &self.{{field.name}}());
+            {% if field.access.is_readable() %}
+                {{field.cfg_attr}}
+                defmt::write!(f, "{{self::get_defmt_fmt_string(field)}}", &self.{{field.name}}());
+            {% endif %}
         {% endfor %}
 
-        defmt::write!(f, "}");
+        defmt::write!(f, "{% raw %}}}{% endraw %}");
     }
 }
 {% endif %}
