@@ -5,6 +5,7 @@
 - Backend code generation switched from quote/syn to askama
 - Fixed cfg gates on fields (didn't compile before)
 - Fixed WO fields (would cause a compile error in generated code)
+- Fixed docstring generation so we don't need to worry about escaping characters
 - CLI: When no output file is provided, the output is printed to stdout instead
 - CLI: No longer panics when unexpected error output is processed
 - Error messages now more consistently use backticks (`) instead of various other quoting characters like (') and (")
