@@ -10,6 +10,7 @@ keywords = ["device", "driver", "toolkit"]
 categories = ["embedded", "hardware-support", "development-tools"]
 description = "The command line tool for the device-driver toolkit"
 readme = "README.md"
+default-run = "device-driver-cli"
 
 [dependencies]
 anyhow = "1.0.98"
