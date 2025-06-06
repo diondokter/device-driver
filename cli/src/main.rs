@@ -90,7 +90,7 @@ impl GenType {
     ) -> String {
         match self {
             GenType::Rust => {
-                let output = match manifest_type {
+                match manifest_type {
                     "json" => {
                         device_driver_generation::transform_json(manifest_contents, device_name)
                     }
@@ -107,9 +107,7 @@ impl GenType {
                     unknown => panic!(
                         "Unknown manifest file extension: '{unknown}'. Only 'dsl', 'json', 'yaml' and 'toml' are allowed."
                     ),
-                };
-
-                prettyplease::unparse(&syn::parse_str(&output).unwrap())
+                }
             }
             GenType::Kdl => {
                 let mir_device = match manifest_type {
