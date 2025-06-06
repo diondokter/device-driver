@@ -6,6 +6,7 @@ members = [
     "macros",
     "dd-manifest-tree",
     "cli",
+    "tests",
 ]
 
 package.version = "1.0.4"
