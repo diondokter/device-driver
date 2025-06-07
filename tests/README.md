@@ -11,6 +11,6 @@ If they're not the same, the test fails with a diff view.
 If they're the same and if the output is a Rust file, it will be compiled as a cargo script.
 If the compilation does not succeed without warning, the test also fails.
 
-In the case where there are a bunch of good changes that should be commited,
+In the case where there are a bunch of good changes that should be committed,
 you can run `cargo run -- accept` on this crate to accept the changes.
 The output files will then be updated with the current output of the generation.
