@@ -1,6 +1,7 @@
 use std::path::Path;
 
-pub const OUTPUT_HEADER: &str = r#"---
+pub const OUTPUT_HEADER: &str = r#"#!/usr/bin/env cargo
+---
 [package]
 edition = "2024"
 [dependencies]
