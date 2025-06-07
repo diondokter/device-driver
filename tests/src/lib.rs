@@ -1,7 +1,6 @@
 use std::path::Path;
 
-pub const OUTPUT_HEADER: &str = r#"
----
+pub const OUTPUT_HEADER: &str = r#"---
 [package]
 edition = "2024"
 [dependencies]
@@ -15,13 +14,10 @@ include!(concat!(env!("OUT_DIR"), "/test_cases.rs"));
 
 pub fn run_test(input_path: &Path, output_path: &Path) {
     let input = std::fs::read_to_string(input_path).unwrap();
-    let output = std::fs::read_to_string(output_path)
-        .unwrap_or_default()
-        .strip_prefix(OUTPUT_HEADER)
-        .unwrap_or_default()
-        .to_string();
+    let output = std::fs::read_to_string(output_path).unwrap();
 
-    let transformed = device_driver_generation::transform_yaml(&input, "Device");
+    let transformed =
+        OUTPUT_HEADER.to_string() + &device_driver_generation::transform_yaml(&input, "Device");
     pretty_assertions::assert_str_eq!(output, transformed);
 
     let output_extension = output_path.extension().unwrap().to_str().unwrap();
