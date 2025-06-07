@@ -19,7 +19,8 @@ fn accept() {
         let test_case = test_case.unwrap();
 
         let input = std::fs::read_to_string(test_case.path().join("input.yaml")).unwrap();
-        let output = device_driver_generation::transform_yaml(&input, "Device");
+        let output = tests::OUTPUT_HEADER.to_string()
+            + &device_driver_generation::transform_yaml(&input, "Device");
 
         std::fs::write(test_case.path().join("output.rs"), output).unwrap();
     }

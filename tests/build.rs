@@ -22,19 +22,21 @@ fn main() {
 }
 
 fn generate_test_function(test_dir: DirEntry) -> String {
-    let input = std::fs::read_to_string(test_dir.path().join("input.yaml")).unwrap();
-    let output = std::fs::read_to_string(test_dir.path().join("output.rs")).unwrap();
+    let test_dir_absolute = std::path::absolute(test_dir.path()).unwrap();
+
+    let input_path = test_dir_absolute.join("input.yaml").display().to_string();
+    let output_path = test_dir_absolute.join("output.rs").display().to_string();
+
     let test_name = test_dir.file_name().to_string_lossy().to_string();
 
     format!(
         "
 #[test]
 fn {test_name}() {{
-    const INPUT: &str = {input:?};
-    const OUTPUT: &str = {output:?};
+    const INPUT: &str = {input_path:?};
+    const OUTPUT: &str = {output_path:?};
 
-
-    crate::run_test(INPUT, OUTPUT);
+    crate::run_test(&Path::new(INPUT), &Path::new(OUTPUT));
 }}"
     )
 }

@@ -1,3 +1,12 @@
+
+---
+[package]
+edition = "2024"
+[dependencies]
+device-driver = { path="../../../device-driver" }
+---
+fn main() {}
+
 /// Root block of the Device driver
 
 #[derive(Debug)]
@@ -91,6 +100,7 @@ impl<I> Device<I> {
 
 /// Module containing the generated fieldsets of the registers and commands
 pub mod field_sets {
+    #[allow(unused_imports)]
     use super::*;
 
     #[derive(Copy, Clone, Eq, PartialEq)]
@@ -239,6 +249,7 @@ pub mod field_sets {
             match self {
                 Self::Foo(val) => core::fmt::Debug::fmt(val, f),
 
+                #[allow(unreachable_patterns)]
                 _ => unreachable!(),
             }
         }
