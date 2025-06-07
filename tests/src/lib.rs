@@ -4,8 +4,9 @@ pub const OUTPUT_HEADER: &str = r#"---
 [package]
 edition = "2024"
 [dependencies]
-device-driver = { path="../../../device-driver" }
+device-driver = { path="../../../device-driver", default-features=false }
 ---
+#![deny(warnings)]
 fn main() {}
 
 "#;
@@ -35,6 +36,7 @@ fn compile_output(output_path: &Path) {
     cmd.arg("+nightly");
     cmd.arg("-Zscript");
     cmd.arg(output_path);
+    cmd.env("CARGO_TARGET_DIR", "../target");
 
     let output = cmd.output().unwrap();
 

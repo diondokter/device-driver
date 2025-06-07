@@ -24,10 +24,13 @@ fn main() {
 fn generate_test_function(test_dir: DirEntry) -> String {
     let test_dir_absolute = std::path::absolute(test_dir.path()).unwrap();
 
-    let input_path = test_dir_absolute.join("input.yaml").display().to_string();
-    let output_path = test_dir_absolute.join("output.rs").display().to_string();
-
     let test_name = test_dir.file_name().to_string_lossy().to_string();
+
+    let input_path = test_dir_absolute.join("input.yaml").display().to_string();
+    let output_path = test_dir_absolute
+        .join(format!("{test_name}.rs"))
+        .display()
+        .to_string();
 
     format!(
         "

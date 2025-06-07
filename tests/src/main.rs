@@ -22,6 +22,8 @@ fn accept() {
         let output = tests::OUTPUT_HEADER.to_string()
             + &device_driver_generation::transform_yaml(&input, "Device");
 
-        std::fs::write(test_case.path().join("output.rs"), output).unwrap();
+        let output_name = format!("{}.rs", test_case.file_name().display());
+
+        std::fs::write(test_case.path().join(output_name), output).unwrap();
     }
 }

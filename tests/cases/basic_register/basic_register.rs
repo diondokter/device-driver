@@ -2,8 +2,9 @@
 [package]
 edition = "2024"
 [dependencies]
-device-driver = { path="../../../device-driver" }
+device-driver = { path="../../../device-driver", default-features=false }
 ---
+#![deny(warnings)]
 fn main() {}
 
 /// Root block of the Device driver
@@ -43,6 +44,8 @@ impl<I> Device<I> {
     /// This is useful for e.g. debug printing all values.
     /// The given [field_sets::FieldSetValue] has a Debug and Format implementation that forwards to the concrete type
     /// the lies within so it can be printed without matching on it.
+    #[allow(unused_mut)]
+    #[allow(unused_variables)]
     pub fn read_all_registers(
         &mut self,
         mut callback: impl FnMut(u8, &'static str, field_sets::FieldSetValue),
@@ -70,6 +73,8 @@ impl<I> Device<I> {
     /// This is useful for e.g. debug printing all values.
     /// The given [field_sets::FieldSetValue] has a Debug and Format implementation that forwards to the concrete type
     /// the lies within so it can be printed without matching on it.
+    #[allow(unused_mut)]
+    #[allow(unused_variables)]
     pub async fn read_all_registers_async(
         &mut self,
         mut callback: impl FnMut(u8, &'static str, field_sets::FieldSetValue),
