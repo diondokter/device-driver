@@ -16,6 +16,7 @@ This toolkit consists of these parts:
   and feed that to the compiler and it outputs the compiler output.
 - `device-driver-cli`: A small command line interface that uses the generation crate. It allows you to generate the driver in advance to reduce compile times.
 - `dd-manifest-tree`: A small abstraction over json, yaml and toml crates to unify their value types.
+- `tests`: A suite of tests that presents input files and compares the known output with the generated output.
 
 ## Semver
 

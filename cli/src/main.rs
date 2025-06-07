@@ -89,28 +89,18 @@ impl GenType {
         device_name: &str,
     ) -> String {
         match self {
-            GenType::Rust => {
-                let output = match manifest_type {
-                    "json" => {
-                        device_driver_generation::transform_json(manifest_contents, device_name)
-                    }
-                    "yaml" => {
-                        device_driver_generation::transform_yaml(manifest_contents, device_name)
-                    }
-                    "toml" => {
-                        device_driver_generation::transform_toml(manifest_contents, device_name)
-                    }
-                    "dsl" => device_driver_generation::transform_dsl(
-                        syn::parse_str(manifest_contents).expect("Could not (syn) parse the DSL"),
-                        device_name,
-                    ),
-                    unknown => panic!(
-                        "Unknown manifest file extension: '{unknown}'. Only 'dsl', 'json', 'yaml' and 'toml' are allowed."
-                    ),
-                };
-
-                prettyplease::unparse(&syn::parse_str(&output).unwrap())
-            }
+            GenType::Rust => match manifest_type {
+                "json" => device_driver_generation::transform_json(manifest_contents, device_name),
+                "yaml" => device_driver_generation::transform_yaml(manifest_contents, device_name),
+                "toml" => device_driver_generation::transform_toml(manifest_contents, device_name),
+                "dsl" => device_driver_generation::transform_dsl(
+                    syn::parse_str(manifest_contents).expect("Could not (syn) parse the DSL"),
+                    device_name,
+                ),
+                unknown => panic!(
+                    "Unknown manifest file extension: '{unknown}'. Only 'dsl', 'json', 'yaml' and 'toml' are allowed."
+                ),
+            },
             GenType::Kdl => {
                 let mir_device = match manifest_type {
                     "json" => {
