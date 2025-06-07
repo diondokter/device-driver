@@ -16,9 +16,9 @@ include!(concat!(env!("OUT_DIR"), "/test_cases.rs"));
 pub fn run_test(input_path: &Path, output_path: &Path) {
     let input = std::fs::read_to_string(input_path).unwrap();
     let output = std::fs::read_to_string(output_path)
-        .unwrap()
+        .unwrap_or_default()
         .strip_prefix(OUTPUT_HEADER)
-        .unwrap()
+        .unwrap_or_default()
         .to_string();
 
     let transformed = device_driver_generation::transform_yaml(&input, "Device");
