@@ -13,6 +13,7 @@ impl core::fmt::Debug for FieldSetValue {
                 {{field_set.cfg_attr}}
                 Self::{{field_set.name}}(val) => core::fmt::Debug::fmt(val, f),
             {% endfor %}
+            #[allow(unreachable_patterns)]
             _ => unreachable!(),
         } 
     }

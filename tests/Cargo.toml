@@ -1,0 +1,8 @@
+[package]
+name = "device-driver-tests"
+edition = "2024"
+
+[dependencies]
+clap = "4.5.39"
+pretty_assertions = "1.4.1"
+device-driver-generation = { path="../generation" }

@@ -10,10 +10,10 @@ keywords = ["device", "driver", "toolkit"]
 categories = ["embedded", "hardware-support", "development-tools"]
 description = "The command line tool for the device-driver toolkit"
 readme = "README.md"
+default-run = "device-driver-cli"
 
 [dependencies]
 anyhow = "1.0.98"
 clap = { version = "4.5.20", features = ["derive"] }
 device-driver-generation = { version = "=1.0.4", path = "../generation" }
-prettyplease = { version = "0.2.22", features = ["verbatim"] }
 syn = { version = "2.0" }

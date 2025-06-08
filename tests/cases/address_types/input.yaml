@@ -1,0 +1,18 @@
+config:
+  register_address_type: u16
+  command_address_type: i32
+  buffer_address_type: i8
+  default_byte_order: LE
+
+Foo:
+  type: register
+  address: 0
+  size_bits: 0
+
+Bar:
+  type: command
+  address: 0
+
+Quux:
+  type: buffer
+  address: 0
