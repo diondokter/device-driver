@@ -1,16 +1,6 @@
 use std::path::Path;
 
-pub const OUTPUT_HEADER: &str = r#"#!/usr/bin/env cargo
----
-[package]
-edition = "2024"
-[dependencies]
-device-driver = { path="../../../device-driver", default-features=false }
----
-#![deny(warnings)]
-fn main() {}
-
-"#;
+pub const OUTPUT_HEADER: &str = include_str!("output_header.txt");
 
 include!(concat!(env!("OUT_DIR"), "/test_cases.rs"));
 
