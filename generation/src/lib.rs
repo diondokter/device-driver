@@ -153,6 +153,7 @@ fn format_code(input: &str) -> Result<String, anyhow::Error> {
     let mut cmd = std::process::Command::new("rustfmt");
 
     cmd.args(["--edition", "2024"])
+        .args(["--config", "newline_style=native"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
