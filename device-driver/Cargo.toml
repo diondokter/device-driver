@@ -12,7 +12,7 @@ description = "A toolkit to write better device drivers, faster"
 readme = "README.md"
 
 [dependencies]
-device-driver-macros = { version = "=1.0.4", path = "../macros", default-features = false, optional = true }
+device-driver-macros = { version = "=1.0.5", path = "../macros", default-features = false, optional = true }
 
 embedded-io = "0.6.1"
 embedded-io-async = "0.6.1"

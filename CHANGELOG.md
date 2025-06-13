@@ -2,6 +2,8 @@
 
 ### Unreleased
 
+### 1.0.5 (12-06-25)
+
 - Backend code generation switched from quote/syn to askama
 - Fixed cfg gates on fields (didn't compile before)
 - Fixed WO fields (would cause a compile error in generated code)
