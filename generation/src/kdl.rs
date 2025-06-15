@@ -24,13 +24,11 @@ pub fn transform(
         }
     };
 
-    let devices = document
+    document
         .nodes()
         .iter()
         .filter_map(|node| transform_device(node, source_code.clone(), diagnostics))
-        .collect();
-
-    devices
+        .collect()
 }
 
 fn transform_device(
@@ -46,7 +44,7 @@ fn transform_device(
         return None;
     }
 
-    let device_name = match node.entries().get(0) {
+    let device_name = match node.entries().first() {
         Some(entry) => {
             if let KdlValue::String(device_name) = entry.value()
                 && entry.name().is_none()

@@ -129,28 +129,28 @@ impl GenType {
                 "json" => Ok((
                     device_driver_generation::transform_json(
                         manifest_contents,
-                        &device_name.as_ref().expect("No device name specified"),
+                        device_name.as_ref().expect("No device name specified"),
                     ),
                     Diagnostics::new(),
                 )),
                 "yaml" => Ok((
                     device_driver_generation::transform_yaml(
                         manifest_contents,
-                        &device_name.as_ref().expect("No device name specified"),
+                        device_name.as_ref().expect("No device name specified"),
                     ),
                     Diagnostics::new(),
                 )),
                 "toml" => Ok((
                     device_driver_generation::transform_toml(
                         manifest_contents,
-                        &device_name.as_ref().expect("No device name specified"),
+                        device_name.as_ref().expect("No device name specified"),
                     ),
                     Diagnostics::new(),
                 )),
                 "dsl" => Ok((
                     device_driver_generation::transform_dsl(
                         syn::parse_str(manifest_contents).expect("Could not (syn) parse the DSL"),
-                        &device_name.as_ref().expect("No device name specified"),
+                        device_name.as_ref().expect("No device name specified"),
                     ),
                     Diagnostics::new(),
                 )),

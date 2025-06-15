@@ -13,6 +13,12 @@ pub struct Diagnostics {
     reports: Vec<Report>,
 }
 
+impl Default for Diagnostics {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Diagnostics {
     pub fn new() -> Self {
         Self {

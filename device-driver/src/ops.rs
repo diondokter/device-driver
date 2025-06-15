@@ -403,28 +403,28 @@ mod tests {
 
             let test_value = unsafe { load_lsb0::<u32, LE>(&data, start, end) };
             let check_value = data.view_bits::<bitvec::order::Lsb0>()[start..end].load_le::<u32>();
-            println!("LE Lsb0: {:016b} *", check_value);
-            println!("LE Lsb0: {:016b}", test_value);
+            println!("LE Lsb0: {check_value:016b} *");
+            println!("LE Lsb0: {test_value:016b}");
             assert_eq!(test_value, check_value);
 
             let test_value = unsafe { load_lsb0::<u32, BE>(&data, start, end) };
             let check_value =
                 reversed_data.view_bits::<bitvec::order::Lsb0>()[start..end].load_le::<u32>();
-            println!("BE Lsb0: {:016b} *", check_value);
-            println!("BE Lsb0: {:016b}", test_value);
+            println!("BE Lsb0: {check_value:016b} *");
+            println!("BE Lsb0: {test_value:016b}");
             assert_eq!(test_value, check_value);
 
             let test_value = unsafe { load_msb0::<u32, LE>(&data, start, end) };
             let check_value = data.view_bits::<bitvec::order::Msb0>()[start..end].load_le::<u32>();
-            println!("LE Msb0: {:016b} *", check_value);
-            println!("LE Msb0: {:016b}", test_value);
+            println!("LE Msb0: {check_value:016b} *");
+            println!("LE Msb0: {test_value:016b}");
             assert_eq!(test_value, check_value);
 
             let test_value = unsafe { load_msb0::<u32, BE>(&data, start, end) };
             let check_value =
                 reversed_data.view_bits::<bitvec::order::Msb0>()[start..end].load_le::<u32>();
-            println!("BE Msb0: {:016b} *", check_value);
-            println!("BE Msb0: {:016b}", test_value);
+            println!("BE Msb0: {check_value:016b} *");
+            println!("BE Msb0: {test_value:016b}");
             assert_eq!(test_value, check_value);
         }
     }

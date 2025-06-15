@@ -25,7 +25,7 @@ pub fn transform(device: mir::Device) -> anyhow::Result<lir::Device> {
         BorrowedBlock {
             cfg_attr: &mir::Cfg::new(None),
             description: &format!("Root block of the {driver_name} driver"),
-            name: &driver_name.into(),
+            name: &driver_name,
             address_offset: &0,
             repeat: &None,
             objects: &device.objects,
