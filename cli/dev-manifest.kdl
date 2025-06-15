@@ -1,0 +1,17 @@
+a 1
+
+device {
+
+}
+
+device 1 {
+
+}
+
+device Foo {
+
+}
+
+device Foo abc def {
+
+}

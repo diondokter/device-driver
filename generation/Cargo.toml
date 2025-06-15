@@ -22,6 +22,8 @@ bitvec = "1.0.1"
 dd-manifest-tree = { version = "1.0.0", path = "../dd-manifest-tree", optional = true, default-features = false }
 askama = { version = "0.14.0", default-features = false, features = ["derive", "alloc"] }
 kdl = "6.3.4"
+miette = "7.6.0"
+thiserror = "2.0.12"
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"
