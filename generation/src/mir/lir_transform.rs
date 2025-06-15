@@ -1,7 +1,5 @@
 use std::ops::{Add, Not};
 
-use anyhow::ensure;
-
 use crate::{
     lir,
     mir::{self, passes::search_object},
@@ -12,18 +10,8 @@ use super::{
     passes::{find_min_max_addresses, recurse_objects},
 };
 
-pub fn transform(device: mir::Device, driver_name: &str) -> anyhow::Result<lir::Device> {
-    let lenient_pascal_converter = convert_case::Converter::new()
-        .set_boundaries(&convert_case::Boundary::list_from("aA:AAa:_:-: :a1:A1:1A"))
-        .set_pattern(convert_case::Pattern::Capital);
-    let converted_driver_name = lenient_pascal_converter.convert(driver_name);
-
-    ensure!(
-        driver_name == converted_driver_name,
-        "The device name must be given in PascalCase, e.g. \"{}\"",
-        converted_driver_name
-    );
-
+pub fn transform(device: mir::Device) -> anyhow::Result<lir::Device> {
+    let driver_name = device.name.clone().unwrap();
     let mir_enums = collect_enums(&device)?;
     let lir_enums = mir_enums
         .iter()
@@ -37,7 +25,7 @@ pub fn transform(device: mir::Device, driver_name: &str) -> anyhow::Result<lir::
         BorrowedBlock {
             cfg_attr: &mir::Cfg::new(None),
             description: &format!("Root block of the {driver_name} driver"),
-            name: &driver_name.into(),
+            name: &driver_name,
             address_offset: &0,
             repeat: &None,
             objects: &device.objects,
