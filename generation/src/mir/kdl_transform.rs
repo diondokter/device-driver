@@ -238,7 +238,7 @@ fn transform_register(register: &Register, global_config: &GlobalConfig) -> KdlD
     address_node.push(*address as i128);
     document.nodes_mut().push(address_node);
 
-    fields_node.push(("size_bits", *size_bits as i128));
+    fields_node.push(("size-bits", *size_bits as i128));
 
     if let Some(reset_value) = reset_value {
         let mut reset_value_node = KdlNode::new("reset-value");
@@ -457,8 +457,8 @@ fn transform_command(command: &Command, global_config: &GlobalConfig) -> KdlDocu
         document.nodes_mut().push(address_overlap_node);
     }
 
-    in_fields_node.push(("size_bits", *size_bits_in as i128));
-    out_fields_node.push(("size_bits", *size_bits_out as i128));
+    in_fields_node.push(("size-bits", *size_bits_in as i128));
+    out_fields_node.push(("size-bits", *size_bits_out as i128));
 
     if let Some(repeat) = repeat {
         document.nodes_mut().push(transform_repeat_config(repeat));
