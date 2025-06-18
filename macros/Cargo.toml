@@ -16,7 +16,7 @@ readme = "README.md"
 proc-macro = true
 
 [dependencies]
-device-driver-generation = { version = "=1.0.5", path = "../generation", default-features = false }
+device-driver-generation = { version = "=1.0.6", path = "../generation", default-features = false }
 syn = { version = "2.0" }
 proc-macro2 = "1.0"
 
