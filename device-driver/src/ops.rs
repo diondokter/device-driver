@@ -5,7 +5,7 @@ use core::ops::{BitAnd, BitOr, BitOrAssign, Shl, Shr};
 ///
 /// ## Safety:
 ///
-/// `start` and `end` must lie in the range `0..=data.len()*8` and the difference between them must be at least 1
+/// `start` and `end` must lie in the range `0..=data.len()*8`
 #[inline(always)]
 pub unsafe fn load_lsb0<T, ByteO: ByteOrder>(data: &[u8], start: usize, end: usize) -> T
 where
@@ -43,7 +43,7 @@ where
     }
 
     T::cast_deduplicate_back(unsafe { inner::<T::DedupType, ByteO>(data, start, end) })
-        .sign_extend(unsafe { end.unchecked_sub(start).unchecked_sub(1) })
+        .sign_extend(end - start - 1)
 }
 
 /// Store an integer into a byte slice located at the `start`..`end` range.
@@ -51,7 +51,7 @@ where
 ///
 /// ## Safety:
 ///
-/// `start` and `end` must lie in the range `0..=data.len()*8` and the difference between them must be at least 1
+/// `start` and `end` must lie in the range `0..=data.len()*8`
 #[inline(always)]
 pub unsafe fn store_lsb0<T, ByteO: ByteOrder>(value: T, start: usize, end: usize, data: &mut [u8])
 where
@@ -97,7 +97,7 @@ where
 ///
 /// ## Safety:
 ///
-/// `start` and `end` must lie in the range `0..=data.len()*8` and the difference between them must be at least 1
+/// `start` and `end` must lie in the range `0..=data.len()*8`
 #[inline(always)]
 pub unsafe fn load_msb0<T, ByteO: ByteOrder>(data: &[u8], start: usize, end: usize) -> T
 where
@@ -140,7 +140,7 @@ where
     }
 
     T::cast_deduplicate_back(unsafe { inner::<T::DedupType, ByteO>(data, start, end) })
-        .sign_extend(unsafe { end.unchecked_sub(start).unchecked_sub(1) })
+        .sign_extend(end - start - 1)
 }
 
 /// Store an integer into byte slice located at the `start`..`end` range.
@@ -149,7 +149,7 @@ where
 ///
 /// ## Safety:
 ///
-/// `start` and `end` must lie in the range `0..=data.len()*8` and the difference between them must be at least 1
+/// `start` and `end` must lie in the range `0..=data.len()*8`
 #[inline(always)]
 pub unsafe fn store_msb0<T, ByteO: ByteOrder>(value: T, start: usize, end: usize, data: &mut [u8])
 where
@@ -328,9 +328,7 @@ pub trait Integer:
         + Shr<usize, Output = Self::DedupType>;
 
     const SIGN_EXTEND_ONES: Self;
-    const ZERO: Self;
     const ONE: Self;
-    const BITS: usize;
 
     /// Cast the integer to a common type to avoid generics bloat
     fn cast_deduplicate(self) -> Self::DedupType;
@@ -338,14 +336,6 @@ pub trait Integer:
 
     #[inline]
     fn sign_extend(self, sign_bit_index: usize) -> Self {
-        if Self::SIGN_EXTEND_ONES == Self::ZERO {
-            return self;
-        }
-
-        if sign_bit_index > Self::BITS {
-            return self;
-        }
-
         let sign_bit = Self::ONE << sign_bit_index;
 
         if (self & sign_bit) != sign_bit {
@@ -361,9 +351,7 @@ macro_rules! impl_integer {
         impl Integer for $target {
             type DedupType = $dedup;
             const SIGN_EXTEND_ONES: Self = $sign_ones;
-            const ZERO: Self = 0;
             const ONE: Self = 1;
-            const BITS: usize = Self::BITS as usize;
 
             fn cast_deduplicate(self) -> Self::DedupType {
                 self as _
