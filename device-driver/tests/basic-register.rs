@@ -61,7 +61,7 @@ device_driver::create_device!(
             /// This is a bool!
             value0: bool = 0,
             value1: uint = 1..16,
-            value2: int = 16..24,
+            value2: int = 17..24,
         },
         /// This is the Foo register
         register FooRepeated {
@@ -107,7 +107,7 @@ fn test_basic_read_modify_write() {
 
     assert_eq!(
         &device.interface.device_memory[0..3],
-        &[(0x39 << 1) + 1, 0x30 << 1, 0xFF]
+        &[(0x39 << 1) + 1, 0x30 << 1, 0xFE]
     );
 }
 

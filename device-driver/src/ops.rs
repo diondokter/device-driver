@@ -1,15 +1,15 @@
-use core::ops::{BitOrAssign, Shl, Shr};
+use core::ops::{BitAnd, BitOr, BitOrAssign, Shl, Shr};
 
 /// Load an integer from a byte slice located at the `start`..`end` range.
 /// The integer is loaded with the [LE] or [BE] byte order generic param and using lsb0 bit order.
 ///
 /// ## Safety:
 ///
-/// `start` and `end` must lie in the range `0..data.len()*8`.
+/// `start` and `end` must lie in the range `0..=data.len()*8`
 #[inline(always)]
 pub unsafe fn load_lsb0<T, ByteO: ByteOrder>(data: &[u8], start: usize, end: usize) -> T
 where
-    T: Default + Shl<usize, Output = T> + BitOrAssign + DedupCast + TruncateToU8,
+    T: Default + Shl<usize, Output = T> + BitOrAssign + Integer + TruncateToU8,
 {
     #[inline(never)]
     unsafe fn inner<T, ByteO: ByteOrder>(data: &[u8], start: usize, end: usize) -> T
@@ -42,7 +42,8 @@ where
         output
     }
 
-    T::cast_back(unsafe { inner::<T::DedupType, ByteO>(data, start, end) })
+    T::cast_deduplicate_back(unsafe { inner::<T::DedupType, ByteO>(data, start, end) })
+        .sign_extend(end - start - 1)
 }
 
 /// Store an integer into a byte slice located at the `start`..`end` range.
@@ -50,11 +51,11 @@ where
 ///
 /// ## Safety:
 ///
-/// `start` and `end` must lie in the range `0..data.len()*8`.
+/// `start` and `end` must lie in the range `0..=data.len()*8`
 #[inline(always)]
 pub unsafe fn store_lsb0<T, ByteO: ByteOrder>(value: T, start: usize, end: usize, data: &mut [u8])
 where
-    T: Copy + TruncateToU8 + Shr<usize, Output = T> + DedupCast,
+    T: Copy + TruncateToU8 + Shr<usize, Output = T> + Integer,
 {
     #[inline(never)]
     unsafe fn inner<T, ByteO: ByteOrder>(value: T, start: usize, end: usize, data: &mut [u8])
@@ -87,7 +88,7 @@ where
         }
     }
 
-    unsafe { inner::<T::DedupType, ByteO>(value.cast(), start, end, data) }
+    unsafe { inner::<T::DedupType, ByteO>(value.cast_deduplicate(), start, end, data) }
 }
 
 /// Load an integer from a byte slice located at the `start`..`end` range.
@@ -96,11 +97,11 @@ where
 ///
 /// ## Safety:
 ///
-/// `start` and `end` must lie in the range `0..data.len()*8`.
+/// `start` and `end` must lie in the range `0..=data.len()*8`
 #[inline(always)]
 pub unsafe fn load_msb0<T, ByteO: ByteOrder>(data: &[u8], start: usize, end: usize) -> T
 where
-    T: Default + Shl<usize, Output = T> + BitOrAssign + DedupCast + TruncateToU8,
+    T: Default + Shl<usize, Output = T> + BitOrAssign + Integer + TruncateToU8,
 {
     #[inline(never)]
     unsafe fn inner<T, ByteO: ByteOrder>(data: &[u8], start: usize, end: usize) -> T
@@ -138,7 +139,8 @@ where
         output
     }
 
-    T::cast_back(unsafe { inner::<T::DedupType, ByteO>(data, start, end) })
+    T::cast_deduplicate_back(unsafe { inner::<T::DedupType, ByteO>(data, start, end) })
+        .sign_extend(end - start - 1)
 }
 
 /// Store an integer into byte slice located at the `start`..`end` range.
@@ -147,11 +149,11 @@ where
 ///
 /// ## Safety:
 ///
-/// `start` and `end` must lie in the range `0..data.len()*8`.
+/// `start` and `end` must lie in the range `0..=data.len()*8`
 #[inline(always)]
 pub unsafe fn store_msb0<T, ByteO: ByteOrder>(value: T, start: usize, end: usize, data: &mut [u8])
 where
-    T: Copy + TruncateToU8 + Shr<usize, Output = T> + DedupCast,
+    T: Copy + TruncateToU8 + Shr<usize, Output = T> + Integer,
 {
     #[inline(never)]
     unsafe fn inner<T, ByteO: ByteOrder>(value: T, start: usize, end: usize, data: &mut [u8])
@@ -189,7 +191,7 @@ where
         }
     }
 
-    unsafe { inner::<T::DedupType, ByteO>(value.cast(), start, end, data) }
+    unsafe { inner::<T::DedupType, ByteO>(value.cast_deduplicate(), start, end, data) }
 }
 
 #[inline]
@@ -314,7 +316,9 @@ impl_truncate_to_u8!(
     u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize
 );
 
-pub trait DedupCast {
+pub trait Integer:
+    Sized + Copy + Shl<usize, Output = Self> + BitOr<Output = Self> + BitAnd<Output = Self> + PartialEq
+{
     type DedupType: Default
         + From<u8>
         + Shl<usize, Output = Self::DedupType>
@@ -323,48 +327,65 @@ pub trait DedupCast {
         + TruncateToU8
         + Shr<usize, Output = Self::DedupType>;
 
-    fn cast(self) -> Self::DedupType;
-    fn cast_back(val: Self::DedupType) -> Self;
+    const SIGN_EXTEND_ONES: Self;
+    const ONE: Self;
+
+    /// Cast the integer to a common type to avoid generics bloat
+    fn cast_deduplicate(self) -> Self::DedupType;
+    fn cast_deduplicate_back(val: Self::DedupType) -> Self;
+
+    #[inline]
+    fn sign_extend(self, sign_bit_index: usize) -> Self {
+        let sign_bit = Self::ONE << sign_bit_index;
+
+        if (self & sign_bit) != sign_bit {
+            return self;
+        }
+
+        self | (Self::SIGN_EXTEND_ONES << sign_bit_index)
+    }
 }
 
-macro_rules! impl_dedup_cast {
-    ($target:ty, $dedup:ty) => {
-        impl DedupCast for $target {
+macro_rules! impl_integer {
+    ($target:ty, $dedup:ty, $sign_ones:expr) => {
+        impl Integer for $target {
             type DedupType = $dedup;
+            const SIGN_EXTEND_ONES: Self = $sign_ones;
+            const ONE: Self = 1;
 
-            fn cast(self) -> Self::DedupType {
+            fn cast_deduplicate(self) -> Self::DedupType {
                 self as _
             }
 
-            fn cast_back(val: Self::DedupType) -> Self {
+            fn cast_deduplicate_back(val: Self::DedupType) -> Self {
                 val as _
             }
         }
     };
-    ($target:ty, $dedup:ty, $cfg:meta) => {
+    ($target:ty, $dedup:ty, $sign_ones:expr, $cfg:meta) => {
         #[$cfg]
-        impl_dedup_cast!($target, $dedup);
+        impl_integer!($target, $dedup, $sign_ones);
     };
 }
 
-impl_dedup_cast!(u8, usize);
-impl_dedup_cast!(u16, usize);
-impl_dedup_cast!(u32, u32, cfg(target_pointer_width = "16"));
-impl_dedup_cast!(u32, usize, cfg(not(target_pointer_width = "16")));
-impl_dedup_cast!(u64, u64, cfg(target_pointer_width = "16"));
-impl_dedup_cast!(u64, u64, cfg(target_pointer_width = "32"));
-impl_dedup_cast!(u64, usize, cfg(target_pointer_width = "64"));
-impl_dedup_cast!(u128, u128);
-impl_dedup_cast!(usize, usize);
-impl_dedup_cast!(i8, isize);
-impl_dedup_cast!(i16, isize);
-impl_dedup_cast!(i32, i32, cfg(target_pointer_width = "16"));
-impl_dedup_cast!(i32, isize, cfg(not(target_pointer_width = "16")));
-impl_dedup_cast!(i64, i64, cfg(target_pointer_width = "16"));
-impl_dedup_cast!(i64, i64, cfg(target_pointer_width = "32"));
-impl_dedup_cast!(i64, isize, cfg(target_pointer_width = "64"));
-impl_dedup_cast!(i128, i128);
-impl_dedup_cast!(isize, isize);
+impl_integer!(u8, usize, 0);
+impl_integer!(u16, usize, 0);
+impl_integer!(u32, u32, 0, cfg(target_pointer_width = "16"));
+impl_integer!(u32, usize, 0, cfg(not(target_pointer_width = "16")));
+impl_integer!(u64, u64, 0, cfg(target_pointer_width = "16"));
+impl_integer!(u64, u64, 0, cfg(target_pointer_width = "32"));
+impl_integer!(u64, usize, 0, cfg(target_pointer_width = "64"));
+impl_integer!(u128, u128, 0);
+impl_integer!(usize, usize, 0);
+impl_integer!(i8, usize, !0);
+impl_integer!(i16, usize, !0);
+impl_integer!(i32, u32, !0, cfg(target_pointer_width = "16"));
+impl_integer!(i32, usize, !0, cfg(not(target_pointer_width = "16")));
+impl_integer!(i64, u64, !0, cfg(target_pointer_width = "16"));
+impl_integer!(i64, u64, !0, cfg(target_pointer_width = "32"));
+impl_integer!(i64, usize, !0, cfg(target_pointer_width = "64"));
+impl_integer!(i128, u128, !0);
+impl_integer!(isize, usize, !0);
 
 #[cfg(test)]
 mod tests {
@@ -482,6 +503,19 @@ mod tests {
             println!("BE Msb0: {:#010b}", Bytes(&test_data1));
             assert_eq!(test_data, check_data);
             assert_eq!(test_data1, check_data1);
+        }
+    }
+
+    #[test]
+    fn twos_complement() {
+        for i in 1..=32 {
+            println!("Bit width: {i}");
+            let mut data = [0; 4];
+
+            unsafe { store_lsb0::<i32, LE>(-1, 0, i, &mut data) };
+            let read_back = unsafe { load_lsb0::<i32, LE>(&data, 0, i) };
+
+            assert_eq!(read_back, -1);
         }
     }
 }
