@@ -15,3 +15,22 @@ device Foo {
 device Foo abc def {
 
 }
+
+device Foo {
+    blah 123
+}
+
+device Foo {
+    default-register-access RW
+    default-register-access RO
+}
+
+device Foo {
+    default-register-access Blah
+    default-buffer-access
+    default-field-access RW RO WO
+}
+
+device Foo {
+    default-register-access value=RW
+}
