@@ -2,6 +2,11 @@
 
 ### Unreleased
 
+### 1.0.6 (18-06-25)
+
+- Fixed regression introduced in 1.0.3 where signed integers were not sign-extended
+  and would thus be positive instead of their intended two's-complement negative.
+
 ### 1.0.5 (12-06-25)
 
 - Backend code generation switched from quote/syn to askama

@@ -75,5 +75,6 @@ It's nice to have examples:
 - [iqs323 inductive/capacitive sensing controller](https://github.com/tactile-eng/iqs323-driver)
 - [VCNL36825T proximity sensor](https://github.com/LeFrenchPOC/vcnl36825t-rs)
 - [AXP192 Power Management IC](https://github.com/okhsunrog/axp192-dd)
+- [ONSEMI FUSB302B USB-PD PHY](https://github.com/okhsunrog/fusb302b)
 
 Feel free to add to this list!
