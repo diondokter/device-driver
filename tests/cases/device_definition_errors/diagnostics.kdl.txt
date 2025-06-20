@@ -1,0 +1,131 @@
+  error: Unexpected node
+   ╭─[cases\device_definition_errors\input.kdl:1:1]
+ 1 │ a 1
+   · ┬
+   · ╰── The unexpected node
+ 2 │ 
+   ╰────
+  help: Expected a node with one of these names: `device`
+
+  error: Missing object name
+   ╭─[cases\device_definition_errors\input.kdl:3:1]
+ 2 │ 
+ 3 │ device {
+   · ───┬──
+   ·    ╰── For this object
+ 4 │ 
+   ╰────
+  help: The name is specified by the first entry of the node. It must have no entry-name and must be a string, e.g.
+        `device Foo { }`
+
+  error: Missing object name
+   ╭─[cases\device_definition_errors\input.kdl:7:1]
+ 6 │ 
+ 7 │ device 1 {
+   · ───┬── ┬
+   ·    │   ╰── Found this entry instead which is not a valid name
+   ·    ╰── For this object
+ 8 │ 
+   ╰────
+  help: The name is specified by the first entry of the node. It must have no entry-name and must be a string, e.g.
+        `device Foo { }`
+
+  warning: Empty node
+    ╭─[cases\device_definition_errors\input.kdl:11:1]
+ 10 │     
+ 11 │ ╭─▶ device Foo {
+ 12 │ │   
+ 13 │ ├─▶ }
+    · ╰──── The empty node
+ 14 │     
+    ╰────
+  help: This type of node should have children to specify what it contains
+
+  error: Unexpected entries
+    ╭─[cases\device_definition_errors\input.kdl:15:12]
+ 14 │ 
+ 15 │ device Foo abc def {
+    ·            ─── ───
+ 16 │ 
+    ╰────
+  help: Some entries require a name, require to be anonymous or are expected to be of a certain type. Check the book
+        to see the specification
+        These entries may also just be superfluous. Try removing them or check other errors to see what's expected
+
+  error: Unexpected node
+    ╭─[cases\device_definition_errors\input.kdl:20:5]
+ 19 │ device Foo {
+ 20 │     blah 123
+    ·     ──┬─
+    ·       ╰── The unexpected node
+ 21 │ }
+    ╰────
+  help: Expected a node with one of these names: `default-register-access`, `default-field-access`, `default-buffer-
+        access`, `default-byte-order`, `default-bit-order`, `register-address-type`, `command-address-type`, `buffer-
+        address-type`, `name-word-boundaries`, `defmt-feature`, `block`, `register`, `command`, `buffer`, `ref`
+
+  error: Duplicate node
+    ╭─[cases\device_definition_errors\input.kdl:25:5]
+ 23 │ device Foo {
+ 24 │     default-register-access RW
+    ·     ─────────────┬────────────
+    ·                  ╰── The original node
+ 25 │     default-register-access RO
+    ·     ─────────────┬────────────
+    ·                  ╰── The duplicate node
+ 26 │ }
+    ╰────
+  help: This type of node can only appear once. Remove the second occurance
+
+  error: Unexpected value
+    ╭─[cases\device_definition_errors\input.kdl:29:29]
+ 28 │ device Foo {
+ 29 │     default-register-access Blah
+    ·                             ──┬─
+    ·                               ╰── The unexpected value
+ 30 │     default-buffer-access
+    ╰────
+  help: Expected one of these values: `RW`, `RO`, `WO`
+
+  error: Missing entry
+    ╭─[cases\device_definition_errors\input.kdl:30:5]
+ 29 │     default-register-access Blah
+ 30 │     default-buffer-access
+    ·     ──────────┬──────────
+    ·               ╰── For this node
+ 31 │     default-field-access RW RO WO
+    ╰────
+  help: This node should have one or more of these entries: `RW`, `RO`, `WO`
+
+  error: Unexpected entries
+    ╭─[cases\device_definition_errors\input.kdl:31:29]
+ 30 │     default-buffer-access
+ 31 │     default-field-access RW RO WO
+    ·                             ── ──
+ 32 │ }
+    ╰────
+  help: Some entries require a name, require to be anonymous or are expected to be of a certain type. Check the book
+        to see the specification
+        These entries may also just be superfluous. Try removing them or check other errors to see what's expected
+
+  error: Unexpected entries
+    ╭─[cases\device_definition_errors\input.kdl:35:29]
+ 34 │ device Foo {
+ 35 │     default-register-access value=RW
+    ·                             ────────
+ 36 │ }
+    ╰────
+  help: Some entries require a name, require to be anonymous or are expected to be of a certain type. Check the book
+        to see the specification
+        These entries may also just be superfluous. Try removing them or check other errors to see what's expected
+
+  error: Missing entry
+    ╭─[cases\device_definition_errors\input.kdl:35:5]
+ 34 │ device Foo {
+ 35 │     default-register-access value=RW
+    ·     ───────────┬───────────
+    ·                ╰── For this node
+ 36 │ }
+    ╰────
+  help: This node should have one or more of these entries: `RW`, `RO`, `WO`
+

@@ -1,5 +1,7 @@
 use std::{fs::DirEntry, path::PathBuf};
 
+use itertools::Itertools;
+
 fn main() {
     println!("cargo::rerun-if-changed=build.rs");
     println!("cargo::rerun-if-changed=cases");
@@ -24,9 +26,25 @@ fn main() {
 fn generate_test_function(test_dir: DirEntry) -> String {
     let test_dir_absolute = std::path::absolute(test_dir.path()).unwrap();
 
+    let inputs: Vec<PathBuf> = std::fs::read_dir(&test_dir_absolute)
+        .unwrap()
+        .filter(|entry| {
+            entry
+                .as_ref()
+                .unwrap()
+                .file_name()
+                .to_string_lossy()
+                .starts_with("input.")
+        })
+        .map(|entry| entry.unwrap().path())
+        .collect();
+
     let test_name = test_dir.file_name().to_string_lossy().to_string();
 
-    let input_path = test_dir_absolute.join("input.yaml").display().to_string();
+    let input_paths = inputs
+        .iter()
+        .map(|input_path| format!("Path::new(r\"{}\")", input_path.display().to_string()))
+        .join(", ");
     let output_path = test_dir_absolute
         .join(format!("{test_name}.rs"))
         .display()
@@ -36,10 +54,7 @@ fn generate_test_function(test_dir: DirEntry) -> String {
         "
 #[test]
 fn {test_name}() {{
-    const INPUT: &str = {input_path:?};
-    const OUTPUT: &str = {output_path:?};
-
-    crate::run_test(&Path::new(INPUT), &Path::new(OUTPUT));
+    crate::run_test(&[{input_paths}], &Path::new(r\"{output_path}\"));
 }}"
     )
 }

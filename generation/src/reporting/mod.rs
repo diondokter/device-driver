@@ -48,3 +48,12 @@ impl Diagnostics {
         Ok(())
     }
 }
+
+impl Display for Diagnostics {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for report in &self.reports {
+            writeln!(f, "{report:?}")?;
+        }
+        Ok(())
+    }
+}
