@@ -141,7 +141,7 @@ impl MissingEntry {
 #[derive(Error, Debug, Diagnostic)]
 #[error("Duplicate node")]
 #[diagnostic(
-    help("This type of node can only appear once. Remove the second occurance"),
+    help("This type of node can only appear once. Remove the second occurrence"),
     severity(Error)
 )]
 pub struct DuplicateNode {

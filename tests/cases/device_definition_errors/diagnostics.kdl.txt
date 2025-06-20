@@ -77,7 +77,7 @@
     ·                  ╰── The duplicate node
  26 │ }
     ╰────
-  help: This type of node can only appear once. Remove the second occurance
+  help: This type of node can only appear once. Remove the second occurrence
 
   error: Unexpected value
     ╭─[cases\device_definition_errors\input.kdl:29:29]
