@@ -4,7 +4,7 @@ use kdl::{KdlDocument, KdlNode, KdlValue};
 use miette::SourceSpan;
 
 use crate::{
-    mir::{Access, Device, GlobalConfig},
+    mir::{Device, GlobalConfig},
     reporting::{Diagnostics, NamedSourceCode, errors},
 };
 
@@ -72,7 +72,9 @@ fn transform_device(
     if node.entries().len() > 1 {
         diagnostics.add(errors::UnexpectedEntries {
             source_code,
-            entries: node.entries().iter().skip(1).map(|e| e.span()).collect(),
+            superfluous_entries: node.entries().iter().skip(1).map(|e| e.span()).collect(),
+            unexpected_name_entries: Vec::new(),
+            not_anonymous_entries: Vec::new(),
         });
         return None;
     }
@@ -147,71 +149,122 @@ fn transform_global_config_node(
 ) {
     match global_config_type {
         GlobalConfigType::DefaultRegisterAccess => {
-            if let Some(access) = parse_access(node, source_code.clone(), diagnostics) {
-                device.global_config.default_register_access = access;
+            if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
+                device.global_config.default_register_access = value;
             }
         }
         GlobalConfigType::DefaultFieldAccess => {
-            if let Some(access) = parse_access(node, source_code.clone(), diagnostics) {
-                device.global_config.default_field_access = access;
+            if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
+                device.global_config.default_field_access = value;
             }
         }
         GlobalConfigType::DefaultBufferAccess => {
-            if let Some(access) = parse_access(node, source_code.clone(), diagnostics) {
-                device.global_config.default_buffer_access = access;
+            if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
+                device.global_config.default_buffer_access = value;
             }
         }
-        GlobalConfigType::DefaultByteOrder => todo!(),
-        GlobalConfigType::DefaultBitOrder => todo!(),
-        GlobalConfigType::RegisterAddressType => todo!(),
-        GlobalConfigType::CommandAddressType => todo!(),
-        GlobalConfigType::BufferAddressType => todo!(),
+        GlobalConfigType::DefaultByteOrder => {
+            if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
+                device.global_config.default_byte_order = Some(value);
+            }
+        }
+        GlobalConfigType::DefaultBitOrder => {
+            if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
+                device.global_config.default_bit_order = value;
+            }
+        }
+        GlobalConfigType::RegisterAddressType => {
+            if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
+                device.global_config.register_address_type = Some(value);
+            }
+        }
+        GlobalConfigType::CommandAddressType => {
+            if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
+                device.global_config.command_address_type = Some(value);
+            }
+        }
+        GlobalConfigType::BufferAddressType => {
+            if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
+                device.global_config.buffer_address_type = Some(value);
+            }
+        }
         GlobalConfigType::NameWordBoundaries => todo!(),
-        GlobalConfigType::DefmtFeature => todo!(),
+        GlobalConfigType::DefmtFeature => {
+            if let Some(value) = parse_single_string(node, source_code.clone(), diagnostics, None).0
+            {
+                device.global_config.defmt_feature = Some(value);
+            }
+        }
     }
 }
 
-fn parse_access(
+fn parse_single_string(
     node: &KdlNode,
     source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
-) -> Option<Access> {
+    expected_entries: Option<&[&'static str]>,
+) -> (Option<String>, Option<SourceSpan>) {
     let unexpected_entries = errors::UnexpectedEntries {
         source_code: source_code.clone(),
-        entries: node
+        superfluous_entries: node
             .entries()
             .iter()
-            .enumerate()
-            .filter(|(index, entry)| *index > 0 || entry.name().is_some())
-            .map(|(_, entry)| entry.span())
+            .skip(1)
+            .map(|entry| entry.span())
+            .collect(),
+        unexpected_name_entries: Vec::new(),
+        not_anonymous_entries: node
+            .entries()
+            .first()
+            .iter()
+            .filter_map(|entry| entry.name().map(|_| entry.span()))
             .collect(),
     };
-    if !unexpected_entries.entries.is_empty() {
+    if !unexpected_entries.is_empty() {
         diagnostics.add(unexpected_entries);
     }
 
     match node.entries().first() {
         Some(entry) if entry.name().is_none() => match entry.value() {
-            KdlValue::String(val) if val == "RW" => Some(Access::RW),
-            KdlValue::String(val) if val == "RO" => Some(Access::RO),
-            KdlValue::String(val) if val == "WO" => Some(Access::WO),
+            KdlValue::String(val) => (Some(val.clone()), Some(entry.span())),
             _ => {
-                diagnostics.add(errors::UnexpectedValue {
+                diagnostics.add(errors::UnexpectedType {
                     source_code,
                     value_name: entry.span(),
-                    expected_values: vec!["RW", "RO", "WO"],
+                    expected_type: "string",
                 });
-                None
+                (None, Some(entry.span()))
             }
         },
         _ => {
             diagnostics.add(errors::MissingEntry {
                 source_code,
                 node_name: node.name().span(),
-                expected_entries: vec!["RW", "RO", "WO"],
+                expected_entries: expected_entries
+                    .map(|ee| ee.to_vec())
+                    .unwrap_or_else(|| vec!["string"]),
+            });
+            (None, None)
+        }
+    }
+}
+
+fn parse_single_string_value<T: strum::VariantNames + FromStr>(
+    node: &KdlNode,
+    source_code: NamedSourceCode,
+    diagnostics: &mut Diagnostics,
+) -> Option<T> {
+    match parse_single_string(node, source_code.clone(), diagnostics, Some(T::VARIANTS)) {
+        (Some(val), _) if T::from_str(&val).is_ok() => T::from_str(&val).ok(),
+        (Some(_), Some(entry)) => {
+            diagnostics.add(errors::UnexpectedValue {
+                source_code,
+                value_name: entry,
+                expected_values: T::VARIANTS.to_vec(),
             });
             None
         }
+        _ => None,
     }
 }
 

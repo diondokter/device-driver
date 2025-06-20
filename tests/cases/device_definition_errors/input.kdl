@@ -33,4 +33,8 @@ device Foo {
 
 device Foo {
     default-register-access value=RW
+    register-address-type u8
+    command-address-type 16
+    default-bit-order msb0
+    defmt-feature lol
 }

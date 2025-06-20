@@ -45,7 +45,9 @@
     ╭─[cases\device_definition_errors\input.kdl:15:12]
  14 │ 
  15 │ device Foo abc def {
-    ·            ─── ───
+    ·            ─┬─ ─┬─
+    ·             │   ╰── This entry is superfluous
+    ·             ╰── This entry is superfluous
  16 │ 
     ╰────
   help: Some entries require a name, require to be anonymous or are expected to be of a certain type. Check the book
@@ -101,7 +103,9 @@
     ╭─[cases\device_definition_errors\input.kdl:31:29]
  30 │     default-buffer-access
  31 │     default-field-access RW RO WO
-    ·                             ── ──
+    ·                             ─┬ ─┬
+    ·                              │  ╰── This entry is superfluous
+    ·                              ╰── This entry is superfluous
  32 │ }
     ╰────
   help: Some entries require a name, require to be anonymous or are expected to be of a certain type. Check the book
@@ -112,8 +116,9 @@
     ╭─[cases\device_definition_errors\input.kdl:35:29]
  34 │ device Foo {
  35 │     default-register-access value=RW
-    ·                             ────────
- 36 │ }
+    ·                             ────┬───
+    ·                                 ╰── This entry was expected to be anonymous
+ 36 │     register-address-type u8
     ╰────
   help: Some entries require a name, require to be anonymous or are expected to be of a certain type. Check the book
         to see the specification
@@ -125,7 +130,27 @@
  35 │     default-register-access value=RW
     ·     ───────────┬───────────
     ·                ╰── For this node
- 36 │ }
+ 36 │     register-address-type u8
     ╰────
   help: This node should have one or more of these entries: `RW`, `RO`, `WO`
+
+  error: Unexpected type
+    ╭─[cases\device_definition_errors\input.kdl:37:26]
+ 36 │     register-address-type u8
+ 37 │     command-address-type 16
+    ·                          ─┬
+    ·                           ╰── The value with unexpected type
+ 38 │     default-bit-order msb0
+    ╰────
+  help: Expected a string
+
+  error: Unexpected value
+    ╭─[cases\device_definition_errors\input.kdl:38:23]
+ 37 │     command-address-type 16
+ 38 │     default-bit-order msb0
+    ·                       ──┬─
+    ·                         ╰── The unexpected value
+ 39 │     defmt-feature lol
+    ╰────
+  help: Expected one of these values: `LSB0`, `MSB0`
 

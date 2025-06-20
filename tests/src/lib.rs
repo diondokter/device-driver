@@ -31,7 +31,7 @@ pub fn run_test(input_paths: &[&Path], output_path: &Path) {
                 Ok((transformed, diagnostics)) => (transformed, diagnostics.to_string()),
                 Err(diagnostics) => ("".to_string(), diagnostics.to_string()),
             },
-            e => panic!("Unrecognized extension: {:?}", e),
+            e => panic!("Unrecognized extension: {e:?}"),
         };
 
         let output = OUTPUT_HEADER.to_string() + &transformed;

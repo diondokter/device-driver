@@ -43,7 +43,7 @@ fn generate_test_function(test_dir: DirEntry) -> String {
 
     let input_paths = inputs
         .iter()
-        .map(|input_path| format!("Path::new(r\"{}\")", input_path.display().to_string()))
+        .map(|input_path| format!("Path::new(r\"{}\")", input_path.display()))
         .join(", ");
     let output_path = test_dir_absolute
         .join(format!("{test_name}.rs"))

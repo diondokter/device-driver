@@ -24,6 +24,7 @@ askama = { version = "0.14.0", default-features = false, features = ["derive", "
 kdl = "6.3.4"
 miette = "7.6.0"
 thiserror = "2.0.12"
+strum = { version = "0.27.1", features = ["derive"] }
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"

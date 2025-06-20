@@ -48,7 +48,7 @@ fn accept() {
                     Ok((transformed, diagnostics)) => (transformed, diagnostics.to_string()),
                     Err(diagnostics) => ("".to_string(), diagnostics.to_string()),
                 },
-                e => panic!("Unrecognized extension: {:?}", e),
+                e => panic!("Unrecognized extension: {e:?}"),
             };
 
             let diagnostics_path = input_path

@@ -34,8 +34,20 @@ These entries may also just be superfluous. Try removing them or check other err
 pub struct UnexpectedEntries {
     #[source_code]
     pub source_code: NamedSourceCode,
-    #[label(collection)]
-    pub entries: Vec<SourceSpan>,
+    #[label(collection, "This entry is superfluous")]
+    pub superfluous_entries: Vec<SourceSpan>,
+    #[label(collection, "This entry is has a name that's unexpected")]
+    pub unexpected_name_entries: Vec<SourceSpan>,
+    #[label(collection, "This entry was expected to be anonymous")]
+    pub not_anonymous_entries: Vec<SourceSpan>,
+}
+
+impl UnexpectedEntries {
+    pub fn is_empty(&self) -> bool {
+        self.superfluous_entries.is_empty()
+            && self.unexpected_name_entries.is_empty()
+            && self.not_anonymous_entries.is_empty()
+    }
 }
 
 #[derive(Error, Debug, Diagnostic)]
@@ -60,6 +72,21 @@ impl UnexpectedNode {
             .map(|name| format!("`{name}`"))
             .join(", ")
     }
+}
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Unexpected type")]
+#[diagnostic(
+    help("Expected a {}", self.expected_type),
+    severity(Error)
+)]
+pub struct UnexpectedType {
+    #[source_code]
+    pub source_code: NamedSourceCode,
+    #[label("The value with unexpected type")]
+    pub value_name: SourceSpan,
+
+    pub expected_type: &'static str,
 }
 
 #[derive(Error, Debug, Diagnostic)]
