@@ -47,7 +47,10 @@ impl Default for GlobalConfig {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, strum::VariantNames, strum::Display, strum::EnumString,
+)]
+#[strum(serialize_all = "lowercase")]
 pub enum Integer {
     U8,
     U16,
@@ -84,21 +87,17 @@ impl Integer {
     }
 }
 
-impl Display for Integer {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Integer::U8 => write!(f, "u8"),
-            Integer::U16 => write!(f, "u16"),
-            Integer::U32 => write!(f, "u32"),
-            Integer::I8 => write!(f, "i8"),
-            Integer::I16 => write!(f, "i16"),
-            Integer::I32 => write!(f, "i32"),
-            Integer::I64 => write!(f, "i64"),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Default,
+    strum::VariantNames,
+    strum::Display,
+    strum::EnumString,
+)]
 pub enum Access {
     #[default]
     RW,
@@ -116,35 +115,29 @@ impl Access {
     }
 }
 
-impl Display for Access {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{self:?}")
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, strum::VariantNames, strum::Display, strum::EnumString,
+)]
 pub enum ByteOrder {
     LE,
     BE,
 }
 
-impl Display for ByteOrder {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{self:?}")
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Default,
+    strum::VariantNames,
+    strum::Display,
+    strum::EnumString,
+)]
 pub enum BitOrder {
     #[default]
     LSB0,
     MSB0,
-}
-
-impl Display for BitOrder {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{self:?}")
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

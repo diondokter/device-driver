@@ -5,6 +5,7 @@ mod address_types_specified;
 mod bit_ranges_validated;
 mod bool_fields_checked;
 mod byte_order_specified;
+mod device_name_is_pascal;
 mod enum_values_checked;
 mod names_normalized;
 mod names_unique;
@@ -13,6 +14,7 @@ mod refs_validated;
 mod reset_values_converted;
 
 pub fn run_passes(device: &mut Device) -> anyhow::Result<()> {
+    device_name_is_pascal::run_pass(device)?;
     propagate_cfg::run_pass(device)?;
     names_normalized::run_pass(device)?;
     names_unique::run_pass(device)?;
