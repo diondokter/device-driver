@@ -1,5 +1,5 @@
   error: Unexpected node
-   ╭─[cases\device_definition_errors\input.kdl:1:1]
+   ╭─[cases/device_definition_errors/input.kdl:1:1]
  1 │ a 1
    · ┬
    · ╰── The unexpected node
@@ -8,7 +8,7 @@
   help: Expected a node with one of these names: `device`
 
   error: Missing object name
-   ╭─[cases\device_definition_errors\input.kdl:3:1]
+   ╭─[cases/device_definition_errors/input.kdl:3:1]
  2 │ 
  3 │ device {
    · ───┬──
@@ -19,7 +19,7 @@
         `device Foo { }`
 
   error: Missing object name
-   ╭─[cases\device_definition_errors\input.kdl:7:1]
+   ╭─[cases/device_definition_errors/input.kdl:7:1]
  6 │ 
  7 │ device 1 {
    · ───┬── ┬
@@ -31,7 +31,7 @@
         `device Foo { }`
 
   warning: Empty node
-    ╭─[cases\device_definition_errors\input.kdl:11:1]
+    ╭─[cases/device_definition_errors/input.kdl:11:1]
  10 │     
  11 │ ╭─▶ device Foo {
  12 │ │   
@@ -42,7 +42,7 @@
   help: This type of node should have children to specify what it contains
 
   error: Unexpected entries
-    ╭─[cases\device_definition_errors\input.kdl:15:12]
+    ╭─[cases/device_definition_errors/input.kdl:15:12]
  14 │ 
  15 │ device Foo abc def {
     ·            ─┬─ ─┬─
@@ -55,7 +55,7 @@
         These entries may also just be superfluous. Try removing them or check other errors to see what's expected
 
   error: Unexpected node
-    ╭─[cases\device_definition_errors\input.kdl:20:5]
+    ╭─[cases/device_definition_errors/input.kdl:20:5]
  19 │ device Foo {
  20 │     blah 123
     ·     ──┬─
@@ -67,7 +67,7 @@
         address-type`, `name-word-boundaries`, `defmt-feature`, `block`, `register`, `command`, `buffer`, `ref`
 
   error: Duplicate node
-    ╭─[cases\device_definition_errors\input.kdl:25:5]
+    ╭─[cases/device_definition_errors/input.kdl:25:5]
  23 │ device Foo {
  24 │     default-register-access RW
     ·     ─────────────┬────────────
@@ -80,7 +80,7 @@
   help: This type of node can only appear once. Remove the second occurrence
 
   error: Unexpected value
-    ╭─[cases\device_definition_errors\input.kdl:29:29]
+    ╭─[cases/device_definition_errors/input.kdl:29:29]
  28 │ device Foo {
  29 │     default-register-access Blah
     ·                             ──┬─
@@ -90,7 +90,7 @@
   help: Expected one of these values: `RW`, `RO`, `WO`
 
   error: Missing entry
-    ╭─[cases\device_definition_errors\input.kdl:30:5]
+    ╭─[cases/device_definition_errors/input.kdl:30:5]
  29 │     default-register-access Blah
  30 │     default-buffer-access
     ·     ──────────┬──────────
@@ -100,7 +100,7 @@
   help: This node should have one or more of these entries: `RW`, `RO`, `WO`
 
   error: Unexpected entries
-    ╭─[cases\device_definition_errors\input.kdl:31:29]
+    ╭─[cases/device_definition_errors/input.kdl:31:29]
  30 │     default-buffer-access
  31 │     default-field-access RW RO WO
     ·                             ─┬ ─┬
@@ -113,7 +113,7 @@
         These entries may also just be superfluous. Try removing them or check other errors to see what's expected
 
   error: Unexpected entries
-    ╭─[cases\device_definition_errors\input.kdl:35:29]
+    ╭─[cases/device_definition_errors/input.kdl:35:29]
  34 │ device Foo {
  35 │     default-register-access value=RW
     ·                             ────┬───
@@ -125,7 +125,7 @@
         These entries may also just be superfluous. Try removing them or check other errors to see what's expected
 
   error: Missing entry
-    ╭─[cases\device_definition_errors\input.kdl:35:5]
+    ╭─[cases/device_definition_errors/input.kdl:35:5]
  34 │ device Foo {
  35 │     default-register-access value=RW
     ·     ───────────┬───────────
@@ -135,7 +135,7 @@
   help: This node should have one or more of these entries: `RW`, `RO`, `WO`
 
   error: Unexpected type
-    ╭─[cases\device_definition_errors\input.kdl:37:26]
+    ╭─[cases/device_definition_errors/input.kdl:37:26]
  36 │     register-address-type u8
  37 │     command-address-type 16
     ·                          ─┬
@@ -145,7 +145,7 @@
   help: Expected a string
 
   error: Unexpected value
-    ╭─[cases\device_definition_errors\input.kdl:38:23]
+    ╭─[cases/device_definition_errors/input.kdl:38:23]
  37 │     command-address-type 16
  38 │     default-bit-order msb0
     ·                       ──┬─

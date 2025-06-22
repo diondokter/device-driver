@@ -1,8 +1,13 @@
 use std::{
     ops::Deref,
     path::Path,
-    sync::atomic::{AtomicBool, Ordering},
+    sync::{
+        LazyLock,
+        atomic::{AtomicBool, Ordering},
+    },
 };
+
+use regex::Regex;
 
 pub const OUTPUT_HEADER: &str = include_str!("output_header.txt");
 
@@ -43,14 +48,14 @@ pub fn run_test(input_paths: &[&Path], output_path: &Path) {
 
         pretty_assertions::assert_str_eq!(
             expected_diagnostics,
-            diagnostics,
+            normalize_test_output(diagnostics),
             "Diagnostics are not equal: {}",
             diagnostics_path.display()
         );
 
         pretty_assertions::assert_str_eq!(
             expected_output,
-            output,
+            normalize_test_output(output),
             "Failed output file: {}",
             output_path.display()
         );
@@ -111,4 +116,13 @@ pub fn set_miette_hook() {
         }))
         .unwrap();
     }
+}
+
+static DIAGNOSTICS_PATH_SEPARATOR_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new("\\[cases.*:.*:.*\\]").unwrap());
+
+pub fn normalize_test_output(output: String) -> String {
+    DIAGNOSTICS_PATH_SEPARATOR_REGEX
+        .replace_all(&output, |caps: &regex::Captures| caps[0].replace("\\", "/"))
+        .to_string()
 }

@@ -7,6 +7,7 @@ clap = "4.5.39"
 pretty_assertions = "1.4.1"
 device-driver-generation = { path="../generation" }
 miette = { version = "7.6.0", features = ["fancy"] }
+regex = "1.11.1"
 
 [build-dependencies]
 itertools = "0.14.0"

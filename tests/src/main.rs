@@ -54,11 +54,20 @@ fn accept() {
             let diagnostics_path = input_path
                 .with_file_name("diagnostics")
                 .with_extension(input_extension + ".txt");
-            std::fs::write(diagnostics_path, diagnostics).unwrap();
+            std::fs::write(
+                diagnostics_path,
+                device_driver_tests::normalize_test_output(diagnostics),
+            )
+            .unwrap();
 
             let output = device_driver_tests::OUTPUT_HEADER.to_string() + &transformed;
             let output_name = format!("{}.rs", test_case.file_name().display());
-            std::fs::write(test_case.path().join(output_name), output).unwrap();
+
+            std::fs::write(
+                test_case.path().join(output_name),
+                device_driver_tests::normalize_test_output(output),
+            )
+            .unwrap();
         }
     }
 }
