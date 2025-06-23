@@ -78,6 +78,19 @@ impl<'i, Interface, AddressType: Copy, Register: FieldSet, Access>
             _phantom: PhantomData,
         }
     }
+
+    /// Get the register's address.
+    pub fn address(&self) -> AddressType
+    where
+        AddressType: Copy,
+    {
+        self.address
+    }
+
+    /// Get the register's reset value.
+    pub fn reset_value(&self) -> Register {
+        (self.register_new_with_reset)()
+    }
 }
 
 impl<Interface, AddressType: Copy, Register: FieldSet, Access>
