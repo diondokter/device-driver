@@ -46,16 +46,19 @@ pub fn run_test(input_paths: &[&Path], output_path: &Path) {
             .with_extension(input_extension + ".txt");
         let expected_diagnostics = std::fs::read_to_string(&diagnostics_path).unwrap();
 
+        println!("Expected: {}", expected_diagnostics.contains("\r\n"));
+        println!("generated: {}", diagnostics.contains("\r\n"));
+
         pretty_assertions::assert_str_eq!(
-            expected_diagnostics,
-            normalize_test_output(diagnostics),
+            normalize_test_string(&expected_diagnostics),
+            normalize_test_string(&diagnostics),
             "Diagnostics are not equal: {}",
             diagnostics_path.display()
         );
 
         pretty_assertions::assert_str_eq!(
-            expected_output,
-            normalize_test_output(output),
+            normalize_test_string(&expected_output),
+            normalize_test_string(&output),
             "Failed output file: {}",
             output_path.display()
         );
@@ -121,8 +124,17 @@ pub fn set_miette_hook() {
 static DIAGNOSTICS_PATH_SEPARATOR_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new("\\[cases.*:.*:.*\\]").unwrap());
 
-pub fn normalize_test_output(output: String) -> String {
+pub fn normalize_test_string(val: &str) -> String {
+    let val = normalize_paths(val);
+    normalize_line_endings(&val)
+}
+
+fn normalize_paths(val: &str) -> String {
     DIAGNOSTICS_PATH_SEPARATOR_REGEX
-        .replace_all(&output, |caps: &regex::Captures| caps[0].replace("\\", "/"))
+        .replace_all(&val, |caps: &regex::Captures| caps[0].replace("\\", "/"))
         .to_string()
+}
+
+fn normalize_line_endings(val: &str) -> String {
+    val.replace("\r\n", "\n")
 }
