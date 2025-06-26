@@ -209,24 +209,30 @@ impl Object {
     }
 
     /// Get an iterator over all the field sets in the object
-    pub(self) fn field_sets_mut(&mut self) -> impl Iterator<Item = &mut [Field]> {
+    pub(self) fn field_sets_mut(&mut self) -> Box<dyn Iterator<Item = &mut FieldSet> + '_> {
         match self {
-            Object::Register(val) => vec![val.fields.as_mut_slice()].into_iter(),
-            Object::Command(val) => {
-                vec![val.in_fields.as_mut_slice(), val.out_fields.as_mut_slice()].into_iter()
-            }
-            Object::Block(_) | Object::Buffer(_) | Object::Ref(_) => Vec::new().into_iter(),
+            Object::Register(val) => Box::new(std::iter::once(&mut val.field_set)),
+            Object::Command(val) => Box::new(
+                val.field_set_in
+                    .as_mut()
+                    .into_iter()
+                    .chain(val.field_set_out.as_mut().into_iter()),
+            ),
+            Object::Block(_) | Object::Buffer(_) | Object::Ref(_) => Box::new(std::iter::empty()),
         }
     }
 
     /// Get an iterator over all the field sets in the object
-    pub(self) fn field_sets(&self) -> impl Iterator<Item = &[Field]> {
+    pub(self) fn field_sets(&self) -> Box<dyn Iterator<Item = &FieldSet> + '_> {
         match self {
-            Object::Register(val) => vec![val.fields.as_slice()].into_iter(),
-            Object::Command(val) => {
-                vec![val.in_fields.as_slice(), val.out_fields.as_slice()].into_iter()
-            }
-            Object::Block(_) | Object::Buffer(_) | Object::Ref(_) => Vec::new().into_iter(),
+            Object::Register(val) => Box::new(std::iter::once(&val.field_set)),
+            Object::Command(val) => Box::new(
+                val.field_set_in
+                    .as_ref()
+                    .into_iter()
+                    .chain(val.field_set_out.as_ref().into_iter()),
+            ),
+            Object::Block(_) | Object::Buffer(_) | Object::Ref(_) => Box::new(std::iter::empty()),
         }
     }
 
@@ -300,6 +306,16 @@ impl Object {
             None
         }
     }
+
+    pub fn type_name(&self) -> &'static str {
+        match self {
+            Object::Block(_) => "block",
+            Object::Register(_) => "register",
+            Object::Command(_) => "command",
+            Object::Buffer(_) => "buffer",
+            Object::Ref(_) => "ref",
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -324,14 +340,19 @@ pub struct Register {
     pub description: String,
     pub name: String,
     pub access: Access,
+    pub allow_address_overlap: bool,
+    pub address: i64,
+    pub reset_value: Option<ResetValue>,
+    pub repeat: Option<Repeat>,
+    pub field_set: FieldSet,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct FieldSet {
+    pub size_bits: u32,
     pub byte_order: Option<ByteOrder>,
     pub bit_order: BitOrder,
     pub allow_bit_overlap: bool,
-    pub allow_address_overlap: bool,
-    pub address: i64,
-    pub size_bits: u32,
-    pub reset_value: Option<ResetValue>,
-    pub repeat: Option<Repeat>,
     pub fields: Vec<Field>,
 }
 
@@ -472,15 +493,11 @@ pub struct Command {
     pub description: String,
     pub name: String,
     pub address: i64,
-    pub byte_order: Option<ByteOrder>,
-    pub bit_order: BitOrder,
-    pub allow_bit_overlap: bool,
     pub allow_address_overlap: bool,
-    pub size_bits_in: u32,
-    pub size_bits_out: u32,
     pub repeat: Option<Repeat>,
-    pub in_fields: Vec<Field>,
-    pub out_fields: Vec<Field>,
+
+    pub field_set_in: Option<FieldSet>,
+    pub field_set_out: Option<FieldSet>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]

@@ -21,7 +21,11 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
     recurse_objects_mut(&mut device.objects, &mut |object| {
         *object.name_mut() = pascal_converter.convert(object.name_mut());
 
-        for field in object.field_sets_mut().flatten() {
+        for field in object
+            .field_sets_mut()
+            .map(|fs| fs.fields.iter_mut())
+            .flatten()
+        {
             field.name = snake_converter.convert(&field.name);
             if let Some(FieldConversion::Enum {
                 enum_value: Enum { name, variants, .. },
@@ -49,7 +53,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
 mod tests {
     use convert_case::Boundary;
 
-    use crate::mir::{Buffer, EnumVariant, Field, GlobalConfig, Object, Register};
+    use crate::mir::{Buffer, EnumVariant, Field, FieldSet, GlobalConfig, Object, Register};
 
     use super::*;
 
@@ -66,27 +70,30 @@ mod tests {
             objects: vec![
                 Object::Register(Register {
                     name: "my-reGister".into(),
-                    fields: vec![
-                        Field {
-                            name: "my-fielD".into(),
-                            ..Default::default()
-                        },
-                        Field {
-                            name: "my-fielD2".into(),
-                            field_conversion: Some(FieldConversion::Enum {
-                                enum_value: Enum {
-                                    name: "mY-enum".into(),
-                                    variants: vec![EnumVariant {
-                                        name: "eNum-Variant".into(),
+                    field_set: FieldSet {
+                        fields: vec![
+                            Field {
+                                name: "my-fielD".into(),
+                                ..Default::default()
+                            },
+                            Field {
+                                name: "my-fielD2".into(),
+                                field_conversion: Some(FieldConversion::Enum {
+                                    enum_value: Enum {
+                                        name: "mY-enum".into(),
+                                        variants: vec![EnumVariant {
+                                            name: "eNum-Variant".into(),
+                                            ..Default::default()
+                                        }],
                                         ..Default::default()
-                                    }],
-                                    ..Default::default()
-                                },
-                                use_try: false,
-                            }),
-                            ..Default::default()
-                        },
-                    ],
+                                    },
+                                    use_try: false,
+                                }),
+                                ..Default::default()
+                            },
+                        ],
+                        ..Default::default()
+                    },
                     ..Default::default()
                 }),
                 Object::Buffer(Buffer {
@@ -102,27 +109,30 @@ mod tests {
             objects: vec![
                 Object::Register(Register {
                     name: "MyRegister".into(),
-                    fields: vec![
-                        Field {
-                            name: "my_field".into(),
-                            ..Default::default()
-                        },
-                        Field {
-                            name: "my_field2".into(),
-                            field_conversion: Some(FieldConversion::Enum {
-                                enum_value: Enum {
-                                    name: "MyEnum".into(),
-                                    variants: vec![EnumVariant {
-                                        name: "EnumVariant".into(),
+                    field_set: FieldSet {
+                        fields: vec![
+                            Field {
+                                name: "my_field".into(),
+                                ..Default::default()
+                            },
+                            Field {
+                                name: "my_field2".into(),
+                                field_conversion: Some(FieldConversion::Enum {
+                                    enum_value: Enum {
+                                        name: "MyEnum".into(),
+                                        variants: vec![EnumVariant {
+                                            name: "EnumVariant".into(),
+                                            ..Default::default()
+                                        }],
                                         ..Default::default()
-                                    }],
-                                    ..Default::default()
-                                },
-                                use_try: false,
-                            }),
-                            ..Default::default()
-                        },
-                    ],
+                                    },
+                                    use_try: false,
+                                }),
+                                ..Default::default()
+                            },
+                        ],
+                        ..Default::default()
+                    },
                     ..Default::default()
                 }),
                 Object::Buffer(Buffer {

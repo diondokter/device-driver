@@ -270,18 +270,18 @@ fn transform_register(name: &str, map: &impl Map) -> anyhow::Result<mir::Registe
                 register.access = transform_access(value).context("Parsing error for `access`")?;
             }
             "byte_order" => {
-                register.byte_order =
+                register.field_set.byte_order =
                     Some(transform_byte_order(value).context("Parsing error for `byte_order`")?);
             }
             "bit_order" => {
-                register.bit_order =
+                register.field_set.bit_order =
                     transform_bit_order(value).context("Parsing error for `bit_order`")?;
             }
             "address" => {
                 register.address = value.as_int().context("Parsing error for `address`")?;
             }
             "size_bits" => {
-                register.size_bits = value
+                register.field_set.size_bits = value
                     .as_uint()
                     .context("Parsing error for `size_bits`")?
                     .try_into()
@@ -315,7 +315,7 @@ fn transform_register(name: &str, map: &impl Map) -> anyhow::Result<mir::Registe
                     Some(transform_repeat(value).context("Parsing error for `repeat`")?);
             }
             "allow_bit_overlap" => {
-                register.allow_bit_overlap = value
+                register.field_set.allow_bit_overlap = value
                     .as_bool()
                     .context("Parsing error for `allow_bit_overlap`")?;
             }
@@ -325,7 +325,8 @@ fn transform_register(name: &str, map: &impl Map) -> anyhow::Result<mir::Registe
                     .context("Parsing error for `allow_address_overlap`")?;
             }
             "fields" => {
-                register.fields = transform_fields(value).context("Parsing error for `fields`")?;
+                register.field_set.fields =
+                    transform_fields(value).context("Parsing error for `fields`")?;
             }
             val => {
                 bail!("Unexpected key: `{val}`")
@@ -348,6 +349,11 @@ fn transform_command(name: &str, map: &impl Map) -> anyhow::Result<mir::Command>
         }
     }
 
+    let mut field_set_in = mir::FieldSet::default();
+    let mut field_set_in_used = false;
+    let mut field_set_out = mir::FieldSet::default();
+    let mut field_set_out_used = false;
+
     for (key, value) in map.iter() {
         match key {
             "type" => {}
@@ -362,38 +368,49 @@ fn transform_command(name: &str, map: &impl Map) -> anyhow::Result<mir::Command>
                     .into()
             }
             "byte_order" => {
-                command.byte_order =
+                let byte_order =
                     Some(transform_byte_order(value).context("Parsing error for `byte_order`")?);
+
+                field_set_in.byte_order = byte_order;
+                field_set_out.byte_order = byte_order;
             }
             "bit_order" => {
-                command.bit_order =
+                let bit_order =
                     transform_bit_order(value).context("Parsing error for `bit_order`")?;
+
+                field_set_in.bit_order = bit_order;
+                field_set_out.bit_order = bit_order;
             }
             "address" => {
                 command.address = value.as_int().context("Parsing error for `address`")?;
             }
             "size_bits_in" => {
-                command.size_bits_in = value
+                field_set_in.size_bits = value
                     .as_uint()
                     .context("Parsing error for `size_bits_in`")?
                     .try_into()
                     .context("Parsing error for `size_bits_in`")?;
+                field_set_in_used = true;
             }
             "size_bits_out" => {
-                command.size_bits_out = value
+                field_set_out.size_bits = value
                     .as_uint()
                     .context("Parsing error for `size_bits_out`")?
                     .try_into()
                     .context("Parsing error for `size_bits_out`")?;
+                field_set_out_used = true;
             }
             "repeat" => {
                 command.repeat =
                     Some(transform_repeat(value).context("Parsing error for `repeat`")?);
             }
             "allow_bit_overlap" => {
-                command.allow_bit_overlap = value
+                let allow_bit_overlap = value
                     .as_bool()
                     .context("Parsing error for `allow_bit_overlap`")?;
+
+                field_set_in.allow_bit_overlap = allow_bit_overlap;
+                field_set_out.allow_bit_overlap = allow_bit_overlap;
             }
             "allow_address_overlap" => {
                 command.allow_address_overlap = value
@@ -401,17 +418,26 @@ fn transform_command(name: &str, map: &impl Map) -> anyhow::Result<mir::Command>
                     .context("Parsing error for `allow_address_overlap`")?;
             }
             "fields_in" => {
-                command.in_fields =
+                field_set_in.fields =
                     transform_fields(value).context("Parsing error for `fields_in`")?;
+                field_set_in_used = true;
             }
             "fields_out" => {
-                command.out_fields =
+                field_set_out.fields =
                     transform_fields(value).context("Parsing error for `fields_out`")?;
+                field_set_out_used = true;
             }
             val => {
                 bail!("Unexpected key: `{val}`")
             }
         }
+    }
+
+    if field_set_in_used {
+        command.field_set_in = Some(field_set_in);
+    }
+    if field_set_out_used {
+        command.field_set_out = Some(field_set_out);
     }
 
     Ok(command)
@@ -1039,7 +1065,10 @@ mod tests {
             Object::Register(Register {
                 name: "my_register".into(),
                 address: 42,
-                size_bits: 8,
+                field_set: mir::FieldSet {
+                    size_bits: 8,
+                    ..Default::default()
+                },
                 ..Default::default()
             })
         );
@@ -1071,12 +1100,8 @@ mod tests {
             Object::Register(Register {
                 name: "my_register".into(),
                 address: 42,
-                size_bits: 8,
                 access: mir::Access::WO,
                 allow_address_overlap: true,
-                allow_bit_overlap: true,
-                bit_order: mir::BitOrder::MSB0,
-                byte_order: Some(ByteOrder::BE),
                 repeat: Some(Repeat {
                     count: 12,
                     stride: -3
@@ -1084,6 +1109,13 @@ mod tests {
                 reset_value: Some(ResetValue::Array(vec![1, 2, 3])),
                 description: "hello!".into(),
                 cfg_attr: Cfg::new(Some("windows")),
+                field_set: mir::FieldSet {
+                    size_bits: 8,
+                    allow_bit_overlap: true,
+                    bit_order: mir::BitOrder::MSB0,
+                    byte_order: Some(ByteOrder::BE),
+                    ..Default::default()
+                },
                 ..Default::default()
             })
         );
@@ -1131,71 +1163,74 @@ mod tests {
             Object::Register(Register {
                 name: "my_register".into(),
                 address: 42,
-                size_bits: 9,
-                fields: vec![
-                    Field {
-                        cfg_attr: Cfg::new(Some("unix")),
-                        description: "The test field".into(),
-                        name: "test".into(),
-                        access: mir::Access::RO,
-                        base_type: mir::BaseType::Int,
-                        field_conversion: None,
-                        field_address: 0..3,
-                    },
-                    Field {
-                        cfg_attr: Default::default(),
-                        description: Default::default(),
-                        name: "test2".into(),
-                        access: Default::default(),
-                        base_type: mir::BaseType::Uint,
-                        field_conversion: Some(mir::FieldConversion::Direct {
-                            type_name: "MyStruct".into(),
-                            use_try: true
-                        }),
-                        field_address: 3..6
-                    },
-                    Field {
-                        cfg_attr: Default::default(),
-                        description: Default::default(),
-                        name: "test3".into(),
-                        access: Default::default(),
-                        base_type: mir::BaseType::Int,
-                        field_conversion: Some(mir::FieldConversion::Enum {
-                            enum_value: Enum::new(
-                                "This is my enum".into(),
-                                "MyEnum".into(),
-                                vec![
-                                    EnumVariant {
-                                        cfg_attr: Default::default(),
-                                        description: Default::default(),
-                                        name: "var1".into(),
-                                        value: mir::EnumValue::Specified(1),
-                                    },
-                                    EnumVariant {
-                                        cfg_attr: Default::default(),
-                                        description: Default::default(),
-                                        name: "varEmpty".into(),
-                                        value: mir::EnumValue::Unspecified,
-                                    },
-                                    EnumVariant {
-                                        cfg_attr: Default::default(),
-                                        description: Default::default(),
-                                        name: "varDefault".into(),
-                                        value: mir::EnumValue::Default,
-                                    },
-                                    EnumVariant {
-                                        cfg_attr: Cfg::new(Some("feature = \"foo\"")),
-                                        description: "This one is documented".into(),
-                                        name: "varDocumented".into(),
-                                        value: mir::EnumValue::CatchAll,
-                                    }
-                                ]
-                            ),
-                            use_try: false
-                        }),
-                        field_address: 6..9
-                    }
-                ],
+                field_set: mir::FieldSet {
+                    size_bits: 9,
+                    fields: vec![
+                        Field {
+                            cfg_attr: Cfg::new(Some("unix")),
+                            description: "The test field".into(),
+                            name: "test".into(),
+                            access: mir::Access::RO,
+                            base_type: mir::BaseType::Int,
+                            field_conversion: None,
+                            field_address: 0..3,
+                        },
+                        Field {
+                            cfg_attr: Default::default(),
+                            description: Default::default(),
+                            name: "test2".into(),
+                            access: Default::default(),
+                            base_type: mir::BaseType::Uint,
+                            field_conversion: Some(mir::FieldConversion::Direct {
+                                type_name: "MyStruct".into(),
+                                use_try: true
+                            }),
+                            field_address: 3..6
+                        },
+                        Field {
+                            cfg_attr: Default::default(),
+                            description: Default::default(),
+                            name: "test3".into(),
+                            access: Default::default(),
+                            base_type: mir::BaseType::Int,
+                            field_conversion: Some(mir::FieldConversion::Enum {
+                                enum_value: Enum::new(
+                                    "This is my enum".into(),
+                                    "MyEnum".into(),
+                                    vec![
+                                        EnumVariant {
+                                            cfg_attr: Default::default(),
+                                            description: Default::default(),
+                                            name: "var1".into(),
+                                            value: mir::EnumValue::Specified(1),
+                                        },
+                                        EnumVariant {
+                                            cfg_attr: Default::default(),
+                                            description: Default::default(),
+                                            name: "varEmpty".into(),
+                                            value: mir::EnumValue::Unspecified,
+                                        },
+                                        EnumVariant {
+                                            cfg_attr: Default::default(),
+                                            description: Default::default(),
+                                            name: "varDefault".into(),
+                                            value: mir::EnumValue::Default,
+                                        },
+                                        EnumVariant {
+                                            cfg_attr: Cfg::new(Some("feature = \"foo\"")),
+                                            description: "This one is documented".into(),
+                                            name: "varDocumented".into(),
+                                            value: mir::EnumValue::CatchAll,
+                                        }
+                                    ]
+                                ),
+                                use_try: false
+                            }),
+                            field_address: 6..9
+                        }
+                    ],
+                    ..Default::default()
+                },
                 ..Default::default()
             })
         );

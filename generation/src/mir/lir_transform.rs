@@ -1,4 +1,4 @@
-use std::ops::{Add, Not};
+use std::ops::Add;
 
 use crate::{
     lir,
@@ -163,8 +163,8 @@ fn get_method(
             allow_address_overlap,
             address,
             repeat,
-            in_fields,
-            out_fields,
+            field_set_in,
+            field_set_out,
             ..
         }) => lir::BlockMethod {
             cfg_attr: cfg_attr.to_string(),
@@ -174,14 +174,8 @@ fn get_method(
             allow_address_overlap: *allow_address_overlap,
             kind: repeat_to_method_kind(repeat),
             method_type: lir::BlockMethodType::Command {
-                field_set_name_in: in_fields
-                    .is_empty()
-                    .not()
-                    .then(|| format!("{name}FieldsIn")),
-                field_set_name_out: out_fields
-                    .is_empty()
-                    .not()
-                    .then(|| format!("{name}FieldsOut")),
+                field_set_name_in: field_set_in.is_some().then(|| format!("{name}FieldsIn")),
+                field_set_name_out: field_set_out.is_some().then(|| format!("{name}FieldsOut")),
                 address_type: global_config
                     .command_address_type
                     .expect("The presence of the address type is already checked in a mir pass"),
@@ -314,13 +308,10 @@ fn transform_field_sets<'a>(
                     .collect();
 
                 field_sets.push(transform_field_set(
-                    &r.fields,
+                    &r.field_set,
                     r.name.clone(),
                     &r.cfg_attr,
                     &r.description,
-                    r.byte_order.unwrap(),
-                    r.bit_order,
-                    r.size_bits,
                     r.reset_value
                         .as_ref()
                         .map(|rv| rv.as_array().unwrap().clone()),
@@ -329,29 +320,23 @@ fn transform_field_sets<'a>(
                 )?);
             }
             mir::Object::Command(c) => {
-                if c.size_bits_in != 0 {
+                if let Some(field_set_in) = &c.field_set_in {
                     field_sets.push(transform_field_set(
-                        &c.in_fields,
+                        &field_set_in,
                         format!("{}FieldsIn", c.name),
                         &c.cfg_attr,
                         &c.description,
-                        c.byte_order.unwrap(),
-                        c.bit_order,
-                        c.size_bits_in,
                         None,
                         Vec::new(),
                         mir_enums.clone(),
                     )?);
                 }
-                if c.size_bits_out != 0 {
+                if let Some(field_set_out) = &c.field_set_out {
                     field_sets.push(transform_field_set(
-                        &c.out_fields,
+                        field_set_out,
                         format!("{}FieldsOut", c.name),
                         &c.cfg_attr,
                         &c.description,
-                        c.byte_order.unwrap(),
-                        c.bit_order,
-                        c.size_bits_out,
                         None,
                         Vec::new(),
                         mir_enums.clone(),
@@ -367,20 +352,17 @@ fn transform_field_sets<'a>(
     Ok(field_sets)
 }
 
-#[allow(clippy::too_many_arguments)] // Though it is correct... it's too many args
 fn transform_field_set<'a>(
-    field_set: &[mir::Field],
+    field_set: &mir::FieldSet,
     field_set_name: String,
     cfg_attr: &mir::Cfg,
     description: &str,
-    byte_order: mir::ByteOrder,
-    bit_order: mir::BitOrder,
-    size_bits: u32,
     reset_value: Option<Vec<u8>>,
     ref_reset_overrides: Vec<(String, Vec<u8>)>,
     enum_list: impl Iterator<Item = &'a mir::Enum> + Clone,
 ) -> anyhow::Result<lir::FieldSet> {
     let fields = field_set
+        .fields
         .iter()
         .map(|field| {
             let mir::Field {
@@ -462,10 +444,11 @@ fn transform_field_set<'a>(
         cfg_attr: cfg_attr.to_string(),
         description: description.into(),
         name: field_set_name.to_string(),
-        byte_order,
-        bit_order,
-        size_bits,
-        reset_value: reset_value.unwrap_or_else(|| vec![0; size_bits.div_ceil(8) as usize]),
+        byte_order: field_set.byte_order.unwrap(),
+        bit_order: field_set.bit_order,
+        size_bits: field_set.size_bits,
+        reset_value: reset_value
+            .unwrap_or_else(|| vec![0; field_set.size_bits.div_ceil(8) as usize]),
         ref_reset_overrides,
         fields,
     })
@@ -475,7 +458,7 @@ fn collect_enums(device: &mir::Device) -> anyhow::Result<Vec<(mir::Enum, mir::Ba
     let mut enums = Vec::new();
 
     recurse_objects(&device.objects, &mut |object| {
-        for field in object.field_sets().flatten() {
+        for field in object.field_sets().map(|fs| fs.fields.iter()).flatten() {
             if let Some(mir::FieldConversion::Enum { enum_value, .. }) = &field.field_conversion {
                 enums.push((
                     enum_value.clone(),
