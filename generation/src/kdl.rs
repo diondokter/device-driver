@@ -188,7 +188,13 @@ fn transform_global_config_node(
                 device.global_config.buffer_address_type = Some(value);
             }
         }
-        GlobalConfigType::NameWordBoundaries => todo!(),
+        GlobalConfigType::NameWordBoundaries => {
+            if let Some(value) = parse_single_string(node, source_code.clone(), diagnostics, None).0
+            {
+                device.global_config.name_word_boundaries =
+                    convert_case::Boundary::list_from(&value);
+            }
+        }
         GlobalConfigType::DefmtFeature => {
             if let Some(value) = parse_single_string(node, source_code.clone(), diagnostics, None).0
             {

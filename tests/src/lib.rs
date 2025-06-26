@@ -131,7 +131,7 @@ pub fn normalize_test_string(val: &str) -> String {
 
 fn normalize_paths(val: &str) -> String {
     DIAGNOSTICS_PATH_SEPARATOR_REGEX
-        .replace_all(&val, |caps: &regex::Captures| caps[0].replace("\\", "/"))
+        .replace_all(val, |caps: &regex::Captures| caps[0].replace("\\", "/"))
         .to_string()
 }
 

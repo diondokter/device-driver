@@ -37,4 +37,5 @@ device Foo {
     command-address-type 16
     default-bit-order msb0
     defmt-feature lol
+    name-word-boundaries aA:1a
 }
