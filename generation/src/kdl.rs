@@ -4,7 +4,7 @@ use kdl::{KdlDocument, KdlNode, KdlValue};
 use miette::SourceSpan;
 
 use crate::{
-    mir::{Device, GlobalConfig},
+    mir::{Device, GlobalConfig, Object, Register},
     reporting::{Diagnostics, NamedSourceCode, errors},
 };
 
@@ -126,6 +126,19 @@ fn transform_device_internals(
                 }
             }
         } else if let Ok(object_type) = node.name().value().parse::<ObjectType>() {
+            let object = match object_type {
+                ObjectType::Block => todo!(),
+                ObjectType::Register => {
+                    transform_register(node, source_code.clone(), diagnostics).map(Object::Register)
+                }
+                ObjectType::Command => todo!(),
+                ObjectType::Buffer => todo!(),
+                ObjectType::Ref => todo!(),
+            };
+
+            if let Some(object) = object {
+                device.objects.push(object);
+            }
         } else {
             diagnostics.add(errors::UnexpectedNode {
                 source_code: source_code.clone(),
@@ -138,6 +151,25 @@ fn transform_device_internals(
             });
         }
     }
+}
+
+fn transform_register(
+    node: &KdlNode,
+    source_code: NamedSourceCode,
+    diagnostics: &mut Diagnostics,
+) -> Option<Register> {
+    let Some(register_name) = parse_single_string_entry(node, source_code, diagnostics, None).0
+    else {
+        return None;
+    };
+
+    for child in node.iter_children() {
+        match child.name().value() {
+            _ => todo!(),
+        }
+    }
+
+    todo!()
 }
 
 fn transform_global_config_node(
@@ -189,14 +221,16 @@ fn transform_global_config_node(
             }
         }
         GlobalConfigType::NameWordBoundaries => {
-            if let Some(value) = parse_single_string(node, source_code.clone(), diagnostics, None).0
+            if let Some(value) =
+                parse_single_string_entry(node, source_code.clone(), diagnostics, None).0
             {
                 device.global_config.name_word_boundaries =
                     convert_case::Boundary::list_from(&value);
             }
         }
         GlobalConfigType::DefmtFeature => {
-            if let Some(value) = parse_single_string(node, source_code.clone(), diagnostics, None).0
+            if let Some(value) =
+                parse_single_string_entry(node, source_code.clone(), diagnostics, None).0
             {
                 device.global_config.defmt_feature = Some(value);
             }
@@ -204,7 +238,7 @@ fn transform_global_config_node(
     }
 }
 
-fn parse_single_string(
+fn parse_single_string_entry(
     node: &KdlNode,
     source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
@@ -260,7 +294,7 @@ fn parse_single_string_value<T: strum::VariantNames + FromStr>(
     source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
 ) -> Option<T> {
-    match parse_single_string(node, source_code.clone(), diagnostics, Some(T::VARIANTS)) {
+    match parse_single_string_entry(node, source_code.clone(), diagnostics, Some(T::VARIANTS)) {
         (Some(val), _) if T::from_str(&val).is_ok() => T::from_str(&val).ok(),
         (Some(_), Some(entry)) => {
             diagnostics.add(errors::UnexpectedValue {

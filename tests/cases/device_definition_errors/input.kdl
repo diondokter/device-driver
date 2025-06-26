@@ -39,3 +39,11 @@ device Foo {
     defmt-feature lol
     name-word-boundaries aA:1a
 }
+
+device Foo {
+    registah
+    register
+    register foo {
+        
+    }
+}
