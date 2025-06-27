@@ -76,14 +76,11 @@ impl UnexpectedNode {
 
 #[derive(Error, Debug, Diagnostic)]
 #[error("Unexpected type")]
-#[diagnostic(
-    help("Expected a {}", self.expected_type),
-    severity(Error)
-)]
+#[diagnostic(severity(Error))]
 pub struct UnexpectedType {
     #[source_code]
     pub source_code: NamedSourceCode,
-    #[label("The value with unexpected type")]
+    #[label("Unexpected type: expected a {}", self.expected_type)]
     pub value_name: SourceSpan,
 
     pub expected_type: &'static str,
@@ -91,14 +88,11 @@ pub struct UnexpectedType {
 
 #[derive(Error, Debug, Diagnostic)]
 #[error("Unexpected value")]
-#[diagnostic(
-    help("Expected one of these values: {}", self.print_expected_values()),
-    severity(Error)
-)]
+#[diagnostic(severity(Error))]
 pub struct UnexpectedValue {
     #[source_code]
     pub source_code: NamedSourceCode,
-    #[label("The unexpected value")]
+    #[label("Unexpected value: expected one of these values: {}", self.print_expected_values())]
     pub value_name: SourceSpan,
 
     pub expected_values: Vec<&'static str>,
@@ -111,6 +105,19 @@ impl UnexpectedValue {
             .map(|name| format!("`{name}`"))
             .join(", ")
     }
+}
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Value out of range")]
+#[diagnostic(severity(Error))]
+pub struct ValueOutOfRange {
+    #[source_code]
+    pub source_code: NamedSourceCode,
+    #[label("Value is out of the allowable range: {}", self.range)]
+    pub value: SourceSpan,
+    #[help]
+    pub context: Option<String>,
+    pub range: String,
 }
 
 #[derive(Error, Debug, Diagnostic)]

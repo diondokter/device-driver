@@ -4,7 +4,7 @@ use kdl::{KdlDocument, KdlNode, KdlValue};
 use miette::SourceSpan;
 
 use crate::{
-    mir::{Device, GlobalConfig, Object, Register},
+    mir::{Access, Device, GlobalConfig, Object, Register, ResetValue},
     reporting::{Diagnostics, NamedSourceCode, errors},
 };
 
@@ -158,18 +158,83 @@ fn transform_register(
     source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
 ) -> Option<Register> {
-    let Some(register_name) = parse_single_string_entry(node, source_code, diagnostics, None).0
-    else {
-        return None;
-    };
+    let name = parse_single_string_entry(node, source_code.clone(), diagnostics, None).0;
+
+    let mut access = None;
+    let mut allow_address_overlap = None;
+    let mut address = None;
+    let mut reset_value = None;
+    let mut repeat = None;
+    let mut field_set = None;
 
     for child in node.iter_children() {
-        match child.name().value() {
-            _ => todo!(),
+        match child.name().value().parse() {
+            Ok(RegisterField::Access) => {
+                access =
+                    parse_single_string_value::<Access>(child, source_code.clone(), diagnostics);
+            }
+            Ok(RegisterField::AllowAddressOverlap) => {
+                ensure_zero_entries(child, source_code.clone(), diagnostics);
+                allow_address_overlap = Some(true);
+            }
+            Ok(RegisterField::Address) => {
+                address = parse_single_integer_entry(node, source_code.clone(), diagnostics).0;
+            }
+            Ok(RegisterField::ResetValue) => {
+                reset_value = parse_reset_value_entries(node, source_code.clone(), diagnostics)
+            }
+            Ok(RegisterField::Repeat) => {
+                todo!()
+            }
+            Ok(RegisterField::FieldSet) => {
+                todo!()
+            }
+            Err(()) => {
+                diagnostics.add(errors::UnexpectedNode {
+                    source_code: source_code.clone(),
+                    node_name: node.name().span(),
+                    expected_names: REGISTER_FIELDS.iter().map(|v| v.0).collect(),
+                });
+            }
         }
     }
 
-    todo!()
+    let mut error = false;
+    if name.is_none() {
+        error = true;
+        // Just continue. Error is already emitted
+    }
+
+    if address.is_none() {
+        error = true;
+        todo!("Emit error");
+    }
+
+    if field_set.is_none() {
+        error = true;
+        todo!("Emit error");
+    }
+
+    if error {
+        None
+    } else {
+        let mut register = Register::default();
+
+        register.name = name.unwrap();
+        if let Some(access) = access {
+            register.access = access;
+        }
+        if let Some(allow_address_overlap) = allow_address_overlap {
+            register.allow_address_overlap = allow_address_overlap;
+        }
+        // TODO: Change internal address types to i128
+        register.address = address.unwrap() as i64;
+        register.reset_value = reset_value;
+        register.repeat = repeat;
+        register.field_set = field_set.unwrap();
+
+        Some(register)
+    }
 }
 
 fn transform_global_config_node(
@@ -234,6 +299,136 @@ fn transform_global_config_node(
             {
                 device.global_config.defmt_feature = Some(value);
             }
+        }
+    }
+}
+
+fn ensure_zero_entries(
+    node: &KdlNode,
+    source_code: NamedSourceCode,
+    diagnostics: &mut Diagnostics,
+) {
+    if !node.entries().is_empty() {
+        diagnostics.add(errors::UnexpectedEntries {
+            source_code: source_code.clone(),
+            superfluous_entries: node.entries().iter().map(|entry| entry.span()).collect(),
+            unexpected_name_entries: Vec::new(),
+            not_anonymous_entries: Vec::new(),
+        });
+    }
+}
+
+fn parse_reset_value_entries(
+    node: &KdlNode,
+    source_code: NamedSourceCode,
+    diagnostics: &mut Diagnostics,
+) -> Option<ResetValue> {
+    let mut error = false;
+    let mut array = Vec::new();
+
+    for entry in node.entries() {
+        match entry.value() {
+            KdlValue::Integer(val) => array.push((*val, entry.span())),
+            _ => {
+                error = true;
+                diagnostics.add(errors::UnexpectedType {
+                    source_code: source_code.clone(),
+                    value_name: entry.span(),
+                    expected_type: "integer",
+                });
+            }
+        }
+    }
+
+    if error {
+        return None;
+    }
+
+    if array.len() == 1 {
+        let (integer, span) = array[0];
+
+        if integer.is_negative() {
+            diagnostics.add(errors::ValueOutOfRange {
+                source_code: source_code.clone(),
+                value: span,
+                range: "0..".into(),
+                context: Some("Negative reset values are not allowed".into()),
+            });
+            None
+        } else {
+            Some(ResetValue::Integer(integer as u128))
+        }
+    } else {
+        let mut error = false;
+        for (byte, span) in array.iter() {
+            if !(0..=255).contains(byte) {
+                error = true;
+                diagnostics.add(errors::ValueOutOfRange {
+                    source_code: source_code.clone(),
+                    value: *span,
+                    range: "0..256".into(),
+                    context: Some(
+                        "When specifying the reset values as an array, all numbers must be bytes"
+                            .into(),
+                    ),
+                });
+            }
+        }
+
+        if error {
+            None
+        } else {
+            Some(ResetValue::Array(
+                array.iter().map(|(byte, _)| *byte as u8).collect(),
+            ))
+        }
+    }
+}
+
+fn parse_single_integer_entry(
+    node: &KdlNode,
+    source_code: NamedSourceCode,
+    diagnostics: &mut Diagnostics,
+) -> (Option<i128>, Option<SourceSpan>) {
+    let unexpected_entries = errors::UnexpectedEntries {
+        source_code: source_code.clone(),
+        superfluous_entries: node
+            .entries()
+            .iter()
+            .skip(1)
+            .map(|entry| entry.span())
+            .collect(),
+        unexpected_name_entries: Vec::new(),
+        not_anonymous_entries: node
+            .entries()
+            .first()
+            .iter()
+            .filter_map(|entry| entry.name().map(|_| entry.span()))
+            .collect(),
+    };
+    if !unexpected_entries.is_empty() {
+        diagnostics.add(unexpected_entries);
+    }
+
+    match node.entries().first() {
+        Some(entry) if entry.name().is_none() => match entry.value() {
+            KdlValue::Integer(val) => (Some(val.clone()), Some(entry.span())),
+            _ => {
+                diagnostics.add(errors::UnexpectedType {
+                    source_code,
+                    value_name: entry.span(),
+                    expected_type: "integer",
+                });
+                (None, Some(entry.span()))
+            }
+        },
+        _ => {
+            diagnostics.add(errors::MissingEntry {
+                source_code,
+                node_name: node.name().span(),
+                expected_entries: vec!["integer"],
+            });
+            (None, None)
         }
     }
 }
@@ -305,6 +500,39 @@ fn parse_single_string_value<T: strum::VariantNames + FromStr>(
             None
         }
         _ => None,
+    }
+}
+
+#[rustfmt::skip]
+const REGISTER_FIELDS: &[(&str, RegisterField)] = &[
+    ("access", RegisterField::Access),
+    ("allow-address-overlap", RegisterField::AllowAddressOverlap),
+    ("address", RegisterField::Address),
+    ("reset-value", RegisterField::ResetValue),
+    ("repeat", RegisterField::Repeat),
+    ("fields", RegisterField::FieldSet),
+];
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+enum RegisterField {
+    Access,
+    AllowAddressOverlap,
+    Address,
+    ResetValue,
+    Repeat,
+    FieldSet,
+}
+
+impl FromStr for RegisterField {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        for (name, val) in REGISTER_FIELDS {
+            if *name == s {
+                return Ok(*val);
+            }
+        }
+
+        Err(())
     }
 }
 
