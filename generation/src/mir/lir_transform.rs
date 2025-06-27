@@ -322,7 +322,7 @@ fn transform_field_sets<'a>(
             mir::Object::Command(c) => {
                 if let Some(field_set_in) = &c.field_set_in {
                     field_sets.push(transform_field_set(
-                        &field_set_in,
+                        field_set_in,
                         format!("{}FieldsIn", c.name),
                         &c.cfg_attr,
                         &c.description,
@@ -458,7 +458,7 @@ fn collect_enums(device: &mir::Device) -> anyhow::Result<Vec<(mir::Enum, mir::Ba
     let mut enums = Vec::new();
 
     recurse_objects(&device.objects, &mut |object| {
-        for field in object.field_sets().map(|fs| fs.fields.iter()).flatten() {
+        for field in object.field_sets().flat_map(|fs| fs.fields.iter()) {
             if let Some(mir::FieldConversion::Enum { enum_value, .. }) = &field.field_conversion {
                 enums.push((
                     enum_value.clone(),

@@ -216,7 +216,7 @@ impl Object {
                 val.field_set_in
                     .as_mut()
                     .into_iter()
-                    .chain(val.field_set_out.as_mut().into_iter()),
+                    .chain(val.field_set_out.as_mut()),
             ),
             Object::Block(_) | Object::Buffer(_) | Object::Ref(_) => Box::new(std::iter::empty()),
         }
@@ -230,7 +230,7 @@ impl Object {
                 val.field_set_in
                     .as_ref()
                     .into_iter()
-                    .chain(val.field_set_out.as_ref().into_iter()),
+                    .chain(val.field_set_out.as_ref()),
             ),
             Object::Block(_) | Object::Buffer(_) | Object::Ref(_) => Box::new(std::iter::empty()),
         }

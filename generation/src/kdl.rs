@@ -412,7 +412,7 @@ fn parse_single_integer_entry(
 
     match node.entries().first() {
         Some(entry) if entry.name().is_none() => match entry.value() {
-            KdlValue::Integer(val) => (Some(val.clone()), Some(entry.span())),
+            KdlValue::Integer(val) => (Some(*val), Some(entry.span())),
             _ => {
                 diagnostics.add(errors::UnexpectedType {
                     source_code,

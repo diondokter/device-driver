@@ -19,11 +19,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
         let new_cfg_attr = cfg_attr.combine(cfg_stack.last().unwrap());
         *cfg_attr = new_cfg_attr.clone();
 
-        for field in object
-            .field_sets_mut()
-            .map(|fs| fs.fields.iter_mut())
-            .flatten()
-        {
+        for field in object.field_sets_mut().flat_map(|fs| fs.fields.iter_mut()) {
             // NOTE: We don't have to set the field cfg attr since it's part of the object
             // We do need to update the enum though, since that's gonna be generated outside of the object
             if let Some(FieldConversion::Enum { enum_value, .. }) = field.field_conversion.as_mut()
