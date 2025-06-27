@@ -27,7 +27,8 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
                     "No byte order is specified for {object_type_name} `{object_name}` while it's big enough that byte order is important. Specify it on the {object_type_name} or in the global config",
                 );
             } else {
-                fs.byte_order = Some(crate::mir::ByteOrder::LE);
+                // Even if not required, fill in a byte order so we can always unwrap it later
+                fs.byte_order.get_or_insert(crate::mir::ByteOrder::LE);
             }
         }
         Ok(())
