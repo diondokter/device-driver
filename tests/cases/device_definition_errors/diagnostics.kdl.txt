@@ -15,8 +15,7 @@
    ·    ╰── For this object
  4 │ 
    ╰────
-  help: The name is specified by the first entry of the node. It must have no entry-name and must be a string, e.g.
-        `device Foo { }`
+  help: The name is specified by the first entry of the node. It must be an anonymous string, e.g. `device Foo { }`
 
   error: Missing object name
    ╭─[cases/device_definition_errors/input.kdl:7:1]
@@ -27,8 +26,7 @@
    ·    ╰── For this object
  8 │ 
    ╰────
-  help: The name is specified by the first entry of the node. It must have no entry-name and must be a string, e.g.
-        `device Foo { }`
+  help: The name is specified by the first entry of the node. It must be an anonymous string, e.g. `device Foo { }`
 
   warning: Empty node
     ╭─[cases/device_definition_errors/input.kdl:11:1]
@@ -54,6 +52,17 @@
         to see the specification
         These entries may also just be superfluous. Try removing them or check other errors to see what's expected
 
+  warning: Empty node
+    ╭─[cases/device_definition_errors/input.kdl:15:1]
+ 14 │     
+ 15 │ ╭─▶ device Foo abc def {
+ 16 │ │   
+ 17 │ ├─▶ }
+    · ╰──── The empty node
+ 18 │     
+    ╰────
+  help: This type of node should have children to specify what it contains
+
   error: Unexpected node
     ╭─[cases/device_definition_errors/input.kdl:20:5]
  19 │ device Foo {
@@ -77,17 +86,16 @@
     ·                  ╰── The duplicate node
  26 │ }
     ╰────
-  help: This type of node can only appear once. Remove the second occurrence
+  help: This type of node can only appear once. Try removing one of the nodes
 
   error: Unexpected value
     ╭─[cases/device_definition_errors/input.kdl:29:29]
  28 │ device Foo {
  29 │     default-register-access Blah
     ·                             ──┬─
-    ·                               ╰── The unexpected value
+    ·                               ╰── Unexpected value: expected one of these values: `RW`, `RO`, `WO`
  30 │     default-buffer-access
     ╰────
-  help: Expected one of these values: `RW`, `RO`, `WO`
 
   error: Missing entry
     ╭─[cases/device_definition_errors/input.kdl:30:5]
@@ -139,18 +147,58 @@
  36 │     register-address-type u8
  37 │     command-address-type 16
     ·                          ─┬
-    ·                           ╰── The value with unexpected type
+    ·                           ╰── Unexpected type: expected a string
  38 │     default-bit-order msb0
     ╰────
-  help: Expected a string
 
   error: Unexpected value
     ╭─[cases/device_definition_errors/input.kdl:38:23]
  37 │     command-address-type 16
  38 │     default-bit-order msb0
     ·                       ──┬─
-    ·                         ╰── The unexpected value
+    ·                         ╰── Unexpected value: expected one of these values: `LSB0`, `MSB0`
  39 │     defmt-feature lol
     ╰────
-  help: Expected one of these values: `LSB0`, `MSB0`
+
+  error: Unexpected node
+    ╭─[cases/device_definition_errors/input.kdl:44:5]
+ 43 │ device Foo {
+ 44 │     registah
+    ·     ────┬───
+    ·         ╰── The unexpected node
+ 45 │     register
+    ╰────
+  help: Expected a node with one of these names: `default-register-access`, `default-field-access`, `default-buffer-
+        access`, `default-byte-order`, `default-bit-order`, `register-address-type`, `command-address-type`, `buffer-
+        address-type`, `name-word-boundaries`, `defmt-feature`, `block`, `register`, `command`, `buffer`, `ref`
+
+  error: Missing object name
+    ╭─[cases/device_definition_errors/input.kdl:45:5]
+ 44 │     registah
+ 45 │     register
+    ·     ────┬───
+    ·         ╰── For this object
+ 46 │     register foo {
+    ╰────
+  help: The name is specified by the first entry of the node. It must be an anonymous string, e.g. `register Foo { }`
+
+  error: Missing child node
+    ╭─[cases/device_definition_errors/input.kdl:46:14]
+ 45 │     register
+ 46 │     register foo {
+    ·              ─┬─
+    ·               ╰── This register is missing the required `address` node
+ 47 │         
+    ╰────
+  help: Check the book to see all required nodes
+
+  error: Missing child node
+    ╭─[cases/device_definition_errors/input.kdl:46:14]
+ 45 │     register
+ 46 │     register foo {
+    ·              ─┬─
+    ·               ╰── This register is missing the required `fields` node
+ 47 │         
+    ╰────
+  help: Check the book to see all required nodes
 

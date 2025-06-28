@@ -8,7 +8,7 @@ use crate::reporting::NamedSourceCode;
 #[error("Missing object name")]
 #[diagnostic(
     help(
-        "The name is specified by the first entry of the node. It must have no entry-name and must be a string, e.g. `{object_type} Foo {{ }}`"
+        "The name is specified by the first entry of the node. It must be an anonymous string, e.g. `{object_type} Foo {{ }}`"
     ),
     severity(Error)
 )]
@@ -148,7 +148,7 @@ impl MissingEntry {
 #[derive(Error, Debug, Diagnostic)]
 #[error("Duplicate node")]
 #[diagnostic(
-    help("This type of node can only appear once. Remove the second occurrence"),
+    help("This type of node can only appear once. Try removing one of the nodes"),
     severity(Error)
 )]
 pub struct DuplicateNode {
@@ -171,4 +171,17 @@ pub struct EmptyNode {
     pub source_code: NamedSourceCode,
     #[label("The empty node")]
     pub node: SourceSpan,
+}
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Missing child node")]
+#[diagnostic(help("Check the book to see all required nodes"), severity(Error))]
+pub struct MissingChildNode {
+    #[source_code]
+    pub source_code: NamedSourceCode,
+    #[label("This {} is missing the required `{}` node", self.node_type.unwrap_or("node"), self.missing_node_type)]
+    pub node: SourceSpan,
+
+    pub node_type: Option<&'static str>,
+    pub missing_node_type: &'static str,
 }

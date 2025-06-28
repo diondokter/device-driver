@@ -42,42 +42,11 @@ fn transform_device(
         return None;
     }
 
-    let device_name = match node.entries().first() {
-        Some(entry) => {
-            if let KdlValue::String(device_name) = entry.value()
-                && entry.name().is_none()
-            {
-                device_name.clone()
-            } else {
-                diagnostics.add(errors::MissingObjectName {
-                    source_code,
-                    object_keyword: node.name().span(),
-                    found_instead: Some(entry.span()),
-                    object_type: node.name().value().into(),
-                });
-                return None;
-            }
-        }
-        None => {
-            diagnostics.add(errors::MissingObjectName {
-                source_code,
-                object_keyword: node.name().span(),
-                found_instead: None,
-                object_type: node.name().value().into(),
-            });
-            return None;
-        }
-    };
-
-    if node.entries().len() > 1 {
-        diagnostics.add(errors::UnexpectedEntries {
-            source_code,
-            superfluous_entries: node.entries().iter().skip(1).map(|e| e.span()).collect(),
-            unexpected_name_entries: Vec::new(),
-            not_anonymous_entries: Vec::new(),
-        });
+    let Some(device_name) =
+        parse_single_string_entry(node, source_code.clone(), diagnostics, None, true).0
+    else {
         return None;
-    }
+    };
 
     let mut device = Device {
         name: Some(device_name),
@@ -158,7 +127,13 @@ fn transform_register(
     source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
 ) -> Option<Register> {
-    let name = parse_single_string_entry(node, source_code.clone(), diagnostics, None).0;
+    let (name, name_span) =
+        parse_single_string_entry(node, source_code.clone(), diagnostics, None, true);
+
+    if name.is_none() && node.children().is_none() {
+        // We only have a register keyword. No need for further diagnostics
+        return None;
+    }
 
     let mut access = None;
     let mut allow_address_overlap = None;
@@ -207,12 +182,22 @@ fn transform_register(
 
     if address.is_none() {
         error = true;
-        todo!("Emit error");
+        diagnostics.add(errors::MissingChildNode {
+            source_code: source_code.clone(),
+            node: name_span.unwrap_or(node.name().span()),
+            node_type: Some("register"),
+            missing_node_type: "address",
+        });
     }
 
     if field_set.is_none() {
         error = true;
-        todo!("Emit error");
+        diagnostics.add(errors::MissingChildNode {
+            source_code: source_code.clone(),
+            node: name_span.unwrap_or(node.name().span()),
+            node_type: Some("register"),
+            missing_node_type: "fields",
+        });
     }
 
     if error {
@@ -227,7 +212,6 @@ fn transform_register(
         if let Some(allow_address_overlap) = allow_address_overlap {
             register.allow_address_overlap = allow_address_overlap;
         }
-        // TODO: Change internal address types to i128
         register.address = address.unwrap();
         register.reset_value = reset_value;
         register.repeat = repeat;
@@ -287,7 +271,7 @@ fn transform_global_config_node(
         }
         GlobalConfigType::NameWordBoundaries => {
             if let Some(value) =
-                parse_single_string_entry(node, source_code.clone(), diagnostics, None).0
+                parse_single_string_entry(node, source_code.clone(), diagnostics, None, false).0
             {
                 device.global_config.name_word_boundaries =
                     convert_case::Boundary::list_from(&value);
@@ -295,7 +279,7 @@ fn transform_global_config_node(
         }
         GlobalConfigType::DefmtFeature => {
             if let Some(value) =
-                parse_single_string_entry(node, source_code.clone(), diagnostics, None).0
+                parse_single_string_entry(node, source_code.clone(), diagnostics, None, false).0
             {
                 device.global_config.defmt_feature = Some(value);
             }
@@ -438,6 +422,7 @@ fn parse_single_string_entry(
     source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
     expected_entries: Option<&[&'static str]>,
+    is_name: bool,
 ) -> (Option<String>, Option<SourceSpan>) {
     let unexpected_entries = errors::UnexpectedEntries {
         source_code: source_code.clone(),
@@ -463,22 +448,40 @@ fn parse_single_string_entry(
         Some(entry) if entry.name().is_none() => match entry.value() {
             KdlValue::String(val) => (Some(val.clone()), Some(entry.span())),
             _ => {
-                diagnostics.add(errors::UnexpectedType {
-                    source_code,
-                    value_name: entry.span(),
-                    expected_type: "string",
-                });
+                if !is_name {
+                    diagnostics.add(errors::UnexpectedType {
+                        source_code,
+                        value_name: entry.span(),
+                        expected_type: "string",
+                    });
+                } else {
+                    diagnostics.add(errors::MissingObjectName {
+                        source_code,
+                        object_keyword: node.name().span(),
+                        object_type: node.name().value().into(),
+                        found_instead: Some(entry.span()),
+                    });
+                }
                 (None, Some(entry.span()))
             }
         },
         _ => {
-            diagnostics.add(errors::MissingEntry {
-                source_code,
-                node_name: node.name().span(),
-                expected_entries: expected_entries
-                    .map(|ee| ee.to_vec())
-                    .unwrap_or_else(|| vec!["string"]),
-            });
+            if !is_name {
+                diagnostics.add(errors::MissingEntry {
+                    source_code,
+                    node_name: node.name().span(),
+                    expected_entries: expected_entries
+                        .map(|ee| ee.to_vec())
+                        .unwrap_or_else(|| vec!["string"]),
+                });
+            } else {
+                diagnostics.add(errors::MissingObjectName {
+                    source_code,
+                    object_keyword: node.name().span(),
+                    object_type: node.name().value().into(),
+                    found_instead: None,
+                });
+            }
             (None, None)
         }
     }
@@ -489,7 +492,13 @@ fn parse_single_string_value<T: strum::VariantNames + FromStr>(
     source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
 ) -> Option<T> {
-    match parse_single_string_entry(node, source_code.clone(), diagnostics, Some(T::VARIANTS)) {
+    match parse_single_string_entry(
+        node,
+        source_code.clone(),
+        diagnostics,
+        Some(T::VARIANTS),
+        false,
+    ) {
         (Some(val), _) if T::from_str(&val).is_ok() => T::from_str(&val).ok(),
         (Some(_), Some(entry)) => {
             diagnostics.add(errors::UnexpectedValue {
