@@ -93,7 +93,7 @@ pub(crate) fn recurse_objects_with_depth<'o>(
 pub(crate) fn find_min_max_addresses(
     objects: &[Object],
     filter: impl Fn(&Object) -> bool,
-) -> (i64, i64) {
+) -> (i128, i128) {
     let mut min_address_found = 0;
     let mut max_address_found = 0;
 
@@ -116,11 +116,11 @@ pub(crate) fn find_min_max_addresses(
                 stride: 0,
             });
 
-            let total_address_offsets = address_offsets.iter().sum::<i64>();
+            let total_address_offsets = address_offsets.iter().sum::<i128>();
 
             let count_0_address = total_address_offsets + address;
             let count_max_address =
-                count_0_address + (repeat.count.saturating_sub(1) as i64 * repeat.stride);
+                count_0_address + (repeat.count.saturating_sub(1) as i128 * repeat.stride);
 
             min_address_found = min_address_found
                 .min(count_0_address)

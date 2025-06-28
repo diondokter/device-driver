@@ -171,7 +171,7 @@ fn transform_block(block: &Block, global_config: &GlobalConfig) -> KdlDocument {
     }
 
     let mut address_offset_node = KdlNode::new("address-offset");
-    address_offset_node.push(*address_offset as i128);
+    address_offset_node.push(*address_offset);
     document.nodes_mut().push(address_offset_node);
 
     if let Some(repeat) = repeat {
@@ -218,7 +218,7 @@ fn transform_register(register: &Register, global_config: &GlobalConfig) -> KdlD
     }
 
     let mut address_node = KdlNode::new("address");
-    address_node.push(*address as i128);
+    address_node.push(*address);
     document.nodes_mut().push(address_node);
 
     if let Some(reset_value) = reset_value {
@@ -255,7 +255,7 @@ fn transform_cfg_config(cfg: &Cfg) -> Option<KdlNode> {
 fn transform_repeat_config(repeat: &Repeat) -> KdlNode {
     let mut repeat_node = KdlNode::new("repeat");
     repeat_node.push(("count", repeat.count as i128));
-    repeat_node.push(("stride", repeat.stride as i128));
+    repeat_node.push(("stride", repeat.stride));
 
     repeat_node
 }
@@ -379,7 +379,7 @@ fn transform_buffer(buffer: &Buffer, global_config: &GlobalConfig) -> KdlDocumen
     }
 
     let mut address_node = KdlNode::new("address");
-    address_node.push(*address as i128);
+    address_node.push(*address);
     document.nodes_mut().push(address_node);
 
     document
@@ -404,7 +404,7 @@ fn transform_command(command: &Command, global_config: &GlobalConfig) -> KdlDocu
     }
 
     let mut address_node = KdlNode::new("address");
-    address_node.push(*address as i128);
+    address_node.push(*address);
     document.nodes_mut().push(address_node);
 
     if *allow_address_overlap {
@@ -468,7 +468,7 @@ fn transform_ref(ref_object: &RefObject) -> KdlDocument {
         }) => {
             if let Some(address_offset) = address_offset {
                 let mut node = KdlNode::new("address-offset");
-                node.push(*address_offset as i128);
+                node.push(*address_offset);
                 document.nodes_mut().push(node);
             }
             if let Some(repeat) = repeat {
@@ -490,7 +490,7 @@ fn transform_ref(ref_object: &RefObject) -> KdlDocument {
             }
             if let Some(address) = address {
                 let mut node = KdlNode::new("address");
-                node.push(*address as i128);
+                node.push(*address);
                 document.nodes_mut().push(node);
             }
             if *allow_address_overlap {
@@ -522,7 +522,7 @@ fn transform_ref(ref_object: &RefObject) -> KdlDocument {
         }) => {
             if let Some(address) = address {
                 let mut node = KdlNode::new("address");
-                node.push(*address as i128);
+                node.push(*address);
                 document.nodes_mut().push(node);
             }
             if *allow_address_overlap {

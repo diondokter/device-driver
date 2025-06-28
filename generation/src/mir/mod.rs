@@ -59,30 +59,33 @@ pub enum Integer {
     I16,
     I32,
     I64,
+    U64,
 }
 
 impl Integer {
-    pub fn min_value(&self) -> i64 {
+    pub fn min_value(&self) -> i128 {
         match self {
-            Integer::U8 => u8::MIN as i64,
-            Integer::U16 => u16::MIN as i64,
-            Integer::U32 => u32::MIN as i64,
-            Integer::I8 => i8::MIN as i64,
-            Integer::I16 => i16::MIN as i64,
-            Integer::I32 => i32::MIN as i64,
-            Integer::I64 => i64::MIN,
+            Integer::U8 => u8::MIN as i128,
+            Integer::U16 => u16::MIN as i128,
+            Integer::U32 => u32::MIN as i128,
+            Integer::U64 => u64::MIN as i128,
+            Integer::I8 => i8::MIN as i128,
+            Integer::I16 => i16::MIN as i128,
+            Integer::I32 => i32::MIN as i128,
+            Integer::I64 => i64::MIN as i128,
         }
     }
 
-    pub fn max_value(&self) -> i64 {
+    pub fn max_value(&self) -> i128 {
         match self {
-            Integer::U8 => u8::MAX as i64,
-            Integer::U16 => u16::MAX as i64,
-            Integer::U32 => u32::MAX as i64,
-            Integer::I8 => i8::MAX as i64,
-            Integer::I16 => i16::MAX as i64,
-            Integer::I32 => i32::MAX as i64,
-            Integer::I64 => i64::MAX,
+            Integer::U8 => u8::MAX as i128,
+            Integer::U16 => u16::MAX as i128,
+            Integer::U32 => u32::MAX as i128,
+            Integer::U64 => u64::MAX as i128,
+            Integer::I8 => i8::MAX as i128,
+            Integer::I16 => i16::MAX as i128,
+            Integer::I32 => i32::MAX as i128,
+            Integer::I64 => i64::MAX as i128,
         }
     }
 }
@@ -270,7 +273,7 @@ impl Object {
 
     /// Return the address if it is specified.
     /// It's only not specified in ref objects where the user hasn't overridden the address
-    fn address(&self) -> Option<i64> {
+    fn address(&self) -> Option<i128> {
         match self {
             Object::Block(block) => Some(block.address_offset),
             Object::Register(register) => Some(register.address),
@@ -323,7 +326,7 @@ pub struct Block {
     pub cfg_attr: Cfg,
     pub description: String,
     pub name: String,
-    pub address_offset: i64,
+    pub address_offset: i128,
     pub repeat: Option<Repeat>,
     pub objects: Vec<Object>,
 }
@@ -331,7 +334,7 @@ pub struct Block {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Repeat {
     pub count: u64,
-    pub stride: i64,
+    pub stride: i128,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -341,7 +344,7 @@ pub struct Register {
     pub name: String,
     pub access: Access,
     pub allow_address_overlap: bool,
-    pub address: i64,
+    pub address: i128,
     pub reset_value: Option<ResetValue>,
     pub repeat: Option<Repeat>,
     pub field_set: FieldSet,
@@ -492,7 +495,7 @@ pub struct Command {
     pub cfg_attr: Cfg,
     pub description: String,
     pub name: String,
-    pub address: i64,
+    pub address: i128,
     pub allow_address_overlap: bool,
     pub repeat: Option<Repeat>,
 
@@ -506,7 +509,7 @@ pub struct Buffer {
     pub description: String,
     pub name: String,
     pub access: Access,
-    pub address: i64,
+    pub address: i128,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -567,7 +570,7 @@ impl ObjectOverride {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct BlockOverride {
     pub name: String,
-    pub address_offset: Option<i64>,
+    pub address_offset: Option<i128>,
     pub repeat: Option<Repeat>,
 }
 
@@ -575,7 +578,7 @@ pub struct BlockOverride {
 pub struct RegisterOverride {
     pub name: String,
     pub access: Option<Access>,
-    pub address: Option<i64>,
+    pub address: Option<i128>,
     pub allow_address_overlap: bool,
     pub reset_value: Option<ResetValue>,
     pub repeat: Option<Repeat>,
@@ -584,7 +587,7 @@ pub struct RegisterOverride {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct CommandOverride {
     pub name: String,
-    pub address: Option<i64>,
+    pub address: Option<i128>,
     pub allow_address_overlap: bool,
     pub repeat: Option<Repeat>,
 }

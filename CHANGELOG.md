@@ -2,6 +2,8 @@
 
 ### Unreleased
 
+- Internal numbers are now `i128` instead of `i64`. This also added room to add the `U64` integer as available address type option
+
 ### 1.0.6 (18-06-25)
 
 - Fixed regression introduced in 1.0.3 where signed integers were not sign-extended

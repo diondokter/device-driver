@@ -559,7 +559,7 @@ pub struct BorrowedBlock<'o> {
     pub cfg_attr: &'o mir::Cfg,
     pub description: &'o String,
     pub name: &'o String,
-    pub address_offset: &'o i64,
+    pub address_offset: &'o i128,
     pub repeat: &'o Option<mir::Repeat>,
     pub objects: &'o [mir::Object],
 }

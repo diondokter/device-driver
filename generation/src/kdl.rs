@@ -228,7 +228,7 @@ fn transform_register(
             register.allow_address_overlap = allow_address_overlap;
         }
         // TODO: Change internal address types to i128
-        register.address = address.unwrap() as i64;
+        register.address = address.unwrap();
         register.reset_value = reset_value;
         register.repeat = repeat;
         register.field_set = field_set.unwrap();

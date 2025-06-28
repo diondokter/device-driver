@@ -84,7 +84,7 @@ Specifies the integer type used to represent the address of a register. It is re
 
 The value is a string in manifest form or an integer type in DLS form.
 
-Options are: `u8`, `u16`, `u32`, `i8`, `i16`, `i32`, `i64`
+Options are: `u8`, `u16`, `u32`, `u64`, `i8`, `i16`, `i32`, `i64`
 
 ### `command_address_type`
 
@@ -92,7 +92,7 @@ Specifies the integer type used to represent the address of a command. It is req
 
 The value is a string in manifest form or an integer type in DLS form.
 
-Options are: `u8`, `u16`, `u32`, `i8`, `i16`, `i32`, `i64`
+Options are: `u8`, `u16`, `u32`, `u64`, `i8`, `i16`, `i32`, `i64`
 
 ### `buffer_address_type`
 
@@ -100,7 +100,7 @@ Specifies the integer type used to represent the address of a buffer. It is requ
 
 The value is a string in manifest form or an integer type in DLS form.
 
-Options are: `u8`, `u16`, `u32`, `i8`, `i16`, `i32`, `i64`
+Options are: `u8`, `u16`, `u32`, `u64`, `i8`, `i16`, `i32`, `i64`
 
 ## Defaults
 

@@ -226,6 +226,7 @@ fn transform_block(name: &str, map: &impl Map) -> anyhow::Result<mir::Block> {
             "address_offset" => {
                 block.address_offset = value
                     .as_int()
+                    .map(Into::into)
                     .context("Parsing error for `address_offset`")?
             }
             "repeat" => {
@@ -278,7 +279,10 @@ fn transform_register(name: &str, map: &impl Map) -> anyhow::Result<mir::Registe
                     transform_bit_order(value).context("Parsing error for `bit_order`")?;
             }
             "address" => {
-                register.address = value.as_int().context("Parsing error for `address`")?;
+                register.address = value
+                    .as_int()
+                    .map(Into::into)
+                    .context("Parsing error for `address`")?;
             }
             "size_bits" => {
                 register.field_set.size_bits = value
@@ -382,7 +386,10 @@ fn transform_command(name: &str, map: &impl Map) -> anyhow::Result<mir::Command>
                 field_set_out.bit_order = bit_order;
             }
             "address" => {
-                command.address = value.as_int().context("Parsing error for `address`")?;
+                command.address = value
+                    .as_int()
+                    .map(Into::into)
+                    .context("Parsing error for `address`")?;
             }
             "size_bits_in" => {
                 field_set_in.size_bits = value
@@ -472,7 +479,10 @@ fn transform_buffer(name: &str, map: &impl Map) -> anyhow::Result<mir::Buffer> {
                 buffer.access = transform_access(value).context("Parsing error for `access`")?;
             }
             "address" => {
-                buffer.address = value.as_int().context("Parsing error for `address`")?;
+                buffer.address = value
+                    .as_int()
+                    .map(Into::into)
+                    .context("Parsing error for `address`")?;
             }
             val => {
                 bail!("Unexpected key: `{val}`")
@@ -574,6 +584,7 @@ fn transform_block_override(name: &str, map: &impl Map) -> anyhow::Result<mir::B
                 block.address_offset = Some(
                     value
                         .as_int()
+                        .map(Into::into)
                         .context("Parsing error for `address_offset`")?,
                 )
             }
@@ -606,7 +617,12 @@ fn transform_register_override(
                     Some(transform_access(value).context("Parsing error for `access`")?);
             }
             "address" => {
-                register.address = Some(value.as_int().context("Parsing error for `address`")?);
+                register.address = Some(
+                    value
+                        .as_int()
+                        .map(Into::into)
+                        .context("Parsing error for `address`")?,
+                );
             }
             "reset_value" => {
                 register.reset_value = Some(if let Ok(rv) = value.as_uint() {
@@ -659,7 +675,12 @@ fn transform_command_override(name: &str, map: &impl Map) -> anyhow::Result<mir:
         match key {
             "type" => {}
             "address" => {
-                command.address = Some(value.as_int().context("Parsing error for `address`")?);
+                command.address = Some(
+                    value
+                        .as_int()
+                        .map(Into::into)
+                        .context("Parsing error for `address`")?,
+                );
             }
             "repeat" => {
                 command.repeat =
@@ -691,6 +712,7 @@ fn transform_repeat(value: &impl Value) -> anyhow::Result<mir::Repeat> {
         .get("stride")
         .ok_or_else(|| anyhow!("Missing field `stride`"))?
         .as_int()
+        .map(Into::into)
         .context("Parsing field `stride`")?;
 
     // Check for fields we don't know
