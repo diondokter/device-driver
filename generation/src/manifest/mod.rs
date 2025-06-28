@@ -1138,7 +1138,6 @@ mod tests {
                     byte_order: Some(ByteOrder::BE),
                     ..Default::default()
                 },
-                ..Default::default()
             })
         );
 
