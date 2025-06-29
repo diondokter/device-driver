@@ -44,8 +44,8 @@
  14 │ 
  15 │ device Foo abc def {
     ·            ─┬─ ─┬─
-    ·             │   ╰── This entry is superfluous
-    ·             ╰── This entry is superfluous
+    ·             │   ╰── This entry is unexpected
+    ·             ╰── This entry is unexpected
  16 │ 
     ╰────
   help: Some entries require a name, require to be anonymous or are expected to be of a certain type. Check the book
@@ -112,8 +112,8 @@
  30 │     default-buffer-access
  31 │     default-field-access RW RO WO
     ·                             ─┬ ─┬
-    ·                              │  ╰── This entry is superfluous
-    ·                              ╰── This entry is superfluous
+    ·                              │  ╰── This entry is unexpected
+    ·                              ╰── This entry is unexpected
  32 │ }
     ╰────
   help: Some entries require a name, require to be anonymous or are expected to be of a certain type. Check the book
@@ -199,6 +199,100 @@
     ·              ─┬─
     ·               ╰── This register is missing the required `fields` node
  47 │         
+    ╰────
+  help: Check the book to see all required nodes
+
+  error: Missing entry
+    ╭─[cases/device_definition_errors/input.kdl:50:9]
+ 49 │     register foo {
+ 50 │         address
+    ·         ───┬───
+    ·            ╰── For this node
+ 51 │         address a
+    ╰────
+  help: This node should have one or more of these entries: `integer`
+
+  error: Unexpected type
+    ╭─[cases/device_definition_errors/input.kdl:51:17]
+ 50 │         address
+ 51 │         address a
+    ·                 ┬
+    ·                 ╰── Unexpected type: expected a integer
+ 52 │         address 1
+    ╰────
+
+  error: Duplicate node
+    ╭─[cases/device_definition_errors/input.kdl:53:9]
+ 51 │         address a
+ 52 │         address 1
+    ·         ───┬───
+    ·            ╰── The original node
+ 53 │         address 2
+    ·         ───┬───
+    ·            ╰── The duplicate node
+ 54 │         repeat
+    ╰────
+  help: This type of node can only appear once. Try removing one of the nodes
+
+  error: Missing entry
+    ╭─[cases/device_definition_errors/input.kdl:54:9]
+ 53 │         address 2
+ 54 │         repeat
+    ·         ───┬──
+    ·            ╰── For this node
+ 55 │         reset-value 0x2000_0000
+    ╰────
+  help: This node should have one or more of these entries: `count=<integer>`, `stride=<integer>`
+
+  error: Missing child node
+    ╭─[cases/device_definition_errors/input.kdl:49:14]
+ 48 │     }
+ 49 │     register foo {
+    ·              ─┬─
+    ·               ╰── This register is missing the required `fields` node
+ 50 │         address
+    ╰────
+  help: Check the book to see all required nodes
+
+  error: Value out of range
+    ╭─[cases/device_definition_errors/input.kdl:59:16]
+ 58 │         address -1
+ 59 │         repeat count=18_446_744_073_709_551_616 stride=1
+    ·                ────────────────┬───────────────
+    ·                                ╰── Value is out of the allowable range: 0..=2^64
+ 60 │         allow-address-overlap #true
+    ╰────
+  help: The count is encoded as a u64
+
+  error: Unexpected entries
+    ╭─[cases/device_definition_errors/input.kdl:60:31]
+ 59 │         repeat count=18_446_744_073_709_551_616 stride=1
+ 60 │         allow-address-overlap #true
+    ·                               ──┬──
+    ·                                 ╰── This entry is unexpected
+ 61 │         reset-value 0x100 0x00
+    ╰────
+  help: Some entries require a name, require to be anonymous or are expected to be of a certain type. Check the book
+        to see the specification
+        These entries may also just be superfluous. Try removing them or check other errors to see what's expected
+
+  error: Value out of range
+    ╭─[cases/device_definition_errors/input.kdl:61:21]
+ 60 │         allow-address-overlap #true
+ 61 │         reset-value 0x100 0x00
+    ·                     ──┬──
+    ·                       ╰── Value is out of the allowable range: 0..256
+ 62 │     }
+    ╰────
+  help: When specifying the reset values as an array, all numbers must be bytes
+
+  error: Missing child node
+    ╭─[cases/device_definition_errors/input.kdl:57:14]
+ 56 │     }
+ 57 │     register foo {
+    ·              ─┬─
+    ·               ╰── This register is missing the required `fields` node
+ 58 │         address -1
     ╰────
   help: Check the book to see all required nodes
 

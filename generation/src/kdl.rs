@@ -4,7 +4,7 @@ use kdl::{KdlDocument, KdlNode, KdlValue};
 use miette::SourceSpan;
 
 use crate::{
-    mir::{Access, Device, GlobalConfig, Object, Register, ResetValue},
+    mir::{Access, Device, GlobalConfig, Object, Register, Repeat, ResetValue},
     reporting::{Diagnostics, NamedSourceCode, errors},
 };
 
@@ -145,23 +145,82 @@ fn transform_register(
     for child in node.iter_children() {
         match child.name().value().parse() {
             Ok(RegisterField::Access) => {
+                if let Some((_, span)) = access {
+                    diagnostics.add(errors::DuplicateNode {
+                        source_code: source_code.clone(),
+                        duplicate: child.name().span(),
+                        original: span,
+                    });
+                    continue;
+                }
+
                 access =
-                    parse_single_string_value::<Access>(child, source_code.clone(), diagnostics);
+                    parse_single_string_value::<Access>(child, source_code.clone(), diagnostics)
+                        .map(|val| (val, child.name().span()));
             }
             Ok(RegisterField::AllowAddressOverlap) => {
+                if let Some((_, span)) = allow_address_overlap {
+                    diagnostics.add(errors::DuplicateNode {
+                        source_code: source_code.clone(),
+                        duplicate: child.name().span(),
+                        original: span,
+                    });
+                    continue;
+                }
+
                 ensure_zero_entries(child, source_code.clone(), diagnostics);
-                allow_address_overlap = Some(true);
+                allow_address_overlap = Some(true).map(|val| (val, child.name().span()));
             }
             Ok(RegisterField::Address) => {
-                address = parse_single_integer_entry(node, source_code.clone(), diagnostics).0;
+                if let Some((_, span)) = address {
+                    diagnostics.add(errors::DuplicateNode {
+                        source_code: source_code.clone(),
+                        duplicate: child.name().span(),
+                        original: span,
+                    });
+                    continue;
+                }
+
+                address = parse_single_integer_entry(child, source_code.clone(), diagnostics)
+                    .0
+                    .map(|val| (val, child.name().span()));
             }
             Ok(RegisterField::ResetValue) => {
-                reset_value = parse_reset_value_entries(node, source_code.clone(), diagnostics)
+                if let Some((_, span)) = reset_value {
+                    diagnostics.add(errors::DuplicateNode {
+                        source_code: source_code.clone(),
+                        duplicate: child.name().span(),
+                        original: span,
+                    });
+                    continue;
+                }
+
+                reset_value = parse_reset_value_entries(child, source_code.clone(), diagnostics)
+                    .map(|val| (val, child.name().span()))
             }
             Ok(RegisterField::Repeat) => {
-                todo!()
+                if let Some((_, span)) = repeat {
+                    diagnostics.add(errors::DuplicateNode {
+                        source_code: source_code.clone(),
+                        duplicate: child.name().span(),
+                        original: span,
+                    });
+                    continue;
+                }
+
+                repeat = parse_repeat_entries(child, source_code.clone(), diagnostics)
+                    .map(|val| (val, child.name().span()));
             }
             Ok(RegisterField::FieldSet) => {
+                if let Some((_, span)) = field_set {
+                    diagnostics.add(errors::DuplicateNode {
+                        source_code: source_code.clone(),
+                        duplicate: child.name().span(),
+                        original: span,
+                    });
+                    continue;
+                }
+
                 todo!()
             }
             Err(()) => {
@@ -206,16 +265,16 @@ fn transform_register(
         let mut register = Register::default();
 
         register.name = name.unwrap();
-        if let Some(access) = access {
+        if let Some((access, _)) = access {
             register.access = access;
         }
-        if let Some(allow_address_overlap) = allow_address_overlap {
+        if let Some((allow_address_overlap, _)) = allow_address_overlap {
             register.allow_address_overlap = allow_address_overlap;
         }
-        register.address = address.unwrap();
-        register.reset_value = reset_value;
-        register.repeat = repeat;
-        register.field_set = field_set.unwrap();
+        register.address = address.unwrap().0;
+        register.reset_value = reset_value.map(|(rv, _)| rv);
+        register.repeat = repeat.map(|(r, _)| r);
+        register.field_set = field_set.unwrap().0;
 
         Some(register)
     }
@@ -302,6 +361,92 @@ fn ensure_zero_entries(
     }
 }
 
+fn parse_repeat_entries(
+    node: &KdlNode,
+    source_code: NamedSourceCode,
+    diagnostics: &mut Diagnostics,
+) -> Option<Repeat> {
+    let mut unexpected_entries = errors::UnexpectedEntries {
+        source_code: source_code.clone(),
+        superfluous_entries: Vec::new(),
+        unexpected_name_entries: Vec::new(),
+        not_anonymous_entries: Vec::new(),
+    };
+
+    let mut count = None;
+    let mut stride = None;
+
+    for entry in node.entries() {
+        match (entry.name().map(|id| id.value()), entry.value()) {
+            (Some("count"), KdlValue::Integer(val)) => count = Some((*val, entry.span())),
+            (Some("stride"), KdlValue::Integer(val)) => stride = Some(*val),
+            (Some("count") | Some("stride"), _) => diagnostics.add(errors::UnexpectedType {
+                source_code: source_code.clone(),
+                value_name: entry.span(),
+                expected_type: "integer",
+            }),
+            (Some(_), _) => {
+                unexpected_entries
+                    .unexpected_name_entries
+                    .push(entry.span());
+            }
+            (None, _) => {
+                unexpected_entries.superfluous_entries.push(entry.span());
+            }
+        }
+    }
+
+    if !unexpected_entries.is_empty() {
+        diagnostics.add(unexpected_entries);
+    }
+
+    let mut error = false;
+
+    if count.is_none() && stride.is_none() {
+        error = true;
+        diagnostics.add(errors::MissingEntry {
+            source_code: source_code.clone(),
+            node_name: node.name().span(),
+            expected_entries: vec!["count=<integer>", "stride=<integer>"],
+        });
+    } else if count.is_none() {
+        error = true;
+        diagnostics.add(errors::MissingEntry {
+            source_code: source_code.clone(),
+            node_name: node.name().span(),
+            expected_entries: vec!["count=<integer>"],
+        });
+    } else if stride.is_none() {
+        error = true;
+        diagnostics.add(errors::MissingEntry {
+            source_code: source_code.clone(),
+            node_name: node.name().span(),
+            expected_entries: vec!["stride=<integer>"],
+        });
+    }
+
+    if let Some((count, span)) = count
+        && !(0..=u64::MAX as i128).contains(&count)
+    {
+        error = true;
+        diagnostics.add(errors::ValueOutOfRange {
+            source_code: source_code.clone(),
+            value: span,
+            context: Some("The count is encoded as a u64"),
+            range: "0..=2^64",
+        });
+    }
+
+    if error {
+        None
+    } else {
+        Some(Repeat {
+            count: count.unwrap().0 as u64,
+            stride: stride.unwrap(),
+        })
+    }
+}
+
 fn parse_reset_value_entries(
     node: &KdlNode,
     source_code: NamedSourceCode,
@@ -335,8 +480,8 @@ fn parse_reset_value_entries(
             diagnostics.add(errors::ValueOutOfRange {
                 source_code: source_code.clone(),
                 value: span,
-                range: "0..".into(),
-                context: Some("Negative reset values are not allowed".into()),
+                range: "0..",
+                context: Some("Negative reset values are not allowed"),
             });
             None
         } else {
@@ -350,10 +495,9 @@ fn parse_reset_value_entries(
                 diagnostics.add(errors::ValueOutOfRange {
                     source_code: source_code.clone(),
                     value: *span,
-                    range: "0..256".into(),
+                    range: "0..256",
                     context: Some(
-                        "When specifying the reset values as an array, all numbers must be bytes"
-                            .into(),
+                        "When specifying the reset values as an array, all numbers must be bytes",
                     ),
                 });
             }

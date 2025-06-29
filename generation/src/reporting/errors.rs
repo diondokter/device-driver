@@ -34,7 +34,7 @@ These entries may also just be superfluous. Try removing them or check other err
 pub struct UnexpectedEntries {
     #[source_code]
     pub source_code: NamedSourceCode,
-    #[label(collection, "This entry is superfluous")]
+    #[label(collection, "This entry is unexpected")]
     pub superfluous_entries: Vec<SourceSpan>,
     #[label(collection, "This entry is has a name that's unexpected")]
     pub unexpected_name_entries: Vec<SourceSpan>,
@@ -116,8 +116,8 @@ pub struct ValueOutOfRange {
     #[label("Value is out of the allowable range: {}", self.range)]
     pub value: SourceSpan,
     #[help]
-    pub context: Option<String>,
-    pub range: String,
+    pub context: Option<&'static str>,
+    pub range: &'static str,
 }
 
 #[derive(Error, Debug, Diagnostic)]
