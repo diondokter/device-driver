@@ -31,8 +31,8 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
                 Some(reset_value) => {
                     let new_reset_value = convert_reset_value(
                         reset_value.clone(),
-                        reg.bit_order,
-                        reg.size_bits,
+                        reg.field_set.bit_order,
+                        reg.field_set.size_bits,
                         "register",
                         &reg.name,
                         target_byte_order,
@@ -64,8 +64,8 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
 
                 let new_reset_value = convert_reset_value(
                     reset_value.clone(),
-                    base_reg.bit_order,
-                    base_reg.size_bits,
+                    base_reg.field_set.bit_order,
+                    base_reg.field_set.size_bits,
                     "ref register",
                     name,
                     target_byte_order,
@@ -110,9 +110,10 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
 }
 
 fn get_target_byte_order(reg: &Register, device: &Device) -> ByteOrder {
-    reg.byte_order
+    reg.field_set
+        .byte_order
         .or(device.global_config.default_byte_order)
-        .or((reg.size_bits <= 8).then_some(ByteOrder::LE))
+        .or((reg.field_set.size_bits <= 8).then_some(ByteOrder::LE))
         .expect("Register should have a valid byte order or not need one")
 }
 
@@ -205,7 +206,7 @@ fn convert_reset_value(
 
 #[cfg(test)]
 mod tests {
-    use crate::mir::{GlobalConfig, Register};
+    use crate::mir::{FieldSet, GlobalConfig, Register};
 
     use super::*;
 
@@ -216,8 +217,11 @@ mod tests {
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
-                size_bits: 5,
                 reset_value: Some(ResetValue::Integer(0x1F)),
+                field_set: FieldSet {
+                    size_bits: 5,
+                    ..Default::default()
+                },
                 ..Default::default()
             })],
         };
@@ -229,8 +233,11 @@ mod tests {
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
-                size_bits: 5,
                 reset_value: Some(ResetValue::Array(vec![0x1F])),
+                field_set: FieldSet {
+                    size_bits: 5,
+                    ..Default::default()
+                },
                 ..Default::default()
             })],
         };
@@ -242,8 +249,11 @@ mod tests {
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
-                size_bits: 5,
                 reset_value: Some(ResetValue::Array(vec![0x1F])),
+                field_set: FieldSet {
+                    size_bits: 5,
+                    ..Default::default()
+                },
                 ..Default::default()
             })],
         };
@@ -255,8 +265,11 @@ mod tests {
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
-                size_bits: 5,
                 reset_value: Some(ResetValue::Array(vec![0x1F])),
+                field_set: FieldSet {
+                    size_bits: 5,
+                    ..Default::default()
+                },
                 ..Default::default()
             })],
         };
@@ -271,8 +284,11 @@ mod tests {
             },
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
-                size_bits: 11,
                 reset_value: Some(ResetValue::Integer(0x423)),
+                field_set: FieldSet {
+                    size_bits: 11,
+                    ..Default::default()
+                },
                 ..Default::default()
             })],
         };
@@ -287,8 +303,11 @@ mod tests {
             },
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
-                size_bits: 11,
                 reset_value: Some(ResetValue::Array(vec![0x23, 0x04])),
+                field_set: FieldSet {
+                    size_bits: 11,
+                    ..Default::default()
+                },
                 ..Default::default()
             })],
         };
@@ -300,9 +319,12 @@ mod tests {
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
-                size_bits: 11,
-                byte_order: Some(ByteOrder::BE),
                 reset_value: Some(ResetValue::Array(vec![0x04, 0x23])),
+                field_set: FieldSet {
+                    size_bits: 11,
+                    byte_order: Some(ByteOrder::BE),
+                    ..Default::default()
+                },
                 ..Default::default()
             })],
         };
@@ -314,9 +336,12 @@ mod tests {
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
-                size_bits: 11,
-                byte_order: Some(ByteOrder::BE),
                 reset_value: Some(ResetValue::Array(vec![0x04, 0x23])),
+                field_set: FieldSet {
+                    size_bits: 11,
+                    byte_order: Some(ByteOrder::BE),
+                    ..Default::default()
+                },
                 ..Default::default()
             })],
         };
@@ -328,10 +353,13 @@ mod tests {
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
-                size_bits: 11,
-                byte_order: Some(ByteOrder::BE),
-                bit_order: BitOrder::MSB0,
                 reset_value: Some(ResetValue::Array(vec![0x20, 0xC4])),
+                field_set: FieldSet {
+                    size_bits: 11,
+                    byte_order: Some(ByteOrder::BE),
+                    bit_order: BitOrder::MSB0,
+                    ..Default::default()
+                },
                 ..Default::default()
             })],
         };
@@ -343,10 +371,13 @@ mod tests {
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
-                size_bits: 11,
-                byte_order: Some(ByteOrder::BE),
-                bit_order: BitOrder::MSB0,
                 reset_value: Some(ResetValue::Array(vec![0x20, 0xC4])),
+                field_set: FieldSet {
+                    size_bits: 11,
+                    byte_order: Some(ByteOrder::BE),
+                    bit_order: BitOrder::MSB0,
+                    ..Default::default()
+                },
                 ..Default::default()
             })],
         };
@@ -364,8 +395,11 @@ mod tests {
             },
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
-                size_bits: 10,
                 reset_value: Some(ResetValue::Integer(0x423)),
+                field_set: FieldSet {
+                    size_bits: 10,
+                    ..Default::default()
+                },
                 ..Default::default()
             })],
         };
@@ -380,9 +414,12 @@ mod tests {
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
-                size_bits: 10,
-                byte_order: Some(ByteOrder::BE),
                 reset_value: Some(ResetValue::Array(vec![0x04, 0x23])),
+                field_set: FieldSet {
+                    size_bits: 10,
+                    byte_order: Some(ByteOrder::BE),
+                    ..Default::default()
+                },
                 ..Default::default()
             })],
         };
@@ -397,10 +434,13 @@ mod tests {
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
-                size_bits: 10,
-                byte_order: Some(ByteOrder::BE),
-                bit_order: BitOrder::MSB0,
                 reset_value: Some(ResetValue::Array(vec![0x20, 0xC4])),
+                field_set: FieldSet {
+                    size_bits: 10,
+                    byte_order: Some(ByteOrder::BE),
+                    bit_order: BitOrder::MSB0,
+                    ..Default::default()
+                },
                 ..Default::default()
             })],
         };
@@ -418,9 +458,12 @@ mod tests {
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
-                size_bits: 32,
-                byte_order: Some(ByteOrder::LE),
                 reset_value: Some(ResetValue::Array(vec![0, 0, 0])),
+                field_set: FieldSet {
+                    size_bits: 32,
+                    byte_order: Some(ByteOrder::LE),
+                    ..Default::default()
+                },
                 ..Default::default()
             })],
         };
@@ -438,9 +481,12 @@ mod tests {
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
-                size_bits: 5,
-                bit_order: BitOrder::MSB0,
                 reset_value: Some(ResetValue::Integer(0xF8)),
+                field_set: FieldSet {
+                    size_bits: 5,
+                    bit_order: BitOrder::MSB0,
+                    ..Default::default()
+                },
                 ..Default::default()
             })],
         };
@@ -452,9 +498,12 @@ mod tests {
             global_config: Default::default(),
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
-                size_bits: 5,
-                bit_order: BitOrder::MSB0,
                 reset_value: Some(ResetValue::Array(vec![0xF8])),
+                field_set: FieldSet {
+                    size_bits: 5,
+                    bit_order: BitOrder::MSB0,
+                    ..Default::default()
+                },
                 ..Default::default()
             })],
         };

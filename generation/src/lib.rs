@@ -2,18 +2,44 @@
 
 use std::{
     io::{Read, Write},
+    path::Path,
     process::Stdio,
 };
 
 use anyhow::ensure;
 use itertools::Itertools;
 
+use crate::reporting::Diagnostics;
+
 #[cfg(feature = "dsl")]
 mod dsl_hir;
+mod kdl;
 mod lir;
 #[cfg(feature = "manifest")]
 mod manifest;
 pub mod mir;
+
+pub mod reporting;
+
+pub fn transform_kdl(source: &str, file_path: &Path) -> Result<(String, Diagnostics), Diagnostics> {
+    let mut reports = Diagnostics::new();
+
+    let mir_devices = crate::kdl::transform(source, file_path, &mut reports);
+
+    let mut output = String::new();
+    for mir_device in mir_devices {
+        match transform_mir(mir_device) {
+            Ok(device_output) => output += &device_output,
+            Err(e) => reports.add_msg(e.to_string()),
+        }
+    }
+
+    if reports.has_error() {
+        Err(reports)
+    } else {
+        Ok((output, reports))
+    }
+}
 
 /// Transform the tokens of the DSL lang to the generated device driver (or a compile error).
 ///
@@ -21,12 +47,16 @@ pub mod mir;
 /// It should be given in `PascalCase` form.
 #[cfg(feature = "dsl")]
 pub fn transform_dsl(input: proc_macro2::TokenStream, driver_name: &str) -> String {
-    let mir = match _private_transform_dsl_mir(input) {
+    let mut mir = match _private_transform_dsl_mir(input) {
         Ok(mir) => mir,
         Err(e) => return e.into_compile_error().to_string(),
     };
 
-    transform_mir(mir, driver_name)
+    mir.name = Some(driver_name.into());
+    match transform_mir(mir) {
+        Ok(output) => output,
+        Err(e) => anyhow_error_to_compile_error(e),
+    }
 }
 
 #[doc(hidden)]
@@ -49,12 +79,16 @@ pub fn _private_transform_dsl_mir(
 /// It should be given in `PascalCase` form.
 #[cfg(feature = "json")]
 pub fn transform_json(source: &str, driver_name: &str) -> String {
-    let mir = match _private_transform_json_mir(source) {
+    let mut mir = match _private_transform_json_mir(source) {
         Ok(mir) => mir,
         Err(e) => return anyhow_error_to_compile_error(e),
     };
 
-    transform_mir(mir, driver_name)
+    mir.name = Some(driver_name.into());
+    match transform_mir(mir) {
+        Ok(output) => output,
+        Err(e) => anyhow_error_to_compile_error(e),
+    }
 }
 
 #[doc(hidden)]
@@ -72,12 +106,16 @@ pub fn _private_transform_json_mir(source: &str) -> anyhow::Result<mir::Device> 
 /// It should be given in `PascalCase` form.
 #[cfg(feature = "yaml")]
 pub fn transform_yaml(source: &str, driver_name: &str) -> String {
-    let mir = match _private_transform_yaml_mir(source) {
+    let mut mir = match _private_transform_yaml_mir(source) {
         Ok(mir) => mir,
         Err(e) => return anyhow_error_to_compile_error(e),
     };
 
-    transform_mir(mir, driver_name)
+    mir.name = Some(driver_name.into());
+    match transform_mir(mir) {
+        Ok(output) => output,
+        Err(e) => anyhow_error_to_compile_error(e),
+    }
 }
 
 #[doc(hidden)]
@@ -95,12 +133,16 @@ pub fn _private_transform_yaml_mir(source: &str) -> anyhow::Result<mir::Device> 
 /// It should be given in `PascalCase` form.
 #[cfg(feature = "toml")]
 pub fn transform_toml(source: &str, driver_name: &str) -> String {
-    let mir = match _private_transform_toml_mir(source) {
+    let mut mir = match _private_transform_toml_mir(source) {
         Ok(mir) => mir,
         Err(e) => return anyhow_error_to_compile_error(e),
     };
 
-    transform_mir(mir, driver_name)
+    mir.name = Some(driver_name.into());
+    match transform_mir(mir) {
+        Ok(output) => output,
+        Err(e) => anyhow_error_to_compile_error(e),
+    }
 }
 
 #[doc(hidden)]
@@ -112,35 +154,28 @@ pub fn _private_transform_toml_mir(source: &str) -> anyhow::Result<mir::Device> 
     Ok(mir)
 }
 
-fn transform_mir(mut mir: mir::Device, driver_name: &str) -> String {
+fn transform_mir(mut mir: mir::Device) -> Result<String, anyhow::Error> {
     // Run the MIR passes
-    match mir::passes::run_passes(&mut mir) {
-        Ok(()) => {}
-        Err(e) => return anyhow_error_to_compile_error(e),
-    }
+    mir::passes::run_passes(&mut mir)?;
 
     // Transform into LIR
-    let mut lir = match mir::lir_transform::transform(mir, driver_name) {
-        Ok(lir) => lir,
-        Err(e) => return anyhow_error_to_compile_error(e),
-    };
+    let mut lir = mir::lir_transform::transform(mir)?;
 
     // Run the LIR passes
-    match lir::passes::run_passes(&mut lir) {
-        Ok(()) => {}
-        Err(e) => return anyhow_error_to_compile_error(e),
-    };
+    lir::passes::run_passes(&mut lir)?;
 
     // Transform into Rust source token output
     let output = lir::code_transform::DeviceTemplateRust::new(&lir).to_string();
 
-    match format_code(&output) {
+    let formatted_output = match format_code(&output) {
         Ok(formatted_output) => formatted_output,
         Err(e) => format!(
             "{}\n\n{output}",
             e.to_string().lines().map(|e| format!("// {e}")).join("\n")
         ),
-    }
+    };
+
+    Ok(formatted_output)
 }
 
 fn anyhow_error_to_compile_error(error: anyhow::Error) -> String {
