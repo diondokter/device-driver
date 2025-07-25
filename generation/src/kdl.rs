@@ -46,11 +46,8 @@ fn transform_device(
         return None;
     }
 
-    let Some(device_name) =
-        parse_single_string_entry(node, source_code.clone(), diagnostics, None, true).0
-    else {
-        return None;
-    };
+    let device_name =
+        parse_single_string_entry(node, source_code.clone(), diagnostics, None, true).0?;
 
     let mut device = Device {
         name: Some(device_name),
@@ -267,19 +264,23 @@ fn transform_register(
     if error {
         None
     } else {
-        let mut register = Register::default();
+        let mut register = Register {
+            cfg_attr: todo!(),
+            description: todo!(),
+            name: name.unwrap(),
+            address: address.unwrap().0,
+            reset_value: reset_value.map(|(rv, _)| rv),
+            repeat: repeat.map(|(r, _)| r),
+            field_set: field_set.unwrap().0,
+            ..Default::default()
+        };
 
-        register.name = name.unwrap();
         if let Some((access, _)) = access {
             register.access = access;
         }
         if let Some((allow_address_overlap, _)) = allow_address_overlap {
             register.allow_address_overlap = allow_address_overlap;
         }
-        register.address = address.unwrap().0;
-        register.reset_value = reset_value.map(|(rv, _)| rv);
-        register.repeat = repeat.map(|(r, _)| r);
-        register.field_set = field_set.unwrap().0;
 
         Some(register)
     }
