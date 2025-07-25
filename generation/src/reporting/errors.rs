@@ -40,6 +40,8 @@ pub struct UnexpectedEntries {
     pub unexpected_name_entries: Vec<SourceSpan>,
     #[label(collection, "This entry was expected to be anonymous")]
     pub not_anonymous_entries: Vec<SourceSpan>,
+    #[label(collection, "This entry was expected to have a name")]
+    pub unexpected_anonymous_entries: Vec<SourceSpan>,
 }
 
 impl UnexpectedEntries {
@@ -47,6 +49,7 @@ impl UnexpectedEntries {
         self.superfluous_entries.is_empty()
             && self.unexpected_name_entries.is_empty()
             && self.not_anonymous_entries.is_empty()
+            && self.unexpected_anonymous_entries.is_empty()
     }
 }
 
@@ -157,6 +160,21 @@ pub struct DuplicateNode {
     #[label(primary, "The duplicate node")]
     pub duplicate: SourceSpan,
     #[label("The original node")]
+    pub original: SourceSpan,
+}
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Duplicate entry")]
+#[diagnostic(
+    help("This type of entry can only appear once. Try removing one of the entries"),
+    severity(Error)
+)]
+pub struct DuplicateEntry {
+    #[source_code]
+    pub source_code: NamedSourceCode,
+    #[label(primary, "The duplicate entry")]
+    pub duplicate: SourceSpan,
+    #[label("The original entry")]
     pub original: SourceSpan,
 }
 

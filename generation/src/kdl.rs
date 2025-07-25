@@ -2,9 +2,13 @@ use std::{collections::HashMap, path::Path, str::FromStr};
 
 use kdl::{KdlDocument, KdlNode, KdlValue};
 use miette::SourceSpan;
+use strum::VariantNames;
 
 use crate::{
-    mir::{Access, Device, GlobalConfig, Object, Register, Repeat, ResetValue},
+    mir::{
+        Access, BitOrder, ByteOrder, Device, Field, FieldSet, GlobalConfig, Object, Register,
+        Repeat, ResetValue,
+    },
     reporting::{Diagnostics, NamedSourceCode, errors},
 };
 
@@ -221,7 +225,8 @@ fn transform_register(
                     continue;
                 }
 
-                todo!()
+                field_set = transform_field_set(child, source_code.clone(), diagnostics)
+                    .map(|val| (val, child.name().span()));
             }
             Err(()) => {
                 diagnostics.add(errors::UnexpectedNode {
@@ -346,6 +351,213 @@ fn transform_global_config_node(
     }
 }
 
+fn transform_field_set(
+    node: &KdlNode,
+    source_code: NamedSourceCode,
+    diagnostics: &mut Diagnostics,
+) -> Option<FieldSet> {
+    let mut field_set = FieldSet::default();
+
+    let mut unexpected_entries = errors::UnexpectedEntries {
+        source_code: source_code.clone(),
+        superfluous_entries: Vec::new(),
+        unexpected_name_entries: Vec::new(),
+        not_anonymous_entries: Vec::new(),
+        unexpected_anonymous_entries: Vec::new(),
+    };
+
+    let mut size_bits: Option<&kdl::KdlEntry> = None;
+    let mut byte_order: Option<&kdl::KdlEntry> = None;
+    let mut bit_order: Option<&kdl::KdlEntry> = None;
+    let mut allow_bit_overlap: Option<&kdl::KdlEntry> = None;
+
+    for entry in node.entries() {
+        match entry.name().map(|n| n.value()) {
+            Some("size-bits") => {
+                if let Some(size_bits) = size_bits {
+                    diagnostics.add(errors::DuplicateEntry {
+                        source_code: source_code.clone(),
+                        duplicate: entry.span(),
+                        original: size_bits.span(),
+                    });
+                } else {
+                    size_bits = Some(entry);
+                }
+            }
+            Some("byte-order") => {
+                if let Some(byte_order) = byte_order {
+                    diagnostics.add(errors::DuplicateEntry {
+                        source_code: source_code.clone(),
+                        duplicate: entry.span(),
+                        original: byte_order.span(),
+                    });
+                } else {
+                    byte_order = Some(entry);
+                }
+            }
+            Some("bit-order") => {
+                if let Some(bit_order) = bit_order {
+                    diagnostics.add(errors::DuplicateEntry {
+                        source_code: source_code.clone(),
+                        duplicate: entry.span(),
+                        original: bit_order.span(),
+                    });
+                } else {
+                    bit_order = Some(entry);
+                }
+            }
+            Some("allow-bit-overlap") => {
+                if let Some(allow_bit_overlap) = allow_bit_overlap {
+                    diagnostics.add(errors::DuplicateEntry {
+                        source_code: source_code.clone(),
+                        duplicate: entry.span(),
+                        original: allow_bit_overlap.span(),
+                    });
+                } else {
+                    allow_bit_overlap = Some(entry);
+                }
+            }
+            Some(_) => {
+                unexpected_entries
+                    .unexpected_name_entries
+                    .push(entry.span());
+            }
+            None => {
+                if entry.value().as_string() == Some("allow-bit-overlap") {
+                    if let Some(allow_bit_overlap) = allow_bit_overlap {
+                        diagnostics.add(errors::DuplicateEntry {
+                            source_code: source_code.clone(),
+                            duplicate: entry.span(),
+                            original: allow_bit_overlap.span(),
+                        });
+                    } else {
+                        allow_bit_overlap = Some(entry);
+                    }
+                } else {
+                    unexpected_entries
+                        .unexpected_anonymous_entries
+                        .push(entry.span());
+                }
+            }
+        }
+    }
+
+    if !unexpected_entries.is_empty() {
+        diagnostics.add(unexpected_entries);
+    }
+
+    if let Some(size_bits) = size_bits {
+        match size_bits.value() {
+            KdlValue::Integer(sb) if (0..=u32::MAX as i128).contains(sb) => {
+                field_set.size_bits = *sb as u32;
+            }
+            KdlValue::Integer(_) => {
+                diagnostics.add(errors::ValueOutOfRange {
+                    source_code: source_code.clone(),
+                    value: size_bits.span(),
+                    context: Some("size-bits is encoded as a u32"),
+                    range: "0..2^32",
+                });
+            }
+            _ => {
+                diagnostics.add(errors::UnexpectedType {
+                    source_code: source_code.clone(),
+                    value_name: size_bits.span(),
+                    expected_type: "integer",
+                });
+            }
+        }
+    } else {
+        diagnostics.add(errors::MissingEntry {
+            source_code: source_code.clone(),
+            node_name: node.name().span(),
+            expected_entries: vec!["size-bits"],
+        });
+    }
+
+    if let Some(byte_order) = byte_order {
+        match byte_order.value() {
+            KdlValue::String(s) => match s.parse() {
+                Ok(byte_order) => {
+                    field_set.byte_order = Some(byte_order);
+                }
+                Err(_) => {
+                    diagnostics.add(errors::UnexpectedValue {
+                        source_code: source_code.clone(),
+                        value_name: byte_order.span(),
+                        expected_values: BitOrder::VARIANTS.to_vec(),
+                    });
+                }
+            },
+            _ => {
+                diagnostics.add(errors::UnexpectedType {
+                    source_code: source_code.clone(),
+                    value_name: byte_order.span(),
+                    expected_type: "string",
+                });
+            }
+        }
+    }
+
+    if let Some(bit_order) = bit_order {
+        match bit_order.value() {
+            KdlValue::String(s) => match s.parse() {
+                Ok(bit_order) => {
+                    field_set.bit_order = bit_order;
+                }
+                Err(_) => {
+                    diagnostics.add(errors::UnexpectedValue {
+                        source_code: source_code.clone(),
+                        value_name: bit_order.span(),
+                        expected_values: ByteOrder::VARIANTS.to_vec(),
+                    });
+                }
+            },
+            _ => {
+                diagnostics.add(errors::UnexpectedType {
+                    source_code: source_code.clone(),
+                    value_name: bit_order.span(),
+                    expected_type: "string",
+                });
+            }
+        }
+    }
+
+    if let Some(allow_bit_overlap) = allow_bit_overlap {
+        match allow_bit_overlap.value() {
+            KdlValue::Bool(b) => {
+                field_set.allow_bit_overlap = *b;
+            }
+            KdlValue::String(s) if s == "allow-bit-overlap" => {
+                field_set.allow_bit_overlap = true;
+            }
+            _ => {
+                diagnostics.add(errors::UnexpectedType {
+                    source_code: source_code.clone(),
+                    value_name: allow_bit_overlap.span(),
+                    expected_type: "bool",
+                });
+            }
+        }
+    }
+
+    for field_node in node.iter_children() {
+        if let Some(field) = transform_field(field_node, source_code.clone(), diagnostics) {
+            field_set.fields.push(field);
+        }
+    }
+
+    Some(field_set)
+}
+
+fn transform_field(
+    node: &KdlNode,
+    source_code: NamedSourceCode,
+    diagnostics: &mut Diagnostics,
+) -> Option<Field> {
+    todo!()
+}
+
 fn ensure_zero_entries(
     node: &KdlNode,
     source_code: NamedSourceCode,
@@ -357,6 +569,7 @@ fn ensure_zero_entries(
             superfluous_entries: node.entries().iter().map(|entry| entry.span()).collect(),
             unexpected_name_entries: Vec::new(),
             not_anonymous_entries: Vec::new(),
+            unexpected_anonymous_entries: Vec::new(),
         });
     }
 }
@@ -371,6 +584,7 @@ fn parse_repeat_entries(
         superfluous_entries: Vec::new(),
         unexpected_name_entries: Vec::new(),
         not_anonymous_entries: Vec::new(),
+        unexpected_anonymous_entries: Vec::new(),
     };
 
     let mut count = None;
@@ -433,7 +647,7 @@ fn parse_repeat_entries(
             source_code: source_code.clone(),
             value: span,
             context: Some("The count is encoded as a u64"),
-            range: "0..=2^64",
+            range: "0..2^64",
         });
     }
 
@@ -533,6 +747,7 @@ fn parse_single_integer_entry(
             .iter()
             .filter_map(|entry| entry.name().map(|_| entry.span()))
             .collect(),
+        unexpected_anonymous_entries: Vec::new(),
     };
     if !unexpected_entries.is_empty() {
         diagnostics.add(unexpected_entries);
@@ -583,6 +798,7 @@ fn parse_single_string_entry(
             .iter()
             .filter_map(|entry| entry.name().map(|_| entry.span()))
             .collect(),
+        unexpected_anonymous_entries: Vec::new(),
     };
     if !unexpected_entries.is_empty() {
         diagnostics.add(unexpected_entries);

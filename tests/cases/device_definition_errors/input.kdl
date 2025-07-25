@@ -41,6 +41,8 @@ device Foo {
 }
 
 device Foo {
+    register-address-type u8
+
     registah
     register
     register foo {
@@ -59,5 +61,29 @@ device Foo {
         repeat count=18_446_744_073_709_551_616 stride=1
         allow-address-overlap #true
         reset-value 0x100 0x00
+    }
+    register foo0 {
+        address 0
+        fields {
+
+        }
+    }
+    register foo1 {
+        address 1
+        fields size-bits=-1 {
+
+        }
+    }
+    register foo2 {
+        address 2
+        fields size-bits=0x1_0000_0000 byte-order=BLA byte-order=BE bit-order=gkd bit-order=msb0 allow-bit-overlap allow-bit-overlap=#false {
+
+        }
+    }
+    register foo3 {
+        address 3
+        fields size-bits=0x1_0000_0000 byte-order=1 bit-order=#true allow-bit-overlap  {
+
+        }
     }
 }
