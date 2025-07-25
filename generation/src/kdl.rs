@@ -137,7 +137,6 @@ fn transform_register(
         return None;
     }
 
-    let mut cfg = None;
     let mut access = None;
     let mut allow_address_overlap = None;
     let mut address = None;
@@ -147,21 +146,6 @@ fn transform_register(
 
     for child in node.iter_children() {
         match child.name().value().parse() {
-            Ok(RegisterField::Cfg) => {
-                if let Some((_, span)) = cfg {
-                    diagnostics.add(errors::DuplicateNode {
-                        source_code: source_code.clone(),
-                        duplicate: child.name().span(),
-                        original: span,
-                    });
-                    continue;
-                }
-
-                cfg =
-                    parse_single_string_entry(child, source_code.clone(), diagnostics, None, false)
-                        .0
-                        .map(|val| (val, child.name().span()))
-            }
             Ok(RegisterField::Access) => {
                 if let Some((_, span)) = access {
                     diagnostics.add(errors::DuplicateNode {
@@ -282,7 +266,7 @@ fn transform_register(
         None
     } else {
         let mut register = Register {
-            cfg_attr: Cfg::new(cfg.map(|(cfg, _)| cfg).as_deref()),
+            cfg_attr: Cfg::default(),
             description: parse_description(node),
             name: name.unwrap(),
             address: address.unwrap().0,
@@ -905,7 +889,6 @@ fn parse_description(node: &KdlNode) -> String {
 
 #[rustfmt::skip]
 const REGISTER_FIELDS: &[(&str, RegisterField)] = &[
-    ("cfg", RegisterField::Cfg),
     ("access", RegisterField::Access),
     ("allow-address-overlap", RegisterField::AllowAddressOverlap),
     ("address", RegisterField::Address),
@@ -915,7 +898,6 @@ const REGISTER_FIELDS: &[(&str, RegisterField)] = &[
 ];
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 enum RegisterField {
-    Cfg,
     Access,
     AllowAddressOverlap,
     Address,
