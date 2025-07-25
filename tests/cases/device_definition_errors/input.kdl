@@ -86,4 +86,13 @@ device Foo {
 
         }
     }
+    /// Hello!
+    register foo4 {
+        address 4
+        cfg blah blah
+        cfg blah
+        fields size-bits=0 {
+
+        }
+    }
 }
