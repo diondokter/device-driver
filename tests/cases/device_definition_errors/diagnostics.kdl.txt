@@ -93,7 +93,7 @@
  28 │ device Foo {
  29 │     default-register-access Blah
     ·                             ──┬─
-    ·                               ╰── Unexpected value: expected one of these values: `RW`, `RO`, `WO`
+    ·                               ╰── Expected one of these values: `RW`, `RO`, `WO`
  30 │     default-buffer-access
     ╰────
 
@@ -102,10 +102,10 @@
  29 │     default-register-access Blah
  30 │     default-buffer-access
     ·     ──────────┬──────────
-    ·               ╰── For this node
+    ·               ╰── This node should have one or more of these entries: `RW`, `RO`, `WO`
  31 │     default-field-access RW RO WO
     ╰────
-  help: This node should have one or more of these entries: `RW`, `RO`, `WO`
+  help: Check the book for all the requirements
 
   error: Unexpected entries
     ╭─[cases/device_definition_errors/input.kdl:31:29]
@@ -137,10 +137,10 @@
  34 │ device Foo {
  35 │     default-register-access value=RW
     ·     ───────────┬───────────
-    ·                ╰── For this node
+    ·                ╰── This node should have one or more of these entries: `RW`, `RO`, `WO`
  36 │     register-address-type u8
     ╰────
-  help: This node should have one or more of these entries: `RW`, `RO`, `WO`
+  help: Check the book for all the requirements
 
   error: Unexpected type
     ╭─[cases/device_definition_errors/input.kdl:37:26]
@@ -156,7 +156,7 @@
  37 │     command-address-type 16
  38 │     default-bit-order msb0
     ·                       ──┬─
-    ·                         ╰── Unexpected value: expected one of these values: `LSB0`, `MSB0`
+    ·                         ╰── Expected one of these values: `LSB0`, `MSB0`
  39 │     defmt-feature lol
     ╰────
 
@@ -207,10 +207,10 @@
  51 │     register foo {
  52 │         address
     ·         ───┬───
-    ·            ╰── For this node
+    ·            ╰── This node should have one or more of these entries: `integer`
  53 │         address a
     ╰────
-  help: This node should have one or more of these entries: `integer`
+  help: Check the book for all the requirements
 
   error: Unexpected type
     ╭─[cases/device_definition_errors/input.kdl:53:17]
@@ -239,10 +239,10 @@
  55 │         address 2
  56 │         repeat
     ·         ───┬──
-    ·            ╰── For this node
+    ·            ╰── This node should have one or more of these entries: `count=<integer>`, `stride=<integer>`
  57 │         reset-value 0x2000_0000
     ╰────
-  help: This node should have one or more of these entries: `count=<integer>`, `stride=<integer>`
+  help: Check the book for all the requirements
 
   error: Missing child node
     ╭─[cases/device_definition_errors/input.kdl:51:14]
@@ -301,10 +301,10 @@
  66 │         address 0
  67 │         fields {
     ·         ───┬──
-    ·            ╰── For this node
+    ·            ╰── This node should have one or more of these entries: `size-bits`
  68 │ 
     ╰────
-  help: This node should have one or more of these entries: `size-bits`
+  help: Check the book for all the requirements
 
   error: Value out of range
     ╭─[cases/device_definition_errors/input.kdl:73:16]
@@ -364,7 +364,7 @@
  78 │         address 2
  79 │         fields size-bits=0x1_0000_0000 byte-order=BLA byte-order=BE bit-order=gkd bit-order=msb0 allow-bit-overlap allow-bit-overlap=#false {
     ·                                        ───────┬──────
-    ·                                               ╰── Unexpected value: expected one of these values: `LSB0`, `MSB0`
+    ·                                               ╰── Expected one of these values: `LSB0`, `MSB0`
  80 │ 
     ╰────
 
@@ -373,7 +373,7 @@
  78 │         address 2
  79 │         fields size-bits=0x1_0000_0000 byte-order=BLA byte-order=BE bit-order=gkd bit-order=msb0 allow-bit-overlap allow-bit-overlap=#false {
     ·                                                                     ──────┬──────
-    ·                                                                           ╰── Unexpected value: expected one of these values: `LE`, `BE`
+    ·                                                                           ╰── Expected one of these values: `LE`, `BE`
  80 │ 
     ╰────
 
@@ -403,5 +403,66 @@
     ·                                                     ───────┬───────
     ·                                                            ╰── Unexpected type: expected a string
  86 │ 
+    ╰────
+
+  error: Duplicate entry
+    ╭─[cases/device_definition_errors/input.kdl:93:20]
+ 92 │         fields size-bits=8 {
+ 93 │             bar RW RO
+    ·                 ─┬ ─┬
+    ·                  │  ╰── The duplicate entry
+    ·                  ╰── The original entry
+ 94 │             bar @a @-1:8 @3 @3:0
+    ╰────
+  help: This type of entry can only appear once. Try removing one of the entries
+
+  error: Missing entry
+    ╭─[cases/device_definition_errors/input.kdl:93:13]
+ 92 │         fields size-bits=8 {
+ 93 │             bar RW RO
+    ·             ─┬─
+    ·              ╰── This node should have one or more of these entries: `address ("@<u32>:<u32>")`
+ 94 │             bar @a @-1:8 @3 @3:0
+    ╰────
+  help: Check the book for all the requirements
+
+  error: Bad format
+    ╭─[cases/device_definition_errors/input.kdl:94:17]
+ 93 │             bar RW RO
+ 94 │             bar @a @-1:8 @3 @3:0
+    ·                 ─┬
+    ·                  ╰── Value could not be parsed correctly. Use the following format: `@<u32>`
+ 95 │             baz @7:4 blah
+    ╰────
+  help: An example: `@10`
+
+  error: Bad format
+    ╭─[cases/device_definition_errors/input.kdl:94:20]
+ 93 │             bar RW RO
+ 94 │             bar @a @-1:8 @3 @3:0
+    ·                    ──┬──
+    ·                      ╰── Value could not be parsed correctly. Use the following format: `@<u32>:<u32>`
+ 95 │             baz @7:4 blah
+    ╰────
+  help: An example: `@7:0`
+
+  error: Duplicate entry
+    ╭─[cases/device_definition_errors/input.kdl:94:29]
+ 93 │             bar RW RO
+ 94 │             bar @a @-1:8 @3 @3:0
+    ·                          ─┬ ──┬─
+    ·                           │   ╰── The duplicate entry
+    ·                           ╰── The original entry
+ 95 │             baz @7:4 blah
+    ╰────
+  help: This type of entry can only appear once. Try removing one of the entries
+
+  error: Unexpected value
+    ╭─[cases/device_definition_errors/input.kdl:95:22]
+ 94 │             bar @a @-1:8 @3 @3:0
+ 95 │             baz @7:4 blah
+    ·                      ──┬─
+    ·                        ╰── Expected one of these values: `@<u32>`, `@<u32>:<u32>`, `RW`, `RO`, `WO`
+ 96 │         }
     ╰────
 

@@ -89,8 +89,10 @@ device Foo {
     /// Hello!
     register foo4 {
         address 4
-        fields size-bits=0 {
-
+        fields size-bits=8 {
+            bar RW RO
+            bar @a @-1:8 @3 @3:0
+            baz @7:4 blah
         }
     }
 }

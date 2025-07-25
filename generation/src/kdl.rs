@@ -7,10 +7,13 @@ use strum::VariantNames;
 
 use crate::{
     mir::{
-        Access, BitOrder, ByteOrder, Cfg, Device, Field, FieldSet, GlobalConfig, Object, Register,
-        Repeat, ResetValue,
+        Access, BaseType, BitOrder, ByteOrder, Cfg, Device, Field, FieldSet, GlobalConfig, Object,
+        Register, Repeat, ResetValue,
     },
-    reporting::{Diagnostics, NamedSourceCode, errors},
+    reporting::{
+        Diagnostics, NamedSourceCode,
+        errors::{self, UnexpectedEntries},
+    },
 };
 
 pub fn transform(source: &str, file_path: &Path, diagnostics: &mut Diagnostics) -> Vec<Device> {
@@ -552,12 +555,123 @@ fn transform_field_set(
     Some(field_set)
 }
 
+#[allow(clippy::collapsible_else_if)]
 fn transform_field(
     node: &KdlNode,
     source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
 ) -> Option<Field> {
-    todo!()
+    let mut unexpected_entries = UnexpectedEntries {
+        source_code: source_code.clone(),
+        superfluous_entries: Vec::new(),
+        unexpected_name_entries: Vec::new(),
+        not_anonymous_entries: Vec::new(),
+        unexpected_anonymous_entries: Vec::new(),
+    };
+
+    let mut address = None;
+    let mut access = None;
+
+    for entry in node.entries() {
+        if entry.name().is_some() {
+            unexpected_entries.not_anonymous_entries.push(entry.span());
+            continue;
+        }
+
+        match entry.value() {
+            KdlValue::String(s) if s.starts_with("@") => {
+                if let Some((_, span)) = address {
+                    diagnostics.add(errors::DuplicateEntry {
+                        source_code: source_code.clone(),
+                        duplicate: entry.span(),
+                        original: span,
+                    });
+                    continue;
+                }
+
+                let trimmed_string = s.trim_start_matches("@");
+
+                if let Some((end, start)) = trimmed_string.split_once(":") {
+                    if let Ok(end) = end.parse::<u32>()
+                        && let Ok(start) = start.parse::<u32>()
+                    {
+                        address = Some((start..end + 1, entry.span()));
+                    } else {
+                        diagnostics.add(errors::BadValueFormat {
+                            source_code: source_code.clone(),
+                            span: entry.span(),
+                            expected_format: "@<u32>:<u32>",
+                            example: "@7:0",
+                        });
+                    }
+                } else {
+                    if let Ok(addr) = trimmed_string.parse::<u32>() {
+                        address = Some((addr..addr + 1, entry.span()));
+                    } else {
+                        diagnostics.add(errors::BadValueFormat {
+                            source_code: source_code.clone(),
+                            span: entry.span(),
+                            expected_format: "@<u32>",
+                            example: "@10",
+                        });
+                    }
+                }
+            }
+            KdlValue::String(s) if s.parse::<Access>().is_ok() => {
+                if let Some((_, span)) = access {
+                    diagnostics.add(errors::DuplicateEntry {
+                        source_code: source_code.clone(),
+                        duplicate: entry.span(),
+                        original: span,
+                    });
+                    continue;
+                }
+
+                access = Some((s.parse().unwrap(), entry.span()));
+            }
+            KdlValue::String(_) => {
+                diagnostics.add(errors::UnexpectedValue {
+                    source_code: source_code.clone(),
+                    value_name: entry.span(),
+                    expected_values: [&["@<u32>", "@<u32>:<u32>"][..], Access::VARIANTS]
+                        .into_iter()
+                        .flatten()
+                        .copied()
+                        .collect(),
+                });
+            }
+            _ => {
+                diagnostics.add(errors::UnexpectedType {
+                    source_code: source_code.clone(),
+                    value_name: entry.span(),
+                    expected_type: "string",
+                });
+            }
+        }
+    }
+
+    if !unexpected_entries.is_empty() {
+        diagnostics.add(unexpected_entries);
+    }
+
+    if address.is_none() {
+        diagnostics.add(errors::MissingEntry {
+            source_code: source_code.clone(),
+            node_name: node.name().span(),
+            expected_entries: vec!["address (\"@<u32>:<u32>\")"],
+        });
+        return None;
+    }
+
+    Some(Field {
+        cfg_attr: Cfg::default(),
+        description: parse_description(node),
+        name: node.name().value().into(),
+        access: access.map(|(a, _)| a).unwrap_or_default(),
+        base_type: BaseType::default(), // TODO
+        field_conversion: None,         // TODO
+        field_address: address.unwrap().0,
+    })
 }
 
 fn ensure_zero_entries(

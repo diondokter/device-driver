@@ -95,7 +95,7 @@ pub struct UnexpectedType {
 pub struct UnexpectedValue {
     #[source_code]
     pub source_code: NamedSourceCode,
-    #[label("Unexpected value: expected one of these values: {}", self.print_expected_values())]
+    #[label("Expected one of these values: {}", self.print_expected_values())]
     pub value_name: SourceSpan,
 
     pub expected_values: Vec<&'static str>,
@@ -108,6 +108,22 @@ impl UnexpectedValue {
             .map(|name| format!("`{name}`"))
             .join(", ")
     }
+}
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Bad format")]
+#[diagnostic(
+    help("An example: `{}`", self.example),
+    severity(Error)
+)]
+pub struct BadValueFormat {
+    #[source_code]
+    pub source_code: NamedSourceCode,
+    #[label("Value could not be parsed correctly. Use the following format: `{}`", self.expected_format)]
+    pub span: SourceSpan,
+
+    pub expected_format: &'static str,
+    pub example: &'static str,
 }
 
 #[derive(Error, Debug, Diagnostic)]
@@ -125,16 +141,11 @@ pub struct ValueOutOfRange {
 
 #[derive(Error, Debug, Diagnostic)]
 #[error("Missing entry")]
-#[diagnostic(
-    help(
-        "This node should have one or more of these entries: {}", self.print_expected_entries()
-    ),
-    severity(Error)
-)]
+#[diagnostic(help("Check the book for all the requirements"), severity(Error))]
 pub struct MissingEntry {
     #[source_code]
     pub source_code: NamedSourceCode,
-    #[label("For this node")]
+    #[label("This node should have one or more of these entries: {}", self.print_expected_entries())]
     pub node_name: SourceSpan,
 
     pub expected_entries: Vec<&'static str>,
