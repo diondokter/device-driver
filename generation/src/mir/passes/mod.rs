@@ -2,6 +2,7 @@ use super::{Device, Object, Repeat};
 
 mod address_types_big_enough;
 mod address_types_specified;
+mod base_types_specified;
 mod bit_ranges_validated;
 mod bool_fields_checked;
 mod byte_order_specified;
@@ -23,6 +24,7 @@ pub fn run_passes(device: &mut Device) -> anyhow::Result<()> {
     reset_values_converted::run_pass(device)?;
     bool_fields_checked::run_pass(device)?;
     bit_ranges_validated::run_pass(device)?;
+    base_types_specified::run_pass(device)?;
     refs_validated::run_pass(device)?;
     address_types_specified::run_pass(device)?;
     address_types_big_enough::run_pass(device)?;

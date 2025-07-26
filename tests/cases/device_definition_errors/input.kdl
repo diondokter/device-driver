@@ -95,4 +95,13 @@ device Foo {
             baz @7:4 blah
         }
     }
+    register foo5 {
+        address 5
+        fields size-bits=8 {
+            (bool)bar @0
+            (uint)baz @2:1
+            (i16a)quux @4:3
+            (:MyCustomType?)qus @6:5
+        }
+    }
 }

@@ -1,14 +1,14 @@
 use std::{collections::HashMap, path::Path, str::FromStr};
 
 use itertools::Itertools;
-use kdl::{KdlDocument, KdlNode, KdlValue};
+use kdl::{KdlDocument, KdlIdentifier, KdlNode, KdlValue};
 use miette::SourceSpan;
 use strum::VariantNames;
 
 use crate::{
     mir::{
-        Access, BaseType, BitOrder, ByteOrder, Cfg, Device, Field, FieldSet, GlobalConfig, Object,
-        Register, Repeat, ResetValue,
+        Access, BaseType, BitOrder, ByteOrder, Cfg, Device, Field, FieldConversion, FieldSet,
+        GlobalConfig, Integer, Object, Register, Repeat, ResetValue,
     },
     reporting::{
         Diagnostics, NamedSourceCode,
@@ -633,9 +633,9 @@ fn transform_field(
                 diagnostics.add(errors::UnexpectedValue {
                     source_code: source_code.clone(),
                     value_name: entry.span(),
-                    expected_values: [&["@<u32>", "@<u32>:<u32>"][..], Access::VARIANTS]
-                        .into_iter()
-                        .flatten()
+                    expected_values: ["@<u32>", "@<u32>:<u32>"]
+                        .iter()
+                        .chain(Access::VARIANTS)
                         .copied()
                         .collect(),
                 });
@@ -654,6 +654,14 @@ fn transform_field(
         diagnostics.add(unexpected_entries);
     }
 
+    let (base_type, mut field_conversion) =
+        parse_field_type(node.ty(), source_code.clone(), diagnostics);
+
+    if field_conversion.is_some() && node.children().is_some() {
+        // This is an enum, change the field conversion with that info
+        todo!();
+    }
+
     if address.is_none() {
         diagnostics.add(errors::MissingEntry {
             source_code: source_code.clone(),
@@ -668,10 +676,58 @@ fn transform_field(
         description: parse_description(node),
         name: node.name().value().into(),
         access: access.map(|(a, _)| a).unwrap_or_default(),
-        base_type: BaseType::default(), // TODO
-        field_conversion: None,         // TODO
+        base_type,
+        field_conversion,
         field_address: address.unwrap().0,
     })
+}
+
+fn parse_field_type(
+    ty: Option<&KdlIdentifier>,
+    source_code: NamedSourceCode,
+    diagnostics: &mut Diagnostics,
+) -> (BaseType, Option<FieldConversion>) {
+    let Some(ty) = ty else {
+        return (BaseType::Unspecified, None);
+    };
+
+    let ty_str = ty.value();
+    let mut field_conversion = None;
+    let base_type_str;
+
+    if let Some((base_type, conversion)) = ty_str.split_once(":") {
+        base_type_str = base_type;
+
+        field_conversion = Some(FieldConversion::Direct {
+            type_name: conversion.trim_end_matches('?').into(),
+            use_try: conversion.ends_with('?'),
+        })
+    } else {
+        base_type_str = ty_str;
+    }
+
+    let base_type = match base_type_str {
+        "bool" => BaseType::Bool,
+        "uint" => BaseType::Uint,
+        "int" => BaseType::Int,
+        s if s.parse::<Integer>().is_ok() => BaseType::FixedSize(s.parse().unwrap()),
+        "" => BaseType::Unspecified,
+        _ => {
+            diagnostics.add(errors::UnexpectedValue {
+                source_code,
+                value_name: ty.span(),
+                expected_values: ["bool", "uint", "int"]
+                    .iter()
+                    .chain(Integer::VARIANTS)
+                    .chain(["<base>:<target>", "<base>:<target>?"].iter())
+                    .copied()
+                    .collect(),
+            });
+            BaseType::Unspecified
+        }
+    };
+
+    (base_type, field_conversion)
 }
 
 fn ensure_zero_entries(

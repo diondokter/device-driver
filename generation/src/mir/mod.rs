@@ -380,6 +380,16 @@ pub enum BaseType {
     FixedSize(Integer),
 }
 
+impl BaseType {
+    /// Returns `true` if the base type is [`Unspecified`].
+    ///
+    /// [`Unspecified`]: BaseType::Unspecified
+    #[must_use]
+    pub fn is_unspecified(&self) -> bool {
+        matches!(self, Self::Unspecified)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FieldConversion {
     Direct { type_name: String, use_try: bool },

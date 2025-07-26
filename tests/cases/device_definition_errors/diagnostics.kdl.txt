@@ -466,3 +466,12 @@
  96 │         }
     ╰────
 
+  error: Unexpected value
+     ╭─[cases/device_definition_errors/input.kdl:103:14]
+ 102 │             (uint)baz @2:1
+ 103 │             (i16a)quux @4:3
+     ·              ──┬─
+     ·                ╰── Expected one of these values: `bool`, `uint`, `int`, `u8`, `u16`, `u32`, `i8`, `i16`, `i32`, `i64`, `u64`, `<base>:<target>`, `<base>:<target>?`
+ 104 │             (:MyCustomType?)qus @6:5
+     ╰────
+
