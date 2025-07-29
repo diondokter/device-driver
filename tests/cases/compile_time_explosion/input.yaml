@@ -1,0 +1,74 @@
+config:
+  register_address_type: u32
+  default_byte_order: LE
+
+Foo0:
+  type: register
+  address: 0
+  size_bits: 0
+  repeat:
+    count: 100
+    stride: 1000
+Foo1:
+  type: register
+  address: 1
+  size_bits: 0
+  repeat:
+    count: 100
+    stride: 1000
+Foo2:
+  type: register
+  address: 2
+  size_bits: 0
+  repeat:
+    count: 100
+    stride: 1000
+Foo3:
+  type: register
+  address: 3
+  size_bits: 0
+  repeat:
+    count: 100
+    stride: 1000
+Foo4:
+  type: register
+  address: 4
+  size_bits: 0
+  repeat:
+    count: 100
+    stride: 1000
+Foo5:
+  type: register
+  address: 5
+  size_bits: 0
+  repeat:
+    count: 100
+    stride: 1000
+Foo6:
+  type: register
+  address: 6
+  size_bits: 0
+  repeat:
+    count: 100
+    stride: 1000
+Foo7:
+  type: register
+  address: 7
+  size_bits: 0
+  repeat:
+    count: 100
+    stride: 1000
+Foo8:
+  type: register
+  address: 8
+  size_bits: 0
+  repeat:
+    count: 100
+    stride: 1000
+Foo9:
+  type: register
+  address: 9
+  size_bits: 0
+  repeat:
+    count: 100
+    stride: 1000
