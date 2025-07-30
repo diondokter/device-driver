@@ -76,12 +76,11 @@ impl{{block_generics}} {{ block.name }}{{block_generics}} {
                             callback({{method.address}} + 0 * 0, "{{method.name}}", reg.into());
                         {% endwhen %}
                         {% when BlockMethodKind::Repeated { count, stride } %}
-                            {% for index in 0..*count %}
-                                {{method.cfg_attr}}
-                                let reg = self.{{method.name}}({{index}}).read()?;
-                                {{method.cfg_attr}}
-                                callback({{method.address}} + {{index}} * {{stride}}, "{{method.name}}[{{index}}]", reg.into());
-                            {% endfor %}
+                            {{method.cfg_attr}}
+                            for index in 0..{{count}} {
+                                let reg = self.{{method.name}}(index).read()?;
+                                callback({{method.address}} + index as {{device.register_address_type}} * {{stride}}, "{{method.name}}", reg.into());
+                            }
                         {% endwhen %}
                     {% endmatch %}
                 {% endif %}
@@ -124,12 +123,11 @@ impl{{block_generics}} {{ block.name }}{{block_generics}} {
                             callback({{method.address}} + 0 * 0, "{{method.name}}", reg.into());
                         {% endwhen %}
                         {% when BlockMethodKind::Repeated { count, stride } %}
-                            {% for index in 0..*count %}
-                                {{method.cfg_attr}}
-                                let reg = self.{{method.name}}({{index}}).read_async().await?;
-                                {{method.cfg_attr}}
-                                callback({{method.address}} + {{index}} * {{stride}}, "{{method.name}}[{{index}}]", reg.into());
-                            {% endfor %}
+                            {{method.cfg_attr}}
+                            for index in 0..{{count}} {
+                                let reg = self.{{method.name}}(index).read_async().await?;
+                                callback({{method.address}} + index as {{device.register_address_type}} * {{stride}}, "{{method.name}}", reg.into());
+                            }
                         {% endwhen %}
                     {% endmatch %}
                 {% endif %}

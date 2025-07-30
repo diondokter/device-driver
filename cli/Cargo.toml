@@ -15,5 +15,5 @@ default-run = "device-driver-cli"
 [dependencies]
 anyhow = "1.0.98"
 clap = { version = "4.5.20", features = ["derive"] }
-device-driver-generation = { version = "=1.0.6", path = "../generation" }
+device-driver-generation = { version = "=1.0.7", path = "../generation" }
 syn = { version = "2.0" }
