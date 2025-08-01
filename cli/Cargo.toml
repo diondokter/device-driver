@@ -16,4 +16,5 @@ default-run = "device-driver-cli"
 anyhow = "1.0.98"
 clap = { version = "4.5.20", features = ["derive"] }
 device-driver-generation = { version = "=1.0.7", path = "../generation" }
+miette = { version = "7.6.0", features = ["fancy"] }
 syn = { version = "2.0" }

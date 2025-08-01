@@ -2,6 +2,8 @@
 
 ### Unreleased
 
+- Internal numbers are now `i128` instead of `i64`. This also added room to add the `U64` integer as available address type option
+
 ### 1.0.7 (30-07-25)
 
 - Fix a compilation time explosion issue. The generated `read_all_registers` functions have been simplified.

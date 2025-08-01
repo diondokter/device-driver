@@ -19,7 +19,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
 
         for field_set in object.field_sets() {
             let mut seen_field_names = HashSet::new();
-            for field in field_set {
+            for field in &field_set.fields {
                 anyhow::ensure!(
                     seen_field_names.insert(field.name.clone()),
                     "Duplicate field name found in object `{}`: `{}`",
@@ -64,7 +64,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
 mod tests {
     use convert_case::Boundary;
 
-    use crate::mir::{Buffer, Cfg, EnumVariant, Field, GlobalConfig, Object, Register};
+    use crate::mir::{Buffer, Cfg, EnumVariant, Field, FieldSet, GlobalConfig, Object, Register};
 
     use super::*;
 
@@ -107,16 +107,19 @@ mod tests {
             global_config,
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
-                fields: vec![
-                    Field {
-                        name: "field".into(),
-                        ..Default::default()
-                    },
-                    Field {
-                        name: "field".into(),
-                        ..Default::default()
-                    },
-                ],
+                field_set: FieldSet {
+                    fields: vec![
+                        Field {
+                            name: "field".into(),
+                            ..Default::default()
+                        },
+                        Field {
+                            name: "field".into(),
+                            ..Default::default()
+                        },
+                    ],
+                    ..Default::default()
+                },
                 ..Default::default()
             })],
         };
@@ -139,32 +142,35 @@ mod tests {
             global_config,
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
-                fields: vec![
-                    Field {
-                        name: "field".into(),
-                        field_conversion: Some(FieldConversion::Enum {
-                            enum_value: Enum {
-                                name: "Enum".into(),
-                                variants: Default::default(),
-                                ..Default::default()
-                            },
-                            use_try: false,
-                        }),
-                        ..Default::default()
-                    },
-                    Field {
-                        name: "field2".into(),
-                        field_conversion: Some(FieldConversion::Enum {
-                            enum_value: Enum {
-                                name: "Enum".into(),
-                                variants: Default::default(),
-                                ..Default::default()
-                            },
-                            use_try: false,
-                        }),
-                        ..Default::default()
-                    },
-                ],
+                field_set: FieldSet {
+                    fields: vec![
+                        Field {
+                            name: "field".into(),
+                            field_conversion: Some(FieldConversion::Enum {
+                                enum_value: Enum {
+                                    name: "Enum".into(),
+                                    variants: Default::default(),
+                                    ..Default::default()
+                                },
+                                use_try: false,
+                            }),
+                            ..Default::default()
+                        },
+                        Field {
+                            name: "field2".into(),
+                            field_conversion: Some(FieldConversion::Enum {
+                                enum_value: Enum {
+                                    name: "Enum".into(),
+                                    variants: Default::default(),
+                                    ..Default::default()
+                                },
+                                use_try: false,
+                            }),
+                            ..Default::default()
+                        },
+                    ],
+                    ..Default::default()
+                },
                 ..Default::default()
             })],
         };
@@ -187,27 +193,30 @@ mod tests {
             global_config,
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
-                fields: vec![Field {
-                    name: "field".into(),
-                    field_conversion: Some(FieldConversion::Enum {
-                        enum_value: Enum {
-                            name: "Enum".into(),
-                            variants: vec![
-                                EnumVariant {
-                                    name: "Variant".into(),
-                                    ..Default::default()
-                                },
-                                EnumVariant {
-                                    name: "Variant".into(),
-                                    ..Default::default()
-                                },
-                            ],
-                            ..Default::default()
-                        },
-                        use_try: false,
-                    }),
+                field_set: FieldSet {
+                    fields: vec![Field {
+                        name: "field".into(),
+                        field_conversion: Some(FieldConversion::Enum {
+                            enum_value: Enum {
+                                name: "Enum".into(),
+                                variants: vec![
+                                    EnumVariant {
+                                        name: "Variant".into(),
+                                        ..Default::default()
+                                    },
+                                    EnumVariant {
+                                        name: "Variant".into(),
+                                        ..Default::default()
+                                    },
+                                ],
+                                ..Default::default()
+                            },
+                            use_try: false,
+                        }),
+                        ..Default::default()
+                    }],
                     ..Default::default()
-                }],
+                },
                 ..Default::default()
             })],
         };
@@ -227,29 +236,32 @@ mod tests {
             global_config,
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
-                fields: vec![Field {
-                    name: "field".into(),
-                    field_conversion: Some(FieldConversion::Enum {
-                        enum_value: Enum {
-                            name: "Enum".into(),
-                            variants: vec![
-                                EnumVariant {
-                                    name: "Variant".into(),
-                                    cfg_attr: Cfg::new(Some("windows")),
-                                    ..Default::default()
-                                },
-                                EnumVariant {
-                                    name: "Variant".into(),
-                                    cfg_attr: Cfg::new(Some("unix")),
-                                    ..Default::default()
-                                },
-                            ],
-                            ..Default::default()
-                        },
-                        use_try: false,
-                    }),
+                field_set: FieldSet {
+                    fields: vec![Field {
+                        name: "field".into(),
+                        field_conversion: Some(FieldConversion::Enum {
+                            enum_value: Enum {
+                                name: "Enum".into(),
+                                variants: vec![
+                                    EnumVariant {
+                                        name: "Variant".into(),
+                                        cfg_attr: Cfg::new(Some("windows")),
+                                        ..Default::default()
+                                    },
+                                    EnumVariant {
+                                        name: "Variant".into(),
+                                        cfg_attr: Cfg::new(Some("unix")),
+                                        ..Default::default()
+                                    },
+                                ],
+                                ..Default::default()
+                            },
+                            use_try: false,
+                        }),
+                        ..Default::default()
+                    }],
                     ..Default::default()
-                }],
+                },
                 ..Default::default()
             })],
         };

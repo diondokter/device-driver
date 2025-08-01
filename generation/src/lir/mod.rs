@@ -27,7 +27,7 @@ pub struct BlockMethod {
     pub cfg_attr: String,
     pub description: String,
     pub name: String,
-    pub address: i64,
+    pub address: i128,
     // Only used for LIR passes, not codegen
     pub allow_address_overlap: bool,
     pub kind: BlockMethodKind,
@@ -36,7 +36,7 @@ pub struct BlockMethod {
 
 pub enum BlockMethodKind {
     Normal,
-    Repeated { count: u64, stride: i64 },
+    Repeated { count: u64, stride: i128 },
 }
 
 pub enum BlockMethodType {
