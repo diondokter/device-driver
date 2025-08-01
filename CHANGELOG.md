@@ -4,6 +4,13 @@
 
 - Internal numbers are now `i128` instead of `i64`. This also added room to add the `U64` integer as available address type option
 
+### 1.0.7 (30-07-25)
+
+- Fix a compilation time explosion issue. The generated `read_all_registers` functions have been simplified.
+  On devices with many registers, the async variant would explode in compilation time because of the many awaits.
+  The callback name parameter now doesn't include the index anymore for repeated registers.
+  https://github.com/rust-lang/rust/issues/144635
+
 ### 1.0.6 (18-06-25)
 
 - Fixed regression introduced in 1.0.3 where signed integers were not sign-extended
