@@ -7,8 +7,8 @@ use strum::VariantNames;
 
 use crate::{
     mir::{
-        Access, BaseType, BitOrder, ByteOrder, Cfg, Device, Field, FieldConversion, FieldSet,
-        GlobalConfig, Integer, Object, Register, Repeat, ResetValue,
+        Access, BaseType, BitOrder, ByteOrder, Cfg, Device, Enum, EnumValue, EnumVariant, Field,
+        FieldConversion, FieldSet, GlobalConfig, Integer, Object, Register, Repeat, ResetValue,
     },
     reporting::{
         Diagnostics, NamedSourceCode,
@@ -657,9 +657,26 @@ fn transform_field(
     let (base_type, mut field_conversion) =
         parse_field_type(node.ty(), source_code.clone(), diagnostics);
 
-    if field_conversion.is_some() && node.children().is_some() {
-        // This is an enum, change the field conversion with that info
-        todo!();
+    if let Some(variants) = node.children() {
+        if let Some(field_conversion) = field_conversion.as_mut() {
+            // This is an enum, change the field conversion with that info
+            let variants = transform_enum_variants(variants, source_code.clone(), diagnostics);
+            *field_conversion = FieldConversion::Enum {
+                enum_value: Enum::new(
+                    // Take the description of the field
+                    parse_description(node),
+                    field_conversion.type_name().into(),
+                    variants,
+                ),
+                use_try: field_conversion.use_try(),
+            };
+        } else {
+            diagnostics.add(errors::InlineEnumDefinitionWithoutName {
+                source_code: source_code.clone(),
+                field_name: node.name().span(),
+                existing_ty: node.ty().map(|ty| ty.span()),
+            });
+        }
     }
 
     if address.is_none() {
@@ -1160,4 +1177,71 @@ impl FromStr for ObjectType {
 
         Err(())
     }
+}
+
+fn transform_enum_variants(
+    nodes: &KdlDocument,
+    source_code: NamedSourceCode,
+    diagnostics: &mut Diagnostics,
+) -> Vec<EnumVariant> {
+    nodes
+        .nodes()
+        .iter()
+        .filter_map(|node| {
+            let variant_name = node.name();
+
+            let variant_value = match node.entries().len() {
+                0 => None,
+                1 if node.entries()[0].name().is_none() => Some(&node.entries()[0]),
+                _ => {
+                    diagnostics.add(errors::UnexpectedEntries {
+                        source_code: source_code.clone(),
+                        superfluous_entries: node
+                            .entries()
+                            .get(1..)
+                            .map(|superfluous_entries| {
+                                superfluous_entries
+                                    .iter()
+                                    .map(|entry| entry.span())
+                                    .collect()
+                            })
+                            .unwrap_or_default(),
+                        unexpected_name_entries: Vec::new(),
+                        not_anonymous_entries: node
+                            .entries()
+                            .first()
+                            .into_iter()
+                            .filter_map(|entry| entry.name().is_some().then_some(entry.span()))
+                            .collect(),
+                        unexpected_anonymous_entries: Vec::new(),
+                    });
+                    Some(&node.entries()[0])
+                }
+            };
+
+            let variant_value = match variant_value {
+                Some(variant_value) => match variant_value.value() {
+                    KdlValue::String(val) if val == "default" => EnumValue::Default,
+                    KdlValue::String(val) if val == "catch-all" => EnumValue::CatchAll,
+                    KdlValue::Integer(val) => EnumValue::Specified(*val),
+                    _ => {
+                        diagnostics.add(errors::UnexpectedValue {
+                            source_code: source_code.clone(),
+                            value_name: variant_value.span(),
+                            expected_values: vec!["", "<integer>", "default", "catch-all"],
+                        });
+                        return None;
+                    }
+                },
+                None => EnumValue::Unspecified,
+            };
+
+            Some(EnumVariant {
+                cfg_attr: Cfg::default(),
+                description: parse_description(node),
+                name: variant_name.value().to_string(),
+                value: variant_value,
+            })
+        })
+        .collect()
 }

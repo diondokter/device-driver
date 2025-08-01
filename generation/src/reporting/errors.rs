@@ -214,3 +214,20 @@ pub struct MissingChildNode {
     pub node_type: Option<&'static str>,
     pub missing_node_type: &'static str,
 }
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Inline enum definition without name")]
+#[diagnostic(
+    help(
+        "An inline enum definition is only possible when a conversion is specified, for example: `(uint:EnumName)`"
+    ),
+    severity(Error)
+)]
+pub struct InlineEnumDefinitionWithoutName {
+    #[source_code]
+    pub source_code: NamedSourceCode,
+    #[label("Add conversion type specification to this field")]
+    pub field_name: SourceSpan,
+    #[label("A type specifier already exists, but misses the conversion")]
+    pub existing_ty: Option<SourceSpan>,
+}

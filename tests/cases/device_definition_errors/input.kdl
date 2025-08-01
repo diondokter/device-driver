@@ -104,4 +104,27 @@ device Foo {
             (:MyCustomType?)qus @6:5
         }
     }
+    register foo6 {
+        address 6
+        fields size-bits=8 {
+            (:Foo6_1)bar @1:0 {
+                A 0
+                B 1
+                C default
+                D catch-all
+            }
+            baz @3:2 {
+
+            }
+            (uint)bam @5:4 {
+
+            }
+            (:Foo6_2?)bat @7:6 {
+                A
+                B 1.0
+                C default-value
+                D #null 2
+            }
+        }
+    }
 }
