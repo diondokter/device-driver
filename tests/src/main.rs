@@ -22,6 +22,8 @@ fn accept() {
     for test_case in test_cases {
         let test_case = test_case.unwrap();
 
+        println!("{}", test_case.path().display());
+
         let input_paths: Vec<_> = std::fs::read_dir(test_case.path())
             .unwrap()
             .filter(|entry| {
