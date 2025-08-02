@@ -89,6 +89,7 @@ pub fn compile_output(output_path: &Path) -> String {
     cmd.arg("-Zscript");
     cmd.arg(output_path);
     cmd.env("CARGO_TARGET_DIR", "../target");
+    cmd.env("CARGO_TERM_COLOR", "never");
 
     let output = cmd.output().unwrap();
 
