@@ -72,7 +72,11 @@ pub fn run_test(input_paths: &[&Path], output_path: &Path) {
                 std::fs::read_to_string(output_path.with_file_name("stderr.rs.txt"))
                     .unwrap_or_default();
 
-            pretty_assertions::assert_str_eq!(expected_stderr, stderr, "Different stderr");
+            pretty_assertions::assert_str_eq!(
+                normalize_test_string(&expected_stderr),
+                normalize_test_string(&stderr),
+                "Different stderr"
+            );
         }
         _ => unimplemented!(),
     }

@@ -70,7 +70,11 @@ fn accept() {
             let stderr = device_driver_tests::compile_output(&output_path);
             let stderr_path = test_case.path().join("stderr.rs.txt");
             if !stderr.is_empty() {
-                std::fs::write(stderr_path, stderr).unwrap();
+                std::fs::write(
+                    stderr_path,
+                    device_driver_tests::normalize_test_string(&stderr),
+                )
+                .unwrap();
             } else {
                 let _ = std::fs::remove_file(stderr_path);
             }
