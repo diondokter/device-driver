@@ -8,30 +8,30 @@ device 1 {
 
 }
 
-device Foo {
+device FooD0 {
 
 }
 
-device Foo abc def {
+device FooD1 abc def {
 
 }
 
-device Foo {
+device FooD2 {
     blah 123
 }
 
-device Foo {
+device FooD3 {
     default-register-access RW
     default-register-access RO
 }
 
-device Foo {
+device FooD4 {
     default-register-access Blah
     default-buffer-access
     default-field-access RW RO WO
 }
 
-device Foo {
+device FooD5 {
     default-register-access value=RW
     register-address-type u8
     command-address-type 16
@@ -40,15 +40,15 @@ device Foo {
     name-word-boundaries aA:1a
 }
 
-device Foo {
+device FooD6 {
     register-address-type u8
 
     registah
     register
-    register foo {
+    register foor1 {
         
     }
-    register foo {
+    register foor2 {
         address
         address a
         address 1
@@ -56,38 +56,38 @@ device Foo {
         repeat
         reset-value 0x2000_0000
     }
-    register foo {
+    register foor3 {
         address -1
         repeat count=18_446_744_073_709_551_616 stride=1
         allow-address-overlap #true
         reset-value 0x100 0x00
     }
-    register foo0 {
+    register foor4 {
         address 0
         fields {
 
         }
     }
-    register foo1 {
+    register foor5 {
         address 1
         fields size-bits=-1 {
 
         }
     }
-    register foo2 {
+    register foor6 {
         address 2
         fields size-bits=0x1_0000_0000 byte-order=BLA byte-order=BE bit-order=gkd bit-order=msb0 allow-bit-overlap allow-bit-overlap=#false {
 
         }
     }
-    register foo3 {
+    register foor7 {
         address 3
         fields size-bits=0x1_0000_0000 byte-order=1 bit-order=#true allow-bit-overlap  {
 
         }
     }
     /// Hello!
-    register foo4 {
+    register foor8 {
         address 4
         fields size-bits=8 {
             bar RW RO
@@ -95,7 +95,7 @@ device Foo {
             baz @7:4 blah
         }
     }
-    register foo5 {
+    register foor9 {
         address 5
         fields size-bits=8 {
             (bool)bar @0
@@ -104,10 +104,10 @@ device Foo {
             (:MyCustomType?)qus @6:5
         }
     }
-    register foo6 {
+    register foor10 {
         address 6
         fields size-bits=8 {
-            (:Foo6_1)bar @1:0 {
+            (:Foo10E1)bar @1:0 {
                 A 0
                 B 1
                 C default
@@ -119,7 +119,7 @@ device Foo {
             (uint)bam @5:4 {
 
             }
-            (:Foo6_2?)bat @7:6 {
+            (:Foo10E2?)bat @7:6 {
                 A
                 B 1.0
                 C default-value

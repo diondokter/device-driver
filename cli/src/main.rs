@@ -154,7 +154,10 @@ impl GenType {
                     ),
                     Diagnostics::new(),
                 )),
-                "kdl" => device_driver_generation::transform_kdl(manifest_contents, manifest_path),
+                "kdl" => Ok(device_driver_generation::transform_kdl(
+                    manifest_contents,
+                    manifest_path,
+                )),
                 unknown => panic!(
                     "Unknown manifest file extension: '{unknown}'. Only 'dsl', 'json', 'yaml' and 'toml' are allowed."
                 ),

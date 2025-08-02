@@ -31,7 +31,7 @@
   warning: Empty node
     ╭─[cases/device_definition_errors/input.kdl:11:1]
  10 │     
- 11 │ ╭─▶ device Foo {
+ 11 │ ╭─▶ device FooD0 {
  12 │ │   
  13 │ ├─▶ }
     · ╰──── The empty node
@@ -40,12 +40,12 @@
   help: This type of node should have children to specify what it contains
 
   error: Unexpected entries
-    ╭─[cases/device_definition_errors/input.kdl:15:12]
+    ╭─[cases/device_definition_errors/input.kdl:15:14]
  14 │ 
- 15 │ device Foo abc def {
-    ·            ─┬─ ─┬─
-    ·             │   ╰── This entry is unexpected
-    ·             ╰── This entry is unexpected
+ 15 │ device FooD1 abc def {
+    ·              ─┬─ ─┬─
+    ·               │   ╰── This entry is unexpected
+    ·               ╰── This entry is unexpected
  16 │ 
     ╰────
   help: Some entries require a name, require to be anonymous or are expected to be of a certain type. Check the book
@@ -55,7 +55,7 @@
   warning: Empty node
     ╭─[cases/device_definition_errors/input.kdl:15:1]
  14 │     
- 15 │ ╭─▶ device Foo abc def {
+ 15 │ ╭─▶ device FooD1 abc def {
  16 │ │   
  17 │ ├─▶ }
     · ╰──── The empty node
@@ -65,7 +65,7 @@
 
   error: Unexpected node
     ╭─[cases/device_definition_errors/input.kdl:20:5]
- 19 │ device Foo {
+ 19 │ device FooD2 {
  20 │     blah 123
     ·     ──┬─
     ·       ╰── The unexpected node
@@ -77,7 +77,7 @@
 
   error: Duplicate node
     ╭─[cases/device_definition_errors/input.kdl:25:5]
- 23 │ device Foo {
+ 23 │ device FooD3 {
  24 │     default-register-access RW
     ·     ─────────────┬────────────
     ·                  ╰── The original node
@@ -90,7 +90,7 @@
 
   error: Unexpected value
     ╭─[cases/device_definition_errors/input.kdl:29:29]
- 28 │ device Foo {
+ 28 │ device FooD4 {
  29 │     default-register-access Blah
     ·                             ──┬─
     ·                               ╰── Expected one of these values: `RW`, `RO`, `WO`
@@ -122,7 +122,7 @@
 
   error: Unexpected entries
     ╭─[cases/device_definition_errors/input.kdl:35:29]
- 34 │ device Foo {
+ 34 │ device FooD5 {
  35 │     default-register-access value=RW
     ·                             ────┬───
     ·                                 ╰── This entry was expected to be anonymous
@@ -134,7 +134,7 @@
 
   error: Missing entry
     ╭─[cases/device_definition_errors/input.kdl:35:5]
- 34 │ device Foo {
+ 34 │ device FooD5 {
  35 │     default-register-access value=RW
     ·     ───────────┬───────────
     ·                ╰── This node should have one or more of these entries: `RW`, `RO`, `WO`
@@ -178,16 +178,16 @@
  47 │     register
     ·     ────┬───
     ·         ╰── For this object
- 48 │     register foo {
+ 48 │     register foor1 {
     ╰────
   help: The name is specified by the first entry of the node. It must be an anonymous string, e.g. `register Foo { }`
 
   error: Missing child node
     ╭─[cases/device_definition_errors/input.kdl:48:14]
  47 │     register
- 48 │     register foo {
-    ·              ─┬─
-    ·               ╰── This register is missing the required `address` node
+ 48 │     register foor1 {
+    ·              ──┬──
+    ·                ╰── This register is missing the required `address` node
  49 │         
     ╰────
   help: Check the book to see all required nodes
@@ -195,16 +195,16 @@
   error: Missing child node
     ╭─[cases/device_definition_errors/input.kdl:48:14]
  47 │     register
- 48 │     register foo {
-    ·              ─┬─
-    ·               ╰── This register is missing the required `fields` node
+ 48 │     register foor1 {
+    ·              ──┬──
+    ·                ╰── This register is missing the required `fields` node
  49 │         
     ╰────
   help: Check the book to see all required nodes
 
   error: Missing entry
     ╭─[cases/device_definition_errors/input.kdl:52:9]
- 51 │     register foo {
+ 51 │     register foor2 {
  52 │         address
     ·         ───┬───
     ·            ╰── This node should have one or more of these entries: `integer`
@@ -247,9 +247,9 @@
   error: Missing child node
     ╭─[cases/device_definition_errors/input.kdl:51:14]
  50 │     }
- 51 │     register foo {
-    ·              ─┬─
-    ·               ╰── This register is missing the required `fields` node
+ 51 │     register foor2 {
+    ·              ──┬──
+    ·                ╰── This register is missing the required `fields` node
  52 │         address
     ╰────
   help: Check the book to see all required nodes
@@ -289,9 +289,9 @@
   error: Missing child node
     ╭─[cases/device_definition_errors/input.kdl:59:14]
  58 │     }
- 59 │     register foo {
-    ·              ─┬─
-    ·               ╰── This register is missing the required `fields` node
+ 59 │     register foor3 {
+    ·              ──┬──
+    ·                ╰── This register is missing the required `fields` node
  60 │         address -1
     ╰────
   help: Check the book to see all required nodes

@@ -7,6 +7,7 @@ use std::{
 };
 
 use anyhow::ensure;
+use convert_case::Casing;
 use itertools::Itertools;
 
 use crate::reporting::Diagnostics;
@@ -21,24 +22,45 @@ pub mod mir;
 
 pub mod reporting;
 
-pub fn transform_kdl(source: &str, file_path: &Path) -> Result<(String, Diagnostics), Diagnostics> {
+pub fn transform_kdl(source: &str, file_path: &Path) -> (String, Diagnostics) {
     let mut reports = Diagnostics::new();
 
     let mir_devices = crate::kdl::transform(source, file_path, &mut reports);
 
+    let device_count = mir_devices.len();
+
     let mut output = String::new();
     for mir_device in mir_devices {
+        if device_count > 1 {
+            output += &format!(
+                "pub mod {} {{\n",
+                mir_device
+                    .name
+                    .clone()
+                    .unwrap()
+                    .to_case(convert_case::Case::Snake)
+            );
+        }
+
         match transform_mir(mir_device) {
+            Ok(device_output) if device_count > 1 => {
+                output += &device_output.lines().map(|l| format!("    {l}")).join("\n")
+            }
             Ok(device_output) => output += &device_output,
             Err(e) => reports.add_msg(e.to_string()),
+        }
+
+        if device_count > 1 {
+            output += "\n}\n\n";
         }
     }
 
     if reports.has_error() {
-        Err(reports)
-    } else {
-        Ok((output, reports))
+        output +=
+            "compile_error!(\"The device driver input has errors that need to be solved!\");\n"
     }
+
+    (output, reports)
 }
 
 /// Transform the tokens of the DSL lang to the generated device driver (or a compile error).

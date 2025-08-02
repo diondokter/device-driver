@@ -6,6 +6,7 @@ edition = "2024"
 device-driver = { path="../../../device-driver", default-features=false }
 ---
 #![deny(warnings)]
+#![allow(unexpected_cfgs)]
 fn main() {}
 
 /// Root block of the Device driver
@@ -1481,27 +1482,27 @@ pub mod field_sets {
         Foo9(Foo9),
     }
     impl core::fmt::Debug for FieldSetValue {
-        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        fn fmt(&self, _f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
             match self {
-                Self::Foo0(val) => core::fmt::Debug::fmt(val, f),
+                Self::Foo0(val) => core::fmt::Debug::fmt(val, _f),
 
-                Self::Foo1(val) => core::fmt::Debug::fmt(val, f),
+                Self::Foo1(val) => core::fmt::Debug::fmt(val, _f),
 
-                Self::Foo2(val) => core::fmt::Debug::fmt(val, f),
+                Self::Foo2(val) => core::fmt::Debug::fmt(val, _f),
 
-                Self::Foo3(val) => core::fmt::Debug::fmt(val, f),
+                Self::Foo3(val) => core::fmt::Debug::fmt(val, _f),
 
-                Self::Foo4(val) => core::fmt::Debug::fmt(val, f),
+                Self::Foo4(val) => core::fmt::Debug::fmt(val, _f),
 
-                Self::Foo5(val) => core::fmt::Debug::fmt(val, f),
+                Self::Foo5(val) => core::fmt::Debug::fmt(val, _f),
 
-                Self::Foo6(val) => core::fmt::Debug::fmt(val, f),
+                Self::Foo6(val) => core::fmt::Debug::fmt(val, _f),
 
-                Self::Foo7(val) => core::fmt::Debug::fmt(val, f),
+                Self::Foo7(val) => core::fmt::Debug::fmt(val, _f),
 
-                Self::Foo8(val) => core::fmt::Debug::fmt(val, f),
+                Self::Foo8(val) => core::fmt::Debug::fmt(val, _f),
 
-                Self::Foo9(val) => core::fmt::Debug::fmt(val, f),
+                Self::Foo9(val) => core::fmt::Debug::fmt(val, _f),
 
                 #[allow(unreachable_patterns)]
                 _ => unreachable!(),

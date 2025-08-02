@@ -1,0 +1,26 @@
+error: The device driver input has errors that need to be solved!
+    --> device_definition_errors.rs:2012:1
+     |
+2012 | compile_error!("The device driver input has errors that need to be solved!");
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0412]: cannot find type `MyCustomType` in module `super`
+    --> device_definition_errors.rs:1472:32
+     |
+1472 |             ) -> Result<super::MyCustomType, <super::MyCustomType as TryFrom<u8>>::Error> {
+     |                                ^^^^^^^^^^^^ not found in `super`
+
+error[E0412]: cannot find type `MyCustomType` in module `super`
+    --> device_definition_errors.rs:1472:54
+     |
+1472 |             ) -> Result<super::MyCustomType, <super::MyCustomType as TryFrom<u8>>::Error> {
+     |                                                      ^^^^^^^^^^^^ not found in `super`
+
+error[E0412]: cannot find type `MyCustomType` in module `super`
+    --> device_definition_errors.rs:1531:53
+     |
+1531 |             pub fn set_qus(&mut self, value: super::MyCustomType) {
+     |                                                     ^^^^^^^^^^^^ not found in `super`
+
+For more information about this error, try `rustc --explain E0412`.
+error: could not compile `device_definition_errors` (bin "device_definition_errors") due to 4 previous errors

@@ -44,10 +44,11 @@ fn accept() {
                     device_driver_generation::transform_yaml(&input, "Device"),
                     "".to_string(),
                 ),
-                "kdl" => match device_driver_generation::transform_kdl(&input, &input_path) {
-                    Ok((transformed, diagnostics)) => (transformed, diagnostics.to_string()),
-                    Err(diagnostics) => ("".to_string(), diagnostics.to_string()),
-                },
+                "kdl" => {
+                    let (transformed, diagnostics) =
+                        device_driver_generation::transform_kdl(&input, &input_path);
+                    (transformed, diagnostics.to_string())
+                }
                 e => panic!("Unrecognized extension: {e:?}"),
             };
 
@@ -62,8 +63,17 @@ fn accept() {
 
             let output = device_driver_tests::OUTPUT_HEADER.to_string() + &transformed;
             let output_name = format!("{}.rs", test_case.file_name().display());
+            let output_path = test_case.path().join(output_name);
 
-            std::fs::write(test_case.path().join(output_name), output).unwrap();
+            std::fs::write(&output_path, output).unwrap();
+
+            let stderr = device_driver_tests::compile_output(&output_path);
+            let stderr_path = test_case.path().join("stderr.rs.txt");
+            if !stderr.is_empty() {
+                std::fs::write(stderr_path, stderr).unwrap();
+            } else {
+                let _ = std::fs::remove_file(stderr_path);
+            }
         }
     }
 }

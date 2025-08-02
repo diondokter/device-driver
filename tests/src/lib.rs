@@ -27,15 +27,15 @@ pub fn run_test(input_paths: &[&Path], output_path: &Path) {
                 device_driver_generation::transform_yaml(&input, "Device"),
                 "".to_string(),
             ),
-            "kdl" => match device_driver_generation::transform_kdl(
-                &input,
-                input_path
-                    .strip_prefix(std::env::current_dir().unwrap())
-                    .unwrap(),
-            ) {
-                Ok((transformed, diagnostics)) => (transformed, diagnostics.to_string()),
-                Err(diagnostics) => ("".to_string(), diagnostics.to_string()),
-            },
+            "kdl" => {
+                let (transformed, diagnostics) = device_driver_generation::transform_kdl(
+                    &input,
+                    input_path
+                        .strip_prefix(std::env::current_dir().unwrap())
+                        .unwrap(),
+                );
+                (transformed, diagnostics.to_string())
+            }
             e => panic!("Unrecognized extension: {e:?}"),
         };
 
@@ -67,13 +67,18 @@ pub fn run_test(input_paths: &[&Path], output_path: &Path) {
     let output_extension = output_path.extension().unwrap().to_str().unwrap();
     match output_extension {
         "rs" => {
-            compile_output(output_path);
+            let stderr = compile_output(output_path);
+            let expected_stderr =
+                std::fs::read_to_string(output_path.with_file_name("stderr.rs.txt"))
+                    .unwrap_or_default();
+
+            pretty_assertions::assert_str_eq!(expected_stderr, stderr, "Different stderr");
         }
         _ => unimplemented!(),
     }
 }
 
-fn compile_output(output_path: &Path) {
+pub fn compile_output(output_path: &Path) -> String {
     let mut cmd = std::process::Command::new("cargo");
 
     cmd.arg("+nightly");
@@ -83,13 +88,7 @@ fn compile_output(output_path: &Path) {
 
     let output = cmd.output().unwrap();
 
-    if !output.status.success() {
-        panic!(
-            "Could not compile output file {}:\n{}",
-            output_path.display(),
-            String::from_utf8(output.stderr).unwrap()
-        );
-    }
+    String::from_utf8_lossy(&output.stderr).to_string()
 }
 
 pub fn set_miette_hook() {
