@@ -7,8 +7,9 @@ use strum::VariantNames;
 
 use crate::{
     mir::{
-        Access, BaseType, BitOrder, ByteOrder, Cfg, Device, Enum, EnumValue, EnumVariant, Field,
-        FieldConversion, FieldSet, GlobalConfig, Integer, Object, Register, Repeat, ResetValue,
+        Access, BaseType, BitOrder, ByteOrder, Cfg, Command, Device, Enum, EnumValue, EnumVariant,
+        Field, FieldConversion, FieldSet, GlobalConfig, Integer, Object, Register, Repeat,
+        ResetValue,
     },
     reporting::{
         Diagnostics, NamedSourceCode,
@@ -105,9 +106,10 @@ fn transform_device_internals(
                 ObjectType::Register => {
                     transform_register(node, source_code.clone(), diagnostics).map(Object::Register)
                 }
-                ObjectType::Command => todo!(),
+                ObjectType::Command => {
+                    transform_command(node, source_code.clone(), diagnostics).map(Object::Command)
+                }
                 ObjectType::Buffer => todo!(),
-                ObjectType::Ref => todo!(),
             };
 
             if let Some(object) = object {
@@ -287,6 +289,141 @@ fn transform_register(
         }
 
         Some(register)
+    }
+}
+
+fn transform_command(
+    node: &KdlNode,
+    source_code: NamedSourceCode,
+    diagnostics: &mut Diagnostics,
+) -> Option<Command> {
+    let (name, name_span) =
+        parse_single_string_entry(node, source_code.clone(), diagnostics, None, true);
+
+    if name.is_none() && node.children().is_none() {
+        // We only have a command keyword. No need for further diagnostics
+        return None;
+    }
+
+    let mut allow_address_overlap = None;
+    let mut address = None;
+    let mut repeat = None;
+    let mut field_set_in = None;
+    let mut field_set_out = None;
+
+    for child in node.iter_children() {
+        match child.name().value().parse() {
+            Ok(CommandField::AllowAddressOverlap) => {
+                if let Some((_, span)) = allow_address_overlap {
+                    diagnostics.add(errors::DuplicateNode {
+                        source_code: source_code.clone(),
+                        duplicate: child.name().span(),
+                        original: span,
+                    });
+                    continue;
+                }
+
+                ensure_zero_entries(child, source_code.clone(), diagnostics);
+                allow_address_overlap = Some(true).map(|val| (val, child.name().span()));
+            }
+            Ok(CommandField::Address) => {
+                if let Some((_, span)) = address {
+                    diagnostics.add(errors::DuplicateNode {
+                        source_code: source_code.clone(),
+                        duplicate: child.name().span(),
+                        original: span,
+                    });
+                    continue;
+                }
+
+                address = parse_single_integer_entry(child, source_code.clone(), diagnostics)
+                    .0
+                    .map(|val| (val, child.name().span()));
+            }
+            Ok(CommandField::Repeat) => {
+                if let Some((_, span)) = repeat {
+                    diagnostics.add(errors::DuplicateNode {
+                        source_code: source_code.clone(),
+                        duplicate: child.name().span(),
+                        original: span,
+                    });
+                    continue;
+                }
+
+                repeat = parse_repeat_entries(child, source_code.clone(), diagnostics)
+                    .map(|val| (val, child.name().span()));
+            }
+            Ok(CommandField::FieldSetIn) => {
+                if let Some((_, span)) = field_set_in {
+                    diagnostics.add(errors::DuplicateNode {
+                        source_code: source_code.clone(),
+                        duplicate: child.name().span(),
+                        original: span,
+                    });
+                    continue;
+                }
+
+                field_set_in = transform_field_set(child, source_code.clone(), diagnostics)
+                    .map(|val| (val, child.name().span()));
+            }
+            Ok(CommandField::FieldSetOut) => {
+                if let Some((_, span)) = field_set_out {
+                    diagnostics.add(errors::DuplicateNode {
+                        source_code: source_code.clone(),
+                        duplicate: child.name().span(),
+                        original: span,
+                    });
+                    continue;
+                }
+
+                field_set_out = transform_field_set(child, source_code.clone(), diagnostics)
+                    .map(|val| (val, child.name().span()));
+            }
+            Err(()) => {
+                diagnostics.add(errors::UnexpectedNode {
+                    source_code: source_code.clone(),
+                    node_name: node.name().span(),
+                    expected_names: COMMAND_FIELDS.iter().map(|v| v.0).collect(),
+                });
+            }
+        }
+    }
+
+    let mut error = false;
+    if name.is_none() {
+        error = true;
+        // Just continue. Error is already emitted
+    }
+
+    if address.is_none() {
+        error = true;
+        diagnostics.add(errors::MissingChildNode {
+            source_code: source_code.clone(),
+            node: name_span.unwrap_or(node.name().span()),
+            node_type: Some("command"),
+            missing_node_type: "address",
+        });
+    }
+
+    if error {
+        None
+    } else {
+        let mut command = Command {
+            cfg_attr: Cfg::default(),
+            description: parse_description(node),
+            name: name.unwrap(),
+            address: address.unwrap().0,
+            repeat: repeat.map(|(r, _)| r),
+            field_set_in: field_set_in.map(|(f, _)| f),
+            field_set_out: field_set_out.map(|(f, _)| f),
+            ..Default::default()
+        };
+
+        if let Some((allow_address_overlap, _)) = allow_address_overlap {
+            command.allow_address_overlap = allow_address_overlap;
+        }
+
+        Some(command)
     }
 }
 
@@ -1108,6 +1245,37 @@ impl FromStr for RegisterField {
 }
 
 #[rustfmt::skip]
+const COMMAND_FIELDS: &[(&str, CommandField)] = &[
+    ("allow-address-overlap", CommandField::AllowAddressOverlap),
+    ("address", CommandField::Address),
+    ("repeat", CommandField::Repeat),
+    ("in", CommandField::FieldSetIn),
+    ("out", CommandField::FieldSetOut),
+];
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+enum CommandField {
+    AllowAddressOverlap,
+    Address,
+    Repeat,
+    FieldSetIn,
+    FieldSetOut,
+}
+
+impl FromStr for CommandField {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        for (name, val) in COMMAND_FIELDS {
+            if *name == s {
+                return Ok(*val);
+            }
+        }
+
+        Err(())
+    }
+}
+
+#[rustfmt::skip]
 const GLOBAL_CONFIG_TYPES: &[(&str, GlobalConfigType)] = &[
     ("default-register-access", GlobalConfigType::DefaultRegisterAccess),
     ("default-field-access", GlobalConfigType::DefaultFieldAccess),
@@ -1154,7 +1322,6 @@ const OBJECT_TYPES: &[(&str, ObjectType)] = &[
     ("register", ObjectType::Register),
     ("command", ObjectType::Command),
     ("buffer", ObjectType::Buffer),
-    ("ref", ObjectType::Ref),
 ];
 #[derive(Clone, Copy)]
 enum ObjectType {
@@ -1162,7 +1329,6 @@ enum ObjectType {
     Register,
     Command,
     Buffer,
-    Ref,
 }
 
 impl FromStr for ObjectType {

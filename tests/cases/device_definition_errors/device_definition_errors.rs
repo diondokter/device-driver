@@ -797,6 +797,26 @@ pub mod foo_d_6 {
                             ::device_driver::RW,
                         >::new(self.interface(), address as u8, field_sets::Foor10::new)
         }
+    
+        pub fn fooc_1(
+            &mut self,
+        ) -> ::device_driver::CommandOperation<
+            '_,
+            I,
+            u8,
+            field_sets::Fooc1FieldsIn,
+            field_sets::Fooc1FieldsOut,
+        > {
+            let address = self.base_address + 0;
+    
+            ::device_driver::CommandOperation::<
+                '_,
+                I,
+                u8,
+                field_sets::Fooc1FieldsIn,
+                field_sets::Fooc1FieldsOut,
+            >::new(self.interface(), address as u8)
+        }
     }
     
     /// Module containing the generated fieldsets of the registers and commands
@@ -1852,6 +1872,251 @@ pub mod foo_d_6 {
             }
         }
     
+        #[derive(Copy, Clone, Eq, PartialEq)]
+        pub struct Fooc1FieldsIn {
+            /// The internal bits
+            bits: [u8; 0],
+        }
+    
+        impl ::device_driver::FieldSet for Fooc1FieldsIn {
+            const SIZE_BITS: u32 = 0;
+            fn new_with_zero() -> Self {
+                Self::new_zero()
+            }
+            fn get_inner_buffer(&self) -> &[u8] {
+                &self.bits
+            }
+            fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
+                &mut self.bits
+            }
+        }
+    
+        impl Fooc1FieldsIn {
+            /// Create a new instance, loaded with the reset value (if any)
+            pub const fn new() -> Self {
+                Self { bits: [] }
+            }
+            /// Create a new instance, loaded with all zeroes
+            pub const fn new_zero() -> Self {
+                Self { bits: [0; 0] }
+            }
+        }
+    
+        impl From<[u8; 0]> for Fooc1FieldsIn {
+            fn from(bits: [u8; 0]) -> Self {
+                Self { bits }
+            }
+        }
+    
+        impl From<Fooc1FieldsIn> for [u8; 0] {
+            fn from(val: Fooc1FieldsIn) -> Self {
+                val.bits
+            }
+        }
+    
+        impl core::fmt::Debug for Fooc1FieldsIn {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+                let mut d = f.debug_struct("Fooc1FieldsIn");
+    
+                d.finish()
+            }
+        }
+    
+        impl core::ops::BitAnd for Fooc1FieldsIn {
+            type Output = Self;
+            fn bitand(mut self, rhs: Self) -> Self::Output {
+                self &= rhs;
+                self
+            }
+        }
+    
+        impl core::ops::BitAndAssign for Fooc1FieldsIn {
+            fn bitand_assign(&mut self, rhs: Self) {
+                for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
+                    *l &= *r;
+                }
+            }
+        }
+    
+        impl core::ops::BitOr for Fooc1FieldsIn {
+            type Output = Self;
+            fn bitor(mut self, rhs: Self) -> Self::Output {
+                self |= rhs;
+                self
+            }
+        }
+    
+        impl core::ops::BitOrAssign for Fooc1FieldsIn {
+            fn bitor_assign(&mut self, rhs: Self) {
+                for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
+                    *l |= *r;
+                }
+            }
+        }
+    
+        impl core::ops::BitXor for Fooc1FieldsIn {
+            type Output = Self;
+            fn bitxor(mut self, rhs: Self) -> Self::Output {
+                self ^= rhs;
+                self
+            }
+        }
+    
+        impl core::ops::BitXorAssign for Fooc1FieldsIn {
+            fn bitxor_assign(&mut self, rhs: Self) {
+                for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
+                    *l ^= *r;
+                }
+            }
+        }
+    
+        impl core::ops::Not for Fooc1FieldsIn {
+            type Output = Self;
+            fn not(mut self) -> Self::Output {
+                for val in self.bits.iter_mut() {
+                    *val = !*val;
+                }
+                self
+            }
+        }
+    
+        #[derive(Copy, Clone, Eq, PartialEq)]
+        pub struct Fooc1FieldsOut {
+            /// The internal bits
+            bits: [u8; 1],
+        }
+    
+        impl ::device_driver::FieldSet for Fooc1FieldsOut {
+            const SIZE_BITS: u32 = 8;
+            fn new_with_zero() -> Self {
+                Self::new_zero()
+            }
+            fn get_inner_buffer(&self) -> &[u8] {
+                &self.bits
+            }
+            fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
+                &mut self.bits
+            }
+        }
+    
+        impl Fooc1FieldsOut {
+            /// Create a new instance, loaded with the reset value (if any)
+            pub const fn new() -> Self {
+                Self { bits: [0] }
+            }
+            /// Create a new instance, loaded with all zeroes
+            pub const fn new_zero() -> Self {
+                Self { bits: [0; 1] }
+            }
+    
+            ///Read the `b` field of the register.
+            ///
+    
+            pub fn b(&self) -> bool {
+                let raw = unsafe {
+                    ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, 0, 1)
+                };
+    
+                raw > 0
+            }
+    
+            ///Write the `b` field of the register.
+            ///
+    
+            pub fn set_b(&mut self, value: bool) {
+                let raw = value as _;
+    
+                unsafe {
+                    ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
+                        raw,
+                        0,
+                        1,
+                        &mut self.bits,
+                    )
+                };
+            }
+        }
+    
+        impl From<[u8; 1]> for Fooc1FieldsOut {
+            fn from(bits: [u8; 1]) -> Self {
+                Self { bits }
+            }
+        }
+    
+        impl From<Fooc1FieldsOut> for [u8; 1] {
+            fn from(val: Fooc1FieldsOut) -> Self {
+                val.bits
+            }
+        }
+    
+        impl core::fmt::Debug for Fooc1FieldsOut {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+                let mut d = f.debug_struct("Fooc1FieldsOut");
+    
+                d.field("b", &self.b());
+    
+                d.finish()
+            }
+        }
+    
+        impl core::ops::BitAnd for Fooc1FieldsOut {
+            type Output = Self;
+            fn bitand(mut self, rhs: Self) -> Self::Output {
+                self &= rhs;
+                self
+            }
+        }
+    
+        impl core::ops::BitAndAssign for Fooc1FieldsOut {
+            fn bitand_assign(&mut self, rhs: Self) {
+                for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
+                    *l &= *r;
+                }
+            }
+        }
+    
+        impl core::ops::BitOr for Fooc1FieldsOut {
+            type Output = Self;
+            fn bitor(mut self, rhs: Self) -> Self::Output {
+                self |= rhs;
+                self
+            }
+        }
+    
+        impl core::ops::BitOrAssign for Fooc1FieldsOut {
+            fn bitor_assign(&mut self, rhs: Self) {
+                for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
+                    *l |= *r;
+                }
+            }
+        }
+    
+        impl core::ops::BitXor for Fooc1FieldsOut {
+            type Output = Self;
+            fn bitxor(mut self, rhs: Self) -> Self::Output {
+                self ^= rhs;
+                self
+            }
+        }
+    
+        impl core::ops::BitXorAssign for Fooc1FieldsOut {
+            fn bitxor_assign(&mut self, rhs: Self) {
+                for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
+                    *l ^= *r;
+                }
+            }
+        }
+    
+        impl core::ops::Not for Fooc1FieldsOut {
+            type Output = Self;
+            fn not(mut self) -> Self::Output {
+                for val in self.bits.iter_mut() {
+                    *val = !*val;
+                }
+                self
+            }
+        }
+    
         /// Enum containing all possible field set types
         pub enum FieldSetValue {
             Foor4(Foor4),
@@ -1867,6 +2132,10 @@ pub mod foo_d_6 {
             Foor9(Foor9),
     
             Foor10(Foor10),
+    
+            Fooc1FieldsIn(Fooc1FieldsIn),
+    
+            Fooc1FieldsOut(Fooc1FieldsOut),
         }
         impl core::fmt::Debug for FieldSetValue {
             fn fmt(&self, _f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -1884,6 +2153,10 @@ pub mod foo_d_6 {
                     Self::Foor9(val) => core::fmt::Debug::fmt(val, _f),
     
                     Self::Foor10(val) => core::fmt::Debug::fmt(val, _f),
+    
+                    Self::Fooc1FieldsIn(val) => core::fmt::Debug::fmt(val, _f),
+    
+                    Self::Fooc1FieldsOut(val) => core::fmt::Debug::fmt(val, _f),
     
                     #[allow(unreachable_patterns)]
                     _ => unreachable!(),
@@ -1930,6 +2203,18 @@ pub mod foo_d_6 {
         impl From<Foor10> for FieldSetValue {
             fn from(val: Foor10) -> Self {
                 Self::Foor10(val)
+            }
+        }
+    
+        impl From<Fooc1FieldsIn> for FieldSetValue {
+            fn from(val: Fooc1FieldsIn) -> Self {
+                Self::Fooc1FieldsIn(val)
+            }
+        }
+    
+        impl From<Fooc1FieldsOut> for FieldSetValue {
+            fn from(val: Fooc1FieldsOut) -> Self {
+                Self::Fooc1FieldsOut(val)
             }
         }
     }

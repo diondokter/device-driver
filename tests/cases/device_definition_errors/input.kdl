@@ -42,6 +42,7 @@ device FooD5 {
 
 device FooD6 {
     register-address-type u8
+    command-address-type u8
 
     registah
     register
@@ -125,6 +126,23 @@ device FooD6 {
                 C default-value
                 D #null 2
             }
+        }
+    }
+    command {
+
+    }
+    command fooc0 {
+
+    }
+    command fooc1 {
+        address 0
+        repeat
+        blah
+        in {
+            
+        }
+        out size-bits=8 {
+            b @0
         }
     }
 }
