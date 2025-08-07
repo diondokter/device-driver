@@ -10,7 +10,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
     recurse_objects_mut(&mut device.objects, &mut |object| {
         let object_name = object.name().to_string();
 
-        for field in object.field_sets_mut().flatten() {
+        for field in object.field_sets_mut().flat_map(|fs| fs.fields.iter_mut()) {
             if let Some(FieldConversion::Enum {
                 enum_value: ec,
                 use_try,
@@ -137,7 +137,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use crate::mir::{Command, Enum, EnumVariant, Field, Object};
+    use crate::mir::{Command, Enum, EnumVariant, Field, FieldSet, Object};
 
     use super::*;
 
@@ -148,39 +148,42 @@ mod tests {
             global_config: Default::default(),
             objects: vec![Object::Command(Command {
                 name: "MyCommand".into(),
-                out_fields: vec![Field {
-                    field_conversion: Some(FieldConversion::Enum {
-                        enum_value: Enum::new(
-                            Default::default(),
-                            "MyEnum".into(),
-                            vec![
-                                EnumVariant {
-                                    name: "var0".into(),
-                                    value: EnumValue::Specified(1),
-                                    ..Default::default()
-                                },
-                                EnumVariant {
-                                    name: "var1".into(),
-                                    value: EnumValue::Unspecified,
-                                    ..Default::default()
-                                },
-                                EnumVariant {
-                                    name: "var2".into(),
-                                    value: EnumValue::Unspecified,
-                                    ..Default::default()
-                                },
-                                EnumVariant {
-                                    name: "var3".into(),
-                                    value: EnumValue::Specified(0),
-                                    ..Default::default()
-                                },
-                            ],
-                        ),
-                        use_try: false,
-                    }),
-                    field_address: 0..2,
+                field_set_out: Some(FieldSet {
+                    fields: vec![Field {
+                        field_conversion: Some(FieldConversion::Enum {
+                            enum_value: Enum::new(
+                                Default::default(),
+                                "MyEnum".into(),
+                                vec![
+                                    EnumVariant {
+                                        name: "var0".into(),
+                                        value: EnumValue::Specified(1),
+                                        ..Default::default()
+                                    },
+                                    EnumVariant {
+                                        name: "var1".into(),
+                                        value: EnumValue::Unspecified,
+                                        ..Default::default()
+                                    },
+                                    EnumVariant {
+                                        name: "var2".into(),
+                                        value: EnumValue::Unspecified,
+                                        ..Default::default()
+                                    },
+                                    EnumVariant {
+                                        name: "var3".into(),
+                                        value: EnumValue::Specified(0),
+                                        ..Default::default()
+                                    },
+                                ],
+                            ),
+                            use_try: false,
+                        }),
+                        field_address: 0..2,
+                        ..Default::default()
+                    }],
                     ..Default::default()
-                }],
+                }),
                 ..Default::default()
             })],
         };
@@ -190,40 +193,43 @@ mod tests {
             global_config: Default::default(),
             objects: vec![Object::Command(Command {
                 name: "MyCommand".into(),
-                out_fields: vec![Field {
-                    field_conversion: Some(FieldConversion::Enum {
-                        enum_value: Enum::new_with_style(
-                            Default::default(),
-                            "MyEnum".into(),
-                            vec![
-                                EnumVariant {
-                                    name: "var0".into(),
-                                    value: EnumValue::Specified(1),
-                                    ..Default::default()
-                                },
-                                EnumVariant {
-                                    name: "var1".into(),
-                                    value: EnumValue::Specified(2),
-                                    ..Default::default()
-                                },
-                                EnumVariant {
-                                    name: "var2".into(),
-                                    value: EnumValue::Specified(3),
-                                    ..Default::default()
-                                },
-                                EnumVariant {
-                                    name: "var3".into(),
-                                    value: EnumValue::Specified(0),
-                                    ..Default::default()
-                                },
-                            ],
-                            EnumGenerationStyle::Infallible { bit_size: 2 },
-                        ),
-                        use_try: false,
-                    }),
-                    field_address: 0..2,
+                field_set_out: Some(FieldSet {
+                    fields: vec![Field {
+                        field_conversion: Some(FieldConversion::Enum {
+                            enum_value: Enum::new_with_style(
+                                Default::default(),
+                                "MyEnum".into(),
+                                vec![
+                                    EnumVariant {
+                                        name: "var0".into(),
+                                        value: EnumValue::Specified(1),
+                                        ..Default::default()
+                                    },
+                                    EnumVariant {
+                                        name: "var1".into(),
+                                        value: EnumValue::Specified(2),
+                                        ..Default::default()
+                                    },
+                                    EnumVariant {
+                                        name: "var2".into(),
+                                        value: EnumValue::Specified(3),
+                                        ..Default::default()
+                                    },
+                                    EnumVariant {
+                                        name: "var3".into(),
+                                        value: EnumValue::Specified(0),
+                                        ..Default::default()
+                                    },
+                                ],
+                                EnumGenerationStyle::Infallible { bit_size: 2 },
+                            ),
+                            use_try: false,
+                        }),
+                        field_address: 0..2,
+                        ..Default::default()
+                    }],
                     ..Default::default()
-                }],
+                }),
                 ..Default::default()
             })],
         };
@@ -240,29 +246,32 @@ mod tests {
             global_config: Default::default(),
             objects: vec![Object::Command(Command {
                 name: "MyCommand".into(),
-                out_fields: vec![Field {
-                    field_conversion: Some(FieldConversion::Enum {
-                        enum_value: Enum::new(
-                            Default::default(),
-                            "MyEnum".into(),
-                            vec![
-                                EnumVariant {
-                                    name: "var0".into(),
-                                    value: EnumValue::Unspecified,
-                                    ..Default::default()
-                                },
-                                EnumVariant {
-                                    name: "var1".into(),
-                                    value: EnumValue::Default,
-                                    ..Default::default()
-                                },
-                            ],
-                        ),
-                        use_try: false,
-                    }),
-                    field_address: 0..2,
+                field_set_out: Some(FieldSet {
+                    fields: vec![Field {
+                        field_conversion: Some(FieldConversion::Enum {
+                            enum_value: Enum::new(
+                                Default::default(),
+                                "MyEnum".into(),
+                                vec![
+                                    EnumVariant {
+                                        name: "var0".into(),
+                                        value: EnumValue::Unspecified,
+                                        ..Default::default()
+                                    },
+                                    EnumVariant {
+                                        name: "var1".into(),
+                                        value: EnumValue::Default,
+                                        ..Default::default()
+                                    },
+                                ],
+                            ),
+                            use_try: false,
+                        }),
+                        field_address: 0..2,
+                        ..Default::default()
+                    }],
                     ..Default::default()
-                }],
+                }),
                 ..Default::default()
             })],
         };
@@ -272,30 +281,33 @@ mod tests {
             global_config: Default::default(),
             objects: vec![Object::Command(Command {
                 name: "MyCommand".into(),
-                out_fields: vec![Field {
-                    field_conversion: Some(FieldConversion::Enum {
-                        enum_value: Enum::new_with_style(
-                            Default::default(),
-                            "MyEnum".into(),
-                            vec![
-                                EnumVariant {
-                                    name: "var0".into(),
-                                    value: EnumValue::Specified(0),
-                                    ..Default::default()
-                                },
-                                EnumVariant {
-                                    name: "var1".into(),
-                                    value: EnumValue::Default,
-                                    ..Default::default()
-                                },
-                            ],
-                            EnumGenerationStyle::Infallible { bit_size: 2 },
-                        ),
-                        use_try: false,
-                    }),
-                    field_address: 0..2,
+                field_set_out: Some(FieldSet {
+                    fields: vec![Field {
+                        field_conversion: Some(FieldConversion::Enum {
+                            enum_value: Enum::new_with_style(
+                                Default::default(),
+                                "MyEnum".into(),
+                                vec![
+                                    EnumVariant {
+                                        name: "var0".into(),
+                                        value: EnumValue::Specified(0),
+                                        ..Default::default()
+                                    },
+                                    EnumVariant {
+                                        name: "var1".into(),
+                                        value: EnumValue::Default,
+                                        ..Default::default()
+                                    },
+                                ],
+                                EnumGenerationStyle::Infallible { bit_size: 2 },
+                            ),
+                            use_try: false,
+                        }),
+                        field_address: 0..2,
+                        ..Default::default()
+                    }],
                     ..Default::default()
-                }],
+                }),
                 ..Default::default()
             })],
         };
@@ -312,22 +324,25 @@ mod tests {
             global_config: Default::default(),
             objects: vec![Object::Command(Command {
                 name: "MyCommand".into(),
-                out_fields: vec![Field {
-                    field_conversion: Some(FieldConversion::Enum {
-                        enum_value: Enum::new(
-                            Default::default(),
-                            "MyEnum".into(),
-                            vec![EnumVariant {
-                                name: "var0".into(),
-                                value: EnumValue::Unspecified,
-                                ..Default::default()
-                            }],
-                        ),
-                        use_try: true,
-                    }),
-                    field_address: 0..2,
+                field_set_out: Some(FieldSet {
+                    fields: vec![Field {
+                        field_conversion: Some(FieldConversion::Enum {
+                            enum_value: Enum::new(
+                                Default::default(),
+                                "MyEnum".into(),
+                                vec![EnumVariant {
+                                    name: "var0".into(),
+                                    value: EnumValue::Unspecified,
+                                    ..Default::default()
+                                }],
+                            ),
+                            use_try: true,
+                        }),
+                        field_address: 0..2,
+                        ..Default::default()
+                    }],
                     ..Default::default()
-                }],
+                }),
                 ..Default::default()
             })],
         };
@@ -337,23 +352,26 @@ mod tests {
             global_config: Default::default(),
             objects: vec![Object::Command(Command {
                 name: "MyCommand".into(),
-                out_fields: vec![Field {
-                    field_conversion: Some(FieldConversion::Enum {
-                        enum_value: Enum::new_with_style(
-                            Default::default(),
-                            "MyEnum".into(),
-                            vec![EnumVariant {
-                                name: "var0".into(),
-                                value: EnumValue::Specified(0),
-                                ..Default::default()
-                            }],
-                            EnumGenerationStyle::Fallible,
-                        ),
-                        use_try: true,
-                    }),
-                    field_address: 0..2,
+                field_set_out: Some(FieldSet {
+                    fields: vec![Field {
+                        field_conversion: Some(FieldConversion::Enum {
+                            enum_value: Enum::new_with_style(
+                                Default::default(),
+                                "MyEnum".into(),
+                                vec![EnumVariant {
+                                    name: "var0".into(),
+                                    value: EnumValue::Specified(0),
+                                    ..Default::default()
+                                }],
+                                EnumGenerationStyle::Fallible,
+                            ),
+                            use_try: true,
+                        }),
+                        field_address: 0..2,
+                        ..Default::default()
+                    }],
                     ..Default::default()
-                }],
+                }),
                 ..Default::default()
             })],
         };
@@ -370,35 +388,38 @@ mod tests {
             global_config: Default::default(),
             objects: vec![Object::Command(Command {
                 name: "MyCommand".into(),
-                out_fields: vec![Field {
-                    name: "MyField".into(),
-                    field_conversion: Some(FieldConversion::Enum {
-                        enum_value: Enum::new(
-                            Default::default(),
-                            "MyEnum".into(),
-                            vec![
-                                EnumVariant {
-                                    name: "var0".into(),
-                                    value: EnumValue::Unspecified,
-                                    ..Default::default()
-                                },
-                                EnumVariant {
-                                    name: "var0".into(),
-                                    value: EnumValue::Unspecified,
-                                    ..Default::default()
-                                },
-                                EnumVariant {
-                                    name: "var0".into(),
-                                    value: EnumValue::Unspecified,
-                                    ..Default::default()
-                                },
-                            ],
-                        ),
-                        use_try: false,
-                    }),
-                    field_address: 0..1,
+                field_set_out: Some(FieldSet {
+                    fields: vec![Field {
+                        name: "MyField".into(),
+                        field_conversion: Some(FieldConversion::Enum {
+                            enum_value: Enum::new(
+                                Default::default(),
+                                "MyEnum".into(),
+                                vec![
+                                    EnumVariant {
+                                        name: "var0".into(),
+                                        value: EnumValue::Unspecified,
+                                        ..Default::default()
+                                    },
+                                    EnumVariant {
+                                        name: "var0".into(),
+                                        value: EnumValue::Unspecified,
+                                        ..Default::default()
+                                    },
+                                    EnumVariant {
+                                        name: "var0".into(),
+                                        value: EnumValue::Unspecified,
+                                        ..Default::default()
+                                    },
+                                ],
+                            ),
+                            use_try: false,
+                        }),
+                        field_address: 0..1,
+                        ..Default::default()
+                    }],
                     ..Default::default()
-                }],
+                }),
                 ..Default::default()
             })],
         };
@@ -416,30 +437,33 @@ mod tests {
             global_config: Default::default(),
             objects: vec![Object::Command(Command {
                 name: "MyCommand".into(),
-                out_fields: vec![Field {
-                    name: "MyField".into(),
-                    field_conversion: Some(FieldConversion::Enum {
-                        enum_value: Enum::new(
-                            Default::default(),
-                            "MyEnum".into(),
-                            vec![
-                                EnumVariant {
-                                    name: "var0".into(),
-                                    value: EnumValue::Unspecified,
-                                    ..Default::default()
-                                },
-                                EnumVariant {
-                                    name: "var0".into(),
-                                    value: EnumValue::Specified(0),
-                                    ..Default::default()
-                                },
-                            ],
-                        ),
-                        use_try: false,
-                    }),
-                    field_address: 0..1,
+                field_set_out: Some(FieldSet {
+                    fields: vec![Field {
+                        name: "MyField".into(),
+                        field_conversion: Some(FieldConversion::Enum {
+                            enum_value: Enum::new(
+                                Default::default(),
+                                "MyEnum".into(),
+                                vec![
+                                    EnumVariant {
+                                        name: "var0".into(),
+                                        value: EnumValue::Unspecified,
+                                        ..Default::default()
+                                    },
+                                    EnumVariant {
+                                        name: "var0".into(),
+                                        value: EnumValue::Specified(0),
+                                        ..Default::default()
+                                    },
+                                ],
+                            ),
+                            use_try: false,
+                        }),
+                        field_address: 0..1,
+                        ..Default::default()
+                    }],
                     ..Default::default()
-                }],
+                }),
                 ..Default::default()
             })],
         };

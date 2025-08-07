@@ -1,5 +1,10 @@
 use clap::Parser;
-use std::{error::Error, io::Write, path::PathBuf};
+use device_driver_generation::reporting::Diagnostics;
+use std::{
+    error::Error,
+    io::Write,
+    path::{Path, PathBuf},
+};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -13,7 +18,7 @@ struct Args {
     output_path: Option<PathBuf>,
     /// The name of the device to be generated. Must be PascalCase
     #[arg(short = 'd', long = "device-name", value_name = "NAME")]
-    device_name: String,
+    device_name: Option<String>,
     /// Type of generated output
     #[arg(short = 'g', long = "gen-type", default_value = "rust")]
     gen_type: GenType,
@@ -21,6 +26,24 @@ struct Args {
 
 fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
+
+    miette::set_hook(Box::new(|_| {
+        Box::new(
+            miette::MietteHandlerOpts::new()
+                .graphical_theme(miette::GraphicalTheme {
+                    characters: {
+                        let mut unicode = miette::ThemeCharacters::unicode();
+                        unicode.error = "error:".into();
+                        unicode.warning = "warning:".into();
+                        unicode.advice = "advice:".into();
+                        unicode
+                    },
+                    styles: miette::ThemeStyles::rgb(),
+                })
+                .build(),
+        )
+    }))
+    .unwrap();
 
     let extension = args
         .manifest_path
@@ -35,30 +58,42 @@ fn main() -> Result<(), Box<dyn Error>> {
         )
     });
 
-    let output = args
-        .gen_type
-        .generate(&manifest_contents, &extension, &args.device_name);
-
-    let output_writer: &mut dyn Write = match &args.output_path {
-        Some(path) => &mut std::fs::File::create(path).unwrap_or_else(|_| {
-            panic!(
-                "Could not create the output file at: {}. Does its directory exist?",
-                path.display()
-            )
-        }),
-        None => &mut std::io::stdout().lock(),
+    let (output, reports) = match args.gen_type.generate(
+        &manifest_contents,
+        &extension,
+        &args.device_name,
+        &args.manifest_path,
+    ) {
+        Ok((output, reports)) => (Some(output), reports),
+        Err(reports) => (None, reports),
     };
 
-    let mut output_writer = std::io::BufWriter::new(output_writer);
-    output_writer
-        .write_all(output.as_bytes())
-        .expect("Could not write the output");
+    reports.print_to(std::io::stderr().lock()).unwrap();
 
-    if output.starts_with("::core::compile_error!") {
-        return Err(strip_compile_error(&output).into());
+    if let Some(output) = output {
+        let output_writer: &mut dyn Write = match &args.output_path {
+            Some(path) => &mut std::fs::File::create(path).unwrap_or_else(|_| {
+                panic!(
+                    "Could not create the output file at: {}. Does its directory exist?",
+                    path.display()
+                )
+            }),
+            None => &mut std::io::stdout().lock(),
+        };
+
+        let mut output_writer = std::io::BufWriter::new(output_writer);
+        output_writer
+            .write_all(output.as_bytes())
+            .expect("Could not write the output");
+
+        if output.starts_with("::core::compile_error!") {
+            return Err(strip_compile_error(&output).into());
+        }
+
+        Ok(())
+    } else {
+        Err("Compilation ended with errors".to_string().into())
     }
-
-    Ok(())
 }
 
 fn strip_compile_error(mut error: &str) -> &str {
@@ -86,17 +121,43 @@ impl GenType {
         &self,
         manifest_contents: &str,
         manifest_type: &str,
-        device_name: &str,
-    ) -> String {
+        device_name: &Option<String>,
+        manifest_path: &Path,
+    ) -> Result<(String, Diagnostics), Diagnostics> {
         match self {
             GenType::Rust => match manifest_type {
-                "json" => device_driver_generation::transform_json(manifest_contents, device_name),
-                "yaml" => device_driver_generation::transform_yaml(manifest_contents, device_name),
-                "toml" => device_driver_generation::transform_toml(manifest_contents, device_name),
-                "dsl" => device_driver_generation::transform_dsl(
-                    syn::parse_str(manifest_contents).expect("Could not (syn) parse the DSL"),
-                    device_name,
-                ),
+                "json" => Ok((
+                    device_driver_generation::transform_json(
+                        manifest_contents,
+                        device_name.as_ref().expect("No device name specified"),
+                    ),
+                    Diagnostics::new(),
+                )),
+                "yaml" => Ok((
+                    device_driver_generation::transform_yaml(
+                        manifest_contents,
+                        device_name.as_ref().expect("No device name specified"),
+                    ),
+                    Diagnostics::new(),
+                )),
+                "toml" => Ok((
+                    device_driver_generation::transform_toml(
+                        manifest_contents,
+                        device_name.as_ref().expect("No device name specified"),
+                    ),
+                    Diagnostics::new(),
+                )),
+                "dsl" => Ok((
+                    device_driver_generation::transform_dsl(
+                        syn::parse_str(manifest_contents).expect("Could not (syn) parse the DSL"),
+                        device_name.as_ref().expect("No device name specified"),
+                    ),
+                    Diagnostics::new(),
+                )),
+                "kdl" => Ok(device_driver_generation::transform_kdl(
+                    manifest_contents,
+                    manifest_path,
+                )),
                 unknown => panic!(
                     "Unknown manifest file extension: '{unknown}'. Only 'dsl', 'json', 'yaml' and 'toml' are allowed."
                 ),
@@ -123,10 +184,18 @@ impl GenType {
 
                 match mir_device {
                     Ok(mut mir_device) => {
-                        mir_device.name = Some(device_name.to_string());
-                        device_driver_generation::mir::kdl_transform::transform(mir_device)
+                        mir_device.name =
+                            Some(device_name.clone().expect("No device name specified"));
+                        Ok((
+                            device_driver_generation::mir::kdl_transform::transform(mir_device),
+                            Diagnostics::new(),
+                        ))
                     }
-                    Err(e) => e.to_string(),
+                    Err(e) => {
+                        let mut reports = Diagnostics::new();
+                        reports.add_msg(e.to_string());
+                        Err(reports)
+                    }
                 }
             }
         }

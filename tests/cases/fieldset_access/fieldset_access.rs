@@ -6,6 +6,7 @@ edition = "2024"
 device-driver = { path="../../../device-driver", default-features=false }
 ---
 #![deny(warnings)]
+#![allow(unexpected_cfgs)]
 fn main() {}
 
 /// Root block of the Device driver
@@ -653,13 +654,13 @@ pub mod field_sets {
         FooWo(FooWo),
     }
     impl core::fmt::Debug for FieldSetValue {
-        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        fn fmt(&self, _f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
             match self {
-                Self::FooRo(val) => core::fmt::Debug::fmt(val, f),
+                Self::FooRo(val) => core::fmt::Debug::fmt(val, _f),
 
-                Self::FooRw(val) => core::fmt::Debug::fmt(val, f),
+                Self::FooRw(val) => core::fmt::Debug::fmt(val, _f),
 
-                Self::FooWo(val) => core::fmt::Debug::fmt(val, f),
+                Self::FooWo(val) => core::fmt::Debug::fmt(val, _f),
 
                 #[allow(unreachable_patterns)]
                 _ => unreachable!(),

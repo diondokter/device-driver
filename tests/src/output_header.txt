@@ -6,5 +6,6 @@ edition = "2024"
 device-driver = { path="../../../device-driver", default-features=false }
 ---
 #![deny(warnings)]
+#![allow(unexpected_cfgs)]
 fn main() {}
 

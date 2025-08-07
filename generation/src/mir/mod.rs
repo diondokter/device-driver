@@ -47,7 +47,10 @@ impl Default for GlobalConfig {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, strum::VariantNames, strum::Display, strum::EnumString,
+)]
+#[strum(serialize_all = "lowercase")]
 pub enum Integer {
     U8,
     U16,
@@ -56,49 +59,48 @@ pub enum Integer {
     I16,
     I32,
     I64,
+    U64,
 }
 
 impl Integer {
-    pub fn min_value(&self) -> i64 {
+    pub fn min_value(&self) -> i128 {
         match self {
-            Integer::U8 => u8::MIN as i64,
-            Integer::U16 => u16::MIN as i64,
-            Integer::U32 => u32::MIN as i64,
-            Integer::I8 => i8::MIN as i64,
-            Integer::I16 => i16::MIN as i64,
-            Integer::I32 => i32::MIN as i64,
-            Integer::I64 => i64::MIN,
+            Integer::U8 => u8::MIN as i128,
+            Integer::U16 => u16::MIN as i128,
+            Integer::U32 => u32::MIN as i128,
+            Integer::U64 => u64::MIN as i128,
+            Integer::I8 => i8::MIN as i128,
+            Integer::I16 => i16::MIN as i128,
+            Integer::I32 => i32::MIN as i128,
+            Integer::I64 => i64::MIN as i128,
         }
     }
 
-    pub fn max_value(&self) -> i64 {
+    pub fn max_value(&self) -> i128 {
         match self {
-            Integer::U8 => u8::MAX as i64,
-            Integer::U16 => u16::MAX as i64,
-            Integer::U32 => u32::MAX as i64,
-            Integer::I8 => i8::MAX as i64,
-            Integer::I16 => i16::MAX as i64,
-            Integer::I32 => i32::MAX as i64,
-            Integer::I64 => i64::MAX,
-        }
-    }
-}
-
-impl Display for Integer {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Integer::U8 => write!(f, "u8"),
-            Integer::U16 => write!(f, "u16"),
-            Integer::U32 => write!(f, "u32"),
-            Integer::I8 => write!(f, "i8"),
-            Integer::I16 => write!(f, "i16"),
-            Integer::I32 => write!(f, "i32"),
-            Integer::I64 => write!(f, "i64"),
+            Integer::U8 => u8::MAX as i128,
+            Integer::U16 => u16::MAX as i128,
+            Integer::U32 => u32::MAX as i128,
+            Integer::U64 => u64::MAX as i128,
+            Integer::I8 => i8::MAX as i128,
+            Integer::I16 => i16::MAX as i128,
+            Integer::I32 => i32::MAX as i128,
+            Integer::I64 => i64::MAX as i128,
         }
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Default,
+    strum::VariantNames,
+    strum::Display,
+    strum::EnumString,
+)]
 pub enum Access {
     #[default]
     RW,
@@ -116,35 +118,29 @@ impl Access {
     }
 }
 
-impl Display for Access {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{self:?}")
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, strum::VariantNames, strum::Display, strum::EnumString,
+)]
 pub enum ByteOrder {
     LE,
     BE,
 }
 
-impl Display for ByteOrder {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{self:?}")
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Default,
+    strum::VariantNames,
+    strum::Display,
+    strum::EnumString,
+)]
 pub enum BitOrder {
     #[default]
     LSB0,
     MSB0,
-}
-
-impl Display for BitOrder {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{self:?}")
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -216,24 +212,30 @@ impl Object {
     }
 
     /// Get an iterator over all the field sets in the object
-    pub(self) fn field_sets_mut(&mut self) -> impl Iterator<Item = &mut [Field]> {
+    pub(self) fn field_sets_mut(&mut self) -> Box<dyn Iterator<Item = &mut FieldSet> + '_> {
         match self {
-            Object::Register(val) => vec![val.fields.as_mut_slice()].into_iter(),
-            Object::Command(val) => {
-                vec![val.in_fields.as_mut_slice(), val.out_fields.as_mut_slice()].into_iter()
-            }
-            Object::Block(_) | Object::Buffer(_) | Object::Ref(_) => Vec::new().into_iter(),
+            Object::Register(val) => Box::new(std::iter::once(&mut val.field_set)),
+            Object::Command(val) => Box::new(
+                val.field_set_in
+                    .as_mut()
+                    .into_iter()
+                    .chain(val.field_set_out.as_mut()),
+            ),
+            Object::Block(_) | Object::Buffer(_) | Object::Ref(_) => Box::new(std::iter::empty()),
         }
     }
 
     /// Get an iterator over all the field sets in the object
-    pub(self) fn field_sets(&self) -> impl Iterator<Item = &[Field]> {
+    pub(self) fn field_sets(&self) -> Box<dyn Iterator<Item = &FieldSet> + '_> {
         match self {
-            Object::Register(val) => vec![val.fields.as_slice()].into_iter(),
-            Object::Command(val) => {
-                vec![val.in_fields.as_slice(), val.out_fields.as_slice()].into_iter()
-            }
-            Object::Block(_) | Object::Buffer(_) | Object::Ref(_) => Vec::new().into_iter(),
+            Object::Register(val) => Box::new(std::iter::once(&val.field_set)),
+            Object::Command(val) => Box::new(
+                val.field_set_in
+                    .as_ref()
+                    .into_iter()
+                    .chain(val.field_set_out.as_ref()),
+            ),
+            Object::Block(_) | Object::Buffer(_) | Object::Ref(_) => Box::new(std::iter::empty()),
         }
     }
 
@@ -271,7 +273,7 @@ impl Object {
 
     /// Return the address if it is specified.
     /// It's only not specified in ref objects where the user hasn't overridden the address
-    fn address(&self) -> Option<i64> {
+    fn address(&self) -> Option<i128> {
         match self {
             Object::Block(block) => Some(block.address_offset),
             Object::Register(register) => Some(register.address),
@@ -307,6 +309,16 @@ impl Object {
             None
         }
     }
+
+    pub fn type_name(&self) -> &'static str {
+        match self {
+            Object::Block(_) => "block",
+            Object::Register(_) => "register",
+            Object::Command(_) => "command",
+            Object::Buffer(_) => "buffer",
+            Object::Ref(_) => "ref",
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -314,7 +326,7 @@ pub struct Block {
     pub cfg_attr: Cfg,
     pub description: String,
     pub name: String,
-    pub address_offset: i64,
+    pub address_offset: i128,
     pub repeat: Option<Repeat>,
     pub objects: Vec<Object>,
 }
@@ -322,7 +334,7 @@ pub struct Block {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Repeat {
     pub count: u64,
-    pub stride: i64,
+    pub stride: i128,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -331,14 +343,19 @@ pub struct Register {
     pub description: String,
     pub name: String,
     pub access: Access,
+    pub allow_address_overlap: bool,
+    pub address: i128,
+    pub reset_value: Option<ResetValue>,
+    pub repeat: Option<Repeat>,
+    pub field_set: FieldSet,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct FieldSet {
+    pub size_bits: u32,
     pub byte_order: Option<ByteOrder>,
     pub bit_order: BitOrder,
     pub allow_bit_overlap: bool,
-    pub allow_address_overlap: bool,
-    pub address: i64,
-    pub size_bits: u32,
-    pub reset_value: Option<ResetValue>,
-    pub repeat: Option<Repeat>,
     pub fields: Vec<Field>,
 }
 
@@ -361,6 +378,16 @@ pub enum BaseType {
     Uint,
     Int,
     FixedSize(Integer),
+}
+
+impl BaseType {
+    /// Returns `true` if the base type is [`Unspecified`].
+    ///
+    /// [`Unspecified`]: BaseType::Unspecified
+    #[must_use]
+    pub fn is_unspecified(&self) -> bool {
+        matches!(self, Self::Unspecified)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -478,16 +505,12 @@ pub struct Command {
     pub cfg_attr: Cfg,
     pub description: String,
     pub name: String,
-    pub address: i64,
-    pub byte_order: Option<ByteOrder>,
-    pub bit_order: BitOrder,
-    pub allow_bit_overlap: bool,
+    pub address: i128,
     pub allow_address_overlap: bool,
-    pub size_bits_in: u32,
-    pub size_bits_out: u32,
     pub repeat: Option<Repeat>,
-    pub in_fields: Vec<Field>,
-    pub out_fields: Vec<Field>,
+
+    pub field_set_in: Option<FieldSet>,
+    pub field_set_out: Option<FieldSet>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -496,7 +519,7 @@ pub struct Buffer {
     pub description: String,
     pub name: String,
     pub access: Access,
-    pub address: i64,
+    pub address: i128,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -557,7 +580,7 @@ impl ObjectOverride {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct BlockOverride {
     pub name: String,
-    pub address_offset: Option<i64>,
+    pub address_offset: Option<i128>,
     pub repeat: Option<Repeat>,
 }
 
@@ -565,7 +588,7 @@ pub struct BlockOverride {
 pub struct RegisterOverride {
     pub name: String,
     pub access: Option<Access>,
-    pub address: Option<i64>,
+    pub address: Option<i128>,
     pub allow_address_overlap: bool,
     pub reset_value: Option<ResetValue>,
     pub repeat: Option<Repeat>,
@@ -574,7 +597,7 @@ pub struct RegisterOverride {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct CommandOverride {
     pub name: String,
-    pub address: Option<i64>,
+    pub address: Option<i128>,
     pub allow_address_overlap: bool,
     pub repeat: Option<Repeat>,
 }
