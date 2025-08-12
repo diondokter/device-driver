@@ -7,9 +7,9 @@ use strum::VariantNames;
 
 use crate::{
     mir::{
-        Access, BaseType, BitOrder, ByteOrder, Cfg, Command, Device, Enum, EnumValue, EnumVariant,
-        Field, FieldConversion, FieldSet, GlobalConfig, Integer, Object, Register, Repeat,
-        ResetValue,
+        Access, BaseType, BitOrder, Buffer, ByteOrder, Cfg, Command, Device, Enum, EnumValue,
+        EnumVariant, Field, FieldConversion, FieldSet, GlobalConfig, Integer, Object, Register,
+        Repeat, ResetValue,
     },
     reporting::{
         Diagnostics, NamedSourceCode,
@@ -109,7 +109,9 @@ fn transform_device_internals(
                 ObjectType::Command => {
                     transform_command(node, source_code.clone(), diagnostics).map(Object::Command)
                 }
-                ObjectType::Buffer => todo!(),
+                ObjectType::Buffer => {
+                    transform_buffer(node, source_code.clone(), diagnostics).map(Object::Buffer)
+                }
             };
 
             if let Some(object) = object {
@@ -234,7 +236,7 @@ fn transform_register(
             Err(()) => {
                 diagnostics.add(errors::UnexpectedNode {
                     source_code: source_code.clone(),
-                    node_name: node.name().span(),
+                    node_name: child.name().span(),
                     expected_names: REGISTER_FIELDS.iter().map(|v| v.0).collect(),
                 });
             }
@@ -382,7 +384,7 @@ fn transform_command(
             Err(()) => {
                 diagnostics.add(errors::UnexpectedNode {
                     source_code: source_code.clone(),
-                    node_name: node.name().span(),
+                    node_name: child.name().span(),
                     expected_names: COMMAND_FIELDS.iter().map(|v| v.0).collect(),
                 });
             }
@@ -424,6 +426,97 @@ fn transform_command(
         }
 
         Some(command)
+    }
+}
+
+fn transform_buffer(
+    node: &KdlNode,
+    source_code: NamedSourceCode,
+    diagnostics: &mut Diagnostics,
+) -> Option<Buffer> {
+    let (name, name_span) =
+        parse_single_string_entry(node, source_code.clone(), diagnostics, None, true);
+
+    if name.is_none() && node.children().is_none() {
+        // We only have a buffer keyword. No need for further diagnostics
+        return None;
+    }
+
+    let mut access = None;
+    let mut address = None;
+
+    for child in node.iter_children() {
+        match child.name().value().parse() {
+            Ok(BufferField::Access) => {
+                if let Some((_, span)) = access {
+                    diagnostics.add(errors::DuplicateNode {
+                        source_code: source_code.clone(),
+                        duplicate: child.name().span(),
+                        original: span,
+                    });
+                    continue;
+                }
+
+                access =
+                    parse_single_string_value::<Access>(child, source_code.clone(), diagnostics)
+                        .map(|val| (val, child.name().span()));
+            }
+            Ok(BufferField::Address) => {
+                if let Some((_, span)) = address {
+                    diagnostics.add(errors::DuplicateNode {
+                        source_code: source_code.clone(),
+                        duplicate: child.name().span(),
+                        original: span,
+                    });
+                    continue;
+                }
+
+                address = parse_single_integer_entry(child, source_code.clone(), diagnostics)
+                    .0
+                    .map(|val| (val, child.name().span()));
+            }
+            Err(()) => {
+                diagnostics.add(errors::UnexpectedNode {
+                    source_code: source_code.clone(),
+                    node_name: child.name().span(),
+                    expected_names: BUFFER_FIELDS.iter().map(|v| v.0).collect(),
+                });
+            }
+        }
+    }
+
+    let mut error = false;
+    if name.is_none() {
+        error = true;
+        // Just continue. Error is already emitted
+    }
+
+    if address.is_none() {
+        error = true;
+        diagnostics.add(errors::MissingChildNode {
+            source_code: source_code.clone(),
+            node: name_span.unwrap_or(node.name().span()),
+            node_type: Some("register"),
+            missing_node_type: "address",
+        });
+    }
+
+    if error {
+        None
+    } else {
+        let mut buffer = Buffer {
+            cfg_attr: Cfg::default(),
+            description: parse_description(node),
+            name: name.unwrap(),
+            address: address.unwrap().0,
+            ..Default::default()
+        };
+
+        if let Some((access, _)) = access {
+            buffer.access = access;
+        }
+
+        Some(buffer)
     }
 }
 
@@ -1266,6 +1359,31 @@ impl FromStr for CommandField {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         for (name, val) in COMMAND_FIELDS {
+            if *name == s {
+                return Ok(*val);
+            }
+        }
+
+        Err(())
+    }
+}
+
+#[rustfmt::skip]
+const BUFFER_FIELDS: &[(&str, BufferField)] = &[
+    ("access", BufferField::Access),
+    ("address", BufferField::Address),
+];
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+enum BufferField {
+    Access,
+    Address,
+}
+
+impl FromStr for BufferField {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        for (name, val) in BUFFER_FIELDS {
             if *name == s {
                 return Ok(*val);
             }

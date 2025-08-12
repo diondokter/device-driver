@@ -817,6 +817,24 @@ pub mod foo_d_6 {
                 field_sets::Fooc1FieldsOut,
             >::new(self.interface(), address as u8)
         }
+    
+        pub fn foob_1(&mut self) -> ::device_driver::BufferOperation<'_, I, u8, ::device_driver::RW> {
+            let address = self.base_address + 0;
+    
+            ::device_driver::BufferOperation::<'_, I, u8, ::device_driver::RW>::new(
+                self.interface(),
+                address as u8,
+            )
+        }
+    
+        pub fn foob_2(&mut self) -> ::device_driver::BufferOperation<'_, I, u8, ::device_driver::RO> {
+            let address = self.base_address + 2;
+    
+            ::device_driver::BufferOperation::<'_, I, u8, ::device_driver::RO>::new(
+                self.interface(),
+                address as u8,
+            )
+        }
     }
     
     /// Module containing the generated fieldsets of the registers and commands
