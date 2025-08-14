@@ -162,4 +162,20 @@ device FooD6 {
         access BLAH
         access RO
     }
+    block
+    /// This is a block
+    block b1 {
+        foo
+        offset d
+        offset 5
+        offset 20
+    }
+    block b2 {
+        repeat
+        repeat count=2 stride=4
+
+        buffer b2foo {
+            address 42
+        }
+    }
 }

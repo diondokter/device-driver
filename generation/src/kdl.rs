@@ -7,9 +7,9 @@ use strum::VariantNames;
 
 use crate::{
     mir::{
-        Access, BaseType, BitOrder, Buffer, ByteOrder, Cfg, Command, Device, Enum, EnumValue,
-        EnumVariant, Field, FieldConversion, FieldSet, GlobalConfig, Integer, Object, Register,
-        Repeat, ResetValue,
+        Access, BaseType, BitOrder, Block, Buffer, ByteOrder, Cfg, Command, Device, Enum,
+        EnumValue, EnumVariant, Field, FieldConversion, FieldSet, GlobalConfig, Integer, Object,
+        Register, Repeat, ResetValue,
     },
     reporting::{
         Diagnostics, NamedSourceCode,
@@ -101,20 +101,9 @@ fn transform_device_internals(
                 }
             }
         } else if let Ok(object_type) = node.name().value().parse::<ObjectType>() {
-            let object = match object_type {
-                ObjectType::Block => todo!(),
-                ObjectType::Register => {
-                    transform_register(node, source_code.clone(), diagnostics).map(Object::Register)
-                }
-                ObjectType::Command => {
-                    transform_command(node, source_code.clone(), diagnostics).map(Object::Command)
-                }
-                ObjectType::Buffer => {
-                    transform_buffer(node, source_code.clone(), diagnostics).map(Object::Buffer)
-                }
-            };
-
-            if let Some(object) = object {
+            if let Some(object) =
+                transform_object(node, source_code.clone(), diagnostics, object_type)
+            {
                 device.objects.push(object);
             }
         } else {
@@ -129,6 +118,100 @@ fn transform_device_internals(
             });
         }
     }
+}
+
+fn transform_object(
+    node: &KdlNode,
+    source_code: NamedSourceCode,
+    diagnostics: &mut Diagnostics,
+    object_type: ObjectType,
+) -> Option<Object> {
+    match object_type {
+        ObjectType::Block => transform_block(node, source_code, diagnostics).map(Object::Block),
+        ObjectType::Register => {
+            transform_register(node, source_code, diagnostics).map(Object::Register)
+        }
+        ObjectType::Command => {
+            transform_command(node, source_code, diagnostics).map(Object::Command)
+        }
+        ObjectType::Buffer => transform_buffer(node, source_code, diagnostics).map(Object::Buffer),
+    }
+}
+
+fn transform_block(
+    node: &KdlNode,
+    source_code: NamedSourceCode,
+    diagnostics: &mut Diagnostics,
+) -> Option<Block> {
+    let (name, _) = parse_single_string_entry(node, source_code.clone(), diagnostics, None, true);
+
+    if name.is_none() && node.children().is_none() {
+        // We only have a block keyword. No need for further diagnostics
+        return None;
+    }
+
+    let mut block_objects = Vec::new();
+    let mut offset = None;
+    let mut repeat = None;
+
+    for child in node.iter_children() {
+        if let Ok(buffer_field) = child.name().value().parse::<BlockField>() {
+            match buffer_field {
+                BlockField::Offset => {
+                    if let Some((_, span)) = offset {
+                        diagnostics.add(errors::DuplicateNode {
+                            source_code: source_code.clone(),
+                            duplicate: child.name().span(),
+                            original: span,
+                        });
+                        continue;
+                    }
+
+                    offset = parse_single_integer_entry(child, source_code.clone(), diagnostics)
+                        .0
+                        .map(|val| (val, child.name().span()));
+                }
+                BlockField::Repeat => {
+                    if let Some((_, span)) = repeat {
+                        diagnostics.add(errors::DuplicateNode {
+                            source_code: source_code.clone(),
+                            duplicate: child.name().span(),
+                            original: span,
+                        });
+                        continue;
+                    }
+
+                    repeat = parse_repeat_entries(child, source_code.clone(), diagnostics)
+                        .map(|val| (val, child.name().span()));
+                }
+            }
+        } else if let Ok(object_type) = child.name().value().parse::<ObjectType>() {
+            if let Some(object) =
+                transform_object(child, source_code.clone(), diagnostics, object_type)
+            {
+                block_objects.push(object);
+            }
+        } else {
+            diagnostics.add(errors::UnexpectedNode {
+                source_code: source_code.clone(),
+                node_name: child.name().span(),
+                expected_names: BLOCK_FIELDS
+                    .iter()
+                    .map(|v| v.0)
+                    .chain(OBJECT_TYPES.iter().map(|v| v.0))
+                    .collect(),
+            });
+        }
+    }
+
+    name.map(|name| Block {
+            cfg_attr: Cfg::default(),
+            description: parse_description(node),
+            name,
+            address_offset: offset.map(|(o, _)| o).unwrap_or_default(),
+            repeat: repeat.map(|(r, _)| r),
+            objects: block_objects,
+        })
 }
 
 fn transform_register(
@@ -1384,6 +1467,31 @@ impl FromStr for BufferField {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         for (name, val) in BUFFER_FIELDS {
+            if *name == s {
+                return Ok(*val);
+            }
+        }
+
+        Err(())
+    }
+}
+
+#[rustfmt::skip]
+const BLOCK_FIELDS: &[(&str, BlockField)] = &[
+    ("offset", BlockField::Offset),
+    ("repeat", BlockField::Repeat),
+];
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+enum BlockField {
+    Offset,
+    Repeat,
+}
+
+impl FromStr for BlockField {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        for (name, val) in BLOCK_FIELDS {
             if *name == s {
                 return Ok(*val);
             }

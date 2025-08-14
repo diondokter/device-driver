@@ -658,3 +658,55 @@
  163 │         access RO
      ╰────
 
+  error: Missing object name
+     ╭─[cases/device_definition_errors/input.kdl:165:5]
+ 164 │     }
+ 165 │     block
+     ·     ──┬──
+     ·       ╰── For this object
+ 166 │     /// This is a block
+     ╰────
+  help: The name is specified by the first entry of the node. It must be an anonymous string, e.g. `block Foo { }`
+
+  error: Unexpected node
+     ╭─[cases/device_definition_errors/input.kdl:168:9]
+ 167 │     block b1 {
+ 168 │         foo
+     ·         ─┬─
+     ·          ╰── The unexpected node
+ 169 │         offset d
+     ╰────
+  help: Expected a node with one of these names: `offset`, `repeat`, `block`, `register`, `command`, `buffer`
+
+  error: Unexpected type
+     ╭─[cases/device_definition_errors/input.kdl:169:16]
+ 168 │         foo
+ 169 │         offset d
+     ·                ┬
+     ·                ╰── Unexpected type: expected a integer
+ 170 │         offset 5
+     ╰────
+
+  error: Duplicate node
+     ╭─[cases/device_definition_errors/input.kdl:171:9]
+ 169 │         offset d
+ 170 │         offset 5
+     ·         ───┬──
+     ·            ╰── The original node
+ 171 │         offset 20
+     ·         ───┬──
+     ·            ╰── The duplicate node
+ 172 │     }
+     ╰────
+  help: This type of node can only appear once. Try removing one of the nodes
+
+  error: Missing entry
+     ╭─[cases/device_definition_errors/input.kdl:174:9]
+ 173 │     block b2 {
+ 174 │         repeat
+     ·         ───┬──
+     ·            ╰── This node should have one or more of these entries: `count=<integer>`, `stride=<integer>`
+ 175 │         repeat count=2 stride=4
+     ╰────
+  help: Check the book for all the requirements
+

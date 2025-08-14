@@ -835,6 +835,181 @@ pub mod foo_d_6 {
                 address as u8,
             )
         }
+    
+        pub fn b_1(&mut self) -> B1<'_, I> {
+            let address = self.base_address + 5;
+    
+            B1::<'_, I>::new(self.interface(), address)
+        }
+    
+        ///
+        /// Valid index range: 0..2
+    
+        pub fn b_2(&mut self, index: usize) -> B2<'_, I> {
+            let address = {
+                assert!(index < 2);
+                self.base_address + 0 + index as u8 * 4
+            };
+    
+            B2::<'_, I>::new(self.interface(), address)
+        }
+    }
+    
+    #[derive(Debug)]
+    pub struct B1<'i, I> {
+        pub(crate) interface: &'i mut I,
+    
+        #[doc(hidden)]
+        base_address: u8,
+    }
+    
+    impl<'i, I> B1<'i, I> {
+        /// Create a new instance of the block based on device interface
+        #[doc(hidden)]
+        fn new(interface: &'i mut I, base_address: u8) -> Self {
+            Self {
+                interface,
+                base_address: base_address,
+            }
+        }
+    
+        /// A reference to the interface used to communicate with the device
+        pub(crate) fn interface(&mut self) -> &mut I {
+            self.interface
+        }
+    
+        /// Read all readable register values in this block from the device.
+        /// The callback is called for each of them.
+        /// Any registers in child blocks are not included.
+        ///
+        /// The callback has three arguments:
+        ///
+        /// - The address of the register
+        /// - The name of the register (with index for repeated registers)
+        /// - The read value from the register
+        ///
+        /// This is useful for e.g. debug printing all values.
+        /// The given [field_sets::FieldSetValue] has a Debug and Format implementation that forwards to the concrete type
+        /// the lies within so it can be printed without matching on it.
+        #[allow(unused_mut)]
+        #[allow(unused_variables)]
+        pub fn read_all_registers(
+            &mut self,
+            mut callback: impl FnMut(u8, &'static str, field_sets::FieldSetValue),
+        ) -> Result<(), I::Error>
+        where
+            I: ::device_driver::RegisterInterface<AddressType = u8>,
+        {
+            Ok(())
+        }
+    
+        /// Read all readable register values in this block from the device.
+        /// The callback is called for each of them.
+        /// Any registers in child blocks are not included.
+        ///
+        /// The callback has three arguments:
+        ///
+        /// - The address of the register
+        /// - The name of the register (with index for repeated registers)
+        /// - The read value from the register
+        ///
+        /// This is useful for e.g. debug printing all values.
+        /// The given [field_sets::FieldSetValue] has a Debug and Format implementation that forwards to the concrete type
+        /// the lies within so it can be printed without matching on it.
+        #[allow(unused_mut)]
+        #[allow(unused_variables)]
+        pub async fn read_all_registers_async(
+            &mut self,
+            mut callback: impl FnMut(u8, &'static str, field_sets::FieldSetValue),
+        ) -> Result<(), I::Error>
+        where
+            I: ::device_driver::AsyncRegisterInterface<AddressType = u8>,
+        {
+            Ok(())
+        }
+    }
+    
+    #[derive(Debug)]
+    pub struct B2<'i, I> {
+        pub(crate) interface: &'i mut I,
+    
+        #[doc(hidden)]
+        base_address: u8,
+    }
+    
+    impl<'i, I> B2<'i, I> {
+        /// Create a new instance of the block based on device interface
+        #[doc(hidden)]
+        fn new(interface: &'i mut I, base_address: u8) -> Self {
+            Self {
+                interface,
+                base_address: base_address,
+            }
+        }
+    
+        /// A reference to the interface used to communicate with the device
+        pub(crate) fn interface(&mut self) -> &mut I {
+            self.interface
+        }
+    
+        /// Read all readable register values in this block from the device.
+        /// The callback is called for each of them.
+        /// Any registers in child blocks are not included.
+        ///
+        /// The callback has three arguments:
+        ///
+        /// - The address of the register
+        /// - The name of the register (with index for repeated registers)
+        /// - The read value from the register
+        ///
+        /// This is useful for e.g. debug printing all values.
+        /// The given [field_sets::FieldSetValue] has a Debug and Format implementation that forwards to the concrete type
+        /// the lies within so it can be printed without matching on it.
+        #[allow(unused_mut)]
+        #[allow(unused_variables)]
+        pub fn read_all_registers(
+            &mut self,
+            mut callback: impl FnMut(u8, &'static str, field_sets::FieldSetValue),
+        ) -> Result<(), I::Error>
+        where
+            I: ::device_driver::RegisterInterface<AddressType = u8>,
+        {
+            Ok(())
+        }
+    
+        /// Read all readable register values in this block from the device.
+        /// The callback is called for each of them.
+        /// Any registers in child blocks are not included.
+        ///
+        /// The callback has three arguments:
+        ///
+        /// - The address of the register
+        /// - The name of the register (with index for repeated registers)
+        /// - The read value from the register
+        ///
+        /// This is useful for e.g. debug printing all values.
+        /// The given [field_sets::FieldSetValue] has a Debug and Format implementation that forwards to the concrete type
+        /// the lies within so it can be printed without matching on it.
+        #[allow(unused_mut)]
+        #[allow(unused_variables)]
+        pub async fn read_all_registers_async(
+            &mut self,
+            mut callback: impl FnMut(u8, &'static str, field_sets::FieldSetValue),
+        ) -> Result<(), I::Error>
+        where
+            I: ::device_driver::AsyncRegisterInterface<AddressType = u8>,
+        {
+            Ok(())
+        }
+    
+        pub fn b_2_foo(&mut self) -> ::device_driver::BufferOperation<'_, I, u8, ::device_driver::RW> {
+            let address = self.base_address + 42;
+    
+            ::device_driver::BufferOperation::<'_, I, u8, ::device_driver::RW>::new(
+                self.interface(),
+                address as u8,
+            )
+        }
     }
     
     /// Module containing the generated fieldsets of the registers and commands
