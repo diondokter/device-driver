@@ -205,13 +205,13 @@ fn transform_block(
     }
 
     name.map(|name| Block {
-            cfg_attr: Cfg::default(),
-            description: parse_description(node),
-            name,
-            address_offset: offset.map(|(o, _)| o).unwrap_or_default(),
-            repeat: repeat.map(|(r, _)| r),
-            objects: block_objects,
-        })
+        cfg_attr: Cfg::default(),
+        description: parse_description(node),
+        name,
+        address_offset: offset.map(|(o, _)| o).unwrap_or_default(),
+        repeat: repeat.map(|(r, _)| r),
+        objects: block_objects,
+    })
 }
 
 fn transform_register(
