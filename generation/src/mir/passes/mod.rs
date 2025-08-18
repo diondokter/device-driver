@@ -3,6 +3,7 @@ use super::{Device, Object, Repeat};
 mod address_types_big_enough;
 mod address_types_specified;
 mod base_types_specified;
+mod bit_order_specified;
 mod bit_ranges_validated;
 mod bool_fields_checked;
 mod byte_order_specified;
@@ -15,6 +16,7 @@ mod refs_validated;
 mod reset_values_converted;
 
 pub fn run_passes(device: &mut Device) -> anyhow::Result<()> {
+    bit_order_specified::run_pass(device)?;
     device_name_is_pascal::run_pass(device)?;
     propagate_cfg::run_pass(device)?;
     names_normalized::run_pass(device)?;

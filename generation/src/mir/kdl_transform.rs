@@ -438,8 +438,8 @@ fn transform_field_set(name: &str, field_set: &FieldSet, global_config: &GlobalC
         node.push(("byte-order", byte_order.to_string()));
     }
 
-    if field_set.bit_order != global_config.default_bit_order {
-        node.push(("bit-order", field_set.bit_order.to_string()));
+    if let Some(bit_order) = field_set.bit_order {
+        node.push(("bit-order", bit_order.to_string()));
     }
 
     if field_set.allow_bit_overlap {

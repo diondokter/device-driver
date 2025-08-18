@@ -354,7 +354,7 @@ pub struct Register {
 pub struct FieldSet {
     pub size_bits: u32,
     pub byte_order: Option<ByteOrder>,
-    pub bit_order: BitOrder,
+    pub bit_order: Option<BitOrder>,
     pub allow_bit_overlap: bool,
     pub fields: Vec<Field>,
 }

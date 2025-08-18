@@ -31,7 +31,9 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
                 Some(reset_value) => {
                     let new_reset_value = convert_reset_value(
                         reset_value.clone(),
-                        reg.field_set.bit_order,
+                        reg.field_set
+                            .bit_order
+                            .expect("Bitorder should be set at this point"),
                         reg.field_set.size_bits,
                         "register",
                         &reg.name,
@@ -64,7 +66,10 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
 
                 let new_reset_value = convert_reset_value(
                     reset_value.clone(),
-                    base_reg.field_set.bit_order,
+                    base_reg
+                        .field_set
+                        .bit_order
+                        .expect("Bitorder should be set at this point"),
                     base_reg.field_set.size_bits,
                     "ref register",
                     name,
@@ -220,6 +225,7 @@ mod tests {
                 reset_value: Some(ResetValue::Integer(0x1F)),
                 field_set: FieldSet {
                     size_bits: 5,
+                    bit_order: Some(BitOrder::LSB0),
                     ..Default::default()
                 },
                 ..Default::default()
@@ -236,6 +242,7 @@ mod tests {
                 reset_value: Some(ResetValue::Array(vec![0x1F])),
                 field_set: FieldSet {
                     size_bits: 5,
+                    bit_order: Some(BitOrder::LSB0),
                     ..Default::default()
                 },
                 ..Default::default()
@@ -252,6 +259,7 @@ mod tests {
                 reset_value: Some(ResetValue::Array(vec![0x1F])),
                 field_set: FieldSet {
                     size_bits: 5,
+                    bit_order: Some(BitOrder::LSB0),
                     ..Default::default()
                 },
                 ..Default::default()
@@ -268,6 +276,7 @@ mod tests {
                 reset_value: Some(ResetValue::Array(vec![0x1F])),
                 field_set: FieldSet {
                     size_bits: 5,
+                    bit_order: Some(BitOrder::LSB0),
                     ..Default::default()
                 },
                 ..Default::default()
@@ -287,6 +296,7 @@ mod tests {
                 reset_value: Some(ResetValue::Integer(0x423)),
                 field_set: FieldSet {
                     size_bits: 11,
+                    bit_order: Some(BitOrder::LSB0),
                     ..Default::default()
                 },
                 ..Default::default()
@@ -306,6 +316,7 @@ mod tests {
                 reset_value: Some(ResetValue::Array(vec![0x23, 0x04])),
                 field_set: FieldSet {
                     size_bits: 11,
+                    bit_order: Some(BitOrder::LSB0),
                     ..Default::default()
                 },
                 ..Default::default()
@@ -323,6 +334,7 @@ mod tests {
                 field_set: FieldSet {
                     size_bits: 11,
                     byte_order: Some(ByteOrder::BE),
+                    bit_order: Some(BitOrder::LSB0),
                     ..Default::default()
                 },
                 ..Default::default()
@@ -340,6 +352,7 @@ mod tests {
                 field_set: FieldSet {
                     size_bits: 11,
                     byte_order: Some(ByteOrder::BE),
+                    bit_order: Some(BitOrder::LSB0),
                     ..Default::default()
                 },
                 ..Default::default()
@@ -357,7 +370,7 @@ mod tests {
                 field_set: FieldSet {
                     size_bits: 11,
                     byte_order: Some(ByteOrder::BE),
-                    bit_order: BitOrder::MSB0,
+                    bit_order: Some(BitOrder::MSB0),
                     ..Default::default()
                 },
                 ..Default::default()
@@ -375,7 +388,7 @@ mod tests {
                 field_set: FieldSet {
                     size_bits: 11,
                     byte_order: Some(ByteOrder::BE),
-                    bit_order: BitOrder::MSB0,
+                    bit_order: Some(BitOrder::MSB0),
                     ..Default::default()
                 },
                 ..Default::default()
@@ -398,6 +411,7 @@ mod tests {
                 reset_value: Some(ResetValue::Integer(0x423)),
                 field_set: FieldSet {
                     size_bits: 10,
+                    bit_order: Some(BitOrder::LSB0),
                     ..Default::default()
                 },
                 ..Default::default()
@@ -418,6 +432,7 @@ mod tests {
                 field_set: FieldSet {
                     size_bits: 10,
                     byte_order: Some(ByteOrder::BE),
+                    bit_order: Some(BitOrder::LSB0),
                     ..Default::default()
                 },
                 ..Default::default()
@@ -438,7 +453,7 @@ mod tests {
                 field_set: FieldSet {
                     size_bits: 10,
                     byte_order: Some(ByteOrder::BE),
-                    bit_order: BitOrder::MSB0,
+                    bit_order: Some(BitOrder::MSB0),
                     ..Default::default()
                 },
                 ..Default::default()
@@ -462,6 +477,7 @@ mod tests {
                 field_set: FieldSet {
                     size_bits: 32,
                     byte_order: Some(ByteOrder::LE),
+                    bit_order: Some(BitOrder::LSB0),
                     ..Default::default()
                 },
                 ..Default::default()
@@ -484,7 +500,7 @@ mod tests {
                 reset_value: Some(ResetValue::Integer(0xF8)),
                 field_set: FieldSet {
                     size_bits: 5,
-                    bit_order: BitOrder::MSB0,
+                    bit_order: Some(BitOrder::MSB0),
                     ..Default::default()
                 },
                 ..Default::default()
@@ -501,7 +517,7 @@ mod tests {
                 reset_value: Some(ResetValue::Array(vec![0xF8])),
                 field_set: FieldSet {
                     size_bits: 5,
-                    bit_order: BitOrder::MSB0,
+                    bit_order: Some(BitOrder::MSB0),
                     ..Default::default()
                 },
                 ..Default::default()

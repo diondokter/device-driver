@@ -445,7 +445,9 @@ fn transform_field_set<'a>(
         description: description.into(),
         name: field_set_name.to_string(),
         byte_order: field_set.byte_order.unwrap(),
-        bit_order: field_set.bit_order,
+        bit_order: field_set
+            .bit_order
+            .expect("Bitorder should never be none at this point after the MIR passes"),
         size_bits: field_set.size_bits,
         reset_value: reset_value
             .unwrap_or_else(|| vec![0; field_set.size_bits.div_ceil(8) as usize]),
