@@ -821,7 +821,7 @@ fn transform_field_set(
         match bit_order.value() {
             KdlValue::String(s) => match s.parse() {
                 Ok(bit_order) => {
-                    field_set.bit_order = bit_order;
+                    field_set.bit_order = Some(bit_order);
                 }
                 Err(_) => {
                     diagnostics.add(errors::UnexpectedValue {

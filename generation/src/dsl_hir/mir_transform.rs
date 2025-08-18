@@ -346,8 +346,7 @@ fn transform_register(
                 .find_map(|i| match i {
                     dsl_hir::RegisterItem::BitOrder(bi) => Some((*bi).into()),
                     _ => None,
-                })
-                .unwrap_or(global_config.default_bit_order),
+                }),
             allow_bit_overlap: register
                 .register_item_list
                 .register_items
@@ -457,8 +456,7 @@ fn transform_command(
                         dsl_hir::CommandItem::BitOrder(order) => Some((*order).into()),
                         _ => None,
                     }),
-                }
-                .unwrap_or(global_config.default_bit_order),
+                },
                 allow_bit_overlap: match &command_value {
                     dsl_hir::CommandValue::Basic(_) => None,
                     dsl_hir::CommandValue::Extended {
@@ -513,8 +511,7 @@ fn transform_command(
                         dsl_hir::CommandItem::BitOrder(order) => Some((*order).into()),
                         _ => None,
                     }),
-                }
-                .unwrap_or(global_config.default_bit_order),
+                },
                 allow_bit_overlap: match &command_value {
                     dsl_hir::CommandValue::Basic(_) => None,
                     dsl_hir::CommandValue::Extended {
@@ -1277,7 +1274,7 @@ mod tests {
                 address: 10,
                 field_set_in: Some(mir::FieldSet {
                     byte_order: Some(mir::ByteOrder::BE),
-                    bit_order: mir::BitOrder::LSB0,
+                    bit_order: Some(mir::BitOrder::LSB0),
                     fields: vec![mir::Field {
                         cfg_attr: mir::Cfg::new(None),
                         description: Default::default(),
@@ -2178,7 +2175,7 @@ mod tests {
                 field_set: mir::FieldSet {
                     size_bits: 16,
                     byte_order: Some(mir::ByteOrder::LE),
-                    bit_order: mir::BitOrder::MSB0,
+                    bit_order: Some(mir::BitOrder::MSB0),
                     fields: vec![mir::Field {
                         cfg_attr: Default::default(),
                         description: Default::default(),

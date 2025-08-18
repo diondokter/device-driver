@@ -276,7 +276,7 @@ fn transform_register(name: &str, map: &impl Map) -> anyhow::Result<mir::Registe
             }
             "bit_order" => {
                 register.field_set.bit_order =
-                    transform_bit_order(value).context("Parsing error for `bit_order`")?;
+                    Some(transform_bit_order(value).context("Parsing error for `bit_order`")?);
             }
             "address" => {
                 register.address = value
@@ -382,8 +382,8 @@ fn transform_command(name: &str, map: &impl Map) -> anyhow::Result<mir::Command>
                 let bit_order =
                     transform_bit_order(value).context("Parsing error for `bit_order`")?;
 
-                field_set_in.bit_order = bit_order;
-                field_set_out.bit_order = bit_order;
+                field_set_in.bit_order = Some(bit_order);
+                field_set_out.bit_order = Some(bit_order);
             }
             "address" => {
                 command.address = value
@@ -1134,7 +1134,7 @@ mod tests {
                 field_set: mir::FieldSet {
                     size_bits: 8,
                     allow_bit_overlap: true,
-                    bit_order: mir::BitOrder::MSB0,
+                    bit_order: Some(mir::BitOrder::MSB0),
                     byte_order: Some(ByteOrder::BE),
                     ..Default::default()
                 },
