@@ -1,0 +1,181 @@
+a 1
+
+device {
+
+}
+
+device 1 {
+
+}
+
+device FooD0 {
+
+}
+
+device FooD1 abc def {
+
+}
+
+device FooD2 {
+    blah 123
+}
+
+device FooD3 {
+    default-register-access RW
+    default-register-access RO
+}
+
+device FooD4 {
+    default-register-access Blah
+    default-buffer-access
+    default-field-access RW RO WO
+}
+
+device FooD5 {
+    default-register-access value=RW
+    register-address-type u8
+    command-address-type 16
+    default-bit-order msb0
+    defmt-feature lol
+    name-word-boundaries aA:1a
+}
+
+device FooD6 {
+    register-address-type u8
+    command-address-type u8
+    buffer-address-type u8
+
+    registah
+    register
+    register foor1 {
+        
+    }
+    register foor2 {
+        address
+        address a
+        address 1
+        address 2
+        repeat
+        reset-value 0x2000_0000
+    }
+    register foor3 {
+        address -1
+        repeat count=18_446_744_073_709_551_616 stride=1
+        allow-address-overlap #true
+        reset-value 0x100 0x00
+    }
+    register foor4 {
+        address 0
+        fields {
+
+        }
+    }
+    register foor5 {
+        address 1
+        fields size-bits=-1 {
+
+        }
+    }
+    register foor6 {
+        address 2
+        fields size-bits=0x1_0000_0000 byte-order=BLA byte-order=BE bit-order=gkd bit-order=msb0 allow-bit-overlap allow-bit-overlap=#false {
+
+        }
+    }
+    register foor7 {
+        address 3
+        fields size-bits=0x1_0000_0000 byte-order=1 bit-order=#true allow-bit-overlap  {
+
+        }
+    }
+    /// Hello!
+    register foor8 {
+        address 4
+        fields size-bits=8 {
+            bar RW RO
+            bar @a @-1:8 @3 @3:0
+            baz @7:4 blah
+        }
+    }
+    register foor9 {
+        address 5
+        fields size-bits=8 {
+            (bool)bar @0
+            (uint)baz @2:1
+            (i16a)quux @4:3
+            (:MyCustomType?)qus @6:5
+        }
+    }
+    register foor10 {
+        address 6
+        fields size-bits=8 {
+            (:Foo10E1)bar @1:0 {
+                A 0
+                B 1
+                C default
+                D catch-all
+            }
+            baz @3:2 {
+
+            }
+            (uint)bam @5:4 {
+
+            }
+            (:Foo10E2?)bat @7:6 {
+                A
+                B 1.0
+                C default-value
+                D #null 2
+            }
+        }
+    }
+    command {
+
+    }
+    command fooc0 {
+
+    }
+    command fooc1 {
+        address 0
+        repeat
+        blah
+        in {
+            
+        }
+        out size-bits=8 {
+            b @0
+        }
+    }
+    buffer {
+
+    }
+    buffer foob0 {
+        
+    }
+    buffer foob1 {
+        address 0
+        addressssss 500
+        address 1
+    }
+    buffer foob2 {
+        address 2
+        access BLAH
+        access RO
+    }
+    block
+    /// This is a block
+    block b1 {
+        foo
+        offset d
+        offset 5
+        offset 20
+    }
+    block b2 {
+        repeat
+        repeat count=2 stride=4
+
+        buffer b2foo {
+            address 42
+        }
+    }
+}

@@ -12,4 +12,5 @@ extend-exclude = [
     "device-driver",
     "generation",
     "macros",
+    "tests",
 ]

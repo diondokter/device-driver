@@ -2,6 +2,9 @@
 
 ### Unreleased
 
+- Internal numbers are now `i128` instead of `i64`. This also added room to add the `U64` integer as available address type option
+- Fixed regression introduced in 1.0.5 where an enum that has both a default and a catch-all would use the default value when converted from a number instead the catch-all like is documented
+
 ### 1.0.7 (30-07-25)
 
 - Fix a compilation time explosion issue. The generated `read_all_registers` functions have been simplified.

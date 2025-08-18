@@ -39,11 +39,10 @@ impl From<{{enum_value.base_type}}> for {{enum_value.name}} {
                     {{variant.number}} => Self::{{variant.name}},
                 {% endif %}
             {% endfor %}
-            {% if let Some(_) = default_variant %}
-                _ => Self::default(),
-            {% endif %}
             {% if let Some(catch_all_variant) = catch_all_variant %}
                 val => Self::{{catch_all_variant.name}}(val),
+            {% else if let Some(_) = default_variant %}
+                _ => Self::default(),
             {% endif %}
         }
     }
