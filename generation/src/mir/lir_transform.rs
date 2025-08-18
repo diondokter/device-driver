@@ -139,6 +139,7 @@ fn get_method(
             address,
             access,
             repeat,
+            field_set,
             ..
         }) => lir::BlockMethod {
             cfg_attr: cfg_attr.to_string(),
@@ -148,7 +149,7 @@ fn get_method(
             allow_address_overlap: *allow_address_overlap,
             kind: repeat_to_method_kind(repeat),
             method_type: lir::BlockMethodType::Register {
-                field_set_name: name.to_string(),
+                field_set_name: field_set.name.clone(),
                 access: *access,
                 address_type: global_config
                     .register_address_type
@@ -174,8 +175,8 @@ fn get_method(
             allow_address_overlap: *allow_address_overlap,
             kind: repeat_to_method_kind(repeat),
             method_type: lir::BlockMethodType::Command {
-                field_set_name_in: field_set_in.is_some().then(|| format!("{name}FieldsIn")),
-                field_set_name_out: field_set_out.is_some().then(|| format!("{name}FieldsOut")),
+                field_set_name_in: field_set_in.as_ref().map(|fs_in| fs_in.name.clone()),
+                field_set_name_out: field_set_out.as_ref().map(|fs_out| fs_out.name.clone()),
                 address_type: global_config
                     .command_address_type
                     .expect("The presence of the address type is already checked in a mir pass"),
@@ -309,9 +310,6 @@ fn transform_field_sets<'a>(
 
                 field_sets.push(transform_field_set(
                     &r.field_set,
-                    r.name.clone(),
-                    &r.cfg_attr,
-                    &r.description,
                     r.reset_value
                         .as_ref()
                         .map(|rv| rv.as_array().unwrap().clone()),
@@ -323,9 +321,6 @@ fn transform_field_sets<'a>(
                 if let Some(field_set_in) = &c.field_set_in {
                     field_sets.push(transform_field_set(
                         field_set_in,
-                        format!("{}FieldsIn", c.name),
-                        &c.cfg_attr,
-                        &c.description,
                         None,
                         Vec::new(),
                         mir_enums.clone(),
@@ -334,9 +329,6 @@ fn transform_field_sets<'a>(
                 if let Some(field_set_out) = &c.field_set_out {
                     field_sets.push(transform_field_set(
                         field_set_out,
-                        format!("{}FieldsOut", c.name),
-                        &c.cfg_attr,
-                        &c.description,
                         None,
                         Vec::new(),
                         mir_enums.clone(),
@@ -354,9 +346,6 @@ fn transform_field_sets<'a>(
 
 fn transform_field_set<'a>(
     field_set: &mir::FieldSet,
-    field_set_name: String,
-    cfg_attr: &mir::Cfg,
-    description: &str,
     reset_value: Option<Vec<u8>>,
     ref_reset_overrides: Vec<(String, Vec<u8>)>,
     enum_list: impl Iterator<Item = &'a mir::Enum> + Clone,
@@ -441,9 +430,9 @@ fn transform_field_set<'a>(
         .collect::<Result<_, anyhow::Error>>()?;
 
     Ok(lir::FieldSet {
-        cfg_attr: cfg_attr.to_string(),
-        description: description.into(),
-        name: field_set_name.to_string(),
+        cfg_attr: field_set.cfg_attr.to_string(),
+        description: field_set.description.clone(),
+        name: field_set.name.clone(),
         byte_order: field_set.byte_order.unwrap(),
         bit_order: field_set
             .bit_order

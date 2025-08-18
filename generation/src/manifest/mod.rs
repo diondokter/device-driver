@@ -245,6 +245,10 @@ fn transform_block(name: &str, map: &impl Map) -> anyhow::Result<mir::Block> {
 fn transform_register(name: &str, map: &impl Map) -> anyhow::Result<mir::Register> {
     let mut register = mir::Register {
         name: name.into(),
+        field_set: mir::FieldSet {
+            name: name.into(),
+            ..Default::default()
+        },
         ..Default::default()
     };
 
@@ -259,7 +263,8 @@ fn transform_register(name: &str, map: &impl Map) -> anyhow::Result<mir::Registe
             "type" => {}
             "cfg" => {
                 register.cfg_attr =
-                    mir::Cfg::new(Some(value.as_string().context("Parsing error for `cfg`")?))
+                    mir::Cfg::new(Some(value.as_string().context("Parsing error for `cfg`")?));
+                register.field_set.cfg_attr = register.cfg_attr.clone();
             }
             "description" => {
                 register.description = value
@@ -353,9 +358,15 @@ fn transform_command(name: &str, map: &impl Map) -> anyhow::Result<mir::Command>
         }
     }
 
-    let mut field_set_in = mir::FieldSet::default();
+    let mut field_set_in = mir::FieldSet {
+        name: format!("{name}FieldsIn"),
+        ..Default::default()
+    };
     let mut field_set_in_used = false;
-    let mut field_set_out = mir::FieldSet::default();
+    let mut field_set_out = mir::FieldSet {
+        name: format!("{name}FieldsOut"),
+        ..Default::default()
+    };
     let mut field_set_out_used = false;
 
     for (key, value) in map.iter() {
@@ -363,7 +374,9 @@ fn transform_command(name: &str, map: &impl Map) -> anyhow::Result<mir::Command>
             "type" => {}
             "cfg" => {
                 command.cfg_attr =
-                    mir::Cfg::new(Some(value.as_string().context("Parsing error for `cfg`")?))
+                    mir::Cfg::new(Some(value.as_string().context("Parsing error for `cfg`")?));
+                field_set_in.cfg_attr = command.cfg_attr.clone();
+                field_set_out.cfg_attr = command.cfg_attr.clone();
             }
             "description" => {
                 command.description = value
@@ -1088,6 +1101,7 @@ mod tests {
                 name: "my_register".into(),
                 address: 42,
                 field_set: mir::FieldSet {
+                    name: "my_register".into(),
                     size_bits: 8,
                     ..Default::default()
                 },
@@ -1132,6 +1146,8 @@ mod tests {
                 description: "hello!".into(),
                 cfg_attr: Cfg::new(Some("windows")),
                 field_set: mir::FieldSet {
+                    cfg_attr: Cfg::new(Some("windows")),
+                    name: "my_register".into(),
                     size_bits: 8,
                     allow_bit_overlap: true,
                     bit_order: Some(mir::BitOrder::MSB0),
@@ -1185,6 +1201,7 @@ mod tests {
                 name: "my_register".into(),
                 address: 42,
                 field_set: mir::FieldSet {
+                    name: "my_register".into(),
                     size_bits: 9,
                     fields: vec![
                         Field {

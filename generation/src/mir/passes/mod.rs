@@ -9,6 +9,7 @@ mod bool_fields_checked;
 mod byte_order_specified;
 mod device_name_is_pascal;
 mod enum_values_checked;
+mod field_set_descriptions_set;
 mod names_normalized;
 mod names_unique;
 mod propagate_cfg;
@@ -30,6 +31,7 @@ pub fn run_passes(device: &mut Device) -> anyhow::Result<()> {
     refs_validated::run_pass(device)?;
     address_types_specified::run_pass(device)?;
     address_types_big_enough::run_pass(device)?;
+    field_set_descriptions_set::run_pass(device)?;
 
     Ok(())
 }

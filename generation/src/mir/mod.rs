@@ -352,6 +352,9 @@ pub struct Register {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct FieldSet {
+    pub cfg_attr: Cfg,
+    pub description: String,
+    pub name: String,
     pub size_bits: u32,
     pub byte_order: Option<ByteOrder>,
     pub bit_order: Option<BitOrder>,
@@ -683,6 +686,18 @@ pub trait Unique {
     fn id(&self) -> UniqueId;
 }
 
+impl Unique for Device {
+    fn id(&self) -> UniqueId {
+        UniqueId {
+            object_name: self
+                .name
+                .clone()
+                .expect("Can only get a device unique id when it's initialized with a name"),
+            object_cfg: Cfg::default(),
+        }
+    }
+}
+
 macro_rules! impl_unique {
     ($t:ty) => {
         impl Unique for $t {
@@ -703,6 +718,7 @@ impl_unique!(RefObject);
 impl_unique!(Block);
 impl_unique!(Enum);
 impl_unique!(EnumVariant);
+impl_unique!(FieldSet);
 
 impl Unique for Object {
     fn id(&self) -> UniqueId {

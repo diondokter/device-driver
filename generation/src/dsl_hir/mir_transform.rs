@@ -313,6 +313,9 @@ fn transform_register(
             })
             .transpose()?,
         field_set: mir::FieldSet {
+            cfg_attr: get_cfg_attr(&register.attribute_list)?,
+            description: "".into(),
+            name: register.identifier.to_string(),
             size_bits: register
                 .register_item_list
                 .register_items
@@ -429,6 +432,9 @@ fn transform_command(
                 in_field_list: Some(in_field_list),
                 ..
             } => Some(mir::FieldSet {
+                cfg_attr: get_cfg_attr(&command.attribute_list)?,
+                description: "".into(),
+                name: format!("{}FieldsIn", command.identifier),
                 size_bits: match &command_value {
                     dsl_hir::CommandValue::Basic(_) => None,
                     dsl_hir::CommandValue::Extended {
@@ -484,6 +490,9 @@ fn transform_command(
                 out_field_list: Some(out_field_list),
                 ..
             } => Some(mir::FieldSet {
+                cfg_attr: get_cfg_attr(&command.attribute_list)?,
+                description: "".into(),
+                name: format!("{}FieldsOut", command.identifier),
                 size_bits: match &command_value {
                     dsl_hir::CommandValue::Basic(_) => None,
                     dsl_hir::CommandValue::Extended {
@@ -1151,6 +1160,7 @@ mod tests {
                     stride: 16
                 }),
                 field_set_in: Some(mir::FieldSet {
+                    name: "BarFieldsIn".into(),
                     size_bits: 32,
                     fields: vec![
                         mir::Field {
@@ -1178,6 +1188,7 @@ mod tests {
                     ..Default::default()
                 }),
                 field_set_out: Some(mir::FieldSet {
+                    name: "BarFieldsOut".into(),
                     size_bits: 16,
                     fields: vec![mir::Field {
                         cfg_attr: mir::Cfg::new(None),
@@ -1273,6 +1284,7 @@ mod tests {
                 name: "Bar".into(),
                 address: 10,
                 field_set_in: Some(mir::FieldSet {
+                    name: "BarFieldsIn".into(),
                     byte_order: Some(mir::ByteOrder::BE),
                     bit_order: Some(mir::BitOrder::LSB0),
                     fields: vec![mir::Field {
@@ -2130,6 +2142,7 @@ mod tests {
                 name: "Foo".into(),
                 address: 5,
                 field_set: mir::FieldSet {
+                    name: "Foo".into(),
                     size_bits: 16,
                     ..Default::default()
                 },
@@ -2173,6 +2186,7 @@ mod tests {
                     stride: 120
                 }),
                 field_set: mir::FieldSet {
+                    name: "Foo".into(),
                     size_bits: 16,
                     byte_order: Some(mir::ByteOrder::LE),
                     bit_order: Some(mir::BitOrder::MSB0),
@@ -2229,6 +2243,7 @@ mod tests {
                 address: 5,
                 reset_value: Some(mir::ResetValue::Array(vec![12, 34])),
                 field_set: mir::FieldSet {
+                    name: "Foo".into(),
                     size_bits: 16,
                     ..Default::default()
                 },
@@ -2257,6 +2272,7 @@ mod tests {
                 address: 5,
                 allow_address_overlap: true,
                 field_set: mir::FieldSet {
+                    name: "Foo".into(),
                     size_bits: 16,
                     allow_bit_overlap: true,
                     ..Default::default()
