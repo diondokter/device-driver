@@ -691,7 +691,11 @@ fn transform_field_set(
     default_name: String,
 ) -> Option<FieldSet> {
     let mut field_set = FieldSet {
-        name: default_name,
+        name: node
+            .ty()
+            .map(|ty| ty.value().into())
+            .unwrap_or(default_name),
+        description: parse_description(node),
         ..Default::default()
     };
 
@@ -1398,8 +1402,8 @@ fn parse_description(node: &KdlNode) -> String {
         format
             .leading
             .lines()
-            .filter(|line| line.starts_with("///"))
-            .map(|line| line.trim_start_matches("///").trim())
+            .filter(|line| line.trim_start().starts_with("///"))
+            .map(|line| line.trim().trim_start_matches("///"))
             .join("\n")
     } else {
         Default::default()

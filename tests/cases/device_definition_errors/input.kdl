@@ -91,7 +91,8 @@ device FooD6 {
     /// Hello!
     register foor8 {
         address 4
-        fields size-bits=8 {
+        /// This fieldset has a custom name
+        (CustomFieldSetName)fields size-bits=8 {
             bar RW RO
             bar @a @-1:8 @3 @3:0
             baz @7:4 blah
