@@ -19,7 +19,7 @@ impl<'a> DeviceTemplateRust<'a> {
 fn description_to_docstring(description: &str) -> String {
     description
         .lines()
-        .map(|line| format!("/// {line}"))
+        .map(|line| format!("///{}{line}", if line.starts_with(' ') { "" } else { " " }))
         .join("\n")
 }
 

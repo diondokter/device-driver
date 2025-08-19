@@ -313,8 +313,13 @@ fn transform_register(
                     continue;
                 }
 
-                field_set = transform_field_set(child, source_code.clone(), diagnostics)
-                    .map(|val| (val, child.name().span()));
+                field_set = transform_field_set(
+                    child,
+                    source_code.clone(),
+                    diagnostics,
+                    name.as_ref().cloned().unwrap_or_default(),
+                )
+                .map(|val| (val, child.name().span()));
             }
             Err(()) => {
                 diagnostics.add(errors::UnexpectedNode {
@@ -448,8 +453,13 @@ fn transform_command(
                     continue;
                 }
 
-                field_set_in = transform_field_set(child, source_code.clone(), diagnostics)
-                    .map(|val| (val, child.name().span()));
+                field_set_in = transform_field_set(
+                    child,
+                    source_code.clone(),
+                    diagnostics,
+                    format!("{}FieldsIn", name.as_deref().unwrap_or_default()),
+                )
+                .map(|val| (val, child.name().span()));
             }
             Ok(CommandField::FieldSetOut) => {
                 if let Some((_, span)) = field_set_out {
@@ -461,8 +471,13 @@ fn transform_command(
                     continue;
                 }
 
-                field_set_out = transform_field_set(child, source_code.clone(), diagnostics)
-                    .map(|val| (val, child.name().span()));
+                field_set_out = transform_field_set(
+                    child,
+                    source_code.clone(),
+                    diagnostics,
+                    format!("{}FieldsOut", name.as_deref().unwrap_or_default()),
+                )
+                .map(|val| (val, child.name().span()));
             }
             Err(()) => {
                 diagnostics.add(errors::UnexpectedNode {
@@ -673,8 +688,16 @@ fn transform_field_set(
     node: &KdlNode,
     source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
+    default_name: String,
 ) -> Option<FieldSet> {
-    let mut field_set = FieldSet::default();
+    let mut field_set = FieldSet {
+        name: node
+            .ty()
+            .map(|ty| ty.value().into())
+            .unwrap_or(default_name),
+        description: parse_description(node),
+        ..Default::default()
+    };
 
     let mut unexpected_entries = errors::UnexpectedEntries {
         source_code: source_code.clone(),
@@ -1379,8 +1402,8 @@ fn parse_description(node: &KdlNode) -> String {
         format
             .leading
             .lines()
-            .filter(|line| line.starts_with("///"))
-            .map(|line| line.trim_start_matches("///").trim())
+            .filter(|line| line.trim_start().starts_with("///"))
+            .map(|line| line.trim().trim_start_matches("///"))
             .join("\n")
     } else {
         Default::default()

@@ -759,15 +759,29 @@ pub mod foo_d_6 {
             )
         }
     
+        /// Hello!
+    
         pub fn foor_8(
             &mut self,
-        ) -> ::device_driver::RegisterOperation<'_, I, u8, field_sets::Foor8, ::device_driver::RW> {
+        ) -> ::device_driver::RegisterOperation<
+            '_,
+            I,
+            u8,
+            field_sets::CustomFieldSetName,
+            ::device_driver::RW,
+        > {
             let address = self.base_address + 4;
     
-            ::device_driver::RegisterOperation::<'_, I, u8, field_sets::Foor8, ::device_driver::RW>::new(
+            ::device_driver::RegisterOperation::<
+                '_,
+                I,
+                u8,
+                field_sets::CustomFieldSetName,
+                ::device_driver::RW,
+            >::new(
                 self.interface(),
                 address as u8,
-                field_sets::Foor8::new,
+                field_sets::CustomFieldSetName::new,
             )
         }
     
@@ -836,6 +850,8 @@ pub mod foo_d_6 {
             )
         }
     
+        /// This is a block
+    
         pub fn b_1(&mut self) -> B1<'_, I> {
             let address = self.base_address + 5;
     
@@ -854,6 +870,8 @@ pub mod foo_d_6 {
             B2::<'_, I>::new(self.interface(), address)
         }
     }
+    
+    /// This is a block
     
     #[derive(Debug)]
     pub struct B1<'i, I> {
@@ -1449,13 +1467,15 @@ pub mod foo_d_6 {
             }
         }
     
+        /// This fieldset has a custom name
+    
         #[derive(Copy, Clone, Eq, PartialEq)]
-        pub struct Foor8 {
+        pub struct CustomFieldSetName {
             /// The internal bits
             bits: [u8; 1],
         }
     
-        impl ::device_driver::FieldSet for Foor8 {
+        impl ::device_driver::FieldSet for CustomFieldSetName {
             const SIZE_BITS: u32 = 8;
             fn new_with_zero() -> Self {
                 Self::new_zero()
@@ -1468,7 +1488,7 @@ pub mod foo_d_6 {
             }
         }
     
-        impl Foor8 {
+        impl CustomFieldSetName {
             /// Create a new instance, loaded with the reset value (if any)
             pub const fn new() -> Self {
                 Self { bits: [0] }
@@ -1533,21 +1553,21 @@ pub mod foo_d_6 {
             }
         }
     
-        impl From<[u8; 1]> for Foor8 {
+        impl From<[u8; 1]> for CustomFieldSetName {
             fn from(bits: [u8; 1]) -> Self {
                 Self { bits }
             }
         }
     
-        impl From<Foor8> for [u8; 1] {
-            fn from(val: Foor8) -> Self {
+        impl From<CustomFieldSetName> for [u8; 1] {
+            fn from(val: CustomFieldSetName) -> Self {
                 val.bits
             }
         }
     
-        impl core::fmt::Debug for Foor8 {
+        impl core::fmt::Debug for CustomFieldSetName {
             fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
-                let mut d = f.debug_struct("Foor8");
+                let mut d = f.debug_struct("CustomFieldSetName");
     
                 d.field("bar", &self.bar());
     
@@ -1557,7 +1577,7 @@ pub mod foo_d_6 {
             }
         }
     
-        impl core::ops::BitAnd for Foor8 {
+        impl core::ops::BitAnd for CustomFieldSetName {
             type Output = Self;
             fn bitand(mut self, rhs: Self) -> Self::Output {
                 self &= rhs;
@@ -1565,7 +1585,7 @@ pub mod foo_d_6 {
             }
         }
     
-        impl core::ops::BitAndAssign for Foor8 {
+        impl core::ops::BitAndAssign for CustomFieldSetName {
             fn bitand_assign(&mut self, rhs: Self) {
                 for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
                     *l &= *r;
@@ -1573,7 +1593,7 @@ pub mod foo_d_6 {
             }
         }
     
-        impl core::ops::BitOr for Foor8 {
+        impl core::ops::BitOr for CustomFieldSetName {
             type Output = Self;
             fn bitor(mut self, rhs: Self) -> Self::Output {
                 self |= rhs;
@@ -1581,7 +1601,7 @@ pub mod foo_d_6 {
             }
         }
     
-        impl core::ops::BitOrAssign for Foor8 {
+        impl core::ops::BitOrAssign for CustomFieldSetName {
             fn bitor_assign(&mut self, rhs: Self) {
                 for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
                     *l |= *r;
@@ -1589,7 +1609,7 @@ pub mod foo_d_6 {
             }
         }
     
-        impl core::ops::BitXor for Foor8 {
+        impl core::ops::BitXor for CustomFieldSetName {
             type Output = Self;
             fn bitxor(mut self, rhs: Self) -> Self::Output {
                 self ^= rhs;
@@ -1597,7 +1617,7 @@ pub mod foo_d_6 {
             }
         }
     
-        impl core::ops::BitXorAssign for Foor8 {
+        impl core::ops::BitXorAssign for CustomFieldSetName {
             fn bitxor_assign(&mut self, rhs: Self) {
                 for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
                     *l ^= *r;
@@ -1605,7 +1625,7 @@ pub mod foo_d_6 {
             }
         }
     
-        impl core::ops::Not for Foor8 {
+        impl core::ops::Not for CustomFieldSetName {
             type Output = Self;
             fn not(mut self) -> Self::Output {
                 for val in self.bits.iter_mut() {
@@ -2320,7 +2340,8 @@ pub mod foo_d_6 {
     
             Foor7(Foor7),
     
-            Foor8(Foor8),
+            /// This fieldset has a custom name
+            CustomFieldSetName(CustomFieldSetName),
     
             Foor9(Foor9),
     
@@ -2341,7 +2362,7 @@ pub mod foo_d_6 {
     
                     Self::Foor7(val) => core::fmt::Debug::fmt(val, _f),
     
-                    Self::Foor8(val) => core::fmt::Debug::fmt(val, _f),
+                    Self::CustomFieldSetName(val) => core::fmt::Debug::fmt(val, _f),
     
                     Self::Foor9(val) => core::fmt::Debug::fmt(val, _f),
     
@@ -2381,9 +2402,9 @@ pub mod foo_d_6 {
             }
         }
     
-        impl From<Foor8> for FieldSetValue {
-            fn from(val: Foor8) -> Self {
-                Self::Foor8(val)
+        impl From<CustomFieldSetName> for FieldSetValue {
+            fn from(val: CustomFieldSetName) -> Self {
+                Self::CustomFieldSetName(val)
             }
         }
     

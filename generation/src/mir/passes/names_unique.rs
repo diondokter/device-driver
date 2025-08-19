@@ -10,6 +10,8 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
     let mut seen_object_ids = HashSet::new();
     let mut generated_type_ids = HashSet::new();
 
+    generated_type_ids.insert(device.id());
+
     recurse_objects_mut(&mut device.objects, &mut |object| {
         anyhow::ensure!(
             seen_object_ids.insert(object.id()),
@@ -18,6 +20,16 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
         );
 
         for field_set in object.field_sets() {
+            // The object and its fieldset may have the same name.
+            // If they have, the uniqueness is already checked.
+            // If not, it's checked here
+            anyhow::ensure!(
+                object.name() == field_set.name || seen_object_ids.insert(field_set.id()),
+                "Duplicate fieldset name found in object `{}`: `{}`",
+                object.name(),
+                field_set.name
+            );
+
             let mut seen_field_names = HashSet::new();
             for field in &field_set.fields {
                 anyhow::ensure!(
@@ -77,7 +89,7 @@ mod tests {
         };
 
         let mut start_mir = Device {
-            name: None,
+            name: Some("Device".into()),
             global_config,
             objects: vec![
                 Object::Buffer(Buffer {
@@ -103,7 +115,7 @@ mod tests {
         };
 
         let mut start_mir = Device {
-            name: None,
+            name: Some("Device".into()),
             global_config,
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
@@ -138,7 +150,7 @@ mod tests {
         };
 
         let mut start_mir = Device {
-            name: None,
+            name: Some("Device".into()),
             global_config,
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
@@ -189,7 +201,7 @@ mod tests {
         };
 
         let mut start_mir = Device {
-            name: None,
+            name: Some("Device".into()),
             global_config,
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
@@ -232,7 +244,7 @@ mod tests {
         };
 
         let mut start_mir = Device {
-            name: None,
+            name: Some("Device".into()),
             global_config,
             objects: vec![Object::Register(Register {
                 name: "Reg".into(),
