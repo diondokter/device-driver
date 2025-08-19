@@ -129,6 +129,7 @@ fn transform_object(object: &Object, global_config: &GlobalConfig) -> KdlNode {
                 ("ref", Some(("target-command", override_data.name.clone())))
             }
         },
+        Object::FieldSet(_) => todo!(),
     };
 
     let mut node = KdlNode::new(node_type);
@@ -149,6 +150,7 @@ fn transform_object(object: &Object, global_config: &GlobalConfig) -> KdlNode {
         Object::Command(command) => transform_command(command, global_config),
         Object::Buffer(buffer) => transform_buffer(buffer, global_config),
         Object::Ref(ref_object) => transform_ref(ref_object),
+        Object::FieldSet(_) => todo!(),
     });
 
     node

@@ -39,7 +39,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
             Object::Command(v) => {
                 real_commands.insert(v.name.clone());
             }
-            Object::Buffer(_) => {}
+            Object::Buffer(_) | Object::FieldSet(_) => {}
         }
 
         Ok(())

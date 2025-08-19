@@ -150,6 +150,7 @@ pub enum Object {
     Command(Command),
     Buffer(Buffer),
     Ref(RefObject),
+    FieldSet(FieldSet),
 }
 
 impl Object {
@@ -175,6 +176,7 @@ impl Object {
             Object::Command(val) => &mut val.name,
             Object::Buffer(val) => &mut val.name,
             Object::Ref(val) => &mut val.name,
+            Object::FieldSet(val) => &mut val.name,
         }
     }
 
@@ -186,6 +188,7 @@ impl Object {
             Object::Command(val) => &val.name,
             Object::Buffer(val) => &val.name,
             Object::Ref(val) => &val.name,
+            Object::FieldSet(val) => &val.name,
         }
     }
 
@@ -197,6 +200,7 @@ impl Object {
             Object::Command(val) => &val.description,
             Object::Buffer(val) => &val.description,
             Object::Ref(val) => &val.description,
+            Object::FieldSet(val) => &val.description,
         }
     }
 
@@ -208,6 +212,7 @@ impl Object {
             Object::Command(val) => &mut val.cfg_attr,
             Object::Buffer(val) => &mut val.cfg_attr,
             Object::Ref(val) => &mut val.cfg_attr,
+            Object::FieldSet(val) => &mut val.cfg_attr,
         }
     }
 
@@ -222,6 +227,7 @@ impl Object {
                     .chain(val.field_set_out.as_mut()),
             ),
             Object::Block(_) | Object::Buffer(_) | Object::Ref(_) => Box::new(std::iter::empty()),
+            Object::FieldSet(val) => Box::new(std::iter::once(val)),
         }
     }
 
@@ -236,6 +242,7 @@ impl Object {
                     .chain(val.field_set_out.as_ref()),
             ),
             Object::Block(_) | Object::Buffer(_) | Object::Ref(_) => Box::new(std::iter::empty()),
+            Object::FieldSet(val) => Box::new(std::iter::once(val)),
         }
     }
 
@@ -272,7 +279,7 @@ impl Object {
     }
 
     /// Return the address if it is specified.
-    /// It's only not specified in ref objects where the user hasn't overridden the address
+    /// It's only not specified in ref objects where the user hasn't overridden the address and in raw fieldsets
     fn address(&self) -> Option<i128> {
         match self {
             Object::Block(block) => Some(block.address_offset),
@@ -284,6 +291,7 @@ impl Object {
                 ObjectOverride::Register(register_override) => register_override.address,
                 ObjectOverride::Command(command_override) => command_override.address,
             },
+            Object::FieldSet(_) => None,
         }
     }
 
@@ -299,6 +307,7 @@ impl Object {
                 ObjectOverride::Register(register_override) => register_override.repeat,
                 ObjectOverride::Command(command_override) => command_override.repeat,
             },
+            Object::FieldSet(_) => None,
         }
     }
 
@@ -317,6 +326,7 @@ impl Object {
             Object::Command(_) => "command",
             Object::Buffer(_) => "buffer",
             Object::Ref(_) => "ref",
+            Object::FieldSet(_) => "fieldset",
         }
     }
 }
@@ -728,6 +738,7 @@ impl Unique for Object {
             Object::Command(val) => val.id(),
             Object::Buffer(val) => val.id(),
             Object::Ref(val) => val.id(),
+            Object::FieldSet(val) => val.id(),
         }
     }
 }

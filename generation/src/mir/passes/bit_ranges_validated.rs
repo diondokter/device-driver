@@ -2,48 +2,43 @@ use std::ops::Range;
 
 use anyhow::ensure;
 
-use crate::mir::{Device, FieldSet, Object};
+use crate::mir::{Device, FieldSet};
 
 use super::recurse_objects_mut;
 
 /// Validate that the bit ranges of fields fall within the max size and don't have overlap if they're not allowed
 pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
-    recurse_objects_mut(&mut device.objects, &mut |object| match object {
-        Object::Register(r) => validate_field_set(&r.field_set, &r.name),
-        Object::Command(c) => {
-            if let Some(field_set_in) = &c.field_set_in {
-                validate_field_set(field_set_in, &format!("{} (in)", c.name))?;
-            }
-            if let Some(field_set_out) = &c.field_set_out {
-                validate_field_set(field_set_out, &format!("{} (out)", c.name))?;
-            }
-
-            Ok(())
+    recurse_objects_mut(&mut device.objects, &mut |object| {
+        for field_set in object.field_sets() {
+            validate_field_set(field_set)?;
         }
-        Object::Block(_) | Object::Buffer(_) | Object::Ref(_) => Ok(()),
+
+        Ok(())
     })
 }
 
-fn validate_field_set(field_set: &FieldSet, object_name: &str) -> anyhow::Result<()> {
-    validate_len(field_set, object_name)?;
+fn validate_field_set(field_set: &FieldSet) -> anyhow::Result<()> {
+    validate_len(field_set)?;
     if !field_set.allow_bit_overlap {
-        validate_overlap(field_set, object_name)?;
+        validate_overlap(field_set)?;
     }
 
     Ok(())
 }
 
-fn validate_len(field_set: &FieldSet, object_name: &str) -> anyhow::Result<()> {
+fn validate_len(field_set: &FieldSet) -> anyhow::Result<()> {
     for field in &field_set.fields {
         ensure!(
             field.field_address.end <= field_set.size_bits,
-            "Object `{object_name}` has field `{}` who's address exceeds the given max size bits",
+            "Fieldset `{}` has field `{}` who's address exceeds the given max size bits",
+            field_set.name,
             field.name
         );
 
         ensure!(
             field.field_address.clone().count() > 0,
-            "Object `{object_name}` has field `{}` that is 0 bits. This is likely a mistake",
+            "Fieldset `{}` has field `{}` that is 0 bits. This is likely a mistake",
+            field_set.name,
             field.name
         );
     }
@@ -51,12 +46,13 @@ fn validate_len(field_set: &FieldSet, object_name: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn validate_overlap(field_set: &FieldSet, object_name: &str) -> anyhow::Result<()> {
+fn validate_overlap(field_set: &FieldSet) -> anyhow::Result<()> {
     for (i, field) in field_set.fields.iter().enumerate() {
         for second_field in &field_set.fields[(i + 1).min(field_set.fields.len())..] {
             ensure!(
                 !ranges_overlap(&field.field_address, &second_field.field_address),
-                "Object `{object_name}` has two overlapping fields: `{}` and `{}`. If this is intended, set the `AllowBitOverlap` option to true",
+                "Fieldset `{}` has two overlapping fields: `{}` and `{}`. If this is intended, set the `AllowBitOverlap` option to true",
+                field_set.name,
                 field.name,
                 second_field.name
             )
@@ -72,7 +68,7 @@ fn ranges_overlap(l: &Range<u32>, r: &Range<u32>) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::mir::{Command, Field, Register};
+    use crate::mir::{Command, Field, Object, Register};
 
     use super::*;
 
@@ -104,6 +100,7 @@ mod tests {
             objects: vec![Object::Register(Register {
                 name: "MyReg".into(),
                 field_set: FieldSet {
+                    name: "MyReg".into(),
                     size_bits: 10,
                     fields: vec![Field {
                         name: "my_field".into(),
@@ -118,7 +115,7 @@ mod tests {
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
-            "Object `MyReg` has field `my_field` who's address exceeds the given max size bits"
+            "Fieldset `MyReg` has field `my_field` who's address exceeds the given max size bits"
         );
 
         let mut start_mir = Device {
@@ -147,6 +144,7 @@ mod tests {
             objects: vec![Object::Command(Command {
                 name: "MyReg".into(),
                 field_set_in: Some(FieldSet {
+                    name: "MyReg (in)".into(),
                     size_bits: 10,
                     fields: vec![Field {
                         name: "my_field".into(),
@@ -161,7 +159,7 @@ mod tests {
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
-            "Object `MyReg (in)` has field `my_field` who's address exceeds the given max size bits"
+            "Fieldset `MyReg (in)` has field `my_field` who's address exceeds the given max size bits"
         );
 
         let mut start_mir = Device {
@@ -190,6 +188,7 @@ mod tests {
             objects: vec![Object::Command(Command {
                 name: "MyReg".into(),
                 field_set_out: Some(FieldSet {
+                    name: "MyReg (out)".into(),
                     size_bits: 10,
                     fields: vec![Field {
                         name: "my_field".into(),
@@ -204,7 +203,7 @@ mod tests {
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
-            "Object `MyReg (out)` has field `my_field` who's address exceeds the given max size bits"
+            "Fieldset `MyReg (out)` has field `my_field` who's address exceeds the given max size bits"
         );
     }
 
@@ -243,6 +242,7 @@ mod tests {
             objects: vec![Object::Register(Register {
                 name: "MyReg".into(),
                 field_set: FieldSet {
+                    name: "MyReg".into(),
                     size_bits: 10,
                     allow_bit_overlap: true,
                     fields: vec![
@@ -271,6 +271,7 @@ mod tests {
             objects: vec![Object::Register(Register {
                 name: "MyReg".into(),
                 field_set: FieldSet {
+                    name: "MyReg".into(),
                     size_bits: 10,
                     fields: vec![
                         Field {
@@ -292,7 +293,7 @@ mod tests {
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
-            "Object `MyReg` has two overlapping fields: `my_field` and `my_field2`. If this is intended, set the `AllowBitOverlap` option to true"
+            "Fieldset `MyReg` has two overlapping fields: `my_field` and `my_field2`. If this is intended, set the `AllowBitOverlap` option to true"
         );
     }
 
@@ -304,6 +305,7 @@ mod tests {
             objects: vec![Object::Command(Command {
                 name: "MyReg".into(),
                 field_set_in: Some(FieldSet {
+                    name: "MyReg".into(),
                     size_bits: 10,
                     fields: vec![
                         Field {
@@ -331,6 +333,7 @@ mod tests {
             objects: vec![Object::Command(Command {
                 name: "MyReg".into(),
                 field_set_in: Some(FieldSet {
+                    name: "MyReg".into(),
                     size_bits: 10,
                     allow_bit_overlap: true,
                     fields: vec![
@@ -359,6 +362,7 @@ mod tests {
             objects: vec![Object::Command(Command {
                 name: "MyReg".into(),
                 field_set_in: Some(FieldSet {
+                    name: "MyReg (in)".into(),
                     size_bits: 10,
                     fields: vec![
                         Field {
@@ -380,7 +384,7 @@ mod tests {
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
-            "Object `MyReg (in)` has two overlapping fields: `my_field` and `my_field2`. If this is intended, set the `AllowBitOverlap` option to true"
+            "Fieldset `MyReg (in)` has two overlapping fields: `my_field` and `my_field2`. If this is intended, set the `AllowBitOverlap` option to true"
         );
     }
 
@@ -447,6 +451,7 @@ mod tests {
             objects: vec![Object::Command(Command {
                 name: "MyReg".into(),
                 field_set_out: Some(FieldSet {
+                    name: "MyReg (out)".into(),
                     size_bits: 10,
                     fields: vec![
                         Field {
@@ -468,7 +473,7 @@ mod tests {
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
-            "Object `MyReg (out)` has two overlapping fields: `my_field` and `my_field2`. If this is intended, set the `AllowBitOverlap` option to true"
+            "Fieldset `MyReg (out)` has two overlapping fields: `my_field` and `my_field2`. If this is intended, set the `AllowBitOverlap` option to true"
         );
     }
 }
