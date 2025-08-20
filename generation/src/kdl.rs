@@ -317,7 +317,7 @@ fn transform_register(
                     child,
                     source_code.clone(),
                     diagnostics,
-                    name.as_ref().cloned().unwrap_or_default(),
+                    Some(name.as_ref().cloned().unwrap_or_default()),
                 )
                 .map(|val| (val, child.name().span()));
             }
@@ -457,7 +457,7 @@ fn transform_command(
                     child,
                     source_code.clone(),
                     diagnostics,
-                    format!("{}FieldsIn", name.as_deref().unwrap_or_default()),
+                    Some(format!("{}FieldsIn", name.as_deref().unwrap_or_default())),
                 )
                 .map(|val| (val, child.name().span()));
             }
@@ -475,7 +475,7 @@ fn transform_command(
                     child,
                     source_code.clone(),
                     diagnostics,
-                    format!("{}FieldsOut", name.as_deref().unwrap_or_default()),
+                    Some(format!("{}FieldsOut", name.as_deref().unwrap_or_default())),
                 )
                 .map(|val| (val, child.name().span()));
             }
@@ -688,13 +688,9 @@ fn transform_field_set(
     node: &KdlNode,
     source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
-    default_name: String,
+    default_name: Option<String>,
 ) -> Option<FieldSet> {
     let mut field_set = FieldSet {
-        name: node
-            .ty()
-            .map(|ty| ty.value().into())
-            .unwrap_or(default_name),
         description: parse_description(node),
         ..Default::default()
     };
@@ -707,12 +703,13 @@ fn transform_field_set(
         unexpected_anonymous_entries: Vec::new(),
     };
 
+    let mut name: Option<&kdl::KdlEntry> = None;
     let mut size_bits: Option<&kdl::KdlEntry> = None;
     let mut byte_order: Option<&kdl::KdlEntry> = None;
     let mut bit_order: Option<&kdl::KdlEntry> = None;
     let mut allow_bit_overlap: Option<&kdl::KdlEntry> = None;
 
-    for entry in node.entries() {
+    for (i, entry) in node.entries().iter().enumerate() {
         match entry.name().map(|n| n.value()) {
             Some("size-bits") => {
                 if let Some(size_bits) = size_bits {
@@ -775,9 +772,13 @@ fn transform_field_set(
                         allow_bit_overlap = Some(entry);
                     }
                 } else {
-                    unexpected_entries
-                        .unexpected_anonymous_entries
-                        .push(entry.span());
+                    if i == 0 {
+                        name = Some(entry);
+                    } else {
+                        unexpected_entries
+                            .unexpected_anonymous_entries
+                            .push(entry.span());
+                    }
                 }
             }
         }
@@ -785,6 +786,30 @@ fn transform_field_set(
 
     if !unexpected_entries.is_empty() {
         diagnostics.add(unexpected_entries);
+    }
+
+    if let Some(name) = name {
+        match name.value() {
+            KdlValue::String(name) => {
+                field_set.name = name.clone();
+            }
+            _ => {
+                diagnostics.add(errors::UnexpectedType {
+                    source_code: source_code.clone(),
+                    value_name: name.span(),
+                    expected_type: "string",
+                });
+            }
+        }
+    } else if let Some(default_name) = default_name {
+        field_set.name = default_name;
+    } else {
+        diagnostics.add(errors::MissingObjectName {
+            source_code: source_code.clone(),
+            object_keyword: node.name().span(),
+            found_instead: None,
+            object_type: node.name().value().into(),
+        });
     }
 
     if let Some(size_bits) = size_bits {
@@ -888,7 +913,12 @@ fn transform_field_set(
         }
     }
 
-    Some(field_set)
+    if field_set.name.is_empty() {
+        // No name is a major error state we can't let go
+        None
+    } else {
+        Some(field_set)
+    }
 }
 
 #[allow(clippy::collapsible_else_if)]

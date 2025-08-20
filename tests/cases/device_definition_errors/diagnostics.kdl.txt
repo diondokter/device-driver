@@ -407,7 +407,7 @@
 
   error: Duplicate entry
     ╭─[cases/device_definition_errors/input.kdl:96:20]
- 95 │         (CustomFieldSetName)fields size-bits=8 {
+ 95 │         fields CustomFieldSetName size-bits=8 {
  96 │             bar RW RO
     ·                 ─┬ ─┬
     ·                  │  ╰── The duplicate entry
@@ -418,7 +418,7 @@
 
   error: Missing entry
     ╭─[cases/device_definition_errors/input.kdl:96:13]
- 95 │         (CustomFieldSetName)fields size-bits=8 {
+ 95 │         fields CustomFieldSetName size-bits=8 {
  96 │             bar RW RO
     ·             ─┬─
     ·              ╰── This node should have one or more of these entries: `address ("@<u32>:<u32>")`

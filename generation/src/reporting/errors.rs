@@ -40,7 +40,7 @@ pub struct UnexpectedEntries {
     pub unexpected_name_entries: Vec<SourceSpan>,
     #[label(collection, "This entry was expected to be anonymous")]
     pub not_anonymous_entries: Vec<SourceSpan>,
-    #[label(collection, "This entry was expected to have a name")]
+    #[label(collection, "This entry was expected to have a name (and not be anonymous)")]
     pub unexpected_anonymous_entries: Vec<SourceSpan>,
 }
 
