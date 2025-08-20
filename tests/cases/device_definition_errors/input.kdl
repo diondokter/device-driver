@@ -179,4 +179,8 @@ device FooD6 {
             address 42
         }
     }
+    fieldset
+    fieldset fs1 size-bits=16 byte-order=LE {
+        value @15:0
+    }
 }

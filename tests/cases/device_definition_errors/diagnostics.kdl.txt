@@ -73,7 +73,7 @@
     ╰────
   help: Expected a node with one of these names: `default-register-access`, `default-field-access`, `default-buffer-
         access`, `default-byte-order`, `default-bit-order`, `register-address-type`, `command-address-type`, `buffer-
-        address-type`, `name-word-boundaries`, `defmt-feature`, `block`, `register`, `command`, `buffer`
+        address-type`, `name-word-boundaries`, `defmt-feature`, `block`, `register`, `command`, `buffer`, `fieldset`
 
   error: Duplicate node
     ╭─[cases/device_definition_errors/input.kdl:25:5]
@@ -170,7 +170,7 @@
     ╰────
   help: Expected a node with one of these names: `default-register-access`, `default-field-access`, `default-buffer-
         access`, `default-byte-order`, `default-bit-order`, `register-address-type`, `command-address-type`, `buffer-
-        address-type`, `name-word-boundaries`, `defmt-feature`, `block`, `register`, `command`, `buffer`
+        address-type`, `name-word-boundaries`, `defmt-feature`, `block`, `register`, `command`, `buffer`, `fieldset`
 
   error: Missing object name
     ╭─[cases/device_definition_errors/input.kdl:49:5]
@@ -301,7 +301,7 @@
  68 │         address 0
  69 │         fields {
     ·         ───┬──
-    ·            ╰── This node should have one or more of these entries: `size-bits`
+    ·            ╰── This node should have one or more of these entries: `size-bits=<integer>`
  70 │ 
     ╰────
   help: Check the book for all the requirements
@@ -590,7 +590,7 @@
  142 │         blah
  143 │         in {
      ·         ─┬
-     ·          ╰── This node should have one or more of these entries: `size-bits`
+     ·          ╰── This node should have one or more of these entries: `size-bits=<integer>`
  144 │             
      ╰────
   help: Check the book for all the requirements
@@ -676,7 +676,8 @@
      ·          ╰── The unexpected node
  170 │         offset d
      ╰────
-  help: Expected a node with one of these names: `offset`, `repeat`, `block`, `register`, `command`, `buffer`
+  help: Expected a node with one of these names: `offset`, `repeat`, `block`, `register`, `command`, `buffer`,
+        `fieldset`
 
   error: Unexpected type
      ╭─[cases/device_definition_errors/input.kdl:170:16]
@@ -707,6 +708,26 @@
      ·         ───┬──
      ·            ╰── This node should have one or more of these entries: `count=<integer>`, `stride=<integer>`
  176 │         repeat count=2 stride=4
+     ╰────
+  help: Check the book for all the requirements
+
+  error: Missing object name
+     ╭─[cases/device_definition_errors/input.kdl:182:5]
+ 181 │     }
+ 182 │     fieldset
+     ·     ────┬───
+     ·         ╰── For this object
+ 183 │     fieldset fs1 size-bits=16 byte-order=LE {
+     ╰────
+  help: The name is specified by the first entry of the node. It must be an anonymous string, e.g. `fieldset Foo { }`
+
+  error: Missing entry
+     ╭─[cases/device_definition_errors/input.kdl:182:5]
+ 181 │     }
+ 182 │     fieldset
+     ·     ────┬───
+     ·         ╰── This node should have one or more of these entries: `size-bits=<integer>`
+ 183 │     fieldset fs1 size-bits=16 byte-order=LE {
      ╰────
   help: Check the book for all the requirements
 

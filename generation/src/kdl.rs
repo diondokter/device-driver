@@ -135,6 +135,9 @@ fn transform_object(
             transform_command(node, source_code, diagnostics).map(Object::Command)
         }
         ObjectType::Buffer => transform_buffer(node, source_code, diagnostics).map(Object::Buffer),
+        ObjectType::FieldSet => {
+            transform_field_set(node, source_code, diagnostics, None).map(Object::FieldSet)
+        }
     }
 }
 
@@ -835,7 +838,7 @@ fn transform_field_set(
         diagnostics.add(errors::MissingEntry {
             source_code: source_code.clone(),
             node_name: node.name().span(),
-            expected_entries: vec!["size-bits"],
+            expected_entries: vec!["size-bits=<integer>"],
         });
     }
 
@@ -1599,6 +1602,7 @@ const OBJECT_TYPES: &[(&str, ObjectType)] = &[
     ("register", ObjectType::Register),
     ("command", ObjectType::Command),
     ("buffer", ObjectType::Buffer),
+    ("fieldset", ObjectType::FieldSet),
 ];
 #[derive(Clone, Copy)]
 enum ObjectType {
@@ -1606,6 +1610,7 @@ enum ObjectType {
     Register,
     Command,
     Buffer,
+    FieldSet,
 }
 
 impl FromStr for ObjectType {
