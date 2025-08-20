@@ -771,14 +771,12 @@ fn transform_field_set(
                     } else {
                         allow_bit_overlap = Some(entry);
                     }
+                } else if i == 0 {
+                    name = Some(entry);
                 } else {
-                    if i == 0 {
-                        name = Some(entry);
-                    } else {
-                        unexpected_entries
-                            .unexpected_anonymous_entries
-                            .push(entry.span());
-                    }
+                    unexpected_entries
+                        .unexpected_anonymous_entries
+                        .push(entry.span());
                 }
             }
         }
