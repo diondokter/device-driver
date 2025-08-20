@@ -340,6 +340,14 @@ fn transform_field_sets<'a>(
                     )?);
                 }
             }
+            mir::Object::FieldSet(fs) => {
+                field_sets.push(transform_field_set(
+                    fs,
+                    None,
+                    Vec::new(),
+                    mir_enums.clone(),
+                )?);
+            }
             _ => {}
         }
 

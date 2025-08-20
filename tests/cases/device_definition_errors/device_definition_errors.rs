@@ -2330,6 +2330,143 @@ pub mod foo_d_6 {
             }
         }
     
+        #[derive(Copy, Clone, Eq, PartialEq)]
+        pub struct Fs1 {
+            /// The internal bits
+            bits: [u8; 2],
+        }
+    
+        impl ::device_driver::FieldSet for Fs1 {
+            const SIZE_BITS: u32 = 16;
+            fn new_with_zero() -> Self {
+                Self::new_zero()
+            }
+            fn get_inner_buffer(&self) -> &[u8] {
+                &self.bits
+            }
+            fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
+                &mut self.bits
+            }
+        }
+    
+        impl Fs1 {
+            /// Create a new instance, loaded with the reset value (if any)
+            pub const fn new() -> Self {
+                Self { bits: [0, 0] }
+            }
+            /// Create a new instance, loaded with all zeroes
+            pub const fn new_zero() -> Self {
+                Self { bits: [0; 2] }
+            }
+    
+            ///Read the `value` field of the register.
+            ///
+    
+            pub fn value(&self) -> u16 {
+                let raw = unsafe {
+                    ::device_driver::ops::load_lsb0::<u16, ::device_driver::ops::LE>(&self.bits, 0, 16)
+                };
+    
+                raw
+            }
+    
+            ///Write the `value` field of the register.
+            ///
+    
+            pub fn set_value(&mut self, value: u16) {
+                let raw = value;
+    
+                unsafe {
+                    ::device_driver::ops::store_lsb0::<u16, ::device_driver::ops::LE>(
+                        raw,
+                        0,
+                        16,
+                        &mut self.bits,
+                    )
+                };
+            }
+        }
+    
+        impl From<[u8; 2]> for Fs1 {
+            fn from(bits: [u8; 2]) -> Self {
+                Self { bits }
+            }
+        }
+    
+        impl From<Fs1> for [u8; 2] {
+            fn from(val: Fs1) -> Self {
+                val.bits
+            }
+        }
+    
+        impl core::fmt::Debug for Fs1 {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+                let mut d = f.debug_struct("Fs1");
+    
+                d.field("value", &self.value());
+    
+                d.finish()
+            }
+        }
+    
+        impl core::ops::BitAnd for Fs1 {
+            type Output = Self;
+            fn bitand(mut self, rhs: Self) -> Self::Output {
+                self &= rhs;
+                self
+            }
+        }
+    
+        impl core::ops::BitAndAssign for Fs1 {
+            fn bitand_assign(&mut self, rhs: Self) {
+                for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
+                    *l &= *r;
+                }
+            }
+        }
+    
+        impl core::ops::BitOr for Fs1 {
+            type Output = Self;
+            fn bitor(mut self, rhs: Self) -> Self::Output {
+                self |= rhs;
+                self
+            }
+        }
+    
+        impl core::ops::BitOrAssign for Fs1 {
+            fn bitor_assign(&mut self, rhs: Self) {
+                for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
+                    *l |= *r;
+                }
+            }
+        }
+    
+        impl core::ops::BitXor for Fs1 {
+            type Output = Self;
+            fn bitxor(mut self, rhs: Self) -> Self::Output {
+                self ^= rhs;
+                self
+            }
+        }
+    
+        impl core::ops::BitXorAssign for Fs1 {
+            fn bitxor_assign(&mut self, rhs: Self) {
+                for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
+                    *l ^= *r;
+                }
+            }
+        }
+    
+        impl core::ops::Not for Fs1 {
+            type Output = Self;
+            fn not(mut self) -> Self::Output {
+                for val in self.bits.iter_mut() {
+                    *val = !*val;
+                }
+                self
+            }
+        }
+    
         /// Enum containing all possible field set types
         pub enum FieldSetValue {
             Foor4(Foor4),
@@ -2350,6 +2487,8 @@ pub mod foo_d_6 {
             Fooc1FieldsIn(Fooc1FieldsIn),
     
             Fooc1FieldsOut(Fooc1FieldsOut),
+    
+            Fs1(Fs1),
         }
         impl core::fmt::Debug for FieldSetValue {
             fn fmt(&self, _f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -2371,6 +2510,8 @@ pub mod foo_d_6 {
                     Self::Fooc1FieldsIn(val) => core::fmt::Debug::fmt(val, _f),
     
                     Self::Fooc1FieldsOut(val) => core::fmt::Debug::fmt(val, _f),
+    
+                    Self::Fs1(val) => core::fmt::Debug::fmt(val, _f),
     
                     #[allow(unreachable_patterns)]
                     _ => unreachable!(),
@@ -2429,6 +2570,12 @@ pub mod foo_d_6 {
         impl From<Fooc1FieldsOut> for FieldSetValue {
             fn from(val: Fooc1FieldsOut) -> Self {
                 Self::Fooc1FieldsOut(val)
+            }
+        }
+    
+        impl From<Fs1> for FieldSetValue {
+            fn from(val: Fs1) -> Self {
+                Self::Fs1(val)
             }
         }
     }

@@ -1,7 +1,7 @@
 error: The device driver input has errors that need to be solved!
-    --> device_definition_errors.rs:2511:1
+    --> device_definition_errors.rs:2658:1
      |
-2511 | compile_error!("The device driver input has errors that need to be solved!");
+2658 | compile_error!("The device driver input has errors that need to be solved!");
      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0412]: cannot find type `MyCustomType` in module `super`
