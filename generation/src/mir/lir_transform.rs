@@ -142,7 +142,7 @@ fn get_method(
             allow_address_overlap: *allow_address_overlap,
             kind: repeat_to_method_kind(repeat),
             method_type: lir::BlockMethodType::Register {
-                field_set_name: field_set.name.clone(),
+                field_set_name: field_set.name().into(),
                 access: *access,
                 address_type: global_config
                     .register_address_type
@@ -166,8 +166,8 @@ fn get_method(
             allow_address_overlap: *allow_address_overlap,
             kind: repeat_to_method_kind(repeat),
             method_type: lir::BlockMethodType::Command {
-                field_set_name_in: field_set_in.as_ref().map(|fs_in| fs_in.name.clone()),
-                field_set_name_out: field_set_out.as_ref().map(|fs_out| fs_out.name.clone()),
+                field_set_name_in: field_set_in.as_ref().map(|fs_in| fs_in.name().into()),
+                field_set_name_out: field_set_out.as_ref().map(|fs_out| fs_out.name().into()),
                 address_type: global_config
                     .command_address_type
                     .expect("The presence of the address type is already checked in a mir pass"),
@@ -332,7 +332,11 @@ fn collect_enums(device: &mir::Device) -> anyhow::Result<Vec<(mir::Enum, mir::Ba
     let mut enums = Vec::new();
 
     recurse_objects(&device.objects, &mut |object| {
-        for field in object.field_sets().flat_map(|fs| fs.fields.iter()) {
+        for field in object
+            .as_field_set()
+            .into_iter()
+            .flat_map(|fs| fs.fields.iter())
+        {
             if let Some(mir::FieldConversion::Enum { enum_value, .. }) = &field.field_conversion {
                 enums.push((
                     enum_value.clone(),

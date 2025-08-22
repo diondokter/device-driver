@@ -21,7 +21,11 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
     recurse_objects_mut(&mut device.objects, &mut |object| {
         *object.name_mut() = pascal_converter.convert(object.name_mut());
 
-        for field_set in object.field_sets_mut() {
+        for fs_name in object.field_set_refs_mut() {
+            fs_name.0 = pascal_converter.convert(fs_name.0.clone());
+        }
+
+        if let Some(field_set) = object.as_field_set_mut() {
             field_set.name = pascal_converter.convert(field_set.name.clone());
 
             for field in field_set.fields.iter_mut() {
@@ -65,7 +69,16 @@ mod tests {
             objects: vec![
                 Object::Register(Register {
                     name: "my-reGister".into(),
-                    field_set: FieldSet {
+                    field_set: crate::mir::FieldSetRef("my-fieldseT".into()),
+                    ..Default::default()
+                }),
+                Object::Buffer(Buffer {
+                    name: "my-buffer".into(),
+                    ..Default::default()
+                }),
+                Object::FieldSet(
+                    FieldSet {
+                        name: "my-fieldseT".into(),
                         fields: vec![
                             Field {
                                 name: "my-fielD".into(),
@@ -89,12 +102,8 @@ mod tests {
                         ],
                         ..Default::default()
                     },
-                    ..Default::default()
-                }),
-                Object::Buffer(Buffer {
-                    name: "my-buffer".into(),
-                    ..Default::default()
-                }),
+                    None,
+                ),
             ],
         };
 
@@ -104,7 +113,16 @@ mod tests {
             objects: vec![
                 Object::Register(Register {
                     name: "MyRegister".into(),
-                    field_set: FieldSet {
+                    field_set: crate::mir::FieldSetRef("my_fieldset".into()),
+                    ..Default::default()
+                }),
+                Object::Buffer(Buffer {
+                    name: "MyBuffer".into(),
+                    ..Default::default()
+                }),
+                Object::FieldSet(
+                    FieldSet {
+                        name: "my_fieldset".into(),
                         fields: vec![
                             Field {
                                 name: "my_field".into(),
@@ -128,12 +146,8 @@ mod tests {
                         ],
                         ..Default::default()
                     },
-                    ..Default::default()
-                }),
-                Object::Buffer(Buffer {
-                    name: "MyBuffer".into(),
-                    ..Default::default()
-                }),
+                    None,
+                ),
             ],
         };
 

@@ -122,9 +122,7 @@ fn transform_device_internals(
                 }
             }
         } else if let Ok(object_type) = node.name().value().parse::<ObjectType>() {
-            if let Some(object) =
-                transform_object(node, source_code.clone(), diagnostics, object_type)
-            {
+            for object in transform_object(node, source_code.clone(), diagnostics, object_type) {
                 device.objects.push(object);
             }
         } else {
@@ -146,19 +144,36 @@ fn transform_object(
     source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
     object_type: ObjectType,
-) -> Option<Object> {
+) -> Vec<Object> {
     match object_type {
-        ObjectType::Block => transform_block(node, source_code, diagnostics).map(Object::Block),
+        ObjectType::Block => transform_block(node, source_code, diagnostics)
+            .map(Object::Block)
+            .into_iter()
+            .collect(),
         ObjectType::Register => {
-            transform_register(node, source_code, diagnostics).map(Object::Register)
+            let (register, fieldset) = transform_register(node, source_code, diagnostics);
+            register
+                .map(Object::Register)
+                .into_iter()
+                .chain(fieldset.map(|fs| Object::FieldSet(fs, None)))
+                .collect()
         }
         ObjectType::Command => {
-            transform_command(node, source_code, diagnostics).map(Object::Command)
+            let (command, field_sets) = transform_command(node, source_code, diagnostics);
+            command
+                .map(Object::Command)
+                .into_iter()
+                .chain(field_sets.into_iter().map(|fs| Object::FieldSet(fs, None)))
+                .collect()
         }
-        ObjectType::Buffer => transform_buffer(node, source_code, diagnostics).map(Object::Buffer),
-        ObjectType::FieldSet => {
-            transform_field_set(node, source_code, diagnostics, None).map(Object::FieldSet)
-        }
+        ObjectType::Buffer => transform_buffer(node, source_code, diagnostics)
+            .map(Object::Buffer)
+            .into_iter()
+            .collect(),
+        ObjectType::FieldSet => transform_field_set(node, source_code, diagnostics, None)
+            .map(|fs| Object::FieldSet(fs, None))
+            .into_iter()
+            .collect(),
     }
 }
 
@@ -210,9 +225,7 @@ fn transform_block(
                 }
             }
         } else if let Ok(object_type) = child.name().value().parse::<ObjectType>() {
-            if let Some(object) =
-                transform_object(child, source_code.clone(), diagnostics, object_type)
-            {
+            for object in transform_object(child, source_code.clone(), diagnostics, object_type) {
                 block_objects.push(object);
             }
         } else {
@@ -241,13 +254,13 @@ fn transform_register(
     node: &KdlNode,
     source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
-) -> Option<Register> {
+) -> (Option<Register>, Option<FieldSet>) {
     let (name, name_span) =
         parse_single_string_entry(node, source_code.clone(), diagnostics, None, true);
 
     if name.is_none() && node.children().is_none() {
         // We only have a register keyword. No need for further diagnostics
-        return None;
+        return (None, None);
     }
 
     let mut access = None;
@@ -381,7 +394,7 @@ fn transform_register(
     }
 
     if error {
-        None
+        (None, field_set.map(|(fs, _)| fs))
     } else {
         let mut register = Register {
             description: parse_description(node),
@@ -389,7 +402,7 @@ fn transform_register(
             address: address.unwrap().0,
             reset_value: reset_value.map(|(rv, _)| rv),
             repeat: repeat.map(|(r, _)| r),
-            field_set: field_set.unwrap().0,
+            field_set: FieldSetRef(field_set.as_ref().unwrap().0.name.clone()),
             ..Default::default()
         };
 
@@ -400,7 +413,7 @@ fn transform_register(
             register.allow_address_overlap = allow_address_overlap;
         }
 
-        Some(register)
+        (Some(register), Some(field_set.unwrap().0))
     }
 }
 
@@ -408,13 +421,13 @@ fn transform_command(
     node: &KdlNode,
     source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
-) -> Option<Command> {
+) -> (Option<Command>, Vec<FieldSet>) {
     let (name, name_span) =
         parse_single_string_entry(node, source_code.clone(), diagnostics, None, true);
 
     if name.is_none() && node.children().is_none() {
         // We only have a command keyword. No need for further diagnostics
-        return None;
+        return (None, Vec::new());
     }
 
     let mut allow_address_overlap = None;
@@ -528,15 +541,25 @@ fn transform_command(
     }
 
     if error {
-        None
+        (
+            None,
+            [field_set_in, field_set_out]
+                .into_iter()
+                .filter_map(|fs| Some(fs?.0))
+                .collect(),
+        )
     } else {
         let mut command = Command {
             description: parse_description(node),
             name: name.unwrap(),
             address: address.unwrap().0,
             repeat: repeat.map(|(r, _)| r),
-            field_set_in: field_set_in.map(|(f, _)| f),
-            field_set_out: field_set_out.map(|(f, _)| f),
+            field_set_in: field_set_in
+                .as_ref()
+                .map(|(f, _)| FieldSetRef(f.name.clone())),
+            field_set_out: field_set_out
+                .as_ref()
+                .map(|(f, _)| FieldSetRef(f.name.clone())),
             ..Default::default()
         };
 
@@ -544,7 +567,13 @@ fn transform_command(
             command.allow_address_overlap = allow_address_overlap;
         }
 
-        Some(command)
+        (
+            Some(command),
+            [field_set_in, field_set_out]
+                .into_iter()
+                .filter_map(|fs| Some(fs?.0))
+                .collect(),
+        )
     }
 }
 

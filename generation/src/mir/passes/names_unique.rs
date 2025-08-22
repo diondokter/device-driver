@@ -8,25 +8,22 @@ use super::recurse_objects_mut;
 /// If there is a collision an error is returned.
 pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
     let mut seen_object_ids = HashSet::new();
+    let mut seen_field_set_ids = HashSet::new();
     let mut generated_type_ids = HashSet::new();
 
     generated_type_ids.insert(device.id());
 
     recurse_objects_mut(&mut device.objects, &mut |object| {
         anyhow::ensure!(
-            seen_object_ids.insert(object.id()),
+            object.as_field_set().is_none() || seen_object_ids.insert(object.id()),
             "Duplicate object name found: `{}`",
             object.name()
         );
 
-        for field_set in object.field_sets() {
-            // The object and its fieldset may have the same name.
-            // If they have, the uniqueness is already checked.
-            // If not, it's checked here
+        if let Some(field_set) = object.as_field_set() {
             anyhow::ensure!(
-                object.name() == field_set.name || seen_object_ids.insert(field_set.id()),
-                "Duplicate fieldset name found in object `{}`: `{}`",
-                object.name(),
+                seen_field_set_ids.insert(field_set.id()),
+                "Duplicate fieldset name found: `{}`",
                 field_set.name
             );
 
@@ -34,8 +31,8 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
             for field in &field_set.fields {
                 anyhow::ensure!(
                     seen_field_names.insert(field.name.clone()),
-                    "Duplicate field name found in object `{}`: `{}`",
-                    object.name(),
+                    "Duplicate field name found in fieldset `{}`: `{}`",
+                    field_set.name,
                     field.name
                 );
 
@@ -48,19 +45,19 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
 
                     anyhow::ensure!(
                         generated_type_ids.insert(enum_value.id()),
-                        "Duplicate generated enum name `{}` found in object `{}` on field `{}`",
+                        "Duplicate generated enum name `{}` found in fieldset `{}` on field `{}`",
                         name,
-                        object.name(),
+                        field_set.name,
                         field.name,
                     );
 
                     for v in variants.iter() {
                         anyhow::ensure!(
                             seen_variant_names.insert(v.id()),
-                            "Duplicate field `{}` found in generated enum `{}` in object `{}` on field `{}`",
+                            "Duplicate field `{}` found in generated enum `{}` in fieldset `{}` on field `{}`",
                             v.name,
                             name,
-                            object.name(),
+                            field_set.name,
                             field.name,
                         );
                     }
@@ -107,7 +104,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Duplicate field name found in object `Reg`: `field`")]
+    #[should_panic(expected = "Duplicate field name found in fieldset `Reg`: `field`")]
     fn field_names_not_unique() {
         let global_config = GlobalConfig {
             name_word_boundaries: Boundary::list_from("-"),
@@ -117,9 +114,9 @@ mod tests {
         let mut start_mir = Device {
             name: Some("Device".into()),
             global_config,
-            objects: vec![Object::Register(Register {
-                name: "Reg".into(),
-                field_set: FieldSet {
+            objects: vec![Object::FieldSet(
+                FieldSet {
+                    name: "Reg".into(),
                     fields: vec![
                         Field {
                             name: "field".into(),
@@ -132,8 +129,8 @@ mod tests {
                     ],
                     ..Default::default()
                 },
-                ..Default::default()
-            })],
+                None,
+            )],
         };
 
         run_pass(&mut start_mir).unwrap();
@@ -141,7 +138,7 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "Duplicate generated enum name `Enum` found in object `Reg` on field `field2`"
+        expected = "Duplicate generated enum name `Enum` found in fieldset `Reg` on field `field2`"
     )]
     fn duplicate_generated_enums() {
         let global_config = GlobalConfig {
@@ -152,9 +149,9 @@ mod tests {
         let mut start_mir = Device {
             name: Some("Device".into()),
             global_config,
-            objects: vec![Object::Register(Register {
-                name: "Reg".into(),
-                field_set: FieldSet {
+            objects: vec![Object::FieldSet(
+                FieldSet {
+                    name: "Reg".into(),
                     fields: vec![
                         Field {
                             name: "field".into(),
@@ -183,8 +180,8 @@ mod tests {
                     ],
                     ..Default::default()
                 },
-                ..Default::default()
-            })],
+                None,
+            )],
         };
 
         run_pass(&mut start_mir).unwrap();
@@ -192,7 +189,7 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "Duplicate field `Variant` found in generated enum `Enum` in object `Reg` on field `field`"
+        expected = "Duplicate field `Variant` found in generated enum `Enum` in fieldset `Reg` on field `field`"
     )]
     fn duplicate_generated_enum_variants() {
         let global_config = GlobalConfig {
@@ -203,9 +200,9 @@ mod tests {
         let mut start_mir = Device {
             name: Some("Device".into()),
             global_config,
-            objects: vec![Object::Register(Register {
-                name: "Reg".into(),
-                field_set: FieldSet {
+            objects: vec![Object::FieldSet(
+                FieldSet {
+                    name: "Reg".into(),
                     fields: vec![Field {
                         name: "field".into(),
                         field_conversion: Some(FieldConversion::Enum {
@@ -229,8 +226,8 @@ mod tests {
                     }],
                     ..Default::default()
                 },
-                ..Default::default()
-            })],
+                None,
+            )],
         };
 
         run_pass(&mut start_mir).unwrap();
