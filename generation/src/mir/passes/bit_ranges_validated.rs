@@ -9,21 +9,15 @@ use super::recurse_objects_mut;
 /// Validate that the bit ranges of fields fall within the max size and don't have overlap if they're not allowed
 pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
     recurse_objects_mut(&mut device.objects, &mut |object| {
-        for field_set in object.field_sets() {
-            validate_field_set(field_set)?;
+        if let Some(field_set) = object.as_field_set() {
+            validate_len(field_set)?;
+            if !field_set.allow_bit_overlap {
+                validate_overlap(field_set)?;
+            }
         }
 
         Ok(())
     })
-}
-
-fn validate_field_set(field_set: &FieldSet) -> anyhow::Result<()> {
-    validate_len(field_set)?;
-    if !field_set.allow_bit_overlap {
-        validate_overlap(field_set)?;
-    }
-
-    Ok(())
 }
 
 fn validate_len(field_set: &FieldSet) -> anyhow::Result<()> {
@@ -68,7 +62,7 @@ fn ranges_overlap(l: &Range<u32>, r: &Range<u32>) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::mir::{Command, Field, Object, Register};
+    use crate::mir::{Field, Object};
 
     use super::*;
 
@@ -77,9 +71,9 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::Register(Register {
-                name: "MyReg".into(),
-                field_set: FieldSet {
+            objects: vec![Object::FieldSet(
+                FieldSet {
+                    name: "MyReg".into(),
                     size_bits: 10,
                     fields: vec![Field {
                         name: "my_field".into(),
@@ -88,8 +82,8 @@ mod tests {
                     }],
                     ..Default::default()
                 },
-                ..Default::default()
-            })],
+                None,
+            )],
         };
 
         run_pass(&mut start_mir).unwrap();
@@ -97,9 +91,8 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::Register(Register {
-                name: "MyReg".into(),
-                field_set: FieldSet {
+            objects: vec![Object::FieldSet(
+                FieldSet {
                     name: "MyReg".into(),
                     size_bits: 10,
                     fields: vec![Field {
@@ -109,8 +102,8 @@ mod tests {
                     }],
                     ..Default::default()
                 },
-                ..Default::default()
-            })],
+                None,
+            )],
         };
 
         assert_eq!(
@@ -121,9 +114,9 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::Command(Command {
-                name: "MyReg".into(),
-                field_set_in: Some(FieldSet {
+            objects: vec![Object::FieldSet(
+                FieldSet {
+                    name: "MyReg".into(),
                     size_bits: 10,
                     fields: vec![Field {
                         name: "my_field".into(),
@@ -131,9 +124,9 @@ mod tests {
                         ..Default::default()
                     }],
                     ..Default::default()
-                }),
-                ..Default::default()
-            })],
+                },
+                None,
+            )],
         };
 
         run_pass(&mut start_mir).unwrap();
@@ -141,10 +134,9 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::Command(Command {
-                name: "MyReg".into(),
-                field_set_in: Some(FieldSet {
-                    name: "MyReg (in)".into(),
+            objects: vec![Object::FieldSet(
+                FieldSet {
+                    name: "MyReg".into(),
                     size_bits: 10,
                     fields: vec![Field {
                         name: "my_field".into(),
@@ -152,22 +144,22 @@ mod tests {
                         ..Default::default()
                     }],
                     ..Default::default()
-                }),
-                ..Default::default()
-            })],
+                },
+                None,
+            )],
         };
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
-            "Fieldset `MyReg (in)` has field `my_field` who's address exceeds the given max size bits"
+            "Fieldset `MyReg` has field `my_field` who's address exceeds the given max size bits"
         );
 
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::Command(Command {
-                name: "MyReg".into(),
-                field_set_out: Some(FieldSet {
+            objects: vec![Object::FieldSet(
+                FieldSet {
+                    name: "MyReg".into(),
                     size_bits: 10,
                     fields: vec![Field {
                         name: "my_field".into(),
@@ -175,9 +167,9 @@ mod tests {
                         ..Default::default()
                     }],
                     ..Default::default()
-                }),
-                ..Default::default()
-            })],
+                },
+                None,
+            )],
         };
 
         run_pass(&mut start_mir).unwrap();
@@ -185,10 +177,9 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::Command(Command {
-                name: "MyReg".into(),
-                field_set_out: Some(FieldSet {
-                    name: "MyReg (out)".into(),
+            objects: vec![Object::FieldSet(
+                FieldSet {
+                    name: "MyReg".into(),
                     size_bits: 10,
                     fields: vec![Field {
                         name: "my_field".into(),
@@ -196,9 +187,9 @@ mod tests {
                         ..Default::default()
                     }],
                     ..Default::default()
-                }),
-                ..Default::default()
-            })],
+                },
+                None,
+            )],
         };
 
         assert_eq!(
@@ -208,13 +199,13 @@ mod tests {
     }
 
     #[test]
-    fn overlap_register() {
+    fn overlap() {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::Register(Register {
-                name: "MyReg".into(),
-                field_set: FieldSet {
+            objects: vec![Object::FieldSet(
+                FieldSet {
+                    name: "MyReg".into(),
                     size_bits: 10,
                     fields: vec![
                         Field {
@@ -230,8 +221,8 @@ mod tests {
                     ],
                     ..Default::default()
                 },
-                ..Default::default()
-            })],
+                None,
+            )],
         };
 
         run_pass(&mut start_mir).unwrap();
@@ -239,9 +230,8 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::Register(Register {
-                name: "MyReg".into(),
-                field_set: FieldSet {
+            objects: vec![Object::FieldSet(
+                FieldSet {
                     name: "MyReg".into(),
                     size_bits: 10,
                     allow_bit_overlap: true,
@@ -259,8 +249,8 @@ mod tests {
                     ],
                     ..Default::default()
                 },
-                ..Default::default()
-            })],
+                None,
+            )],
         };
 
         run_pass(&mut start_mir).unwrap();
@@ -268,9 +258,8 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::Register(Register {
-                name: "MyReg".into(),
-                field_set: FieldSet {
+            objects: vec![Object::FieldSet(
+                FieldSet {
                     name: "MyReg".into(),
                     size_bits: 10,
                     fields: vec![
@@ -287,193 +276,13 @@ mod tests {
                     ],
                     ..Default::default()
                 },
-                ..Default::default()
-            })],
+                None,
+            )],
         };
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
             "Fieldset `MyReg` has two overlapping fields: `my_field` and `my_field2`. If this is intended, set the `AllowBitOverlap` option to true"
-        );
-    }
-
-    #[test]
-    fn overlap_command_in() {
-        let mut start_mir = Device {
-            name: None,
-            global_config: Default::default(),
-            objects: vec![Object::Command(Command {
-                name: "MyReg".into(),
-                field_set_in: Some(FieldSet {
-                    name: "MyReg".into(),
-                    size_bits: 10,
-                    fields: vec![
-                        Field {
-                            name: "my_field".into(),
-                            field_address: 0..5,
-                            ..Default::default()
-                        },
-                        Field {
-                            name: "my_field2".into(),
-                            field_address: 5..10,
-                            ..Default::default()
-                        },
-                    ],
-                    ..Default::default()
-                }),
-                ..Default::default()
-            })],
-        };
-
-        run_pass(&mut start_mir).unwrap();
-
-        let mut start_mir = Device {
-            name: None,
-            global_config: Default::default(),
-            objects: vec![Object::Command(Command {
-                name: "MyReg".into(),
-                field_set_in: Some(FieldSet {
-                    name: "MyReg".into(),
-                    size_bits: 10,
-                    allow_bit_overlap: true,
-                    fields: vec![
-                        Field {
-                            name: "my_field".into(),
-                            field_address: 0..6,
-                            ..Default::default()
-                        },
-                        Field {
-                            name: "my_field2".into(),
-                            field_address: 5..10,
-                            ..Default::default()
-                        },
-                    ],
-                    ..Default::default()
-                }),
-                ..Default::default()
-            })],
-        };
-
-        run_pass(&mut start_mir).unwrap();
-
-        let mut start_mir = Device {
-            name: None,
-            global_config: Default::default(),
-            objects: vec![Object::Command(Command {
-                name: "MyReg".into(),
-                field_set_in: Some(FieldSet {
-                    name: "MyReg (in)".into(),
-                    size_bits: 10,
-                    fields: vec![
-                        Field {
-                            name: "my_field".into(),
-                            field_address: 0..6,
-                            ..Default::default()
-                        },
-                        Field {
-                            name: "my_field2".into(),
-                            field_address: 5..10,
-                            ..Default::default()
-                        },
-                    ],
-                    ..Default::default()
-                }),
-                ..Default::default()
-            })],
-        };
-
-        assert_eq!(
-            run_pass(&mut start_mir).unwrap_err().to_string(),
-            "Fieldset `MyReg (in)` has two overlapping fields: `my_field` and `my_field2`. If this is intended, set the `AllowBitOverlap` option to true"
-        );
-    }
-
-    #[test]
-    fn overlap_command_out() {
-        let mut start_mir = Device {
-            name: None,
-            global_config: Default::default(),
-            objects: vec![Object::Command(Command {
-                name: "MyReg".into(),
-                field_set_out: Some(FieldSet {
-                    size_bits: 10,
-                    fields: vec![
-                        Field {
-                            name: "my_field".into(),
-                            field_address: 0..5,
-                            ..Default::default()
-                        },
-                        Field {
-                            name: "my_field2".into(),
-                            field_address: 5..10,
-                            ..Default::default()
-                        },
-                    ],
-                    ..Default::default()
-                }),
-                ..Default::default()
-            })],
-        };
-
-        run_pass(&mut start_mir).unwrap();
-
-        let mut start_mir = Device {
-            name: None,
-            global_config: Default::default(),
-            objects: vec![Object::Command(Command {
-                name: "MyReg".into(),
-                field_set_out: Some(FieldSet {
-                    size_bits: 10,
-                    allow_bit_overlap: true,
-                    fields: vec![
-                        Field {
-                            name: "my_field".into(),
-                            field_address: 0..6,
-                            ..Default::default()
-                        },
-                        Field {
-                            name: "my_field2".into(),
-                            field_address: 5..10,
-                            ..Default::default()
-                        },
-                    ],
-                    ..Default::default()
-                }),
-                ..Default::default()
-            })],
-        };
-
-        run_pass(&mut start_mir).unwrap();
-
-        let mut start_mir = Device {
-            name: None,
-            global_config: Default::default(),
-            objects: vec![Object::Command(Command {
-                name: "MyReg".into(),
-                field_set_out: Some(FieldSet {
-                    name: "MyReg (out)".into(),
-                    size_bits: 10,
-                    fields: vec![
-                        Field {
-                            name: "my_field".into(),
-                            field_address: 0..6,
-                            ..Default::default()
-                        },
-                        Field {
-                            name: "my_field2".into(),
-                            field_address: 5..10,
-                            ..Default::default()
-                        },
-                    ],
-                    ..Default::default()
-                }),
-                ..Default::default()
-            })],
-        };
-
-        assert_eq!(
-            run_pass(&mut start_mir).unwrap_err().to_string(),
-            "Fieldset `MyReg (out)` has two overlapping fields: `my_field` and `my_field2`. If this is intended, set the `AllowBitOverlap` option to true"
         );
     }
 }

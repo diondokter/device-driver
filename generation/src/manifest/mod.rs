@@ -245,10 +245,10 @@ fn transform_block(name: &str, map: &impl Map) -> anyhow::Result<mir::Block> {
 fn transform_register(name: &str, map: &impl Map) -> anyhow::Result<mir::Register> {
     let mut register = mir::Register {
         name: name.into(),
-        field_set: mir::FieldSet {
-            name: name.into(),
-            ..Default::default()
-        },
+        ..Default::default()
+    };
+    let mut field_set = mir::FieldSet {
+        name: name.into(),
         ..Default::default()
     };
 
@@ -264,7 +264,7 @@ fn transform_register(name: &str, map: &impl Map) -> anyhow::Result<mir::Registe
             "cfg" => {
                 register.cfg_attr =
                     mir::Cfg::new(Some(value.as_string().context("Parsing error for `cfg`")?));
-                register.field_set.cfg_attr = register.cfg_attr.clone();
+                field_set.cfg_attr = register.cfg_attr.clone();
             }
             "description" => {
                 register.description = value
@@ -276,11 +276,11 @@ fn transform_register(name: &str, map: &impl Map) -> anyhow::Result<mir::Registe
                 register.access = transform_access(value).context("Parsing error for `access`")?;
             }
             "byte_order" => {
-                register.field_set.byte_order =
+                field_set.byte_order =
                     Some(transform_byte_order(value).context("Parsing error for `byte_order`")?);
             }
             "bit_order" => {
-                register.field_set.bit_order =
+                field_set.bit_order =
                     Some(transform_bit_order(value).context("Parsing error for `bit_order`")?);
             }
             "address" => {
@@ -290,7 +290,7 @@ fn transform_register(name: &str, map: &impl Map) -> anyhow::Result<mir::Registe
                     .context("Parsing error for `address`")?;
             }
             "size_bits" => {
-                register.field_set.size_bits = value
+                field_set.size_bits = value
                     .as_uint()
                     .context("Parsing error for `size_bits`")?
                     .try_into()
@@ -324,7 +324,7 @@ fn transform_register(name: &str, map: &impl Map) -> anyhow::Result<mir::Registe
                     Some(transform_repeat(value).context("Parsing error for `repeat`")?);
             }
             "allow_bit_overlap" => {
-                register.field_set.allow_bit_overlap = value
+                field_set.allow_bit_overlap = value
                     .as_bool()
                     .context("Parsing error for `allow_bit_overlap`")?;
             }
@@ -334,14 +334,15 @@ fn transform_register(name: &str, map: &impl Map) -> anyhow::Result<mir::Registe
                     .context("Parsing error for `allow_address_overlap`")?;
             }
             "fields" => {
-                register.field_set.fields =
-                    transform_fields(value).context("Parsing error for `fields`")?;
+                field_set.fields = transform_fields(value).context("Parsing error for `fields`")?;
             }
             val => {
                 bail!("Unexpected key: `{val}`")
             }
         }
     }
+
+    register.field_set = field_set.into();
 
     Ok(register)
 }
@@ -454,10 +455,10 @@ fn transform_command(name: &str, map: &impl Map) -> anyhow::Result<mir::Command>
     }
 
     if field_set_in_used {
-        command.field_set_in = Some(field_set_in);
+        command.field_set_in = Some(field_set_in.into());
     }
     if field_set_out_used {
-        command.field_set_out = Some(field_set_out);
+        command.field_set_out = Some(field_set_out.into());
     }
 
     Ok(command)
@@ -1104,7 +1105,8 @@ mod tests {
                     name: "my_register".into(),
                     size_bits: 8,
                     ..Default::default()
-                },
+                }
+                .into(),
                 ..Default::default()
             })
         );
@@ -1153,7 +1155,8 @@ mod tests {
                     bit_order: Some(mir::BitOrder::MSB0),
                     byte_order: Some(ByteOrder::BE),
                     ..Default::default()
-                },
+                }
+                .into(),
             })
         );
 
@@ -1268,7 +1271,8 @@ mod tests {
                         }
                     ],
                     ..Default::default()
-                },
+                }
+                .into(),
                 ..Default::default()
             })
         );

@@ -365,7 +365,8 @@ fn transform_register(
                 .iter()
                 .map(|field| transform_field(field, global_config))
                 .collect::<Result<_, _>>()?,
-        },
+        }
+        .into(),
     })
 }
 
@@ -431,54 +432,57 @@ fn transform_command(
             dsl_hir::CommandValue::Extended {
                 in_field_list: Some(in_field_list),
                 ..
-            } => Some(mir::FieldSet {
-                cfg_attr: get_cfg_attr(&command.attribute_list)?,
-                description: "".into(),
-                name: format!("{}FieldsIn", command.identifier),
-                size_bits: match &command_value {
-                    dsl_hir::CommandValue::Basic(_) => None,
-                    dsl_hir::CommandValue::Extended {
-                        command_item_list, ..
-                    } => command_item_list.items.iter().find_map(|item| match item {
-                        dsl_hir::CommandItem::SizeBitsIn(size) => Some(size.base10_parse()),
-                        _ => None,
-                    }),
+            } => Some(
+                mir::FieldSet {
+                    cfg_attr: get_cfg_attr(&command.attribute_list)?,
+                    description: "".into(),
+                    name: format!("{}FieldsIn", command.identifier),
+                    size_bits: match &command_value {
+                        dsl_hir::CommandValue::Basic(_) => None,
+                        dsl_hir::CommandValue::Extended {
+                            command_item_list, ..
+                        } => command_item_list.items.iter().find_map(|item| match item {
+                            dsl_hir::CommandItem::SizeBitsIn(size) => Some(size.base10_parse()),
+                            _ => None,
+                        }),
+                    }
+                    .unwrap_or(Ok(0))?,
+                    byte_order: match &command_value {
+                        dsl_hir::CommandValue::Basic(_) => None,
+                        dsl_hir::CommandValue::Extended {
+                            command_item_list, ..
+                        } => command_item_list.items.iter().find_map(|item| match item {
+                            dsl_hir::CommandItem::ByteOrder(order) => Some((*order).into()),
+                            _ => None,
+                        }),
+                    },
+                    bit_order: match &command_value {
+                        dsl_hir::CommandValue::Basic(_) => None,
+                        dsl_hir::CommandValue::Extended {
+                            command_item_list, ..
+                        } => command_item_list.items.iter().find_map(|item| match item {
+                            dsl_hir::CommandItem::BitOrder(order) => Some((*order).into()),
+                            _ => None,
+                        }),
+                    },
+                    allow_bit_overlap: match &command_value {
+                        dsl_hir::CommandValue::Basic(_) => None,
+                        dsl_hir::CommandValue::Extended {
+                            command_item_list, ..
+                        } => command_item_list.items.iter().find_map(|item| match item {
+                            dsl_hir::CommandItem::AllowBitOverlap(b) => Some(b.value),
+                            _ => None,
+                        }),
+                    }
+                    .unwrap_or_default(),
+                    fields: in_field_list
+                        .fields
+                        .iter()
+                        .map(|field| transform_field(field, global_config))
+                        .collect::<Result<_, _>>()?,
                 }
-                .unwrap_or(Ok(0))?,
-                byte_order: match &command_value {
-                    dsl_hir::CommandValue::Basic(_) => None,
-                    dsl_hir::CommandValue::Extended {
-                        command_item_list, ..
-                    } => command_item_list.items.iter().find_map(|item| match item {
-                        dsl_hir::CommandItem::ByteOrder(order) => Some((*order).into()),
-                        _ => None,
-                    }),
-                },
-                bit_order: match &command_value {
-                    dsl_hir::CommandValue::Basic(_) => None,
-                    dsl_hir::CommandValue::Extended {
-                        command_item_list, ..
-                    } => command_item_list.items.iter().find_map(|item| match item {
-                        dsl_hir::CommandItem::BitOrder(order) => Some((*order).into()),
-                        _ => None,
-                    }),
-                },
-                allow_bit_overlap: match &command_value {
-                    dsl_hir::CommandValue::Basic(_) => None,
-                    dsl_hir::CommandValue::Extended {
-                        command_item_list, ..
-                    } => command_item_list.items.iter().find_map(|item| match item {
-                        dsl_hir::CommandItem::AllowBitOverlap(b) => Some(b.value),
-                        _ => None,
-                    }),
-                }
-                .unwrap_or_default(),
-                fields: in_field_list
-                    .fields
-                    .iter()
-                    .map(|field| transform_field(field, global_config))
-                    .collect::<Result<_, _>>()?,
-            }),
+                .into(),
+            ),
         },
         field_set_out: match &command_value {
             dsl_hir::CommandValue::Basic(_)
@@ -489,54 +493,57 @@ fn transform_command(
             dsl_hir::CommandValue::Extended {
                 out_field_list: Some(out_field_list),
                 ..
-            } => Some(mir::FieldSet {
-                cfg_attr: get_cfg_attr(&command.attribute_list)?,
-                description: "".into(),
-                name: format!("{}FieldsOut", command.identifier),
-                size_bits: match &command_value {
-                    dsl_hir::CommandValue::Basic(_) => None,
-                    dsl_hir::CommandValue::Extended {
-                        command_item_list, ..
-                    } => command_item_list.items.iter().find_map(|item| match item {
-                        dsl_hir::CommandItem::SizeBitsOut(size) => Some(size.base10_parse()),
-                        _ => None,
-                    }),
+            } => Some(
+                mir::FieldSet {
+                    cfg_attr: get_cfg_attr(&command.attribute_list)?,
+                    description: "".into(),
+                    name: format!("{}FieldsOut", command.identifier),
+                    size_bits: match &command_value {
+                        dsl_hir::CommandValue::Basic(_) => None,
+                        dsl_hir::CommandValue::Extended {
+                            command_item_list, ..
+                        } => command_item_list.items.iter().find_map(|item| match item {
+                            dsl_hir::CommandItem::SizeBitsOut(size) => Some(size.base10_parse()),
+                            _ => None,
+                        }),
+                    }
+                    .unwrap_or(Ok(0))?,
+                    byte_order: match &command_value {
+                        dsl_hir::CommandValue::Basic(_) => None,
+                        dsl_hir::CommandValue::Extended {
+                            command_item_list, ..
+                        } => command_item_list.items.iter().find_map(|item| match item {
+                            dsl_hir::CommandItem::ByteOrder(order) => Some((*order).into()),
+                            _ => None,
+                        }),
+                    },
+                    bit_order: match &command_value {
+                        dsl_hir::CommandValue::Basic(_) => None,
+                        dsl_hir::CommandValue::Extended {
+                            command_item_list, ..
+                        } => command_item_list.items.iter().find_map(|item| match item {
+                            dsl_hir::CommandItem::BitOrder(order) => Some((*order).into()),
+                            _ => None,
+                        }),
+                    },
+                    allow_bit_overlap: match &command_value {
+                        dsl_hir::CommandValue::Basic(_) => None,
+                        dsl_hir::CommandValue::Extended {
+                            command_item_list, ..
+                        } => command_item_list.items.iter().find_map(|item| match item {
+                            dsl_hir::CommandItem::AllowBitOverlap(b) => Some(b.value),
+                            _ => None,
+                        }),
+                    }
+                    .unwrap_or_default(),
+                    fields: out_field_list
+                        .fields
+                        .iter()
+                        .map(|field| transform_field(field, global_config))
+                        .collect::<Result<_, _>>()?,
                 }
-                .unwrap_or(Ok(0))?,
-                byte_order: match &command_value {
-                    dsl_hir::CommandValue::Basic(_) => None,
-                    dsl_hir::CommandValue::Extended {
-                        command_item_list, ..
-                    } => command_item_list.items.iter().find_map(|item| match item {
-                        dsl_hir::CommandItem::ByteOrder(order) => Some((*order).into()),
-                        _ => None,
-                    }),
-                },
-                bit_order: match &command_value {
-                    dsl_hir::CommandValue::Basic(_) => None,
-                    dsl_hir::CommandValue::Extended {
-                        command_item_list, ..
-                    } => command_item_list.items.iter().find_map(|item| match item {
-                        dsl_hir::CommandItem::BitOrder(order) => Some((*order).into()),
-                        _ => None,
-                    }),
-                },
-                allow_bit_overlap: match &command_value {
-                    dsl_hir::CommandValue::Basic(_) => None,
-                    dsl_hir::CommandValue::Extended {
-                        command_item_list, ..
-                    } => command_item_list.items.iter().find_map(|item| match item {
-                        dsl_hir::CommandItem::AllowBitOverlap(b) => Some(b.value),
-                        _ => None,
-                    }),
-                }
-                .unwrap_or_default(),
-                fields: out_field_list
-                    .fields
-                    .iter()
-                    .map(|field| transform_field(field, global_config))
-                    .collect::<Result<_, _>>()?,
-            }),
+                .into(),
+            ),
         },
     })
 }
@@ -1159,80 +1166,86 @@ mod tests {
                     count: 4,
                     stride: 16
                 }),
-                field_set_in: Some(mir::FieldSet {
-                    name: "BarFieldsIn".into(),
-                    size_bits: 32,
-                    fields: vec![
-                        mir::Field {
-                            cfg_attr: mir::Cfg::new(Some("bla")),
-                            description: " Hello!".into(),
-                            name: "val".into(),
-                            access: mir::Access::WO,
-                            base_type: mir::BaseType::Bool,
-                            field_conversion: None,
-                            field_address: 0..0,
-                        },
-                        mir::Field {
+                field_set_in: Some(
+                    mir::FieldSet {
+                        name: "BarFieldsIn".into(),
+                        size_bits: 32,
+                        fields: vec![
+                            mir::Field {
+                                cfg_attr: mir::Cfg::new(Some("bla")),
+                                description: " Hello!".into(),
+                                name: "val".into(),
+                                access: mir::Access::WO,
+                                base_type: mir::BaseType::Bool,
+                                field_conversion: None,
+                                field_address: 0..0,
+                            },
+                            mir::Field {
+                                cfg_attr: mir::Cfg::new(None),
+                                description: Default::default(),
+                                name: "foo".into(),
+                                access: mir::Access::RO,
+                                base_type: mir::BaseType::Uint,
+                                field_conversion: Some(mir::FieldConversion::Direct {
+                                    type_name: "crate::my_mod::MyStruct".into(),
+                                    use_try: false,
+                                }),
+                                field_address: 1..6,
+                            }
+                        ],
+                        ..Default::default()
+                    }
+                    .into()
+                ),
+                field_set_out: Some(
+                    mir::FieldSet {
+                        name: "BarFieldsOut".into(),
+                        size_bits: 16,
+                        fields: vec![mir::Field {
                             cfg_attr: mir::Cfg::new(None),
                             description: Default::default(),
-                            name: "foo".into(),
+                            name: "val".into(),
                             access: mir::Access::RO,
-                            base_type: mir::BaseType::Uint,
-                            field_conversion: Some(mir::FieldConversion::Direct {
-                                type_name: "crate::my_mod::MyStruct".into(),
-                                use_try: false,
+                            base_type: mir::BaseType::Int,
+                            field_conversion: Some(mir::FieldConversion::Enum {
+                                enum_value: mir::Enum::new(
+                                    Default::default(),
+                                    "Val".into(),
+                                    vec![
+                                        mir::EnumVariant {
+                                            cfg_attr: mir::Cfg::new(None),
+                                            description: Default::default(),
+                                            name: "One".into(),
+                                            value: mir::EnumValue::Unspecified,
+                                        },
+                                        mir::EnumVariant {
+                                            cfg_attr: mir::Cfg::new(None),
+                                            description: " Two!".into(),
+                                            name: "Two".into(),
+                                            value: mir::EnumValue::Specified(2),
+                                        },
+                                        mir::EnumVariant {
+                                            cfg_attr: mir::Cfg::new(None),
+                                            description: Default::default(),
+                                            name: "Three".into(),
+                                            value: mir::EnumValue::Default,
+                                        },
+                                        mir::EnumVariant {
+                                            cfg_attr: mir::Cfg::new(Some("yes")),
+                                            description: Default::default(),
+                                            name: "Four".into(),
+                                            value: mir::EnumValue::CatchAll,
+                                        }
+                                    ],
+                                ),
+                                use_try: false
                             }),
-                            field_address: 1..6,
-                        }
-                    ],
-                    ..Default::default()
-                }),
-                field_set_out: Some(mir::FieldSet {
-                    name: "BarFieldsOut".into(),
-                    size_bits: 16,
-                    fields: vec![mir::Field {
-                        cfg_attr: mir::Cfg::new(None),
-                        description: Default::default(),
-                        name: "val".into(),
-                        access: mir::Access::RO,
-                        base_type: mir::BaseType::Int,
-                        field_conversion: Some(mir::FieldConversion::Enum {
-                            enum_value: mir::Enum::new(
-                                Default::default(),
-                                "Val".into(),
-                                vec![
-                                    mir::EnumVariant {
-                                        cfg_attr: mir::Cfg::new(None),
-                                        description: Default::default(),
-                                        name: "One".into(),
-                                        value: mir::EnumValue::Unspecified,
-                                    },
-                                    mir::EnumVariant {
-                                        cfg_attr: mir::Cfg::new(None),
-                                        description: " Two!".into(),
-                                        name: "Two".into(),
-                                        value: mir::EnumValue::Specified(2),
-                                    },
-                                    mir::EnumVariant {
-                                        cfg_attr: mir::Cfg::new(None),
-                                        description: Default::default(),
-                                        name: "Three".into(),
-                                        value: mir::EnumValue::Default,
-                                    },
-                                    mir::EnumVariant {
-                                        cfg_attr: mir::Cfg::new(Some("yes")),
-                                        description: Default::default(),
-                                        name: "Four".into(),
-                                        value: mir::EnumValue::CatchAll,
-                                    }
-                                ],
-                            ),
-                            use_try: false
-                        }),
-                        field_address: 0..16,
-                    }],
-                    ..Default::default()
-                }),
+                            field_address: 0..16,
+                        }],
+                        ..Default::default()
+                    }
+                    .into()
+                ),
                 ..Default::default()
             })]
         );
@@ -1283,21 +1296,24 @@ mod tests {
             &[mir::Object::Command(mir::Command {
                 name: "Bar".into(),
                 address: 10,
-                field_set_in: Some(mir::FieldSet {
-                    name: "BarFieldsIn".into(),
-                    byte_order: Some(mir::ByteOrder::BE),
-                    bit_order: Some(mir::BitOrder::LSB0),
-                    fields: vec![mir::Field {
-                        cfg_attr: mir::Cfg::new(None),
-                        description: Default::default(),
-                        name: "val".into(),
-                        access: mir::Access::default(),
-                        base_type: mir::BaseType::Bool,
-                        field_conversion: None,
-                        field_address: 0..0,
-                    },],
-                    ..Default::default()
-                }),
+                field_set_in: Some(
+                    mir::FieldSet {
+                        name: "BarFieldsIn".into(),
+                        byte_order: Some(mir::ByteOrder::BE),
+                        bit_order: Some(mir::BitOrder::LSB0),
+                        fields: vec![mir::Field {
+                            cfg_attr: mir::Cfg::new(None),
+                            description: Default::default(),
+                            name: "val".into(),
+                            access: mir::Access::default(),
+                            base_type: mir::BaseType::Bool,
+                            field_conversion: None,
+                            field_address: 0..0,
+                        },],
+                        ..Default::default()
+                    }
+                    .into()
+                ),
                 ..Default::default()
             })]
         );
@@ -2145,7 +2161,8 @@ mod tests {
                     name: "Foo".into(),
                     size_bits: 16,
                     ..Default::default()
-                },
+                }
+                .into(),
                 ..Default::default()
             })]
         );
@@ -2200,7 +2217,8 @@ mod tests {
                         field_address: 0..16
                     }],
                     ..Default::default()
-                },
+                }
+                .into(),
                 ..Default::default()
             })]
         );
@@ -2246,7 +2264,8 @@ mod tests {
                     name: "Foo".into(),
                     size_bits: 16,
                     ..Default::default()
-                },
+                }
+                .into(),
                 ..Default::default()
             })]
         );
@@ -2276,7 +2295,8 @@ mod tests {
                     size_bits: 16,
                     allow_bit_overlap: true,
                     ..Default::default()
-                },
+                }
+                .into(),
                 ..Default::default()
             })]
         );

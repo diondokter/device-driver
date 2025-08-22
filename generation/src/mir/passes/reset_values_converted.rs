@@ -7,7 +7,8 @@ use bitvec::{
 };
 
 use crate::mir::{
-    BitOrder, ByteOrder, Device, Object, ObjectOverride, RefObject, Register, ResetValue, Unique,
+    BitOrder, ByteOrder, Device, FieldSet, Object, ObjectOverride, RefObject, Register, ResetValue,
+    Unique,
 };
 
 use super::{recurse_objects, recurse_objects_mut, search_object};
@@ -25,19 +26,19 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
 
     recurse_objects(&device.objects, &mut |object| match object {
         Object::Register(reg) => {
-            let target_byte_order = get_target_byte_order(reg, device);
+            let target_field_set = get_target_field_set(reg, device);
 
             match reg.reset_value.as_ref() {
                 Some(reset_value) => {
                     let new_reset_value = convert_reset_value(
                         reset_value.clone(),
-                        reg.field_set
+                        target_field_set
                             .bit_order
                             .expect("Bitorder should be set at this point"),
-                        reg.field_set.size_bits,
+                        target_field_set.size_bits,
                         "register",
                         &reg.name,
-                        target_byte_order,
+                        target_field_set.byte_order.unwrap(),
                     )?;
                     assert_eq!(
                         new_reset_values.insert(reg.id(), new_reset_value),
@@ -62,18 +63,17 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
                     .as_register()
                     .expect("Refs have been validated already for types");
 
-                let target_byte_order = get_target_byte_order(base_reg, device);
+                let target_field_set = get_target_field_set(base_reg, device);
 
                 let new_reset_value = convert_reset_value(
                     reset_value.clone(),
-                    base_reg
-                        .field_set
+                    target_field_set
                         .bit_order
                         .expect("Bitorder should be set at this point"),
-                    base_reg.field_set.size_bits,
+                    target_field_set.size_bits,
                     "ref register",
                     name,
-                    target_byte_order,
+                    target_field_set.byte_order.unwrap(),
                 )?;
                 new_reset_values.insert(ref_object.id(), new_reset_value);
                 Ok(())
@@ -114,12 +114,25 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn get_target_byte_order(reg: &Register, device: &Device) -> ByteOrder {
-    reg.field_set
-        .byte_order
-        .or(device.global_config.default_byte_order)
-        .or((reg.field_set.size_bits <= 8).then_some(ByteOrder::LE))
-        .expect("Register should have a valid byte order or not need one")
+fn get_target_field_set(reg: &Register, device: &Device) -> FieldSet {
+    let mut field_set = None;
+
+    recurse_objects(&device.objects, &mut |object| {
+        if object.name() == reg.field_set.0 {
+            field_set = Some(
+                object
+                    .as_field_set()
+                    .expect("All fieldset refs should already be checked and valid here")
+                    .clone(),
+            );
+            return Ok(());
+        }
+
+        panic!("All fieldset refs should already be checked and valid here")
+    })
+    .unwrap();
+
+    field_set.expect("All fieldset refs should already be checked and valid here")
 }
 
 fn convert_reset_value(

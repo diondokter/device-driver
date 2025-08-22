@@ -7,7 +7,11 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
     recurse_objects_mut(&mut device.objects, &mut |object| {
         let object_name = object.name().to_string();
 
-        for field in object.field_sets_mut().flat_map(|fs| &mut fs.fields) {
+        for field in object
+            .as_field_set_mut()
+            .into_iter()
+            .flat_map(|fs| &mut fs.fields)
+        {
             if field.base_type == BaseType::Bool {
                 // When zero bits long, extend to one bit
                 if field.field_address.start == field.field_address.end {
@@ -16,14 +20,14 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
 
                 ensure!(
                     field.field_address.clone().count() == 1,
-                    "Object `{}` has field `{}` which is of base type `bool` and is larger than 1 bit. A bool can only be zero or one bit.",
+                    "Fieldset `{}` has field `{}` which is of base type `bool` and is larger than 1 bit. A bool can only be zero or one bit.",
                     object_name,
                     field.name
                 );
 
                 ensure!(
                     field.field_conversion.is_none(),
-                    "Object `{}` has field `{}` which is of base type `bool` and has specified a conversion. This is not supported for bools.",
+                    "Fieldset `{}` has field `{}` which is of base type `bool` and has specified a conversion. This is not supported for bools.",
                     object_name,
                     field.name
                 );

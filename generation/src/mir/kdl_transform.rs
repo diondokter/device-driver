@@ -129,7 +129,7 @@ fn transform_object(object: &Object, global_config: &GlobalConfig) -> KdlNode {
                 ("ref", Some(("target-command", override_data.name.clone())))
             }
         },
-        Object::FieldSet(_) => todo!(),
+        Object::FieldSet(_, _) => todo!(),
     };
 
     let mut node = KdlNode::new(node_type);
@@ -150,7 +150,7 @@ fn transform_object(object: &Object, global_config: &GlobalConfig) -> KdlNode {
         Object::Command(command) => transform_command(command, global_config),
         Object::Buffer(buffer) => transform_buffer(buffer, global_config),
         Object::Ref(ref_object) => transform_ref(ref_object),
-        Object::FieldSet(_) => todo!(),
+        Object::FieldSet(_, _) => todo!(),
     });
 
     node
@@ -433,30 +433,39 @@ fn transform_command(command: &Command, global_config: &GlobalConfig) -> KdlDocu
     document
 }
 
-fn transform_field_set(name: &str, field_set: &FieldSet, global_config: &GlobalConfig) -> KdlNode {
-    let mut node = KdlNode::new(name);
+fn transform_field_set(
+    name: &str,
+    field_set: &FieldSetRef,
+    global_config: &GlobalConfig,
+) -> KdlNode {
+    match field_set {
+        FieldSetRef::Ref(_) => todo!(),
+        FieldSetRef::Inline(field_set) => {
+            let mut node = KdlNode::new(name);
 
-    if let Some(byte_order) = field_set.byte_order {
-        node.push(("byte-order", byte_order.to_string()));
+            if let Some(byte_order) = field_set.byte_order {
+                node.push(("byte-order", byte_order.to_string()));
+            }
+
+            if let Some(bit_order) = field_set.bit_order {
+                node.push(("bit-order", bit_order.to_string()));
+            }
+
+            if field_set.allow_bit_overlap {
+                node.push("allow-bit-overlap");
+            }
+
+            node.push(("size-bits", field_set.size_bits as i128));
+
+            for field in &field_set.fields {
+                node.ensure_children()
+                    .nodes_mut()
+                    .push(transform_field(field, global_config));
+            }
+
+            node
+        }
     }
-
-    if let Some(bit_order) = field_set.bit_order {
-        node.push(("bit-order", bit_order.to_string()));
-    }
-
-    if field_set.allow_bit_overlap {
-        node.push("allow-bit-overlap");
-    }
-
-    node.push(("size-bits", field_set.size_bits as i128));
-
-    for field in &field_set.fields {
-        node.ensure_children()
-            .nodes_mut()
-            .push(transform_field(field, global_config));
-    }
-
-    node
 }
 
 fn transform_ref(ref_object: &RefObject) -> KdlDocument {

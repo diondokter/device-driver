@@ -150,7 +150,7 @@ pub enum Object {
     Command(Command),
     Buffer(Buffer),
     Ref(RefObject),
-    FieldSet(FieldSet),
+    FieldSet(FieldSet, Option<LegacyFieldSetInfo>),
 }
 
 impl Object {
@@ -176,7 +176,7 @@ impl Object {
             Object::Command(val) => &mut val.name,
             Object::Buffer(val) => &mut val.name,
             Object::Ref(val) => &mut val.name,
-            Object::FieldSet(val) => &mut val.name,
+            Object::FieldSet(val, _) => &mut val.name,
         }
     }
 
@@ -188,7 +188,7 @@ impl Object {
             Object::Command(val) => &val.name,
             Object::Buffer(val) => &val.name,
             Object::Ref(val) => &val.name,
-            Object::FieldSet(val) => &val.name,
+            Object::FieldSet(val, _) => &val.name,
         }
     }
 
@@ -200,7 +200,7 @@ impl Object {
             Object::Command(val) => &val.description,
             Object::Buffer(val) => &val.description,
             Object::Ref(val) => &val.description,
-            Object::FieldSet(val) => &val.description,
+            Object::FieldSet(val, _) => &val.description,
         }
     }
 
@@ -212,37 +212,7 @@ impl Object {
             Object::Command(val) => &mut val.cfg_attr,
             Object::Buffer(val) => &mut val.cfg_attr,
             Object::Ref(val) => &mut val.cfg_attr,
-            Object::FieldSet(val) => &mut val.cfg_attr,
-        }
-    }
-
-    /// Get an iterator over all the field sets in the object
-    pub(self) fn field_sets_mut(&mut self) -> Box<dyn Iterator<Item = &mut FieldSet> + '_> {
-        match self {
-            Object::Register(val) => Box::new(std::iter::once(&mut val.field_set)),
-            Object::Command(val) => Box::new(
-                val.field_set_in
-                    .as_mut()
-                    .into_iter()
-                    .chain(val.field_set_out.as_mut()),
-            ),
-            Object::Block(_) | Object::Buffer(_) | Object::Ref(_) => Box::new(std::iter::empty()),
-            Object::FieldSet(val) => Box::new(std::iter::once(val)),
-        }
-    }
-
-    /// Get an iterator over all the field sets in the object
-    pub(self) fn field_sets(&self) -> Box<dyn Iterator<Item = &FieldSet> + '_> {
-        match self {
-            Object::Register(val) => Box::new(std::iter::once(&val.field_set)),
-            Object::Command(val) => Box::new(
-                val.field_set_in
-                    .as_ref()
-                    .into_iter()
-                    .chain(val.field_set_out.as_ref()),
-            ),
-            Object::Block(_) | Object::Buffer(_) | Object::Ref(_) => Box::new(std::iter::empty()),
-            Object::FieldSet(val) => Box::new(std::iter::once(val)),
+            Object::FieldSet(val, _) => &mut val.cfg_attr,
         }
     }
 
@@ -278,6 +248,66 @@ impl Object {
         }
     }
 
+    pub fn as_field_set(&self) -> Option<&FieldSet> {
+        if let Self::FieldSet(v, _) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_field_set_mut(&mut self) -> Option<&mut FieldSet> {
+        if let Self::FieldSet(v, _) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    pub fn field_set_refs(&self) -> Vec<&FieldSetRef> {
+        match self {
+            Object::Block(_) => Vec::new(),
+            Object::Register(register) => vec![&register.field_set],
+            Object::Command(command) => {
+                let mut buffer = Vec::new();
+
+                if let Some(fs_in) = command.field_set_in.as_ref() {
+                    buffer.push(fs_in);
+                }
+                if let Some(fs_out) = command.field_set_out.as_ref() {
+                    buffer.push(fs_out);
+                }
+
+                buffer
+            }
+            Object::Buffer(_) => Vec::new(),
+            Object::Ref(_) => Vec::new(),
+            Object::FieldSet(_, _) => Vec::new(),
+        }
+    }
+
+    pub fn field_set_refs_mut(&mut self) -> Vec<&mut FieldSetRef> {
+        match self {
+            Object::Block(_) => Vec::new(),
+            Object::Register(register) => vec![&mut register.field_set],
+            Object::Command(command) => {
+                let mut buffer = Vec::new();
+
+                if let Some(fs_in) = command.field_set_in.as_mut() {
+                    buffer.push(fs_in);
+                }
+                if let Some(fs_out) = command.field_set_out.as_mut() {
+                    buffer.push(fs_out);
+                }
+
+                buffer
+            }
+            Object::Buffer(_) => Vec::new(),
+            Object::Ref(_) => Vec::new(),
+            Object::FieldSet(_, _) => Vec::new(),
+        }
+    }
+
     /// Return the address if it is specified.
     /// It's only not specified in ref objects where the user hasn't overridden the address and in raw fieldsets
     fn address(&self) -> Option<i128> {
@@ -291,7 +321,7 @@ impl Object {
                 ObjectOverride::Register(register_override) => register_override.address,
                 ObjectOverride::Command(command_override) => command_override.address,
             },
-            Object::FieldSet(_) => None,
+            Object::FieldSet(_, _) => None,
         }
     }
 
@@ -307,7 +337,7 @@ impl Object {
                 ObjectOverride::Register(register_override) => register_override.repeat,
                 ObjectOverride::Command(command_override) => command_override.repeat,
             },
-            Object::FieldSet(_) => None,
+            Object::FieldSet(_, _) => None,
         }
     }
 
@@ -326,7 +356,7 @@ impl Object {
             Object::Command(_) => "command",
             Object::Buffer(_) => "buffer",
             Object::Ref(_) => "ref",
-            Object::FieldSet(_) => "fieldset",
+            Object::FieldSet(_, _) => "fieldset",
         }
     }
 }
@@ -357,8 +387,21 @@ pub struct Register {
     pub address: i128,
     pub reset_value: Option<ResetValue>,
     pub repeat: Option<Repeat>,
-    pub field_set: FieldSet,
+    pub field_set: FieldSetRef,
 }
+
+/// Here for DSL + Manifest codegen.
+/// There fieldsets have functions for the reset value.
+/// Once we hit 2.0, this can be removed
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LegacyFieldSetInfo {
+    pub reset_value: Option<Vec<u8>>,
+    pub ref_reset_overrides: Vec<(String, Vec<u8>)>,
+}
+
+/// An externally defined fieldset. This is the name of that fieldset
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct FieldSetRef(pub String);
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct FieldSet {
@@ -522,8 +565,8 @@ pub struct Command {
     pub allow_address_overlap: bool,
     pub repeat: Option<Repeat>,
 
-    pub field_set_in: Option<FieldSet>,
-    pub field_set_out: Option<FieldSet>,
+    pub field_set_in: Option<FieldSetRef>,
+    pub field_set_out: Option<FieldSetRef>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -738,7 +781,7 @@ impl Unique for Object {
             Object::Command(val) => val.id(),
             Object::Buffer(val) => val.id(),
             Object::Ref(val) => val.id(),
-            Object::FieldSet(val) => val.id(),
+            Object::FieldSet(val, _) => val.id(),
         }
     }
 }
