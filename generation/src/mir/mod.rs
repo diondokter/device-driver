@@ -262,7 +262,6 @@ impl Object {
     }
 
     /// Return the address if it is specified.
-    /// It's only not specified in ref objects where the user hasn't overridden the address and in raw fieldsets
     fn address(&self) -> Option<i128> {
         match self {
             Object::Block(block) => Some(block.address_offset),

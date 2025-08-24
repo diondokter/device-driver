@@ -10,7 +10,7 @@ use crate::mir::{BitOrder, ByteOrder, Device, Object, Register, ResetValue, Uniq
 
 use super::{recurse_objects, recurse_objects_mut};
 
-/// Checks if the reset values of registers (and ref registers) are valid.
+/// Checks if the reset values of registers are valid.
 /// Also converts integer values to the array representation using the correct bit and byte order.
 ///
 /// For the array representation, the rule is that the input must have the same spec as the bit and byte order.
