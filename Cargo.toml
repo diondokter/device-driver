@@ -4,7 +4,6 @@ members = [
     "device-driver",
     "generation",
     "macros",
-    "dd-manifest-tree",
     "cli",
     "tests",
 ]

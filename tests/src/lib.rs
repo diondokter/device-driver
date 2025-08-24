@@ -23,10 +23,6 @@ pub fn run_test(input_paths: &[&Path], output_path: &Path) {
 
         let input_extension = input_path.extension().unwrap().display().to_string();
         let (transformed, diagnostics) = match input_extension.deref() {
-            "yaml" => (
-                device_driver_generation::transform_yaml(&input, "Device"),
-                "".to_string(),
-            ),
             "kdl" => {
                 let (transformed, diagnostics) = device_driver_generation::transform_kdl(
                     &input,

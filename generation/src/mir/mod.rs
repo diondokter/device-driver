@@ -5,7 +5,6 @@ use std::{fmt::Display, ops::Range};
 
 use convert_case::Boundary;
 
-pub mod kdl_transform;
 pub mod lir_transform;
 pub mod passes;
 
