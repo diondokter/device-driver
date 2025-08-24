@@ -41,16 +41,22 @@ impl BufferInterface for DeviceInterface {
 }
 
 device_driver::create_device!(
-    device_name: MyTestDevice,
-    dsl: {
-        config {
-            type BufferAddressType = u8;
-            type DefaultByteOrder = LE;
+    kdl: "
+        device MyTestDevice {
+            default-byte-order LE
+            buffer-address-type u8
+
+            /// A read only buffer
+            buffer RoBuf {
+                access RO
+                address 0
+            }
+            buffer WoBuf {
+                access WO
+                address 1
+            }
         }
-        /// A read only buffer
-        buffer RoBuf: RO = 0,
-        buffer WoBuf: WO = 1,
-    }
+    "
 );
 
 #[test]

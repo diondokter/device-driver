@@ -12,14 +12,11 @@ mod enum_values_checked;
 mod field_set_descriptions_set;
 mod names_normalized;
 mod names_unique;
-mod propagate_cfg;
-mod refs_validated;
 mod reset_values_converted;
 
 pub fn run_passes(device: &mut Device) -> anyhow::Result<()> {
     bit_order_specified::run_pass(device)?;
     device_name_is_pascal::run_pass(device)?;
-    propagate_cfg::run_pass(device)?;
     names_normalized::run_pass(device)?;
     names_unique::run_pass(device)?;
     enum_values_checked::run_pass(device)?;
@@ -28,7 +25,6 @@ pub fn run_passes(device: &mut Device) -> anyhow::Result<()> {
     bool_fields_checked::run_pass(device)?;
     bit_ranges_validated::run_pass(device)?;
     base_types_specified::run_pass(device)?;
-    refs_validated::run_pass(device)?;
     address_types_specified::run_pass(device)?;
     address_types_big_enough::run_pass(device)?;
     field_set_descriptions_set::run_pass(device)?;
@@ -147,21 +143,4 @@ pub(crate) fn find_min_max_addresses(
     .unwrap();
 
     (min_address_found, max_address_found)
-}
-
-pub(crate) fn search_object<'d>(name: &str, objects: &'d [Object]) -> Option<&'d Object> {
-    for object in objects {
-        if object.name() == name {
-            return Some(object);
-        }
-
-        if let Some(block_objects) = object.get_block_object_list() {
-            match search_object(name, block_objects) {
-                None => {}
-                found => return found,
-            }
-        }
-    }
-
-    None
 }

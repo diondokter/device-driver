@@ -1,0 +1,17 @@
+device Device {
+    default-byte-order LE
+    register-address-type u16
+    command-address-type i32
+    buffer-address-type i8
+
+    register Foo {
+        address 0
+        fields size-bits=0
+    }
+    command Bar {
+        address 0
+    }
+    buffer Quux {
+        address 0
+    }
+}

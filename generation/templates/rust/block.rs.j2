@@ -6,7 +6,6 @@
 {% endif %}
 
 {{ self::description_to_docstring(block.description) }}
-{{ block.cfg_attr }}
 #[derive(Debug)]
 pub struct {{ block.name }}{{block_generics}} {
     {% if block.root %}
@@ -18,7 +17,6 @@ pub struct {{ block.name }}{{block_generics}} {
     base_address: {{device.internal_address_type}},
 }
 
-{{ block.cfg_attr }}
 impl{{block_generics}} {{ block.name }}{{block_generics}} {
     {% if block.root %}
     /// Create a new instance of the block based on device interface
@@ -70,13 +68,10 @@ impl{{block_generics}} {{ block.name }}{{block_generics}} {
                 {% if access.is_readable() %}
                     {% match method.kind %}
                         {% when BlockMethodKind::Normal %}
-                            {{method.cfg_attr}}
                             let reg = self.{{method.name}}().read()?;
-                            {{method.cfg_attr}}
                             callback({{method.address}} + 0 * 0, "{{method.name}}", reg.into());
                         {% endwhen %}
                         {% when BlockMethodKind::Repeated { count, stride } %}
-                            {{method.cfg_attr}}
                             for index in 0..{{count}} {
                                 let reg = self.{{method.name}}(index).read()?;
                                 callback({{method.address}} + index as {{device.register_address_type}} * {{stride}}, "{{method.name}}", reg.into());
@@ -117,13 +112,10 @@ impl{{block_generics}} {{ block.name }}{{block_generics}} {
                 {% if access.is_readable() %}
                     {% match method.kind %}
                         {% when BlockMethodKind::Normal %}
-                            {{method.cfg_attr}}
                             let reg = self.{{method.name}}().read_async().await?;
-                            {{method.cfg_attr}}
                             callback({{method.address}} + 0 * 0, "{{method.name}}", reg.into());
                         {% endwhen %}
                         {% when BlockMethodKind::Repeated { count, stride } %}
-                            {{method.cfg_attr}}
                             for index in 0..{{count}} {
                                 let reg = self.{{method.name}}(index).read_async().await?;
                                 callback({{method.address}} + index as {{device.register_address_type}} * {{stride}}, "{{method.name}}", reg.into());
@@ -146,7 +138,6 @@ impl{{block_generics}} {{ block.name }}{{block_generics}} {
             /// Valid index range: 0..{{count}}
             {% endwhen %}
         {% endmatch %}
-        {{ method.cfg_attr }}
         pub fn {{ method.name }}(
             &mut self,
             {% match method.kind %}

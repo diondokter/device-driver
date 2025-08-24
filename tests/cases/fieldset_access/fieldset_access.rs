@@ -10,7 +10,6 @@ device-driver = { path="../../../device-driver", default-features=false }
 fn main() {}
 
 /// Root block of the Device driver
-
 #[derive(Debug)]
 pub struct Device<I> {
     pub(crate) interface: I,
@@ -56,11 +55,9 @@ impl<I> Device<I> {
         I: ::device_driver::RegisterInterface<AddressType = u8>,
     {
         let reg = self.foo_ro().read()?;
-
         callback(0 + 0 * 0, "foo_ro", reg.into());
 
         let reg = self.foo_rw().read()?;
-
         callback(1 + 0 * 0, "foo_rw", reg.into());
 
         Ok(())
@@ -89,11 +86,9 @@ impl<I> Device<I> {
         I: ::device_driver::AsyncRegisterInterface<AddressType = u8>,
     {
         let reg = self.foo_ro().read_async().await?;
-
         callback(0 + 0 * 0, "foo_ro", reg.into());
 
         let reg = self.foo_rw().read_async().await?;
-
         callback(1 + 0 * 0, "foo_rw", reg.into());
 
         Ok(())
@@ -258,7 +253,6 @@ pub mod field_sets {
             self
         }
     }
-
     impl core::ops::BitAndAssign for FooRo {
         fn bitand_assign(&mut self, rhs: Self) {
             for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
@@ -266,7 +260,6 @@ pub mod field_sets {
             }
         }
     }
-
     impl core::ops::BitOr for FooRo {
         type Output = Self;
         fn bitor(mut self, rhs: Self) -> Self::Output {
@@ -274,7 +267,6 @@ pub mod field_sets {
             self
         }
     }
-
     impl core::ops::BitOrAssign for FooRo {
         fn bitor_assign(&mut self, rhs: Self) {
             for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
@@ -282,7 +274,6 @@ pub mod field_sets {
             }
         }
     }
-
     impl core::ops::BitXor for FooRo {
         type Output = Self;
         fn bitxor(mut self, rhs: Self) -> Self::Output {
@@ -290,7 +281,6 @@ pub mod field_sets {
             self
         }
     }
-
     impl core::ops::BitXorAssign for FooRo {
         fn bitxor_assign(&mut self, rhs: Self) {
             for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
@@ -298,7 +288,6 @@ pub mod field_sets {
             }
         }
     }
-
     impl core::ops::Not for FooRo {
         type Output = Self;
         fn not(mut self) -> Self::Output {
@@ -426,7 +415,6 @@ pub mod field_sets {
             self
         }
     }
-
     impl core::ops::BitAndAssign for FooRw {
         fn bitand_assign(&mut self, rhs: Self) {
             for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
@@ -434,7 +422,6 @@ pub mod field_sets {
             }
         }
     }
-
     impl core::ops::BitOr for FooRw {
         type Output = Self;
         fn bitor(mut self, rhs: Self) -> Self::Output {
@@ -442,7 +429,6 @@ pub mod field_sets {
             self
         }
     }
-
     impl core::ops::BitOrAssign for FooRw {
         fn bitor_assign(&mut self, rhs: Self) {
             for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
@@ -450,7 +436,6 @@ pub mod field_sets {
             }
         }
     }
-
     impl core::ops::BitXor for FooRw {
         type Output = Self;
         fn bitxor(mut self, rhs: Self) -> Self::Output {
@@ -458,7 +443,6 @@ pub mod field_sets {
             self
         }
     }
-
     impl core::ops::BitXorAssign for FooRw {
         fn bitxor_assign(&mut self, rhs: Self) {
             for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
@@ -466,7 +450,6 @@ pub mod field_sets {
             }
         }
     }
-
     impl core::ops::Not for FooRw {
         type Output = Self;
         fn not(mut self) -> Self::Output {
@@ -594,7 +577,6 @@ pub mod field_sets {
             self
         }
     }
-
     impl core::ops::BitAndAssign for FooWo {
         fn bitand_assign(&mut self, rhs: Self) {
             for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
@@ -602,7 +584,6 @@ pub mod field_sets {
             }
         }
     }
-
     impl core::ops::BitOr for FooWo {
         type Output = Self;
         fn bitor(mut self, rhs: Self) -> Self::Output {
@@ -610,7 +591,6 @@ pub mod field_sets {
             self
         }
     }
-
     impl core::ops::BitOrAssign for FooWo {
         fn bitor_assign(&mut self, rhs: Self) {
             for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
@@ -618,7 +598,6 @@ pub mod field_sets {
             }
         }
     }
-
     impl core::ops::BitXor for FooWo {
         type Output = Self;
         fn bitxor(mut self, rhs: Self) -> Self::Output {
@@ -626,7 +605,6 @@ pub mod field_sets {
             self
         }
     }
-
     impl core::ops::BitXorAssign for FooWo {
         fn bitxor_assign(&mut self, rhs: Self) {
             for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
@@ -634,7 +612,6 @@ pub mod field_sets {
             }
         }
     }
-
     impl core::ops::Not for FooWo {
         type Output = Self;
         fn not(mut self) -> Self::Output {

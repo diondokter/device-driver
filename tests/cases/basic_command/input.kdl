@@ -1,0 +1,12 @@
+device Device {
+    default-byte-order LE
+    command-address-type u8
+
+    command Foo {
+        address 0
+
+        in size-bits=24 {
+            (uint)value @23:0
+        }
+    }
+}

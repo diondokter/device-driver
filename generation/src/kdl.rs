@@ -7,28 +7,49 @@ use strum::VariantNames;
 
 use crate::{
     mir::{
-        Access, BaseType, BitOrder, Block, Buffer, ByteOrder, Cfg, Command, Device, Enum,
-        EnumValue, EnumVariant, Field, FieldConversion, FieldSet, GlobalConfig, Integer, Object,
-        Register, Repeat, ResetValue,
+        Access, BaseType, BitOrder, Block, Buffer, ByteOrder, Command, Device, Enum, EnumValue,
+        EnumVariant, Field, FieldConversion, FieldSet, GlobalConfig, Integer, Object, Register,
+        Repeat, ResetValue,
     },
     reporting::{
-        Diagnostics, NamedSourceCode,
+        self, Diagnostics, NamedSourceCode,
         errors::{self, UnexpectedEntries},
     },
 };
 
-pub fn transform(source: &str, file_path: &Path, diagnostics: &mut Diagnostics) -> Vec<Device> {
-    let source_code = NamedSourceCode::new(file_path.display().to_string(), source.into());
+pub fn transform(
+    file_contents: &str,
+    source_span: Option<SourceSpan>,
+    file_path: &Path,
+    diagnostics: &mut Diagnostics,
+) -> Vec<Device> {
+    let source_code = NamedSourceCode::new(file_path.display().to_string(), file_contents.into());
 
-    let document = match kdl::KdlDocument::parse(source) {
+    let file_subslice = if let Some(span) = source_span {
+        file_contents
+            .get(span.offset()..span.offset() + span.len())
+            .unwrap()
+    } else {
+        file_contents
+    };
+
+    let mut document = match kdl::KdlDocument::parse(file_subslice) {
         Ok(document) => document,
         Err(e) => {
             for diagnostic in e.diagnostics {
-                diagnostics.add(diagnostic);
+                diagnostics.add(reporting::ConvertedKdlDiagnostic::from_original_and_span(
+                    diagnostic,
+                    source_code.clone(),
+                    source_span,
+                ));
             }
             return Vec::new();
         }
     };
+
+    if let Some(source_span) = source_span {
+        reporting::kdl_span_changer::change_document_span(&mut document, &source_span);
+    }
 
     document
         .nodes()
@@ -208,7 +229,6 @@ fn transform_block(
     }
 
     name.map(|name| Block {
-        cfg_attr: Cfg::default(),
         description: parse_description(node),
         name,
         address_offset: offset.map(|(o, _)| o).unwrap_or_default(),
@@ -364,7 +384,6 @@ fn transform_register(
         None
     } else {
         let mut register = Register {
-            cfg_attr: Cfg::default(),
             description: parse_description(node),
             name: name.unwrap(),
             address: address.unwrap().0,
@@ -512,7 +531,6 @@ fn transform_command(
         None
     } else {
         let mut command = Command {
-            cfg_attr: Cfg::default(),
             description: parse_description(node),
             name: name.unwrap(),
             address: address.unwrap().0,
@@ -606,7 +624,6 @@ fn transform_buffer(
         None
     } else {
         let mut buffer = Buffer {
-            cfg_attr: Cfg::default(),
             description: parse_description(node),
             name: name.unwrap(),
             address: address.unwrap().0,
@@ -1056,7 +1073,6 @@ fn transform_field(
     }
 
     Some(Field {
-        cfg_attr: Cfg::default(),
         description: parse_description(node),
         name: node.name().value().into(),
         access: access.map(|(a, _)| a).unwrap_or_default(),
@@ -1685,7 +1701,6 @@ fn transform_enum_variants(
             };
 
             Some(EnumVariant {
-                cfg_attr: Cfg::default(),
                 description: parse_description(node),
                 name: variant_name.value().to_string(),
                 value: variant_value,

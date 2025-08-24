@@ -141,13 +141,11 @@ mod tests {
             register_address_type: crate::mir::Integer::U8,
             blocks: vec![
                 Block {
-                    cfg_attr: Default::default(),
                     description: Default::default(),
                     root: true,
                     name: "Root".to_string(),
                     methods: vec![
                         BlockMethod {
-                            cfg_attr: Default::default(),
                             description: Default::default(),
                             name: "second_block".to_string(),
                             address: 10,
@@ -161,7 +159,6 @@ mod tests {
                             },
                         },
                         BlockMethod {
-                            cfg_attr: Default::default(),
                             description: Default::default(),
                             name: "register0".to_string(),
                             address: 75,
@@ -180,12 +177,10 @@ mod tests {
                     ],
                 },
                 Block {
-                    cfg_attr: Default::default(),
                     description: Default::default(),
                     root: true,
                     name: "SecondBlock".to_string(),
                     methods: vec![BlockMethod {
-                        cfg_attr: Default::default(),
                         description: Default::default(),
                         name: "register1".to_string(),
                         address: 0,

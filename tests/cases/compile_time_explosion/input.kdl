@@ -1,0 +1,55 @@
+device Device {
+    default-byte-order LE
+    register-address-type u32
+
+    register Foo0 {
+        address 0
+        repeat count=100 stride=1000
+        fields size-bits=0
+    }
+    register Foo1 {
+        address 1
+        repeat count=100 stride=1000
+        fields size-bits=0
+    }
+    register Foo2 {
+        address 2
+        repeat count=100 stride=1000
+        fields size-bits=0
+    }
+    register Foo3 {
+        address 3
+        repeat count=100 stride=1000
+        fields size-bits=0
+    }
+    register Foo4 {
+        address 4
+        repeat count=100 stride=1000
+        fields size-bits=0
+    }
+    register Foo5 {
+        address 5
+        repeat count=100 stride=1000
+        fields size-bits=0
+    }
+    register Foo6 {
+        address 6
+        repeat count=100 stride=1000
+        fields size-bits=0
+    }
+    register Foo7 {
+        address 7
+        repeat count=100 stride=1000
+        fields size-bits=0
+    }
+    register Foo8 {
+        address 8
+        repeat count=100 stride=1000
+        fields size-bits=0
+    }
+    register Foo9 {
+        address 9
+        repeat count=100 stride=1000
+        fields size-bits=0
+    }
+}

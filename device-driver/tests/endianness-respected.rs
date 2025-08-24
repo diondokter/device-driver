@@ -30,48 +30,48 @@ impl RegisterInterface for DeviceInterface {
 }
 
 device_driver::create_device!(
-    device_name: MyTestDevice,
-    dsl: {
-        config {
-            type RegisterAddressType = u8;
+    kdl: "
+        device MyTestDevice {
+            register-address-type u8
+
+            register FooLE {
+                allow-address-overlap
+                address 0
+                reset-value 0x1234
+
+                fields byte-order=LE size-bits=16 {
+                    (uint)val @15:0
+                }
+            }
+            register FooLEArray {
+                allow-address-overlap
+                address 0
+                reset-value 0x34 0x12
+
+                fields byte-order=LE size-bits=16 {
+                    (uint)val @15:0
+                }
+            }
+            register FooBE {
+                allow-address-overlap
+                address 0
+                reset-value 0x3412
+
+                fields byte-order=BE size-bits=16 {
+                    (uint)val @15:0
+                }
+            }
+            register FooBEArray {
+                allow-address-overlap
+                address 0
+                reset-value 0x34 0x12
+
+                fields byte-order=BE size-bits=16 {
+                    (uint)val @15:0
+                }
+            }
         }
-        register FooLE {
-            const ADDRESS = 0;
-            const SIZE_BITS = 16;
-            type ByteOrder = LE;
-            const ALLOW_ADDRESS_OVERLAP = true;
-            const RESET_VALUE = 0x1234;
-
-            val: uint = 0..16,
-        },
-        register FooLEArray {
-            const ADDRESS = 0;
-            const SIZE_BITS = 16;
-            type ByteOrder = LE;
-            const ALLOW_ADDRESS_OVERLAP = true;
-            const RESET_VALUE = [0x34, 0x12]; // As the read and write functions see it
-
-            val: uint = 0..16,
-        },
-        register FooBE {
-            const ADDRESS = 0;
-            const SIZE_BITS = 16;
-            type ByteOrder = BE;
-            const ALLOW_ADDRESS_OVERLAP = true;
-            const RESET_VALUE = 0x3412;
-
-            val: uint = 0..16,
-        },
-        register FooBEArray {
-            const ADDRESS = 0;
-            const SIZE_BITS = 16;
-            type ByteOrder = BE;
-            const ALLOW_ADDRESS_OVERLAP = true;
-            const RESET_VALUE = [0x34, 0x12];
-
-            val: uint = 0..16,
-        }
-    }
+    "
 );
 
 #[test]

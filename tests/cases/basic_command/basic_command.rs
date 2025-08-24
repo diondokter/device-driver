@@ -10,7 +10,6 @@ device-driver = { path="../../../device-driver", default-features=false }
 fn main() {}
 
 /// Root block of the Device driver
-
 #[derive(Debug)]
 pub struct Device<I> {
     pub(crate) interface: I,
@@ -186,7 +185,6 @@ pub mod field_sets {
             self
         }
     }
-
     impl core::ops::BitAndAssign for FooFieldsIn {
         fn bitand_assign(&mut self, rhs: Self) {
             for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
@@ -194,7 +192,6 @@ pub mod field_sets {
             }
         }
     }
-
     impl core::ops::BitOr for FooFieldsIn {
         type Output = Self;
         fn bitor(mut self, rhs: Self) -> Self::Output {
@@ -202,7 +199,6 @@ pub mod field_sets {
             self
         }
     }
-
     impl core::ops::BitOrAssign for FooFieldsIn {
         fn bitor_assign(&mut self, rhs: Self) {
             for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
@@ -210,7 +206,6 @@ pub mod field_sets {
             }
         }
     }
-
     impl core::ops::BitXor for FooFieldsIn {
         type Output = Self;
         fn bitxor(mut self, rhs: Self) -> Self::Output {
@@ -218,7 +213,6 @@ pub mod field_sets {
             self
         }
     }
-
     impl core::ops::BitXorAssign for FooFieldsIn {
         fn bitxor_assign(&mut self, rhs: Self) {
             for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
@@ -226,7 +220,6 @@ pub mod field_sets {
             }
         }
     }
-
     impl core::ops::Not for FooFieldsIn {
         type Output = Self;
         fn not(mut self) -> Self::Output {

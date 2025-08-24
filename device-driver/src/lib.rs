@@ -18,7 +18,7 @@ pub use buffer::*;
 #[doc(hidden)]
 pub mod ops;
 
-#[cfg(feature = "_macros")]
+#[cfg(feature = "macros")]
 pub use device_driver_macros::*;
 
 #[doc(hidden)]

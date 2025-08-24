@@ -1,7 +1,6 @@
 /// Enum containing all possible field set types
 pub enum FieldSetValue {
     {% for field_set in device.field_sets %}
-        {{field_set.cfg_attr}}
         {{self::description_to_docstring(field_set.description)}}
         {{field_set.name}}({{field_set.name}}),
     {% endfor %}
@@ -10,7 +9,6 @@ impl core::fmt::Debug for FieldSetValue {
     fn fmt(&self, _f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             {% for field_set in device.field_sets %}
-                {{field_set.cfg_attr}}
                 Self::{{field_set.name}}(val) => core::fmt::Debug::fmt(val, _f),
             {% endfor %}
             #[allow(unreachable_patterns)]
@@ -24,7 +22,6 @@ impl defmt::Format for FieldSetValue {
     fn format(&self, f: defmt::Formatter) {
         match self {
             {% for field_set in device.field_sets %}
-                {{field_set.cfg_attr}}
                 Self::{{field_set.name}}(val) => defmt::Format::format(val, f),
             {% endfor %}
         }
@@ -33,7 +30,6 @@ impl defmt::Format for FieldSetValue {
 {% endif %}
 
 {% for field_set in device.field_sets %}
-{{field_set.cfg_attr}}
 impl From<{{field_set.name}}> for FieldSetValue {
     fn from(val: {{field_set.name}}) -> Self {
         Self::{{field_set.name}}(val)

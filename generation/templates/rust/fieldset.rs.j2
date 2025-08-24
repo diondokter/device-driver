@@ -1,12 +1,10 @@
 {{self::description_to_docstring(field_set.description)}}
-{{field_set.cfg_attr}}
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct {{field_set.name}} {
     /// The internal bits
     bits: [u8; {{field_set.size_bytes()}}]
 }
 
-{{field_set.cfg_attr}}
 impl ::device_driver::FieldSet for {{field_set.name}} {
     const SIZE_BITS: u32 = {{field_set.size_bits}};
     fn new_with_zero() -> Self {
@@ -20,7 +18,6 @@ impl ::device_driver::FieldSet for {{field_set.name}} {
     }
 }
 
-{{field_set.cfg_attr}}
 impl {{field_set.name}} {
     /// Create a new instance, loaded with the reset value (if any)
     pub const fn new() -> Self {
@@ -31,15 +28,6 @@ impl {{field_set.name}} {
         Self { bits: [0; {{field_set.size_bytes()}}] }
     }
 
-    {% for (override_name, override_reset_value) in field_set.ref_reset_overrides %}
-        {% let override_name_snake = convert_case::Casing::to_case(*override_name, convert_case::Case::Snake) %}
-
-        ///Create a new instance, loaded with the reset value of the `{{override_name}}` ref
-        pub const fn new_as_{{override_name_snake}}() -> Self {
-            Self { bits: [{{override_reset_value | join(", ")}}] }
-        }
-    {% endfor %}
-
     {% for field in field_set.fields %}
         {% let super_prefix = self::get_super_prefix(&field.conversion_method) %}
 
@@ -47,7 +35,6 @@ impl {{field_set.name}} {
             ///Read the `{{field.name}}` field of the register.
             ///
             {{self::description_to_docstring(field.description)}}
-            {{field.cfg_attr}}
             pub fn {{field.name}}(&self) -> 
                 {% match field.conversion_method %}
                     {% when FieldConversionMethod::None %} {{field.base_type}}
@@ -81,7 +68,6 @@ impl {{field_set.name}} {
             ///Write the `{{field.name}}` field of the register.
             ///
             {{self::description_to_docstring(field.description)}}
-            {{field.cfg_attr}}
             pub fn set_{{field.name}}(
                 &mut self,
                 value: {{super_prefix}}
@@ -111,27 +97,23 @@ impl {{field_set.name}} {
     {% endfor %}
 }
 
-{{field_set.cfg_attr}}
 impl From<[u8; {{field_set.size_bytes()}}]> for {{field_set.name}} {
     fn from(bits: [u8; {{field_set.size_bytes()}}]) -> Self {
         Self { bits }
     }
 }
 
-{{field_set.cfg_attr}}
 impl From<{{field_set.name}}> for [u8; {{field_set.size_bytes()}}] {
     fn from(val: {{field_set.name}}) -> Self {
         val.bits
     }
 }
 
-{{field_set.cfg_attr}}
 impl core::fmt::Debug for {{field_set.name}} {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
         let mut d = f.debug_struct("{{field_set.name}}");
         {% for field in field_set.fields %}
             {% if field.access.is_readable() %}
-                {{field.cfg_attr}}
                 d.field("{{field.name}}", &self.{{field.name}}());
             {% endif %}
         {% endfor %}
@@ -140,7 +122,6 @@ impl core::fmt::Debug for {{field_set.name}} {
 }
 
 {% if let Some(defmt_feature) = device.defmt_feature %}
-{{field_set.cfg_attr}}
 #[cfg(feature = "{{defmt_feature}}")]
 impl defmt::Format for {{field_set.name}} {
     fn format(&self, f: defmt::Formatter) {
@@ -148,7 +129,6 @@ impl defmt::Format for {{field_set.name}} {
 
         {% for field in field_set.fields %}
             {% if field.access.is_readable() %}
-                {{field.cfg_attr}}
                 defmt::write!(f, "{{self::get_defmt_fmt_string(field)}}", &self.{{field.name}}());
             {% endif %}
         {% endfor %}
@@ -158,7 +138,6 @@ impl defmt::Format for {{field_set.name}} {
 }
 {% endif %}
 
-{{field_set.cfg_attr}}
 impl core::ops::BitAnd for {{field_set.name}} {
     type Output = Self;
     fn bitand(mut self, rhs: Self) -> Self::Output {
@@ -166,7 +145,6 @@ impl core::ops::BitAnd for {{field_set.name}} {
         self
     }
 }
-{{field_set.cfg_attr}}
 impl core::ops::BitAndAssign for {{field_set.name}} {
     fn bitand_assign(&mut self, rhs: Self) {
         for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
@@ -174,7 +152,6 @@ impl core::ops::BitAndAssign for {{field_set.name}} {
         }
     }
 }
-{{field_set.cfg_attr}}
 impl core::ops::BitOr for {{field_set.name}} {
     type Output = Self;
     fn bitor(mut self, rhs: Self) -> Self::Output {
@@ -182,7 +159,6 @@ impl core::ops::BitOr for {{field_set.name}} {
         self
     }
 }
-{{field_set.cfg_attr}}
 impl core::ops::BitOrAssign for {{field_set.name}} {
     fn bitor_assign(&mut self, rhs: Self) {
         for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
@@ -190,7 +166,6 @@ impl core::ops::BitOrAssign for {{field_set.name}} {
         }
     }
 }
-{{field_set.cfg_attr}}
 impl core::ops::BitXor for {{field_set.name}} {
     type Output = Self;
     fn bitxor(mut self, rhs: Self) -> Self::Output {
@@ -198,7 +173,6 @@ impl core::ops::BitXor for {{field_set.name}} {
         self
     }
 }
-{{field_set.cfg_attr}}
 impl core::ops::BitXorAssign for {{field_set.name}} {
     fn bitxor_assign(&mut self, rhs: Self) {
         for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
@@ -206,7 +180,6 @@ impl core::ops::BitXorAssign for {{field_set.name}} {
         }
     }
 }
-{{field_set.cfg_attr}}
 impl core::ops::Not for {{field_set.name}} {
     type Output = Self;
     fn not(mut self) -> Self::Output {

@@ -76,7 +76,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
 mod tests {
     use convert_case::Boundary;
 
-    use crate::mir::{Buffer, Cfg, EnumVariant, Field, FieldSet, GlobalConfig, Object, Register};
+    use crate::mir::{Buffer, EnumVariant, Field, FieldSet, GlobalConfig, Object, Register};
 
     use super::*;
 
@@ -218,51 +218,6 @@ mod tests {
                                     },
                                     EnumVariant {
                                         name: "Variant".into(),
-                                        ..Default::default()
-                                    },
-                                ],
-                                ..Default::default()
-                            },
-                            use_try: false,
-                        }),
-                        ..Default::default()
-                    }],
-                    ..Default::default()
-                },
-                ..Default::default()
-            })],
-        };
-
-        run_pass(&mut start_mir).unwrap();
-    }
-
-    #[test]
-    fn duplicate_cfg_generated_enum_variants() {
-        let global_config = GlobalConfig {
-            name_word_boundaries: Boundary::list_from("-"),
-            ..Default::default()
-        };
-
-        let mut start_mir = Device {
-            name: Some("Device".into()),
-            global_config,
-            objects: vec![Object::Register(Register {
-                name: "Reg".into(),
-                field_set: FieldSet {
-                    fields: vec![Field {
-                        name: "field".into(),
-                        field_conversion: Some(FieldConversion::Enum {
-                            enum_value: Enum {
-                                name: "Enum".into(),
-                                variants: vec![
-                                    EnumVariant {
-                                        name: "Variant".into(),
-                                        cfg_attr: Cfg::new(Some("windows")),
-                                        ..Default::default()
-                                    },
-                                    EnumVariant {
-                                        name: "Variant".into(),
-                                        cfg_attr: Cfg::new(Some("unix")),
                                         ..Default::default()
                                     },
                                 ],
