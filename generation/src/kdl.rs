@@ -7,9 +7,9 @@ use strum::VariantNames;
 
 use crate::{
     mir::{
-        Access, BaseType, BitOrder, Block, Buffer, ByteOrder, Cfg, Command, Device, Enum,
-        EnumValue, EnumVariant, Field, FieldConversion, FieldSet, GlobalConfig, Integer, Object,
-        Register, Repeat, ResetValue,
+        Access, BaseType, BitOrder, Block, Buffer, ByteOrder, Command, Device, Enum, EnumValue,
+        EnumVariant, Field, FieldConversion, FieldSet, GlobalConfig, Integer, Object, Register,
+        Repeat, ResetValue,
     },
     reporting::{
         self, Diagnostics, NamedSourceCode,
@@ -229,7 +229,6 @@ fn transform_block(
     }
 
     name.map(|name| Block {
-        cfg_attr: Cfg::default(),
         description: parse_description(node),
         name,
         address_offset: offset.map(|(o, _)| o).unwrap_or_default(),
@@ -385,7 +384,6 @@ fn transform_register(
         None
     } else {
         let mut register = Register {
-            cfg_attr: Cfg::default(),
             description: parse_description(node),
             name: name.unwrap(),
             address: address.unwrap().0,
@@ -533,7 +531,6 @@ fn transform_command(
         None
     } else {
         let mut command = Command {
-            cfg_attr: Cfg::default(),
             description: parse_description(node),
             name: name.unwrap(),
             address: address.unwrap().0,
@@ -627,7 +624,6 @@ fn transform_buffer(
         None
     } else {
         let mut buffer = Buffer {
-            cfg_attr: Cfg::default(),
             description: parse_description(node),
             name: name.unwrap(),
             address: address.unwrap().0,
@@ -1077,7 +1073,6 @@ fn transform_field(
     }
 
     Some(Field {
-        cfg_attr: Cfg::default(),
         description: parse_description(node),
         name: node.name().value().into(),
         access: access.map(|(a, _)| a).unwrap_or_default(),
@@ -1706,7 +1701,6 @@ fn transform_enum_variants(
             };
 
             Some(EnumVariant {
-                cfg_attr: Cfg::default(),
                 description: parse_description(node),
                 name: variant_name.value().to_string(),
                 value: variant_value,

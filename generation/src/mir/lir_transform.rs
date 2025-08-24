@@ -1,9 +1,6 @@
 use std::ops::Add;
 
-use crate::{
-    lir,
-    mir::{self, passes::search_object},
-};
+use crate::{lir, mir};
 
 use super::{
     Integer,
@@ -23,7 +20,6 @@ pub fn transform(device: mir::Device) -> anyhow::Result<lir::Device> {
     // Create a root block and pass the device objects to it
     let blocks = collect_into_blocks(
         BorrowedBlock {
-            cfg_attr: &mir::Cfg::new(None),
             description: &format!("Root block of the {driver_name} driver"),
             name: &driver_name,
             address_offset: &0,
@@ -57,7 +53,6 @@ fn collect_into_blocks(
     let mut blocks = Vec::new();
 
     let BorrowedBlock {
-        cfg_attr,
         description,
         name,
         address_offset: _,
@@ -83,7 +78,6 @@ fn collect_into_blocks(
     }
 
     let new_block = lir::Block {
-        cfg_attr: cfg_attr.to_string(),
         description: description.clone(),
         root: is_root,
         name: name.to_string(),
@@ -100,14 +94,13 @@ fn get_method(
     blocks: &mut Vec<lir::Block>,
     global_config: &mir::GlobalConfig,
     device_objects: &[mir::Object],
-    mut register_reset_value_function: String,
+    register_reset_value_function: String,
 ) -> Result<Option<lir::BlockMethod>, anyhow::Error> {
     use convert_case::Casing;
 
     Ok(match object {
         mir::Object::Block(
             b @ mir::Block {
-                cfg_attr,
                 description,
                 name,
                 address_offset,
@@ -123,7 +116,6 @@ fn get_method(
             )?);
 
             Some(lir::BlockMethod {
-                cfg_attr: cfg_attr.to_string(),
                 description: description.clone(),
                 name: name.to_case(convert_case::Case::Snake),
                 address: *address_offset,
@@ -135,7 +127,6 @@ fn get_method(
             })
         }
         mir::Object::Register(mir::Register {
-            cfg_attr,
             description,
             name,
             allow_address_overlap,
@@ -145,7 +136,6 @@ fn get_method(
             field_set,
             ..
         }) => Some(lir::BlockMethod {
-            cfg_attr: cfg_attr.to_string(),
             description: description.clone(),
             name: name.to_case(convert_case::Case::Snake),
             address: *address,
@@ -161,7 +151,6 @@ fn get_method(
             },
         }),
         mir::Object::Command(mir::Command {
-            cfg_attr,
             description,
             name,
             allow_address_overlap,
@@ -171,7 +160,6 @@ fn get_method(
             field_set_out,
             ..
         }) => Some(lir::BlockMethod {
-            cfg_attr: cfg_attr.to_string(),
             description: description.clone(),
             name: name.to_case(convert_case::Case::Snake),
             address: *address,
@@ -186,13 +174,11 @@ fn get_method(
             },
         }),
         mir::Object::Buffer(mir::Buffer {
-            cfg_attr,
             description,
             name,
             access,
             address,
         }) => Some(lir::BlockMethod {
-            cfg_attr: cfg_attr.to_string(),
             description: description.clone(),
             name: name.to_case(convert_case::Case::Snake),
             address: *address,
@@ -205,84 +191,6 @@ fn get_method(
                     .expect("The presence of the address type is already checked in a mir pass"),
             },
         }),
-        mir::Object::Ref(mir::RefObject {
-            cfg_attr,
-            description,
-            name,
-            object_override,
-        }) => {
-            let mut reffed_object = search_object(object_override.name(), device_objects)
-                .expect("All refs are validated in a mir pass")
-                .clone();
-
-            match object_override {
-                mir::ObjectOverride::Block(override_values) => {
-                    let reffed_object = reffed_object
-                        .as_block_mut()
-                        .expect("All refs are validated in a mir pass");
-                    reffed_object.cfg_attr = cfg_attr.clone();
-                    reffed_object.description = description.clone();
-
-                    if let Some(address_offset) = override_values.address_offset {
-                        reffed_object.address_offset = address_offset;
-                    }
-                    if let Some(repeat) = override_values.repeat {
-                        reffed_object.repeat = Some(repeat);
-                    }
-                }
-                mir::ObjectOverride::Register(override_values) => {
-                    let reffed_object = reffed_object
-                        .as_register_mut()
-                        .expect("All refs are validated in a mir pass");
-                    reffed_object.cfg_attr = cfg_attr.clone();
-                    reffed_object.description = description.clone();
-
-                    if let Some(access) = override_values.access {
-                        reffed_object.access = access;
-                    }
-                    if let Some(address) = override_values.address {
-                        reffed_object.address = address;
-                    }
-                    if let Some(reset_value) = override_values.reset_value.clone() {
-                        reffed_object.reset_value = Some(reset_value);
-                        register_reset_value_function =
-                            format!("new_as_{}", name.to_case(convert_case::Case::Snake));
-                    }
-                    if let Some(repeat) = override_values.repeat {
-                        reffed_object.repeat = Some(repeat);
-                    }
-                }
-                mir::ObjectOverride::Command(override_values) => {
-                    let reffed_object = reffed_object
-                        .as_command_mut()
-                        .expect("All refs are validated in a mir pass");
-                    reffed_object.cfg_attr = cfg_attr.clone();
-                    reffed_object.description = description.clone();
-
-                    if let Some(address) = override_values.address {
-                        reffed_object.address = address;
-                    }
-                    if let Some(repeat) = override_values.repeat {
-                        reffed_object.repeat = Some(repeat);
-                    }
-                }
-            }
-
-            let mut method = get_method(
-                &reffed_object,
-                blocks,
-                global_config,
-                device_objects,
-                register_reset_value_function,
-            )?
-            .expect("We always ref a type that we can get a method from");
-
-            // We kept the old name in the reffed object so it generates with the correct field sets.
-            // But we do want to have the name of ref to be the method name.
-            method.name = name.to_case(convert_case::Case::Snake);
-
-            Some(method)
-        }
         mir::Object::FieldSet(_) => None,
     })
 }
@@ -296,57 +204,24 @@ fn transform_field_sets<'a>(
     recurse_objects(&device.objects, &mut |object| {
         match object {
             mir::Object::Register(r) => {
-                let ref_reset_overrides = find_refs(device, object)?
-                    .iter()
-                    .map(|r| {
-                        (
-                            &r.name,
-                            r.object_override
-                                .as_register()
-                                .expect("Ref must be register override"),
-                        )
-                    })
-                    .filter_map(|(ref_name, ro)| {
-                        ro.reset_value.as_ref().map(|reset_value| {
-                            (ref_name.clone(), reset_value.as_array().unwrap().clone())
-                        })
-                    })
-                    .collect();
-
                 field_sets.push(transform_field_set(
                     &r.field_set,
                     r.reset_value
                         .as_ref()
                         .map(|rv| rv.as_array().unwrap().clone()),
-                    ref_reset_overrides,
                     mir_enums.clone(),
                 )?);
             }
             mir::Object::Command(c) => {
                 if let Some(field_set_in) = &c.field_set_in {
-                    field_sets.push(transform_field_set(
-                        field_set_in,
-                        None,
-                        Vec::new(),
-                        mir_enums.clone(),
-                    )?);
+                    field_sets.push(transform_field_set(field_set_in, None, mir_enums.clone())?);
                 }
                 if let Some(field_set_out) = &c.field_set_out {
-                    field_sets.push(transform_field_set(
-                        field_set_out,
-                        None,
-                        Vec::new(),
-                        mir_enums.clone(),
-                    )?);
+                    field_sets.push(transform_field_set(field_set_out, None, mir_enums.clone())?);
                 }
             }
             mir::Object::FieldSet(fs) => {
-                field_sets.push(transform_field_set(
-                    fs,
-                    None,
-                    Vec::new(),
-                    mir_enums.clone(),
-                )?);
+                field_sets.push(transform_field_set(fs, None, mir_enums.clone())?);
             }
             _ => {}
         }
@@ -360,7 +235,6 @@ fn transform_field_sets<'a>(
 fn transform_field_set<'a>(
     field_set: &mir::FieldSet,
     reset_value: Option<Vec<u8>>,
-    ref_reset_overrides: Vec<(String, Vec<u8>)>,
     enum_list: impl Iterator<Item = &'a mir::Enum> + Clone,
 ) -> anyhow::Result<lir::FieldSet> {
     let fields = field_set
@@ -368,7 +242,6 @@ fn transform_field_set<'a>(
         .iter()
         .map(|field| {
             let mir::Field {
-                cfg_attr,
                 description,
                 name,
                 access,
@@ -431,7 +304,6 @@ fn transform_field_set<'a>(
                 };
 
             Ok(lir::Field {
-                cfg_attr: cfg_attr.to_string(),
                 description: description.clone(),
                 name: name.clone(),
                 address: field_address.clone(),
@@ -443,7 +315,6 @@ fn transform_field_set<'a>(
         .collect::<Result<_, anyhow::Error>>()?;
 
     Ok(lir::FieldSet {
-        cfg_attr: field_set.cfg_attr.to_string(),
         description: field_set.description.clone(),
         name: field_set.name.clone(),
         byte_order: field_set.byte_order.unwrap(),
@@ -453,7 +324,6 @@ fn transform_field_set<'a>(
         size_bits: field_set.size_bits,
         reset_value: reset_value
             .unwrap_or_else(|| vec![0; field_set.size_bits.div_ceil(8) as usize]),
-        ref_reset_overrides,
         fields,
     })
 }
@@ -484,7 +354,6 @@ fn transform_enum(
     size_bits: usize,
 ) -> anyhow::Result<lir::Enum> {
     let mir::Enum {
-        cfg_attr,
         description,
         name,
         variants,
@@ -508,7 +377,6 @@ fn transform_enum(
         .iter()
         .map(|v| {
             let mir::EnumVariant {
-                cfg_attr,
                 description,
                 name,
                 value,
@@ -529,7 +397,6 @@ fn transform_enum(
             };
 
             Ok(lir::EnumVariant {
-                cfg_attr: cfg_attr.to_string(),
                 description: description.clone(),
                 name: name.to_string(),
                 number,
@@ -540,7 +407,6 @@ fn transform_enum(
         .collect::<Result<_, anyhow::Error>>()?;
 
     Ok(lir::Enum {
-        cfg_attr: cfg_attr.to_string(),
         description: description.clone(),
         name: name.to_string(),
         base_type,
@@ -560,7 +426,6 @@ fn repeat_to_method_kind(repeat: &Option<mir::Repeat>) -> lir::BlockMethodKind {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BorrowedBlock<'o> {
-    pub cfg_attr: &'o mir::Cfg,
     pub description: &'o String,
     pub name: &'o String,
     pub address_offset: &'o i128,
@@ -571,7 +436,6 @@ pub struct BorrowedBlock<'o> {
 impl<'o> From<&'o mir::Block> for BorrowedBlock<'o> {
     fn from(value: &'o mir::Block) -> Self {
         let mir::Block {
-            cfg_attr,
             description,
             name,
             address_offset,
@@ -580,7 +444,6 @@ impl<'o> From<&'o mir::Block> for BorrowedBlock<'o> {
         } = value;
 
         Self {
-            cfg_attr,
             description,
             name,
             address_offset,
@@ -620,23 +483,4 @@ fn find_best_internal_address_type(device: &mir::Device) -> Integer {
             _ => unreachable!(),
         }
     }
-}
-
-fn find_refs<'d>(
-    device: &'d mir::Device,
-    source_object: &mir::Object,
-) -> anyhow::Result<Vec<&'d mir::RefObject>> {
-    let mut found_refs = Vec::new();
-
-    recurse_objects(&device.objects, &mut |object| {
-        if let mir::Object::Ref(ref_object) = object {
-            if ref_object.object_override.name() == source_object.name() {
-                found_refs.push(ref_object);
-            }
-        }
-
-        Ok(())
-    })?;
-
-    Ok(found_refs)
 }

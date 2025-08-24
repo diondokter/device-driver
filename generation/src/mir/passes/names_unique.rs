@@ -76,7 +76,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
 mod tests {
     use convert_case::Boundary;
 
-    use crate::mir::{Buffer, Cfg, EnumVariant, Field, FieldSet, GlobalConfig, Object, Register};
+    use crate::mir::{Buffer, EnumVariant, Field, FieldSet, GlobalConfig, Object, Register};
 
     use super::*;
 
@@ -257,12 +257,10 @@ mod tests {
                                 variants: vec![
                                     EnumVariant {
                                         name: "Variant".into(),
-                                        cfg_attr: Cfg::new(Some("windows")),
                                         ..Default::default()
                                     },
                                     EnumVariant {
                                         name: "Variant".into(),
-                                        cfg_attr: Cfg::new(Some("unix")),
                                         ..Default::default()
                                     },
                                 ],
