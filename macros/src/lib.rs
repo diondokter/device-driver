@@ -8,7 +8,7 @@ use std::{
 
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use syn::{LitStr, braced, spanned::Spanned};
+use syn::LitStr;
 
 /// Macro to implement the device driver.
 ///
@@ -18,9 +18,9 @@ use syn::{LitStr, braced, spanned::Spanned};
 /// ```rust,ignore
 /// # use device_driver_macros::create_device;
 /// create_device!(
-///     kdl: {
+///     kdl: "
 ///         // KDL input
-///     }
+///     "
 /// );
 /// ```
 ///
@@ -39,19 +39,25 @@ pub fn create_device(item: TokenStream) -> TokenStream {
     };
 
     match input.generation_type {
-        GenerationType::Kdl(tokens) => {
+        GenerationType::Kdl(kdl_input) => {
             let (file_contents, span) = if rustversion::cfg!(nightly) {
-                std::fs::read_to_string(Path::new(&tokens.span().file()))
-                    .map(|fc| (fc.replace("\r\n", "\n"), Some(tokens.span().byte_range())))
-                    .unwrap_or_else(|_| (tokens.to_string(), None))
+                std::fs::read_to_string(Path::new(&kdl_input.span().file()))
+                    .map(|fc| {
+                        (
+                            // Bug in Rust? The byte range is only correct when we remove the \r from newlines
+                            fc.replace("\r\n", "\n"),
+                            Some(kdl_input.span().byte_range()),
+                        )
+                    })
+                    .unwrap_or_else(|_| (kdl_input.value(), None))
             } else {
-                (tokens.to_string(), None)
+                (kdl_input.value(), None)
             };
 
             let (output, diagnostics) = device_driver_generation::transform_kdl(
                 &file_contents,
                 span.map(device_driver_generation::miette::SourceSpan::from),
-                Path::new(&tokens.span().file()),
+                Path::new(&kdl_input.span().file()),
             );
 
             diagnostics.print_to(stdout().lock()).unwrap();
@@ -101,7 +107,7 @@ struct Input {
 }
 
 enum GenerationType {
-    Kdl(proc_macro2::TokenStream),
+    Kdl(syn::LitStr),
     Manifest(LitStr),
 }
 
@@ -113,10 +119,7 @@ impl syn::parse::Parse for Input {
             input.parse::<kw::kdl>()?;
             input.parse::<syn::Token![:]>()?;
 
-            let braced;
-            braced!(braced in input);
-
-            let tokens = braced.parse()?;
+            let tokens = input.parse()?;
 
             Ok(Self {
                 generation_type: GenerationType::Kdl(tokens),

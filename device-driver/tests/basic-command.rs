@@ -27,7 +27,7 @@ impl CommandInterface for DeviceInterface {
 }
 
 device_driver::create_device!(
-    kdl: {
+    kdl: "
         device MyTestDevice {
             default-byte-order LE
             command-address-type u8
@@ -64,7 +64,7 @@ device_driver::create_device!(
                 }
             }
         }
-    }
+    "
 );
 
 #[test]

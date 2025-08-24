@@ -41,7 +41,7 @@ impl BufferInterface for DeviceInterface {
 }
 
 device_driver::create_device!(
-    kdl: {
+    kdl: "
         device MyTestDevice {
             default-byte-order LE
             buffer-address-type u8
@@ -56,7 +56,7 @@ device_driver::create_device!(
                 address 1
             }
         }
-    }
+    "
 );
 
 #[test]

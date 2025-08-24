@@ -25,13 +25,15 @@ pub fn transform(
 ) -> Vec<Device> {
     let source_code = NamedSourceCode::new(file_path.display().to_string(), file_contents.into());
 
-    let mut document = match kdl::KdlDocument::parse(if let Some(span) = source_span {
+    let file_subslice = if let Some(span) = source_span {
         file_contents
             .get(span.offset()..span.offset() + span.len())
             .unwrap()
     } else {
         file_contents
-    }) {
+    };
+
+    let mut document = match kdl::KdlDocument::parse(file_subslice) {
         Ok(document) => document,
         Err(e) => {
             for diagnostic in e.diagnostics {

@@ -1,7 +1,7 @@
 // Compile test only
 
 device_driver::create_device!(
-    kdl: {
+    kdl: "
         device MyTestDevice {
             register-address-type u8
             register Foo {
@@ -18,7 +18,7 @@ device_driver::create_device!(
                 }
             }
         }
-    }
+    "
 );
 
 type X = u8;

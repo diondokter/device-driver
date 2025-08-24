@@ -1,5 +1,5 @@
 device_driver::create_device!(
-    kdl: {
+    kdl: "
         device MyTestDevice {
             default-byte-order LE
             register-address-type u8
@@ -13,7 +13,7 @@ device_driver::create_device!(
                 }
             }
         }
-    }
+    "
 );
 
 #[cfg(test)]
