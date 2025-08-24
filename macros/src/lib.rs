@@ -40,7 +40,7 @@ pub fn create_device(item: TokenStream) -> TokenStream {
 
     match input.generation_type {
         GenerationType::Kdl(kdl_input) => {
-            let (file_contents, span) = if rustversion::cfg!(nightly) {
+            let (file_contents, span) = if cfg!(feature = "nightly") && rustversion::cfg!(nightly) {
                 std::fs::read_to_string(Path::new(&kdl_input.span().file()))
                     .map(|fc| {
                         (
