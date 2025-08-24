@@ -23,12 +23,14 @@ fn accept() {
         let test_case = test_case.unwrap();
 
         if test_case.file_name().to_string_lossy().ends_with("_") {
-            println!("{} (ignored because case names ends with `_`)", test_case.path().display());
+            println!(
+                "{} (ignored because case names ends with `_`)",
+                test_case.path().display()
+            );
             continue;
         } else {
             println!("{}", test_case.path().display());
         }
-
 
         let input_paths: Vec<_> = std::fs::read_dir(test_case.path())
             .unwrap()

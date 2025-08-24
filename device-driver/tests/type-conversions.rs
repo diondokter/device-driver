@@ -84,7 +84,7 @@ device_driver::create_device!(
                     (uint:GenEnum?)convert_generated_copied_too_large @16:14
                 }
             }
-        }  
+        }
     }
 );
 

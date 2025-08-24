@@ -82,7 +82,11 @@ pub fn set_miette_hook(user_facing: bool) {
                             unicode.advice = "advice:".into();
                             unicode
                         },
-                        styles: if user_facing {miette::ThemeStyles::rgb()} else {miette::ThemeStyles::none()},
+                        styles: if user_facing {
+                            miette::ThemeStyles::rgb()
+                        } else {
+                            miette::ThemeStyles::none()
+                        },
                     });
 
                 if !user_facing {

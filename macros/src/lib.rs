@@ -51,7 +51,7 @@ pub fn create_device(item: TokenStream) -> TokenStream {
             let (output, diagnostics) = device_driver_generation::transform_kdl(
                 &file_contents,
                 span.map(device_driver_generation::miette::SourceSpan::from),
-                &Path::new(&tokens.span().file()),
+                Path::new(&tokens.span().file()),
             );
 
             diagnostics.print_to(stdout().lock()).unwrap();

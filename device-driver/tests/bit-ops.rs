@@ -3,7 +3,7 @@ device_driver::create_device!(
         device MyTestDevice {
             default-byte-order LE
             register-address-type u8
-            
+
             register Foo {
                 address 0
                 reset-value 0xFFFFFFFF

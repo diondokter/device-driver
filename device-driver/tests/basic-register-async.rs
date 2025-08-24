@@ -29,7 +29,7 @@ device_driver::create_device!(
     kdl: {
         device MyTestDevice {
             register-address-type u8
-            
+
             register Foo {
                 address 0
                 fields size-bits=8 {
