@@ -68,13 +68,16 @@ fn collect_into_blocks(
     let mut methods = Vec::new();
 
     for object in objects {
-        let method = get_method(
+        let Some(method) = get_method(
             object,
             &mut blocks,
             global_config,
             device_objects,
             "new".to_string(),
-        )?;
+        )?
+        else {
+            continue;
+        };
 
         methods.push(method);
     }
@@ -98,7 +101,7 @@ fn get_method(
     global_config: &mir::GlobalConfig,
     device_objects: &[mir::Object],
     mut register_reset_value_function: String,
-) -> Result<lir::BlockMethod, anyhow::Error> {
+) -> Result<Option<lir::BlockMethod>, anyhow::Error> {
     use convert_case::Casing;
 
     Ok(match object {
@@ -119,7 +122,7 @@ fn get_method(
                 device_objects,
             )?);
 
-            lir::BlockMethod {
+            Some(lir::BlockMethod {
                 cfg_attr: cfg_attr.to_string(),
                 description: description.clone(),
                 name: name.to_case(convert_case::Case::Snake),
@@ -129,7 +132,7 @@ fn get_method(
                 method_type: lir::BlockMethodType::Block {
                     name: name.to_string(),
                 },
-            }
+            })
         }
         mir::Object::Register(mir::Register {
             cfg_attr,
@@ -141,7 +144,7 @@ fn get_method(
             repeat,
             field_set,
             ..
-        }) => lir::BlockMethod {
+        }) => Some(lir::BlockMethod {
             cfg_attr: cfg_attr.to_string(),
             description: description.clone(),
             name: name.to_case(convert_case::Case::Snake),
@@ -156,7 +159,7 @@ fn get_method(
                     .expect("The presence of the address type is already checked in a mir pass"),
                 reset_value_function: register_reset_value_function.clone(),
             },
-        },
+        }),
         mir::Object::Command(mir::Command {
             cfg_attr,
             description,
@@ -167,7 +170,7 @@ fn get_method(
             field_set_in,
             field_set_out,
             ..
-        }) => lir::BlockMethod {
+        }) => Some(lir::BlockMethod {
             cfg_attr: cfg_attr.to_string(),
             description: description.clone(),
             name: name.to_case(convert_case::Case::Snake),
@@ -181,14 +184,14 @@ fn get_method(
                     .command_address_type
                     .expect("The presence of the address type is already checked in a mir pass"),
             },
-        },
+        }),
         mir::Object::Buffer(mir::Buffer {
             cfg_attr,
             description,
             name,
             access,
             address,
-        }) => lir::BlockMethod {
+        }) => Some(lir::BlockMethod {
             cfg_attr: cfg_attr.to_string(),
             description: description.clone(),
             name: name.to_case(convert_case::Case::Snake),
@@ -201,7 +204,7 @@ fn get_method(
                     .buffer_address_type
                     .expect("The presence of the address type is already checked in a mir pass"),
             },
-        },
+        }),
         mir::Object::Ref(mir::RefObject {
             cfg_attr,
             description,
@@ -271,14 +274,16 @@ fn get_method(
                 global_config,
                 device_objects,
                 register_reset_value_function,
-            )?;
+            )?
+            .expect("We always ref a type that we can get a method from");
 
             // We kept the old name in the reffed object so it generates with the correct field sets.
             // But we do want to have the name of ref to be the method name.
             method.name = name.to_case(convert_case::Case::Snake);
 
-            method
+            Some(method)
         }
+        mir::Object::FieldSet(_) => None,
     })
 }
 
@@ -334,6 +339,14 @@ fn transform_field_sets<'a>(
                         mir_enums.clone(),
                     )?);
                 }
+            }
+            mir::Object::FieldSet(fs) => {
+                field_sets.push(transform_field_set(
+                    fs,
+                    None,
+                    Vec::new(),
+                    mir_enums.clone(),
+                )?);
             }
             _ => {}
         }

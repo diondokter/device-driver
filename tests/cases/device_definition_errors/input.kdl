@@ -92,7 +92,7 @@ device FooD6 {
     register foor8 {
         address 4
         /// This fieldset has a custom name
-        (CustomFieldSetName)fields size-bits=8 {
+        fields CustomFieldSetName size-bits=8 {
             bar RW RO
             bar @a @-1:8 @3 @3:0
             baz @7:4 blah
@@ -178,5 +178,9 @@ device FooD6 {
         buffer b2foo {
             address 42
         }
+    }
+    fieldset
+    fieldset fs1 size-bits=16 byte-order=LE {
+        value @15:0
     }
 }
