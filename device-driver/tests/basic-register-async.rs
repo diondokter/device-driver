@@ -26,17 +26,17 @@ impl AsyncRegisterInterface for DeviceInterface {
 }
 
 device_driver::create_device!(
-    device_name: MyTestDevice,
-    dsl: {
-        config {
-            type RegisterAddressType = u8;
+    kdl: {
+        device MyTestDevice {
+            register-address-type u8
+            
+            register Foo {
+                address 0
+                fields size-bits=8 {
+                    (bool)value0 @0
+                }
+            }
         }
-        register Foo {
-            const ADDRESS = 0;
-            const SIZE_BITS = 8;
-
-            value0: bool = 0..1,
-        },
     }
 );
 

@@ -24,23 +24,7 @@ struct Args {
 fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
 
-    miette::set_hook(Box::new(|_| {
-        Box::new(
-            miette::MietteHandlerOpts::new()
-                .graphical_theme(miette::GraphicalTheme {
-                    characters: {
-                        let mut unicode = miette::ThemeCharacters::unicode();
-                        unicode.error = "error:".into();
-                        unicode.warning = "warning:".into();
-                        unicode.advice = "advice:".into();
-                        unicode
-                    },
-                    styles: miette::ThemeStyles::rgb(),
-                })
-                .build(),
-        )
-    }))
-    .unwrap();
+    device_driver_generation::reporting::set_miette_hook(true);
 
     let extension = args
         .manifest_path
@@ -122,6 +106,7 @@ impl GenType {
             GenType::Rust => match manifest_type {
                 "kdl" => Ok(device_driver_generation::transform_kdl(
                     manifest_contents,
+                    None,
                     manifest_path,
                 )),
                 unknown => {

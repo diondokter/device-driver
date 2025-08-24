@@ -12,23 +12,42 @@ use crate::{
         Register, Repeat, ResetValue,
     },
     reporting::{
-        Diagnostics, NamedSourceCode,
+        self, Diagnostics, NamedSourceCode,
         errors::{self, UnexpectedEntries},
     },
 };
 
-pub fn transform(source: &str, file_path: &Path, diagnostics: &mut Diagnostics) -> Vec<Device> {
-    let source_code = NamedSourceCode::new(file_path.display().to_string(), source.into());
+pub fn transform(
+    file_contents: &str,
+    source_span: Option<SourceSpan>,
+    file_path: &Path,
+    diagnostics: &mut Diagnostics,
+) -> Vec<Device> {
+    let source_code = NamedSourceCode::new(file_path.display().to_string(), file_contents.into());
 
-    let document = match kdl::KdlDocument::parse(source) {
+    let mut document = match kdl::KdlDocument::parse(if let Some(span) = source_span {
+        file_contents
+            .get(span.offset()..span.offset() + span.len())
+            .unwrap()
+    } else {
+        file_contents
+    }) {
         Ok(document) => document,
         Err(e) => {
             for diagnostic in e.diagnostics {
-                diagnostics.add(diagnostic);
+                diagnostics.add(reporting::ConvertedKdlDiagnostic::from_original_and_span(
+                    diagnostic,
+                    source_code.clone(),
+                    source_span,
+                ));
             }
             return Vec::new();
         }
     };
+
+    if let Some(source_span) = source_span {
+        reporting::kdl_span_changer::change_document_span(&mut document, &source_span);
+    }
 
     document
         .nodes()

@@ -48,4 +48,4 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - uses: dtolnay/rust-toolchain@stable
-    - run: cargo run -- --manifest device-driver/tests/basic-register.yaml --output generated.rs --device-name MyTestDevice
+    - run: cargo run -- --manifest device-driver/tests/basic-register.kdl --output generated.rs

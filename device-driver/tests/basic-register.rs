@@ -47,35 +47,31 @@ impl RegisterInterface for DeviceInterface {
 }
 
 device_driver::create_device!(
-    device_name: MyTestDevice,
-    dsl: {
-        config {
-            type RegisterAddressType = u8;
-            type DefaultByteOrder = LE;
-        }
-        /// This is the Foo register
-        register Foo {
-            const ADDRESS = 0;
-            const SIZE_BITS = 24;
-
-            /// This is a bool!
-            value0: bool = 0,
-            value1: uint = 1..16,
-            value2: int = 17..24,
-        },
-        /// This is the Foo register
-        register FooRepeated {
-            const ADDRESS = 3;
-            const SIZE_BITS = 24;
-            const REPEAT = {
-                count: 4,
-                stride: 3,
-            };
-
-            /// This is a bool!
-            value0: bool = 0,
-            value1: uint = 1..16,
-            value2: int = 16..24,
+    kdl: {
+        device MyTestDevice {
+            default-byte-order LE
+            register-address-type u8
+            /// This is the Foo register
+            register Foo {
+                address 0
+                fields size-bits=24 {
+                    /// This is a bool!
+                    (bool)value0 @0
+                    (uint)value1 @15:1
+                    (int)value2 @23:17
+                }
+            }
+            /// This is the Foo register
+            register FooRepeated {
+                address 3
+                repeat count=4 stride=3
+                fields size-bits=24 {
+                    /// This is a bool!
+                    (bool)value0 @0
+                    (uint)value1 @15:1
+                    (int)value2 @23:16
+                }
+            }
         }
     }
 );

@@ -1,10 +1,14 @@
 #![doc = include_str!(concat!("../", env!("CARGO_PKG_README")))]
 
-use std::{fs::File, io::Read, path::PathBuf};
+use std::{
+    fs::File,
+    io::{Read, stdout},
+    path::{Path, PathBuf},
+};
 
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use syn::{LitStr, braced};
+use syn::{LitStr, braced, spanned::Spanned};
 
 /// Macro to implement the device driver.
 ///
@@ -35,8 +39,24 @@ pub fn create_device(item: TokenStream) -> TokenStream {
     };
 
     match input.generation_type {
-        GenerationType::Kdl(_tokens) => {
-            todo!("Inline KDL is not yet supported")
+        GenerationType::Kdl(tokens) => {
+            let (file_contents, span) = if rustversion::cfg!(nightly) {
+                std::fs::read_to_string(Path::new(&tokens.span().file()))
+                    .map(|fc| (fc.replace("\r\n", "\n"), Some(tokens.span().byte_range())))
+                    .unwrap_or_else(|_| (tokens.to_string(), None))
+            } else {
+                (tokens.to_string(), None)
+            };
+
+            let (output, diagnostics) = device_driver_generation::transform_kdl(
+                &file_contents,
+                span.map(device_driver_generation::miette::SourceSpan::from),
+                &Path::new(&tokens.span().file()),
+            );
+
+            diagnostics.print_to(stdout().lock()).unwrap();
+
+            output.parse().unwrap()
         }
         GenerationType::Manifest(path) => {
             let result: Result<String, syn::Error> = (|| {
@@ -60,8 +80,12 @@ pub fn create_device(item: TokenStream) -> TokenStream {
                     .read_to_string(&mut file_contents)
                     .unwrap();
 
-                // TODO: print out diagnostics
-                Ok(device_driver_generation::transform_kdl(&file_contents, &path).0)
+                let (output, diagnostics) =
+                    device_driver_generation::transform_kdl(&file_contents, None, &path);
+
+                diagnostics.print_to(stdout().lock()).unwrap();
+
+                Ok(output)
             })();
 
             match result {

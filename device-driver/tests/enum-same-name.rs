@@ -1,23 +1,22 @@
 // Compile test only
 
 device_driver::create_device!(
-    device_name: MyTestDevice,
-    dsl: {
-        config {
-            type RegisterAddressType = u8;
-        }
-        register Foo {
-            const ADDRESS = 0;
-            const SIZE_BITS = 8;
-
-            // Same name as register
-            value: uint as enum Foo {
-                A, B, C, D
-            } = 0..2,
-            // Check that we can still use absolute paths
-            value2: uint as crate::X = 2..4,
-            // We can use external crates with ::
-            value3: uint as ::core::primitive::u8 = 4..6,
+    kdl: {
+        device MyTestDevice {
+            register-address-type u8
+            register Foo {
+                address 0
+                fields size-bits=8 {
+                    (uint:Foo)value @1:0 {
+                        A
+                        B
+                        C
+                        D
+                    }
+                    (uint:crate::X)value2 @3:2
+                    (uint:::core::primitive::u8)value3 @5:4
+                }
+            }
         }
     }
 );

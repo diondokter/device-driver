@@ -12,16 +12,18 @@ use itertools::Itertools;
 
 use crate::reporting::Diagnostics;
 
+pub use miette;
+
 mod kdl;
 mod lir;
 pub mod mir;
 
 pub mod reporting;
 
-pub fn transform_kdl(source: &str, file_path: &Path) -> (String, Diagnostics) {
+pub fn transform_kdl(file_contents: &str, source_span: Option<miette::SourceSpan>, file_path: &Path) -> (String, Diagnostics) {
     let mut reports = Diagnostics::new();
 
-    let mir_devices = crate::kdl::transform(source, file_path, &mut reports);
+    let mir_devices = crate::kdl::transform(file_contents, source_span, file_path, &mut reports);
 
     let device_count = mir_devices.len();
 

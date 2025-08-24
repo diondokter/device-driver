@@ -1,11 +1,4 @@
-use std::{
-    ops::Deref,
-    path::Path,
-    sync::{
-        LazyLock,
-        atomic::{AtomicBool, Ordering},
-    },
-};
+use std::{ops::Deref, path::Path, sync::LazyLock};
 
 use regex::Regex;
 
@@ -14,7 +7,7 @@ pub const OUTPUT_HEADER: &str = include_str!("output_header.txt");
 include!(concat!(env!("OUT_DIR"), "/test_cases.rs"));
 
 pub fn run_test(input_paths: &[&Path], output_path: &Path) {
-    set_miette_hook();
+    device_driver_generation::reporting::set_miette_hook(false);
 
     let expected_output = std::fs::read_to_string(output_path).unwrap();
 
@@ -26,6 +19,7 @@ pub fn run_test(input_paths: &[&Path], output_path: &Path) {
             "kdl" => {
                 let (transformed, diagnostics) = device_driver_generation::transform_kdl(
                     &input,
+                    None,
                     input_path
                         .strip_prefix(std::env::current_dir().unwrap())
                         .unwrap(),
@@ -39,7 +33,7 @@ pub fn run_test(input_paths: &[&Path], output_path: &Path) {
 
         let diagnostics_path = input_path
             .with_file_name("diagnostics")
-            .with_extension(input_extension + ".txt");
+            .with_extension("txt");
         let expected_diagnostics = std::fs::read_to_string(&diagnostics_path).unwrap();
 
         println!("Expected: {}", expected_diagnostics.contains("\r\n"));
@@ -90,35 +84,6 @@ pub fn compile_output(output_path: &Path) -> String {
     let output = cmd.output().unwrap();
 
     String::from_utf8_lossy(&output.stderr).to_string()
-}
-
-pub fn set_miette_hook() {
-    static INITIALIZED: AtomicBool = AtomicBool::new(false);
-
-    if INITIALIZED
-        .compare_exchange(false, true, Ordering::Relaxed, Ordering::Relaxed)
-        .is_ok()
-    {
-        miette::set_hook(Box::new(|_| {
-            Box::new(
-                miette::MietteHandlerOpts::new()
-                    .graphical_theme(miette::GraphicalTheme {
-                        characters: {
-                            let mut unicode = miette::ThemeCharacters::unicode();
-                            unicode.error = "error:".into();
-                            unicode.warning = "warning:".into();
-                            unicode.advice = "advice:".into();
-                            unicode
-                        },
-                        styles: miette::ThemeStyles::none(),
-                    })
-                    .terminal_links(false)
-                    .width(120)
-                    .build(),
-            )
-        }))
-        .unwrap();
-    }
 }
 
 static DIAGNOSTICS_PATH_SEPARATOR_REGEX: LazyLock<Regex> =

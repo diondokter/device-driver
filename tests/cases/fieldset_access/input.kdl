@@ -1,0 +1,30 @@
+device Device {
+    default-byte-order LE
+    register-address-type u8
+    register foo_ro {
+        access RO
+        address 0
+        fields size-bits=64 {
+            (uint)value_ro RO @15:0
+            (int)value_rw @31:16
+            (bool)value_wo WO @32
+        }
+    }
+    register foo_rw {
+        address 1
+        fields size-bits=64 {
+            (uint)value_ro RO @15:0
+            (int)value_rw @31:16
+            (bool)value_wo WO @32
+        }
+    }
+    register foo_wo {
+        access WO
+        address 2
+        fields size-bits=64 {
+            (uint)value_ro RO @15:0
+            (int)value_rw @31:16
+            (bool)value_wo WO @32
+        }
+    }
+}

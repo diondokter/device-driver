@@ -27,49 +27,43 @@ impl CommandInterface for DeviceInterface {
 }
 
 device_driver::create_device!(
-    device_name: MyTestDevice,
-    dsl: {
-        config {
-            type CommandAddressType = u8;
-            type DefaultByteOrder = LE;
+    kdl: {
+        device MyTestDevice {
+            default-byte-order LE
+            command-address-type u8
+            /// A simple command
+            command Simple {
+                address 0
+            }
+            /// A command with only inputs
+            command Input {
+                address 1
+                in size-bits=16 {
+                    /// The value!
+                    (uint)val @15:0
+                }
+            }
+            /// A command with only outputs
+            command Output {
+                address 2
+                out size-bits=8 {
+                    /// The value!
+                    (uint)val @7:0
+                }
+            }
+            /// A command with inputs and outputs
+            command InOut {
+                address 3
+                in size-bits=16 {
+                    /// The value!
+                    (uint)val @15:0
+                }
+                out size-bits=8 {
+                    /// The value!
+                    (uint)val @7:0
+                }
+            }
         }
-        /// A simple command
-        command Simple = 0,
-        /// A command with only inputs
-        command Input {
-            const ADDRESS = 1;
-            const SIZE_BITS_IN = 16;
-
-            in {
-                /// The value!
-                val: uint = 0..16,
-            }
-        },
-        /// A command with only outputs
-        command Output {
-            const ADDRESS = 2;
-            const SIZE_BITS_OUT = 8;
-
-            out {
-                /// The value!
-                val: uint = 0..8,
-            }
-        },
-        /// A command with inputs and outputs
-        command InOut {
-            const ADDRESS = 3;
-            const SIZE_BITS_IN = 16;
-            const SIZE_BITS_OUT = 8;
-
-            in {
-                /// The value!
-                val: uint = 0..16,
-            }
-            out {
-                /// The value!
-                val: uint = 0..8,
-            }
-        },
     }
 );
 
