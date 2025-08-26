@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Registers - device-driver-book</title>
+        <title>Writing an interface - device-driver-book</title>
 
 
         <!-- Custom HTML head -->
@@ -12,34 +12,34 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff">
 
-        <link rel="icon" href="favicon.svg">
-        <link rel="shortcut icon" href="favicon.png">
-        <link rel="stylesheet" href="css/variables.css">
-        <link rel="stylesheet" href="css/general.css">
-        <link rel="stylesheet" href="css/chrome.css">
-        <link rel="stylesheet" href="css/print.css" media="print">
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
 
         <!-- Fonts -->
-        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
-        <link rel="stylesheet" href="fonts/fonts.css">
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
 
         <!-- Highlight.js Stylesheets -->
-        <link rel="stylesheet" id="highlight-css" href="highlight.css">
-        <link rel="stylesheet" id="tomorrow-night-css" href="tomorrow-night.css">
-        <link rel="stylesheet" id="ayu-highlight-css" href="ayu-highlight.css">
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
 
         <!-- Custom theme stylesheets -->
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
-            const path_to_root = "";
+            const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex.js";
+            window.path_to_searchindex_js = "../searchindex.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc.js"></script>
+        <script src="../toc.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -106,7 +106,7 @@
             <!-- populated by js -->
             <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
             <noscript>
-                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
             </noscript>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
@@ -141,7 +141,7 @@
                     <h1 class="menu-title">device-driver-book</h1>
 
                     <div class="right-buttons">
-                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
                         <a href="https://github.com/diondokter/device-driver" title="Git repository" aria-label="Git repository">
@@ -245,232 +245,117 @@
 }
 
 </style>
-<h1 id="registers"><a class="header" href="#registers">Registers</a></h1>
-<p>A register is a piece of addressable memory stored on the device.</p>
-<p>It is accessed as a function on the block it's part of. The function returns a <a href="https://docs.rs/device-driver/latest/device_driver/struct.RegisterOperation.html"><code>RegisterOperation</code></a> which can be used to read/write/modify the register.</p>
-<p>Example usage:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+<h1 id="writing-an-interface"><a class="header" href="#writing-an-interface">Writing an interface</a></h1>
+<div class="mdbook-alerts mdbook-alerts-important">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  important
+</p>
+<p>The device-driver crate and the generated code don't know anything about how to talk to your device. This means we need to teach it about the interface it has!</p>
+</div>
+<p>Let's first create our device:</p>
+<pre><pre class="playground"><code class="language-rust no_run"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>let mut device = MyDevice::new(DeviceInterface::new());
-
-device.foo().write(|reg| reg.set_bar(12345)).unwrap();
-assert_eq!(device.foo().read().unwrap().bar(), 12345);
+</span>device_driver::create_device!(
+    device_name: MyDevice,
+    dsl: {
+        // ...
+    }
+);
 <span class="boring">}</span></code></pre></pre>
-<p>Below are minimal and full examples of how registers can be defined.
-Only one field is shown, but more can be added. Details about the fields can be read in their own chapter.</p>
-<ul>
-<li><a href="#registers">Registers</a>
-<ul>
-<li><a href="#dsl">DSL</a></li>
-<li><a href="#manifest">Manifest</a></li>
-<li><a href="#required">Required</a>
-<ul>
-<li><a href="#address"><code>address</code></a></li>
-<li><a href="#size_bits"><code>size_bits</code></a></li>
-<li><a href="#type-manifest-only"><code>type</code> (manifest only)</a></li>
-</ul>
-</li>
-<li><a href="#optional">Optional</a>
-<ul>
-<li><a href="#cfg-or-cfg"><code>cfg</code> or <code>#[cfg(...)]</code></a></li>
-<li><a href="#description-or-doc--"><code>description</code> or <code>#[doc = ""]</code></a></li>
-<li><a href="#access"><code>access</code></a></li>
-<li><a href="#byte_order"><code>byte_order</code></a></li>
-<li><a href="#bit_order"><code>bit_order</code></a></li>
-<li><a href="#reset_value"><code>reset_value</code></a></li>
-<li><a href="#repeat"><code>repeat</code></a></li>
-<li><a href="#allow_bit_overlap"><code>allow_bit_overlap</code></a></li>
-<li><a href="#allow_address_overlap"><code>allow_address_overlap</code></a></li>
-<li><a href="#fields-manifest-only"><code>fields</code> (manifest only)</a></li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-<h2 id="dsl"><a class="header" href="#dsl">DSL</a></h2>
-<p>Minimal:</p>
+<p>This generates a top-level block <code>MyDevice</code> which has a <code>new</code> function that takes ownership of an interface.
+We have to create our own interface type that we can pass into it. This type will implement the logic to communicate with the device.</p>
+<p>In this example, let's assume a register 'foo' was defined and see what happens:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>register Foo {
-    const ADDRESS = 3;
-    const SIZE_BITS = 16;
+</span>/// Our interface struct that owns the bus.
+pub struct MyDeviceInterface&lt;BUS&gt; {
+    pub bus: BUS,
+}
 
-    value: uint = 0..16,
+fn try_out() {
+    // Initialize the bus somehow. Your HAL should help you there
+    let bus = init_bus();
+    // Create our custom interface struct
+    let interface = MyDeviceInterface { bus };
+
+    // Create the device driver based on the interface
+    let mut my_device = MyDevice::new(interface);
+
+    // Try to read the foo register. This results in an error
+    let _ = my_device.foo().read();
+    // ERROR:               ^^^^ method cannot be called due to unsatisfied trait bounds
+    //
+    // note: the following trait bounds were not satisfied:
+    //       `DeviceInterface: RegisterInterface`
 }
 <span class="boring">}</span></code></pre></pre>
-<p>Full:</p>
+<p>This example doesn't compile and outputs an error. Luckily the compiler tells us what's wrong. The problem is that we provided a device interface that doesn't provide a way to read or write registers, but we ask the driver to read a register.</p>
+<p>The error tells us the device interface should implement the <code>RegisterInterface</code> trait.</p>
+<div class="mdbook-alerts mdbook-alerts-important">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  important
+</p>
+<p>Every kind of operation has its own trait. Find the up-to-date docs of them on <a href="https://docs.rs/device-driver/latest/device_driver/#traits">docs.rs</a>.</p>
+<p>There's an interface for register, command and buffer.</p>
+</div>
+<p>Of each of the traits there is an async version too. When implemented the async versions of the operations can be used. They've got the same name as the normal operations, except they end with <code>_async</code>. The register <code>.read()</code> then becomes <code>.read_async()</code>.</p>
+<p>Let's make our example complete by implementing the <code>RegisterInterface</code>:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>/// Register docs
-#[cfg(feature = "bar")]
-register Foo {
-    type Access = WO;
-    type ByteOrder = LE;
-    type BitOrder = LSB0;
-    const ADDRESS = 3;
-    const SIZE_BITS = 16;
-    const RESET_VALUE = 0x1234;  // Or [0x34, 0x12]
-    const REPEAT = {
-        count: 4,
-        stride: 2
-    };
-    const ALLOW_BIT_OVERLAP = false;
-    const ALLOW_ADDRESS_OVERLAP = false;
+</span>pub struct MyDeviceI2cInterface&lt;BUS&gt; {
+    pub bus: BUS,
+}
 
-    value: uint = 0..16,
+// See the docs of the traits to get more up-to-date information about how and what to impl
+impl&lt;BUS: embedded_hal::i2c::I2C&gt; device_driver::RegisterInterface for MyDeviceI2cInterface&lt;BUS&gt; {
+    // ...
+}
+
+// For the async I2C we can implement the async register interface
+impl&lt;BUS: embedded_hal_async::i2c::I2C&gt; device_driver::AsyncRegisterInterface for MyDeviceI2cInterface&lt;BUS&gt; {
+    // ...
+}
+
+fn try_out_sync() {
+    let bus = init_sync_bus(); // Implements the I2c trait
+    let interface = MyDeviceI2cInterface { bus };
+
+    let mut my_device = MyDevice::new(interface);
+
+    let _ = my_device.foo().read();
+}
+
+async fn try_out_async() {
+    let bus = init_async_bus(); // Implements the async I2c trait
+    let interface = MyDeviceI2cInterface { bus };
+
+    let mut my_device = MyDevice::new(interface);
+
+    let _ = my_device.foo().read_async().await;
 }
 <span class="boring">}</span></code></pre></pre>
+<p>We've now covered how to create an interface type and implement the interface trait you need on it.</p>
+<p>Some chips can have multiple interfaces, like both SPI and I2C or SPI and QSPI. You can choose to support them in one type or make separate types for them.</p>
 <div class="mdbook-alerts mdbook-alerts-tip">
 <p class="mdbook-alerts-title">
   <span class="mdbook-alerts-icon"></span>
   tip
 </p>
-<p><code>type</code> or <code>const</code>, which one is it?<br />
-It's <code>type</code> if it's overriding a global config and <code>const</code> if it's not.</p>
+<p>You can make your interface type(s) as complex or as simple as you need. It depends on your chip and your requirements what it should look like.
+It is good practice, though, to inform the driver users of this with docs and examples.</p>
 </div>
-<h2 id="manifest"><a class="header" href="#manifest">Manifest</a></h2>
-<div class="mdbook-alerts mdbook-alerts-note">
-<p class="mdbook-alerts-title">
-  <span class="mdbook-alerts-icon"></span>
-  note
-</p>
-<p>The biggest differences with the DSL are the additional <code>type</code> field to specify which type of object this is and the <code>fields</code> field that houses all fields.</p>
-</div>
-<p>Minimal (json):</p>
-<pre><code class="language-json">"Foo": {
-    "type": "register",
-    "address": 3,
-    "size_bits": 16,
-    "fields": {
-        "value": {
-            "base": "uint",
-            "start": 0,
-            "end": 16
-        }
-    }
-}
-</code></pre>
-<p>Full (json):</p>
-<pre><code class="language-json">"Foo": {
-    "type": "register",
-    "cfg": "feature = \"foo\"",
-    "description": "Register docs",
-    "access": "WO",
-    "byte_order": "LE",
-    "bit_order": "LSB0",
-    "address": 3,
-    "size_bits": 16,
-    "reset_value": 4066, // Or [52, 18] (no hex in json...)
-    "repeat": {
-        "count": 4,
-        "stride": 2
-    },
-    "allow_bit_overlap": false,
-    "allow_address_overlap": false,
-    "fields": {
-        "value": {
-            "base": "uint",
-            "start": 0,
-            "end": 16
-        }
-    }
-}
-</code></pre>
-<h2 id="required"><a class="header" href="#required">Required</a></h2>
-<h3 id="address"><a class="header" href="#address"><code>address</code></a></h3>
-<p>The address of the register.</p>
-<p>Integer value that must fit in the given address type in the global config and can be negative.</p>
-<h3 id="size_bits"><a class="header" href="#size_bits"><code>size_bits</code></a></h3>
-<p>The size of the register in bits.</p>
-<p>Positive integer value. No fields can exceed the size of the register.</p>
-<h3 id="type-manifest-only"><a class="header" href="#type-manifest-only"><code>type</code> (manifest only)</a></h3>
-<p>The type of the object.</p>
-<p>For registers this field is a string with the contents <code>"register"</code>.</p>
-<h2 id="optional"><a class="header" href="#optional">Optional</a></h2>
-<h3 id="cfg-or-cfg"><a class="header" href="#cfg-or-cfg"><code>cfg</code> or <code>#[cfg(...)]</code></a></h3>
-<p>Allows for cfg-gating the register.</p>
-<p>In the DSL, the normal Rust syntax is used. Just put the attribute on the register definition. Only one attribute is allowed.</p>
-<p>In the manifest it is configured with a string.
-The string only defines the inner part: <code>#[cfg(foo)]</code> = <code>"cfg": "foo",</code>.</p>
-<div class="mdbook-alerts mdbook-alerts-warning">
-<p class="mdbook-alerts-title">
-  <span class="mdbook-alerts-icon"></span>
-  warning
-</p>
-<p>Check the chapter on cfg for more information. The cfg's are not checked by the toolkit and only passed to the generated code and so there are some oddities to be aware of.</p>
-</div>
-<h3 id="description-or-doc--"><a class="header" href="#description-or-doc--"><code>description</code> or <code>#[doc = ""]</code></a></h3>
-<p>The doc comments for the generated code.</p>
-<p>For the DSL, use the normal doc attributes or triple slash <code>///</code>.
-Multiple attributes get concatenated with a newline (just like normal Rust does).</p>
-<p>For the manifest, this is a string.</p>
-<p>The description is added as normal doc comments to the generated code. So it supports markdown and all other features you're used to. The description is used on the generated register struct and on the function to access the register.</p>
-<h3 id="access"><a class="header" href="#access"><code>access</code></a></h3>
-<p>Overrides the default register access.</p>
-<p>Options are: <code>RW</code>, <code>ReadWrite</code>, <code>WO</code>, <code>WriteOnly</code>, <code>RO</code>, <code>ReadOnly</code>.<br />
-They are written 'as is' in the DSL and as a string in the manifest.</p>
-<p>Anything that is not <code>ReadWrite</code> will limit the functions you can call for the registers. <code>.write</code> is only available when the register has write access, <code>.read</code> only when the register has read access and <code>.modify</code> only when the register has full access.</p>
-<div class="mdbook-alerts mdbook-alerts-note">
-<p class="mdbook-alerts-title">
-  <span class="mdbook-alerts-icon"></span>
-  note
-</p>
-<p>This only affects the capability of a register being read or written.
-It does not affect the <code>access</code> specified on the fields.</p>
-<p>This means you can have a register you cannot write, but does have setters for one or more fields.<br />
-That won't be harmful or break things, but might look weird.</p>
-</div>
-<h3 id="byte_order"><a class="header" href="#byte_order"><code>byte_order</code></a></h3>
-<p>Overrides the default byte order.</p>
-<p>Options are: <code>LE</code>, <code>BE</code>.<br />
-They are written 'as is' in the DSL and as a string in the manifest.</p>
-<p>When the size of a register is &gt; 8 bits (more than one byte), then either the byte order has to be defined globally as a default or the register needs to define it.</p>
-<h3 id="bit_order"><a class="header" href="#bit_order"><code>bit_order</code></a></h3>
-<p>Overrides the default bit order. If the global config does not define it, it's <code>LSB0</code>.</p>
-<p>Options are: <code>LSB0</code>, <code>MSB0</code>.<br />
-They are written 'as is' in the DSL and as a string in the manifest.</p>
-<h3 id="reset_value"><a class="header" href="#reset_value"><code>reset_value</code></a></h3>
-<p>Defines the reset or default value of the register.</p>
-<p>Can be a number or an array of bytes.</p>
-<div class="mdbook-alerts mdbook-alerts-warning">
-<p class="mdbook-alerts-title">
-  <span class="mdbook-alerts-icon"></span>
-  warning
-</p>
-<p>When specified as an array, this must be formatted as the bytes that are returned by the <code>RegisterInterface</code> implementation. This means that when the register has little endian byte order, the reset value number <code>0x1234</code> would be encoded as <code>[0x34, 0x12]</code> in the array form.<br />
-The same concern is there for the bit order.</p>
-</div>
-<p>It is used in the <code>.write</code> function. To reset a register to the default value, it'd look like <code>.write(|_|())</code>. When a zero value is desired instead of the default, you can use the <code>.write_with_zero</code> function instead.</p>
-<h3 id="repeat"><a class="header" href="#repeat"><code>repeat</code></a></h3>
-<p>Repeat the register a number of times at different addresses.</p>
-<p>It is specified with two fields:</p>
-<ul>
-<li>Count: unsigned integer, the amount of times the register is repeated</li>
-<li>Stride: signed integer, the amount the address changes per repeat</li>
-</ul>
-<p>The calculation is <code>address = base_address + index * stride</code>.</p>
-<p>When the repeat field is present, the function to do a register operation will have an extra parameter for the index.</p>
-<h3 id="allow_bit_overlap"><a class="header" href="#allow_bit_overlap"><code>allow_bit_overlap</code></a></h3>
-<p>Allow field addresses to overlap.</p>
-<p>This bool value is false by default.</p>
-<h3 id="allow_address_overlap"><a class="header" href="#allow_address_overlap"><code>allow_address_overlap</code></a></h3>
-<p>Allow this register to have an address that is equal to another register address.
-This calculation is also done for any repeat addresses.</p>
-<p>Only exact address matches are checked.</p>
-<p>This bool value is false by default.</p>
-<h3 id="fields-manifest-only"><a class="header" href="#fields-manifest-only"><code>fields</code> (manifest only)</a></h3>
-<p>The fields of the register.</p>
-<p>A map where the keys are the names of the fields. All values must be fields.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="global-config.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../v1/using-the-cli.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="commands.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../v1/defining-the-device.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -480,11 +365,11 @@ This calculation is also done for any repeat addresses.</p>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="global-config.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../v1/using-the-cli.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="commands.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../v1/defining-the-device.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
@@ -499,13 +384,13 @@ This calculation is also done for any repeat addresses.</p>
         </script>
 
 
-        <script src="elasticlunr.min.js"></script>
-        <script src="mark.min.js"></script>
-        <script src="searcher.js"></script>
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
 
-        <script src="clipboard.min.js"></script>
-        <script src="highlight.js"></script>
-        <script src="book.js"></script>
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
 
         <!-- Custom JS scripts -->
 

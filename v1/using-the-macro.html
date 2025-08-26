@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Cfg - device-driver-book</title>
+        <title>Using the macro - device-driver-book</title>
 
 
         <!-- Custom HTML head -->
@@ -12,34 +12,34 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff">
 
-        <link rel="icon" href="favicon.svg">
-        <link rel="shortcut icon" href="favicon.png">
-        <link rel="stylesheet" href="css/variables.css">
-        <link rel="stylesheet" href="css/general.css">
-        <link rel="stylesheet" href="css/chrome.css">
-        <link rel="stylesheet" href="css/print.css" media="print">
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
 
         <!-- Fonts -->
-        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
-        <link rel="stylesheet" href="fonts/fonts.css">
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
 
         <!-- Highlight.js Stylesheets -->
-        <link rel="stylesheet" id="highlight-css" href="highlight.css">
-        <link rel="stylesheet" id="tomorrow-night-css" href="tomorrow-night.css">
-        <link rel="stylesheet" id="ayu-highlight-css" href="ayu-highlight.css">
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
 
         <!-- Custom theme stylesheets -->
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
-            const path_to_root = "";
+            const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex.js";
+            window.path_to_searchindex_js = "../searchindex.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc.js"></script>
+        <script src="../toc.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -106,7 +106,7 @@
             <!-- populated by js -->
             <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
             <noscript>
-                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
             </noscript>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
@@ -141,7 +141,7 @@
                     <h1 class="menu-title">device-driver-book</h1>
 
                     <div class="right-buttons">
-                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
                         <a href="https://github.com/diondokter/device-driver" title="Git repository" aria-label="Git repository">
@@ -245,53 +245,123 @@
 }
 
 </style>
-<h1 id="cfg"><a class="header" href="#cfg">Cfg</a></h1>
-<p>Pretty much anywhere you can put docs/description, you can also put some cfg. They use the same syntax as the inside of the cfg attribute, e.g. <code>feature = "blah"</code>.</p>
-<div class="mdbook-alerts mdbook-alerts-important">
+<h1 id="using-the-macro"><a class="header" href="#using-the-macro">Using the macro</a></h1>
+<p>The macro is the main way of generating a driver. It is defined in the <code>device-driver-macros</code> crate which is re-exported in the <code>device-driver</code> crate by default. You don't have import the macros crate yourself.</p>
+<p>The macro can be used in two forms.</p>
+<h2 id="inline-dsl"><a class="header" href="#inline-dsl">Inline DSL</a></h2>
+<p>The first form is for writing the register definitions using the DSL right in the source of your project.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>device_driver::create_device!(
+    device_name: MyTestDevice,
+    dsl: {
+        // DSL code goes here
+    }
+)
+<span class="boring">}</span></code></pre></pre>
+<p>It consists of two parts:</p>
+<ul>
+<li><code>device_name</code>: This will be the name of the root block that will take ownership of the device interface.
+<ul>
+<li>The name must be provided in PascalCase</li>
+<li>If you're going to distribute this as the main part of your driver, then it's recommended to use the name
+of the chip this driver is for. For example: 'Lis3dh'</li>
+<li>If you're going to write a higher level wrapper around it, then it's recommended to name it something
+appropriate for a low level layer. For example: 'Registers' or 'LowLevel'</li>
+</ul>
+</li>
+<li><code>dsl</code>: This selects the option to write DSL code in the macro</li>
+</ul>
+<p>Using the DSL in this way allows for nice error messages and keeps the definitions close to your code.</p>
+<h2 id="manifest-file"><a class="header" href="#manifest-file">Manifest file</a></h2>
+<p>The second form uses an external manifest file.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>device_driver::create_device!(
+    device_name: MyTestDevice,
+    manifest: "driver-manifest.yaml"
+)
+<span class="boring">}</span></code></pre></pre>
+<p>You can provide an absolute path or a relative path to the file. If it's relative, then the base path is the value of the <a href="https://doc.rust-lang.org/cargo/reference/environment-variables.html"><code>CARGO_MANIFEST_DIR</code> environment variable</a>. This is the same directory as your <code>Cargo.toml</code> is in.</p>
+<p>The extension of the file determines which parser is used.</p>
+<p>The options are:</p>
+<ul>
+<li>yaml</li>
+<li>json</li>
+<li>toml</li>
+<li>dsl</li>
+</ul>
+<h2 id="output"><a class="header" href="#output">Output</a></h2>
+<div class="mdbook-alerts mdbook-alerts-tip">
 <p class="mdbook-alerts-title">
   <span class="mdbook-alerts-icon"></span>
-  important
+  tip
 </p>
-<p>The cfg's have no impact on the code generation other than forwarding the cfg's as attributes on items.</p>
+<p>The generated code is placed exactly where the macro is invoked. This means you can decide to contain everything in its own module. This is recommended to do, but not required.</p>
 </div>
-<p>This presents a couple of challenges:</p>
-<ul>
-<li>It's quite hard to check whether a driver can compile with any combination of cfg's.</li>
-<li>The cfg's are resolved after code generation, so the toolkit can't check anything.</li>
-<li>It's hard to predict how the cfg attributes on various items interact.</li>
-</ul>
-<p>So what does this all mean?</p>
 <div class="mdbook-alerts mdbook-alerts-caution">
 <p class="mdbook-alerts-title">
   <span class="mdbook-alerts-icon"></span>
   caution
 </p>
-<ul>
-<li>The support for cfg's are best effort only. Expect things to be weird or something to work against you.</li>
-<li>Some analysis may not be done on objects with cfg which can lead to weird errors in the generated code since problems are not caught beforehand.</li>
-</ul>
+<p>Code in the same module as the generated code is able to access the private API of the generated code. It is discouraged to make use of the private API since it's not considered as part of the SemVer guarantees and it's designed in a way where you shouldn't need to.</p>
 </div>
-<div class="mdbook-alerts mdbook-alerts-warning">
+<div class="mdbook-alerts mdbook-alerts-note">
 <p class="mdbook-alerts-title">
   <span class="mdbook-alerts-icon"></span>
-  warning
+  note
 </p>
-<ul>
-<li>If you use cfg's, check the generated code to see if everything looks alright.</li>
-<li>Use cfg's only sparingly.</li>
-<li>Test all realistic cfg combinations, preferably even in CI.</li>
-</ul>
+<p>If you feel part of the private API should be stabilized, then please open an issue to discuss it. If you really need to access the private API, consider pinning the exact device-driver versions and make sure to pin the sub crates too, including the generation and the macros crate.</p>
 </div>
-<p>If there is a problem and the toolkit can do better, then please make an issue!</p>
+<h2 id="optimizing-compile-times"><a class="header" href="#optimizing-compile-times">Optimizing compile times</a></h2>
+<p>The device-driver crate has features for turning on the json, yaml and toml parsers. These are enabled by default for your convenience.</p>
+<p>Once you've settled on a format, you can optimize the compile times for you and your dependents by disabling the default features and adding back the features you need.</p>
+<p>Suggestions:</p>
+<ul>
+<li>When using the DSL (inline or as manifest)
+<ul>
+<li><code>default-features = false</code></li>
+<li><code>features = ["dsl"]</code></li>
+</ul>
+</li>
+<li>When using yaml
+<ul>
+<li><code>default-features = false</code></li>
+<li><code>features = ["yaml"]</code></li>
+</ul>
+</li>
+<li>When using json
+<ul>
+<li><code>default-features = false</code></li>
+<li><code>features = ["json"]</code></li>
+</ul>
+</li>
+<li>When using toml
+<ul>
+<li><code>default-features = false</code></li>
+<li><code>features = ["toml"]</code></li>
+</ul>
+</li>
+</ul>
+<div class="mdbook-alerts mdbook-alerts-tip">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  tip
+</p>
+<p>With these steps the compile times should be acceptable. However, they can be further optimized by getting rid of the macro altogether. This is explained in the cli chapter.</p>
+</div>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="memory.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../v1/intro.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
+                            <a rel="next prefetch" href="../v1/using-the-cli.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
 
                         <div style="clear: both"></div>
                     </nav>
@@ -299,10 +369,13 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="memory.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../v1/intro.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
+                    <a rel="next prefetch" href="../v1/using-the-cli.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
             </nav>
 
         </div>
@@ -315,13 +388,13 @@
         </script>
 
 
-        <script src="elasticlunr.min.js"></script>
-        <script src="mark.min.js"></script>
-        <script src="searcher.js"></script>
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
 
-        <script src="clipboard.min.js"></script>
-        <script src="highlight.js"></script>
-        <script src="book.js"></script>
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
 
         <!-- Custom JS scripts -->
 

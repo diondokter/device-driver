@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Using the cli - device-driver-book</title>
+        <title>Cfg - device-driver-book</title>
 
 
         <!-- Custom HTML head -->
@@ -12,34 +12,34 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff">
 
-        <link rel="icon" href="favicon.svg">
-        <link rel="shortcut icon" href="favicon.png">
-        <link rel="stylesheet" href="css/variables.css">
-        <link rel="stylesheet" href="css/general.css">
-        <link rel="stylesheet" href="css/chrome.css">
-        <link rel="stylesheet" href="css/print.css" media="print">
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
 
         <!-- Fonts -->
-        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
-        <link rel="stylesheet" href="fonts/fonts.css">
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
 
         <!-- Highlight.js Stylesheets -->
-        <link rel="stylesheet" id="highlight-css" href="highlight.css">
-        <link rel="stylesheet" id="tomorrow-night-css" href="tomorrow-night.css">
-        <link rel="stylesheet" id="ayu-highlight-css" href="ayu-highlight.css">
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
 
         <!-- Custom theme stylesheets -->
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
-            const path_to_root = "";
+            const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex.js";
+            window.path_to_searchindex_js = "../searchindex.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc.js"></script>
+        <script src="../toc.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -106,7 +106,7 @@
             <!-- populated by js -->
             <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
             <noscript>
-                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
             </noscript>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
@@ -141,7 +141,7 @@
                     <h1 class="menu-title">device-driver-book</h1>
 
                     <div class="right-buttons">
-                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
                         <a href="https://github.com/diondokter/device-driver" title="Git repository" aria-label="Git repository">
@@ -245,48 +245,54 @@
 }
 
 </style>
-<h1 id="using-the-cli"><a class="header" href="#using-the-cli">Using the cli</a></h1>
-<p>The cli is there to optimize compile times for your driver users. Instead of having to compile the device-driver macros and run them, you can generate the code ahead of time and then <code>include!</code> or make a module out of it.</p>
-<div class="mdbook-alerts mdbook-alerts-tip">
+<h1 id="cfg"><a class="header" href="#cfg">Cfg</a></h1>
+<p>Pretty much anywhere you can put docs/description, you can also put some cfg. They use the same syntax as the inside of the cfg attribute, e.g. <code>feature = "blah"</code>.</p>
+<div class="mdbook-alerts mdbook-alerts-important">
 <p class="mdbook-alerts-title">
   <span class="mdbook-alerts-icon"></span>
-  tip
+  important
 </p>
-<p>During development using the proc macro will be lots easier since the code generation won't go out of sync with the driver definitions. Then once the development is done, you may want to use the CLI as an optimization.</p>
+<p>The cfg's have no impact on the code generation other than forwarding the cfg's as attributes on items.</p>
 </div>
-<h2 id="installation"><a class="header" href="#installation">Installation</a></h2>
-<p>The cli can be installed using cargo:</p>
-<pre><code class="language-bash">cargo install device-driver-cli
-</code></pre>
-<p>This always supports all input formats.</p>
-<h2 id="usage"><a class="header" href="#usage">Usage</a></h2>
-<p>The CLI is written with clap and has a minimal and simple interface.</p>
-<p>To see all options, use:</p>
-<pre><code class="language-bash">device-driver-cli --help
-</code></pre>
-<p>To do the code generation three things are required:</p>
+<p>This presents a couple of challenges:</p>
 <ul>
-<li><code>-m</code> or <code>--manifest</code>: The path to the manifest file</li>
-<li><code>-o</code> or <code>--output</code>: The path to the to be generated rust file</li>
-<li><code>-d</code> or <code>--device-name</code>: The name the toolkit will use for the generated device. This must be specified in PascalCase</li>
+<li>It's quite hard to check whether a driver can compile with any combination of cfg's.</li>
+<li>The cfg's are resolved after code generation, so the toolkit can't check anything.</li>
+<li>It's hard to predict how the cfg attributes on various items interact.</li>
 </ul>
-<h2 id="using-the-output"><a class="header" href="#using-the-output">Using the output</a></h2>
-<p>Exactly how you include the generated rust file is up to you. You could generate it into your <code>/src</code> folder and declare it a module, which would be nice for Rust analyzer but forces the generated code to be its own module. Or to include it in an existing module you can use the <a href="https://doc.rust-lang.org/core/macro.include.html"><code>include!</code></a> macro.</p>
-<p>However you choose to include it, don't forget to track the file in your git repo.</p>
-<p>The generated code still depends on the device-driver crate, but since we don't depend on the proc macro anymore we can turn off the default features. So in your <code>Cargo.toml</code> you can now import the toolkit as:</p>
-<pre><code class="language-toml">device-driver = { version = &lt;VERSION&gt;, default-features = false }
-</code></pre>
-<p>This makes it so all unused dependencies are gone.</p>
+<p>So what does this all mean?</p>
+<div class="mdbook-alerts mdbook-alerts-caution">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  caution
+</p>
+<ul>
+<li>The support for cfg's are best effort only. Expect things to be weird or something to work against you.</li>
+<li>Some analysis may not be done on objects with cfg which can lead to weird errors in the generated code since problems are not caught beforehand.</li>
+</ul>
+</div>
+<div class="mdbook-alerts mdbook-alerts-warning">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  warning
+</p>
+<ul>
+<li>If you use cfg's, check the generated code to see if everything looks alright.</li>
+<li>Use cfg's only sparingly.</li>
+<li>Test all realistic cfg combinations, preferably even in CI.</li>
+</ul>
+</div>
+<p>If there is a problem and the toolkit can do better, then please make an issue!</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="using-the-macro.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../v1/manifest-syntax.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="writing-an-interface.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../memory.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -296,11 +302,11 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="using-the-macro.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../v1/manifest-syntax.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="writing-an-interface.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../memory.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
@@ -315,13 +321,13 @@
         </script>
 
 
-        <script src="elasticlunr.min.js"></script>
-        <script src="mark.min.js"></script>
-        <script src="searcher.js"></script>
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
 
-        <script src="clipboard.min.js"></script>
-        <script src="highlight.js"></script>
-        <script src="book.js"></script>
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
 
         <!-- Custom JS scripts -->
 

@@ -1081,30 +1081,30 @@ A 'ref' object copies another object and allows to override some values like the
 <p>Use the available default values to your advantage to cut back having to specify things on each individual register, command or buffer.</p>
 </div>
 <ul>
-<li><a href="global-config.html#global-config">Global config</a>
+<li><a href="v1/global-config.html#global-config">Global config</a>
 <ul>
-<li><a href="global-config.html#dsl">DSL</a></li>
-<li><a href="global-config.html#manifest">Manifest</a></li>
-<li><a href="global-config.html#required">Required</a>
+<li><a href="v1/global-config.html#dsl">DSL</a></li>
+<li><a href="v1/global-config.html#manifest">Manifest</a></li>
+<li><a href="v1/global-config.html#required">Required</a>
 <ul>
-<li><a href="global-config.html#register_address_type"><code>register_address_type</code></a></li>
-<li><a href="global-config.html#command_address_type"><code>command_address_type</code></a></li>
-<li><a href="global-config.html#buffer_address_type"><code>buffer_address_type</code></a></li>
+<li><a href="v1/global-config.html#register_address_type"><code>register_address_type</code></a></li>
+<li><a href="v1/global-config.html#command_address_type"><code>command_address_type</code></a></li>
+<li><a href="v1/global-config.html#buffer_address_type"><code>buffer_address_type</code></a></li>
 </ul>
 </li>
-<li><a href="global-config.html#defaults">Defaults</a>
+<li><a href="v1/global-config.html#defaults">Defaults</a>
 <ul>
-<li><a href="global-config.html#default_register_access"><code>default_register_access</code></a></li>
-<li><a href="global-config.html#default_field_access"><code>default_field_access</code></a></li>
-<li><a href="global-config.html#default_buffer_access"><code>default_buffer_access</code></a></li>
-<li><a href="global-config.html#default_byte_order"><code>default_byte_order</code></a></li>
-<li><a href="global-config.html#default_bit_order"><code>default_bit_order</code></a></li>
+<li><a href="v1/global-config.html#default_register_access"><code>default_register_access</code></a></li>
+<li><a href="v1/global-config.html#default_field_access"><code>default_field_access</code></a></li>
+<li><a href="v1/global-config.html#default_buffer_access"><code>default_buffer_access</code></a></li>
+<li><a href="v1/global-config.html#default_byte_order"><code>default_byte_order</code></a></li>
+<li><a href="v1/global-config.html#default_bit_order"><code>default_bit_order</code></a></li>
 </ul>
 </li>
-<li><a href="global-config.html#transformations">Transformations</a>
+<li><a href="v1/global-config.html#transformations">Transformations</a>
 <ul>
-<li><a href="global-config.html#name_word_boundaries"><code>name_word_boundaries</code></a></li>
-<li><a href="global-config.html#defmt_feature"><code>defmt_feature</code></a></li>
+<li><a href="v1/global-config.html#name_word_boundaries"><code>name_word_boundaries</code></a></li>
+<li><a href="v1/global-config.html#defmt_feature"><code>defmt_feature</code></a></li>
 </ul>
 </li>
 </ul>
@@ -1293,29 +1293,29 @@ assert_eq!(device.foo().read().unwrap().bar(), 12345);
 <p>Below are minimal and full examples of how registers can be defined.
 Only one field is shown, but more can be added. Details about the fields can be read in their own chapter.</p>
 <ul>
-<li><a href="registers.html#registers">Registers</a>
+<li><a href="v1/registers.html#registers">Registers</a>
 <ul>
-<li><a href="registers.html#dsl">DSL</a></li>
-<li><a href="registers.html#manifest">Manifest</a></li>
-<li><a href="registers.html#required">Required</a>
+<li><a href="v1/registers.html#dsl">DSL</a></li>
+<li><a href="v1/registers.html#manifest">Manifest</a></li>
+<li><a href="v1/registers.html#required">Required</a>
 <ul>
-<li><a href="registers.html#address"><code>address</code></a></li>
-<li><a href="registers.html#size_bits"><code>size_bits</code></a></li>
-<li><a href="registers.html#type-manifest-only"><code>type</code> (manifest only)</a></li>
+<li><a href="v1/registers.html#address"><code>address</code></a></li>
+<li><a href="v1/registers.html#size_bits"><code>size_bits</code></a></li>
+<li><a href="v1/registers.html#type-manifest-only"><code>type</code> (manifest only)</a></li>
 </ul>
 </li>
-<li><a href="registers.html#optional">Optional</a>
+<li><a href="v1/registers.html#optional">Optional</a>
 <ul>
-<li><a href="registers.html#cfg-or-cfg"><code>cfg</code> or <code>#[cfg(...)]</code></a></li>
-<li><a href="registers.html#description-or-doc--"><code>description</code> or <code>#[doc = ""]</code></a></li>
-<li><a href="registers.html#access"><code>access</code></a></li>
-<li><a href="registers.html#byte_order"><code>byte_order</code></a></li>
-<li><a href="registers.html#bit_order"><code>bit_order</code></a></li>
-<li><a href="registers.html#reset_value"><code>reset_value</code></a></li>
-<li><a href="registers.html#repeat"><code>repeat</code></a></li>
-<li><a href="registers.html#allow_bit_overlap"><code>allow_bit_overlap</code></a></li>
-<li><a href="registers.html#allow_address_overlap"><code>allow_address_overlap</code></a></li>
-<li><a href="registers.html#fields-manifest-only"><code>fields</code> (manifest only)</a></li>
+<li><a href="v1/registers.html#cfg-or-cfg"><code>cfg</code> or <code>#[cfg(...)]</code></a></li>
+<li><a href="v1/registers.html#description-or-doc--"><code>description</code> or <code>#[doc = ""]</code></a></li>
+<li><a href="v1/registers.html#access"><code>access</code></a></li>
+<li><a href="v1/registers.html#byte_order"><code>byte_order</code></a></li>
+<li><a href="v1/registers.html#bit_order"><code>bit_order</code></a></li>
+<li><a href="v1/registers.html#reset_value"><code>reset_value</code></a></li>
+<li><a href="v1/registers.html#repeat"><code>repeat</code></a></li>
+<li><a href="v1/registers.html#allow_bit_overlap"><code>allow_bit_overlap</code></a></li>
+<li><a href="v1/registers.html#allow_address_overlap"><code>allow_address_overlap</code></a></li>
+<li><a href="v1/registers.html#fields-manifest-only"><code>fields</code> (manifest only)</a></li>
 </ul>
 </li>
 </ul>
@@ -1589,28 +1589,28 @@ Only one field is shown, but more can be added. Details about the fields can be 
 </ul>
 </div>
 <ul>
-<li><a href="commands.html#commands">Commands</a>
+<li><a href="v1/commands.html#commands">Commands</a>
 <ul>
-<li><a href="commands.html#dsl">DSL</a></li>
-<li><a href="commands.html#manifest">Manifest</a></li>
-<li><a href="commands.html#required">Required</a>
+<li><a href="v1/commands.html#dsl">DSL</a></li>
+<li><a href="v1/commands.html#manifest">Manifest</a></li>
+<li><a href="v1/commands.html#required">Required</a>
 <ul>
-<li><a href="commands.html#address"><code>address</code></a></li>
-<li><a href="commands.html#size_bits_in--size_bits_out"><code>size_bits_in</code> &amp; <code>size_bits_out</code></a></li>
-<li><a href="commands.html#type-manifest-only"><code>type</code> (manifest only)</a></li>
+<li><a href="v1/commands.html#address"><code>address</code></a></li>
+<li><a href="v1/commands.html#size_bits_in--size_bits_out"><code>size_bits_in</code> &amp; <code>size_bits_out</code></a></li>
+<li><a href="v1/commands.html#type-manifest-only"><code>type</code> (manifest only)</a></li>
 </ul>
 </li>
-<li><a href="commands.html#optional">Optional</a>
+<li><a href="v1/commands.html#optional">Optional</a>
 <ul>
-<li><a href="commands.html#cfg-or-cfg"><code>cfg</code> or <code>#[cfg(...)]</code></a></li>
-<li><a href="commands.html#description-or-doc--"><code>description</code> or <code>#[doc = ""]</code></a></li>
-<li><a href="commands.html#byte_order"><code>byte_order</code></a></li>
-<li><a href="commands.html#bit_order"><code>bit_order</code></a></li>
-<li><a href="commands.html#repeat"><code>repeat</code></a></li>
-<li><a href="commands.html#allow_bit_overlap"><code>allow_bit_overlap</code></a></li>
-<li><a href="commands.html#allow_address_overlap"><code>allow_address_overlap</code></a></li>
-<li><a href="commands.html#in-dsl-or-fields_in-manifest"><code>in</code> (dsl) or <code>fields_in</code> (manifest)</a></li>
-<li><a href="commands.html#out-dsl-or-fields_out-manifest"><code>out</code> (dsl) or <code>fields_out</code> (manifest)</a></li>
+<li><a href="v1/commands.html#cfg-or-cfg"><code>cfg</code> or <code>#[cfg(...)]</code></a></li>
+<li><a href="v1/commands.html#description-or-doc--"><code>description</code> or <code>#[doc = ""]</code></a></li>
+<li><a href="v1/commands.html#byte_order"><code>byte_order</code></a></li>
+<li><a href="v1/commands.html#bit_order"><code>bit_order</code></a></li>
+<li><a href="v1/commands.html#repeat"><code>repeat</code></a></li>
+<li><a href="v1/commands.html#allow_bit_overlap"><code>allow_bit_overlap</code></a></li>
+<li><a href="v1/commands.html#allow_address_overlap"><code>allow_address_overlap</code></a></li>
+<li><a href="v1/commands.html#in-dsl-or-fields_in-manifest"><code>in</code> (dsl) or <code>fields_in</code> (manifest)</a></li>
+<li><a href="v1/commands.html#out-dsl-or-fields_out-manifest"><code>out</code> (dsl) or <code>fields_out</code> (manifest)</a></li>
 </ul>
 </li>
 </ul>
@@ -1917,25 +1917,25 @@ let lowest_byte_inverted = all_ones ^ lowest_byte_set;
 </ul>
 <p>The conversions can be fallible or infallible. When the fallible <code>try</code> option is used, reading the field will return a result instead of the type directly. For generated enums, even though they might not be generally infallible when converted from their base type, the toolkit uses extra range information to see if it can safely present an infallible interface regardless.</p>
 <ul>
-<li><a href="field-sets.html#field-sets">Field sets</a>
+<li><a href="v1/field-sets.html#field-sets">Field sets</a>
 <ul>
-<li><a href="field-sets.html#dsl">DSL</a></li>
-<li><a href="field-sets.html#manifest">Manifest</a></li>
-<li><a href="field-sets.html#required">Required</a>
+<li><a href="v1/field-sets.html#dsl">DSL</a></li>
+<li><a href="v1/field-sets.html#manifest">Manifest</a></li>
+<li><a href="v1/field-sets.html#required">Required</a>
 <ul>
-<li><a href="field-sets.html#base"><code>base</code></a></li>
-<li><a href="field-sets.html#start-end--address-range"><code>start</code>, <code>end</code> &amp; address range</a></li>
+<li><a href="v1/field-sets.html#base"><code>base</code></a></li>
+<li><a href="v1/field-sets.html#start-end--address-range"><code>start</code>, <code>end</code> &amp; address range</a></li>
 </ul>
 </li>
-<li><a href="field-sets.html#optional">Optional</a>
+<li><a href="v1/field-sets.html#optional">Optional</a>
 <ul>
-<li><a href="field-sets.html#cfg-or-cfg"><code>cfg</code> or <code>#[cfg(...)]</code></a></li>
-<li><a href="field-sets.html#description-or-doc--"><code>description</code> or <code>#[doc = ""]</code></a></li>
-<li><a href="field-sets.html#access"><code>access</code></a></li>
-<li><a href="field-sets.html#conversion">Conversion</a>
+<li><a href="v1/field-sets.html#cfg-or-cfg"><code>cfg</code> or <code>#[cfg(...)]</code></a></li>
+<li><a href="v1/field-sets.html#description-or-doc--"><code>description</code> or <code>#[doc = ""]</code></a></li>
+<li><a href="v1/field-sets.html#access"><code>access</code></a></li>
+<li><a href="v1/field-sets.html#conversion">Conversion</a>
 <ul>
-<li><a href="field-sets.html#to-existing-type">To existing type</a></li>
-<li><a href="field-sets.html#to-generated-enum">To generated enum</a></li>
+<li><a href="v1/field-sets.html#to-existing-type">To existing type</a></li>
+<li><a href="v1/field-sets.html#to-generated-enum">To generated enum</a></li>
 </ul>
 </li>
 </ul>
@@ -2266,21 +2266,21 @@ let len = device.bar().read(&amp;mut buffer).unwrap();
 <span class="boring">}</span></code></pre></pre>
 <p>Below are minimal and full examples of how buffers can be defined.</p>
 <ul>
-<li><a href="buffers.html#buffers">Buffers</a>
+<li><a href="v1/buffers.html#buffers">Buffers</a>
 <ul>
-<li><a href="buffers.html#dsl">DSL</a></li>
-<li><a href="buffers.html#manifest">Manifest</a></li>
-<li><a href="buffers.html#required">Required</a>
+<li><a href="v1/buffers.html#dsl">DSL</a></li>
+<li><a href="v1/buffers.html#manifest">Manifest</a></li>
+<li><a href="v1/buffers.html#required">Required</a>
 <ul>
-<li><a href="buffers.html#address"><code>address</code></a></li>
-<li><a href="buffers.html#type-manifest-only"><code>type</code> (manifest only)</a></li>
+<li><a href="v1/buffers.html#address"><code>address</code></a></li>
+<li><a href="v1/buffers.html#type-manifest-only"><code>type</code> (manifest only)</a></li>
 </ul>
 </li>
-<li><a href="buffers.html#optional">Optional</a>
+<li><a href="v1/buffers.html#optional">Optional</a>
 <ul>
-<li><a href="buffers.html#cfg-or-cfg"><code>cfg</code> or <code>#[cfg(...)]</code></a></li>
-<li><a href="buffers.html#description-or-doc--"><code>description</code> or <code>#[doc = ""]</code></a></li>
-<li><a href="buffers.html#access"><code>access</code></a></li>
+<li><a href="v1/buffers.html#cfg-or-cfg"><code>cfg</code> or <code>#[cfg(...)]</code></a></li>
+<li><a href="v1/buffers.html#description-or-doc--"><code>description</code> or <code>#[doc = ""]</code></a></li>
+<li><a href="v1/buffers.html#access"><code>access</code></a></li>
 </ul>
 </li>
 </ul>
@@ -2439,22 +2439,22 @@ device.foo().bar().dispatch().unwrap();
 <p>Below are minimal and full examples of how blocks can be defined.
 There's one child object defined as example.</p>
 <ul>
-<li><a href="blocks.html#blocks">Blocks</a>
+<li><a href="v1/blocks.html#blocks">Blocks</a>
 <ul>
-<li><a href="blocks.html#dsl">DSL</a></li>
-<li><a href="blocks.html#manifest">Manifest</a></li>
-<li><a href="blocks.html#required">Required</a>
+<li><a href="v1/blocks.html#dsl">DSL</a></li>
+<li><a href="v1/blocks.html#manifest">Manifest</a></li>
+<li><a href="v1/blocks.html#required">Required</a>
 <ul>
-<li><a href="blocks.html#type-manifest-only"><code>type</code> (manifest only)</a></li>
+<li><a href="v1/blocks.html#type-manifest-only"><code>type</code> (manifest only)</a></li>
 </ul>
 </li>
-<li><a href="blocks.html#optional">Optional</a>
+<li><a href="v1/blocks.html#optional">Optional</a>
 <ul>
-<li><a href="blocks.html#cfg-or-cfg"><code>cfg</code> or <code>#[cfg(...)]</code></a></li>
-<li><a href="blocks.html#description-or-doc--"><code>description</code> or <code>#[doc = ""]</code></a></li>
-<li><a href="blocks.html#address_offset"><code>address_offset</code></a></li>
-<li><a href="blocks.html#repeat"><code>repeat</code></a></li>
-<li><a href="blocks.html#objects-manifest-only"><code>objects</code> (manifest only)</a></li>
+<li><a href="v1/blocks.html#cfg-or-cfg"><code>cfg</code> or <code>#[cfg(...)]</code></a></li>
+<li><a href="v1/blocks.html#description-or-doc--"><code>description</code> or <code>#[doc = ""]</code></a></li>
+<li><a href="v1/blocks.html#address_offset"><code>address_offset</code></a></li>
+<li><a href="v1/blocks.html#repeat"><code>repeat</code></a></li>
+<li><a href="v1/blocks.html#objects-manifest-only"><code>objects</code> (manifest only)</a></li>
 </ul>
 </li>
 </ul>
@@ -2633,21 +2633,21 @@ Multiple attributes get concatenated with a newline (just like normal Rust does)
 </div>
 <p>Below are minimal and full examples of how refs can be defined. The examples all override a register and its address.</p>
 <ul>
-<li><a href="refs.html#refs">Refs</a>
+<li><a href="v1/refs.html#refs">Refs</a>
 <ul>
-<li><a href="refs.html#dsl">DSL</a></li>
-<li><a href="refs.html#manifest">Manifest</a></li>
-<li><a href="refs.html#required">Required</a>
+<li><a href="v1/refs.html#dsl">DSL</a></li>
+<li><a href="v1/refs.html#manifest">Manifest</a></li>
+<li><a href="v1/refs.html#required">Required</a>
 <ul>
-<li><a href="refs.html#target-manifest-only"><code>target</code> (manifest only)</a></li>
-<li><a href="refs.html#type-manifest-only"><code>type</code> (manifest only)</a></li>
-<li><a href="refs.html#override-or---"><code>override</code> or <code>{ .. }</code></a></li>
+<li><a href="v1/refs.html#target-manifest-only"><code>target</code> (manifest only)</a></li>
+<li><a href="v1/refs.html#type-manifest-only"><code>type</code> (manifest only)</a></li>
+<li><a href="v1/refs.html#override-or---"><code>override</code> or <code>{ .. }</code></a></li>
 </ul>
 </li>
-<li><a href="refs.html#optional">Optional</a>
+<li><a href="v1/refs.html#optional">Optional</a>
 <ul>
-<li><a href="refs.html#cfg-or-cfg"><code>cfg</code> or <code>#[cfg(...)]</code></a></li>
-<li><a href="refs.html#description-or-doc--"><code>description</code> or <code>#[doc = ""]</code></a></li>
+<li><a href="v1/refs.html#cfg-or-cfg"><code>cfg</code> or <code>#[cfg(...)]</code></a></li>
+<li><a href="v1/refs.html#description-or-doc--"><code>description</code> or <code>#[doc = ""]</code></a></li>
 </ul>
 </li>
 </ul>
@@ -3374,6 +3374,111 @@ The key of the object will become the name of it</p>
 }
 
 </style>
+<h1 id="cfg"><a class="header" href="#cfg">Cfg</a></h1>
+<p>Pretty much anywhere you can put docs/description, you can also put some cfg. They use the same syntax as the inside of the cfg attribute, e.g. <code>feature = "blah"</code>.</p>
+<div class="mdbook-alerts mdbook-alerts-important">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  important
+</p>
+<p>The cfg's have no impact on the code generation other than forwarding the cfg's as attributes on items.</p>
+</div>
+<p>This presents a couple of challenges:</p>
+<ul>
+<li>It's quite hard to check whether a driver can compile with any combination of cfg's.</li>
+<li>The cfg's are resolved after code generation, so the toolkit can't check anything.</li>
+<li>It's hard to predict how the cfg attributes on various items interact.</li>
+</ul>
+<p>So what does this all mean?</p>
+<div class="mdbook-alerts mdbook-alerts-caution">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  caution
+</p>
+<ul>
+<li>The support for cfg's are best effort only. Expect things to be weird or something to work against you.</li>
+<li>Some analysis may not be done on objects with cfg which can lead to weird errors in the generated code since problems are not caught beforehand.</li>
+</ul>
+</div>
+<div class="mdbook-alerts mdbook-alerts-warning">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  warning
+</p>
+<ul>
+<li>If you use cfg's, check the generated code to see if everything looks alright.</li>
+<li>Use cfg's only sparingly.</li>
+<li>Test all realistic cfg combinations, preferably even in CI.</li>
+</ul>
+</div>
+<p>If there is a problem and the toolkit can do better, then please make an issue!</p>
+<div style="break-before: page; page-break-before: always;"></div><style>
+.mdbook-alerts {
+  padding: 8px 16px;
+  margin-bottom: 16px;
+  border-left: 0.25em solid var(--mdbook-alerts-color);
+}
+
+.mdbook-alerts > *:first-child {
+  margin-top: 0;
+}
+
+.mdbook-alerts > *:last-child {
+  margin-bottom: 0;
+}
+
+.mdbook-alerts-title {
+  display: flex;
+  font-weight: 600;
+  align-items: center;
+  line-height: 1;
+  color: var(--mdbook-alerts-color);
+  text-transform: capitalize;
+}
+
+.mdbook-alerts-icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: 0.2em;
+  background-color: currentColor;
+  -webkit-mask: no-repeat center / 100%;
+  mask: no-repeat center / 100%;
+  -webkit-mask-image: var(--mdbook-alerts-icon);
+  mask-image: var(--mdbook-alerts-icon);
+}
+
+.mdbook-alerts-note {
+  --mdbook-alerts-color: rgb(9, 105, 218);
+  /* https://icon-sets.iconify.design/material-symbols/info-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 17q.425 0 .713-.288T13 16v-4q0-.425-.288-.712T12 11q-.425 0-.712.288T11 12v4q0 .425.288.713T12 17m0-8q.425 0 .713-.288T13 8q0-.425-.288-.712T12 7q-.425 0-.712.288T11 8q0 .425.288.713T12 9m0 13q-2.075 0-3.9-.788t-3.175-2.137q-1.35-1.35-2.137-3.175T2 12q0-2.075.788-3.9t2.137-3.175q1.35-1.35 3.175-2.137T12 2q2.075 0 3.9.788t3.175 2.137q1.35 1.35 2.138 3.175T22 12q0 2.075-.788 3.9t-2.137 3.175q-1.35 1.35-3.175 2.138T12 22m0-2q3.35 0 5.675-2.325T20 12q0-3.35-2.325-5.675T12 4Q8.65 4 6.325 6.325T4 12q0 3.35 2.325 5.675T12 20m0-8"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-tip {
+  --mdbook-alerts-color: rgb(26, 127, 55);
+  /* https://icon-sets.iconify.design/material-symbols/lightbulb-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 22q-.825 0-1.412-.587T10 20h4q0 .825-.587 1.413T12 22m-3-3q-.425 0-.712-.288T8 18q0-.425.288-.712T9 17h6q.425 0 .713.288T16 18q0 .425-.288.713T15 19zm-.75-3q-1.725-1.025-2.738-2.75T4.5 9.5q0-3.125 2.188-5.312T12 2q3.125 0 5.313 2.188T19.5 9.5q0 2.025-1.012 3.75T15.75 16zm.6-2h6.3q1.125-.8 1.738-1.975T17.5 9.5q0-2.3-1.6-3.9T12 4Q9.7 4 8.1 5.6T6.5 9.5q0 1.35.613 2.525T8.85 14M12 14"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-important {
+  --mdbook-alerts-color: rgb(130, 80, 223);
+  /* https://icon-sets.iconify.design/material-symbols/chat-info-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 7q.425 0 .713-.288T13 6q0-.425-.288-.712T12 5q-.425 0-.712.288T11 6q0 .425.288.713T12 7m0 8q.425 0 .713-.288T13 14v-4q0-.425-.288-.712T12 9q-.425 0-.712.288T11 10v4q0 .425.288.713T12 15m-6 3l-2.3 2.3q-.475.475-1.088.213T2 19.575V4q0-.825.588-1.412T4 2h16q.825 0 1.413.588T22 4v12q0 .825-.587 1.413T20 18zm-.85-2H20V4H4v13.125zM4 16V4z"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-warning {
+  --mdbook-alerts-color: rgb(154, 103, 0);
+  /* https://icon-sets.iconify.design/material-symbols/warning-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M2.725 21q-.275 0-.5-.137t-.35-.363q-.125-.225-.137-.488t.137-.512l9.25-16q.15-.25.388-.375T12 3q.25 0 .488.125t.387.375l9.25 16q.15.25.138.513t-.138.487q-.125.225-.35.363t-.5.137zm1.725-2h15.1L12 6zM12 18q.425 0 .713-.288T13 17q0-.425-.288-.712T12 16q-.425 0-.712.288T11 17q0 .425.288.713T12 18m0-3q.425 0 .713-.288T13 14v-3q0-.425-.288-.712T12 10q-.425 0-.712.288T11 11v3q0 .425.288.713T12 15m0-2.5"%2F%3E%3C%2Fsvg%3E');
+}
+
+.mdbook-alerts-caution {
+  --mdbook-alerts-color: rgb(207, 34, 46);
+  /* https://icon-sets.iconify.design/material-symbols/brightness-alert-outline-rounded/ */
+  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 17q.425 0 .713-.288T13 16q0-.425-.288-.712T12 15q-.425 0-.712.288T11 16q0 .425.288.713T12 17m0-4q.425 0 .713-.288T13 12V8q0-.425-.288-.712T12 7q-.425 0-.712.288T11 8v4q0 .425.288.713T12 13m-3.35 7H6q-.825 0-1.412-.587T4 18v-2.65L2.075 13.4q-.275-.3-.425-.662T1.5 12q0-.375.15-.737t.425-.663L4 8.65V6q0-.825.588-1.412T6 4h2.65l1.95-1.925q.3-.275.663-.425T12 1.5q.375 0 .738.15t.662.425L15.35 4H18q.825 0 1.413.588T20 6v2.65l1.925 1.95q.275.3.425.663t.15.737q0 .375-.15.738t-.425.662L20 15.35V18q0 .825-.587 1.413T18 20h-2.65l-1.95 1.925q-.3.275-.662.425T12 22.5q-.375 0-.737-.15t-.663-.425zm.85-2l2.5 2.5l2.5-2.5H18v-3.5l2.5-2.5L18 9.5V6h-3.5L12 3.5L9.5 6H6v3.5L3.5 12L6 14.5V18zm2.5-6"%2F%3E%3C%2Fsvg%3E');
+}
+
+</style>
 <h1 id="memory"><a class="header" href="#memory">Memory</a></h1>
 <p>Memory is quite easy. But assigning meaning to it is where all complexity comes from.
 This page describes all the different levels of memory and what this crate does.
@@ -3639,111 +3744,6 @@ So even a single register must take care of byte ordering.</p>
     rev: uint = 0..4
 }
 <span class="boring">}</span></code></pre></pre>
-<div style="break-before: page; page-break-before: always;"></div><style>
-.mdbook-alerts {
-  padding: 8px 16px;
-  margin-bottom: 16px;
-  border-left: 0.25em solid var(--mdbook-alerts-color);
-}
-
-.mdbook-alerts > *:first-child {
-  margin-top: 0;
-}
-
-.mdbook-alerts > *:last-child {
-  margin-bottom: 0;
-}
-
-.mdbook-alerts-title {
-  display: flex;
-  font-weight: 600;
-  align-items: center;
-  line-height: 1;
-  color: var(--mdbook-alerts-color);
-  text-transform: capitalize;
-}
-
-.mdbook-alerts-icon {
-  display: inline-block;
-  width: 1em;
-  height: 1em;
-  margin-right: 0.2em;
-  background-color: currentColor;
-  -webkit-mask: no-repeat center / 100%;
-  mask: no-repeat center / 100%;
-  -webkit-mask-image: var(--mdbook-alerts-icon);
-  mask-image: var(--mdbook-alerts-icon);
-}
-
-.mdbook-alerts-note {
-  --mdbook-alerts-color: rgb(9, 105, 218);
-  /* https://icon-sets.iconify.design/material-symbols/info-outline-rounded/ */
-  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 17q.425 0 .713-.288T13 16v-4q0-.425-.288-.712T12 11q-.425 0-.712.288T11 12v4q0 .425.288.713T12 17m0-8q.425 0 .713-.288T13 8q0-.425-.288-.712T12 7q-.425 0-.712.288T11 8q0 .425.288.713T12 9m0 13q-2.075 0-3.9-.788t-3.175-2.137q-1.35-1.35-2.137-3.175T2 12q0-2.075.788-3.9t2.137-3.175q1.35-1.35 3.175-2.137T12 2q2.075 0 3.9.788t3.175 2.137q1.35 1.35 2.138 3.175T22 12q0 2.075-.788 3.9t-2.137 3.175q-1.35 1.35-3.175 2.138T12 22m0-2q3.35 0 5.675-2.325T20 12q0-3.35-2.325-5.675T12 4Q8.65 4 6.325 6.325T4 12q0 3.35 2.325 5.675T12 20m0-8"%2F%3E%3C%2Fsvg%3E');
-}
-
-.mdbook-alerts-tip {
-  --mdbook-alerts-color: rgb(26, 127, 55);
-  /* https://icon-sets.iconify.design/material-symbols/lightbulb-outline-rounded/ */
-  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 22q-.825 0-1.412-.587T10 20h4q0 .825-.587 1.413T12 22m-3-3q-.425 0-.712-.288T8 18q0-.425.288-.712T9 17h6q.425 0 .713.288T16 18q0 .425-.288.713T15 19zm-.75-3q-1.725-1.025-2.738-2.75T4.5 9.5q0-3.125 2.188-5.312T12 2q3.125 0 5.313 2.188T19.5 9.5q0 2.025-1.012 3.75T15.75 16zm.6-2h6.3q1.125-.8 1.738-1.975T17.5 9.5q0-2.3-1.6-3.9T12 4Q9.7 4 8.1 5.6T6.5 9.5q0 1.35.613 2.525T8.85 14M12 14"%2F%3E%3C%2Fsvg%3E');
-}
-
-.mdbook-alerts-important {
-  --mdbook-alerts-color: rgb(130, 80, 223);
-  /* https://icon-sets.iconify.design/material-symbols/chat-info-outline-rounded/ */
-  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 7q.425 0 .713-.288T13 6q0-.425-.288-.712T12 5q-.425 0-.712.288T11 6q0 .425.288.713T12 7m0 8q.425 0 .713-.288T13 14v-4q0-.425-.288-.712T12 9q-.425 0-.712.288T11 10v4q0 .425.288.713T12 15m-6 3l-2.3 2.3q-.475.475-1.088.213T2 19.575V4q0-.825.588-1.412T4 2h16q.825 0 1.413.588T22 4v12q0 .825-.587 1.413T20 18zm-.85-2H20V4H4v13.125zM4 16V4z"%2F%3E%3C%2Fsvg%3E');
-}
-
-.mdbook-alerts-warning {
-  --mdbook-alerts-color: rgb(154, 103, 0);
-  /* https://icon-sets.iconify.design/material-symbols/warning-outline-rounded/ */
-  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M2.725 21q-.275 0-.5-.137t-.35-.363q-.125-.225-.137-.488t.137-.512l9.25-16q.15-.25.388-.375T12 3q.25 0 .488.125t.387.375l9.25 16q.15.25.138.513t-.138.487q-.125.225-.35.363t-.5.137zm1.725-2h15.1L12 6zM12 18q.425 0 .713-.288T13 17q0-.425-.288-.712T12 16q-.425 0-.712.288T11 17q0 .425.288.713T12 18m0-3q.425 0 .713-.288T13 14v-3q0-.425-.288-.712T12 10q-.425 0-.712.288T11 11v3q0 .425.288.713T12 15m0-2.5"%2F%3E%3C%2Fsvg%3E');
-}
-
-.mdbook-alerts-caution {
-  --mdbook-alerts-color: rgb(207, 34, 46);
-  /* https://icon-sets.iconify.design/material-symbols/brightness-alert-outline-rounded/ */
-  --mdbook-alerts-icon: url('data:image/svg+xml,%3Csvg xmlns="http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg" width="24" height="24" viewBox="0 0 24 24"%3E%3Cpath fill="currentColor" d="M12 17q.425 0 .713-.288T13 16q0-.425-.288-.712T12 15q-.425 0-.712.288T11 16q0 .425.288.713T12 17m0-4q.425 0 .713-.288T13 12V8q0-.425-.288-.712T12 7q-.425 0-.712.288T11 8v4q0 .425.288.713T12 13m-3.35 7H6q-.825 0-1.412-.587T4 18v-2.65L2.075 13.4q-.275-.3-.425-.662T1.5 12q0-.375.15-.737t.425-.663L4 8.65V6q0-.825.588-1.412T6 4h2.65l1.95-1.925q.3-.275.663-.425T12 1.5q.375 0 .738.15t.662.425L15.35 4H18q.825 0 1.413.588T20 6v2.65l1.925 1.95q.275.3.425.663t.15.737q0 .375-.15.738t-.425.662L20 15.35V18q0 .825-.587 1.413T18 20h-2.65l-1.95 1.925q-.3.275-.662.425T12 22.5q-.375 0-.737-.15t-.663-.425zm.85-2l2.5 2.5l2.5-2.5H18v-3.5l2.5-2.5L18 9.5V6h-3.5L12 3.5L9.5 6H6v3.5L3.5 12L6 14.5V18zm2.5-6"%2F%3E%3C%2Fsvg%3E');
-}
-
-</style>
-<h1 id="cfg"><a class="header" href="#cfg">Cfg</a></h1>
-<p>Pretty much anywhere you can put docs/description, you can also put some cfg. They use the same syntax as the inside of the cfg attribute, e.g. <code>feature = "blah"</code>.</p>
-<div class="mdbook-alerts mdbook-alerts-important">
-<p class="mdbook-alerts-title">
-  <span class="mdbook-alerts-icon"></span>
-  important
-</p>
-<p>The cfg's have no impact on the code generation other than forwarding the cfg's as attributes on items.</p>
-</div>
-<p>This presents a couple of challenges:</p>
-<ul>
-<li>It's quite hard to check whether a driver can compile with any combination of cfg's.</li>
-<li>The cfg's are resolved after code generation, so the toolkit can't check anything.</li>
-<li>It's hard to predict how the cfg attributes on various items interact.</li>
-</ul>
-<p>So what does this all mean?</p>
-<div class="mdbook-alerts mdbook-alerts-caution">
-<p class="mdbook-alerts-title">
-  <span class="mdbook-alerts-icon"></span>
-  caution
-</p>
-<ul>
-<li>The support for cfg's are best effort only. Expect things to be weird or something to work against you.</li>
-<li>Some analysis may not be done on objects with cfg which can lead to weird errors in the generated code since problems are not caught beforehand.</li>
-</ul>
-</div>
-<div class="mdbook-alerts mdbook-alerts-warning">
-<p class="mdbook-alerts-title">
-  <span class="mdbook-alerts-icon"></span>
-  warning
-</p>
-<ul>
-<li>If you use cfg's, check the generated code to see if everything looks alright.</li>
-<li>Use cfg's only sparingly.</li>
-<li>Test all realistic cfg combinations, preferably even in CI.</li>
-</ul>
-</div>
-<p>If there is a problem and the toolkit can do better, then please make an issue!</p>
 
                     </main>
 

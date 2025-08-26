@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Blocks - device-driver-book</title>
+        <title>DSL syntax - device-driver-book</title>
 
 
         <!-- Custom HTML head -->
@@ -12,34 +12,34 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff">
 
-        <link rel="icon" href="favicon.svg">
-        <link rel="shortcut icon" href="favicon.png">
-        <link rel="stylesheet" href="css/variables.css">
-        <link rel="stylesheet" href="css/general.css">
-        <link rel="stylesheet" href="css/chrome.css">
-        <link rel="stylesheet" href="css/print.css" media="print">
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
 
         <!-- Fonts -->
-        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
-        <link rel="stylesheet" href="fonts/fonts.css">
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
 
         <!-- Highlight.js Stylesheets -->
-        <link rel="stylesheet" id="highlight-css" href="highlight.css">
-        <link rel="stylesheet" id="tomorrow-night-css" href="tomorrow-night.css">
-        <link rel="stylesheet" id="ayu-highlight-css" href="ayu-highlight.css">
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
 
         <!-- Custom theme stylesheets -->
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
-            const path_to_root = "";
+            const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex.js";
+            window.path_to_searchindex_js = "../searchindex.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc.js"></script>
+        <script src="../toc.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -106,7 +106,7 @@
             <!-- populated by js -->
             <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
             <noscript>
-                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
             </noscript>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
@@ -141,7 +141,7 @@
                     <h1 class="menu-title">device-driver-book</h1>
 
                     <div class="right-buttons">
-                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
                         <a href="https://github.com/diondokter/device-driver" title="Git repository" aria-label="Git repository">
@@ -245,156 +245,221 @@
 }
 
 </style>
-<h1 id="blocks"><a class="header" href="#blocks">Blocks</a></h1>
-<p>A block is a collection of other objects. This can be great to e.g. pool related objects together.</p>
-<p>Blocks have their own address offset which is applied to all child objects. With this repeated and ref blocks are supported and can be used to great effect.</p>
-<div class="mdbook-alerts mdbook-alerts-tip">
+<h1 id="dsl-syntax"><a class="header" href="#dsl-syntax">Dsl syntax</a></h1>
+<div class="mdbook-alerts mdbook-alerts-caution">
 <p class="mdbook-alerts-title">
   <span class="mdbook-alerts-icon"></span>
-  tip
+  caution
 </p>
-<p>The generated code has one implicit root block with the name of the device that acts as the entry point of the driver.
-The only difference with other blocks is that it takes ownership of the interface instance and always has address offset 0.</p>
+<p>This doc is written manually. The implementation may differ.
+If it does, then either this doc is wrong or the implementation is wrong.
+In any case, them disagreeing is a bug. Please file an issue!</p>
 </div>
-<p>It is accessed as a function on the parent block it's part of.</p>
-<p>All objects are generated globally so child objects still need a globally unique name and are not generated in a module.</p>
-<p>Example usage:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// MyDevice is the root block
-let mut device = MyDevice::new(DeviceInterface::new());
-
-let mut child_block = device.foo();
-child_block.bar().dispatch().unwrap();
-// Or in one go
-device.foo().bar().dispatch().unwrap();
-<span class="boring">}</span></code></pre></pre>
-<p>Below are minimal and full examples of how blocks can be defined.
-There's one child object defined as example.</p>
-<ul>
-<li><a href="#blocks">Blocks</a>
-<ul>
-<li><a href="#dsl">DSL</a></li>
-<li><a href="#manifest">Manifest</a></li>
-<li><a href="#required">Required</a>
-<ul>
-<li><a href="#type-manifest-only"><code>type</code> (manifest only)</a></li>
-</ul>
-</li>
-<li><a href="#optional">Optional</a>
-<ul>
-<li><a href="#cfg-or-cfg"><code>cfg</code> or <code>#[cfg(...)]</code></a></li>
-<li><a href="#description-or-doc--"><code>description</code> or <code>#[doc = ""]</code></a></li>
-<li><a href="#address_offset"><code>address_offset</code></a></li>
-<li><a href="#repeat"><code>repeat</code></a></li>
-<li><a href="#objects-manifest-only"><code>objects</code> (manifest only)</a></li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-<h2 id="dsl"><a class="header" href="#dsl">DSL</a></h2>
-<p>Minimal:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>block Foo {
-    buffer Bar = 0,
-}
-<span class="boring">}</span></code></pre></pre>
-<p>Full:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>/// Block description
-#[cfg(not(blah))]
-block Foo {
-    const ADDRESS_OFFSET = 10;
-    const REPEAT = {
-        count: 2,
-        stride: 20,
-    };
-
-    buffer Bar = 0,
-}
-<span class="boring">}</span></code></pre></pre>
-<h2 id="manifest"><a class="header" href="#manifest">Manifest</a></h2>
-<p>Minimal:</p>
-<pre><code class="language-json">"Foo": {
-    "type": "block",
-    "objects": {
-        "Bar": {
-            "type": "buffer",
-            "address": 0
-        }
-    }
-}
-</code></pre>
-<p>Full:</p>
-<pre><code class="language-json">"Foo": {
-    "type": "block",
-    "cfg": "not(blah)",
-    "description": "Block description",
-    "address_offset": 10,
-    "repeat": {
-        "count": 2,
-        "stride": 20,
-    },
-    "objects": {
-        "Bar": {
-            "type": "buffer",
-            "address": 0
-        }
-    }
-}
-</code></pre>
-<h2 id="required"><a class="header" href="#required">Required</a></h2>
-<h3 id="type-manifest-only"><a class="header" href="#type-manifest-only"><code>type</code> (manifest only)</a></h3>
-<p>The type of the object.</p>
-<p>For blocks this field is a string with the contents <code>"block"</code>.</p>
-<h2 id="optional"><a class="header" href="#optional">Optional</a></h2>
-<h3 id="cfg-or-cfg"><a class="header" href="#cfg-or-cfg"><code>cfg</code> or <code>#[cfg(...)]</code></a></h3>
-<p>Allows for cfg-gating the block.</p>
-<p>In the DSL, the normal Rust syntax is used. Just put the attribute on the block definition. Only one attribute is allowed.</p>
-<p>In the manifest it is configured with a string.
-The string only defines the inner part: <code>#[cfg(foo)]</code> = <code>"cfg": "foo",</code>.</p>
 <div class="mdbook-alerts mdbook-alerts-warning">
 <p class="mdbook-alerts-title">
   <span class="mdbook-alerts-icon"></span>
   warning
 </p>
-<p>Check the chapter on cfg for more information. The cfg's are not checked by the toolkit and only passed to the generated code and so there are some oddities to be aware of.</p>
+<p>While something may be valid to be parsed, it may not be valid as a construct
+and may generate an error deeper down.</p>
 </div>
-<h3 id="description-or-doc--"><a class="header" href="#description-or-doc--"><code>description</code> or <code>#[doc = ""]</code></a></h3>
-<p>The doc comments for the generated code.</p>
-<p>For the DSL, use the normal doc attributes or triple slash <code>///</code>.
-Multiple attributes get concatenated with a newline (just like normal Rust does).</p>
-<p>For the manifest, this is a string.</p>
-<p>The description is added as normal doc comments to the generated code. So it supports markdown and all other features you're used to. The description is used on the generated block struct and on the function to access the block.</p>
-<h3 id="address_offset"><a class="header" href="#address_offset"><code>address_offset</code></a></h3>
-<p>The address offset used for all child objects specified as a signed integer.</p>
-<p>The offset is applied to all addresses of the children. So when the offset is 5 and a child specifies address 7, then the actual used address will be 12.</p>
-<p>If the offset is not specified, it is default 0.</p>
-<h3 id="repeat"><a class="header" href="#repeat"><code>repeat</code></a></h3>
-<p>Repeat the block a number of times at different address offsets.</p>
-<p>It is specified with two fields:</p>
+<p>Top-level item is <em>Device</em>.</p>
 <ul>
-<li>Count: unsigned integer, the amount of times the block is repeated</li>
-<li>Stride: signed integer, the amount the address offset changes per repeat</li>
+<li>'*' is used to signal 0 or more instances.</li>
+<li>'?' is used to signal 0 or 1 instances.</li>
+<li>'|' is used as an 'or'. One of the options in the chain can be used.</li>
+<li>'( )' is used to group things together.</li>
+<li>Any <code>keyword</code> or brackets in the grammar use backticks just like word 'keyword' on this line.</li>
 </ul>
-<p>The calculation is <code>offset = base_offset + index * stride</code>.</p>
-<p>When the repeat field is present, the function to access a block will have an extra parameter for the index.</p>
-<h3 id="objects-manifest-only"><a class="header" href="#objects-manifest-only"><code>objects</code> (manifest only)</a></h3>
-<p>A map that contains all the child objects.</p>
-<p>For the DSL the children are defined in the block directly.</p>
+<p>This doesn't map perfectly on the YAML and JSON inputs, but they should be made as close as possible.</p>
+<p><em>Device</em>:</p>
+<blockquote>
+<p><em>GlobalConfigList</em><br />
+<em>ObjectList</em></p>
+</blockquote>
+<p><em>GlobalConfigList</em>:</p>
+<blockquote>
+<p>(<code>config</code> <code>{</code> <em>GlobalConfig</em>* <code>}</code>)?</p>
+</blockquote>
+<p><em>GlobalConfig</em>:</p>
+<blockquote>
+<p>(<code>type</code> <code>DefaultRegisterAccess</code> <code>=</code> <em>Access</em><code>;</code>)<br />
+| (<code>type</code> <code>DefaultFieldAccess</code> <code>=</code> <em>Access</em><code>;</code>)<br />
+| (<code>type</code> <code>DefaultBufferAccess</code> <code>=</code> <em>Access</em><code>;</code>)<br />
+| (<code>type</code> <code>DefaultByteOrder</code> <code>=</code> <em>ByteOrder</em><code>;</code>)<br />
+| (<code>type</code> <code>DefaultBitOrder</code> <code>=</code> <em>BitOrder</em><code>;</code>)<br />
+| (<code>type</code> <code>RegisterAddressType</code> <code>=</code> <em>IntegerType</em><code>;</code>)<br />
+| (<code>type</code> <code>CommandAddressType</code> <code>=</code> <em>IntegerType</em><code>;</code>)<br />
+| (<code>type</code> <code>BufferAddressType</code> <code>=</code> <em>IntegerType</em><code>;</code>)<br />
+| (<code>type</code> <code>NameWordBoundaries</code> <code>=</code> <em>NameWordBoundaries</em><code>;</code>)<br />
+| (<code>type</code> <code>DefmtFeature</code> <code>=</code> <em>String</em><code>;</code>)</p>
+</blockquote>
+<p><em>NameWordBoundaries</em>:
+This specifies the input, not the output. Only applies to object and field names.</p>
+<blockquote>
+<p>[<em>Boundary</em>*]<br />
+| <em>String</em></p>
+</blockquote>
+<p><em>ObjectList</em>:</p>
+<blockquote>
+<p>(<em>Object</em>(<code>,</code> <em>Object</em>)*<code>,</code>?)?</p>
+</blockquote>
+<p><em>Object</em>:</p>
+<blockquote>
+<p><em>Block</em><br />
+| <em>Register</em><br />
+| <em>Command</em><br />
+| <em>Buffer</em><br />
+| <em>RefObject</em></p>
+</blockquote>
+<p><em>RefObject</em>:
+An object that is a copy of another object. Any items in the object are overrides.</p>
+<blockquote>
+<p><em>AttributeList</em>
+<code>ref</code> <em>IDENTIFIER</em> <code>=</code> <em>Object</em></p>
+</blockquote>
+<p><em>AttributeList</em>:</p>
+<blockquote>
+<p><em>Attribute</em>*</p>
+</blockquote>
+<p><em>Attribute</em>:
+Used for documentation and conditional compilation</p>
+<blockquote>
+<p>(<code>#</code> <code>[</code> <code>doc</code> <code>=</code> <em>STRING</em><code>]</code>)<br />
+| (<code>#</code> <code>[</code> <code>cfg</code> <code>(</code> <em>ConfigurationPredicate</em><code>)</code> <code>]</code>)</p>
+</blockquote>
+<p><em>Block</em>:</p>
+<blockquote>
+<p><em>AttributeList</em><br />
+<code>block</code> <em>IDENTIFIER</em> <code>{</code> <em>BlockItemList</em> <em>ObjectList</em> <code>}</code></p>
+</blockquote>
+<p><em>BlockItemList</em>:</p>
+<blockquote>
+<p><em>BlockItem</em>*</p>
+</blockquote>
+<p><em>BlockItem</em>:</p>
+<blockquote>
+<p>(<code>const</code> <code>ADDRESS_OFFSET</code> <code>=</code> <em>INTEGER</em><code>;</code>)<br />
+| (<code>const</code> <em>Repeat</em>)</p>
+</blockquote>
+<p><em>Register</em>:</p>
+<blockquote>
+<p><em>AttributeList</em><br />
+<code>register</code> <em>IDENTIFIER</em> <code>{</code> <em>RegisterItemList</em> <em>FieldList</em> <code>}</code></p>
+</blockquote>
+<p><em>RegisterItemList</em>:</p>
+<blockquote>
+<p><em>RegisterItem</em>*</p>
+</blockquote>
+<p><em>RegisterItem</em>:</p>
+<blockquote>
+<p>(<code>type</code> <code>Access</code> <code>=</code> <em>Access</em><code>;</code>)<br />
+| (<code>type</code> <code>ByteOrder</code> <code>=</code> <em>ByteOrder</em><code>;</code>)<br />
+| (<code>type</code> <code>BitOrder</code> <code>=</code> <em>BitOrder</em><code>;</code>)<br />
+| (<code>const</code> <code>ADDRESS</code> <code>=</code> <em>INTEGER</em><code>;</code>)<br />
+| (<code>const</code> <code>SIZE_BITS</code> <code>=</code> <em>INTEGER</em><code>;</code>)<br />
+| (<code>const</code> <code>RESET_VALUE</code> <code>=</code> <em>INTEGER</em> | <em>U8_ARRAY</em><code>;</code>)<br />
+| (<code>const</code> <em>Repeat</em>)<br />
+| (<code>const</code> <code>ALLOW_BIT_OVERLAP</code> = <em>BOOL</em><code>;</code>)<br />
+| (<code>const</code> <code>ALLOW_ADDRESS_OVERLAP</code> = <em>BOOL</em><code>;</code>)</p>
+</blockquote>
+<p><em>Access</em>:</p>
+<blockquote>
+<p>(<code>ReadWrite</code>|<code>RW</code>)<br />
+| (<code>ReadOnly</code>|<code>RO</code>)<br />
+| (<code>WriteOnly</code>|<code>WO</code>)</p>
+</blockquote>
+<p><em>ByteOrder</em>:</p>
+<blockquote>
+<p><code>LE</code>|<code>BE</code></p>
+</blockquote>
+<p><em>BitOrder</em>:</p>
+<blockquote>
+<p><code>LSB0</code>|<code>MSB0</code></p>
+</blockquote>
+<p><em>FieldList</em>:</p>
+<blockquote>
+<p>(<em>Field</em> (<code>,</code> <em>Field</em>)* <code>,</code>?)</p>
+</blockquote>
+<p><em>Field</em>:</p>
+<blockquote>
+<p><em>AttributeList</em><br />
+<em>IDENTIFIER</em><code>:</code> <em>Access</em>? <em>BaseType</em> <em>FieldConversion</em>? <code>=</code> <em>FieldAddress</em></p>
+</blockquote>
+<p><em>FieldConversion</em>:</p>
+<blockquote>
+<p>(<code>as</code> <code>try</code>? <em>TYPE_PATH</em>)<br />
+| (<code>as</code> <code>try</code>? <code>enum</code> <em>IDENTIFIER</em> <code>{</code> <em>EnumVariantList</em><code>}</code>)</p>
+</blockquote>
+<p><em>EnumVariantList</em>:</p>
+<blockquote>
+<p><em>EnumVariant</em>(<code>,</code> <em>EnumVariant</em>)*<code>,</code>?</p>
+</blockquote>
+<p><em>EnumVariant</em>:</p>
+<blockquote>
+<p><em>AttributeList</em><br />
+<em>IDENTIFIER</em> (<code>=</code> <em>EnumValue</em>)?</p>
+</blockquote>
+<p><em>EnumValue</em>:</p>
+<blockquote>
+<p><em>INTEGER</em>|<code>default</code>|<code>catch_all</code></p>
+</blockquote>
+<p><em>FieldAddress</em>:</p>
+<blockquote>
+<p><em>INTEGER</em><br />
+| (<em>INTEGER</em><code>..</code><em>INTEGER</em>)<br />
+| (<em>INTEGER</em><code>..=</code><em>INTEGER</em>)</p>
+</blockquote>
+<p><em>BaseType</em>:</p>
+<blockquote>
+<p><code>bool</code> | <code>uint</code> | <code>int</code></p>
+</blockquote>
+<p><em>Command</em>:</p>
+<blockquote>
+<p><em>AttributeList</em><br />
+<code>command</code> <em>IDENTIFIER</em> <em>CommandValue</em>?</p>
+</blockquote>
+<p><em>CommandValue</em>:</p>
+<blockquote>
+<p>(<code>=</code> <em>INTEGER</em>)<br />
+| (<code>{</code> <em>CommandItemList</em> (<code>in</code> <code>{</code> <em>FieldList</em> <code>}</code> <code>,</code>?)? (<code>out</code> <code>{</code> <em>FieldList</em> <code>}</code> <code>,</code>?)? <code>}</code>)</p>
+</blockquote>
+<p><em>CommandItemList</em>:</p>
+<blockquote>
+<p><em>CommandItem</em>*</p>
+</blockquote>
+<p><em>CommandItem</em>:
+Commands have data going in and out, so they need two separate data field types.
+If no in fields, then no data is sent. If no out fields, then no data is returned.</p>
+<blockquote>
+<p>(<code>type</code> <code>ByteOrder</code> <code>=</code> <em>ByteOrder</em><code>;</code>)<br />
+| (<code>type</code> <code>BitOrder</code> <code>=</code> <em>BitOrder</em><code>;</code>)<br />
+| (<code>const</code> <code>ADDRESS</code> <code>=</code> <em>INTEGER</em><code>;</code>)<br />
+| (<code>const</code> <code>SIZE_BITS_IN</code> <code>=</code> <em>INTEGER</em><code>;</code>)<br />
+| (<code>const</code> <code>SIZE_BITS_OUT</code> <code>=</code> <em>INTEGER</em><code>;</code>)<br />
+| (<code>const</code> <em>Repeat</em>)<br />
+| (<code>const</code> <code>ALLOW_BIT_OVERLAP</code> = <em>BOOL</em><code>;</code>)<br />
+| (<code>const</code> <code>ALLOW_ADDRESS_OVERLAP</code> = <em>BOOL</em><code>;</code>)</p>
+</blockquote>
+<p><em>Repeat</em>:</p>
+<blockquote>
+<p><code>REPEAT</code> <code>=</code> <code>{</code> <code>count</code> <code>:</code> <em>INTEGER</em><code>,</code> <code>stride</code> <code>:</code> <em>INTEGER</em><code>,</code>? <code>}</code> <code>;</code></p>
+</blockquote>
+<p><em>Buffer</em>:</p>
+<blockquote>
+<p><em>AttributeList</em><br />
+<code>buffer</code> <em>IDENTIFIER</em>(<code>:</code> <em>Access</em>)? (<code>=</code> <em>INTEGER</em>)?</p>
+</blockquote>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="buffers.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../v1/refs.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="refs.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../v1/manifest-syntax.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -404,11 +469,11 @@ Multiple attributes get concatenated with a newline (just like normal Rust does)
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="buffers.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../v1/refs.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="refs.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../v1/manifest-syntax.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
@@ -423,13 +488,13 @@ Multiple attributes get concatenated with a newline (just like normal Rust does)
         </script>
 
 
-        <script src="elasticlunr.min.js"></script>
-        <script src="mark.min.js"></script>
-        <script src="searcher.js"></script>
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
 
-        <script src="clipboard.min.js"></script>
-        <script src="highlight.js"></script>
-        <script src="book.js"></script>
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
 
         <!-- Custom JS scripts -->
 

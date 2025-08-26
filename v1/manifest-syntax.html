@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Intro - device-driver-book</title>
+        <title>Manifest syntax - device-driver-book</title>
 
 
         <!-- Custom HTML head -->
@@ -12,34 +12,34 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff">
 
-        <link rel="icon" href="favicon.svg">
-        <link rel="shortcut icon" href="favicon.png">
-        <link rel="stylesheet" href="css/variables.css">
-        <link rel="stylesheet" href="css/general.css">
-        <link rel="stylesheet" href="css/chrome.css">
-        <link rel="stylesheet" href="css/print.css" media="print">
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
 
         <!-- Fonts -->
-        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
-        <link rel="stylesheet" href="fonts/fonts.css">
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
 
         <!-- Highlight.js Stylesheets -->
-        <link rel="stylesheet" id="highlight-css" href="highlight.css">
-        <link rel="stylesheet" id="tomorrow-night-css" href="tomorrow-night.css">
-        <link rel="stylesheet" id="ayu-highlight-css" href="ayu-highlight.css">
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
 
         <!-- Custom theme stylesheets -->
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
-            const path_to_root = "";
+            const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex.js";
+            window.path_to_searchindex_js = "../searchindex.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc.js"></script>
+        <script src="../toc.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -106,7 +106,7 @@
             <!-- populated by js -->
             <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
             <noscript>
-                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
             </noscript>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
@@ -141,7 +141,7 @@
                     <h1 class="menu-title">device-driver-book</h1>
 
                     <div class="right-buttons">
-                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
                         <a href="https://github.com/diondokter/device-driver" title="Git repository" aria-label="Git repository">
@@ -245,92 +245,227 @@
 }
 
 </style>
-<h1 id="intro"><a class="header" href="#intro">Intro</a></h1>
-<div class="mdbook-alerts mdbook-alerts-important">
+<h1 id="manifest-syntax"><a class="header" href="#manifest-syntax">Manifest syntax</a></h1>
+<div class="mdbook-alerts mdbook-alerts-caution">
 <p class="mdbook-alerts-title">
   <span class="mdbook-alerts-icon"></span>
-  important
+  caution
 </p>
-<p>We deserve better drivers. Rust has shown that we don't need to stick to old principles and that we as an industry can do better.</p>
+<p>This doc is written manually. The implementation may differ.
+If it does, then either this doc is wrong or the implementation is wrong.
+In any case, them disagreeing is a bug. Please file an issue!</p>
 </div>
-<p>Device-driver is a Rust toolkit that generates safe, documented interfaces for hardware devices, handling bit-packed registers and device commands through an expressive macro DSL or config file.</p>
-<p>While the Rust language provides many opportunities to improve the way we write drivers, it doesn't mean those are easy to use. There are two issues:</p>
-<ol>
-<li>Creating good datastructures to represent the driver is hard</li>
-<li>Writing the definitions by hand takes a lot of thankless work</li>
-</ol>
-<p>By using this toolkit, you get both 1 and 2 solved.</p>
-<p>Number one is solved by getting the datastructures as part of this toolkit which has seen over 5 years of iteration and improvements. The second issue is solved by using code generation so you only need to manually take care of the things that make your driver unique.</p>
-<p>Together, this delivers a really tight and precise way of authoring your device driver:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>device_driver::create_device!(
-    device_name: MyDevice,
-    dsl: {
-        config {
-            type RegisterAddressType = u8;
-        }
-        /// This is the Foo register
-        register Foo {
-            const ADDRESS = 0;
-            const SIZE_BITS = 8;
-
-            /// This is a bool at bit 0!
-            value0: bool = 0,
-            /// Integrated enum generation
-            value1: int as enum GeneratedEnum {
-              A,
-              /// Variant B
-              B,
-              C = default,
-            } = 1..4,
-            /// This is a 4-bit integer
-            value2: uint = 4..8,
-        },
+<div class="mdbook-alerts mdbook-alerts-warning">
+<p class="mdbook-alerts-title">
+  <span class="mdbook-alerts-icon"></span>
+  warning
+</p>
+<p>While something may be valid to be parsed, it may not be valid as a construct
+and may generate an error deeper down.</p>
+</div>
+<p>Top-level item is <em>Device</em>.</p>
+<p>Anything marked like <em>this</em> denotes its own type specification.</p>
+<p>These are the pre-defined types:</p>
+<ul>
+<li>bool</li>
+<li>uint</li>
+<li>int</li>
+<li>float</li>
+<li>string</li>
+<li>array
+<ul>
+<li>Using <code>[]</code> brackets.</li>
+<li>If inner types are restricted, then signaled as e.g. <code>[float]</code></li>
+</ul>
+</li>
+<li>map
+<ul>
+<li>Using <code>{}</code> brackets.</li>
+<li>The keys are always text/string.</li>
+<li>Restrictions can be signaled as required by <code>?</code></li>
+<li>Restriction syntax: `{ foo?, bar?: float, xen: bool, *: bool }
+<ul>
+<li>Optional field <code>foo</code> without type restriction</li>
+<li>Optional field <code>bar</code> with float restriction</li>
+<li>Required field <code>xen</code> with bool restriction</li>
+<li><code>0..N</code> fields with any name with bool restriction</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>Further restriction can be denoted using <code>oneof()</code>, for example: <code>int oneof(1, 2, 3, 4)</code> or <code>oneof(bool, int)</code></p>
+<p><em>Device</em>:
+The key of the object will become the name of it</p>
+<pre><code>{
+    config?: _GlobalConfig_,
+    *: _Object_
+}
+</code></pre>
+<p><em>GlobalConfig</em>:</p>
+<pre><code>{
+    default_register_access?: _Access_,
+    default_field_access?: _Access_,
+    default_buffer_access?: _Access_,
+    default_byte_order?: _ByteOrder_,
+    default_bit_order?: _BitOrder_,
+    register_address_type?: _IntegerType_,
+    command_address_type?: _IntegerType_,
+    buffer_address_type?: _IntegerType_,
+    name_word_boundaries?: _NameWordBoundaries_
+    defmt_feature?: string
+}
+</code></pre>
+<p><em>Access</em>:</p>
+<pre><code>string oneof("ReadWrite", "RW", "ReadOnly", "RO", "WriteOnly", "WO")
+</code></pre>
+<p><em>ByteOrder</em>:</p>
+<pre><code>string oneof("LE", "BE")
+</code></pre>
+<p><em>BitOrder</em>:</p>
+<pre><code>string oneof("LSB0", "MSB0")
+</code></pre>
+<p><em>IntegerType</em>:</p>
+<pre><code>string oneof("u8", "u16", "u32", "i8", "i16", "i32", "i64")
+</code></pre>
+<p><em>NameWordBoundaries</em>:</p>
+<pre><code>oneof([_Boundary_], string)
+</code></pre>
+<p><em>Object</em>:</p>
+<pre><code>oneof(
+  _Block_,
+  _Register_,
+  _Command_,
+  _Buffer_,
+  _RefObject_
+)
+</code></pre>
+<p><em>RefObject</em>:</p>
+<pre><code>{
+    type: string oneof("ref"),
+    cfg?: string,
+    description?: string,
+    target: string,
+    override: _Object_,
+}
+</code></pre>
+<p><em>Block</em>:</p>
+<pre><code>{
+    type: string oneof("block"),
+    cfg?: string,
+    description?: string,
+    address_offset?: int,
+    repeat?: _Repeat_,
+    objects?: {
+        *: _Object_
     }
-);
-
-let mut device = MyDevice::new(device_interface);
-device.foo().write(|reg| reg.set_value_1(GeneratedEnum::B)).unwrap();
-<span class="boring">}</span></code></pre></pre>
-<p>Instantly we get a nice and familiar API that is well documented. There's a bunch more features to discover like using YAML as the input and a bunch of analysis steps, so read on!</p>
-<h2 id="the-goal"><a class="header" href="#the-goal">The goal</a></h2>
-<p>When you're writing a driver, you just want to implement it and be done with it. Most of the time developing a driver is boring and repetitive.</p>
-<p>To help you do less of the boring work and to create a higher quality driver at the same time, the goals are:</p>
-<ol>
-<li>Get a great driver for minimal effort</li>
-<li>Get a driver that is correct and hard to misuse
-<ul>
-<li>(assuming the input spec is correct)</li>
-</ul>
-</li>
-<li>Get a driver that is well documented
-<ul>
-<li>(assuming the input spec gives docs)</li>
-</ul>
-</li>
-</ol>
-<p>These goals are met by:</p>
-<ul>
-<li>Using a dense and precise input language</li>
-<li>Having many options do deal with byte and bit ordering</li>
-<li>Having analysis steps to decrease the chance of common mistakes</li>
-<li>Separating the interface to the device from the definitions</li>
-<li>Allowing you to put docs on pretty much anything</li>
-</ul>
-<h2 id="how-to-continue"><a class="header" href="#how-to-continue">How to continue</a></h2>
-<p>Simply read the rest of the book!</p>
-<p>Looking at existing drivers and examples can also be very helpful.</p>
+}
+</code></pre>
+<p><em>Repeat</em>:</p>
+<pre><code>{
+    count: uint,
+    stride: int
+}
+</code></pre>
+<p><em>Register</em>:</p>
+<pre><code>{
+    type: string oneof("register"),
+    cfg?: string,
+    description?: string,
+    access?: _Access_,
+    byte_order?: _ByteOrder_,
+    bit_order?: _BitOrder_,
+    address: int,
+    size_bits: int,
+    reset_value?: oneof(int, [uint]),
+    repeat?: _Repeat_,
+    allow_bit_overlap?: bool,
+    allow_address_overlap?: bool,
+    fields?: {
+        *: _Field_
+    }
+}
+</code></pre>
+<p><em>Field</em>:</p>
+<pre><code>{
+    cfg?: string,
+    description?: string,
+    access?: _Access_,
+    base: _BaseType_,
+    conversion?: _FieldConversion_,
+    try_conversion?: _FieldConversion_,
+    start: int,
+    end?: int,
+}
+</code></pre>
+<p><em>BaseType</em>:</p>
+<pre><code>string oneof("bool", "int", "uint")
+</code></pre>
+<p><em>FieldConversion</em>:</p>
+<pre><code>oneof(
+    string,
+    {
+        name: string,
+        description?: string,
+        *: _EnumVariant_
+    }
+)
+</code></pre>
+<p><em>EnumVariant</em>:</p>
+<pre><code>oneof(
+    _EnumValue_,
+    {
+        cfg?: string,
+        description?: string,
+        value?: _EnumValue_
+    }
+)
+</code></pre>
+<p><em>EnumValue</em>:</p>
+<pre><code>oneof(
+    null, int, string oneof("default", "catch_all")
+)
+</code></pre>
+<p><em>Command</em>:</p>
+<pre><code>{
+    type: string oneof("command"),
+    cfg?: string,
+    description?: string,
+    byte_order?: _ByteOrder_,
+    bit_order?: _BitOrder_,
+    address: int,
+    repeat?: _Repeat_,
+    allow_bit_overlap?: bool,
+    allow_address_overlap?: bool,
+    size_bits_in?: int,
+    fields_in?: {
+        *: _Field_
+    },
+    size_bits_out?: int,
+    fields_out?: {
+        *: _Field_
+    },
+}
+</code></pre>
+<p><em>Buffer</em>:</p>
+<pre><code>{
+    type: string oneof("buffer"),
+    cfg?: string,
+    description?: string,
+    access?: _Access_,
+    address: int,
+}
+</code></pre>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="preface.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../v1/dsl-syntax.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="using-the-macro.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../v1/cfg.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -340,11 +475,11 @@ device.foo().write(|reg| reg.set_value_1(GeneratedEnum::B)).unwrap();
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="preface.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../v1/dsl-syntax.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="using-the-macro.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../v1/cfg.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
@@ -359,13 +494,13 @@ device.foo().write(|reg| reg.set_value_1(GeneratedEnum::B)).unwrap();
         </script>
 
 
-        <script src="elasticlunr.min.js"></script>
-        <script src="mark.min.js"></script>
-        <script src="searcher.js"></script>
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
 
-        <script src="clipboard.min.js"></script>
-        <script src="highlight.js"></script>
-        <script src="book.js"></script>
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
 
         <!-- Custom JS scripts -->
 

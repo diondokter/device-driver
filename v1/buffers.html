@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Using the macro - device-driver-book</title>
+        <title>Buffers - device-driver-book</title>
 
 
         <!-- Custom HTML head -->
@@ -12,34 +12,34 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff">
 
-        <link rel="icon" href="favicon.svg">
-        <link rel="shortcut icon" href="favicon.png">
-        <link rel="stylesheet" href="css/variables.css">
-        <link rel="stylesheet" href="css/general.css">
-        <link rel="stylesheet" href="css/chrome.css">
-        <link rel="stylesheet" href="css/print.css" media="print">
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
 
         <!-- Fonts -->
-        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
-        <link rel="stylesheet" href="fonts/fonts.css">
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
 
         <!-- Highlight.js Stylesheets -->
-        <link rel="stylesheet" id="highlight-css" href="highlight.css">
-        <link rel="stylesheet" id="tomorrow-night-css" href="tomorrow-night.css">
-        <link rel="stylesheet" id="ayu-highlight-css" href="ayu-highlight.css">
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
 
         <!-- Custom theme stylesheets -->
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
-            const path_to_root = "";
+            const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex.js";
+            window.path_to_searchindex_js = "../searchindex.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc.js"></script>
+        <script src="../toc.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -106,7 +106,7 @@
             <!-- populated by js -->
             <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
             <noscript>
-                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
             </noscript>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
@@ -141,7 +141,7 @@
                     <h1 class="menu-title">device-driver-book</h1>
 
                     <div class="right-buttons">
-                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
                         <a href="https://github.com/diondokter/device-driver" title="Git repository" aria-label="Git repository">
@@ -245,121 +245,110 @@
 }
 
 </style>
-<h1 id="using-the-macro"><a class="header" href="#using-the-macro">Using the macro</a></h1>
-<p>The macro is the main way of generating a driver. It is defined in the <code>device-driver-macros</code> crate which is re-exported in the <code>device-driver</code> crate by default. You don't have import the macros crate yourself.</p>
-<p>The macro can be used in two forms.</p>
-<h2 id="inline-dsl"><a class="header" href="#inline-dsl">Inline DSL</a></h2>
-<p>The first form is for writing the register definitions using the DSL right in the source of your project.</p>
+<h1 id="buffers"><a class="header" href="#buffers">Buffers</a></h1>
+<p>A buffer is used to represent an stream of bytes on a device. This could for example be a fifo for a radio.
+It's quite a simple construct and thus is limited in configuration options.</p>
+<p>It is accessed as a function on the block it's part of. The function returns a <a href="https://docs.rs/device-driver/latest/device_driver/struct.BufferOperation.html">BufferOperation</a> which can be used to read and write from/to the buffer. This operation type also implements the <a href="https://crates.io/crates/embedded-io">embedded-io</a> traits.</p>
+<p>Example usage:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>device_driver::create_device!(
-    device_name: MyTestDevice,
-    dsl: {
-        // DSL code goes here
-    }
-)
+</span>let mut device = MyDevice::new(DeviceInterface::new());
+
+device.foo().write_all(&amp;[0, 1, 2, 3]).unwrap();
+let mut buffer = [0; 8];
+let len = device.bar().read(&amp;mut buffer).unwrap();
 <span class="boring">}</span></code></pre></pre>
-<p>It consists of two parts:</p>
+<p>Below are minimal and full examples of how buffers can be defined.</p>
 <ul>
-<li><code>device_name</code>: This will be the name of the root block that will take ownership of the device interface.
+<li><a href="#buffers">Buffers</a>
 <ul>
-<li>The name must be provided in PascalCase</li>
-<li>If you're going to distribute this as the main part of your driver, then it's recommended to use the name
-of the chip this driver is for. For example: 'Lis3dh'</li>
-<li>If you're going to write a higher level wrapper around it, then it's recommended to name it something
-appropriate for a low level layer. For example: 'Registers' or 'LowLevel'</li>
+<li><a href="#dsl">DSL</a></li>
+<li><a href="#manifest">Manifest</a></li>
+<li><a href="#required">Required</a>
+<ul>
+<li><a href="#address"><code>address</code></a></li>
+<li><a href="#type-manifest-only"><code>type</code> (manifest only)</a></li>
 </ul>
 </li>
-<li><code>dsl</code>: This selects the option to write DSL code in the macro</li>
+<li><a href="#optional">Optional</a>
+<ul>
+<li><a href="#cfg-or-cfg"><code>cfg</code> or <code>#[cfg(...)]</code></a></li>
+<li><a href="#description-or-doc--"><code>description</code> or <code>#[doc = ""]</code></a></li>
+<li><a href="#access"><code>access</code></a></li>
 </ul>
-<p>Using the DSL in this way allows for nice error messages and keeps the definitions close to your code.</p>
-<h2 id="manifest-file"><a class="header" href="#manifest-file">Manifest file</a></h2>
-<p>The second form uses an external manifest file.</p>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="dsl"><a class="header" href="#dsl">DSL</a></h2>
+<p>Minimal:</p>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
-</span>device_driver::create_device!(
-    device_name: MyTestDevice,
-    manifest: "driver-manifest.yaml"
-)
+</span>buffer Foo = 5,
 <span class="boring">}</span></code></pre></pre>
-<p>You can provide an absolute path or a relative path to the file. If it's relative, then the base path is the value of the <a href="https://doc.rust-lang.org/cargo/reference/environment-variables.html"><code>CARGO_MANIFEST_DIR</code> environment variable</a>. This is the same directory as your <code>Cargo.toml</code> is in.</p>
-<p>The extension of the file determines which parser is used.</p>
-<p>The options are:</p>
-<ul>
-<li>yaml</li>
-<li>json</li>
-<li>toml</li>
-<li>dsl</li>
-</ul>
-<h2 id="output"><a class="header" href="#output">Output</a></h2>
-<div class="mdbook-alerts mdbook-alerts-tip">
+<p>Full:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// A foo buffer
+#[cfg(bar)]
+buffer Foo: WO = 5,
+<span class="boring">}</span></code></pre></pre>
+<h2 id="manifest"><a class="header" href="#manifest">Manifest</a></h2>
+<p>Minimal:</p>
+<pre><code class="language-json">"Foo": {
+    "type": "buffer",
+    "address": 5
+},
+</code></pre>
+<p>Full:</p>
+<pre><code class="language-json">"Foo": {
+    "type": "buffer",
+    "cfg": "bar",
+    "description": "A foo buffer",
+    "access": "WO",
+    "address": 5
+},
+</code></pre>
+<h2 id="required"><a class="header" href="#required">Required</a></h2>
+<h3 id="address"><a class="header" href="#address"><code>address</code></a></h3>
+<p>The address of the buffer.</p>
+<p>Integer value that must fit in the given address type in the global config and can be negative.</p>
+<h3 id="type-manifest-only"><a class="header" href="#type-manifest-only"><code>type</code> (manifest only)</a></h3>
+<p>The type of the object.</p>
+<p>For buffers this field is a string with the contents <code>"buffer"</code>.</p>
+<h2 id="optional"><a class="header" href="#optional">Optional</a></h2>
+<h3 id="cfg-or-cfg"><a class="header" href="#cfg-or-cfg"><code>cfg</code> or <code>#[cfg(...)]</code></a></h3>
+<p>Allows for cfg-gating the buffer.</p>
+<p>In the DSL, the normal Rust syntax is used. Just put the attribute on the buffer definition. Only one attribute is allowed.</p>
+<p>In the manifest it is configured with a string.
+The string only defines the inner part: <code>#[cfg(foo)]</code> = <code>"cfg": "foo",</code>.</p>
+<div class="mdbook-alerts mdbook-alerts-warning">
 <p class="mdbook-alerts-title">
   <span class="mdbook-alerts-icon"></span>
-  tip
+  warning
 </p>
-<p>The generated code is placed exactly where the macro is invoked. This means you can decide to contain everything in its own module. This is recommended to do, but not required.</p>
+<p>Check the chapter on cfg for more information. The cfg's are not checked by the toolkit and only passed to the generated code and so there are some oddities to be aware of.</p>
 </div>
-<div class="mdbook-alerts mdbook-alerts-caution">
-<p class="mdbook-alerts-title">
-  <span class="mdbook-alerts-icon"></span>
-  caution
-</p>
-<p>Code in the same module as the generated code is able to access the private API of the generated code. It is discouraged to make use of the private API since it's not considered as part of the SemVer guarantees and it's designed in a way where you shouldn't need to.</p>
-</div>
-<div class="mdbook-alerts mdbook-alerts-note">
-<p class="mdbook-alerts-title">
-  <span class="mdbook-alerts-icon"></span>
-  note
-</p>
-<p>If you feel part of the private API should be stabilized, then please open an issue to discuss it. If you really need to access the private API, consider pinning the exact device-driver versions and make sure to pin the sub crates too, including the generation and the macros crate.</p>
-</div>
-<h2 id="optimizing-compile-times"><a class="header" href="#optimizing-compile-times">Optimizing compile times</a></h2>
-<p>The device-driver crate has features for turning on the json, yaml and toml parsers. These are enabled by default for your convenience.</p>
-<p>Once you've settled on a format, you can optimize the compile times for you and your dependents by disabling the default features and adding back the features you need.</p>
-<p>Suggestions:</p>
-<ul>
-<li>When using the DSL (inline or as manifest)
-<ul>
-<li><code>default-features = false</code></li>
-<li><code>features = ["dsl"]</code></li>
-</ul>
-</li>
-<li>When using yaml
-<ul>
-<li><code>default-features = false</code></li>
-<li><code>features = ["yaml"]</code></li>
-</ul>
-</li>
-<li>When using json
-<ul>
-<li><code>default-features = false</code></li>
-<li><code>features = ["json"]</code></li>
-</ul>
-</li>
-<li>When using toml
-<ul>
-<li><code>default-features = false</code></li>
-<li><code>features = ["toml"]</code></li>
-</ul>
-</li>
-</ul>
-<div class="mdbook-alerts mdbook-alerts-tip">
-<p class="mdbook-alerts-title">
-  <span class="mdbook-alerts-icon"></span>
-  tip
-</p>
-<p>With these steps the compile times should be acceptable. However, they can be further optimized by getting rid of the macro altogether. This is explained in the cli chapter.</p>
-</div>
+<h3 id="description-or-doc--"><a class="header" href="#description-or-doc--"><code>description</code> or <code>#[doc = ""]</code></a></h3>
+<p>The doc comments for the generated code.</p>
+<p>For the DSL, use the normal doc attributes or triple slash <code>///</code>.
+Multiple attributes get concatenated with a newline (just like normal Rust does).</p>
+<p>For the manifest, this is a string.</p>
+<p>The description is added as normal doc comments to the generated code. So it supports markdown and all other features you're used to. The description is used on the generated buffer struct and on the function to access the buffer.</p>
+<h3 id="access"><a class="header" href="#access"><code>access</code></a></h3>
+<p>Overrides the default buffer access.</p>
+<p>Options are: <code>RW</code>, <code>ReadWrite</code>, <code>WO</code>, <code>WriteOnly</code>, <code>RO</code>, <code>ReadOnly</code>.<br />
+They are written 'as is' in the DSL and as a string in the manifest.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="intro.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../v1/field-sets.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="using-the-cli.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../v1/blocks.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -369,11 +358,11 @@ appropriate for a low level layer. For example: 'Registers' or 'LowLevel'</li>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="intro.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../v1/field-sets.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="using-the-cli.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../v1/blocks.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
@@ -388,13 +377,13 @@ appropriate for a low level layer. For example: 'Registers' or 'LowLevel'</li>
         </script>
 
 
-        <script src="elasticlunr.min.js"></script>
-        <script src="mark.min.js"></script>
-        <script src="searcher.js"></script>
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
 
-        <script src="clipboard.min.js"></script>
-        <script src="highlight.js"></script>
-        <script src="book.js"></script>
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
 
         <!-- Custom JS scripts -->
 

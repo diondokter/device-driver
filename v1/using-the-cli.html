@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Refs - device-driver-book</title>
+        <title>Using the cli - device-driver-book</title>
 
 
         <!-- Custom HTML head -->
@@ -12,34 +12,34 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff">
 
-        <link rel="icon" href="favicon.svg">
-        <link rel="shortcut icon" href="favicon.png">
-        <link rel="stylesheet" href="css/variables.css">
-        <link rel="stylesheet" href="css/general.css">
-        <link rel="stylesheet" href="css/chrome.css">
-        <link rel="stylesheet" href="css/print.css" media="print">
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
 
         <!-- Fonts -->
-        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
-        <link rel="stylesheet" href="fonts/fonts.css">
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
 
         <!-- Highlight.js Stylesheets -->
-        <link rel="stylesheet" id="highlight-css" href="highlight.css">
-        <link rel="stylesheet" id="tomorrow-night-css" href="tomorrow-night.css">
-        <link rel="stylesheet" id="ayu-highlight-css" href="ayu-highlight.css">
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
 
         <!-- Custom theme stylesheets -->
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
-            const path_to_root = "";
+            const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex.js";
+            window.path_to_searchindex_js = "../searchindex.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc.js"></script>
+        <script src="../toc.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -106,7 +106,7 @@
             <!-- populated by js -->
             <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
             <noscript>
-                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
             </noscript>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
@@ -141,7 +141,7 @@
                     <h1 class="menu-title">device-driver-book</h1>
 
                     <div class="right-buttons">
-                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
                         <a href="https://github.com/diondokter/device-driver" title="Git repository" aria-label="Git repository">
@@ -245,154 +245,48 @@
 }
 
 </style>
-<h1 id="refs"><a class="header" href="#refs">Refs</a></h1>
-<p>A ref is a copy of another object where parts of that object are overridden with a new value.</p>
-<p>For example, you may have two different registers that have the same fields but reside at different addresses. You may not want to use a repeat if they are not logically repeated.</p>
-<p>Refs can target registers, commands and blocks. Buffers can't be reffed because they're so simple there's nothing worth overriding. You also can't ref other refs since that would open the gates of hell in the toolkit implementation.</p>
-<div class="mdbook-alerts mdbook-alerts-note">
+<h1 id="using-the-cli"><a class="header" href="#using-the-cli">Using the cli</a></h1>
+<p>The cli is there to optimize compile times for your driver users. Instead of having to compile the device-driver macros and run them, you can generate the code ahead of time and then <code>include!</code> or make a module out of it.</p>
+<div class="mdbook-alerts mdbook-alerts-tip">
 <p class="mdbook-alerts-title">
   <span class="mdbook-alerts-icon"></span>
-  note
+  tip
 </p>
-<p>Using a ref is exactly the same as using the original, just with the new name. The only difference in API is that if the reset value of a field set is overridden, that fieldset gets an extra constructor with which you can initialize it with the overridden reset value.</p>
-<p>The possible overrides are all of the object properties that <em>don't</em> specify things about the field set. For example, <code>size_bits</code>, <code>fields</code>, <code>byte_order</code> and more can't be overridden.</p>
+<p>During development using the proc macro will be lots easier since the code generation won't go out of sync with the driver definitions. Then once the development is done, you may want to use the CLI as an optimization.</p>
 </div>
-<p>Below are minimal and full examples of how refs can be defined. The examples all override a register and its address.</p>
-<ul>
-<li><a href="#refs">Refs</a>
-<ul>
-<li><a href="#dsl">DSL</a></li>
-<li><a href="#manifest">Manifest</a></li>
-<li><a href="#required">Required</a>
-<ul>
-<li><a href="#target-manifest-only"><code>target</code> (manifest only)</a></li>
-<li><a href="#type-manifest-only"><code>type</code> (manifest only)</a></li>
-<li><a href="#override-or---"><code>override</code> or <code>{ .. }</code></a></li>
-</ul>
-</li>
-<li><a href="#optional">Optional</a>
-<ul>
-<li><a href="#cfg-or-cfg"><code>cfg</code> or <code>#[cfg(...)]</code></a></li>
-<li><a href="#description-or-doc--"><code>description</code> or <code>#[doc = ""]</code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-</ul>
-<h2 id="dsl"><a class="header" href="#dsl">DSL</a></h2>
-<p>Minimal:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>register Foo {
-    const ADDRESS = 3;
-    const SIZE_BITS = 16;
-
-    value: uint = 0..16,
-},
-ref Bar = register Foo {
-    const ADDRESS = 5;
-},
-<span class="boring">}</span></code></pre></pre>
-<p>Full:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>register Foo {
-    const ADDRESS = 3;
-    const SIZE_BITS = 16;
-
-    value: uint = 0..16,
-},
-/// This is a copy of Foo, but now with address 5!
-#[cfg(feature = "bar-enabled")]
-ref Bar = register Foo {
-    const ADDRESS = 5;
-},
-<span class="boring">}</span></code></pre></pre>
-<h2 id="manifest"><a class="header" href="#manifest">Manifest</a></h2>
-<p>Minimal:</p>
-<pre><code class="language-json">"Foo": {
-    "type": "register",
-    "address": 3,
-    "size_bits": 16,
-    "fields": {
-        "value": {
-            "base": "uint",
-            "start": 0,
-            "end": 16
-        }
-    }
-},
-"Bar": {
-    "type": "ref",
-    "target": "Foo",
-    "override": {
-        "type": "register",
-        "address": 3,
-    }
-}
+<h2 id="installation"><a class="header" href="#installation">Installation</a></h2>
+<p>The cli can be installed using cargo:</p>
+<pre><code class="language-bash">cargo install device-driver-cli
 </code></pre>
-<p>Full:</p>
-<pre><code class="language-json">"Foo": {
-    "type": "register",
-    "address": 3,
-    "size_bits": 16,
-    "fields": {
-        "value": {
-            "base": "uint",
-            "start": 0,
-            "end": 16
-        }
-    }
-},
-"Bar": {
-    "type": "ref",
-    "target": "Foo",
-    "description": "This is a copy of Foo, but now with address 5!",
-    "cfg": "feature = \"bar-enabled\"",
-    "override": {
-        "type": "register",
-        "address": 3,
-    }
-}
+<p>This always supports all input formats.</p>
+<h2 id="usage"><a class="header" href="#usage">Usage</a></h2>
+<p>The CLI is written with clap and has a minimal and simple interface.</p>
+<p>To see all options, use:</p>
+<pre><code class="language-bash">device-driver-cli --help
 </code></pre>
-<h2 id="required"><a class="header" href="#required">Required</a></h2>
-<h3 id="target-manifest-only"><a class="header" href="#target-manifest-only"><code>target</code> (manifest only)</a></h3>
-<p>The (string) name of the reffed object.</p>
-<h3 id="type-manifest-only"><a class="header" href="#type-manifest-only"><code>type</code> (manifest only)</a></h3>
-<p>The type of the object.</p>
-<p>For refs this field is a string with the contents <code>"ref"</code>.</p>
-<h3 id="override-or---"><a class="header" href="#override-or---"><code>override</code> or <code>{ .. }</code></a></h3>
-<p>Contains the override fields of the ref.</p>
-<p>This is formatted as an object normally is, but some fields will be rejected.</p>
-<h2 id="optional"><a class="header" href="#optional">Optional</a></h2>
-<h3 id="cfg-or-cfg"><a class="header" href="#cfg-or-cfg"><code>cfg</code> or <code>#[cfg(...)]</code></a></h3>
-<p>Allows for cfg-gating the ref.</p>
-<p>In the DSL, the normal Rust syntax is used. Just put the attribute on the ref definition. Only one attribute is allowed.</p>
-<p>In the manifest it is configured with a string.
-The string only defines the inner part: <code>#[cfg(foo)]</code> = <code>"cfg": "foo",</code>.</p>
-<div class="mdbook-alerts mdbook-alerts-warning">
-<p class="mdbook-alerts-title">
-  <span class="mdbook-alerts-icon"></span>
-  warning
-</p>
-<p>Check the chapter on cfg for more information. The cfg's are not checked by the toolkit and only passed to the generated code and so there are some oddities to be aware of.</p>
-</div>
-<h3 id="description-or-doc--"><a class="header" href="#description-or-doc--"><code>description</code> or <code>#[doc = ""]</code></a></h3>
-<p>The doc comments for the generated code.</p>
-<p>For the DSL, use the normal doc attributes or triple slash <code>///</code>.
-Multiple attributes get concatenated with a newline (just like normal Rust does).</p>
-<p>For the manifest, this is a string.</p>
-<p>The description is added as normal doc comments to the generated code. So it supports markdown and all other features you're used to. The description is used on the generated ref struct and on the function to access the ref.</p>
+<p>To do the code generation three things are required:</p>
+<ul>
+<li><code>-m</code> or <code>--manifest</code>: The path to the manifest file</li>
+<li><code>-o</code> or <code>--output</code>: The path to the to be generated rust file</li>
+<li><code>-d</code> or <code>--device-name</code>: The name the toolkit will use for the generated device. This must be specified in PascalCase</li>
+</ul>
+<h2 id="using-the-output"><a class="header" href="#using-the-output">Using the output</a></h2>
+<p>Exactly how you include the generated rust file is up to you. You could generate it into your <code>/src</code> folder and declare it a module, which would be nice for Rust analyzer but forces the generated code to be its own module. Or to include it in an existing module you can use the <a href="https://doc.rust-lang.org/core/macro.include.html"><code>include!</code></a> macro.</p>
+<p>However you choose to include it, don't forget to track the file in your git repo.</p>
+<p>The generated code still depends on the device-driver crate, but since we don't depend on the proc macro anymore we can turn off the default features. So in your <code>Cargo.toml</code> you can now import the toolkit as:</p>
+<pre><code class="language-toml">device-driver = { version = &lt;VERSION&gt;, default-features = false }
+</code></pre>
+<p>This makes it so all unused dependencies are gone.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="blocks.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../v1/using-the-macro.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="dsl-syntax.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../v1/writing-an-interface.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -402,11 +296,11 @@ Multiple attributes get concatenated with a newline (just like normal Rust does)
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="blocks.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../v1/using-the-macro.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="dsl-syntax.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../v1/writing-an-interface.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
@@ -421,13 +315,13 @@ Multiple attributes get concatenated with a newline (just like normal Rust does)
         </script>
 
 
-        <script src="elasticlunr.min.js"></script>
-        <script src="mark.min.js"></script>
-        <script src="searcher.js"></script>
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
 
-        <script src="clipboard.min.js"></script>
-        <script src="highlight.js"></script>
-        <script src="book.js"></script>
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
 
         <!-- Custom JS scripts -->
 
