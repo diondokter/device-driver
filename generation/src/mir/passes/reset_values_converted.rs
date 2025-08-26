@@ -6,13 +6,11 @@ use bitvec::{
     view::BitView,
 };
 
-use crate::mir::{
-    BitOrder, ByteOrder, Device, Object, ObjectOverride, RefObject, Register, ResetValue, Unique,
-};
+use crate::mir::{BitOrder, ByteOrder, Device, Object, Register, ResetValue, Unique};
 
-use super::{recurse_objects, recurse_objects_mut, search_object};
+use super::{recurse_objects, recurse_objects_mut};
 
-/// Checks if the reset values of registers (and ref registers) are valid.
+/// Checks if the reset values of registers are valid.
 /// Also converts integer values to the array representation using the correct bit and byte order.
 ///
 /// For the array representation, the rule is that the input must have the same spec as the bit and byte order.
@@ -49,37 +47,6 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
                 None => Ok(()),
             }
         }
-        Object::Ref(
-            ref_object @ RefObject {
-                name,
-                object_override: ObjectOverride::Register(reg_override),
-                ..
-            },
-        ) => match reg_override.reset_value.as_ref() {
-            Some(reset_value) => {
-                let base_reg = search_object(&reg_override.name, &device.objects)
-                    .expect("Refs have been validated already for existance")
-                    .as_register()
-                    .expect("Refs have been validated already for types");
-
-                let target_byte_order = get_target_byte_order(base_reg, device);
-
-                let new_reset_value = convert_reset_value(
-                    reset_value.clone(),
-                    base_reg
-                        .field_set
-                        .bit_order
-                        .expect("Bitorder should be set at this point"),
-                    base_reg.field_set.size_bits,
-                    "ref register",
-                    name,
-                    target_byte_order,
-                )?;
-                new_reset_values.insert(ref_object.id(), new_reset_value);
-                Ok(())
-            }
-            None => Ok(()),
-        },
         _ => Ok(()),
     })?;
 
@@ -89,21 +56,6 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
                 register.reset_value = Some(new_reset_value);
             }
 
-            Ok(())
-        }
-        Object::Ref(
-            ref_object @ RefObject {
-                object_override: ObjectOverride::Register(_),
-                ..
-            },
-        ) => {
-            if let Some(new_reset_value) = new_reset_values.remove(&ref_object.id()) {
-                ref_object
-                    .object_override
-                    .as_register_mut()
-                    .unwrap()
-                    .reset_value = Some(new_reset_value);
-            }
             Ok(())
         }
         _ => Ok(()),

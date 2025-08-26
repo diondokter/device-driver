@@ -1,18 +1,19 @@
 device_driver::create_device!(
-    device_name: MyTestDevice,
-    dsl: {
-        config {
-            type RegisterAddressType = u8;
-            type DefaultByteOrder = LE;
-        }
-        register Foo {
-            const ADDRESS = 0;
-            const SIZE_BITS = 32;
-            const RESET_VALUE = 0xFFFFFFFF;
+    kdl: "
+        device MyTestDevice {
+            default-byte-order LE
+            register-address-type u8
 
-            value: uint = 0..32,
-        },
-    }
+            register Foo {
+                address 0
+                reset-value 0xFFFFFFFF
+
+                fields size-bits=32 {
+                    (uint)value @31:0
+                }
+            }
+        }
+    "
 );
 
 #[cfg(test)]

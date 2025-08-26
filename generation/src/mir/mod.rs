@@ -5,7 +5,6 @@ use std::{fmt::Display, ops::Range};
 
 use convert_case::Boundary;
 
-pub mod kdl_transform;
 pub mod lir_transform;
 pub mod passes;
 
@@ -149,7 +148,6 @@ pub enum Object {
     Register(Register),
     Command(Command),
     Buffer(Buffer),
-    Ref(RefObject),
     FieldSet(FieldSet),
 }
 
@@ -175,7 +173,6 @@ impl Object {
             Object::Register(val) => &mut val.name,
             Object::Command(val) => &mut val.name,
             Object::Buffer(val) => &mut val.name,
-            Object::Ref(val) => &mut val.name,
             Object::FieldSet(val) => &mut val.name,
         }
     }
@@ -187,7 +184,6 @@ impl Object {
             Object::Register(val) => &val.name,
             Object::Command(val) => &val.name,
             Object::Buffer(val) => &val.name,
-            Object::Ref(val) => &val.name,
             Object::FieldSet(val) => &val.name,
         }
     }
@@ -199,20 +195,7 @@ impl Object {
             Object::Register(val) => &val.description,
             Object::Command(val) => &val.description,
             Object::Buffer(val) => &val.description,
-            Object::Ref(val) => &val.description,
             Object::FieldSet(val) => &val.description,
-        }
-    }
-
-    /// Get a reference to the cfg of the specific object
-    pub(self) fn cfg_attr_mut(&mut self) -> &mut Cfg {
-        match self {
-            Object::Block(val) => &mut val.cfg_attr,
-            Object::Register(val) => &mut val.cfg_attr,
-            Object::Command(val) => &mut val.cfg_attr,
-            Object::Buffer(val) => &mut val.cfg_attr,
-            Object::Ref(val) => &mut val.cfg_attr,
-            Object::FieldSet(val) => &mut val.cfg_attr,
         }
     }
 
@@ -226,7 +209,7 @@ impl Object {
                     .into_iter()
                     .chain(val.field_set_out.as_mut()),
             ),
-            Object::Block(_) | Object::Buffer(_) | Object::Ref(_) => Box::new(std::iter::empty()),
+            Object::Block(_) | Object::Buffer(_) => Box::new(std::iter::empty()),
             Object::FieldSet(val) => Box::new(std::iter::once(val)),
         }
     }
@@ -241,56 +224,18 @@ impl Object {
                     .into_iter()
                     .chain(val.field_set_out.as_ref()),
             ),
-            Object::Block(_) | Object::Buffer(_) | Object::Ref(_) => Box::new(std::iter::empty()),
+            Object::Block(_) | Object::Buffer(_) => Box::new(std::iter::empty()),
             Object::FieldSet(val) => Box::new(std::iter::once(val)),
         }
     }
 
-    pub fn as_block_mut(&mut self) -> Option<&mut Block> {
-        if let Self::Block(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-
-    pub fn as_register_mut(&mut self) -> Option<&mut Register> {
-        if let Self::Register(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-
-    pub fn as_register(&self) -> Option<&Register> {
-        if let Self::Register(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-
-    pub fn as_command_mut(&mut self) -> Option<&mut Command> {
-        if let Self::Command(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-
     /// Return the address if it is specified.
-    /// It's only not specified in ref objects where the user hasn't overridden the address and in raw fieldsets
     fn address(&self) -> Option<i128> {
         match self {
             Object::Block(block) => Some(block.address_offset),
             Object::Register(register) => Some(register.address),
             Object::Command(command) => Some(command.address),
             Object::Buffer(buffer) => Some(buffer.address),
-            Object::Ref(ref_object) => match &ref_object.object_override {
-                ObjectOverride::Block(block_override) => block_override.address_offset,
-                ObjectOverride::Register(register_override) => register_override.address,
-                ObjectOverride::Command(command_override) => command_override.address,
-            },
             Object::FieldSet(_) => None,
         }
     }
@@ -302,20 +247,7 @@ impl Object {
             Object::Register(register) => register.repeat,
             Object::Command(command) => command.repeat,
             Object::Buffer(_) => None,
-            Object::Ref(ref_object) => match &ref_object.object_override {
-                ObjectOverride::Block(block_override) => block_override.repeat,
-                ObjectOverride::Register(register_override) => register_override.repeat,
-                ObjectOverride::Command(command_override) => command_override.repeat,
-            },
             Object::FieldSet(_) => None,
-        }
-    }
-
-    pub fn as_ref_object_mut(&mut self) -> Option<&mut RefObject> {
-        if let Self::Ref(v) = self {
-            Some(v)
-        } else {
-            None
         }
     }
 
@@ -325,7 +257,6 @@ impl Object {
             Object::Register(_) => "register",
             Object::Command(_) => "command",
             Object::Buffer(_) => "buffer",
-            Object::Ref(_) => "ref",
             Object::FieldSet(_) => "fieldset",
         }
     }
@@ -333,7 +264,6 @@ impl Object {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Block {
-    pub cfg_attr: Cfg,
     pub description: String,
     pub name: String,
     pub address_offset: i128,
@@ -349,7 +279,6 @@ pub struct Repeat {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Register {
-    pub cfg_attr: Cfg,
     pub description: String,
     pub name: String,
     pub access: Access,
@@ -362,7 +291,6 @@ pub struct Register {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct FieldSet {
-    pub cfg_attr: Cfg,
     pub description: String,
     pub name: String,
     pub size_bits: u32,
@@ -374,7 +302,6 @@ pub struct FieldSet {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Field {
-    pub cfg_attr: Cfg,
     pub description: String,
     pub name: String,
     pub access: Access,
@@ -427,7 +354,6 @@ impl FieldConversion {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Enum {
-    pub cfg_attr: Cfg,
     pub description: String,
     pub name: String,
     pub variants: Vec<EnumVariant>,
@@ -437,7 +363,6 @@ pub struct Enum {
 impl Enum {
     pub fn new(description: String, name: String, variants: Vec<EnumVariant>) -> Self {
         Self {
-            cfg_attr: Cfg::default(),
             description,
             name,
             variants,
@@ -453,7 +378,6 @@ impl Enum {
         generation_style: EnumGenerationStyle,
     ) -> Self {
         Self {
-            cfg_attr: Cfg::default(),
             description,
             name,
             variants,
@@ -480,7 +404,6 @@ impl EnumGenerationStyle {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct EnumVariant {
-    pub cfg_attr: Cfg,
     pub description: String,
     pub name: String,
     pub value: EnumValue,
@@ -515,7 +438,6 @@ impl EnumValue {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Command {
-    pub cfg_attr: Cfg,
     pub description: String,
     pub name: String,
     pub address: i128,
@@ -528,91 +450,10 @@ pub struct Command {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Buffer {
-    pub cfg_attr: Cfg,
     pub description: String,
     pub name: String,
     pub access: Access,
     pub address: i128,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct RefObject {
-    pub cfg_attr: Cfg,
-    pub description: String,
-    pub name: String,
-    pub object_override: ObjectOverride,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ObjectOverride {
-    Block(BlockOverride),
-    Register(RegisterOverride),
-    Command(CommandOverride),
-}
-
-impl Default for ObjectOverride {
-    fn default() -> Self {
-        Self::Register(Default::default())
-    }
-}
-
-impl ObjectOverride {
-    fn name(&self) -> &str {
-        match self {
-            ObjectOverride::Block(v) => &v.name,
-            ObjectOverride::Register(v) => &v.name,
-            ObjectOverride::Command(v) => &v.name,
-        }
-    }
-
-    fn name_mut(&mut self) -> &mut String {
-        match self {
-            ObjectOverride::Block(v) => &mut v.name,
-            ObjectOverride::Register(v) => &mut v.name,
-            ObjectOverride::Command(v) => &mut v.name,
-        }
-    }
-
-    pub fn as_register(&self) -> Option<&RegisterOverride> {
-        if let Self::Register(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-
-    pub fn as_register_mut(&mut self) -> Option<&mut RegisterOverride> {
-        if let Self::Register(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct BlockOverride {
-    pub name: String,
-    pub address_offset: Option<i128>,
-    pub repeat: Option<Repeat>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct RegisterOverride {
-    pub name: String,
-    pub access: Option<Access>,
-    pub address: Option<i128>,
-    pub allow_address_overlap: bool,
-    pub reset_value: Option<ResetValue>,
-    pub repeat: Option<Repeat>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct CommandOverride {
-    pub name: String,
-    pub address: Option<i128>,
-    pub allow_address_overlap: bool,
-    pub repeat: Option<Repeat>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -631,64 +472,14 @@ impl ResetValue {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Default, Hash)]
-pub struct Cfg {
-    value: Option<String>,
-}
-
-impl Cfg {
-    pub fn new(value: Option<&str>) -> Self {
-        Self {
-            value: value.map(|v| v.into()),
-        }
-    }
-
-    #[must_use]
-    pub fn combine(&self, other: &Self) -> Self {
-        match (&self.value, &other.value) {
-            (None, None) => Self { value: None },
-            (None, Some(val)) => Self {
-                value: Some(val.clone()),
-            },
-            (Some(val), None) => Self {
-                value: Some(val.clone()),
-            },
-            (Some(val1), Some(val2)) if val1 == val2 => Self {
-                value: Some(val1.clone()),
-            },
-            (Some(val1), Some(val2)) => Self {
-                value: Some(format!("all({val1}, {val2})")),
-            },
-        }
-    }
-
-    pub fn inner(&self) -> Option<&str> {
-        self.value.as_deref()
-    }
-}
-
-impl Display for Cfg {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(value) = self.inner() {
-            write!(f, "#[cfg({value})]")?
-        }
-
-        Ok(())
-    }
-}
-
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct UniqueId {
     object_name: String,
-    object_cfg: Cfg,
 }
 
 impl Display for UniqueId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.object_cfg.inner() {
-            Some(cfg) => write!(f, "{}(cfg=`{}`)", self.object_name, cfg),
-            None => write!(f, "{}", self.object_name),
-        }
+        write!(f, "{}", self.object_name)
     }
 }
 
@@ -703,7 +494,6 @@ impl Unique for Device {
                 .name
                 .clone()
                 .expect("Can only get a device unique id when it's initialized with a name"),
-            object_cfg: Cfg::default(),
         }
     }
 }
@@ -714,7 +504,6 @@ macro_rules! impl_unique {
             fn id(&self) -> UniqueId {
                 UniqueId {
                     object_name: self.name.clone(),
-                    object_cfg: self.cfg_attr.clone(),
                 }
             }
         }
@@ -724,7 +513,6 @@ macro_rules! impl_unique {
 impl_unique!(Register);
 impl_unique!(Command);
 impl_unique!(Buffer);
-impl_unique!(RefObject);
 impl_unique!(Block);
 impl_unique!(Enum);
 impl_unique!(EnumVariant);
@@ -737,7 +525,6 @@ impl Unique for Object {
             Object::Register(val) => val.id(),
             Object::Command(val) => val.id(),
             Object::Buffer(val) => val.id(),
-            Object::Ref(val) => val.id(),
             Object::FieldSet(val) => val.id(),
         }
     }

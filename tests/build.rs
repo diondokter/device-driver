@@ -41,6 +41,12 @@ fn generate_test_function(test_dir: DirEntry) -> String {
 
     let test_name = test_dir.file_name().to_string_lossy().to_string();
 
+    let ignore_tag = if test_name.ends_with("_") {
+        "#[ignore = \"Test case ignored beacause case name ends with `_`\"]\n"
+    } else {
+        ""
+    };
+
     let input_paths = inputs
         .iter()
         .map(|input_path| format!("Path::new(r\"{}\")", input_path.display()))
@@ -53,6 +59,7 @@ fn generate_test_function(test_dir: DirEntry) -> String {
     format!(
         "
 #[test]
+{ignore_tag}
 fn {test_name}() {{
     crate::run_test(&[{input_paths}], &Path::new(r\"{output_path}\"));
 }}"

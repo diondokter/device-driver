@@ -1,6 +1,6 @@
 use anyhow::ensure;
 
-use crate::mir::{Device, Object, ObjectOverride, RefObject};
+use crate::mir::{Device, Object};
 
 use super::find_min_max_addresses;
 
@@ -8,15 +8,7 @@ use super::find_min_max_addresses;
 pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
     if let Some(register_address_type) = device.global_config.register_address_type {
         let (min_address, max_address) = find_min_max_addresses(&device.objects, |o| {
-            matches!(
-                o,
-                Object::Block(_)
-                    | Object::Register(_)
-                    | Object::Ref(RefObject {
-                        object_override: ObjectOverride::Register(_),
-                        ..
-                    })
-            )
+            matches!(o, Object::Block(_) | Object::Register(_))
         });
 
         ensure!(
@@ -33,15 +25,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
 
     if let Some(command_address_type) = device.global_config.command_address_type {
         let (min_address, max_address) = find_min_max_addresses(&device.objects, |o| {
-            matches!(
-                o,
-                Object::Block(_)
-                    | Object::Command(_)
-                    | Object::Ref(RefObject {
-                        object_override: ObjectOverride::Command(_),
-                        ..
-                    })
-            )
+            matches!(o, Object::Block(_) | Object::Command(_))
         });
 
         ensure!(

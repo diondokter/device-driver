@@ -16,9 +16,6 @@ struct Args {
     /// Path to output location. Any existing file is overwritten. If not provided, the output is written to stdout.
     #[arg(short = 'o', long = "output", value_name = "FILE")]
     output_path: Option<PathBuf>,
-    /// The name of the device to be generated. Must be PascalCase
-    #[arg(short = 'd', long = "device-name", value_name = "NAME")]
-    device_name: Option<String>,
     /// Type of generated output
     #[arg(short = 'g', long = "gen-type", default_value = "rust")]
     gen_type: GenType,
@@ -27,23 +24,7 @@ struct Args {
 fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
 
-    miette::set_hook(Box::new(|_| {
-        Box::new(
-            miette::MietteHandlerOpts::new()
-                .graphical_theme(miette::GraphicalTheme {
-                    characters: {
-                        let mut unicode = miette::ThemeCharacters::unicode();
-                        unicode.error = "error:".into();
-                        unicode.warning = "warning:".into();
-                        unicode.advice = "advice:".into();
-                        unicode
-                    },
-                    styles: miette::ThemeStyles::rgb(),
-                })
-                .build(),
-        )
-    }))
-    .unwrap();
+    device_driver_generation::reporting::set_miette_hook(true);
 
     let extension = args
         .manifest_path
@@ -58,15 +39,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         )
     });
 
-    let (output, reports) = match args.gen_type.generate(
-        &manifest_contents,
-        &extension,
-        &args.device_name,
-        &args.manifest_path,
-    ) {
-        Ok((output, reports)) => (Some(output), reports),
-        Err(reports) => (None, reports),
-    };
+    let (output, reports) =
+        match args
+            .gen_type
+            .generate(&manifest_contents, &extension, &args.manifest_path)
+        {
+            Ok((output, reports)) => (Some(output), reports),
+            Err(reports) => (None, reports),
+        };
 
     reports.print_to(std::io::stderr().lock()).unwrap();
 
@@ -113,7 +93,6 @@ fn strip_compile_error(mut error: &str) -> &str {
 #[derive(clap::ValueEnum, Debug, Clone)]
 pub enum GenType {
     Rust,
-    Kdl,
 }
 
 impl GenType {
@@ -121,83 +100,19 @@ impl GenType {
         &self,
         manifest_contents: &str,
         manifest_type: &str,
-        device_name: &Option<String>,
         manifest_path: &Path,
     ) -> Result<(String, Diagnostics), Diagnostics> {
         match self {
             GenType::Rust => match manifest_type {
-                "json" => Ok((
-                    device_driver_generation::transform_json(
-                        manifest_contents,
-                        device_name.as_ref().expect("No device name specified"),
-                    ),
-                    Diagnostics::new(),
-                )),
-                "yaml" => Ok((
-                    device_driver_generation::transform_yaml(
-                        manifest_contents,
-                        device_name.as_ref().expect("No device name specified"),
-                    ),
-                    Diagnostics::new(),
-                )),
-                "toml" => Ok((
-                    device_driver_generation::transform_toml(
-                        manifest_contents,
-                        device_name.as_ref().expect("No device name specified"),
-                    ),
-                    Diagnostics::new(),
-                )),
-                "dsl" => Ok((
-                    device_driver_generation::transform_dsl(
-                        syn::parse_str(manifest_contents).expect("Could not (syn) parse the DSL"),
-                        device_name.as_ref().expect("No device name specified"),
-                    ),
-                    Diagnostics::new(),
-                )),
                 "kdl" => Ok(device_driver_generation::transform_kdl(
                     manifest_contents,
+                    None,
                     manifest_path,
                 )),
-                unknown => panic!(
-                    "Unknown manifest file extension: '{unknown}'. Only 'dsl', 'json', 'yaml' and 'toml' are allowed."
-                ),
-            },
-            GenType::Kdl => {
-                let mir_device = match manifest_type {
-                    "json" => {
-                        device_driver_generation::_private_transform_json_mir(manifest_contents)
-                    }
-                    "yaml" => {
-                        device_driver_generation::_private_transform_yaml_mir(manifest_contents)
-                    }
-                    "toml" => {
-                        device_driver_generation::_private_transform_toml_mir(manifest_contents)
-                    }
-                    "dsl" => device_driver_generation::_private_transform_dsl_mir(
-                        syn::parse_str(manifest_contents).expect("Could not (syn) parse the DSL"),
-                    )
-                    .map_err(anyhow::Error::new),
-                    unknown => panic!(
-                        "Unknown manifest file extension: '{unknown}'. Only 'dsl', 'json', 'yaml' and 'toml' are allowed."
-                    ),
-                };
-
-                match mir_device {
-                    Ok(mut mir_device) => {
-                        mir_device.name =
-                            Some(device_name.clone().expect("No device name specified"));
-                        Ok((
-                            device_driver_generation::mir::kdl_transform::transform(mir_device),
-                            Diagnostics::new(),
-                        ))
-                    }
-                    Err(e) => {
-                        let mut reports = Diagnostics::new();
-                        reports.add_msg(e.to_string());
-                        Err(reports)
-                    }
+                unknown => {
+                    panic!("Unknown manifest file extension: '{unknown}'. Only 'kdl' is allowed.")
                 }
-            }
+            },
         }
     }
 }

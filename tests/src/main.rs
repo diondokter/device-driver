@@ -7,7 +7,7 @@ fn main() {
         .subcommand(Command::new("accept").about("Accept all changes and update the output files"))
         .get_matches();
 
-    device_driver_tests::set_miette_hook();
+    device_driver_generation::reporting::set_miette_hook(false);
 
     match matches.subcommand_name() {
         Some("accept") => accept(),
@@ -22,7 +22,15 @@ fn accept() {
     for test_case in test_cases {
         let test_case = test_case.unwrap();
 
-        println!("{}", test_case.path().display());
+        if test_case.file_name().to_string_lossy().ends_with("_") {
+            println!(
+                "{} (ignored because case names ends with `_`)",
+                test_case.path().display()
+            );
+            continue;
+        } else {
+            println!("{}", test_case.path().display());
+        }
 
         let input_paths: Vec<_> = std::fs::read_dir(test_case.path())
             .unwrap()
@@ -42,13 +50,9 @@ fn accept() {
 
             let input_extension = input_path.extension().unwrap().display().to_string();
             let (transformed, diagnostics) = match input_extension.deref() {
-                "yaml" => (
-                    device_driver_generation::transform_yaml(&input, "Device"),
-                    "".to_string(),
-                ),
                 "kdl" => {
                     let (transformed, diagnostics) =
-                        device_driver_generation::transform_kdl(&input, &input_path);
+                        device_driver_generation::transform_kdl(&input, None, &input_path);
                     (transformed, diagnostics.to_string())
                 }
                 e => panic!("Unrecognized extension: {e:?}"),
@@ -56,7 +60,7 @@ fn accept() {
 
             let diagnostics_path = input_path
                 .with_file_name("diagnostics")
-                .with_extension(input_extension + ".txt");
+                .with_extension("txt");
             std::fs::write(
                 diagnostics_path,
                 device_driver_tests::normalize_test_string(&diagnostics),

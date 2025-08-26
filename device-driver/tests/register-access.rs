@@ -1,34 +1,33 @@
 //! Having registers and fields with different access specifiers should still compile
 
 device_driver::create_device!(
-    device_name: MyTestDevice,
-    dsl: {
-        config {
-            type RegisterAddressType = u8;
+    kdl: "
+        device MyTestDevice {
+            register-address-type u8
+
+            register Foo {
+                address 0
+                fields size-bits=8 {
+                    /// X
+                    (bool)value0 @0
+                }
+            }
+            register Bar {
+                access RO
+                address 1
+                fields size-bits=8 {
+                    /// X
+                    (bool)value0 WO @0
+                }
+            }
+            register Baz {
+                access WO
+                address 2
+                fields size-bits=8 {
+                    /// X
+                    (bool)value0 @0
+                }
+            }
         }
-        register Foo {
-            const ADDRESS = 0;
-            const SIZE_BITS = 8;
-            type Access = RW;
-
-            /// X
-            value0: bool = 0,
-        },
-        register Bar {
-            const ADDRESS = 1;
-            const SIZE_BITS = 8;
-            type Access = RO;
-
-            /// X
-            value0: WO bool = 0,
-        },
-        register Baz {
-            const ADDRESS = 2;
-            const SIZE_BITS = 8;
-            type Access = WO;
-
-            /// X
-            value0: bool = 0,
-        }
-    }
+    "
 );

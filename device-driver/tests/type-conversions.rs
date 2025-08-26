@@ -45,51 +45,47 @@ impl RegisterInterface for DeviceInterface {
 }
 
 device_driver::create_device!(
-    device_name: MyTestDevice,
-    dsl: {
-        config {
-            type RegisterAddressType = u8;
-            type DefaultByteOrder = LE;
+    kdl: "
+        device MyTestDevice {
+            default-byte-order LE
+            register-address-type u8
+            register Foo {
+                address 0
+                fields size-bits=64 {
+                    ///  Try needed since [my_mod::MyTryEnum] doesn't impl [From]
+                    (uint:my_mod::MyTryEnum?)convert_custom_try @1:0
+                    ///  No try needed since [MyEnum] impls [From]
+                    (uint:MyEnum)convert_custom @3:2
+                    ///  Try needed since not all bit patters are covered
+                    (uint:GenTryEnum?)convert_generated_try @5:4 {
+                        A
+                        B
+                    }
+                    ///  No try needed because it covers every bit pattern (2 bit)
+                    (uint:GenEnum)convert_generated @7:6 {
+                        A
+                        B
+                        C 2
+                        D
+                    }
+                    ///  No try needed since default
+                    (uint:GenDefaultEnum)convert_generated_default @9:8 {
+                        A
+                        B default
+                    }
+                    ///  No try needed since catch-all
+                    (uint:GenCatchAllEnum)convert_generated_catchall @11:10 {
+                        A
+                        B catch-all
+                    }
+                    ///  No try needed since it recognizes GenEnum (even though it doesn implement From<u8>)
+                    (uint:GenEnum)convert_generated_copied @13:12
+                    ///  Try needed since it recognizes GenEnum, but the bits are too big (3 bit vs 2 bit)
+                    (uint:GenEnum?)convert_generated_copied_too_large @16:14
+                }
+            }
         }
-        register Foo {
-            const ADDRESS = 0;
-            const SIZE_BITS = 64;
-
-            /// Try needed since [my_mod::MyTryEnum] doesn't impl [From]
-            convert_custom_try: uint as try my_mod::MyTryEnum = 0..2,
-            /// No try needed since [MyEnum] impls [From]
-            convert_custom: uint as MyEnum = 2..4,
-            /// Try needed since not all bit patters are covered
-            convert_generated_try: uint as try enum GenTryEnum {
-                A,
-                B,
-            } = 4..6,
-            /// No try needed because it covers every bit pattern (2 bit)
-            convert_generated: uint as enum GenEnum {
-                A,
-                B,
-                #[cfg(windows)]
-                C = 2,
-                #[cfg(unix)]
-                C = 2,
-                D
-            } = 6..8,
-            /// No try needed since default
-            convert_generated_default: uint as enum GenDefaultEnum {
-                A,
-                B = default,
-            } = 8..10,
-            /// No try needed since catch-all
-            convert_generated_catchall: uint as enum GenCatchAllEnum {
-                A,
-                B = catch_all,
-            } = 10..12,
-            /// No try needed since it recognizes GenEnum (even though it doesn implement From<u8>)
-            convert_generated_copied: uint as GenEnum = 12..14,
-            /// Try needed since it recognizes GenEnum, but the bits are too big (3 bit vs 2 bit)
-            convert_generated_copied_too_large: uint as try GenEnum = 14..17,
-        },
-    }
+    "
 );
 
 pub mod my_mod {

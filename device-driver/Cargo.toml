@@ -23,11 +23,7 @@ bitvec = { version = "1.0.1", default-features = false }
 rand = "0.9"
 
 [features]
-default = ["dsl", "json", "yaml", "toml"]
-dsl = ["_macros", "device-driver-macros/dsl"]
-json = ["_macros", "device-driver-macros/json"]
-yaml = ["_macros", "device-driver-macros/yaml"]
-toml = ["_macros", "device-driver-macros/toml"]
+default = ["macros"]
 defmt-03 = ["dep:defmt", "embedded-io/defmt-03"]
 
-_macros = ["dep:device-driver-macros"]
+macros = ["dep:device-driver-macros"]

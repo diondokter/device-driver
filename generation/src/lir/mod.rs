@@ -15,7 +15,6 @@ pub struct Device {
 }
 
 pub struct Block {
-    pub cfg_attr: String,
     pub description: String,
     /// True for the root (top-level) block
     pub root: bool,
@@ -24,7 +23,6 @@ pub struct Block {
 }
 
 pub struct BlockMethod {
-    pub cfg_attr: String,
     pub description: String,
     pub name: String,
     pub address: i128,
@@ -62,14 +60,12 @@ pub enum BlockMethodType {
 
 /// A set of fields, like a register or command in/out
 pub struct FieldSet {
-    pub cfg_attr: String,
     pub description: String,
     pub name: String,
     pub byte_order: ByteOrder,
     pub bit_order: BitOrder,
     pub size_bits: u32,
     pub reset_value: Vec<u8>,
-    pub ref_reset_overrides: Vec<(String, Vec<u8>)>,
     pub fields: Vec<Field>,
 }
 
@@ -80,7 +76,6 @@ impl FieldSet {
 }
 
 pub struct Field {
-    pub cfg_attr: String,
     pub description: String,
     pub name: String,
     pub address: Range<u32>,
@@ -110,7 +105,6 @@ impl FieldConversionMethod {
 }
 
 pub struct Enum {
-    pub cfg_attr: String,
     pub description: String,
     pub name: String,
     pub base_type: String,
@@ -128,7 +122,6 @@ impl Enum {
 }
 
 pub struct EnumVariant {
-    pub cfg_attr: String,
     pub description: String,
     pub name: String,
     pub number: i128,

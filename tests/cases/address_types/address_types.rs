@@ -10,7 +10,6 @@ device-driver = { path="../../../device-driver", default-features=false }
 fn main() {}
 
 /// Root block of the Device driver
-
 #[derive(Debug)]
 pub struct Device<I> {
     pub(crate) interface: I,
@@ -56,7 +55,6 @@ impl<I> Device<I> {
         I: ::device_driver::RegisterInterface<AddressType = u16>,
     {
         let reg = self.foo().read()?;
-
         callback(0 + 0 * 0, "foo", reg.into());
 
         Ok(())
@@ -85,7 +83,6 @@ impl<I> Device<I> {
         I: ::device_driver::AsyncRegisterInterface<AddressType = u16>,
     {
         let reg = self.foo().read_async().await?;
-
         callback(0 + 0 * 0, "foo", reg.into());
 
         Ok(())
@@ -184,7 +181,6 @@ pub mod field_sets {
             self
         }
     }
-
     impl core::ops::BitAndAssign for Foo {
         fn bitand_assign(&mut self, rhs: Self) {
             for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
@@ -192,7 +188,6 @@ pub mod field_sets {
             }
         }
     }
-
     impl core::ops::BitOr for Foo {
         type Output = Self;
         fn bitor(mut self, rhs: Self) -> Self::Output {
@@ -200,7 +195,6 @@ pub mod field_sets {
             self
         }
     }
-
     impl core::ops::BitOrAssign for Foo {
         fn bitor_assign(&mut self, rhs: Self) {
             for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
@@ -208,7 +202,6 @@ pub mod field_sets {
             }
         }
     }
-
     impl core::ops::BitXor for Foo {
         type Output = Self;
         fn bitxor(mut self, rhs: Self) -> Self::Output {
@@ -216,7 +209,6 @@ pub mod field_sets {
             self
         }
     }
-
     impl core::ops::BitXorAssign for Foo {
         fn bitxor_assign(&mut self, rhs: Self) {
             for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
@@ -224,7 +216,6 @@ pub mod field_sets {
             }
         }
     }
-
     impl core::ops::Not for Foo {
         type Output = Self;
         fn not(mut self) -> Self::Output {

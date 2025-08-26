@@ -1,0 +1,12 @@
+device Device {
+    default-byte-order LE
+    register-address-type u8
+
+    register Foo {
+        address 0
+
+        fields size-bits=24 {
+            (uint)value @23:0
+        }
+    }
+}
