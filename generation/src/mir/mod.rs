@@ -229,38 +229,6 @@ impl Object {
         }
     }
 
-    pub fn as_block_mut(&mut self) -> Option<&mut Block> {
-        if let Self::Block(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-
-    pub fn as_register_mut(&mut self) -> Option<&mut Register> {
-        if let Self::Register(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-
-    pub fn as_register(&self) -> Option<&Register> {
-        if let Self::Register(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-
-    pub fn as_command_mut(&mut self) -> Option<&mut Command> {
-        if let Self::Command(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-
     /// Return the address if it is specified.
     fn address(&self) -> Option<i128> {
         match self {
