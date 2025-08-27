@@ -76,5 +76,6 @@ It's nice to have examples:
 - [VCNL36825T proximity sensor](https://github.com/LeFrenchPOC/vcnl36825t-rs)
 - [AXP192 Power Management IC](https://github.com/okhsunrog/axp192-dd)
 - [ONSEMI FUSB302B USB-PD PHY](https://github.com/okhsunrog/fusb302b)
+- [iC-Haus iC-MD 48bit quadrature counter](https://github.com/trappitsch/ic-md)
 
 Feel free to add to this list!
