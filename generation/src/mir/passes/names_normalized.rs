@@ -21,9 +21,11 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
     recurse_objects_mut(&mut device.objects, &mut |object| {
         *object.name_mut() = pascal_converter.convert(object.name_mut());
 
-        for field_set in object.field_sets_mut() {
-            field_set.name = pascal_converter.convert(field_set.name.clone());
+        for fs_name in object.field_set_refs_mut() {
+            fs_name.0 = pascal_converter.convert(fs_name.0.clone());
+        }
 
+        if let Some(field_set) = object.as_field_set_mut() {
             for field in field_set.fields.iter_mut() {
                 field.name = snake_converter.convert(&field.name);
                 if let Some(FieldConversion::Enum {
@@ -65,34 +67,36 @@ mod tests {
             objects: vec![
                 Object::Register(Register {
                     name: "my-reGister".into(),
-                    field_set: FieldSet {
-                        fields: vec![
-                            Field {
-                                name: "my-fielD".into(),
-                                ..Default::default()
-                            },
-                            Field {
-                                name: "my-fielD2".into(),
-                                field_conversion: Some(FieldConversion::Enum {
-                                    enum_value: Enum {
-                                        name: "mY-enum".into(),
-                                        variants: vec![EnumVariant {
-                                            name: "eNum-Variant".into(),
-                                            ..Default::default()
-                                        }],
-                                        ..Default::default()
-                                    },
-                                    use_try: false,
-                                }),
-                                ..Default::default()
-                            },
-                        ],
-                        ..Default::default()
-                    },
+                    field_set_ref: crate::mir::FieldSetRef("my-fieldseT".into()),
                     ..Default::default()
                 }),
                 Object::Buffer(Buffer {
                     name: "my-buffer".into(),
+                    ..Default::default()
+                }),
+                Object::FieldSet(FieldSet {
+                    name: "my-fieldseT".into(),
+                    fields: vec![
+                        Field {
+                            name: "my-fielD".into(),
+                            ..Default::default()
+                        },
+                        Field {
+                            name: "my-fielD2".into(),
+                            field_conversion: Some(FieldConversion::Enum {
+                                enum_value: Enum {
+                                    name: "mY-enum".into(),
+                                    variants: vec![EnumVariant {
+                                        name: "eNum-Variant".into(),
+                                        ..Default::default()
+                                    }],
+                                    ..Default::default()
+                                },
+                                use_try: false,
+                            }),
+                            ..Default::default()
+                        },
+                    ],
                     ..Default::default()
                 }),
             ],
@@ -104,34 +108,36 @@ mod tests {
             objects: vec![
                 Object::Register(Register {
                     name: "MyRegister".into(),
-                    field_set: FieldSet {
-                        fields: vec![
-                            Field {
-                                name: "my_field".into(),
-                                ..Default::default()
-                            },
-                            Field {
-                                name: "my_field2".into(),
-                                field_conversion: Some(FieldConversion::Enum {
-                                    enum_value: Enum {
-                                        name: "MyEnum".into(),
-                                        variants: vec![EnumVariant {
-                                            name: "EnumVariant".into(),
-                                            ..Default::default()
-                                        }],
-                                        ..Default::default()
-                                    },
-                                    use_try: false,
-                                }),
-                                ..Default::default()
-                            },
-                        ],
-                        ..Default::default()
-                    },
+                    field_set_ref: crate::mir::FieldSetRef("MyFieldset".into()),
                     ..Default::default()
                 }),
                 Object::Buffer(Buffer {
                     name: "MyBuffer".into(),
+                    ..Default::default()
+                }),
+                Object::FieldSet(FieldSet {
+                    name: "MyFieldset".into(),
+                    fields: vec![
+                        Field {
+                            name: "my_field".into(),
+                            ..Default::default()
+                        },
+                        Field {
+                            name: "my_field2".into(),
+                            field_conversion: Some(FieldConversion::Enum {
+                                enum_value: Enum {
+                                    name: "MyEnum".into(),
+                                    variants: vec![EnumVariant {
+                                        name: "EnumVariant".into(),
+                                        ..Default::default()
+                                    }],
+                                    ..Default::default()
+                                },
+                                use_try: false,
+                            }),
+                            ..Default::default()
+                        },
+                    ],
                     ..Default::default()
                 }),
             ],
@@ -139,6 +145,6 @@ mod tests {
 
         run_pass(&mut start_mir).unwrap();
 
-        assert_eq!(start_mir, end_mir);
+        pretty_assertions::assert_eq!(start_mir, end_mir);
     }
 }

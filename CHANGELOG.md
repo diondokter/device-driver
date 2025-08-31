@@ -5,6 +5,10 @@
 - Internal numbers are now `i128` instead of `i64`. This also added room to add the `U64` integer as available address type option
 - Fixed regression introduced in 1.0.5 where an enum that has both a default and a catch-all would use the default value when converted from a number instead the catch-all like is documented
 - Added KDL input support, but not stable yet. Only use experimentally for now.
+- FieldSets don't know about reset values anymore. This can now be accessed through the RegisterOperation you can obtain from the device struct.
+- FieldSets & Enums can no longer have the same name as another object (since they're full objects of their own now)
+- FieldSets are no longer defined in a submodule `field_sets`. They're now put in the same root as the reset of the generated code.
+- Removed the 'read_all_registers' functions and the accompanying enums
 
 ### 1.0.7 (30-07-25)
 

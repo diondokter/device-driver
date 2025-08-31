@@ -45,7 +45,7 @@ pub enum BlockMethodType {
         field_set_name: String,
         access: Access,
         address_type: Integer,
-        reset_value_function: String,
+        reset_value: Option<Vec<u8>>,
     },
     Command {
         field_set_name_in: Option<String>,
@@ -65,7 +65,6 @@ pub struct FieldSet {
     pub byte_order: ByteOrder,
     pub bit_order: BitOrder,
     pub size_bits: u32,
-    pub reset_value: Vec<u8>,
     pub fields: Vec<Field>,
 }
 

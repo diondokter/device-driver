@@ -22,12 +22,9 @@ pub mod ops;
 pub use device_driver_macros::*;
 
 #[doc(hidden)]
-pub trait FieldSet {
+pub trait FieldSet: Default {
     /// The size of the field set in number of bits
     const SIZE_BITS: u32;
-
-    /// Create a new instance, loaded all 0's
-    fn new_with_zero() -> Self;
 
     fn get_inner_buffer(&self) -> &[u8];
     fn get_inner_buffer_mut(&mut self) -> &mut [u8];

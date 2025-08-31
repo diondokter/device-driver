@@ -5,7 +5,7 @@ use super::*;
 use crate::mir::Access;
 
 #[derive(Template)]
-#[template(path = "rust/device.rs.j2", escape = "none")]
+#[template(path = "rust/device.rs.j2", escape = "none", whitespace = "minimize")]
 pub struct DeviceTemplateRust<'a> {
     device: &'a Device,
 }
@@ -23,15 +23,6 @@ fn description_to_docstring(description: &str) -> String {
         .join("\n")
 }
 
-fn get_super_prefix(conversion_method: &FieldConversionMethod) -> &'static str {
-    match conversion_method.conversion_type() {
-        Some(ct) if !ct.trim_start().starts_with("::") && !ct.trim_start().starts_with("crate") => {
-            "super::"
-        }
-        _ => "",
-    }
-}
-
 fn get_defmt_fmt_string(field: &Field) -> String {
     let defmt_type_hint = match field.conversion_method {
         FieldConversionMethod::None => {
@@ -47,7 +38,7 @@ fn get_defmt_fmt_string(field: &Field) -> String {
 
 fn get_command_fieldset_name(fieldset: &Option<String>) -> String {
     match fieldset {
-        Some(fs) => format!("field_sets::{fs}"),
+        Some(fs) => fs.clone(),
         None => "()".into(),
     }
 }

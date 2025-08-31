@@ -6,7 +6,7 @@ use bitvec::{
     view::BitView,
 };
 
-use crate::mir::{BitOrder, ByteOrder, Device, Object, Register, ResetValue, Unique};
+use crate::mir::{BitOrder, ByteOrder, Device, FieldSet, Object, Register, ResetValue, Unique};
 
 use super::{recurse_objects, recurse_objects_mut};
 
@@ -23,19 +23,19 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
 
     recurse_objects(&device.objects, &mut |object| match object {
         Object::Register(reg) => {
-            let target_byte_order = get_target_byte_order(reg, device);
+            let target_field_set = get_target_field_set(reg, device);
 
             match reg.reset_value.as_ref() {
                 Some(reset_value) => {
                     let new_reset_value = convert_reset_value(
                         reset_value.clone(),
-                        reg.field_set
+                        target_field_set
                             .bit_order
                             .expect("Bitorder should be set at this point"),
-                        reg.field_set.size_bits,
+                        target_field_set.size_bits,
                         "register",
                         &reg.name,
-                        target_byte_order,
+                        target_field_set.byte_order.unwrap(),
                     )?;
                     assert_eq!(
                         new_reset_values.insert(reg.id(), new_reset_value),
@@ -66,12 +66,21 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn get_target_byte_order(reg: &Register, device: &Device) -> ByteOrder {
-    reg.field_set
-        .byte_order
-        .or(device.global_config.default_byte_order)
-        .or((reg.field_set.size_bits <= 8).then_some(ByteOrder::LE))
-        .expect("Register should have a valid byte order or not need one")
+fn get_target_field_set(reg: &Register, device: &Device) -> FieldSet {
+    let mut field_set = None;
+
+    recurse_objects(&device.objects, &mut |object| {
+        if let Object::FieldSet(fs) = object
+            && fs.name == reg.field_set_ref.0
+        {
+            field_set = Some(fs.clone());
+        }
+
+        Ok(())
+    })
+    .unwrap();
+
+    field_set.expect("All fieldset refs should already be checked and valid here")
 }
 
 fn convert_reset_value(
@@ -172,16 +181,21 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::Register(Register {
-                name: "Reg".into(),
-                reset_value: Some(ResetValue::Integer(0x1F)),
-                field_set: FieldSet {
+            objects: vec![
+                Object::Register(Register {
+                    name: "Reg".into(),
+                    reset_value: Some(ResetValue::Integer(0x1F)),
+                    field_set_ref: "fs".into(),
+                    ..Default::default()
+                }),
+                Object::FieldSet(FieldSet {
+                    name: "fs".into(),
                     size_bits: 5,
                     bit_order: Some(BitOrder::LSB0),
+                    byte_order: Some(ByteOrder::LE),
                     ..Default::default()
-                },
-                ..Default::default()
-            })],
+                }),
+            ],
         };
 
         run_pass(&mut start_mir).unwrap();
@@ -189,16 +203,21 @@ mod tests {
         let end_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::Register(Register {
-                name: "Reg".into(),
-                reset_value: Some(ResetValue::Array(vec![0x1F])),
-                field_set: FieldSet {
+            objects: vec![
+                Object::Register(Register {
+                    name: "Reg".into(),
+                    reset_value: Some(ResetValue::Array(vec![0x1F])),
+                    field_set_ref: "fs".into(),
+                    ..Default::default()
+                }),
+                Object::FieldSet(FieldSet {
+                    name: "fs".into(),
                     size_bits: 5,
                     bit_order: Some(BitOrder::LSB0),
+                    byte_order: Some(ByteOrder::LE),
                     ..Default::default()
-                },
-                ..Default::default()
-            })],
+                }),
+            ],
         };
 
         assert_eq!(start_mir, end_mir);
@@ -206,16 +225,21 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::Register(Register {
-                name: "Reg".into(),
-                reset_value: Some(ResetValue::Array(vec![0x1F])),
-                field_set: FieldSet {
+            objects: vec![
+                Object::Register(Register {
+                    name: "Reg".into(),
+                    reset_value: Some(ResetValue::Array(vec![0x1F])),
+                    field_set_ref: "fs".into(),
+                    ..Default::default()
+                }),
+                Object::FieldSet(FieldSet {
+                    name: "fs".into(),
                     size_bits: 5,
                     bit_order: Some(BitOrder::LSB0),
+                    byte_order: Some(ByteOrder::LE),
                     ..Default::default()
-                },
-                ..Default::default()
-            })],
+                }),
+            ],
         };
 
         run_pass(&mut start_mir).unwrap();
@@ -223,16 +247,21 @@ mod tests {
         let end_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::Register(Register {
-                name: "Reg".into(),
-                reset_value: Some(ResetValue::Array(vec![0x1F])),
-                field_set: FieldSet {
+            objects: vec![
+                Object::Register(Register {
+                    name: "Reg".into(),
+                    reset_value: Some(ResetValue::Array(vec![0x1F])),
+                    field_set_ref: "fs".into(),
+                    ..Default::default()
+                }),
+                Object::FieldSet(FieldSet {
+                    name: "fs".into(),
                     size_bits: 5,
                     bit_order: Some(BitOrder::LSB0),
+                    byte_order: Some(ByteOrder::LE),
                     ..Default::default()
-                },
-                ..Default::default()
-            })],
+                }),
+            ],
         };
 
         assert_eq!(start_mir, end_mir);
@@ -243,16 +272,21 @@ mod tests {
                 default_byte_order: Some(ByteOrder::LE),
                 ..Default::default()
             },
-            objects: vec![Object::Register(Register {
-                name: "Reg".into(),
-                reset_value: Some(ResetValue::Integer(0x423)),
-                field_set: FieldSet {
+            objects: vec![
+                Object::Register(Register {
+                    name: "Reg".into(),
+                    reset_value: Some(ResetValue::Integer(0x423)),
+                    field_set_ref: "fs".into(),
+                    ..Default::default()
+                }),
+                Object::FieldSet(FieldSet {
+                    name: "fs".into(),
                     size_bits: 11,
                     bit_order: Some(BitOrder::LSB0),
+                    byte_order: Some(ByteOrder::LE),
                     ..Default::default()
-                },
-                ..Default::default()
-            })],
+                }),
+            ],
         };
 
         run_pass(&mut start_mir).unwrap();
@@ -263,16 +297,21 @@ mod tests {
                 default_byte_order: Some(ByteOrder::LE),
                 ..Default::default()
             },
-            objects: vec![Object::Register(Register {
-                name: "Reg".into(),
-                reset_value: Some(ResetValue::Array(vec![0x23, 0x04])),
-                field_set: FieldSet {
+            objects: vec![
+                Object::Register(Register {
+                    name: "Reg".into(),
+                    reset_value: Some(ResetValue::Array(vec![0x23, 0x04])),
+                    field_set_ref: "fs".into(),
+                    ..Default::default()
+                }),
+                Object::FieldSet(FieldSet {
+                    name: "fs".into(),
                     size_bits: 11,
                     bit_order: Some(BitOrder::LSB0),
+                    byte_order: Some(ByteOrder::LE),
                     ..Default::default()
-                },
-                ..Default::default()
-            })],
+                }),
+            ],
         };
 
         assert_eq!(start_mir, end_mir);
@@ -280,17 +319,21 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::Register(Register {
-                name: "Reg".into(),
-                reset_value: Some(ResetValue::Array(vec![0x04, 0x23])),
-                field_set: FieldSet {
+            objects: vec![
+                Object::Register(Register {
+                    name: "Reg".into(),
+                    reset_value: Some(ResetValue::Array(vec![0x04, 0x23])),
+                    field_set_ref: "fs".into(),
+                    ..Default::default()
+                }),
+                Object::FieldSet(FieldSet {
+                    name: "fs".into(),
                     size_bits: 11,
                     byte_order: Some(ByteOrder::BE),
                     bit_order: Some(BitOrder::LSB0),
                     ..Default::default()
-                },
-                ..Default::default()
-            })],
+                }),
+            ],
         };
 
         run_pass(&mut start_mir).unwrap();
@@ -298,17 +341,21 @@ mod tests {
         let end_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::Register(Register {
-                name: "Reg".into(),
-                reset_value: Some(ResetValue::Array(vec![0x04, 0x23])),
-                field_set: FieldSet {
+            objects: vec![
+                Object::Register(Register {
+                    name: "Reg".into(),
+                    reset_value: Some(ResetValue::Array(vec![0x04, 0x23])),
+                    field_set_ref: "fs".into(),
+                    ..Default::default()
+                }),
+                Object::FieldSet(FieldSet {
+                    name: "fs".into(),
                     size_bits: 11,
                     byte_order: Some(ByteOrder::BE),
                     bit_order: Some(BitOrder::LSB0),
                     ..Default::default()
-                },
-                ..Default::default()
-            })],
+                }),
+            ],
         };
 
         assert_eq!(start_mir, end_mir);
@@ -316,17 +363,21 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::Register(Register {
-                name: "Reg".into(),
-                reset_value: Some(ResetValue::Array(vec![0x20, 0xC4])),
-                field_set: FieldSet {
+            objects: vec![
+                Object::Register(Register {
+                    name: "Reg".into(),
+                    reset_value: Some(ResetValue::Array(vec![0x20, 0xC4])),
+                    field_set_ref: "fs".into(),
+                    ..Default::default()
+                }),
+                Object::FieldSet(FieldSet {
+                    name: "fs".into(),
                     size_bits: 11,
                     byte_order: Some(ByteOrder::BE),
                     bit_order: Some(BitOrder::MSB0),
                     ..Default::default()
-                },
-                ..Default::default()
-            })],
+                }),
+            ],
         };
 
         run_pass(&mut start_mir).unwrap();
@@ -334,17 +385,21 @@ mod tests {
         let end_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::Register(Register {
-                name: "Reg".into(),
-                reset_value: Some(ResetValue::Array(vec![0x20, 0xC4])),
-                field_set: FieldSet {
+            objects: vec![
+                Object::Register(Register {
+                    name: "Reg".into(),
+                    reset_value: Some(ResetValue::Array(vec![0x20, 0xC4])),
+                    field_set_ref: "fs".into(),
+                    ..Default::default()
+                }),
+                Object::FieldSet(FieldSet {
+                    name: "fs".into(),
                     size_bits: 11,
                     byte_order: Some(ByteOrder::BE),
                     bit_order: Some(BitOrder::MSB0),
                     ..Default::default()
-                },
-                ..Default::default()
-            })],
+                }),
+            ],
         };
 
         assert_eq!(start_mir, end_mir);
@@ -358,16 +413,21 @@ mod tests {
                 default_byte_order: Some(ByteOrder::LE),
                 ..Default::default()
             },
-            objects: vec![Object::Register(Register {
-                name: "Reg".into(),
-                reset_value: Some(ResetValue::Integer(0x423)),
-                field_set: FieldSet {
+            objects: vec![
+                Object::Register(Register {
+                    name: "Reg".into(),
+                    reset_value: Some(ResetValue::Integer(0x423)),
+                    field_set_ref: "fs".into(),
+                    ..Default::default()
+                }),
+                Object::FieldSet(FieldSet {
+                    name: "fs".into(),
                     size_bits: 10,
                     bit_order: Some(BitOrder::LSB0),
+                    byte_order: Some(ByteOrder::LE),
                     ..Default::default()
-                },
-                ..Default::default()
-            })],
+                }),
+            ],
         };
 
         assert_eq!(
@@ -378,17 +438,21 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::Register(Register {
-                name: "Reg".into(),
-                reset_value: Some(ResetValue::Array(vec![0x04, 0x23])),
-                field_set: FieldSet {
+            objects: vec![
+                Object::Register(Register {
+                    name: "Reg".into(),
+                    reset_value: Some(ResetValue::Array(vec![0x04, 0x23])),
+                    field_set_ref: "fs".into(),
+                    ..Default::default()
+                }),
+                Object::FieldSet(FieldSet {
+                    name: "fs".into(),
                     size_bits: 10,
                     byte_order: Some(ByteOrder::BE),
                     bit_order: Some(BitOrder::LSB0),
                     ..Default::default()
-                },
-                ..Default::default()
-            })],
+                }),
+            ],
         };
 
         assert_eq!(
@@ -399,17 +463,21 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::Register(Register {
-                name: "Reg".into(),
-                reset_value: Some(ResetValue::Array(vec![0x20, 0xC4])),
-                field_set: FieldSet {
+            objects: vec![
+                Object::Register(Register {
+                    name: "Reg".into(),
+                    reset_value: Some(ResetValue::Array(vec![0x20, 0xC4])),
+                    field_set_ref: "fs".into(),
+                    ..Default::default()
+                }),
+                Object::FieldSet(FieldSet {
+                    name: "fs".into(),
                     size_bits: 10,
                     byte_order: Some(ByteOrder::BE),
                     bit_order: Some(BitOrder::MSB0),
                     ..Default::default()
-                },
-                ..Default::default()
-            })],
+                }),
+            ],
         };
 
         assert_eq!(
@@ -423,17 +491,21 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::Register(Register {
-                name: "Reg".into(),
-                reset_value: Some(ResetValue::Array(vec![0, 0, 0])),
-                field_set: FieldSet {
+            objects: vec![
+                Object::Register(Register {
+                    name: "Reg".into(),
+                    reset_value: Some(ResetValue::Array(vec![0, 0, 0])),
+                    field_set_ref: "fs".into(),
+                    ..Default::default()
+                }),
+                Object::FieldSet(FieldSet {
+                    name: "fs".into(),
                     size_bits: 32,
                     byte_order: Some(ByteOrder::LE),
                     bit_order: Some(BitOrder::LSB0),
                     ..Default::default()
-                },
-                ..Default::default()
-            })],
+                }),
+            ],
         };
 
         assert_eq!(
@@ -447,16 +519,21 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::Register(Register {
-                name: "Reg".into(),
-                reset_value: Some(ResetValue::Integer(0xF8)),
-                field_set: FieldSet {
+            objects: vec![
+                Object::Register(Register {
+                    name: "Reg".into(),
+                    reset_value: Some(ResetValue::Integer(0xF8)),
+                    field_set_ref: "fs".into(),
+                    ..Default::default()
+                }),
+                Object::FieldSet(FieldSet {
+                    name: "fs".into(),
                     size_bits: 5,
                     bit_order: Some(BitOrder::MSB0),
+                    byte_order: Some(ByteOrder::LE),
                     ..Default::default()
-                },
-                ..Default::default()
-            })],
+                }),
+            ],
         };
 
         run_pass(&mut start_mir).unwrap();
@@ -464,16 +541,21 @@ mod tests {
         let end_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::Register(Register {
-                name: "Reg".into(),
-                reset_value: Some(ResetValue::Array(vec![0xF8])),
-                field_set: FieldSet {
+            objects: vec![
+                Object::Register(Register {
+                    name: "Reg".into(),
+                    reset_value: Some(ResetValue::Array(vec![0xF8])),
+                    field_set_ref: "fs".into(),
+                    ..Default::default()
+                }),
+                Object::FieldSet(FieldSet {
+                    name: "fs".into(),
                     size_bits: 5,
                     bit_order: Some(BitOrder::MSB0),
+                    byte_order: Some(ByteOrder::LE),
                     ..Default::default()
-                },
-                ..Default::default()
-            })],
+                }),
+            ],
         };
 
         assert_eq!(start_mir, end_mir);
