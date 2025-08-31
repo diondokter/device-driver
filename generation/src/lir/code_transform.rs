@@ -5,7 +5,7 @@ use super::*;
 use crate::mir::Access;
 
 #[derive(Template)]
-#[template(path = "rust/device.rs.j2", escape = "none")]
+#[template(path = "rust/device.rs.j2", escape = "none", whitespace = "minimize")]
 pub struct DeviceTemplateRust<'a> {
     device: &'a Device,
 }

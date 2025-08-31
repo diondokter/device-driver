@@ -1,36 +1,36 @@
 error: The device driver input has errors that need to be solved!
-    --> device_definition_errors.rs:2372:1
+    --> device_definition_errors.rs:1787:1
      |
-2372 | compile_error!("The device driver input has errors that need to be solved!");
+1787 | compile_error!("The device driver input has errors that need to be solved!");
      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0412]: cannot find type `MyCustomType` in this scope
-    --> device_definition_errors.rs:1352:29
+    --> device_definition_errors.rs:1000:37
      |
-1352 |                      Result<MyCustomType, <MyCustomType as TryFrom<u8>>::Error>
-     |                             ^^^^^^^^^^^^ not found in this scope
-     |
-help: you might be missing a type parameter
-     |
-1280 |     impl<MyCustomType> Foor9FieldSet {
-     |         ++++++++++++++
-
-error[E0412]: cannot find type `MyCustomType` in this scope
-    --> device_definition_errors.rs:1352:44
-     |
-1352 |                      Result<MyCustomType, <MyCustomType as TryFrom<u8>>::Error>
-     |                                            ^^^^^^^^^^^^ not found in this scope
+1000 |         pub fn qus(&self) -> Result<MyCustomType, <MyCustomType as TryFrom<u8>>::Error> {
+     |                                     ^^^^^^^^^^^^ not found in this scope
      |
 help: you might be missing a type parameter
      |
-1280 |     impl<MyCustomType> Foor9FieldSet {
+ 961 |     impl<MyCustomType> Foor9FieldSet {
      |         ++++++++++++++
 
 error[E0412]: cannot find type `MyCustomType` in this scope
-    --> device_definition_errors.rs:1441:29
+    --> device_definition_errors.rs:1000:52
      |
-1441 |                     value:  MyCustomType
-     |                             ^^^^^^^^^^^^ not found in this scope
+1000 |         pub fn qus(&self) -> Result<MyCustomType, <MyCustomType as TryFrom<u8>>::Error> {
+     |                                                    ^^^^^^^^^^^^ not found in this scope
+     |
+help: you might be missing a type parameter
+     |
+ 961 |     impl<MyCustomType> Foor9FieldSet {
+     |         ++++++++++++++
+
+error[E0412]: cannot find type `MyCustomType` in this scope
+    --> device_definition_errors.rs:1058:42
+     |
+1058 |         pub fn set_qus(&mut self, value: MyCustomType) {
+     |                                          ^^^^^^^^^^^^ not found in this scope
 
 For more information about this error, try `rustc --explain E0412`.
 error: could not compile `device_definition_errors` (bin "device_definition_errors") due to 4 previous errors

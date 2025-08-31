@@ -94,6 +94,7 @@ fn format_code(input: &str) -> Result<String, anyhow::Error> {
 
     cmd.args(["--edition", "2024"])
         .args(["--config", "newline_style=native"])
+        .args(["--color", "never"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());

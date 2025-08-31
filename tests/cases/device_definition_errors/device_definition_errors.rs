@@ -166,485 +166,236 @@ pub mod foo_d_5 {
 }
 
 pub mod foo_d_6 {
-    // rustfmt exited unsuccesfully (exit code: 1):
-    // [1;38;5;9merror[internal][0m: [1mleft behind trailing whitespace[0m
-    //   [1;38;5;12m-->[0m <stdin>:89:89:1
-    // [1;38;5;12m   |[0m
-    // [1;38;5;12m89 |[0m                         
-    // [1;38;5;12m   |[0m[1;38;5;9m ^^^^^^^^^^^^^^^^^^^^^^^^[0m
-    // [1;38;5;12m   |[0m
-    // 
-    // [1;38;5;9merror[internal][0m: [1mleft behind trailing whitespace[0m
-    //   [1;38;5;12m-->[0m <stdin>:91:91:1
-    // [1;38;5;12m   |[0m
-    // [1;38;5;12m91 |[0m                         
-    // [1;38;5;12m   |[0m[1;38;5;9m ^^^^^^^^^^^^^^^^^^^^^^^^[0m
-    // [1;38;5;12m   |[0m
-    // 
-    // [1;38;5;11mwarning[0m: [1mrustfmt has failed to format. See previous 2 errors.[0m
-    // 
-    
-    
-        
-    
-        
-    
-    
     /// Root block of the FooD6 driver
     #[derive(Debug)]
     pub struct FooD6<I> {
-        
         pub(crate) interface: I,
-        
+    
         #[doc(hidden)]
         base_address: u8,
     }
     
     impl<I> FooD6<I> {
-        
         /// Create a new instance of the block based on device interface
         pub const fn new(interface: I) -> Self {
-            Self { interface, base_address: 0 }
+            Self {
+                interface,
+                base_address: 0,
+            }
         }
     
         /// A reference to the interface used to communicate with the device
         pub(crate) fn interface(&mut self) -> &mut I {
             &mut self.interface
         }
-        
     
-        
-            
-            
-                
-            pub fn foor_4(
-                &mut self,
-                
-                    
-            ) -> 
-             ::device_driver::RegisterOperation<'_, I, u8, Foor4FieldSet, ::device_driver::RW>
-                
-            {
-                 let address = self.base_address + 0;
-                    
+        pub fn foor_4(
+            &mut self,
+        ) -> ::device_driver::RegisterOperation<'_, I, u8, Foor4FieldSet, ::device_driver::RW> {
+            let address = self.base_address + 0;
     
-                
-                        ::device_driver::RegisterOperation::<
+            ::device_driver::RegisterOperation::<'_, I, u8, Foor4FieldSet, ::device_driver::RW>::new(
+                self.interface(),
+                address as u8,
+                Foor4FieldSet::new,
+            )
+        }
+    
+        pub fn foor_5(
+            &mut self,
+        ) -> ::device_driver::RegisterOperation<'_, I, u8, Foor5FieldSet, ::device_driver::RW> {
+            let address = self.base_address + 1;
+    
+            ::device_driver::RegisterOperation::<'_, I, u8, Foor5FieldSet, ::device_driver::RW>::new(
+                self.interface(),
+                address as u8,
+                Foor5FieldSet::new,
+            )
+        }
+    
+        pub fn foor_6(
+            &mut self,
+        ) -> ::device_driver::RegisterOperation<'_, I, u8, Foor6FieldSet, ::device_driver::RW> {
+            let address = self.base_address + 2;
+    
+            ::device_driver::RegisterOperation::<'_, I, u8, Foor6FieldSet, ::device_driver::RW>::new(
+                self.interface(),
+                address as u8,
+                Foor6FieldSet::new,
+            )
+        }
+    
+        pub fn foor_7(
+            &mut self,
+        ) -> ::device_driver::RegisterOperation<'_, I, u8, Foor7FieldSet, ::device_driver::RW> {
+            let address = self.base_address + 3;
+    
+            ::device_driver::RegisterOperation::<'_, I, u8, Foor7FieldSet, ::device_driver::RW>::new(
+                self.interface(),
+                address as u8,
+                Foor7FieldSet::new,
+            )
+        }
+    
+        /// Hello!
+    
+        pub fn foor_8(
+            &mut self,
+        ) -> ::device_driver::RegisterOperation<'_, I, u8, CustomFieldSetName, ::device_driver::RW>
+        {
+            let address = self.base_address + 4;
+    
+            ::device_driver::RegisterOperation::<
                             '_,
                             I,
-                            u8,
-                            Foor4FieldSet,
+    u8,
+    CustomFieldSetName,
                             ::device_driver::RW,
                         >::new(
                             self.interface(),
                             address as u8,
-                            
-                                Foor4FieldSet::new,
-                            
-                            )
-                    
-            }
-        
-            
-            
-                
-            pub fn foor_5(
-                &mut self,
-                
-                    
-            ) -> 
-             ::device_driver::RegisterOperation<'_, I, u8, Foor5FieldSet, ::device_driver::RW>
-                
-            {
-                 let address = self.base_address + 1;
-                    
     
-                
-                        ::device_driver::RegisterOperation::<
-                            '_,
-                            I,
-                            u8,
-                            Foor5FieldSet,
-                            ::device_driver::RW,
-                        >::new(
-                            self.interface(),
-                            address as u8,
-                            
-                                Foor5FieldSet::new,
-                            
-                            )
-                    
-            }
-        
-            
-            
-                
-            pub fn foor_6(
-                &mut self,
-                
-                    
-            ) -> 
-             ::device_driver::RegisterOperation<'_, I, u8, Foor6FieldSet, ::device_driver::RW>
-                
-            {
-                 let address = self.base_address + 2;
-                    
+    CustomFieldSetName::new,
     
-                
-                        ::device_driver::RegisterOperation::<
-                            '_,
-                            I,
-                            u8,
-                            Foor6FieldSet,
-                            ::device_driver::RW,
-                        >::new(
-                            self.interface(),
-                            address as u8,
-                            
-                                Foor6FieldSet::new,
-                            
-                            )
-                    
-            }
-        
-            
-            
-                
-            pub fn foor_7(
-                &mut self,
-                
-                    
-            ) -> 
-             ::device_driver::RegisterOperation<'_, I, u8, Foor7FieldSet, ::device_driver::RW>
-                
-            {
-                 let address = self.base_address + 3;
-                    
+    )
+        }
     
-                
-                        ::device_driver::RegisterOperation::<
-                            '_,
-                            I,
-                            u8,
-                            Foor7FieldSet,
-                            ::device_driver::RW,
-                        >::new(
-                            self.interface(),
-                            address as u8,
-                            
-                                Foor7FieldSet::new,
-                            
-                            )
-                    
-            }
-        
-            /// Hello!
-            
-                
-            pub fn foor_8(
-                &mut self,
-                
-                    
-            ) -> 
-             ::device_driver::RegisterOperation<'_, I, u8, CustomFieldSetName, ::device_driver::RW>
-                
-            {
-                 let address = self.base_address + 4;
-                    
+        pub fn foor_9(
+            &mut self,
+        ) -> ::device_driver::RegisterOperation<'_, I, u8, Foor9FieldSet, ::device_driver::RW> {
+            let address = self.base_address + 5;
     
-                
-                        ::device_driver::RegisterOperation::<
-                            '_,
-                            I,
-                            u8,
-                            CustomFieldSetName,
-                            ::device_driver::RW,
-                        >::new(
-                            self.interface(),
-                            address as u8,
-                            
-                                CustomFieldSetName::new,
-                            
-                            )
-                    
-            }
-        
-            
-            
-                
-            pub fn foor_9(
-                &mut self,
-                
-                    
-            ) -> 
-             ::device_driver::RegisterOperation<'_, I, u8, Foor9FieldSet, ::device_driver::RW>
-                
-            {
-                 let address = self.base_address + 5;
-                    
+            ::device_driver::RegisterOperation::<'_, I, u8, Foor9FieldSet, ::device_driver::RW>::new(
+                self.interface(),
+                address as u8,
+                Foor9FieldSet::new,
+            )
+        }
     
-                
-                        ::device_driver::RegisterOperation::<
-                            '_,
-                            I,
-                            u8,
-                            Foor9FieldSet,
-                            ::device_driver::RW,
-                        >::new(
-                            self.interface(),
-                            address as u8,
-                            
-                                Foor9FieldSet::new,
-                            
-                            )
-                    
-            }
-        
-            
-            
-                
-            pub fn foor_10(
-                &mut self,
-                
-                    
-            ) -> 
-             ::device_driver::RegisterOperation<'_, I, u8, Foor10FieldSet, ::device_driver::RW>
-                
-            {
-                 let address = self.base_address + 6;
-                    
+        pub fn foor_10(
+            &mut self,
+        ) -> ::device_driver::RegisterOperation<'_, I, u8, Foor10FieldSet, ::device_driver::RW> {
+            let address = self.base_address + 6;
     
-                
-                        ::device_driver::RegisterOperation::<
-                            '_,
-                            I,
-                            u8,
-                            Foor10FieldSet,
-                            ::device_driver::RW,
-                        >::new(
-                            self.interface(),
-                            address as u8,
-                            
-                                Foor10FieldSet::new,
-                            
-                            )
-                    
-            }
-        
-            
-            
-                
-            pub fn fooc_1(
-                &mut self,
-                
-                    
-            ) -> 
-             ::device_driver::CommandOperation<'_, I, u8, Fooc1FieldSetIn, Fooc1FieldSetOut>
-                
-            {
-                 let address = self.base_address + 0;
-                    
+            ::device_driver::RegisterOperation::<'_, I, u8, Foor10FieldSet, ::device_driver::RW>::new(
+                self.interface(),
+                address as u8,
+                Foor10FieldSet::new,
+            )
+        }
     
-                
-                        ::device_driver::CommandOperation::<
-                            '_,
-                            I,
-                            u8,
-                            Fooc1FieldSetIn,
-                            Fooc1FieldSetOut,
-                        >::new(self.interface(), address as u8)
-                    
-            }
-        
-            
-            
-                
-            pub fn foob_1(
-                &mut self,
-                
-                    
-            ) -> 
-             ::device_driver::BufferOperation<'_, I, u8, ::device_driver::RW>
-            
-            {
-                 let address = self.base_address + 0;
-                    
+        pub fn fooc_1(
+            &mut self,
+        ) -> ::device_driver::CommandOperation<'_, I, u8, Fooc1FieldSetIn, Fooc1FieldSetOut> {
+            let address = self.base_address + 0;
     
-                
-                        ::device_driver::BufferOperation::<
-                            '_,
-                            I,
-                            u8,
-                            ::device_driver::RW,
-                        >::new(self.interface(), address as u8)
-                    
-            }
-        
-            
-            
-                
-            pub fn foob_2(
-                &mut self,
-                
-                    
-            ) -> 
-             ::device_driver::BufferOperation<'_, I, u8, ::device_driver::RO>
-            
-            {
-                 let address = self.base_address + 2;
-                    
+            ::device_driver::CommandOperation::<'_, I, u8, Fooc1FieldSetIn, Fooc1FieldSetOut>::new(
+                self.interface(),
+                address as u8,
+            )
+        }
     
-                
-                        ::device_driver::BufferOperation::<
-                            '_,
-                            I,
-                            u8,
-                            ::device_driver::RO,
-                        >::new(self.interface(), address as u8)
-                    
-            }
-        
-            /// This is a block
-            
-                
-            pub fn b_1(
-                &mut self,
-                
-                    
-            ) -> 
-             B1<'_, I>
-                
-            {
-                 let address = self.base_address + 5;
-                    
+        pub fn foob_1(&mut self) -> ::device_driver::BufferOperation<'_, I, u8, ::device_driver::RW> {
+            let address = self.base_address + 0;
     
-                
-                        B1::<'_, I>::new(self.interface(), address)
-                    
-            }
-        
-            
-            
-                ///
-                /// Valid index range: 0..2
-                
-            pub fn b_2(
-                &mut self,
-                 index: usize
-                
-            ) -> 
-             B2<'_, I>
-                
-            {
-                
-                        let address = {
-                            assert!(index < 2);
-                            self.base_address + 0 + index as u8 * 4
-                        };
-                    
+            ::device_driver::BufferOperation::<'_, I, u8, ::device_driver::RW>::new(
+                self.interface(),
+                address as u8,
+            )
+        }
     
-                
-                        B2::<'_, I>::new(self.interface(), address)
-                    
-            }
-        
+        pub fn foob_2(&mut self) -> ::device_driver::BufferOperation<'_, I, u8, ::device_driver::RO> {
+            let address = self.base_address + 2;
+    
+            ::device_driver::BufferOperation::<'_, I, u8, ::device_driver::RO>::new(
+                self.interface(),
+                address as u8,
+            )
+        }
+    
+        /// This is a block
+    
+        pub fn b_1(&mut self) -> B1<'_, I> {
+            let address = self.base_address + 5;
+    
+            B1::<'_, I>::new(self.interface(), address)
+        }
+    
+        ///
+        /// Valid index range: 0..2
+    
+        pub fn b_2(&mut self, index: usize) -> B2<'_, I> {
+            let address = {
+                assert!(index < 2);
+                self.base_address + 0 + index as u8 * 4
+            };
+    
+            B2::<'_, I>::new(self.interface(), address)
+        }
     }
-    
-        
-    
-        
-    
     
     /// This is a block
     #[derive(Debug)]
     pub struct B1<'i, I> {
-        
         pub(crate) interface: &'i mut I,
-        
+    
         #[doc(hidden)]
         base_address: u8,
     }
     
     impl<'i, I> B1<'i, I> {
-        
         /// Create a new instance of the block based on device interface
         #[doc(hidden)]
         fn new(interface: &'i mut I, base_address: u8) -> Self {
-            Self { interface, base_address: base_address }
+            Self {
+                interface,
+                base_address: base_address,
+            }
         }
     
         /// A reference to the interface used to communicate with the device
         pub(crate) fn interface(&mut self) -> &mut I {
             self.interface
         }
-        
-    
-        
     }
-    
-        
-    
-        
-    
-    
     
     #[derive(Debug)]
     pub struct B2<'i, I> {
-        
         pub(crate) interface: &'i mut I,
-        
+    
         #[doc(hidden)]
         base_address: u8,
     }
     
     impl<'i, I> B2<'i, I> {
-        
         /// Create a new instance of the block based on device interface
         #[doc(hidden)]
         fn new(interface: &'i mut I, base_address: u8) -> Self {
-            Self { interface, base_address: base_address }
+            Self {
+                interface,
+                base_address: base_address,
+            }
         }
     
         /// A reference to the interface used to communicate with the device
         pub(crate) fn interface(&mut self) -> &mut I {
             self.interface
         }
-        
     
-        
-            
-            
-                
-            pub fn b_2_foo(
-                &mut self,
-                
-                    
-            ) -> 
-             ::device_driver::BufferOperation<'_, I, u8, ::device_driver::RW>
-            
-            {
-                 let address = self.base_address + 42;
-                    
+        pub fn b_2_foo(&mut self) -> ::device_driver::BufferOperation<'_, I, u8, ::device_driver::RW> {
+            let address = self.base_address + 42;
     
-                
-                        ::device_driver::BufferOperation::<
-                            '_,
-                            I,
-                            u8,
-                            ::device_driver::RW,
-                        >::new(self.interface(), address as u8)
-                    
-            }
-        
+            ::device_driver::BufferOperation::<'_, I, u8, ::device_driver::RW>::new(
+                self.interface(),
+                address as u8,
+            )
+        }
     }
     
-    
-    
-        
     #[derive(Copy, Clone, Eq, PartialEq)]
     pub struct Foor4FieldSet {
         /// The internal bits
-        bits: [u8; 0]
+        bits: [u8; 0],
     }
     
     impl ::device_driver::FieldSet for Foor4FieldSet {
@@ -665,10 +416,6 @@ pub mod foo_d_6 {
         pub const fn new() -> Self {
             Self { bits: [0; 0] }
         }
-    
-        
-    
-        
     }
     
     impl From<[u8; 0]> for Foor4FieldSet {
@@ -686,12 +433,10 @@ pub mod foo_d_6 {
     impl core::fmt::Debug for Foor4FieldSet {
         fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
             let mut d = f.debug_struct("Foor4FieldSet");
-            
+    
             d.finish()
         }
     }
-    
-    
     
     impl core::ops::BitAnd for Foor4FieldSet {
         type Output = Self;
@@ -745,11 +490,10 @@ pub mod foo_d_6 {
         }
     }
     
-        
     #[derive(Copy, Clone, Eq, PartialEq)]
     pub struct Foor5FieldSet {
         /// The internal bits
-        bits: [u8; 0]
+        bits: [u8; 0],
     }
     
     impl ::device_driver::FieldSet for Foor5FieldSet {
@@ -770,10 +514,6 @@ pub mod foo_d_6 {
         pub const fn new() -> Self {
             Self { bits: [0; 0] }
         }
-    
-        
-    
-        
     }
     
     impl From<[u8; 0]> for Foor5FieldSet {
@@ -791,12 +531,10 @@ pub mod foo_d_6 {
     impl core::fmt::Debug for Foor5FieldSet {
         fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
             let mut d = f.debug_struct("Foor5FieldSet");
-            
+    
             d.finish()
         }
     }
-    
-    
     
     impl core::ops::BitAnd for Foor5FieldSet {
         type Output = Self;
@@ -850,11 +588,10 @@ pub mod foo_d_6 {
         }
     }
     
-        
     #[derive(Copy, Clone, Eq, PartialEq)]
     pub struct Foor6FieldSet {
         /// The internal bits
-        bits: [u8; 0]
+        bits: [u8; 0],
     }
     
     impl ::device_driver::FieldSet for Foor6FieldSet {
@@ -875,10 +612,6 @@ pub mod foo_d_6 {
         pub const fn new() -> Self {
             Self { bits: [0; 0] }
         }
-    
-        
-    
-        
     }
     
     impl From<[u8; 0]> for Foor6FieldSet {
@@ -896,12 +629,10 @@ pub mod foo_d_6 {
     impl core::fmt::Debug for Foor6FieldSet {
         fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
             let mut d = f.debug_struct("Foor6FieldSet");
-            
+    
             d.finish()
         }
     }
-    
-    
     
     impl core::ops::BitAnd for Foor6FieldSet {
         type Output = Self;
@@ -955,11 +686,10 @@ pub mod foo_d_6 {
         }
     }
     
-        
     #[derive(Copy, Clone, Eq, PartialEq)]
     pub struct Foor7FieldSet {
         /// The internal bits
-        bits: [u8; 0]
+        bits: [u8; 0],
     }
     
     impl ::device_driver::FieldSet for Foor7FieldSet {
@@ -980,10 +710,6 @@ pub mod foo_d_6 {
         pub const fn new() -> Self {
             Self { bits: [0; 0] }
         }
-    
-        
-    
-        
     }
     
     impl From<[u8; 0]> for Foor7FieldSet {
@@ -1001,12 +727,10 @@ pub mod foo_d_6 {
     impl core::fmt::Debug for Foor7FieldSet {
         fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
             let mut d = f.debug_struct("Foor7FieldSet");
-            
+    
             d.finish()
         }
     }
-    
-    
     
     impl core::ops::BitAnd for Foor7FieldSet {
         type Output = Self;
@@ -1060,11 +784,11 @@ pub mod foo_d_6 {
         }
     }
     
-        /// This fieldset has a custom name
+    /// This fieldset has a custom name
     #[derive(Copy, Clone, Eq, PartialEq)]
     pub struct CustomFieldSetName {
         /// The internal bits
-        bits: [u8; 1]
+        bits: [u8; 1],
     }
     
     impl ::device_driver::FieldSet for CustomFieldSetName {
@@ -1086,93 +810,57 @@ pub mod foo_d_6 {
             Self { bits: [0; 1] }
         }
     
-        
-            
-                ///Read the `bar` field of the register.
-                ///
-                
-                pub fn bar(&self) -> 
-                     bool
-                    
-                {
-                    let raw = unsafe {
-                        ::device_driver::ops::load_lsb0::<
-                            u8,
-                            ::device_driver::ops::LE,
-                        >(&self.bits, 3, 4)
-                    };
+        ///Read the `bar` field of the register.
+        ///
     
-                     raw > 0
-                    
-                }
-            
-        
-            
-                ///Read the `baz` field of the register.
-                ///
-                
-                pub fn baz(&self) -> 
-                     u8
-                        
-                {
-                    let raw = unsafe {
-                        ::device_driver::ops::load_lsb0::<
-                            u8,
-                            ::device_driver::ops::LE,
-                        >(&self.bits, 4, 8)
-                    };
+        pub fn bar(&self) -> bool {
+            let raw = unsafe {
+                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, 3, 4)
+            };
+            raw > 0
+        }
     
-                     raw
-                        
-                }
-            
-        
+        ///Read the `baz` field of the register.
+        ///
     
-        
-            
-                ///Write the `bar` field of the register.
-                ///
-                
-                pub fn set_bar(
-                    &mut self,
-                    value:  bool
-                    
-                ) {
-                    let raw = 
-                     value as _;
-                        
+        pub fn baz(&self) -> u8 {
+            let raw = unsafe {
+                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, 4, 8)
+            };
+            raw
+        }
     
-                    unsafe {
-                        ::device_driver::ops::store_lsb0::<
-                            u8,
-                            ::device_driver::ops::LE,
-                        >(raw, 3, 4, &mut self.bits)
-                    };
-                }
-            
-        
-            
-                ///Write the `baz` field of the register.
-                ///
-                
-                pub fn set_baz(
-                    &mut self,
-                    value:  u8
-                        
-                ) {
-                    let raw = 
-                     value;
-                        
+        ///Write the `bar` field of the register.
+        ///
     
-                    unsafe {
-                        ::device_driver::ops::store_lsb0::<
-                            u8,
-                            ::device_driver::ops::LE,
-                        >(raw, 4, 8, &mut self.bits)
-                    };
-                }
-            
-        
+        pub fn set_bar(&mut self, value: bool) {
+            let raw = value as _;
+    
+            unsafe {
+                ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
+                    raw,
+                    3,
+                    4,
+                    &mut self.bits,
+                )
+            };
+        }
+    
+        ///Write the `baz` field of the register.
+        ///
+    
+        pub fn set_baz(&mut self, value: u8) {
+            let raw = value;
+    
+            unsafe {
+                ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
+                    raw,
+                    4,
+                    8,
+                    &mut self.bits,
+                )
+            };
+        }
     }
     
     impl From<[u8; 1]> for CustomFieldSetName {
@@ -1190,20 +878,14 @@ pub mod foo_d_6 {
     impl core::fmt::Debug for CustomFieldSetName {
         fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
             let mut d = f.debug_struct("CustomFieldSetName");
-            
-                
-                    d.field("bar", &self.bar());
-                
-            
-                
-                    d.field("baz", &self.baz());
-                
-            
+    
+            d.field("bar", &self.bar());
+    
+            d.field("baz", &self.baz());
+    
             d.finish()
         }
     }
-    
-    
     
     impl core::ops::BitAnd for CustomFieldSetName {
         type Output = Self;
@@ -1257,11 +939,10 @@ pub mod foo_d_6 {
         }
     }
     
-        
     #[derive(Copy, Clone, Eq, PartialEq)]
     pub struct Foor9FieldSet {
         /// The internal bits
-        bits: [u8; 1]
+        bits: [u8; 1],
     }
     
     impl ::device_driver::FieldSet for Foor9FieldSet {
@@ -1283,177 +964,109 @@ pub mod foo_d_6 {
             Self { bits: [0; 1] }
         }
     
-        
-            
-                ///Read the `bar` field of the register.
-                ///
-                
-                pub fn bar(&self) -> 
-                     bool
-                    
-                {
-                    let raw = unsafe {
-                        ::device_driver::ops::load_lsb0::<
-                            u8,
-                            ::device_driver::ops::LE,
-                        >(&self.bits, 0, 1)
-                    };
+        ///Read the `bar` field of the register.
+        ///
     
-                     raw > 0
-                    
-                }
-            
-        
-            
-                ///Read the `baz` field of the register.
-                ///
-                
-                pub fn baz(&self) -> 
-                     u8
-                        
-                {
-                    let raw = unsafe {
-                        ::device_driver::ops::load_lsb0::<
-                            u8,
-                            ::device_driver::ops::LE,
-                        >(&self.bits, 1, 3)
-                    };
+        pub fn bar(&self) -> bool {
+            let raw = unsafe {
+                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, 0, 1)
+            };
+            raw > 0
+        }
     
-                     raw
-                        
-                }
-            
-        
-            
-                ///Read the `quux` field of the register.
-                ///
-                
-                pub fn quux(&self) -> 
-                     u8
-                        
-                {
-                    let raw = unsafe {
-                        ::device_driver::ops::load_lsb0::<
-                            u8,
-                            ::device_driver::ops::LE,
-                        >(&self.bits, 3, 5)
-                    };
+        ///Read the `baz` field of the register.
+        ///
     
-                     raw
-                        
-                }
-            
-        
-            
-                ///Read the `qus` field of the register.
-                ///
-                
-                pub fn qus(&self) -> 
-                     Result<MyCustomType, <MyCustomType as TryFrom<u8>>::Error>
-                        
-                {
-                    let raw = unsafe {
-                        ::device_driver::ops::load_lsb0::<
-                            u8,
-                            ::device_driver::ops::LE,
-                        >(&self.bits, 5, 7)
-                    };
+        pub fn baz(&self) -> u8 {
+            let raw = unsafe {
+                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, 1, 3)
+            };
+            raw
+        }
     
-                     raw.try_into()
-                        
-                }
-            
-        
+        ///Read the `quux` field of the register.
+        ///
     
-        
-            
-                ///Write the `bar` field of the register.
-                ///
-                
-                pub fn set_bar(
-                    &mut self,
-                    value:  bool
-                    
-                ) {
-                    let raw = 
-                     value as _;
-                        
+        pub fn quux(&self) -> u8 {
+            let raw = unsafe {
+                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, 3, 5)
+            };
+            raw
+        }
     
-                    unsafe {
-                        ::device_driver::ops::store_lsb0::<
-                            u8,
-                            ::device_driver::ops::LE,
-                        >(raw, 0, 1, &mut self.bits)
-                    };
-                }
-            
-        
-            
-                ///Write the `baz` field of the register.
-                ///
-                
-                pub fn set_baz(
-                    &mut self,
-                    value:  u8
-                        
-                ) {
-                    let raw = 
-                     value;
-                        
+        ///Read the `qus` field of the register.
+        ///
     
-                    unsafe {
-                        ::device_driver::ops::store_lsb0::<
-                            u8,
-                            ::device_driver::ops::LE,
-                        >(raw, 1, 3, &mut self.bits)
-                    };
-                }
-            
-        
-            
-                ///Write the `quux` field of the register.
-                ///
-                
-                pub fn set_quux(
-                    &mut self,
-                    value:  u8
-                        
-                ) {
-                    let raw = 
-                     value;
-                        
+        pub fn qus(&self) -> Result<MyCustomType, <MyCustomType as TryFrom<u8>>::Error> {
+            let raw = unsafe {
+                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, 5, 7)
+            };
+            raw.try_into()
+        }
     
-                    unsafe {
-                        ::device_driver::ops::store_lsb0::<
-                            u8,
-                            ::device_driver::ops::LE,
-                        >(raw, 3, 5, &mut self.bits)
-                    };
-                }
-            
-        
-            
-                ///Write the `qus` field of the register.
-                ///
-                
-                pub fn set_qus(
-                    &mut self,
-                    value:  MyCustomType
-                        
-                ) {
-                    let raw = 
-                     value.into();
-                    
+        ///Write the `bar` field of the register.
+        ///
     
-                    unsafe {
-                        ::device_driver::ops::store_lsb0::<
-                            u8,
-                            ::device_driver::ops::LE,
-                        >(raw, 5, 7, &mut self.bits)
-                    };
-                }
-            
-        
+        pub fn set_bar(&mut self, value: bool) {
+            let raw = value as _;
+    
+            unsafe {
+                ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
+                    raw,
+                    0,
+                    1,
+                    &mut self.bits,
+                )
+            };
+        }
+    
+        ///Write the `baz` field of the register.
+        ///
+    
+        pub fn set_baz(&mut self, value: u8) {
+            let raw = value;
+    
+            unsafe {
+                ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
+                    raw,
+                    1,
+                    3,
+                    &mut self.bits,
+                )
+            };
+        }
+    
+        ///Write the `quux` field of the register.
+        ///
+    
+        pub fn set_quux(&mut self, value: u8) {
+            let raw = value;
+    
+            unsafe {
+                ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
+                    raw,
+                    3,
+                    5,
+                    &mut self.bits,
+                )
+            };
+        }
+    
+        ///Write the `qus` field of the register.
+        ///
+    
+        pub fn set_qus(&mut self, value: MyCustomType) {
+            let raw = value.into();
+    
+            unsafe {
+                ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
+                    raw,
+                    5,
+                    7,
+                    &mut self.bits,
+                )
+            };
+        }
     }
     
     impl From<[u8; 1]> for Foor9FieldSet {
@@ -1471,28 +1084,18 @@ pub mod foo_d_6 {
     impl core::fmt::Debug for Foor9FieldSet {
         fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
             let mut d = f.debug_struct("Foor9FieldSet");
-            
-                
-                    d.field("bar", &self.bar());
-                
-            
-                
-                    d.field("baz", &self.baz());
-                
-            
-                
-                    d.field("quux", &self.quux());
-                
-            
-                
-                    d.field("qus", &self.qus());
-                
-            
+    
+            d.field("bar", &self.bar());
+    
+            d.field("baz", &self.baz());
+    
+            d.field("quux", &self.quux());
+    
+            d.field("qus", &self.qus());
+    
             d.finish()
         }
     }
-    
-    
     
     impl core::ops::BitAnd for Foor9FieldSet {
         type Output = Self;
@@ -1546,11 +1149,10 @@ pub mod foo_d_6 {
         }
     }
     
-        
     #[derive(Copy, Clone, Eq, PartialEq)]
     pub struct Foor10FieldSet {
         /// The internal bits
-        bits: [u8; 1]
+        bits: [u8; 1],
     }
     
     impl ::device_driver::FieldSet for Foor10FieldSet {
@@ -1572,177 +1174,109 @@ pub mod foo_d_6 {
             Self { bits: [0; 1] }
         }
     
-        
-            
-                ///Read the `bar` field of the register.
-                ///
-                
-                pub fn bar(&self) -> 
-                     Foo10E1
-                        
-                {
-                    let raw = unsafe {
-                        ::device_driver::ops::load_lsb0::<
-                            u8,
-                            ::device_driver::ops::LE,
-                        >(&self.bits, 0, 2)
-                    };
+        ///Read the `bar` field of the register.
+        ///
     
-                     unsafe { raw.try_into().unwrap_unchecked() }
-                        
-                }
-            
-        
-            
-                ///Read the `baz` field of the register.
-                ///
-                
-                pub fn baz(&self) -> 
-                     u8
-                        
-                {
-                    let raw = unsafe {
-                        ::device_driver::ops::load_lsb0::<
-                            u8,
-                            ::device_driver::ops::LE,
-                        >(&self.bits, 2, 4)
-                    };
+        pub fn bar(&self) -> Foo10E1 {
+            let raw = unsafe {
+                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, 0, 2)
+            };
+            unsafe { raw.try_into().unwrap_unchecked() }
+        }
     
-                     raw
-                        
-                }
-            
-        
-            
-                ///Read the `bam` field of the register.
-                ///
-                
-                pub fn bam(&self) -> 
-                     u8
-                        
-                {
-                    let raw = unsafe {
-                        ::device_driver::ops::load_lsb0::<
-                            u8,
-                            ::device_driver::ops::LE,
-                        >(&self.bits, 4, 6)
-                    };
+        ///Read the `baz` field of the register.
+        ///
     
-                     raw
-                        
-                }
-            
-        
-            
-                ///Read the `bat` field of the register.
-                ///
-                
-                pub fn bat(&self) -> 
-                     Result<Foo10E2, <Foo10E2 as TryFrom<u8>>::Error>
-                        
-                {
-                    let raw = unsafe {
-                        ::device_driver::ops::load_lsb0::<
-                            u8,
-                            ::device_driver::ops::LE,
-                        >(&self.bits, 6, 8)
-                    };
+        pub fn baz(&self) -> u8 {
+            let raw = unsafe {
+                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, 2, 4)
+            };
+            raw
+        }
     
-                     raw.try_into()
-                        
-                }
-            
-        
+        ///Read the `bam` field of the register.
+        ///
     
-        
-            
-                ///Write the `bar` field of the register.
-                ///
-                
-                pub fn set_bar(
-                    &mut self,
-                    value:  Foo10E1
-                        
-                ) {
-                    let raw = 
-                     value.into();
-                    
+        pub fn bam(&self) -> u8 {
+            let raw = unsafe {
+                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, 4, 6)
+            };
+            raw
+        }
     
-                    unsafe {
-                        ::device_driver::ops::store_lsb0::<
-                            u8,
-                            ::device_driver::ops::LE,
-                        >(raw, 0, 2, &mut self.bits)
-                    };
-                }
-            
-        
-            
-                ///Write the `baz` field of the register.
-                ///
-                
-                pub fn set_baz(
-                    &mut self,
-                    value:  u8
-                        
-                ) {
-                    let raw = 
-                     value;
-                        
+        ///Read the `bat` field of the register.
+        ///
     
-                    unsafe {
-                        ::device_driver::ops::store_lsb0::<
-                            u8,
-                            ::device_driver::ops::LE,
-                        >(raw, 2, 4, &mut self.bits)
-                    };
-                }
-            
-        
-            
-                ///Write the `bam` field of the register.
-                ///
-                
-                pub fn set_bam(
-                    &mut self,
-                    value:  u8
-                        
-                ) {
-                    let raw = 
-                     value;
-                        
+        pub fn bat(&self) -> Result<Foo10E2, <Foo10E2 as TryFrom<u8>>::Error> {
+            let raw = unsafe {
+                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, 6, 8)
+            };
+            raw.try_into()
+        }
     
-                    unsafe {
-                        ::device_driver::ops::store_lsb0::<
-                            u8,
-                            ::device_driver::ops::LE,
-                        >(raw, 4, 6, &mut self.bits)
-                    };
-                }
-            
-        
-            
-                ///Write the `bat` field of the register.
-                ///
-                
-                pub fn set_bat(
-                    &mut self,
-                    value:  Foo10E2
-                        
-                ) {
-                    let raw = 
-                     value.into();
-                    
+        ///Write the `bar` field of the register.
+        ///
     
-                    unsafe {
-                        ::device_driver::ops::store_lsb0::<
-                            u8,
-                            ::device_driver::ops::LE,
-                        >(raw, 6, 8, &mut self.bits)
-                    };
-                }
-            
-        
+        pub fn set_bar(&mut self, value: Foo10E1) {
+            let raw = value.into();
+    
+            unsafe {
+                ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
+                    raw,
+                    0,
+                    2,
+                    &mut self.bits,
+                )
+            };
+        }
+    
+        ///Write the `baz` field of the register.
+        ///
+    
+        pub fn set_baz(&mut self, value: u8) {
+            let raw = value;
+    
+            unsafe {
+                ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
+                    raw,
+                    2,
+                    4,
+                    &mut self.bits,
+                )
+            };
+        }
+    
+        ///Write the `bam` field of the register.
+        ///
+    
+        pub fn set_bam(&mut self, value: u8) {
+            let raw = value;
+    
+            unsafe {
+                ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
+                    raw,
+                    4,
+                    6,
+                    &mut self.bits,
+                )
+            };
+        }
+    
+        ///Write the `bat` field of the register.
+        ///
+    
+        pub fn set_bat(&mut self, value: Foo10E2) {
+            let raw = value.into();
+    
+            unsafe {
+                ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
+                    raw,
+                    6,
+                    8,
+                    &mut self.bits,
+                )
+            };
+        }
     }
     
     impl From<[u8; 1]> for Foor10FieldSet {
@@ -1760,28 +1294,18 @@ pub mod foo_d_6 {
     impl core::fmt::Debug for Foor10FieldSet {
         fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
             let mut d = f.debug_struct("Foor10FieldSet");
-            
-                
-                    d.field("bar", &self.bar());
-                
-            
-                
-                    d.field("baz", &self.baz());
-                
-            
-                
-                    d.field("bam", &self.bam());
-                
-            
-                
-                    d.field("bat", &self.bat());
-                
-            
+    
+            d.field("bar", &self.bar());
+    
+            d.field("baz", &self.baz());
+    
+            d.field("bam", &self.bam());
+    
+            d.field("bat", &self.bat());
+    
             d.finish()
         }
     }
-    
-    
     
     impl core::ops::BitAnd for Foor10FieldSet {
         type Output = Self;
@@ -1835,11 +1359,10 @@ pub mod foo_d_6 {
         }
     }
     
-        
     #[derive(Copy, Clone, Eq, PartialEq)]
     pub struct Fooc1FieldSetIn {
         /// The internal bits
-        bits: [u8; 0]
+        bits: [u8; 0],
     }
     
     impl ::device_driver::FieldSet for Fooc1FieldSetIn {
@@ -1860,10 +1383,6 @@ pub mod foo_d_6 {
         pub const fn new() -> Self {
             Self { bits: [0; 0] }
         }
-    
-        
-    
-        
     }
     
     impl From<[u8; 0]> for Fooc1FieldSetIn {
@@ -1881,12 +1400,10 @@ pub mod foo_d_6 {
     impl core::fmt::Debug for Fooc1FieldSetIn {
         fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
             let mut d = f.debug_struct("Fooc1FieldSetIn");
-            
+    
             d.finish()
         }
     }
-    
-    
     
     impl core::ops::BitAnd for Fooc1FieldSetIn {
         type Output = Self;
@@ -1940,11 +1457,10 @@ pub mod foo_d_6 {
         }
     }
     
-        
     #[derive(Copy, Clone, Eq, PartialEq)]
     pub struct Fooc1FieldSetOut {
         /// The internal bits
-        bits: [u8; 1]
+        bits: [u8; 1],
     }
     
     impl ::device_driver::FieldSet for Fooc1FieldSetOut {
@@ -1966,51 +1482,31 @@ pub mod foo_d_6 {
             Self { bits: [0; 1] }
         }
     
-        
-            
-                ///Read the `b` field of the register.
-                ///
-                
-                pub fn b(&self) -> 
-                     bool
-                    
-                {
-                    let raw = unsafe {
-                        ::device_driver::ops::load_lsb0::<
-                            u8,
-                            ::device_driver::ops::LE,
-                        >(&self.bits, 0, 1)
-                    };
+        ///Read the `b` field of the register.
+        ///
     
-                     raw > 0
-                    
-                }
-            
-        
+        pub fn b(&self) -> bool {
+            let raw = unsafe {
+                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, 0, 1)
+            };
+            raw > 0
+        }
     
-        
-            
-                ///Write the `b` field of the register.
-                ///
-                
-                pub fn set_b(
-                    &mut self,
-                    value:  bool
-                    
-                ) {
-                    let raw = 
-                     value as _;
-                        
+        ///Write the `b` field of the register.
+        ///
     
-                    unsafe {
-                        ::device_driver::ops::store_lsb0::<
-                            u8,
-                            ::device_driver::ops::LE,
-                        >(raw, 0, 1, &mut self.bits)
-                    };
-                }
-            
-        
+        pub fn set_b(&mut self, value: bool) {
+            let raw = value as _;
+    
+            unsafe {
+                ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
+                    raw,
+                    0,
+                    1,
+                    &mut self.bits,
+                )
+            };
+        }
     }
     
     impl From<[u8; 1]> for Fooc1FieldSetOut {
@@ -2028,16 +1524,12 @@ pub mod foo_d_6 {
     impl core::fmt::Debug for Fooc1FieldSetOut {
         fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
             let mut d = f.debug_struct("Fooc1FieldSetOut");
-            
-                
-                    d.field("b", &self.b());
-                
-            
+    
+            d.field("b", &self.b());
+    
             d.finish()
         }
     }
-    
-    
     
     impl core::ops::BitAnd for Fooc1FieldSetOut {
         type Output = Self;
@@ -2091,11 +1583,10 @@ pub mod foo_d_6 {
         }
     }
     
-        
     #[derive(Copy, Clone, Eq, PartialEq)]
     pub struct Fs1 {
         /// The internal bits
-        bits: [u8; 2]
+        bits: [u8; 2],
     }
     
     impl ::device_driver::FieldSet for Fs1 {
@@ -2117,51 +1608,31 @@ pub mod foo_d_6 {
             Self { bits: [0; 2] }
         }
     
-        
-            
-                ///Read the `value` field of the register.
-                ///
-                
-                pub fn value(&self) -> 
-                     u16
-                        
-                {
-                    let raw = unsafe {
-                        ::device_driver::ops::load_lsb0::<
-                            u16,
-                            ::device_driver::ops::LE,
-                        >(&self.bits, 0, 16)
-                    };
+        ///Read the `value` field of the register.
+        ///
     
-                     raw
-                        
-                }
-            
-        
+        pub fn value(&self) -> u16 {
+            let raw = unsafe {
+                ::device_driver::ops::load_lsb0::<u16, ::device_driver::ops::LE>(&self.bits, 0, 16)
+            };
+            raw
+        }
     
-        
-            
-                ///Write the `value` field of the register.
-                ///
-                
-                pub fn set_value(
-                    &mut self,
-                    value:  u16
-                        
-                ) {
-                    let raw = 
-                     value;
-                        
+        ///Write the `value` field of the register.
+        ///
     
-                    unsafe {
-                        ::device_driver::ops::store_lsb0::<
-                            u16,
-                            ::device_driver::ops::LE,
-                        >(raw, 0, 16, &mut self.bits)
-                    };
-                }
-            
-        
+        pub fn set_value(&mut self, value: u16) {
+            let raw = value;
+    
+            unsafe {
+                ::device_driver::ops::store_lsb0::<u16, ::device_driver::ops::LE>(
+                    raw,
+                    0,
+                    16,
+                    &mut self.bits,
+                )
+            };
+        }
     }
     
     impl From<[u8; 2]> for Fs1 {
@@ -2179,16 +1650,12 @@ pub mod foo_d_6 {
     impl core::fmt::Debug for Fs1 {
         fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
             let mut d = f.debug_struct("Fs1");
-            
-                
-                    d.field("value", &self.value());
-                
-            
+    
+            d.field("value", &self.value());
+    
             d.finish()
         }
     }
-    
-    
     
     impl core::ops::BitAnd for Fs1 {
         type Output = Self;
@@ -2242,131 +1709,79 @@ pub mod foo_d_6 {
         }
     }
     
-    
-    
-        
     #[repr(u8)]
     #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
     
     pub enum Foo10E1 {
-        
-            
-            A  = 0,
-        
-            
-            B  = 1,
-        
-            
-            C  = 2,
-        
-            
-            D  (u8)  = 3,
-        
+        A = 0,
+    
+        B = 1,
+    
+        C = 2,
+    
+        D(u8) = 3,
     }
-    
-    
-    
-    
     
     impl Default for Foo10E1 {
         fn default() -> Self {
             Self::C
-            
         }
     }
-    
-    
     
     impl From<u8> for Foo10E1 {
         fn from(val: u8) -> Self {
             match val {
-                
-                    
-                        0 => Self::A,
-                    
-                
-                    
-                        1 => Self::B,
-                    
-                
-                    
-                
-                    
-                
-                
-                    val => Self::D(val),
-                
+                0 => Self::A,
+    
+                1 => Self::B,
+    
+                val => Self::D(val),
             }
         }
     }
-    
     
     impl From<Foo10E1> for u8 {
         fn from(val: Foo10E1) -> Self {
             match val {
-                
-                    
-                        Foo10E1::A => 0,
-                    
-                
-                    
-                        Foo10E1::B => 1,
-                    
-                
-                    
-                        Foo10E1::C => 2,
-                    
-                
-                    
-                        Foo10E1::D(num) => num,
-                    
-                
+                Foo10E1::A => 0,
+    
+                Foo10E1::B => 1,
+    
+                Foo10E1::C => 2,
+    
+                Foo10E1::D(num) => num,
             }
         }
     }
     
-        
     #[repr(u8)]
     #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
     
     pub enum Foo10E2 {
-        
-            
-            A  = 0,
-        
+        A = 0,
     }
-    
-    
-    
-    
-    
-    
     
     impl core::convert::TryFrom<u8> for Foo10E2 {
         type Error = ::device_driver::ConversionError<u8>;
         fn try_from(val: u8) -> Result<Self, Self::Error> {
             match val {
-                
-                    0 => Ok(Self::A),
-                
-                val => Err(::device_driver::ConversionError { source: val, target: "Foo10E2" })
+                0 => Ok(Self::A),
+    
+                val => Err(::device_driver::ConversionError {
+                    source: val,
+                    target: "Foo10E2",
+                }),
             }
         }
     }
-    
     
     impl From<Foo10E2> for u8 {
         fn from(val: Foo10E2) -> Self {
             match val {
-                
-                    
-                        Foo10E2::A => 0,
-                    
-                
+                Foo10E2::A => 0,
             }
         }
     }
-    
 }
 
 compile_error!("The device driver input has errors that need to be solved!");

@@ -74,7 +74,6 @@ impl FooFieldSetIn {
         let raw = unsafe {
             ::device_driver::ops::load_lsb0::<u32, ::device_driver::ops::LE>(&self.bits, 0, 24)
         };
-
         raw
     }
 

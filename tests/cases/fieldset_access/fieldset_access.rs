@@ -101,7 +101,6 @@ impl FooRoFieldSet {
         let raw = unsafe {
             ::device_driver::ops::load_lsb0::<u16, ::device_driver::ops::LE>(&self.bits, 0, 16)
         };
-
         raw
     }
 
@@ -112,7 +111,6 @@ impl FooRoFieldSet {
         let raw = unsafe {
             ::device_driver::ops::load_lsb0::<i16, ::device_driver::ops::LE>(&self.bits, 16, 32)
         };
-
         raw
     }
 
@@ -257,7 +255,6 @@ impl FooRwFieldSet {
         let raw = unsafe {
             ::device_driver::ops::load_lsb0::<u16, ::device_driver::ops::LE>(&self.bits, 0, 16)
         };
-
         raw
     }
 
@@ -268,7 +265,6 @@ impl FooRwFieldSet {
         let raw = unsafe {
             ::device_driver::ops::load_lsb0::<i16, ::device_driver::ops::LE>(&self.bits, 16, 32)
         };
-
         raw
     }
 
@@ -413,7 +409,6 @@ impl FooWoFieldSet {
         let raw = unsafe {
             ::device_driver::ops::load_lsb0::<u16, ::device_driver::ops::LE>(&self.bits, 0, 16)
         };
-
         raw
     }
 
@@ -424,7 +419,6 @@ impl FooWoFieldSet {
         let raw = unsafe {
             ::device_driver::ops::load_lsb0::<i16, ::device_driver::ops::LE>(&self.bits, 16, 32)
         };
-
         raw
     }
 
