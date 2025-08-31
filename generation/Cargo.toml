@@ -13,7 +13,7 @@ readme = "README.md"
 
 [dependencies]
 anyhow = "1.0.86"
-convert_case = "0.6.0" # Out of date, but can't really update in a back-compat way. Fine though, no exploits known in this version
+convert_case = "0.8.0"
 itertools = "0.14.0"
 proc-macro2 = "1.0.70"
 quote = "1.0.33"
