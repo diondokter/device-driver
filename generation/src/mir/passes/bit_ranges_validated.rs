@@ -176,7 +176,7 @@ mod tests {
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
-            "Fieldset `MyReg (out)` has field `my_field` who's address exceeds the given max size bits"
+            "Fieldset `MyReg` has field `my_field` who's address exceeds the given max size bits"
         );
     }
 

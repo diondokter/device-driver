@@ -63,14 +63,7 @@ fn collect_into_blocks(
     let mut methods = Vec::new();
 
     for object in objects {
-        let Some(method) = get_method(
-            object,
-            &mut blocks,
-            global_config,
-            device_objects,
-            "new".to_string(),
-        )?
-        else {
+        let Some(method) = get_method(object, &mut blocks, global_config, device_objects)? else {
             continue;
         };
 
@@ -94,7 +87,6 @@ fn get_method(
     blocks: &mut Vec<lir::Block>,
     global_config: &mir::GlobalConfig,
     device_objects: &[mir::Object],
-    register_reset_value_function: String,
 ) -> Result<Option<lir::BlockMethod>, anyhow::Error> {
     use convert_case::Casing;
 
@@ -134,7 +126,7 @@ fn get_method(
             access,
             repeat,
             field_set_ref: field_set,
-            ..
+            reset_value,
         }) => Some(lir::BlockMethod {
             description: description.clone(),
             name: name.to_case(convert_case::Case::Snake),
@@ -147,7 +139,13 @@ fn get_method(
                 address_type: global_config
                     .register_address_type
                     .expect("The presence of the address type is already checked in a mir pass"),
-                reset_value_function: register_reset_value_function.clone(),
+                reset_value: reset_value.clone().map(|rv| {
+                    rv.as_array()
+                        .expect(
+                            "Reset value should already be converted to array here in a mir pass",
+                        )
+                        .clone()
+                }),
             },
         }),
         mir::Object::Command(mir::Command {
@@ -203,7 +201,7 @@ fn transform_field_sets<'a>(
 
     recurse_objects(&device.objects, &mut |object| {
         if let mir::Object::FieldSet(fs) = object {
-            field_sets.push(transform_field_set(fs, None, mir_enums.clone())?);
+            field_sets.push(transform_field_set(fs, mir_enums.clone())?);
         }
 
         Ok(())
@@ -214,7 +212,6 @@ fn transform_field_sets<'a>(
 
 fn transform_field_set<'a>(
     field_set: &mir::FieldSet,
-    reset_value: Option<Vec<u8>>,
     enum_list: impl Iterator<Item = &'a mir::Enum> + Clone,
 ) -> anyhow::Result<lir::FieldSet> {
     let fields = field_set
@@ -302,8 +299,6 @@ fn transform_field_set<'a>(
             .bit_order
             .expect("Bitorder should never be none at this point after the MIR passes"),
         size_bits: field_set.size_bits,
-        reset_value: reset_value
-            .unwrap_or_else(|| vec![0; field_set.size_bits.div_ceil(8) as usize]),
         fields,
     })
 }

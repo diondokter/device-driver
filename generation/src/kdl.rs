@@ -353,7 +353,11 @@ fn transform_register(
                     child,
                     source_code.clone(),
                     diagnostics,
-                    Some(name.as_ref().cloned().unwrap_or_default()),
+                    Some(
+                        name.as_ref()
+                            .map(|name| format!("{name}FieldSet"))
+                            .unwrap_or_default(),
+                    ),
                 )
                 .map(|val| (val, child.name().span()));
             }
@@ -492,7 +496,7 @@ fn transform_command(
                     child,
                     source_code.clone(),
                     diagnostics,
-                    Some(format!("{}FieldsIn", name.as_deref().unwrap_or_default())),
+                    Some(format!("{}FieldSetIn", name.as_deref().unwrap_or_default())),
                 )
                 .map(|val| (val, child.name().span()));
             }
@@ -510,7 +514,10 @@ fn transform_command(
                     child,
                     source_code.clone(),
                     diagnostics,
-                    Some(format!("{}FieldsOut", name.as_deref().unwrap_or_default())),
+                    Some(format!(
+                        "{}FieldSetOut",
+                        name.as_deref().unwrap_or_default()
+                    )),
                 )
                 .map(|val| (val, child.name().span()));
             }

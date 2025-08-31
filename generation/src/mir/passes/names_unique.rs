@@ -8,25 +8,18 @@ use super::recurse_objects_mut;
 /// If there is a collision an error is returned.
 pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
     let mut seen_object_ids = HashSet::new();
-    let mut seen_field_set_ids = HashSet::new();
-    let mut generated_type_ids = HashSet::new();
 
-    generated_type_ids.insert(device.id());
+    // Nothing must clash with the device name
+    seen_object_ids.insert(device.id());
 
     recurse_objects_mut(&mut device.objects, &mut |object| {
         anyhow::ensure!(
-            object.as_field_set().is_none() || seen_object_ids.insert(object.id()),
+            seen_object_ids.insert(object.id()),
             "Duplicate object name found: `{}`",
             object.name()
         );
 
         if let Some(field_set) = object.as_field_set() {
-            anyhow::ensure!(
-                seen_field_set_ids.insert(field_set.id()),
-                "Duplicate fieldset name found: `{}`",
-                field_set.name
-            );
-
             let mut seen_field_names = HashSet::new();
             for field in &field_set.fields {
                 anyhow::ensure!(
@@ -44,7 +37,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
                     let mut seen_variant_names = HashSet::new();
 
                     anyhow::ensure!(
-                        generated_type_ids.insert(enum_value.id()),
+                        seen_object_ids.insert(enum_value.id()),
                         "Duplicate generated enum name `{}` found in fieldset `{}` on field `{}`",
                         name,
                         field_set.name,

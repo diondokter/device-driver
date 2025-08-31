@@ -192,6 +192,7 @@ mod tests {
                     name: "fs".into(),
                     size_bits: 5,
                     bit_order: Some(BitOrder::LSB0),
+                    byte_order: Some(ByteOrder::LE),
                     ..Default::default()
                 }),
             ],
@@ -213,6 +214,7 @@ mod tests {
                     name: "fs".into(),
                     size_bits: 5,
                     bit_order: Some(BitOrder::LSB0),
+                    byte_order: Some(ByteOrder::LE),
                     ..Default::default()
                 }),
             ],
@@ -234,6 +236,7 @@ mod tests {
                     name: "fs".into(),
                     size_bits: 5,
                     bit_order: Some(BitOrder::LSB0),
+                    byte_order: Some(ByteOrder::LE),
                     ..Default::default()
                 }),
             ],
@@ -255,6 +258,7 @@ mod tests {
                     name: "fs".into(),
                     size_bits: 5,
                     bit_order: Some(BitOrder::LSB0),
+                    byte_order: Some(ByteOrder::LE),
                     ..Default::default()
                 }),
             ],
@@ -279,6 +283,7 @@ mod tests {
                     name: "fs".into(),
                     size_bits: 11,
                     bit_order: Some(BitOrder::LSB0),
+                    byte_order: Some(ByteOrder::LE),
                     ..Default::default()
                 }),
             ],
@@ -303,6 +308,7 @@ mod tests {
                     name: "fs".into(),
                     size_bits: 11,
                     bit_order: Some(BitOrder::LSB0),
+                    byte_order: Some(ByteOrder::LE),
                     ..Default::default()
                 }),
             ],
@@ -418,6 +424,7 @@ mod tests {
                     name: "fs".into(),
                     size_bits: 10,
                     bit_order: Some(BitOrder::LSB0),
+                    byte_order: Some(ByteOrder::LE),
                     ..Default::default()
                 }),
             ],
@@ -523,6 +530,7 @@ mod tests {
                     name: "fs".into(),
                     size_bits: 5,
                     bit_order: Some(BitOrder::MSB0),
+                    byte_order: Some(ByteOrder::LE),
                     ..Default::default()
                 }),
             ],
@@ -544,6 +552,7 @@ mod tests {
                     name: "fs".into(),
                     size_bits: 5,
                     bit_order: Some(BitOrder::MSB0),
+                    byte_order: Some(ByteOrder::LE),
                     ..Default::default()
                 }),
             ],

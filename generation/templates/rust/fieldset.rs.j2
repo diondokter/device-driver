@@ -8,7 +8,7 @@ pub struct {{field_set.name}} {
 impl ::device_driver::FieldSet for {{field_set.name}} {
     const SIZE_BITS: u32 = {{field_set.size_bits}};
     fn new_with_zero() -> Self {
-        Self::new_zero()
+        Self::new()
     }
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
@@ -19,18 +19,12 @@ impl ::device_driver::FieldSet for {{field_set.name}} {
 }
 
 impl {{field_set.name}} {
-    /// Create a new instance, loaded with the reset value (if any)
-    pub const fn new() -> Self {
-        Self { bits: [{{field_set.reset_value | join(", ")}}] }
-    }
     /// Create a new instance, loaded with all zeroes
-    pub const fn new_zero() -> Self {
+    pub const fn new() -> Self {
         Self { bits: [0; {{field_set.size_bytes()}}] }
     }
 
     {% for field in field_set.fields %}
-        {% let super_prefix = self::get_super_prefix(&field.conversion_method) %}
-
         {% if matches!(field.access, Access::RW | Access::RO) %}
             ///Read the `{{field.name}}` field of the register.
             ///
@@ -38,8 +32,8 @@ impl {{field_set.name}} {
             pub fn {{field.name}}(&self) -> 
                 {% match field.conversion_method %}
                     {% when FieldConversionMethod::None %} {{field.base_type}}
-                    {% when FieldConversionMethod::Into(t) | FieldConversionMethod::UnsafeInto(t) %} {{super_prefix}}{{t}}
-                    {% when FieldConversionMethod::TryInto(t) %} Result<{{super_prefix}}{{t}}, <{{super_prefix}}{{t}} as TryFrom<{{field.base_type}}>>::Error>
+                    {% when FieldConversionMethod::Into(t) | FieldConversionMethod::UnsafeInto(t) %} {{t}}
+                    {% when FieldConversionMethod::TryInto(t) %} Result<{{t}}, <{{t}} as TryFrom<{{field.base_type}}>>::Error>
                     {% when FieldConversionMethod::Bool %} bool
                 {% endmatch %}
             {
@@ -62,16 +56,13 @@ impl {{field_set.name}} {
     {% endfor %}
 
     {% for field in field_set.fields %}
-        {% let super_prefix = self::get_super_prefix(&field.conversion_method) %}
-
         {% if matches!(field.access, Access::RW | Access::WO) %}
             ///Write the `{{field.name}}` field of the register.
             ///
             {{self::description_to_docstring(field.description)}}
             pub fn set_{{field.name}}(
                 &mut self,
-                value: {{super_prefix}}
-                {% match field.conversion_method %}
+                value: {% match field.conversion_method %}
                     {% when FieldConversionMethod::None %} {{field.base_type}}
                     {% when FieldConversionMethod::Into(t) %} {{t}}
                     {% when FieldConversionMethod::UnsafeInto(t) %} {{t}}
