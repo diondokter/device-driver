@@ -33,7 +33,7 @@ pub trait FieldSet: Default {
 /// The error returned by the generated [TryFrom]s.
 /// It contains the base type of the enum.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-#[cfg_attr(feature = "defmt-03", derive(defmt::Format))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct ConversionError<T> {
     /// The value of the thing that was tried to be converted
     pub source: T,
