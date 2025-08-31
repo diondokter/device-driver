@@ -188,58 +188,24 @@ impl Object {
         }
     }
 
-    /// Get a reference to the description of the specific object
-    pub(self) fn description(&self) -> &str {
-        match self {
-            Object::Block(val) => &val.description,
-            Object::Register(val) => &val.description,
-            Object::Command(val) => &val.description,
-            Object::Buffer(val) => &val.description,
-            Object::FieldSet(val) => &val.description,
-        }
-    }
-
-    pub fn field_set_refs(&self) -> Vec<&FieldSetRef> {
+    pub(self) fn field_set_refs_mut(&mut self) -> Vec<&mut FieldSetRef> {
         match self {
             Object::Block(_) => Vec::new(),
-            Object::Register(register) => vec![&register.field_set],
+            Object::Register(register) => vec![&mut register.field_set_ref],
             Object::Command(command) => {
                 let mut buffer = Vec::new();
 
-                if let Some(fs_in) = command.field_set_in.as_ref() {
+                if let Some(fs_in) = command.field_set_ref_in.as_mut() {
                     buffer.push(fs_in);
                 }
-                if let Some(fs_out) = command.field_set_out.as_ref() {
+                if let Some(fs_out) = command.field_set_ref_out.as_mut() {
                     buffer.push(fs_out);
                 }
 
                 buffer
             }
             Object::Buffer(_) => Vec::new(),
-            Object::Ref(_) => Vec::new(),
-            Object::FieldSet(_, _) => Vec::new(),
-        }
-    }
-
-    pub fn field_set_refs_mut(&mut self) -> Vec<&mut FieldSetRef> {
-        match self {
-            Object::Block(_) => Vec::new(),
-            Object::Register(register) => vec![&mut register.field_set],
-            Object::Command(command) => {
-                let mut buffer = Vec::new();
-
-                if let Some(fs_in) = command.field_set_in.as_mut() {
-                    buffer.push(fs_in);
-                }
-                if let Some(fs_out) = command.field_set_out.as_mut() {
-                    buffer.push(fs_out);
-                }
-
-                buffer
-            }
-            Object::Buffer(_) => Vec::new(),
-            Object::Ref(_) => Vec::new(),
-            Object::FieldSet(_, _) => Vec::new(),
+            Object::FieldSet(_) => Vec::new(),
         }
     }
 
@@ -265,13 +231,19 @@ impl Object {
         }
     }
 
-    pub fn type_name(&self) -> &'static str {
-        match self {
-            Object::Block(_) => "block",
-            Object::Register(_) => "register",
-            Object::Command(_) => "command",
-            Object::Buffer(_) => "buffer",
-            Object::FieldSet(_) => "fieldset",
+    pub(self) fn as_field_set(&self) -> Option<&FieldSet> {
+        if let Self::FieldSet(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    pub(self) fn as_field_set_mut(&mut self) -> Option<&mut FieldSet> {
+        if let Self::FieldSet(v) = self {
+            Some(v)
+        } else {
+            None
         }
     }
 }
@@ -300,7 +272,7 @@ pub struct Register {
     pub address: i128,
     pub reset_value: Option<ResetValue>,
     pub repeat: Option<Repeat>,
-    pub field_set: FieldSetRef,
+    pub field_set_ref: FieldSetRef,
 }
 
 /// Here for DSL + Manifest codegen.
@@ -315,6 +287,18 @@ pub struct LegacyFieldSetInfo {
 /// An externally defined fieldset. This is the name of that fieldset
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct FieldSetRef(pub String);
+
+impl From<String> for FieldSetRef {
+    fn from(value: String) -> Self {
+        Self(value)
+    }
+}
+
+impl<'a> From<&'a str> for FieldSetRef {
+    fn from(value: &'a str) -> Self {
+        Self(value.into())
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct FieldSet {
@@ -471,8 +455,8 @@ pub struct Command {
     pub allow_address_overlap: bool,
     pub repeat: Option<Repeat>,
 
-    pub field_set_in: Option<FieldSetRef>,
-    pub field_set_out: Option<FieldSetRef>,
+    pub field_set_ref_in: Option<FieldSetRef>,
+    pub field_set_ref_out: Option<FieldSetRef>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]

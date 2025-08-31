@@ -46,23 +46,17 @@ mod tests {
             name: None,
             global_config: Default::default(),
             objects: vec![
-                Object::FieldSet(
-                    FieldSet {
-                        name: "MyRegister".into(),
-                        size_bits: 8,
-                        ..Default::default()
-                    },
-                    None,
-                ),
-                Object::FieldSet(
-                    FieldSet {
-                        name: "MyRegister2".into(),
-                        size_bits: 9,
-                        byte_order: Some(ByteOrder::LE),
-                        ..Default::default()
-                    },
-                    None,
-                ),
+                Object::FieldSet(FieldSet {
+                    name: "MyRegister".into(),
+                    size_bits: 8,
+                    ..Default::default()
+                }),
+                Object::FieldSet(FieldSet {
+                    name: "MyRegister2".into(),
+                    size_bits: 9,
+                    byte_order: Some(ByteOrder::LE),
+                    ..Default::default()
+                }),
             ],
         };
 
@@ -74,14 +68,11 @@ mod tests {
         let mut input = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::FieldSet(
-                FieldSet {
-                    name: "MyRegister".into(),
-                    size_bits: 9,
-                    ..Default::default()
-                },
-                None,
-            )],
+            objects: vec![Object::FieldSet(FieldSet {
+                name: "MyRegister".into(),
+                size_bits: 9,
+                ..Default::default()
+            })],
         };
 
         assert_eq!(
@@ -100,14 +91,11 @@ mod tests {
         let mut input = Device {
             name: None,
             global_config,
-            objects: vec![Object::FieldSet(
-                FieldSet {
-                    name: "MyRegister".into(),
-                    size_bits: 9,
-                    ..Default::default()
-                },
-                None,
-            )],
+            objects: vec![Object::FieldSet(FieldSet {
+                name: "MyRegister".into(),
+                size_bits: 9,
+                ..Default::default()
+            })],
         };
 
         run_pass(&mut input).unwrap();

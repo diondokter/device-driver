@@ -71,19 +71,16 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::FieldSet(
-                FieldSet {
-                    name: "MyReg".into(),
-                    size_bits: 10,
-                    fields: vec![Field {
-                        name: "my_field".into(),
-                        field_address: 0..10,
-                        ..Default::default()
-                    }],
+            objects: vec![Object::FieldSet(FieldSet {
+                name: "MyReg".into(),
+                size_bits: 10,
+                fields: vec![Field {
+                    name: "my_field".into(),
+                    field_address: 0..10,
                     ..Default::default()
-                },
-                None,
-            )],
+                }],
+                ..Default::default()
+            })],
         };
 
         run_pass(&mut start_mir).unwrap();
@@ -91,19 +88,16 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::FieldSet(
-                FieldSet {
-                    name: "MyReg".into(),
-                    size_bits: 10,
-                    fields: vec![Field {
-                        name: "my_field".into(),
-                        field_address: 0..11,
-                        ..Default::default()
-                    }],
+            objects: vec![Object::FieldSet(FieldSet {
+                name: "MyReg".into(),
+                size_bits: 10,
+                fields: vec![Field {
+                    name: "my_field".into(),
+                    field_address: 0..11,
                     ..Default::default()
-                },
-                None,
-            )],
+                }],
+                ..Default::default()
+            })],
         };
 
         assert_eq!(
@@ -114,19 +108,16 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::FieldSet(
-                FieldSet {
-                    name: "MyReg".into(),
-                    size_bits: 10,
-                    fields: vec![Field {
-                        name: "my_field".into(),
-                        field_address: 0..10,
-                        ..Default::default()
-                    }],
+            objects: vec![Object::FieldSet(FieldSet {
+                name: "MyReg".into(),
+                size_bits: 10,
+                fields: vec![Field {
+                    name: "my_field".into(),
+                    field_address: 0..10,
                     ..Default::default()
-                },
-                None,
-            )],
+                }],
+                ..Default::default()
+            })],
         };
 
         run_pass(&mut start_mir).unwrap();
@@ -134,19 +125,16 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::FieldSet(
-                FieldSet {
-                    name: "MyReg".into(),
-                    size_bits: 10,
-                    fields: vec![Field {
-                        name: "my_field".into(),
-                        field_address: 0..11,
-                        ..Default::default()
-                    }],
+            objects: vec![Object::FieldSet(FieldSet {
+                name: "MyReg".into(),
+                size_bits: 10,
+                fields: vec![Field {
+                    name: "my_field".into(),
+                    field_address: 0..11,
                     ..Default::default()
-                },
-                None,
-            )],
+                }],
+                ..Default::default()
+            })],
         };
 
         assert_eq!(
@@ -157,19 +145,16 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::FieldSet(
-                FieldSet {
-                    name: "MyReg".into(),
-                    size_bits: 10,
-                    fields: vec![Field {
-                        name: "my_field".into(),
-                        field_address: 0..10,
-                        ..Default::default()
-                    }],
+            objects: vec![Object::FieldSet(FieldSet {
+                name: "MyReg".into(),
+                size_bits: 10,
+                fields: vec![Field {
+                    name: "my_field".into(),
+                    field_address: 0..10,
                     ..Default::default()
-                },
-                None,
-            )],
+                }],
+                ..Default::default()
+            })],
         };
 
         run_pass(&mut start_mir).unwrap();
@@ -177,19 +162,16 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::FieldSet(
-                FieldSet {
-                    name: "MyReg".into(),
-                    size_bits: 10,
-                    fields: vec![Field {
-                        name: "my_field".into(),
-                        field_address: 0..11,
-                        ..Default::default()
-                    }],
+            objects: vec![Object::FieldSet(FieldSet {
+                name: "MyReg".into(),
+                size_bits: 10,
+                fields: vec![Field {
+                    name: "my_field".into(),
+                    field_address: 0..11,
                     ..Default::default()
-                },
-                None,
-            )],
+                }],
+                ..Default::default()
+            })],
         };
 
         assert_eq!(
@@ -203,26 +185,23 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::FieldSet(
-                FieldSet {
-                    name: "MyReg".into(),
-                    size_bits: 10,
-                    fields: vec![
-                        Field {
-                            name: "my_field".into(),
-                            field_address: 0..5,
-                            ..Default::default()
-                        },
-                        Field {
-                            name: "my_field2".into(),
-                            field_address: 5..10,
-                            ..Default::default()
-                        },
-                    ],
-                    ..Default::default()
-                },
-                None,
-            )],
+            objects: vec![Object::FieldSet(FieldSet {
+                name: "MyReg".into(),
+                size_bits: 10,
+                fields: vec![
+                    Field {
+                        name: "my_field".into(),
+                        field_address: 0..5,
+                        ..Default::default()
+                    },
+                    Field {
+                        name: "my_field2".into(),
+                        field_address: 5..10,
+                        ..Default::default()
+                    },
+                ],
+                ..Default::default()
+            })],
         };
 
         run_pass(&mut start_mir).unwrap();
@@ -230,27 +209,24 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::FieldSet(
-                FieldSet {
-                    name: "MyReg".into(),
-                    size_bits: 10,
-                    allow_bit_overlap: true,
-                    fields: vec![
-                        Field {
-                            name: "my_field".into(),
-                            field_address: 0..6,
-                            ..Default::default()
-                        },
-                        Field {
-                            name: "my_field2".into(),
-                            field_address: 5..10,
-                            ..Default::default()
-                        },
-                    ],
-                    ..Default::default()
-                },
-                None,
-            )],
+            objects: vec![Object::FieldSet(FieldSet {
+                name: "MyReg".into(),
+                size_bits: 10,
+                allow_bit_overlap: true,
+                fields: vec![
+                    Field {
+                        name: "my_field".into(),
+                        field_address: 0..6,
+                        ..Default::default()
+                    },
+                    Field {
+                        name: "my_field2".into(),
+                        field_address: 5..10,
+                        ..Default::default()
+                    },
+                ],
+                ..Default::default()
+            })],
         };
 
         run_pass(&mut start_mir).unwrap();
@@ -258,26 +234,23 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::FieldSet(
-                FieldSet {
-                    name: "MyReg".into(),
-                    size_bits: 10,
-                    fields: vec![
-                        Field {
-                            name: "my_field".into(),
-                            field_address: 0..6,
-                            ..Default::default()
-                        },
-                        Field {
-                            name: "my_field2".into(),
-                            field_address: 5..10,
-                            ..Default::default()
-                        },
-                    ],
-                    ..Default::default()
-                },
-                None,
-            )],
+            objects: vec![Object::FieldSet(FieldSet {
+                name: "MyReg".into(),
+                size_bits: 10,
+                fields: vec![
+                    Field {
+                        name: "my_field".into(),
+                        field_address: 0..6,
+                        ..Default::default()
+                    },
+                    Field {
+                        name: "my_field2".into(),
+                        field_address: 5..10,
+                        ..Default::default()
+                    },
+                ],
+                ..Default::default()
+            })],
         };
 
         assert_eq!(

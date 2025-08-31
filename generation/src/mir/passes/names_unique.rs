@@ -73,7 +73,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
 mod tests {
     use convert_case::Boundary;
 
-    use crate::mir::{Buffer, EnumVariant, Field, FieldSet, GlobalConfig, Object, Register};
+    use crate::mir::{Buffer, EnumVariant, Field, FieldSet, GlobalConfig, Object};
 
     use super::*;
 
@@ -114,23 +114,20 @@ mod tests {
         let mut start_mir = Device {
             name: Some("Device".into()),
             global_config,
-            objects: vec![Object::FieldSet(
-                FieldSet {
-                    name: "Reg".into(),
-                    fields: vec![
-                        Field {
-                            name: "field".into(),
-                            ..Default::default()
-                        },
-                        Field {
-                            name: "field".into(),
-                            ..Default::default()
-                        },
-                    ],
-                    ..Default::default()
-                },
-                None,
-            )],
+            objects: vec![Object::FieldSet(FieldSet {
+                name: "Reg".into(),
+                fields: vec![
+                    Field {
+                        name: "field".into(),
+                        ..Default::default()
+                    },
+                    Field {
+                        name: "field".into(),
+                        ..Default::default()
+                    },
+                ],
+                ..Default::default()
+            })],
         };
 
         run_pass(&mut start_mir).unwrap();
@@ -149,39 +146,36 @@ mod tests {
         let mut start_mir = Device {
             name: Some("Device".into()),
             global_config,
-            objects: vec![Object::FieldSet(
-                FieldSet {
-                    name: "Reg".into(),
-                    fields: vec![
-                        Field {
-                            name: "field".into(),
-                            field_conversion: Some(FieldConversion::Enum {
-                                enum_value: Enum {
-                                    name: "Enum".into(),
-                                    variants: Default::default(),
-                                    ..Default::default()
-                                },
-                                use_try: false,
-                            }),
-                            ..Default::default()
-                        },
-                        Field {
-                            name: "field2".into(),
-                            field_conversion: Some(FieldConversion::Enum {
-                                enum_value: Enum {
-                                    name: "Enum".into(),
-                                    variants: Default::default(),
-                                    ..Default::default()
-                                },
-                                use_try: false,
-                            }),
-                            ..Default::default()
-                        },
-                    ],
-                    ..Default::default()
-                },
-                None,
-            )],
+            objects: vec![Object::FieldSet(FieldSet {
+                name: "Reg".into(),
+                fields: vec![
+                    Field {
+                        name: "field".into(),
+                        field_conversion: Some(FieldConversion::Enum {
+                            enum_value: Enum {
+                                name: "Enum".into(),
+                                variants: Default::default(),
+                                ..Default::default()
+                            },
+                            use_try: false,
+                        }),
+                        ..Default::default()
+                    },
+                    Field {
+                        name: "field2".into(),
+                        field_conversion: Some(FieldConversion::Enum {
+                            enum_value: Enum {
+                                name: "Enum".into(),
+                                variants: Default::default(),
+                                ..Default::default()
+                            },
+                            use_try: false,
+                        }),
+                        ..Default::default()
+                    },
+                ],
+                ..Default::default()
+            })],
         };
 
         run_pass(&mut start_mir).unwrap();
@@ -200,34 +194,31 @@ mod tests {
         let mut start_mir = Device {
             name: Some("Device".into()),
             global_config,
-            objects: vec![Object::FieldSet(
-                FieldSet {
-                    name: "Reg".into(),
-                    fields: vec![Field {
-                        name: "field".into(),
-                        field_conversion: Some(FieldConversion::Enum {
-                            enum_value: Enum {
-                                name: "Enum".into(),
-                                variants: vec![
-                                    EnumVariant {
-                                        name: "Variant".into(),
-                                        ..Default::default()
-                                    },
-                                    EnumVariant {
-                                        name: "Variant".into(),
-                                        ..Default::default()
-                                    },
-                                ],
-                                ..Default::default()
-                            },
-                            use_try: false,
-                        }),
-                        ..Default::default()
-                    }],
+            objects: vec![Object::FieldSet(FieldSet {
+                name: "Reg".into(),
+                fields: vec![Field {
+                    name: "field".into(),
+                    field_conversion: Some(FieldConversion::Enum {
+                        enum_value: Enum {
+                            name: "Enum".into(),
+                            variants: vec![
+                                EnumVariant {
+                                    name: "Variant".into(),
+                                    ..Default::default()
+                                },
+                                EnumVariant {
+                                    name: "Variant".into(),
+                                    ..Default::default()
+                                },
+                            ],
+                            ..Default::default()
+                        },
+                        use_try: false,
+                    }),
                     ..Default::default()
-                },
-                None,
-            )],
+                }],
+                ..Default::default()
+            })],
         };
 
         run_pass(&mut start_mir).unwrap();

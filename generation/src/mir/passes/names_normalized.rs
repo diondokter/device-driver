@@ -69,41 +69,38 @@ mod tests {
             objects: vec![
                 Object::Register(Register {
                     name: "my-reGister".into(),
-                    field_set: crate::mir::FieldSetRef("my-fieldseT".into()),
+                    field_set_ref: crate::mir::FieldSetRef("my-fieldseT".into()),
                     ..Default::default()
                 }),
                 Object::Buffer(Buffer {
                     name: "my-buffer".into(),
                     ..Default::default()
                 }),
-                Object::FieldSet(
-                    FieldSet {
-                        name: "my-fieldseT".into(),
-                        fields: vec![
-                            Field {
-                                name: "my-fielD".into(),
-                                ..Default::default()
-                            },
-                            Field {
-                                name: "my-fielD2".into(),
-                                field_conversion: Some(FieldConversion::Enum {
-                                    enum_value: Enum {
-                                        name: "mY-enum".into(),
-                                        variants: vec![EnumVariant {
-                                            name: "eNum-Variant".into(),
-                                            ..Default::default()
-                                        }],
+                Object::FieldSet(FieldSet {
+                    name: "my-fieldseT".into(),
+                    fields: vec![
+                        Field {
+                            name: "my-fielD".into(),
+                            ..Default::default()
+                        },
+                        Field {
+                            name: "my-fielD2".into(),
+                            field_conversion: Some(FieldConversion::Enum {
+                                enum_value: Enum {
+                                    name: "mY-enum".into(),
+                                    variants: vec![EnumVariant {
+                                        name: "eNum-Variant".into(),
                                         ..Default::default()
-                                    },
-                                    use_try: false,
-                                }),
-                                ..Default::default()
-                            },
-                        ],
-                        ..Default::default()
-                    },
-                    None,
-                ),
+                                    }],
+                                    ..Default::default()
+                                },
+                                use_try: false,
+                            }),
+                            ..Default::default()
+                        },
+                    ],
+                    ..Default::default()
+                }),
             ],
         };
 
@@ -113,41 +110,38 @@ mod tests {
             objects: vec![
                 Object::Register(Register {
                     name: "MyRegister".into(),
-                    field_set: crate::mir::FieldSetRef("my_fieldset".into()),
+                    field_set_ref: crate::mir::FieldSetRef("my_fieldset".into()),
                     ..Default::default()
                 }),
                 Object::Buffer(Buffer {
                     name: "MyBuffer".into(),
                     ..Default::default()
                 }),
-                Object::FieldSet(
-                    FieldSet {
-                        name: "my_fieldset".into(),
-                        fields: vec![
-                            Field {
-                                name: "my_field".into(),
-                                ..Default::default()
-                            },
-                            Field {
-                                name: "my_field2".into(),
-                                field_conversion: Some(FieldConversion::Enum {
-                                    enum_value: Enum {
-                                        name: "MyEnum".into(),
-                                        variants: vec![EnumVariant {
-                                            name: "EnumVariant".into(),
-                                            ..Default::default()
-                                        }],
+                Object::FieldSet(FieldSet {
+                    name: "my_fieldset".into(),
+                    fields: vec![
+                        Field {
+                            name: "my_field".into(),
+                            ..Default::default()
+                        },
+                        Field {
+                            name: "my_field2".into(),
+                            field_conversion: Some(FieldConversion::Enum {
+                                enum_value: Enum {
+                                    name: "MyEnum".into(),
+                                    variants: vec![EnumVariant {
+                                        name: "EnumVariant".into(),
                                         ..Default::default()
-                                    },
-                                    use_try: false,
-                                }),
-                                ..Default::default()
-                            },
-                        ],
-                        ..Default::default()
-                    },
-                    None,
-                ),
+                                    }],
+                                    ..Default::default()
+                                },
+                                use_try: false,
+                            }),
+                            ..Default::default()
+                        },
+                    ],
+                    ..Default::default()
+                }),
             ],
         };
 

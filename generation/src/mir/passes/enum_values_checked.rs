@@ -150,92 +150,86 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::FieldSet(
-                FieldSet {
-                    name: "MyCommand".into(),
-                    fields: vec![Field {
-                        field_conversion: Some(FieldConversion::Enum {
-                            enum_value: Enum::new(
-                                Default::default(),
-                                "MyEnum".into(),
-                                vec![
-                                    EnumVariant {
-                                        name: "var0".into(),
-                                        value: EnumValue::Specified(1),
-                                        ..Default::default()
-                                    },
-                                    EnumVariant {
-                                        name: "var1".into(),
-                                        value: EnumValue::Unspecified,
-                                        ..Default::default()
-                                    },
-                                    EnumVariant {
-                                        name: "var2".into(),
-                                        value: EnumValue::Unspecified,
-                                        ..Default::default()
-                                    },
-                                    EnumVariant {
-                                        name: "var3".into(),
-                                        value: EnumValue::Specified(0),
-                                        ..Default::default()
-                                    },
-                                ],
-                            ),
-                            use_try: false,
-                        }),
-                        field_address: 0..2,
-                        ..Default::default()
-                    }],
+            objects: vec![Object::FieldSet(FieldSet {
+                name: "MyCommand".into(),
+                fields: vec![Field {
+                    field_conversion: Some(FieldConversion::Enum {
+                        enum_value: Enum::new(
+                            Default::default(),
+                            "MyEnum".into(),
+                            vec![
+                                EnumVariant {
+                                    name: "var0".into(),
+                                    value: EnumValue::Specified(1),
+                                    ..Default::default()
+                                },
+                                EnumVariant {
+                                    name: "var1".into(),
+                                    value: EnumValue::Unspecified,
+                                    ..Default::default()
+                                },
+                                EnumVariant {
+                                    name: "var2".into(),
+                                    value: EnumValue::Unspecified,
+                                    ..Default::default()
+                                },
+                                EnumVariant {
+                                    name: "var3".into(),
+                                    value: EnumValue::Specified(0),
+                                    ..Default::default()
+                                },
+                            ],
+                        ),
+                        use_try: false,
+                    }),
+                    field_address: 0..2,
                     ..Default::default()
-                },
-                None,
-            )],
+                }],
+                ..Default::default()
+            })],
         };
 
         let end_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::FieldSet(
-                FieldSet {
-                    name: "MyCommand".into(),
-                    fields: vec![Field {
-                        field_conversion: Some(FieldConversion::Enum {
-                            enum_value: Enum::new_with_style(
-                                Default::default(),
-                                "MyEnum".into(),
-                                vec![
-                                    EnumVariant {
-                                        name: "var0".into(),
-                                        value: EnumValue::Specified(1),
-                                        ..Default::default()
-                                    },
-                                    EnumVariant {
-                                        name: "var1".into(),
-                                        value: EnumValue::Specified(2),
-                                        ..Default::default()
-                                    },
-                                    EnumVariant {
-                                        name: "var2".into(),
-                                        value: EnumValue::Specified(3),
-                                        ..Default::default()
-                                    },
-                                    EnumVariant {
-                                        name: "var3".into(),
-                                        value: EnumValue::Specified(0),
-                                        ..Default::default()
-                                    },
-                                ],
-                                EnumGenerationStyle::Infallible { bit_size: 2 },
-                            ),
-                            use_try: false,
-                        }),
-                        field_address: 0..2,
-                        ..Default::default()
-                    }],
+            objects: vec![Object::FieldSet(FieldSet {
+                name: "MyCommand".into(),
+                fields: vec![Field {
+                    field_conversion: Some(FieldConversion::Enum {
+                        enum_value: Enum::new_with_style(
+                            Default::default(),
+                            "MyEnum".into(),
+                            vec![
+                                EnumVariant {
+                                    name: "var0".into(),
+                                    value: EnumValue::Specified(1),
+                                    ..Default::default()
+                                },
+                                EnumVariant {
+                                    name: "var1".into(),
+                                    value: EnumValue::Specified(2),
+                                    ..Default::default()
+                                },
+                                EnumVariant {
+                                    name: "var2".into(),
+                                    value: EnumValue::Specified(3),
+                                    ..Default::default()
+                                },
+                                EnumVariant {
+                                    name: "var3".into(),
+                                    value: EnumValue::Specified(0),
+                                    ..Default::default()
+                                },
+                            ],
+                            EnumGenerationStyle::Infallible { bit_size: 2 },
+                        ),
+                        use_try: false,
+                    }),
+                    field_address: 0..2,
                     ..Default::default()
-                },
-                None,
-            )],
+                }],
+                ..Default::default()
+            })],
         };
 
         run_pass(&mut start_mir).unwrap();
@@ -248,72 +242,66 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::FieldSet(
-                FieldSet {
-                    name: "MyCommand".into(),
-                    fields: vec![Field {
-                        field_conversion: Some(FieldConversion::Enum {
-                            enum_value: Enum::new(
-                                Default::default(),
-                                "MyEnum".into(),
-                                vec![
-                                    EnumVariant {
-                                        name: "var0".into(),
-                                        value: EnumValue::Unspecified,
-                                        ..Default::default()
-                                    },
-                                    EnumVariant {
-                                        name: "var1".into(),
-                                        value: EnumValue::Default,
-                                        ..Default::default()
-                                    },
-                                ],
-                            ),
-                            use_try: false,
-                        }),
-                        field_address: 0..2,
-                        ..Default::default()
-                    }],
+            objects: vec![Object::FieldSet(FieldSet {
+                name: "MyCommand".into(),
+                fields: vec![Field {
+                    field_conversion: Some(FieldConversion::Enum {
+                        enum_value: Enum::new(
+                            Default::default(),
+                            "MyEnum".into(),
+                            vec![
+                                EnumVariant {
+                                    name: "var0".into(),
+                                    value: EnumValue::Unspecified,
+                                    ..Default::default()
+                                },
+                                EnumVariant {
+                                    name: "var1".into(),
+                                    value: EnumValue::Default,
+                                    ..Default::default()
+                                },
+                            ],
+                        ),
+                        use_try: false,
+                    }),
+                    field_address: 0..2,
                     ..Default::default()
-                },
-                None,
-            )],
+                }],
+                ..Default::default()
+            })],
         };
 
         let end_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::FieldSet(
-                FieldSet {
-                    name: "MyCommand".into(),
-                    fields: vec![Field {
-                        field_conversion: Some(FieldConversion::Enum {
-                            enum_value: Enum::new_with_style(
-                                Default::default(),
-                                "MyEnum".into(),
-                                vec![
-                                    EnumVariant {
-                                        name: "var0".into(),
-                                        value: EnumValue::Specified(0),
-                                        ..Default::default()
-                                    },
-                                    EnumVariant {
-                                        name: "var1".into(),
-                                        value: EnumValue::Default,
-                                        ..Default::default()
-                                    },
-                                ],
-                                EnumGenerationStyle::Infallible { bit_size: 2 },
-                            ),
-                            use_try: false,
-                        }),
-                        field_address: 0..2,
-                        ..Default::default()
-                    }],
+            objects: vec![Object::FieldSet(FieldSet {
+                name: "MyCommand".into(),
+                fields: vec![Field {
+                    field_conversion: Some(FieldConversion::Enum {
+                        enum_value: Enum::new_with_style(
+                            Default::default(),
+                            "MyEnum".into(),
+                            vec![
+                                EnumVariant {
+                                    name: "var0".into(),
+                                    value: EnumValue::Specified(0),
+                                    ..Default::default()
+                                },
+                                EnumVariant {
+                                    name: "var1".into(),
+                                    value: EnumValue::Default,
+                                    ..Default::default()
+                                },
+                            ],
+                            EnumGenerationStyle::Infallible { bit_size: 2 },
+                        ),
+                        use_try: false,
+                    }),
+                    field_address: 0..2,
                     ..Default::default()
-                },
-                None,
-            )],
+                }],
+                ..Default::default()
+            })],
         };
 
         run_pass(&mut start_mir).unwrap();
@@ -326,58 +314,52 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::FieldSet(
-                FieldSet {
-                    name: "MyCommand".into(),
-                    fields: vec![Field {
-                        field_conversion: Some(FieldConversion::Enum {
-                            enum_value: Enum::new(
-                                Default::default(),
-                                "MyEnum".into(),
-                                vec![EnumVariant {
-                                    name: "var0".into(),
-                                    value: EnumValue::Unspecified,
-                                    ..Default::default()
-                                }],
-                            ),
-                            use_try: true,
-                        }),
-                        field_address: 0..2,
-                        ..Default::default()
-                    }],
+            objects: vec![Object::FieldSet(FieldSet {
+                name: "MyCommand".into(),
+                fields: vec![Field {
+                    field_conversion: Some(FieldConversion::Enum {
+                        enum_value: Enum::new(
+                            Default::default(),
+                            "MyEnum".into(),
+                            vec![EnumVariant {
+                                name: "var0".into(),
+                                value: EnumValue::Unspecified,
+                                ..Default::default()
+                            }],
+                        ),
+                        use_try: true,
+                    }),
+                    field_address: 0..2,
                     ..Default::default()
-                },
-                None,
-            )],
+                }],
+                ..Default::default()
+            })],
         };
 
         let end_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::FieldSet(
-                FieldSet {
-                    name: "MyCommand".into(),
-                    fields: vec![Field {
-                        field_conversion: Some(FieldConversion::Enum {
-                            enum_value: Enum::new_with_style(
-                                Default::default(),
-                                "MyEnum".into(),
-                                vec![EnumVariant {
-                                    name: "var0".into(),
-                                    value: EnumValue::Specified(0),
-                                    ..Default::default()
-                                }],
-                                EnumGenerationStyle::Fallible,
-                            ),
-                            use_try: true,
-                        }),
-                        field_address: 0..2,
-                        ..Default::default()
-                    }],
+            objects: vec![Object::FieldSet(FieldSet {
+                name: "MyCommand".into(),
+                fields: vec![Field {
+                    field_conversion: Some(FieldConversion::Enum {
+                        enum_value: Enum::new_with_style(
+                            Default::default(),
+                            "MyEnum".into(),
+                            vec![EnumVariant {
+                                name: "var0".into(),
+                                value: EnumValue::Specified(0),
+                                ..Default::default()
+                            }],
+                            EnumGenerationStyle::Fallible,
+                        ),
+                        use_try: true,
+                    }),
+                    field_address: 0..2,
                     ..Default::default()
-                },
-                None,
-            )],
+                }],
+                ..Default::default()
+            })],
         };
 
         run_pass(&mut start_mir).unwrap();
@@ -390,42 +372,39 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::FieldSet(
-                FieldSet {
-                    name: "MyCommand".into(),
-                    fields: vec![Field {
-                        name: "MyField".into(),
-                        field_conversion: Some(FieldConversion::Enum {
-                            enum_value: Enum::new(
-                                Default::default(),
-                                "MyEnum".into(),
-                                vec![
-                                    EnumVariant {
-                                        name: "var0".into(),
-                                        value: EnumValue::Unspecified,
-                                        ..Default::default()
-                                    },
-                                    EnumVariant {
-                                        name: "var0".into(),
-                                        value: EnumValue::Unspecified,
-                                        ..Default::default()
-                                    },
-                                    EnumVariant {
-                                        name: "var0".into(),
-                                        value: EnumValue::Unspecified,
-                                        ..Default::default()
-                                    },
-                                ],
-                            ),
-                            use_try: false,
-                        }),
-                        field_address: 0..1,
-                        ..Default::default()
-                    }],
+            objects: vec![Object::FieldSet(FieldSet {
+                name: "MyCommand".into(),
+                fields: vec![Field {
+                    name: "MyField".into(),
+                    field_conversion: Some(FieldConversion::Enum {
+                        enum_value: Enum::new(
+                            Default::default(),
+                            "MyEnum".into(),
+                            vec![
+                                EnumVariant {
+                                    name: "var0".into(),
+                                    value: EnumValue::Unspecified,
+                                    ..Default::default()
+                                },
+                                EnumVariant {
+                                    name: "var0".into(),
+                                    value: EnumValue::Unspecified,
+                                    ..Default::default()
+                                },
+                                EnumVariant {
+                                    name: "var0".into(),
+                                    value: EnumValue::Unspecified,
+                                    ..Default::default()
+                                },
+                            ],
+                        ),
+                        use_try: false,
+                    }),
+                    field_address: 0..1,
                     ..Default::default()
-                },
-                None,
-            )],
+                }],
+                ..Default::default()
+            })],
         };
 
         assert_eq!(
@@ -439,37 +418,34 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::FieldSet(
-                FieldSet {
-                    name: "MyCommand".into(),
-                    fields: vec![Field {
-                        name: "MyField".into(),
-                        field_conversion: Some(FieldConversion::Enum {
-                            enum_value: Enum::new(
-                                Default::default(),
-                                "MyEnum".into(),
-                                vec![
-                                    EnumVariant {
-                                        name: "var0".into(),
-                                        value: EnumValue::Unspecified,
-                                        ..Default::default()
-                                    },
-                                    EnumVariant {
-                                        name: "var0".into(),
-                                        value: EnumValue::Specified(0),
-                                        ..Default::default()
-                                    },
-                                ],
-                            ),
-                            use_try: false,
-                        }),
-                        field_address: 0..1,
-                        ..Default::default()
-                    }],
+            objects: vec![Object::FieldSet(FieldSet {
+                name: "MyCommand".into(),
+                fields: vec![Field {
+                    name: "MyField".into(),
+                    field_conversion: Some(FieldConversion::Enum {
+                        enum_value: Enum::new(
+                            Default::default(),
+                            "MyEnum".into(),
+                            vec![
+                                EnumVariant {
+                                    name: "var0".into(),
+                                    value: EnumValue::Unspecified,
+                                    ..Default::default()
+                                },
+                                EnumVariant {
+                                    name: "var0".into(),
+                                    value: EnumValue::Specified(0),
+                                    ..Default::default()
+                                },
+                            ],
+                        ),
+                        use_try: false,
+                    }),
+                    field_address: 0..1,
                     ..Default::default()
-                },
-                None,
-            )],
+                }],
+                ..Default::default()
+            })],
         };
 
         assert_eq!(

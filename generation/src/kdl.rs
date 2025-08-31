@@ -8,8 +8,8 @@ use strum::VariantNames;
 use crate::{
     mir::{
         Access, BaseType, BitOrder, Block, Buffer, ByteOrder, Command, Device, Enum, EnumValue,
-        EnumVariant, Field, FieldConversion, FieldSet, GlobalConfig, Integer, Object, Register,
-        Repeat, ResetValue,
+        EnumVariant, Field, FieldConversion, FieldSet, FieldSetRef, GlobalConfig, Integer, Object,
+        Register, Repeat, ResetValue,
     },
     reporting::{
         self, Diagnostics, NamedSourceCode,
@@ -155,7 +155,7 @@ fn transform_object(
             register
                 .map(Object::Register)
                 .into_iter()
-                .chain(fieldset.map(|fs| Object::FieldSet(fs, None)))
+                .chain(fieldset.map(|fs| Object::FieldSet(fs)))
                 .collect()
         }
         ObjectType::Command => {
@@ -163,7 +163,7 @@ fn transform_object(
             command
                 .map(Object::Command)
                 .into_iter()
-                .chain(field_sets.into_iter().map(|fs| Object::FieldSet(fs, None)))
+                .chain(field_sets.into_iter().map(|fs| Object::FieldSet(fs)))
                 .collect()
         }
         ObjectType::Buffer => transform_buffer(node, source_code, diagnostics)
@@ -171,7 +171,7 @@ fn transform_object(
             .into_iter()
             .collect(),
         ObjectType::FieldSet => transform_field_set(node, source_code, diagnostics, None)
-            .map(|fs| Object::FieldSet(fs, None))
+            .map(|fs| Object::FieldSet(fs))
             .into_iter()
             .collect(),
     }
@@ -402,7 +402,7 @@ fn transform_register(
             address: address.unwrap().0,
             reset_value: reset_value.map(|(rv, _)| rv),
             repeat: repeat.map(|(r, _)| r),
-            field_set: FieldSetRef(field_set.as_ref().unwrap().0.name.clone()),
+            field_set_ref: FieldSetRef(field_set.as_ref().unwrap().0.name.clone()),
             ..Default::default()
         };
 
@@ -554,10 +554,10 @@ fn transform_command(
             name: name.unwrap(),
             address: address.unwrap().0,
             repeat: repeat.map(|(r, _)| r),
-            field_set_in: field_set_in
+            field_set_ref_in: field_set_in
                 .as_ref()
                 .map(|(f, _)| FieldSetRef(f.name.clone())),
-            field_set_out: field_set_out
+            field_set_ref_out: field_set_out
                 .as_ref()
                 .map(|(f, _)| FieldSetRef(f.name.clone())),
             ..Default::default()
