@@ -50,9 +50,6 @@ pub struct FooFieldSetIn {
 
 impl ::device_driver::FieldSet for FooFieldSetIn {
     const SIZE_BITS: u32 = 24;
-    fn new_with_zero() -> Self {
-        Self::new()
-    }
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
@@ -91,6 +88,12 @@ impl FooFieldSetIn {
                 &mut self.bits,
             )
         };
+    }
+}
+
+impl Default for FooFieldSetIn {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

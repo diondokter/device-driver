@@ -7,9 +7,6 @@ pub struct {{field_set.name}} {
 
 impl ::device_driver::FieldSet for {{field_set.name}} {
     const SIZE_BITS: u32 = {{field_set.size_bits}};
-    fn new_with_zero() -> Self {
-        Self::new()
-    }
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
@@ -86,6 +83,12 @@ impl {{field_set.name}} {
             }
         {% endif %}
     {% endfor %}
+}
+
+impl Default for {{field_set.name}} {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl From<[u8; {{field_set.size_bytes()}}]> for {{field_set.name}} {

@@ -231,9 +231,6 @@ pub struct Foo0FieldSet {
 
 impl ::device_driver::FieldSet for Foo0FieldSet {
     const SIZE_BITS: u32 = 0;
-    fn new_with_zero() -> Self {
-        Self::new()
-    }
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
@@ -246,6 +243,12 @@ impl Foo0FieldSet {
     /// Create a new instance, loaded with all zeroes
     pub const fn new() -> Self {
         Self { bits: [0; 0] }
+    }
+}
+
+impl Default for Foo0FieldSet {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -329,9 +332,6 @@ pub struct Foo1FieldSet {
 
 impl ::device_driver::FieldSet for Foo1FieldSet {
     const SIZE_BITS: u32 = 0;
-    fn new_with_zero() -> Self {
-        Self::new()
-    }
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
@@ -344,6 +344,12 @@ impl Foo1FieldSet {
     /// Create a new instance, loaded with all zeroes
     pub const fn new() -> Self {
         Self { bits: [0; 0] }
+    }
+}
+
+impl Default for Foo1FieldSet {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -427,9 +433,6 @@ pub struct Foo2FieldSet {
 
 impl ::device_driver::FieldSet for Foo2FieldSet {
     const SIZE_BITS: u32 = 0;
-    fn new_with_zero() -> Self {
-        Self::new()
-    }
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
@@ -442,6 +445,12 @@ impl Foo2FieldSet {
     /// Create a new instance, loaded with all zeroes
     pub const fn new() -> Self {
         Self { bits: [0; 0] }
+    }
+}
+
+impl Default for Foo2FieldSet {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -525,9 +534,6 @@ pub struct Foo3FieldSet {
 
 impl ::device_driver::FieldSet for Foo3FieldSet {
     const SIZE_BITS: u32 = 0;
-    fn new_with_zero() -> Self {
-        Self::new()
-    }
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
@@ -540,6 +546,12 @@ impl Foo3FieldSet {
     /// Create a new instance, loaded with all zeroes
     pub const fn new() -> Self {
         Self { bits: [0; 0] }
+    }
+}
+
+impl Default for Foo3FieldSet {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -623,9 +635,6 @@ pub struct Foo4FieldSet {
 
 impl ::device_driver::FieldSet for Foo4FieldSet {
     const SIZE_BITS: u32 = 0;
-    fn new_with_zero() -> Self {
-        Self::new()
-    }
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
@@ -638,6 +647,12 @@ impl Foo4FieldSet {
     /// Create a new instance, loaded with all zeroes
     pub const fn new() -> Self {
         Self { bits: [0; 0] }
+    }
+}
+
+impl Default for Foo4FieldSet {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -721,9 +736,6 @@ pub struct Foo5FieldSet {
 
 impl ::device_driver::FieldSet for Foo5FieldSet {
     const SIZE_BITS: u32 = 0;
-    fn new_with_zero() -> Self {
-        Self::new()
-    }
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
@@ -736,6 +748,12 @@ impl Foo5FieldSet {
     /// Create a new instance, loaded with all zeroes
     pub const fn new() -> Self {
         Self { bits: [0; 0] }
+    }
+}
+
+impl Default for Foo5FieldSet {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -819,9 +837,6 @@ pub struct Foo6FieldSet {
 
 impl ::device_driver::FieldSet for Foo6FieldSet {
     const SIZE_BITS: u32 = 0;
-    fn new_with_zero() -> Self {
-        Self::new()
-    }
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
@@ -834,6 +849,12 @@ impl Foo6FieldSet {
     /// Create a new instance, loaded with all zeroes
     pub const fn new() -> Self {
         Self { bits: [0; 0] }
+    }
+}
+
+impl Default for Foo6FieldSet {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -917,9 +938,6 @@ pub struct Foo7FieldSet {
 
 impl ::device_driver::FieldSet for Foo7FieldSet {
     const SIZE_BITS: u32 = 0;
-    fn new_with_zero() -> Self {
-        Self::new()
-    }
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
@@ -932,6 +950,12 @@ impl Foo7FieldSet {
     /// Create a new instance, loaded with all zeroes
     pub const fn new() -> Self {
         Self { bits: [0; 0] }
+    }
+}
+
+impl Default for Foo7FieldSet {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1015,9 +1039,6 @@ pub struct Foo8FieldSet {
 
 impl ::device_driver::FieldSet for Foo8FieldSet {
     const SIZE_BITS: u32 = 0;
-    fn new_with_zero() -> Self {
-        Self::new()
-    }
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
@@ -1030,6 +1051,12 @@ impl Foo8FieldSet {
     /// Create a new instance, loaded with all zeroes
     pub const fn new() -> Self {
         Self { bits: [0; 0] }
+    }
+}
+
+impl Default for Foo8FieldSet {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1113,9 +1140,6 @@ pub struct Foo9FieldSet {
 
 impl ::device_driver::FieldSet for Foo9FieldSet {
     const SIZE_BITS: u32 = 0;
-    fn new_with_zero() -> Self {
-        Self::new()
-    }
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
@@ -1128,6 +1152,12 @@ impl Foo9FieldSet {
     /// Create a new instance, loaded with all zeroes
     pub const fn new() -> Self {
         Self { bits: [0; 0] }
+    }
+}
+
+impl Default for Foo9FieldSet {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

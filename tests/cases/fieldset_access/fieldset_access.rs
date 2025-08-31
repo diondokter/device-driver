@@ -77,9 +77,6 @@ pub struct FooRoFieldSet {
 
 impl ::device_driver::FieldSet for FooRoFieldSet {
     const SIZE_BITS: u32 = 64;
-    fn new_with_zero() -> Self {
-        Self::new()
-    }
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
@@ -144,6 +141,12 @@ impl FooRoFieldSet {
                 &mut self.bits,
             )
         };
+    }
+}
+
+impl Default for FooRoFieldSet {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -231,9 +234,6 @@ pub struct FooRwFieldSet {
 
 impl ::device_driver::FieldSet for FooRwFieldSet {
     const SIZE_BITS: u32 = 64;
-    fn new_with_zero() -> Self {
-        Self::new()
-    }
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
@@ -298,6 +298,12 @@ impl FooRwFieldSet {
                 &mut self.bits,
             )
         };
+    }
+}
+
+impl Default for FooRwFieldSet {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -385,9 +391,6 @@ pub struct FooWoFieldSet {
 
 impl ::device_driver::FieldSet for FooWoFieldSet {
     const SIZE_BITS: u32 = 64;
-    fn new_with_zero() -> Self {
-        Self::new()
-    }
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
@@ -452,6 +455,12 @@ impl FooWoFieldSet {
                 &mut self.bits,
             )
         };
+    }
+}
+
+impl Default for FooWoFieldSet {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

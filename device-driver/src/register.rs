@@ -122,7 +122,7 @@ where
         &mut self,
         f: impl FnOnce(&mut Register) -> R,
     ) -> Result<R, Interface::Error> {
-        let mut register = Register::new_with_zero();
+        let mut register = Register::default();
         let returned = f(&mut register);
         self.interface.write_register(
             self.address,
@@ -141,7 +141,7 @@ where
 {
     /// Read the register from the device
     pub fn read(&mut self) -> Result<Register, Interface::Error> {
-        let mut register = Register::new_with_zero();
+        let mut register = Register::default();
 
         self.interface.read_register(
             self.address,
@@ -208,7 +208,7 @@ where
         &mut self,
         f: impl FnOnce(&mut Register) -> R,
     ) -> Result<R, Interface::Error> {
-        let mut register = Register::new_with_zero();
+        let mut register = Register::default();
         let returned = f(&mut register);
         self.interface
             .write_register(
@@ -229,7 +229,7 @@ where
 {
     /// Read the register from the device
     pub async fn read_async(&mut self) -> Result<Register, Interface::Error> {
-        let mut register = Register::new_with_zero();
+        let mut register = Register::default();
 
         self.interface
             .read_register(
