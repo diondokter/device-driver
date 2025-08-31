@@ -40,7 +40,7 @@ impl Default for GlobalConfig {
             register_address_type: Default::default(),
             command_address_type: Default::default(),
             buffer_address_type: Default::default(),
-            name_word_boundaries: convert_case::Boundary::defaults(),
+            name_word_boundaries: convert_case::Boundary::defaults().to_vec(),
             defmt_feature: Default::default(),
         }
     }

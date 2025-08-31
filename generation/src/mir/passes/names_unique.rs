@@ -74,7 +74,7 @@ mod tests {
     #[should_panic(expected = "Duplicate object name found: `MyBuffer`")]
     fn object_names_not_unique() {
         let global_config = GlobalConfig {
-            name_word_boundaries: Boundary::list_from("-"),
+            name_word_boundaries: Boundary::defaults_from("-"),
             ..Default::default()
         };
 
@@ -100,7 +100,7 @@ mod tests {
     #[should_panic(expected = "Duplicate field name found in fieldset `Reg`: `field`")]
     fn field_names_not_unique() {
         let global_config = GlobalConfig {
-            name_word_boundaries: Boundary::list_from("-"),
+            name_word_boundaries: Boundary::defaults_from("-"),
             ..Default::default()
         };
 
@@ -132,7 +132,7 @@ mod tests {
     )]
     fn duplicate_generated_enums() {
         let global_config = GlobalConfig {
-            name_word_boundaries: Boundary::list_from("-"),
+            name_word_boundaries: Boundary::defaults_from("-"),
             ..Default::default()
         };
 
@@ -180,7 +180,7 @@ mod tests {
     )]
     fn duplicate_generated_enum_variants() {
         let global_config = GlobalConfig {
-            name_word_boundaries: Boundary::list_from("-"),
+            name_word_boundaries: Boundary::defaults_from("-"),
             ..Default::default()
         };
 

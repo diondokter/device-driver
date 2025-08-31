@@ -57,7 +57,7 @@ mod tests {
     #[test]
     fn names_normalized() {
         let global_config = GlobalConfig {
-            name_word_boundaries: Boundary::list_from("-"),
+            name_word_boundaries: Boundary::defaults_from("-"),
             ..Default::default()
         };
 

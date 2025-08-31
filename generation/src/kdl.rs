@@ -727,7 +727,7 @@ fn transform_global_config_node(
                 parse_single_string_entry(node, source_code.clone(), diagnostics, None, false).0
             {
                 device.global_config.name_word_boundaries =
-                    convert_case::Boundary::list_from(&value);
+                    convert_case::Boundary::defaults_from(&value);
             }
         }
         GlobalConfigType::DefmtFeature => {

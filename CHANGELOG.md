@@ -9,6 +9,7 @@
 - FieldSets & Enums can no longer have the same name as another object (since they're full objects of their own now)
 - FieldSets are no longer defined in a submodule `field_sets`. They're now put in the same root as the reset of the generated code.
 - Removed the 'read_all_registers' functions and the accompanying enums
+- Updated `convert_case` to 0.8
 
 ### 1.0.7 (30-07-25)
 
