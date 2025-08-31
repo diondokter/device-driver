@@ -155,7 +155,7 @@ fn transform_object(
             register
                 .map(Object::Register)
                 .into_iter()
-                .chain(fieldset.map(|fs| Object::FieldSet(fs)))
+                .chain(fieldset.map(Object::FieldSet))
                 .collect()
         }
         ObjectType::Command => {
@@ -163,7 +163,7 @@ fn transform_object(
             command
                 .map(Object::Command)
                 .into_iter()
-                .chain(field_sets.into_iter().map(|fs| Object::FieldSet(fs)))
+                .chain(field_sets.into_iter().map(Object::FieldSet))
                 .collect()
         }
         ObjectType::Buffer => transform_buffer(node, source_code, diagnostics)
@@ -171,7 +171,7 @@ fn transform_object(
             .into_iter()
             .collect(),
         ObjectType::FieldSet => transform_field_set(node, source_code, diagnostics, None)
-            .map(|fs| Object::FieldSet(fs))
+            .map(Object::FieldSet)
             .into_iter()
             .collect(),
     }
