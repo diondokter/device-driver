@@ -183,4 +183,21 @@ device FooD6 {
     fieldset fs1 size-bits=16 byte-order=LE {
         value @15:0
     }
+    enum
+    enum e1 {
+        A
+        B 1.0
+        C default-value
+        D #null 2
+    }
+    enum e1 size-bits=1 {
+        A
+        B
+    }
+    /// You can document enums too!
+    (i32)enum e1 {
+        A
+        /// Wow, it's a B!
+        B
+    }
 }

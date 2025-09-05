@@ -9,21 +9,23 @@ mod bool_fields_checked;
 mod byte_order_specified;
 mod device_name_is_pascal;
 mod enum_values_checked;
+mod field_conversion_valid;
 mod names_normalized;
 mod names_unique;
 mod reset_values_converted;
 
 pub fn run_passes(device: &mut Device) -> anyhow::Result<()> {
     bit_order_specified::run_pass(device)?;
+    base_types_specified::run_pass(device)?;
     device_name_is_pascal::run_pass(device)?;
     names_normalized::run_pass(device)?;
     names_unique::run_pass(device)?;
     enum_values_checked::run_pass(device)?;
+    field_conversion_valid::run_pass(device)?;
     byte_order_specified::run_pass(device)?;
     reset_values_converted::run_pass(device)?;
     bool_fields_checked::run_pass(device)?;
     bit_ranges_validated::run_pass(device)?;
-    base_types_specified::run_pass(device)?;
     address_types_specified::run_pass(device)?;
     address_types_big_enough::run_pass(device)?;
 
@@ -88,6 +90,20 @@ pub(crate) fn recurse_objects_with_depth<'o>(
     }
 
     recurse_objects_with_depth_inner(objects, f, 0)
+}
+
+pub(crate) fn search_object<'o>(objects: &'o [Object], name: &str) -> Option<&'o Object> {
+    let mut found_object = None;
+
+    recurse_objects(objects, &mut |object| {
+        if object.name() == name {
+            found_object = Some(object);
+            // TODO: ideally early return, but recurse_objects doesn't support that
+        }
+        Ok(())
+    });
+
+    found_object
 }
 
 pub(crate) fn find_min_max_addresses(
