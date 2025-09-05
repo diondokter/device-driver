@@ -54,14 +54,18 @@ pub enum Integer {
     U8,
     U16,
     U32,
+    U64,
     I8,
     I16,
     I32,
     I64,
-    U64,
 }
 
 impl Integer {
+    pub fn is_signed(&self) -> bool {
+        self.min_value() != 0
+    }
+
     pub fn min_value(&self) -> i128 {
         match self {
             Integer::U8 => u8::MIN as i128,
@@ -85,6 +89,19 @@ impl Integer {
             Integer::I16 => i16::MAX as i128,
             Integer::I32 => i32::MAX as i128,
             Integer::I64 => i64::MAX as i128,
+        }
+    }
+
+    pub fn size_bits(&self) -> u32 {
+        match self {
+            Integer::U8 => 8,
+            Integer::U16 => 16,
+            Integer::U32 => 32,
+            Integer::U64 => 64,
+            Integer::I8 => 8,
+            Integer::I16 => 16,
+            Integer::I32 => 32,
+            Integer::I64 => 64,
         }
     }
 }
@@ -149,6 +166,7 @@ pub enum Object {
     Command(Command),
     Buffer(Buffer),
     FieldSet(FieldSet),
+    Enum(Enum),
 }
 
 impl Object {
@@ -174,6 +192,7 @@ impl Object {
             Object::Command(val) => &mut val.name,
             Object::Buffer(val) => &mut val.name,
             Object::FieldSet(val) => &mut val.name,
+            Object::Enum(val) => &mut val.name,
         }
     }
 
@@ -185,6 +204,7 @@ impl Object {
             Object::Command(val) => &val.name,
             Object::Buffer(val) => &val.name,
             Object::FieldSet(val) => &val.name,
+            Object::Enum(val) => &val.name,
         }
     }
 
@@ -206,6 +226,7 @@ impl Object {
             }
             Object::Buffer(_) => Vec::new(),
             Object::FieldSet(_) => Vec::new(),
+            Object::Enum(_) => Vec::new(),
         }
     }
 
@@ -217,6 +238,7 @@ impl Object {
             Object::Command(command) => Some(command.address),
             Object::Buffer(buffer) => Some(buffer.address),
             Object::FieldSet(_) => None,
+            Object::Enum(_) => None,
         }
     }
 
@@ -228,6 +250,7 @@ impl Object {
             Object::Command(command) => command.repeat,
             Object::Buffer(_) => None,
             Object::FieldSet(_) => None,
+            Object::Enum(_) => None,
         }
     }
 
@@ -342,25 +365,11 @@ impl BaseType {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum FieldConversion {
-    Direct { type_name: String, use_try: bool },
-    Enum { enum_value: Enum, use_try: bool },
-}
-
-impl FieldConversion {
-    pub const fn use_try(&self) -> bool {
-        match self {
-            FieldConversion::Direct { use_try, .. } => *use_try,
-            FieldConversion::Enum { use_try, .. } => *use_try,
-        }
-    }
-
-    pub fn type_name(&self) -> &str {
-        match self {
-            FieldConversion::Direct { type_name, .. } => type_name,
-            FieldConversion::Enum { enum_value, .. } => &enum_value.name,
-        }
-    }
+pub struct FieldConversion {
+    /// The name of the type we're converting to
+    pub type_name: String,
+    /// True when we want to use the fallible interface (like a Result<type, error>)
+    pub use_try: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -368,15 +377,25 @@ pub struct Enum {
     pub description: String,
     pub name: String,
     pub variants: Vec<EnumVariant>,
+    pub base_type: BaseType,
+    pub size_bits: Option<u32>,
     generation_style: Option<EnumGenerationStyle>,
 }
 
 impl Enum {
-    pub fn new(description: String, name: String, variants: Vec<EnumVariant>) -> Self {
+    pub fn new(
+        description: String,
+        name: String,
+        variants: Vec<EnumVariant>,
+        base_type: BaseType,
+        size_bits: Option<u32>,
+    ) -> Self {
         Self {
             description,
             name,
             variants,
+            base_type,
+            size_bits,
             generation_style: None,
         }
     }
@@ -386,12 +405,16 @@ impl Enum {
         description: String,
         name: String,
         variants: Vec<EnumVariant>,
+        base_type: BaseType,
+        size_bits: Option<u32>,
         generation_style: EnumGenerationStyle,
     ) -> Self {
         Self {
             description,
             name,
             variants,
+            base_type,
+            size_bits,
             generation_style: Some(generation_style),
         }
     }
@@ -399,8 +422,13 @@ impl Enum {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EnumGenerationStyle {
+    /// Not all basetype values can be converted to a variant
     Fallible,
-    Infallible { bit_size: u32 },
+    /// All bitpatterns within bits 0..size-bits are covered.
+    /// The general interface is fallible, but this special knowledge can be used for safety guarantees
+    InfallibleWithinRange,
+    /// There's a fallback, so it's always safe
+    Fallback,
 }
 
 impl EnumGenerationStyle {
@@ -537,6 +565,7 @@ impl Unique for Object {
             Object::Command(val) => val.id(),
             Object::Buffer(val) => val.id(),
             Object::FieldSet(val) => val.id(),
+            Object::Enum(val) => val.id(),
         }
     }
 }

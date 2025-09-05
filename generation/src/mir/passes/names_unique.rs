@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::mir::{Device, Enum, FieldConversion, Unique};
+use crate::mir::{Device, Enum, Object, Unique};
 
 use super::recurse_objects_mut;
 
@@ -19,7 +19,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
             object.name()
         );
 
-        if let Some(field_set) = object.as_field_set() {
+        if let Object::FieldSet(field_set) = object {
             let mut seen_field_names = HashSet::new();
             for field in &field_set.fields {
                 anyhow::ensure!(
@@ -28,33 +28,19 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
                     field_set.name,
                     field.name
                 );
+            }
+        }
 
-                if let Some(FieldConversion::Enum {
-                    enum_value: enum_value @ Enum { name, variants, .. },
-                    ..
-                }) = field.field_conversion.as_ref()
-                {
-                    let mut seen_variant_names = HashSet::new();
+        if let Object::Enum(Enum { name, variants, .. }) = object {
+            let mut seen_variant_names = HashSet::new();
 
-                    anyhow::ensure!(
-                        seen_object_ids.insert(enum_value.id()),
-                        "Duplicate generated enum name `{}` found in fieldset `{}` on field `{}`",
-                        name,
-                        field_set.name,
-                        field.name,
-                    );
-
-                    for v in variants.iter() {
-                        anyhow::ensure!(
-                            seen_variant_names.insert(v.id()),
-                            "Duplicate field `{}` found in generated enum `{}` in fieldset `{}` on field `{}`",
-                            v.name,
-                            name,
-                            field_set.name,
-                            field.name,
-                        );
-                    }
-                }
+            for v in variants.iter() {
+                anyhow::ensure!(
+                    seen_variant_names.insert(v.id()),
+                    "Duplicate field `{}` found in generated enum `{}`",
+                    v.name,
+                    name,
+                );
             }
         }
 
@@ -127,57 +113,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(
-        expected = "Duplicate generated enum name `Enum` found in fieldset `Reg` on field `field2`"
-    )]
-    fn duplicate_generated_enums() {
-        let global_config = GlobalConfig {
-            name_word_boundaries: Boundary::defaults_from("-"),
-            ..Default::default()
-        };
-
-        let mut start_mir = Device {
-            name: Some("Device".into()),
-            global_config,
-            objects: vec![Object::FieldSet(FieldSet {
-                name: "Reg".into(),
-                fields: vec![
-                    Field {
-                        name: "field".into(),
-                        field_conversion: Some(FieldConversion::Enum {
-                            enum_value: Enum {
-                                name: "Enum".into(),
-                                variants: Default::default(),
-                                ..Default::default()
-                            },
-                            use_try: false,
-                        }),
-                        ..Default::default()
-                    },
-                    Field {
-                        name: "field2".into(),
-                        field_conversion: Some(FieldConversion::Enum {
-                            enum_value: Enum {
-                                name: "Enum".into(),
-                                variants: Default::default(),
-                                ..Default::default()
-                            },
-                            use_try: false,
-                        }),
-                        ..Default::default()
-                    },
-                ],
-                ..Default::default()
-            })],
-        };
-
-        run_pass(&mut start_mir).unwrap();
-    }
-
-    #[test]
-    #[should_panic(
-        expected = "Duplicate field `Variant` found in generated enum `Enum` in fieldset `Reg` on field `field`"
-    )]
+    #[should_panic(expected = "Duplicate field `Variant` found in generated enum `Enum`")]
     fn duplicate_generated_enum_variants() {
         let global_config = GlobalConfig {
             name_word_boundaries: Boundary::defaults_from("-"),
@@ -187,29 +123,18 @@ mod tests {
         let mut start_mir = Device {
             name: Some("Device".into()),
             global_config,
-            objects: vec![Object::FieldSet(FieldSet {
-                name: "Reg".into(),
-                fields: vec![Field {
-                    name: "field".into(),
-                    field_conversion: Some(FieldConversion::Enum {
-                        enum_value: Enum {
-                            name: "Enum".into(),
-                            variants: vec![
-                                EnumVariant {
-                                    name: "Variant".into(),
-                                    ..Default::default()
-                                },
-                                EnumVariant {
-                                    name: "Variant".into(),
-                                    ..Default::default()
-                                },
-                            ],
-                            ..Default::default()
-                        },
-                        use_try: false,
-                    }),
-                    ..Default::default()
-                }],
+            objects: vec![Object::Enum(Enum {
+                name: "Enum".into(),
+                variants: vec![
+                    EnumVariant {
+                        name: "Variant".into(),
+                        ..Default::default()
+                    },
+                    EnumVariant {
+                        name: "Variant".into(),
+                        ..Default::default()
+                    },
+                ],
                 ..Default::default()
             })],
         };
