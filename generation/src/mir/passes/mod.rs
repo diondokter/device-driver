@@ -1,3 +1,5 @@
+use anyhow::bail;
+
 use super::{Device, Object, Repeat};
 
 mod address_types_big_enough;
@@ -95,10 +97,11 @@ pub(crate) fn recurse_objects_with_depth<'o>(
 pub(crate) fn search_object<'o>(objects: &'o [Object], name: &str) -> Option<&'o Object> {
     let mut found_object = None;
 
-    recurse_objects(objects, &mut |object| {
+    let _ = recurse_objects(objects, &mut |object| {
         if object.name() == name {
             found_object = Some(object);
-            // TODO: ideally early return, but recurse_objects doesn't support that
+            // We want to shortcircuit for performance. The only way that can be done is by returning an error
+            bail!("");
         }
         Ok(())
     });

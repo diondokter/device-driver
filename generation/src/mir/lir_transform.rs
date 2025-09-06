@@ -231,63 +231,42 @@ fn transform_field_set<'a>(
                 field_address,
             } = field;
 
-            let (base_type, conversion_method) =
-                match (base_type, field.field_address.len(), field_conversion) {
-                    (mir::BaseType::Unspecified, _, _) => {
-                        unreachable!("Nothing is left unspecified in the mir passes")
-                    }
-                    (mir::BaseType::Bool, 1, None) => {
-                        ("u8".to_string(), lir::FieldConversionMethod::Bool)
-                    }
-                    (mir::BaseType::Bool, _, _) => unreachable!(
-                        "Checked in a MIR pass. Bools can only be 1 bit and have no conversion"
-                    ),
-                    (mir::BaseType::Uint | mir::BaseType::Int, val, None) => (
-                        format!(
-                            "{}{}",
-                            match base_type {
-                                mir::BaseType::Uint | mir::BaseType::Unspecified => 'u',
-                                mir::BaseType::Int => 'i',
-                                _ => unreachable!(),
-                            },
-                            val.max(8).next_power_of_two()
-                        ),
-                        lir::FieldConversionMethod::None,
-                    ),
-                    (mir::BaseType::FixedSize(integer), _, None) => {
-                        (integer.to_string(), lir::FieldConversionMethod::None)
-                    }
-                    (mir::BaseType::Uint | mir::BaseType::Int, val, Some(fc)) => (
-                        format!(
-                            "{}{}",
-                            match base_type {
-                                mir::BaseType::Uint => 'u',
-                                mir::BaseType::Int => 'i',
-                                _ => unreachable!(),
-                            },
-                            val.max(8).next_power_of_two()
-                        ),
+            let (base_type, conversion_method) = match (base_type, field_conversion) {
+                (mir::BaseType::Unspecified | mir::BaseType::Uint | mir::BaseType::Int, _) => {
+                    unreachable!("Nothing is left unspecified or unsized in the mir passes")
+                }
+                (mir::BaseType::Bool, None) if field_address.len() == 1 => {
+                    ("u8".to_string(), lir::FieldConversionMethod::Bool)
+                }
+                (mir::BaseType::Bool, _) => unreachable!(
+                    "Checked in a MIR pass. Bools can only be 1 bit and have no conversion"
+                ),
+                (mir::BaseType::FixedSize(integer), None) => {
+                    (integer.to_string(), lir::FieldConversionMethod::None)
+                }
+                (mir::BaseType::FixedSize(integer), Some(fc)) => (integer.to_string(), {
+                    match enum_list.clone().find(|e| e.name == fc.type_name) {
+                        // Always use try if that's specified
+                        _ if fc.use_try => {
+                            lir::FieldConversionMethod::TryInto(fc.type_name.clone())
+                        }
+                        // There is an enum we generate so we can look at its metadata
+                        Some(mir::Enum {
+                            generation_style: Some(mir::EnumGenerationStyle::InfallibleWithinRange),
+                            size_bits,
+                            ..
+                        }) if field.field_address.clone().count()
+                            <= size_bits.expect("Size_bits set in an earlier mir pass")
+                                as usize =>
                         {
-                            match enum_list.clone().find(|e| e.name == fc.type_name()) {
-                                // Always use try if that's specified
-                                _ if fc.use_try() => {
-                                    lir::FieldConversionMethod::TryInto(fc.type_name().into())
-                                }
-                                // There is an enum we generate so we can look at its metadata
-                                Some(mir::Enum {
-                                    generation_style:
-                                        Some(mir::EnumGenerationStyle::Infallible { bit_size }),
-                                    ..
-                                }) if field.field_address.clone().count() <= *bit_size as usize => {
-                                    // This field is equal or smaller in bits than the infallible enum. So we can do the unsafe into
-                                    lir::FieldConversionMethod::UnsafeInto(fc.type_name().into())
-                                }
-                                // Fallback is to require the into trait
-                                _ => lir::FieldConversionMethod::Into(fc.type_name().into()),
-                            }
-                        },
-                    ),
-                };
+                            // This field is equal or smaller in bits than the infallible enum. So we can do the unsafe into
+                            lir::FieldConversionMethod::UnsafeInto(fc.type_name.clone())
+                        }
+                        // Fallback is to require the into trait
+                        _ => lir::FieldConversionMethod::Into(fc.type_name.clone()),
+                    }
+                }),
+            };
 
             Ok(lir::Field {
                 description: description.clone(),

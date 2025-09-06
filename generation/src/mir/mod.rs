@@ -104,6 +104,25 @@ impl Integer {
             Integer::I64 => 64,
         }
     }
+
+    /// Find the smallest integer type that can fully contain the min and max
+    /// and is equal or larger than the given size_bits.
+    ///
+    /// This function has a preference for unsigned integers.
+    /// You can force a signed integer by making the min be negative (e.g. -1)
+    pub fn find_smallest(min: i128, max: i128, size_bits: u32) -> Option<Integer> {
+        Some(match (min, max, size_bits) {
+            (0.., ..0x1_00, ..=8) => Integer::U8,
+            (0.., ..0x1_0000, ..=16) => Integer::U16,
+            (0.., ..0x1_0000_0000, ..=32) => Integer::U32,
+            (0.., ..0x1_0000_0000_0000_0000, ..=64) => Integer::U64,
+            (-0x80.., ..0x80, ..=8) => Integer::I8,
+            (-0x8000.., ..0x8000, ..=16) => Integer::I16,
+            (-0x8000_00000.., ..0x8000_0000, ..=32) => Integer::I32,
+            (-0x8000_0000_0000_0000.., ..0x8000_0000_0000_0000, ..=32) => Integer::I64,
+            _ => return None,
+        })
+    }
 }
 
 #[derive(

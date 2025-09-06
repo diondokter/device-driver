@@ -134,7 +134,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
                     bail!("Enum `{object_name}` has a bool base type. Only integers are supported")
                 }
                 BaseType::Uint | BaseType::Unspecified => {
-                    match find_smallest_integer(seen_min, seen_max, size_bits) {
+                    match Integer::find_smallest(seen_min, seen_max, size_bits) {
                         Some(integer) if integer.is_signed() => bail!(
                             "Enum `{object_name}` has a uint base type, but also has a negative variant"
                         ),
@@ -144,32 +144,19 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
                         ),
                     }
                 }
-                BaseType::Int => match find_smallest_integer(seen_min.min(-1), seen_max, size_bits)
-                {
-                    Some(integer) => BaseType::FixedSize(integer),
-                    None => bail!(
-                        "Enum `{object_name}` has a variant that doesn't fit in any of the supported signed integer types. Min: {seen_min}, max: {seen_max}"
-                    ),
-                },
+                BaseType::Int => {
+                    match Integer::find_smallest(seen_min.min(-1), seen_max, size_bits) {
+                        Some(integer) => BaseType::FixedSize(integer),
+                        None => bail!(
+                            "Enum `{object_name}` has a variant that doesn't fit in any of the supported signed integer types. Min: {seen_min}, max: {seen_max}"
+                        ),
+                    }
+                }
                 BaseType::FixedSize(integer) => BaseType::FixedSize(integer),
             };
         }
 
         Ok(())
-    })
-}
-
-fn find_smallest_integer(min: i128, max: i128, size_bits: u32) -> Option<Integer> {
-    Some(match (min, max, size_bits) {
-        (0.., ..0x1_00, ..=8) => Integer::U8,
-        (0.., ..0x1_0000, ..=16) => Integer::U16,
-        (0.., ..0x1_0000_0000, ..=32) => Integer::U32,
-        (0.., ..0x1_0000_0000_0000_0000, ..=64) => Integer::U64,
-        (-0x80.., ..0x80, ..=8) => Integer::I8,
-        (-0x8000.., ..0x8000, ..=16) => Integer::I16,
-        (-0x8000_00000.., ..0x8000_0000, ..=32) => Integer::I32,
-        (-0x8000_0000_0000_00000.., ..0x8000_0000_0000_0000, ..=32) => Integer::I64,
-        _ => return None,
     })
 }
 
