@@ -1,16 +1,39 @@
+use anyhow::bail;
+
 use super::recurse_objects_mut;
-use crate::mir::Device;
+use crate::mir::{BaseType, Device, Integer};
 
 /// Turn all unspecified base types into either bools or uints based on the size of the field
 pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
     recurse_objects_mut(&mut device.objects, &mut |object| {
         if let Some(field_set) = object.as_field_set_mut() {
             for field in field_set.fields.iter_mut() {
-                if field.base_type.is_unspecified() {
-                    field.base_type = match field.field_address.len() {
-                        0 => unreachable!(),
-                        1 => crate::mir::BaseType::Bool,
-                        _ => crate::mir::BaseType::Uint,
+                let size_bits = field.field_address.len() as u32;
+                loop {
+                    field.base_type = match field.base_type {
+                        BaseType::Unspecified => match size_bits {
+                            0 => unreachable!(),
+                            1 => BaseType::Bool,
+                            _ => BaseType::Uint,
+                        },
+                        BaseType::Bool => break,
+                        BaseType::Uint => match Integer::find_smallest(0, 0, size_bits) {
+                            Some(integer) => BaseType::FixedSize(integer),
+                            None => bail!(
+                                "Field `{}` on field set `{}` uses {size_bits} bits which is too big for any of the supported integers",
+                                field.name,
+                                field_set.name
+                            ),
+                        },
+                        BaseType::Int => match Integer::find_smallest(-1, 0, size_bits) {
+                            Some(integer) => BaseType::FixedSize(integer),
+                            None => bail!(
+                                "Field `{}` on field set `{}` uses {size_bits} bits which is too big for any of the supported integers",
+                                field.name,
+                                field_set.name
+                            ),
+                        },
+                        BaseType::FixedSize(_) => break,
                     }
                 }
             }

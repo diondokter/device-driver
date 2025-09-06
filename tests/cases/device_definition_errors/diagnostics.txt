@@ -73,7 +73,8 @@
     ╰────
   help: Expected a node with one of these names: `default-register-access`, `default-field-access`, `default-buffer-
         access`, `default-byte-order`, `default-bit-order`, `register-address-type`, `command-address-type`, `buffer-
-        address-type`, `name-word-boundaries`, `defmt-feature`, `block`, `register`, `command`, `buffer`, `fieldset`
+        address-type`, `name-word-boundaries`, `defmt-feature`, `block`, `register`, `command`, `buffer`, `fieldset`,
+        `enum`
 
   error: Duplicate node
     ╭─[cases/device_definition_errors/input.kdl:25:5]
@@ -170,7 +171,8 @@
     ╰────
   help: Expected a node with one of these names: `default-register-access`, `default-field-access`, `default-buffer-
         access`, `default-byte-order`, `default-bit-order`, `register-address-type`, `command-address-type`, `buffer-
-        address-type`, `name-word-boundaries`, `defmt-feature`, `block`, `register`, `command`, `buffer`, `fieldset`
+        address-type`, `name-word-boundaries`, `defmt-feature`, `block`, `register`, `command`, `buffer`, `fieldset`,
+        `enum`
 
   error: Missing object name
     ╭─[cases/device_definition_errors/input.kdl:49:5]
@@ -471,8 +473,8 @@
  105 │             (uint)baz @2:1
  106 │             (i16a)quux @4:3
      ·              ──┬─
-     ·                ╰── Expected one of these values: `bool`, `uint`, `int`, `u8`, `u16`, `u32`, `i8`, `i16`, `i32`, `i64`, `u64`, `<base>:<target>`, `<base>:<target>?`
- 107 │             (:MyCustomType?)qus @6:5
+     ·                ╰── Expected one of these values: `bool`, `uint`, `int`, `u8`, `u16`, `u32`, `u64`, `i8`, `i16`, `i32`, `i64`, `<base>:<target>`, `<base>:<target>?`
+ 107 │             (i32:e3?)qus @6:5
      ╰────
 
   error: Inline enum definition without name
@@ -677,7 +679,7 @@
  170 │         offset d
      ╰────
   help: Expected a node with one of these names: `offset`, `repeat`, `block`, `register`, `command`, `buffer`,
-        `fieldset`
+        `fieldset`, `enum`
 
   error: Unexpected type
      ╭─[cases/device_definition_errors/input.kdl:170:16]
@@ -730,4 +732,53 @@
  183 │     fieldset fs1 size-bits=16 byte-order=LE {
      ╰────
   help: Check the book for all the requirements
+
+  error: Missing object name
+     ╭─[cases/device_definition_errors/input.kdl:186:5]
+ 185 │     }
+ 186 │     enum
+     ·     ──┬─
+     ·       ╰── For this object
+ 187 │     enum e1 {
+     ╰────
+  help: The name is specified by the first entry of the node. It must be an anonymous string, e.g. `enum Foo { }`
+
+  error: Unexpected value
+     ╭─[cases/device_definition_errors/input.kdl:189:11]
+ 188 │         A
+ 189 │         B 1.0
+     ·           ─┬─
+     ·            ╰── Expected one of these values: ``, `<integer>`, `default`, `catch-all`
+ 190 │         C default-value
+     ╰────
+
+  error: Unexpected value
+     ╭─[cases/device_definition_errors/input.kdl:190:11]
+ 189 │         B 1.0
+ 190 │         C default-value
+     ·           ──────┬──────
+     ·                 ╰── Expected one of these values: ``, `<integer>`, `default`, `catch-all`
+ 191 │         D #null 2
+     ╰────
+
+  error: Unexpected entries
+     ╭─[cases/device_definition_errors/input.kdl:191:17]
+ 190 │         C default-value
+ 191 │         D #null 2
+     ·                 ┬
+     ·                 ╰── This entry is unexpected
+ 192 │     }
+     ╰────
+  help: Some entries require a name, require to be anonymous or are expected to be of a certain type. Check the book
+        to see the specification
+        These entries may also just be superfluous. Try removing them or check other errors to see what's expected
+
+  error: Unexpected value
+     ╭─[cases/device_definition_errors/input.kdl:191:11]
+ 190 │         C default-value
+ 191 │         D #null 2
+     ·           ──┬──
+     ·             ╰── Expected one of these values: ``, `<integer>`, `default`, `catch-all`
+ 192 │     }
+     ╰────
 

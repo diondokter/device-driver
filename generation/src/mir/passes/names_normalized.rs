@@ -1,6 +1,6 @@
 use convert_case::Case;
 
-use crate::mir::{Device, Enum, FieldConversion};
+use crate::mir::{Device, Object};
 
 use super::recurse_objects_mut;
 
@@ -25,20 +25,19 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
             fs_name.0 = pascal_converter.convert(fs_name.0.clone());
         }
 
-        if let Some(field_set) = object.as_field_set_mut() {
+        if let Object::FieldSet(field_set) = object {
             for field in field_set.fields.iter_mut() {
                 field.name = snake_converter.convert(&field.name);
-                if let Some(FieldConversion::Enum {
-                    enum_value: Enum { name, variants, .. },
-                    ..
-                }) = field.field_conversion.as_mut()
-                {
-                    *name = pascal_converter.convert(&*name);
 
-                    for v in variants.iter_mut() {
-                        v.name = pascal_converter.convert(&v.name)
-                    }
+                if let Some(conversion) = field.field_conversion.as_mut() {
+                    conversion.type_name = pascal_converter.convert(&conversion.type_name);
                 }
+            }
+        }
+
+        if let Object::Enum(enum_value) = object {
+            for variant in enum_value.variants.iter_mut() {
+                variant.name = pascal_converter.convert(&variant.name);
             }
         }
 
@@ -50,7 +49,9 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
 mod tests {
     use convert_case::Boundary;
 
-    use crate::mir::{Buffer, EnumVariant, Field, FieldSet, GlobalConfig, Object, Register};
+    use crate::mir::{
+        Buffer, Enum, EnumVariant, Field, FieldConversion, FieldSet, GlobalConfig, Object, Register,
+    };
 
     use super::*;
 
@@ -83,20 +84,21 @@ mod tests {
                         },
                         Field {
                             name: "my-fielD2".into(),
-                            field_conversion: Some(FieldConversion::Enum {
-                                enum_value: Enum {
-                                    name: "mY-enum".into(),
-                                    variants: vec![EnumVariant {
-                                        name: "eNum-Variant".into(),
-                                        ..Default::default()
-                                    }],
-                                    ..Default::default()
-                                },
+                            field_conversion: Some(FieldConversion {
+                                type_name: "mY-enum".into(),
                                 use_try: false,
                             }),
                             ..Default::default()
                         },
                     ],
+                    ..Default::default()
+                }),
+                Object::Enum(Enum {
+                    name: "mY-enum".into(),
+                    variants: vec![EnumVariant {
+                        name: "eNum-Variant".into(),
+                        ..Default::default()
+                    }],
                     ..Default::default()
                 }),
             ],
@@ -124,20 +126,21 @@ mod tests {
                         },
                         Field {
                             name: "my_field2".into(),
-                            field_conversion: Some(FieldConversion::Enum {
-                                enum_value: Enum {
-                                    name: "MyEnum".into(),
-                                    variants: vec![EnumVariant {
-                                        name: "EnumVariant".into(),
-                                        ..Default::default()
-                                    }],
-                                    ..Default::default()
-                                },
+                            field_conversion: Some(FieldConversion {
+                                type_name: "MyEnum".into(),
                                 use_try: false,
                             }),
                             ..Default::default()
                         },
                     ],
+                    ..Default::default()
+                }),
+                Object::Enum(Enum {
+                    name: "MyEnum".into(),
+                    variants: vec![EnumVariant {
+                        name: "EnumVariant".into(),
+                        ..Default::default()
+                    }],
                     ..Default::default()
                 }),
             ],

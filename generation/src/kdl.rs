@@ -151,27 +151,36 @@ fn transform_object(
             .into_iter()
             .collect(),
         ObjectType::Register => {
-            let (register, fieldset) = transform_register(node, source_code, diagnostics);
+            let (register, fieldset, enums) = transform_register(node, source_code, diagnostics);
             register
                 .map(Object::Register)
                 .into_iter()
                 .chain(fieldset.map(Object::FieldSet))
+                .chain(enums.into_iter().map(Object::Enum))
                 .collect()
         }
         ObjectType::Command => {
-            let (command, field_sets) = transform_command(node, source_code, diagnostics);
+            let (command, field_sets, enums) = transform_command(node, source_code, diagnostics);
             command
                 .map(Object::Command)
                 .into_iter()
                 .chain(field_sets.into_iter().map(Object::FieldSet))
+                .chain(enums.into_iter().map(Object::Enum))
                 .collect()
         }
         ObjectType::Buffer => transform_buffer(node, source_code, diagnostics)
             .map(Object::Buffer)
             .into_iter()
             .collect(),
-        ObjectType::FieldSet => transform_field_set(node, source_code, diagnostics, None)
-            .map(Object::FieldSet)
+        ObjectType::FieldSet => {
+            let (fs, enums) = transform_field_set(node, source_code, diagnostics, None);
+            fs.map(Object::FieldSet)
+                .into_iter()
+                .chain(enums.into_iter().map(Object::Enum))
+                .collect()
+        }
+        ObjectType::Enum => transform_enum(node, source_code, diagnostics)
+            .map(Object::Enum)
             .into_iter()
             .collect(),
     }
@@ -254,13 +263,15 @@ fn transform_register(
     node: &KdlNode,
     source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
-) -> (Option<Register>, Option<FieldSet>) {
+) -> (Option<Register>, Option<FieldSet>, Vec<Enum>) {
     let (name, name_span) =
         parse_single_string_entry(node, source_code.clone(), diagnostics, None, true);
 
+    let mut inline_enums = Vec::new();
+
     if name.is_none() && node.children().is_none() {
         // We only have a register keyword. No need for further diagnostics
-        return (None, None);
+        return (None, None, inline_enums);
     }
 
     let mut access = None;
@@ -349,7 +360,7 @@ fn transform_register(
                     continue;
                 }
 
-                field_set = transform_field_set(
+                let (fs, mut enums) = transform_field_set(
                     child,
                     source_code.clone(),
                     diagnostics,
@@ -358,8 +369,10 @@ fn transform_register(
                             .map(|name| format!("{name}FieldSet"))
                             .unwrap_or_default(),
                     ),
-                )
-                .map(|val| (val, child.name().span()));
+                );
+
+                field_set = fs.map(|val| (val, child.name().span()));
+                inline_enums.append(&mut enums);
             }
             Err(()) => {
                 diagnostics.add(errors::UnexpectedNode {
@@ -398,7 +411,7 @@ fn transform_register(
     }
 
     if error {
-        (None, field_set.map(|(fs, _)| fs))
+        (None, field_set.map(|(fs, _)| fs), inline_enums)
     } else {
         let mut register = Register {
             description: parse_description(node),
@@ -417,7 +430,7 @@ fn transform_register(
             register.allow_address_overlap = allow_address_overlap;
         }
 
-        (Some(register), Some(field_set.unwrap().0))
+        (Some(register), Some(field_set.unwrap().0), inline_enums)
     }
 }
 
@@ -425,13 +438,15 @@ fn transform_command(
     node: &KdlNode,
     source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
-) -> (Option<Command>, Vec<FieldSet>) {
+) -> (Option<Command>, Vec<FieldSet>, Vec<Enum>) {
     let (name, name_span) =
         parse_single_string_entry(node, source_code.clone(), diagnostics, None, true);
 
+    let mut inline_enums = Vec::new();
+
     if name.is_none() && node.children().is_none() {
         // We only have a command keyword. No need for further diagnostics
-        return (None, Vec::new());
+        return (None, Vec::new(), inline_enums);
     }
 
     let mut allow_address_overlap = None;
@@ -492,13 +507,15 @@ fn transform_command(
                     continue;
                 }
 
-                field_set_in = transform_field_set(
+                let (fs, mut enums) = transform_field_set(
                     child,
                     source_code.clone(),
                     diagnostics,
                     Some(format!("{}FieldSetIn", name.as_deref().unwrap_or_default())),
-                )
-                .map(|val| (val, child.name().span()));
+                );
+
+                field_set_in = fs.map(|val| (val, child.name().span()));
+                inline_enums.append(&mut enums);
             }
             Ok(CommandField::FieldSetOut) => {
                 if let Some((_, span)) = field_set_out {
@@ -510,7 +527,7 @@ fn transform_command(
                     continue;
                 }
 
-                field_set_out = transform_field_set(
+                let (fs, mut enums) = transform_field_set(
                     child,
                     source_code.clone(),
                     diagnostics,
@@ -518,8 +535,10 @@ fn transform_command(
                         "{}FieldSetOut",
                         name.as_deref().unwrap_or_default()
                     )),
-                )
-                .map(|val| (val, child.name().span()));
+                );
+
+                field_set_out = fs.map(|val| (val, child.name().span()));
+                inline_enums.append(&mut enums);
             }
             Err(()) => {
                 diagnostics.add(errors::UnexpectedNode {
@@ -554,6 +573,7 @@ fn transform_command(
                 .into_iter()
                 .filter_map(|fs| Some(fs?.0))
                 .collect(),
+            inline_enums,
         )
     } else {
         let mut command = Command {
@@ -580,6 +600,7 @@ fn transform_command(
                 .into_iter()
                 .filter_map(|fs| Some(fs?.0))
                 .collect(),
+            inline_enums,
         )
     }
 }
@@ -745,7 +766,9 @@ fn transform_field_set(
     source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
     default_name: Option<String>,
-) -> Option<FieldSet> {
+) -> (Option<FieldSet>, Vec<Enum>) {
+    let mut inline_enums = Vec::new();
+
     let mut field_set = FieldSet {
         description: parse_description(node),
         ..Default::default()
@@ -962,16 +985,21 @@ fn transform_field_set(
     }
 
     for field_node in node.iter_children() {
-        if let Some(field) = transform_field(field_node, source_code.clone(), diagnostics) {
+        let (field, inline_enum) = transform_field(field_node, source_code.clone(), diagnostics);
+
+        if let Some(field) = field {
             field_set.fields.push(field);
+        }
+        if let Some(inline_enum) = inline_enum {
+            inline_enums.push(inline_enum);
         }
     }
 
     if field_set.name.is_empty() {
         // No name is a major error state we can't let go
-        None
+        (None, inline_enums)
     } else {
-        Some(field_set)
+        (Some(field_set), inline_enums)
     }
 }
 
@@ -980,7 +1008,9 @@ fn transform_field(
     node: &KdlNode,
     source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
-) -> Option<Field> {
+) -> (Option<Field>, Option<Enum>) {
+    let mut inline_enum = None;
+
     let mut unexpected_entries = UnexpectedEntries {
         source_code: source_code.clone(),
         superfluous_entries: Vec::new(),
@@ -1074,22 +1104,21 @@ fn transform_field(
         diagnostics.add(unexpected_entries);
     }
 
-    let (base_type, mut field_conversion) =
-        parse_field_type(node.ty(), source_code.clone(), diagnostics);
+    let (base_type, mut field_conversion) = parse_type(node.ty(), source_code.clone(), diagnostics);
 
     if let Some(variants) = node.children() {
         if let Some(field_conversion) = field_conversion.as_mut() {
             // This is an enum, change the field conversion with that info
             let variants = transform_enum_variants(variants, source_code.clone(), diagnostics);
-            *field_conversion = FieldConversion::Enum {
-                enum_value: Enum::new(
-                    // Take the description of the field
-                    parse_description(node),
-                    field_conversion.type_name().into(),
-                    variants,
-                ),
-                use_try: field_conversion.use_try(),
-            };
+
+            inline_enum = Some(Enum::new(
+                // Take the description of the field
+                parse_description(node),
+                field_conversion.type_name.clone(),
+                variants,
+                base_type,
+                address.as_ref().map(|(address, _)| address.len() as u32),
+            ));
         } else {
             diagnostics.add(errors::InlineEnumDefinitionWithoutName {
                 source_code: source_code.clone(),
@@ -1105,20 +1134,211 @@ fn transform_field(
             node_name: node.name().span(),
             expected_entries: vec!["address (\"@<u32>:<u32>\")"],
         });
-        return None;
+        return (None, inline_enum);
     }
 
-    Some(Field {
-        description: parse_description(node),
-        name: node.name().value().into(),
-        access: access.map(|(a, _)| a).unwrap_or_default(),
-        base_type,
-        field_conversion,
-        field_address: address.unwrap().0,
-    })
+    (
+        Some(Field {
+            description: parse_description(node),
+            name: node.name().value().into(),
+            access: access.map(|(a, _)| a).unwrap_or_default(),
+            base_type,
+            field_conversion,
+            field_address: address.unwrap().0,
+        }),
+        inline_enum,
+    )
 }
 
-fn parse_field_type(
+fn transform_enum(
+    node: &KdlNode,
+    source_code: NamedSourceCode,
+    diagnostics: &mut Diagnostics,
+) -> Option<Enum> {
+    let mut unexpected_entries = errors::UnexpectedEntries {
+        source_code: source_code.clone(),
+        superfluous_entries: Vec::new(),
+        unexpected_name_entries: Vec::new(),
+        not_anonymous_entries: Vec::new(),
+        unexpected_anonymous_entries: Vec::new(),
+    };
+
+    let (base_type, field_conversion) = parse_type(node.ty(), source_code.clone(), diagnostics);
+
+    if let Some(field_conversion) = field_conversion {
+        diagnostics.add(errors::ConversionNotAllowedOnEnum {
+            source_code: source_code.clone(),
+            existing_ty: node.ty().unwrap().span(),
+            field_conversion,
+        });
+    }
+
+    let mut enum_value = Enum::new(
+        parse_description(node),
+        String::new(),
+        node.children()
+            .map(|children| transform_enum_variants(children, source_code.clone(), diagnostics))
+            .unwrap_or_default(),
+        base_type,
+        None,
+    );
+
+    let mut name: Option<&kdl::KdlEntry> = None;
+    let mut size_bits: Option<&kdl::KdlEntry> = None;
+
+    for (i, entry) in node.entries().iter().enumerate() {
+        match entry.name().map(|n| n.value()) {
+            Some("size-bits") => {
+                if let Some(size_bits) = size_bits {
+                    diagnostics.add(errors::DuplicateEntry {
+                        source_code: source_code.clone(),
+                        duplicate: entry.span(),
+                        original: size_bits.span(),
+                    });
+                } else {
+                    size_bits = Some(entry);
+                }
+            }
+            Some(_) => {
+                unexpected_entries
+                    .unexpected_name_entries
+                    .push(entry.span());
+            }
+            None => {
+                if i == 0 {
+                    name = Some(entry);
+                } else {
+                    unexpected_entries
+                        .unexpected_anonymous_entries
+                        .push(entry.span());
+                }
+            }
+        }
+    }
+
+    if !unexpected_entries.is_empty() {
+        diagnostics.add(unexpected_entries);
+    }
+
+    if let Some(name) = name {
+        match name.value() {
+            KdlValue::String(name) => {
+                enum_value.name = name.clone();
+            }
+            _ => {
+                diagnostics.add(errors::UnexpectedType {
+                    source_code: source_code.clone(),
+                    value_name: name.span(),
+                    expected_type: "string",
+                });
+            }
+        }
+    } else {
+        diagnostics.add(errors::MissingObjectName {
+            source_code: source_code.clone(),
+            object_keyword: node.name().span(),
+            found_instead: None,
+            object_type: node.name().value().into(),
+        });
+    }
+
+    if let Some(size_bits) = size_bits {
+        match size_bits.value() {
+            KdlValue::Integer(sb) if (0..=u32::MAX as i128).contains(sb) => {
+                enum_value.size_bits = Some(*sb as u32);
+            }
+            KdlValue::Integer(_) => {
+                diagnostics.add(errors::ValueOutOfRange {
+                    source_code: source_code.clone(),
+                    value: size_bits.span(),
+                    context: Some("size-bits is encoded as a u32"),
+                    range: "0..2^32",
+                });
+            }
+            _ => {
+                diagnostics.add(errors::UnexpectedType {
+                    source_code: source_code.clone(),
+                    value_name: size_bits.span(),
+                    expected_type: "integer",
+                });
+            }
+        }
+    }
+
+    if name.is_some() {
+        Some(enum_value)
+    } else {
+        None
+    }
+}
+
+fn transform_enum_variants(
+    nodes: &KdlDocument,
+    source_code: NamedSourceCode,
+    diagnostics: &mut Diagnostics,
+) -> Vec<EnumVariant> {
+    nodes
+        .nodes()
+        .iter()
+        .filter_map(|node| {
+            let variant_name = node.name();
+
+            let variant_value = match node.entries().len() {
+                0 => None,
+                1 if node.entries()[0].name().is_none() => Some(&node.entries()[0]),
+                _ => {
+                    diagnostics.add(errors::UnexpectedEntries {
+                        source_code: source_code.clone(),
+                        superfluous_entries: node
+                            .entries()
+                            .get(1..)
+                            .map(|superfluous_entries| {
+                                superfluous_entries
+                                    .iter()
+                                    .map(|entry| entry.span())
+                                    .collect()
+                            })
+                            .unwrap_or_default(),
+                        unexpected_name_entries: Vec::new(),
+                        not_anonymous_entries: node
+                            .entries()
+                            .first()
+                            .into_iter()
+                            .filter_map(|entry| entry.name().is_some().then_some(entry.span()))
+                            .collect(),
+                        unexpected_anonymous_entries: Vec::new(),
+                    });
+                    Some(&node.entries()[0])
+                }
+            };
+
+            let variant_value = match variant_value {
+                Some(variant_value) => match variant_value.value() {
+                    KdlValue::String(val) if val == "default" => EnumValue::Default,
+                    KdlValue::String(val) if val == "catch-all" => EnumValue::CatchAll,
+                    KdlValue::Integer(val) => EnumValue::Specified(*val),
+                    _ => {
+                        diagnostics.add(errors::UnexpectedValue {
+                            source_code: source_code.clone(),
+                            value_name: variant_value.span(),
+                            expected_values: vec!["", "<integer>", "default", "catch-all"],
+                        });
+                        return None;
+                    }
+                },
+                None => EnumValue::Unspecified,
+            };
+
+            Some(EnumVariant {
+                description: parse_description(node),
+                name: variant_name.value().to_string(),
+                value: variant_value,
+            })
+        })
+        .collect()
+}
+
+fn parse_type(
     ty: Option<&KdlIdentifier>,
     source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
@@ -1134,7 +1354,7 @@ fn parse_field_type(
     if let Some((base_type, conversion)) = ty_str.split_once(":") {
         base_type_str = base_type;
 
-        field_conversion = Some(FieldConversion::Direct {
+        field_conversion = Some(FieldConversion {
             type_name: conversion.trim_end_matches('?').into(),
             use_try: conversion.ends_with('?'),
         })
@@ -1655,6 +1875,7 @@ const OBJECT_TYPES: &[(&str, ObjectType)] = &[
     ("command", ObjectType::Command),
     ("buffer", ObjectType::Buffer),
     ("fieldset", ObjectType::FieldSet),
+    ("enum", ObjectType::Enum),
 ];
 #[derive(Clone, Copy)]
 enum ObjectType {
@@ -1663,6 +1884,7 @@ enum ObjectType {
     Command,
     Buffer,
     FieldSet,
+    Enum,
 }
 
 impl FromStr for ObjectType {
@@ -1677,70 +1899,4 @@ impl FromStr for ObjectType {
 
         Err(())
     }
-}
-
-fn transform_enum_variants(
-    nodes: &KdlDocument,
-    source_code: NamedSourceCode,
-    diagnostics: &mut Diagnostics,
-) -> Vec<EnumVariant> {
-    nodes
-        .nodes()
-        .iter()
-        .filter_map(|node| {
-            let variant_name = node.name();
-
-            let variant_value = match node.entries().len() {
-                0 => None,
-                1 if node.entries()[0].name().is_none() => Some(&node.entries()[0]),
-                _ => {
-                    diagnostics.add(errors::UnexpectedEntries {
-                        source_code: source_code.clone(),
-                        superfluous_entries: node
-                            .entries()
-                            .get(1..)
-                            .map(|superfluous_entries| {
-                                superfluous_entries
-                                    .iter()
-                                    .map(|entry| entry.span())
-                                    .collect()
-                            })
-                            .unwrap_or_default(),
-                        unexpected_name_entries: Vec::new(),
-                        not_anonymous_entries: node
-                            .entries()
-                            .first()
-                            .into_iter()
-                            .filter_map(|entry| entry.name().is_some().then_some(entry.span()))
-                            .collect(),
-                        unexpected_anonymous_entries: Vec::new(),
-                    });
-                    Some(&node.entries()[0])
-                }
-            };
-
-            let variant_value = match variant_value {
-                Some(variant_value) => match variant_value.value() {
-                    KdlValue::String(val) if val == "default" => EnumValue::Default,
-                    KdlValue::String(val) if val == "catch-all" => EnumValue::CatchAll,
-                    KdlValue::Integer(val) => EnumValue::Specified(*val),
-                    _ => {
-                        diagnostics.add(errors::UnexpectedValue {
-                            source_code: source_code.clone(),
-                            value_name: variant_value.span(),
-                            expected_values: vec!["", "<integer>", "default", "catch-all"],
-                        });
-                        return None;
-                    }
-                },
-                None => EnumValue::Unspecified,
-            };
-
-            Some(EnumVariant {
-                description: parse_description(node),
-                name: variant_name.value().to_string(),
-                value: variant_value,
-            })
-        })
-        .collect()
 }

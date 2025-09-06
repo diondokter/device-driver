@@ -52,97 +52,52 @@ device_driver::create_device!(
             register Foo {
                 address 0
                 fields size-bits=64 {
-                    ///  Try needed since [my_mod::MyTryEnum] doesn't impl [From]
-                    (uint:my_mod::MyTryEnum?)convert_custom_try @1:0
-                    ///  No try needed since [MyEnum] impls [From]
+                    /// Try needed since [MyTryEnum] doesn't impl [From]
+                    (uint:MyTryEnum?)convert_custom_try @1:0
+                    /// No try needed since [MyEnum] impls [From]
                     (uint:MyEnum)convert_custom @3:2
-                    ///  Try needed since not all bit patters are covered
+                    /// Try needed since not all bit patters are covered
                     (uint:GenTryEnum?)convert_generated_try @5:4 {
                         A
                         B
                     }
-                    ///  No try needed because it covers every bit pattern (2 bit)
+                    /// No try needed because it covers every bit pattern (2 bit)
                     (uint:GenEnum)convert_generated @7:6 {
                         A
                         B
                         C 2
                         D
                     }
-                    ///  No try needed since default
+                    /// No try needed since default
                     (uint:GenDefaultEnum)convert_generated_default @9:8 {
                         A
                         B default
                     }
-                    ///  No try needed since catch-all
+                    /// No try needed since catch-all
                     (uint:GenCatchAllEnum)convert_generated_catchall @11:10 {
                         A
                         B catch-all
                     }
-                    ///  No try needed since it recognizes GenEnum (even though it doesn implement From<u8>)
+                    /// No try needed since it recognizes GenEnum (even though it doesn implement From<u8>)
                     (uint:GenEnum)convert_generated_copied @13:12
-                    ///  Try needed since it recognizes GenEnum, but the bits are too big (3 bit vs 2 bit)
+                    /// Try needed since it recognizes GenEnum, but the bits are too big (3 bit vs 2 bit)
                     (uint:GenEnum?)convert_generated_copied_too_large @16:14
                 }
+            }
+            enum MyTryEnum {
+                A
+                B
+                C
+            }
+            enum MyEnum {
+                A
+                B
+                C
+                D
             }
         }
     "
 );
-
-pub mod my_mod {
-    #[derive(Debug, PartialEq, Eq)]
-    #[repr(u8)]
-    pub enum MyTryEnum {
-        A,
-        B,
-        C,
-    }
-
-    impl TryFrom<u8> for MyTryEnum {
-        type Error = u8;
-
-        fn try_from(value: u8) -> Result<Self, Self::Error> {
-            match value {
-                0 => Ok(MyTryEnum::A),
-                1 => Ok(MyTryEnum::B),
-                2 => Ok(MyTryEnum::C),
-                val => Err(val),
-            }
-        }
-    }
-
-    impl From<MyTryEnum> for u8 {
-        fn from(value: MyTryEnum) -> Self {
-            value as _
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Eq)]
-#[repr(u8)]
-pub enum MyEnum {
-    A,
-    B,
-    C,
-    D,
-}
-
-impl From<u8> for MyEnum {
-    fn from(value: u8) -> Self {
-        match value {
-            0 => MyEnum::A,
-            1 => MyEnum::B,
-            2 => MyEnum::C,
-            3 => MyEnum::D,
-            _ => panic!(),
-        }
-    }
-}
-
-impl From<MyEnum> for u8 {
-    fn from(value: MyEnum) -> Self {
-        value as _
-    }
-}
 
 #[test]
 fn test_basic_read_modify_write() {
@@ -151,7 +106,7 @@ fn test_basic_read_modify_write() {
     device
         .foo()
         .write(|reg| {
-            reg.set_convert_custom_try(my_mod::MyTryEnum::C);
+            reg.set_convert_custom_try(MyTryEnum::C);
             reg.set_convert_custom(MyEnum::D);
             reg.set_convert_generated_try(GenTryEnum::B);
             reg.set_convert_generated(GenEnum::C);
@@ -162,7 +117,7 @@ fn test_basic_read_modify_write() {
 
     assert_eq!(
         device.foo().read().unwrap().convert_custom_try(),
-        Result::<_, u8>::Ok(my_mod::MyTryEnum::C)
+        Result::<_, ConversionError<u8>>::Ok(MyTryEnum::C)
     );
     assert_eq!(device.foo().read().unwrap().convert_custom(), MyEnum::D);
     assert_eq!(

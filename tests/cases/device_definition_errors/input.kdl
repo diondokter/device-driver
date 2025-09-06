@@ -104,7 +104,7 @@ device FooD6 {
             (bool)bar @0
             (uint)baz @2:1
             (i16a)quux @4:3
-            (:MyCustomType?)qus @6:5
+            (i32:e3?)qus @6:5
         }
     }
     register foor10 {
@@ -182,5 +182,22 @@ device FooD6 {
     fieldset
     fieldset fs1 size-bits=16 byte-order=LE {
         value @15:0
+    }
+    enum
+    enum e1 {
+        A
+        B 1.0
+        C default-value
+        D #null 2
+    }
+    enum e2 size-bits=1 {
+        A
+        B
+    }
+    /// You can document enums too!
+    (i32)enum e3 {
+        A
+        /// Wow, it's a B!
+        B
     }
 }

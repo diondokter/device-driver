@@ -1,7 +1,7 @@
 use anyhow::{bail, ensure};
 use itertools::Itertools;
 
-use crate::mir::{Device, EnumGenerationStyle, EnumValue, FieldConversion, Unique};
+use crate::mir::{BaseType, Device, EnumGenerationStyle, EnumValue, Integer, Object, Unique};
 
 use super::recurse_objects_mut;
 
@@ -10,129 +10,161 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
     recurse_objects_mut(&mut device.objects, &mut |object| {
         let object_name = object.name().to_string();
 
-        for field in object
-            .as_field_set_mut()
-            .into_iter()
-            .flat_map(|fs| fs.fields.iter_mut())
-        {
-            if let Some(FieldConversion::Enum {
-                enum_value: ec,
-                use_try,
-            }) = field.field_conversion.as_mut()
-            {
-                let field_bits = field.field_address.clone().count();
-                let highest_value = (1 << field_bits) - 1;
+        if let Object::Enum(enum_value) = object {
+            ensure!(
+                !enum_value.variants.is_empty(),
+                "Enum `{object_name}` has no variants which is not allowed. Add at least one variant",
+            );
 
-                ensure!(
-                    field_bits <= 128,
-                    "Enum `{}` is too big to fit in 128-bit in fieldset `{}` on field `{}`",
-                    &ec.name,
-                    object_name,
-                    &field.name
-                );
-
-                ensure!(
-                    !ec.variants.is_empty(),
-                    "Enum `{}` has no variants which is not allowed. Add at least one variant",
-                    &ec.name,
-                );
-
-                // Record all variant values
-                let mut seen_values = Vec::new();
-                for variant in ec.variants.iter_mut() {
-                    match &mut variant.value {
-                        val @ EnumValue::Unspecified => {
-                            let assigned_value =
-                                seen_values.last().map(|(val, _)| *val + 1).unwrap_or(0);
-                            *val = EnumValue::Specified(assigned_value);
-                            seen_values.push((assigned_value, variant.id()));
-                        }
-                        EnumValue::Specified(num) => {
-                            seen_values.push((*num, variant.id()));
-                        }
-                        EnumValue::Default | EnumValue::CatchAll => {
-                            let assigned_value =
-                                seen_values.last().map(|(val, _)| *val + 1).unwrap_or(0);
-                            seen_values.push((assigned_value, variant.id()));
-                        }
+            // Record all variant values
+            let mut seen_values = Vec::new();
+            for variant in enum_value.variants.iter_mut() {
+                match &mut variant.value {
+                    val @ EnumValue::Unspecified => {
+                        let assigned_value =
+                            seen_values.last().map(|(val, _)| *val + 1).unwrap_or(0);
+                        *val = EnumValue::Specified(assigned_value);
+                        seen_values.push((assigned_value, variant.id()));
                     }
-                }
-
-                let duplicates = seen_values
-                    .iter()
-                    .duplicates()
-                    .map(|(num, name)| format!("{name}: {num}"))
-                    .collect::<Vec<_>>();
-
-                ensure!(
-                    duplicates.is_empty(),
-                    "Duplicated assigned value(s) for enum `{}` in fieldset `{}` on field `{}`: {duplicates:?}",
-                    &ec.name,
-                    object_name,
-                    &field.name
-                );
-
-                // Check if all bits are covered or if there's a fallback variant
-                let has_fallback = ec
-                    .variants
-                    .iter()
-                    .any(|v| matches!(v.value, EnumValue::Default | EnumValue::CatchAll));
-                let has_bits_covered = (0..=highest_value)
-                    .all(|val| seen_values.iter().any(|(seen_val, _)| val == *seen_val));
-
-                ec.generation_style = Some(if has_fallback || has_bits_covered {
-                    EnumGenerationStyle::Infallible {
-                        bit_size: field_bits as u32,
+                    EnumValue::Specified(num) => {
+                        seen_values.push((*num, variant.id()));
                     }
-                } else {
-                    EnumGenerationStyle::Fallible
-                });
-
-                // Check if the enum has variants that fall outside of the available bits
-                if let Some(too_big_variant) =
-                    seen_values.iter().find(|(val, _)| *val > highest_value)
-                {
-                    bail!(
-                        "The value of variant `{}` is too high for enum `{}` in fieldset `{}` on field `{}`: {} (max = {highest_value})",
-                        too_big_variant.1,
-                        &ec.name,
-                        object_name,
-                        &field.name,
-                        too_big_variant.0
-                    )
-                }
-
-                // Check whether the enum has more than one default
-                ensure!(
-                    ec.variants.iter().filter(|v| v.value.is_default()).count() < 2,
-                    "More than one default defined on enum `{}` in fieldset `{}` on field `{}`",
-                    &ec.name,
-                    object_name,
-                    &field.name
-                );
-
-                // Check whether the enum has more than one catch all
-                ensure!(
-                    ec.variants
-                        .iter()
-                        .filter(|v| v.value.is_catch_all())
-                        .count()
-                        < 2,
-                    "More than one catch all defined on enum `{}` in fieldset `{}` on field `{}`",
-                    &ec.name,
-                    object_name,
-                    &field.name
-                );
-
-                if ec.generation_style.as_ref().unwrap().is_fallible() && !*use_try {
-                    bail!(
-                        "Not all bitpatterns are covered on non-try conversion enum `{}` in fieldset `{}` on field `{}`",
-                        &ec.name,
-                        object_name,
-                        &field.name
-                    );
+                    EnumValue::Default | EnumValue::CatchAll => {
+                        let assigned_value =
+                            seen_values.last().map(|(val, _)| *val + 1).unwrap_or(0);
+                        seen_values.push((assigned_value, variant.id()));
+                    }
                 }
             }
+
+            let duplicates = seen_values
+                .iter()
+                .duplicates()
+                .map(|(num, name)| format!("{name}: {num}"))
+                .collect::<Vec<_>>();
+
+            ensure!(
+                duplicates.is_empty(),
+                "Duplicated assigned value(s) for enum `{object_name}`: {duplicates:?}",
+            );
+
+            let seen_min = seen_values
+                .iter()
+                .map(|(val, _)| *val)
+                .min()
+                .unwrap_or_default();
+            let seen_max = seen_values
+                .iter()
+                .map(|(val, _)| *val)
+                .max()
+                .unwrap_or_default();
+
+            let base_type_integer = match enum_value.base_type {
+                BaseType::Unspecified => Integer::find_smallest(
+                    seen_min,
+                    seen_max,
+                    enum_value.size_bits.unwrap_or_default(),
+                ),
+                BaseType::Bool => {
+                    bail!("Enum `{object_name}` uses a bool as base type, which is not allowed")
+                }
+                BaseType::Uint => {
+                    let integer = Integer::find_smallest(
+                        seen_min,
+                        seen_max,
+                        enum_value.size_bits.unwrap_or_default(),
+                    );
+                    ensure!(
+                        integer.map(|i| !i.is_signed()).unwrap_or(true),
+                        "Enum `{object_name}` has a variant that uses a negative number, but the base type was specified as unsigned"
+                    );
+
+                    integer
+                }
+                BaseType::Int => Integer::find_smallest(
+                    seen_min.min(-1),
+                    seen_max,
+                    enum_value.size_bits.unwrap_or_default(),
+                ),
+                BaseType::FixedSize(integer) => {
+                    ensure!(
+                        integer.size_bits() >= enum_value.size_bits.unwrap_or_default(),
+                        "Enum `{object_name}` has specified a 'size-bits' that is larger than its base type. This is not allowed"
+                    );
+                    Some(integer)
+                }
+            };
+
+            let Some(base_type_integer) = base_type_integer else {
+                bail!(
+                    "No valid base type could be selected for enum `{object_name}`. Either the specified size-bits or the variants cannot fit within any of the supported integer types"
+                )
+            };
+
+            let size_bits = match enum_value.size_bits {
+                None => {
+                    if base_type_integer.is_signed() {
+                        u32::max(
+                            i128::BITS - seen_min.unsigned_abs().leading_zeros(),
+                            i128::BITS - seen_max.unsigned_abs().leading_zeros(),
+                        ) + seen_min.is_negative() as u32
+                    } else {
+                        i128::BITS - seen_max.leading_zeros()
+                    }
+                }
+                Some(size_bits) => size_bits,
+            };
+
+            enum_value.base_type = BaseType::FixedSize(base_type_integer);
+            enum_value.size_bits = Some(size_bits);
+
+            let highest_value = (1 << size_bits) - 1;
+
+            // Check if all bits are covered or if there's a fallback variant
+            let has_fallback = enum_value
+                .variants
+                .iter()
+                .any(|v| matches!(v.value, EnumValue::Default | EnumValue::CatchAll));
+            let has_bits_covered = (0..=highest_value)
+                .all(|val| seen_values.iter().any(|(seen_val, _)| val == *seen_val));
+
+            enum_value.generation_style = Some(match (has_fallback, has_bits_covered) {
+                (true, _) => EnumGenerationStyle::Fallback,
+                (false, true) => EnumGenerationStyle::InfallibleWithinRange,
+                (false, false) => EnumGenerationStyle::Fallible,
+            });
+
+            // Check if the enum has variants that fall outside of the available bits
+            if let Some(too_big_variant) = seen_values.iter().find(|(val, _)| *val > highest_value)
+            {
+                bail!(
+                    "The value of variant `{}` is too high for enum `{object_name}`: {} (max = {highest_value})",
+                    too_big_variant.1,
+                    too_big_variant.0
+                )
+            }
+
+            // Check whether the enum has more than one default
+            ensure!(
+                enum_value
+                    .variants
+                    .iter()
+                    .filter(|v| v.value.is_default())
+                    .count()
+                    < 2,
+                "More than one default defined on enum `{object_name}`",
+            );
+
+            // Check whether the enum has more than one catch all
+            ensure!(
+                enum_value
+                    .variants
+                    .iter()
+                    .filter(|v| v.value.is_catch_all())
+                    .count()
+                    < 2,
+                "More than one catch all defined on enum `{object_name}`",
+            );
         }
 
         Ok(())
@@ -141,7 +173,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use crate::mir::{Enum, EnumVariant, Field, FieldSet, Object};
+    use crate::mir::{Enum, EnumVariant, Object};
 
     use super::*;
 
@@ -150,86 +182,68 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::FieldSet(FieldSet {
-                name: "MyCommand".into(),
-                fields: vec![Field {
-                    field_conversion: Some(FieldConversion::Enum {
-                        enum_value: Enum::new(
-                            Default::default(),
-                            "MyEnum".into(),
-                            vec![
-                                EnumVariant {
-                                    name: "var0".into(),
-                                    value: EnumValue::Specified(1),
-                                    ..Default::default()
-                                },
-                                EnumVariant {
-                                    name: "var1".into(),
-                                    value: EnumValue::Unspecified,
-                                    ..Default::default()
-                                },
-                                EnumVariant {
-                                    name: "var2".into(),
-                                    value: EnumValue::Unspecified,
-                                    ..Default::default()
-                                },
-                                EnumVariant {
-                                    name: "var3".into(),
-                                    value: EnumValue::Specified(0),
-                                    ..Default::default()
-                                },
-                            ],
-                        ),
-                        use_try: false,
-                    }),
-                    field_address: 0..2,
-                    ..Default::default()
-                }],
-                ..Default::default()
-            })],
+            objects: vec![Object::Enum(Enum::new(
+                Default::default(),
+                "MyEnum".into(),
+                vec![
+                    EnumVariant {
+                        name: "var0".into(),
+                        value: EnumValue::Specified(1),
+                        ..Default::default()
+                    },
+                    EnumVariant {
+                        name: "var1".into(),
+                        value: EnumValue::Unspecified,
+                        ..Default::default()
+                    },
+                    EnumVariant {
+                        name: "var2".into(),
+                        value: EnumValue::Unspecified,
+                        ..Default::default()
+                    },
+                    EnumVariant {
+                        name: "var3".into(),
+                        value: EnumValue::Specified(0),
+                        ..Default::default()
+                    },
+                ],
+                BaseType::Unspecified,
+                Some(2),
+            ))],
         };
 
         let end_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::FieldSet(FieldSet {
-                name: "MyCommand".into(),
-                fields: vec![Field {
-                    field_conversion: Some(FieldConversion::Enum {
-                        enum_value: Enum::new_with_style(
-                            Default::default(),
-                            "MyEnum".into(),
-                            vec![
-                                EnumVariant {
-                                    name: "var0".into(),
-                                    value: EnumValue::Specified(1),
-                                    ..Default::default()
-                                },
-                                EnumVariant {
-                                    name: "var1".into(),
-                                    value: EnumValue::Specified(2),
-                                    ..Default::default()
-                                },
-                                EnumVariant {
-                                    name: "var2".into(),
-                                    value: EnumValue::Specified(3),
-                                    ..Default::default()
-                                },
-                                EnumVariant {
-                                    name: "var3".into(),
-                                    value: EnumValue::Specified(0),
-                                    ..Default::default()
-                                },
-                            ],
-                            EnumGenerationStyle::Infallible { bit_size: 2 },
-                        ),
-                        use_try: false,
-                    }),
-                    field_address: 0..2,
-                    ..Default::default()
-                }],
-                ..Default::default()
-            })],
+            objects: vec![Object::Enum(Enum::new_with_style(
+                Default::default(),
+                "MyEnum".into(),
+                vec![
+                    EnumVariant {
+                        name: "var0".into(),
+                        value: EnumValue::Specified(1),
+                        ..Default::default()
+                    },
+                    EnumVariant {
+                        name: "var1".into(),
+                        value: EnumValue::Specified(2),
+                        ..Default::default()
+                    },
+                    EnumVariant {
+                        name: "var2".into(),
+                        value: EnumValue::Specified(3),
+                        ..Default::default()
+                    },
+                    EnumVariant {
+                        name: "var3".into(),
+                        value: EnumValue::Specified(0),
+                        ..Default::default()
+                    },
+                ],
+                BaseType::FixedSize(crate::mir::Integer::U8),
+                Some(2),
+                EnumGenerationStyle::InfallibleWithinRange,
+            ))],
         };
 
         run_pass(&mut start_mir).unwrap();
@@ -242,66 +256,48 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::FieldSet(FieldSet {
-                name: "MyCommand".into(),
-                fields: vec![Field {
-                    field_conversion: Some(FieldConversion::Enum {
-                        enum_value: Enum::new(
-                            Default::default(),
-                            "MyEnum".into(),
-                            vec![
-                                EnumVariant {
-                                    name: "var0".into(),
-                                    value: EnumValue::Unspecified,
-                                    ..Default::default()
-                                },
-                                EnumVariant {
-                                    name: "var1".into(),
-                                    value: EnumValue::Default,
-                                    ..Default::default()
-                                },
-                            ],
-                        ),
-                        use_try: false,
-                    }),
-                    field_address: 0..2,
-                    ..Default::default()
-                }],
-                ..Default::default()
-            })],
+            objects: vec![Object::Enum(Enum::new(
+                Default::default(),
+                "MyEnum".into(),
+                vec![
+                    EnumVariant {
+                        name: "var0".into(),
+                        value: EnumValue::Unspecified,
+                        ..Default::default()
+                    },
+                    EnumVariant {
+                        name: "var1".into(),
+                        value: EnumValue::Default,
+                        ..Default::default()
+                    },
+                ],
+                BaseType::Unspecified,
+                Some(8),
+            ))],
         };
 
         let end_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::FieldSet(FieldSet {
-                name: "MyCommand".into(),
-                fields: vec![Field {
-                    field_conversion: Some(FieldConversion::Enum {
-                        enum_value: Enum::new_with_style(
-                            Default::default(),
-                            "MyEnum".into(),
-                            vec![
-                                EnumVariant {
-                                    name: "var0".into(),
-                                    value: EnumValue::Specified(0),
-                                    ..Default::default()
-                                },
-                                EnumVariant {
-                                    name: "var1".into(),
-                                    value: EnumValue::Default,
-                                    ..Default::default()
-                                },
-                            ],
-                            EnumGenerationStyle::Infallible { bit_size: 2 },
-                        ),
-                        use_try: false,
-                    }),
-                    field_address: 0..2,
-                    ..Default::default()
-                }],
-                ..Default::default()
-            })],
+            objects: vec![Object::Enum(Enum::new_with_style(
+                Default::default(),
+                "MyEnum".into(),
+                vec![
+                    EnumVariant {
+                        name: "var0".into(),
+                        value: EnumValue::Specified(0),
+                        ..Default::default()
+                    },
+                    EnumVariant {
+                        name: "var1".into(),
+                        value: EnumValue::Default,
+                        ..Default::default()
+                    },
+                ],
+                BaseType::FixedSize(crate::mir::Integer::U8),
+                Some(8),
+                EnumGenerationStyle::Fallback,
+            ))],
         };
 
         run_pass(&mut start_mir).unwrap();
@@ -314,52 +310,34 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::FieldSet(FieldSet {
-                name: "MyCommand".into(),
-                fields: vec![Field {
-                    field_conversion: Some(FieldConversion::Enum {
-                        enum_value: Enum::new(
-                            Default::default(),
-                            "MyEnum".into(),
-                            vec![EnumVariant {
-                                name: "var0".into(),
-                                value: EnumValue::Unspecified,
-                                ..Default::default()
-                            }],
-                        ),
-                        use_try: true,
-                    }),
-                    field_address: 0..2,
+            objects: vec![Object::Enum(Enum::new(
+                Default::default(),
+                "MyEnum".into(),
+                vec![EnumVariant {
+                    name: "var0".into(),
+                    value: EnumValue::Unspecified,
                     ..Default::default()
                 }],
-                ..Default::default()
-            })],
+                BaseType::Unspecified,
+                Some(16),
+            ))],
         };
 
         let end_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::FieldSet(FieldSet {
-                name: "MyCommand".into(),
-                fields: vec![Field {
-                    field_conversion: Some(FieldConversion::Enum {
-                        enum_value: Enum::new_with_style(
-                            Default::default(),
-                            "MyEnum".into(),
-                            vec![EnumVariant {
-                                name: "var0".into(),
-                                value: EnumValue::Specified(0),
-                                ..Default::default()
-                            }],
-                            EnumGenerationStyle::Fallible,
-                        ),
-                        use_try: true,
-                    }),
-                    field_address: 0..2,
+            objects: vec![Object::Enum(Enum::new_with_style(
+                Default::default(),
+                "MyEnum".into(),
+                vec![EnumVariant {
+                    name: "var0".into(),
+                    value: EnumValue::Specified(0),
                     ..Default::default()
                 }],
-                ..Default::default()
-            })],
+                BaseType::FixedSize(Integer::U16),
+                Some(16),
+                EnumGenerationStyle::Fallible,
+            ))],
         };
 
         run_pass(&mut start_mir).unwrap();
@@ -372,44 +350,34 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::FieldSet(FieldSet {
-                name: "MyCommand".into(),
-                fields: vec![Field {
-                    name: "MyField".into(),
-                    field_conversion: Some(FieldConversion::Enum {
-                        enum_value: Enum::new(
-                            Default::default(),
-                            "MyEnum".into(),
-                            vec![
-                                EnumVariant {
-                                    name: "var0".into(),
-                                    value: EnumValue::Unspecified,
-                                    ..Default::default()
-                                },
-                                EnumVariant {
-                                    name: "var0".into(),
-                                    value: EnumValue::Unspecified,
-                                    ..Default::default()
-                                },
-                                EnumVariant {
-                                    name: "var0".into(),
-                                    value: EnumValue::Unspecified,
-                                    ..Default::default()
-                                },
-                            ],
-                        ),
-                        use_try: false,
-                    }),
-                    field_address: 0..1,
-                    ..Default::default()
-                }],
-                ..Default::default()
-            })],
+            objects: vec![Object::Enum(Enum::new(
+                Default::default(),
+                "MyEnum".into(),
+                vec![
+                    EnumVariant {
+                        name: "var0".into(),
+                        value: EnumValue::Unspecified,
+                        ..Default::default()
+                    },
+                    EnumVariant {
+                        name: "var0".into(),
+                        value: EnumValue::Unspecified,
+                        ..Default::default()
+                    },
+                    EnumVariant {
+                        name: "var0".into(),
+                        value: EnumValue::Unspecified,
+                        ..Default::default()
+                    },
+                ],
+                BaseType::Unspecified,
+                Some(1),
+            ))],
         };
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
-            "The value of variant `var0` is too high for enum `MyEnum` in fieldset `MyCommand` on field `MyField`: 2 (max = 1)"
+            "The value of variant `var0` is too high for enum `MyEnum`: 2 (max = 1)"
         );
     }
 
@@ -418,39 +386,29 @@ mod tests {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
-            objects: vec![Object::FieldSet(FieldSet {
-                name: "MyCommand".into(),
-                fields: vec![Field {
-                    name: "MyField".into(),
-                    field_conversion: Some(FieldConversion::Enum {
-                        enum_value: Enum::new(
-                            Default::default(),
-                            "MyEnum".into(),
-                            vec![
-                                EnumVariant {
-                                    name: "var0".into(),
-                                    value: EnumValue::Unspecified,
-                                    ..Default::default()
-                                },
-                                EnumVariant {
-                                    name: "var0".into(),
-                                    value: EnumValue::Specified(0),
-                                    ..Default::default()
-                                },
-                            ],
-                        ),
-                        use_try: false,
-                    }),
-                    field_address: 0..1,
-                    ..Default::default()
-                }],
-                ..Default::default()
-            })],
+            objects: vec![Object::Enum(Enum::new(
+                Default::default(),
+                "MyEnum".into(),
+                vec![
+                    EnumVariant {
+                        name: "var0".into(),
+                        value: EnumValue::Unspecified,
+                        ..Default::default()
+                    },
+                    EnumVariant {
+                        name: "var0".into(),
+                        value: EnumValue::Specified(0),
+                        ..Default::default()
+                    },
+                ],
+                BaseType::Unspecified,
+                Some(8),
+            ))],
         };
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
-            "Duplicated assigned value(s) for enum `MyEnum` in fieldset `MyCommand` on field `MyField`: [\"var0: 0\"]"
+            "Duplicated assigned value(s) for enum `MyEnum`: [\"var0: 0\"]"
         );
     }
 }
