@@ -1009,9 +1009,9 @@ pub mod foo_d_6 {
         ///Read the `qus` field of the register.
         ///
     
-        pub fn qus(&self) -> Result<MyCustomType, <MyCustomType as TryFrom<u8>>::Error> {
+        pub fn qus(&self) -> Result<E3, <E3 as TryFrom<i32>>::Error> {
             let raw = unsafe {
-                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, 5, 7)
+                ::device_driver::ops::load_lsb0::<i32, ::device_driver::ops::LE>(&self.bits, 5, 7)
             };
             raw.try_into()
         }
@@ -1067,11 +1067,11 @@ pub mod foo_d_6 {
         ///Write the `qus` field of the register.
         ///
     
-        pub fn set_qus(&mut self, value: MyCustomType) {
+        pub fn set_qus(&mut self, value: E3) {
             let raw = value.into();
     
             unsafe {
-                ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
+                ::device_driver::ops::store_lsb0::<i32, ::device_driver::ops::LE>(
                     raw,
                     5,
                     7,
@@ -1196,7 +1196,7 @@ pub mod foo_d_6 {
             let raw = unsafe {
                 ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, 0, 2)
             };
-            unsafe { raw.try_into().unwrap_unchecked() }
+            raw.into()
         }
     
         ///Read the `baz` field of the register.
@@ -1809,6 +1809,107 @@ pub mod foo_d_6 {
         fn from(val: Foo10E2) -> Self {
             match val {
                 Foo10E2::A => 0,
+            }
+        }
+    }
+    
+    #[repr(u8)]
+    #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+    
+    pub enum E1 {
+        A = 0,
+    }
+    
+    impl core::convert::TryFrom<u8> for E1 {
+        type Error = ::device_driver::ConversionError<u8>;
+        fn try_from(val: u8) -> Result<Self, Self::Error> {
+            match val {
+                0 => Ok(Self::A),
+    
+                val => Err(::device_driver::ConversionError {
+                    source: val,
+                    target: "E1",
+                }),
+            }
+        }
+    }
+    
+    impl From<E1> for u8 {
+        fn from(val: E1) -> Self {
+            match val {
+                E1::A => 0,
+            }
+        }
+    }
+    
+    #[repr(u8)]
+    #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+    
+    pub enum E2 {
+        A = 0,
+    
+        B = 1,
+    }
+    
+    impl core::convert::TryFrom<u8> for E2 {
+        type Error = ::device_driver::ConversionError<u8>;
+        fn try_from(val: u8) -> Result<Self, Self::Error> {
+            match val {
+                0 => Ok(Self::A),
+    
+                1 => Ok(Self::B),
+    
+                val => Err(::device_driver::ConversionError {
+                    source: val,
+                    target: "E2",
+                }),
+            }
+        }
+    }
+    
+    impl From<E2> for u8 {
+        fn from(val: E2) -> Self {
+            match val {
+                E2::A => 0,
+    
+                E2::B => 1,
+            }
+        }
+    }
+    
+    /// You can document enums too!
+    #[repr(i32)]
+    #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+    
+    pub enum E3 {
+        A = 0,
+    
+        /// Wow, it's a B!
+        B = 1,
+    }
+    
+    impl core::convert::TryFrom<i32> for E3 {
+        type Error = ::device_driver::ConversionError<i32>;
+        fn try_from(val: i32) -> Result<Self, Self::Error> {
+            match val {
+                0 => Ok(Self::A),
+    
+                1 => Ok(Self::B),
+    
+                val => Err(::device_driver::ConversionError {
+                    source: val,
+                    target: "E3",
+                }),
+            }
+        }
+    }
+    
+    impl From<E3> for i32 {
+        fn from(val: E3) -> Self {
+            match val {
+                E3::A => 0,
+    
+                E3::B => 1,
             }
         }
     }

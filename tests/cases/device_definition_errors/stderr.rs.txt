@@ -1,36 +1,7 @@
 error: The device driver input has errors that need to be solved!
-    --> device_definition_errors.rs:1817:1
+    --> device_definition_errors.rs:1918:1
      |
-1817 | compile_error!("The device driver input has errors that need to be solved!");
+1918 | compile_error!("The device driver input has errors that need to be solved!");
      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0412]: cannot find type `MyCustomType` in this scope
-    --> device_definition_errors.rs:1012:37
-     |
-1012 |         pub fn qus(&self) -> Result<MyCustomType, <MyCustomType as TryFrom<u8>>::Error> {
-     |                                     ^^^^^^^^^^^^ not found in this scope
-     |
-help: you might be missing a type parameter
-     |
- 973 |     impl<MyCustomType> Foor9FieldSet {
-     |         ++++++++++++++
-
-error[E0412]: cannot find type `MyCustomType` in this scope
-    --> device_definition_errors.rs:1012:52
-     |
-1012 |         pub fn qus(&self) -> Result<MyCustomType, <MyCustomType as TryFrom<u8>>::Error> {
-     |                                                    ^^^^^^^^^^^^ not found in this scope
-     |
-help: you might be missing a type parameter
-     |
- 973 |     impl<MyCustomType> Foor9FieldSet {
-     |         ++++++++++++++
-
-error[E0412]: cannot find type `MyCustomType` in this scope
-    --> device_definition_errors.rs:1070:42
-     |
-1070 |         pub fn set_qus(&mut self, value: MyCustomType) {
-     |                                          ^^^^^^^^^^^^ not found in this scope
-
-For more information about this error, try `rustc --explain E0412`.
-error: could not compile `device_definition_errors` (bin "device_definition_errors") due to 4 previous errors
+error: could not compile `device_definition_errors` (bin "device_definition_errors") due to 1 previous error

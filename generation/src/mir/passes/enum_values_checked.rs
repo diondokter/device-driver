@@ -88,7 +88,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
                 ),
                 BaseType::FixedSize(integer) => {
                     ensure!(
-                        integer.size_bits() <= enum_value.size_bits.unwrap_or_default(),
+                        integer.size_bits() >= enum_value.size_bits.unwrap_or_default(),
                         "Enum `{object_name}` has specified a 'size-bits' that is larger than its base type. This is not allowed"
                     );
                     Some(integer)
