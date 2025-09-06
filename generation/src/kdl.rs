@@ -179,9 +179,10 @@ fn transform_object(
                 .chain(enums.into_iter().map(Object::Enum))
                 .collect()
         }
-        ObjectType::Enum => {
-            todo!()
-        }
+        ObjectType::Enum => transform_enum(node, source_code, diagnostics)
+            .map(Object::Enum)
+            .into_iter()
+            .collect(),
     }
 }
 
@@ -1103,8 +1104,7 @@ fn transform_field(
         diagnostics.add(unexpected_entries);
     }
 
-    let (base_type, mut field_conversion) =
-        parse_field_type(node.ty(), source_code.clone(), diagnostics);
+    let (base_type, mut field_conversion) = parse_type(node.ty(), source_code.clone(), diagnostics);
 
     if let Some(variants) = node.children() {
         if let Some(field_conversion) = field_conversion.as_mut() {
@@ -1150,7 +1150,195 @@ fn transform_field(
     )
 }
 
-fn parse_field_type(
+fn transform_enum(
+    node: &KdlNode,
+    source_code: NamedSourceCode,
+    diagnostics: &mut Diagnostics,
+) -> Option<Enum> {
+    let mut unexpected_entries = errors::UnexpectedEntries {
+        source_code: source_code.clone(),
+        superfluous_entries: Vec::new(),
+        unexpected_name_entries: Vec::new(),
+        not_anonymous_entries: Vec::new(),
+        unexpected_anonymous_entries: Vec::new(),
+    };
+
+    let (base_type, field_conversion) = parse_type(node.ty(), source_code.clone(), diagnostics);
+
+    if let Some(field_conversion) = field_conversion {
+        diagnostics.add(errors::ConversionNotAllowedOnEnum {
+            source_code: source_code.clone(),
+            existing_ty: node.ty().unwrap().span(),
+            field_conversion,
+        });
+    }
+
+    let mut enum_value = Enum::new(
+        parse_description(node),
+        String::new(),
+        node.children()
+            .map(|children| transform_enum_variants(children, source_code.clone(), diagnostics))
+            .unwrap_or_default(),
+        base_type,
+        None,
+    );
+
+    let mut name: Option<&kdl::KdlEntry> = None;
+    let mut size_bits: Option<&kdl::KdlEntry> = None;
+
+    for (i, entry) in node.entries().iter().enumerate() {
+        match entry.name().map(|n| n.value()) {
+            Some("size-bits") => {
+                if let Some(size_bits) = size_bits {
+                    diagnostics.add(errors::DuplicateEntry {
+                        source_code: source_code.clone(),
+                        duplicate: entry.span(),
+                        original: size_bits.span(),
+                    });
+                } else {
+                    size_bits = Some(entry);
+                }
+            }
+            Some(_) => {
+                unexpected_entries
+                    .unexpected_name_entries
+                    .push(entry.span());
+            }
+            None => {
+                if i == 0 {
+                    name = Some(entry);
+                } else {
+                    unexpected_entries
+                        .unexpected_anonymous_entries
+                        .push(entry.span());
+                }
+            }
+        }
+    }
+
+    if !unexpected_entries.is_empty() {
+        diagnostics.add(unexpected_entries);
+    }
+
+    if let Some(name) = name {
+        match name.value() {
+            KdlValue::String(name) => {
+                enum_value.name = name.clone();
+            }
+            _ => {
+                diagnostics.add(errors::UnexpectedType {
+                    source_code: source_code.clone(),
+                    value_name: name.span(),
+                    expected_type: "string",
+                });
+            }
+        }
+    } else {
+        diagnostics.add(errors::MissingObjectName {
+            source_code: source_code.clone(),
+            object_keyword: node.name().span(),
+            found_instead: None,
+            object_type: node.name().value().into(),
+        });
+    }
+
+    if let Some(size_bits) = size_bits {
+        match size_bits.value() {
+            KdlValue::Integer(sb) if (0..=u32::MAX as i128).contains(sb) => {
+                enum_value.size_bits = Some(*sb as u32);
+            }
+            KdlValue::Integer(_) => {
+                diagnostics.add(errors::ValueOutOfRange {
+                    source_code: source_code.clone(),
+                    value: size_bits.span(),
+                    context: Some("size-bits is encoded as a u32"),
+                    range: "0..2^32",
+                });
+            }
+            _ => {
+                diagnostics.add(errors::UnexpectedType {
+                    source_code: source_code.clone(),
+                    value_name: size_bits.span(),
+                    expected_type: "integer",
+                });
+            }
+        }
+    }
+
+    if name.is_some() {
+        Some(enum_value)
+    } else {
+        None
+    }
+}
+
+fn transform_enum_variants(
+    nodes: &KdlDocument,
+    source_code: NamedSourceCode,
+    diagnostics: &mut Diagnostics,
+) -> Vec<EnumVariant> {
+    nodes
+        .nodes()
+        .iter()
+        .filter_map(|node| {
+            let variant_name = node.name();
+
+            let variant_value = match node.entries().len() {
+                0 => None,
+                1 if node.entries()[0].name().is_none() => Some(&node.entries()[0]),
+                _ => {
+                    diagnostics.add(errors::UnexpectedEntries {
+                        source_code: source_code.clone(),
+                        superfluous_entries: node
+                            .entries()
+                            .get(1..)
+                            .map(|superfluous_entries| {
+                                superfluous_entries
+                                    .iter()
+                                    .map(|entry| entry.span())
+                                    .collect()
+                            })
+                            .unwrap_or_default(),
+                        unexpected_name_entries: Vec::new(),
+                        not_anonymous_entries: node
+                            .entries()
+                            .first()
+                            .into_iter()
+                            .filter_map(|entry| entry.name().is_some().then_some(entry.span()))
+                            .collect(),
+                        unexpected_anonymous_entries: Vec::new(),
+                    });
+                    Some(&node.entries()[0])
+                }
+            };
+
+            let variant_value = match variant_value {
+                Some(variant_value) => match variant_value.value() {
+                    KdlValue::String(val) if val == "default" => EnumValue::Default,
+                    KdlValue::String(val) if val == "catch-all" => EnumValue::CatchAll,
+                    KdlValue::Integer(val) => EnumValue::Specified(*val),
+                    _ => {
+                        diagnostics.add(errors::UnexpectedValue {
+                            source_code: source_code.clone(),
+                            value_name: variant_value.span(),
+                            expected_values: vec!["", "<integer>", "default", "catch-all"],
+                        });
+                        return None;
+                    }
+                },
+                None => EnumValue::Unspecified,
+            };
+
+            Some(EnumVariant {
+                description: parse_description(node),
+                name: variant_name.value().to_string(),
+                value: variant_value,
+            })
+        })
+        .collect()
+}
+
+fn parse_type(
     ty: Option<&KdlIdentifier>,
     source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
@@ -1711,70 +1899,4 @@ impl FromStr for ObjectType {
 
         Err(())
     }
-}
-
-fn transform_enum_variants(
-    nodes: &KdlDocument,
-    source_code: NamedSourceCode,
-    diagnostics: &mut Diagnostics,
-) -> Vec<EnumVariant> {
-    nodes
-        .nodes()
-        .iter()
-        .filter_map(|node| {
-            let variant_name = node.name();
-
-            let variant_value = match node.entries().len() {
-                0 => None,
-                1 if node.entries()[0].name().is_none() => Some(&node.entries()[0]),
-                _ => {
-                    diagnostics.add(errors::UnexpectedEntries {
-                        source_code: source_code.clone(),
-                        superfluous_entries: node
-                            .entries()
-                            .get(1..)
-                            .map(|superfluous_entries| {
-                                superfluous_entries
-                                    .iter()
-                                    .map(|entry| entry.span())
-                                    .collect()
-                            })
-                            .unwrap_or_default(),
-                        unexpected_name_entries: Vec::new(),
-                        not_anonymous_entries: node
-                            .entries()
-                            .first()
-                            .into_iter()
-                            .filter_map(|entry| entry.name().is_some().then_some(entry.span()))
-                            .collect(),
-                        unexpected_anonymous_entries: Vec::new(),
-                    });
-                    Some(&node.entries()[0])
-                }
-            };
-
-            let variant_value = match variant_value {
-                Some(variant_value) => match variant_value.value() {
-                    KdlValue::String(val) if val == "default" => EnumValue::Default,
-                    KdlValue::String(val) if val == "catch-all" => EnumValue::CatchAll,
-                    KdlValue::Integer(val) => EnumValue::Specified(*val),
-                    _ => {
-                        diagnostics.add(errors::UnexpectedValue {
-                            source_code: source_code.clone(),
-                            value_name: variant_value.span(),
-                            expected_values: vec!["", "<integer>", "default", "catch-all"],
-                        });
-                        return None;
-                    }
-                },
-                None => EnumValue::Unspecified,
-            };
-
-            Some(EnumVariant {
-                description: parse_description(node),
-                name: variant_name.value().to_string(),
-                value: variant_value,
-            })
-        })
-        .collect()
 }

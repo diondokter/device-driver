@@ -11,29 +11,6 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
         let object_name = object.name().to_string();
 
         if let Object::Enum(enum_value) = object {
-            let size_bits = match enum_value.size_bits {
-                None => {
-                    let size_bits = match enum_value.base_type {
-                        BaseType::Unspecified | BaseType::Uint | BaseType::Int => bail!(
-                            "Enum `{}` has an unknown size-bits. Either specify a fixed integer or bool as the base type or specify the size-bits directly",
-                            object_name
-                        ),
-                        BaseType::Bool => 1,
-                        BaseType::FixedSize(integer) => integer.size_bits(),
-                    };
-                    enum_value.size_bits = Some(size_bits);
-                    size_bits
-                }
-                Some(size_bits) => size_bits,
-            };
-
-            let highest_value = (1 << size_bits) - 1;
-
-            ensure!(
-                size_bits <= 128,
-                "Enum `{object_name}` is too big to fit in 128-bit",
-            );
-
             ensure!(
                 !enum_value.variants.is_empty(),
                 "Enum `{object_name}` has no variants which is not allowed. Add at least one variant",
@@ -70,6 +47,78 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
                 duplicates.is_empty(),
                 "Duplicated assigned value(s) for enum `{object_name}`: {duplicates:?}",
             );
+
+            let seen_min = seen_values
+                .iter()
+                .map(|(val, _)| *val)
+                .min()
+                .unwrap_or_default();
+            let seen_max = seen_values
+                .iter()
+                .map(|(val, _)| *val)
+                .max()
+                .unwrap_or_default();
+
+            let base_type_integer = match enum_value.base_type {
+                BaseType::Unspecified => Integer::find_smallest(
+                    seen_min,
+                    seen_max,
+                    enum_value.size_bits.unwrap_or_default(),
+                ),
+                BaseType::Bool => {
+                    bail!("Enum `{object_name}` uses a bool as base type, which is not allowed")
+                }
+                BaseType::Uint => {
+                    let integer = Integer::find_smallest(
+                        seen_min,
+                        seen_max,
+                        enum_value.size_bits.unwrap_or_default(),
+                    );
+                    ensure!(
+                        integer.map(|i| !i.is_signed()).unwrap_or(true),
+                        "Enum `{object_name}` has a variant that uses a negative number, but the base type was specified as unsigned"
+                    );
+
+                    integer
+                }
+                BaseType::Int => Integer::find_smallest(
+                    seen_min.min(-1),
+                    seen_max,
+                    enum_value.size_bits.unwrap_or_default(),
+                ),
+                BaseType::FixedSize(integer) => {
+                    ensure!(
+                        integer.size_bits() <= enum_value.size_bits.unwrap_or_default(),
+                        "Enum `{object_name}` has specified a 'size-bits' that is larger than its base type. This is not allowed"
+                    );
+                    Some(integer)
+                }
+            };
+
+            let Some(base_type_integer) = base_type_integer else {
+                bail!(
+                    "No valid base type could be selected for enum `{object_name}`. Either the specified size-bits or the variants cannot fit within any of the supported integer types"
+                )
+            };
+
+            let size_bits = match enum_value.size_bits {
+                None => {
+                    if base_type_integer.is_signed() {
+                        u32::max(
+                            i128::BITS - seen_min.unsigned_abs().leading_zeros(),
+                            i128::BITS - seen_max.unsigned_abs().leading_zeros(),
+                        ) + seen_min.is_negative() as u32
+                    } else {
+                        i128::BITS - seen_max.leading_zeros()
+                    }
+                }
+                Some(size_bits) => size_bits,
+            };
+
+            enum_value.base_type = BaseType::FixedSize(base_type_integer);
+            enum_value.size_bits = Some(size_bits);
+
+            let highest_value = (1 << size_bits) - 1;
 
             // Check if all bits are covered or if there's a fallback variant
             let has_fallback = enum_value
@@ -116,44 +165,6 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
                     < 2,
                 "More than one catch all defined on enum `{object_name}`",
             );
-
-            let seen_min = seen_values
-                .iter()
-                .map(|(val, _)| *val)
-                .min()
-                .unwrap_or_default();
-            let seen_max = seen_values
-                .iter()
-                .map(|(val, _)| *val)
-                .max()
-                .unwrap_or_default();
-
-            // Specify the enum basetype into a fixed size integer
-            enum_value.base_type = match enum_value.base_type {
-                BaseType::Bool => {
-                    bail!("Enum `{object_name}` has a bool base type. Only integers are supported")
-                }
-                BaseType::Uint | BaseType::Unspecified => {
-                    match Integer::find_smallest(seen_min, seen_max, size_bits) {
-                        Some(integer) if integer.is_signed() => bail!(
-                            "Enum `{object_name}` has a uint base type, but also has a negative variant"
-                        ),
-                        Some(integer) => BaseType::FixedSize(integer),
-                        None => bail!(
-                            "Enum `{object_name}` has a variant that doesn't fit in any of the supported unsigned integer types. Min: {seen_min}, max: {seen_max}"
-                        ),
-                    }
-                }
-                BaseType::Int => {
-                    match Integer::find_smallest(seen_min.min(-1), seen_max, size_bits) {
-                        Some(integer) => BaseType::FixedSize(integer),
-                        None => bail!(
-                            "Enum `{object_name}` has a variant that doesn't fit in any of the supported signed integer types. Min: {seen_min}, max: {seen_max}"
-                        ),
-                    }
-                }
-                BaseType::FixedSize(integer) => BaseType::FixedSize(integer),
-            };
         }
 
         Ok(())

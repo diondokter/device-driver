@@ -117,7 +117,7 @@ fn test_basic_read_modify_write() {
 
     assert_eq!(
         device.foo().read().unwrap().convert_custom_try(),
-        Result::<_, u8>::Ok(MyTryEnum::C)
+        Result::<_, ConversionError<u8>>::Ok(MyTryEnum::C)
     );
     assert_eq!(device.foo().read().unwrap().convert_custom(), MyEnum::D);
     assert_eq!(

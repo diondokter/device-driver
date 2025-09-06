@@ -2,7 +2,7 @@ use itertools::Itertools;
 use miette::{Diagnostic, SourceSpan};
 use thiserror::Error;
 
-use crate::reporting::NamedSourceCode;
+use crate::{mir::FieldConversion, reporting::NamedSourceCode};
 
 #[derive(Error, Debug, Diagnostic)]
 #[error("Missing object name")]
@@ -233,4 +233,35 @@ pub struct InlineEnumDefinitionWithoutName {
     pub field_name: SourceSpan,
     #[label("A type specifier already exists, but misses the conversion")]
     pub existing_ty: Option<SourceSpan>,
+}
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Conversion not allowed on enum")]
+#[diagnostic(
+    help(
+        "Enum definitions don't support the conversion syntax. Just specify the base type and remove the `:{}`",
+        self.conversion_text()
+    ),
+    severity(Error)
+)]
+pub struct ConversionNotAllowedOnEnum {
+    #[source_code]
+    pub source_code: NamedSourceCode,
+    #[label("Type specifier contains conversion")]
+    pub existing_ty: SourceSpan,
+    pub field_conversion: FieldConversion,
+}
+
+impl ConversionNotAllowedOnEnum {
+    fn conversion_text(&self) -> String {
+        format!(
+            "{}{}",
+            self.field_conversion.type_name,
+            if self.field_conversion.use_try {
+                "?"
+            } else {
+                ""
+            }
+        )
+    }
 }
