@@ -16,7 +16,7 @@ readme = "README.md"
 proc-macro = true
 
 [dependencies]
-device-driver-generation = { version = "=1.0.7", path = "../generation", default-features = false }
+device-driver-compiler = { version = "=1.0.7", path = "../compiler", default-features = false }
 syn = { version = "2.0" }
 proc-macro2 = { version = "1.0.101", features = ["span-locations"] }
 rustversion = "1.0"

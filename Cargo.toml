@@ -2,7 +2,7 @@
 resolver = "2"
 members = [
     "device-driver",
-    "generation",
+    "compiler",
     "macros",
     "cli",
     "tests",

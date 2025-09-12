@@ -487,7 +487,7 @@ mod tests {
     }
 
     #[test]
-    fn wrong_num_bytes_arry() {
+    fn wrong_num_bytes_array() {
         let mut start_mir = Device {
             name: None,
             global_config: Default::default(),
