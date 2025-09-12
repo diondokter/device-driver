@@ -1,4 +1,4 @@
-# Device driver generation [![crates.io](https://img.shields.io/crates/v/device-driver-generation.svg)](https://crates.io/crates/device-driver-generation) [![Documentation](https://docs.rs/device-driver-generation/badge.svg)](https://docs.rs/device-driver-generation)
+# Device driver compiler [![crates.io](https://img.shields.io/crates/v/device-driver-compiler.svg)](https://crates.io/crates/device-driver-compiler) [![Documentation](https://docs.rs/device-driver-compiler/badge.svg)](https://docs.rs/device-driver-compiler)
 
 > A toolkit to write better device drivers, faster.
 

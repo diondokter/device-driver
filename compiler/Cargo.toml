@@ -1,5 +1,5 @@
 [package]
-name = "device-driver-generation"
+name = "device-driver-compiler"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
@@ -8,7 +8,7 @@ homepage.workspace = true
 repository.workspace = true
 keywords = ["no_std", "device", "driver", "toolkit"]
 categories = ["embedded", "hardware-support", "no-std::no-alloc", "no-std"]
-description = "Code generation for the `device-driver` crate"
+description = "Compiler library for the `device-driver` crate"
 readme = "README.md"
 
 [dependencies]

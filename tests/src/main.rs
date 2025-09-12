@@ -7,7 +7,7 @@ fn main() {
         .subcommand(Command::new("accept").about("Accept all changes and update the output files"))
         .get_matches();
 
-    device_driver_generation::reporting::set_miette_hook(false);
+    device_driver_compiler::reporting::set_miette_hook(false);
 
     match matches.subcommand_name() {
         Some("accept") => accept(),
@@ -52,7 +52,7 @@ fn accept() {
             let (transformed, diagnostics) = match input_extension.deref() {
                 "kdl" => {
                     let (transformed, diagnostics) =
-                        device_driver_generation::transform_kdl(&input, None, &input_path);
+                        device_driver_compiler::transform_kdl(&input, None, &input_path);
                     (transformed, diagnostics.to_string())
                 }
                 e => panic!("Unrecognized extension: {e:?}"),

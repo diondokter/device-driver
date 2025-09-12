@@ -1,5 +1,5 @@
 use clap::Parser;
-use device_driver_generation::reporting::Diagnostics;
+use device_driver_compiler::reporting::Diagnostics;
 use std::{
     error::Error,
     io::Write,
@@ -24,7 +24,7 @@ struct Args {
 fn main() -> Result<(), Box<dyn Error>> {
     let args = Args::parse();
 
-    device_driver_generation::reporting::set_miette_hook(true);
+    device_driver_compiler::reporting::set_miette_hook(true);
 
     let extension = args
         .manifest_path
@@ -104,7 +104,7 @@ impl GenType {
     ) -> Result<(String, Diagnostics), Diagnostics> {
         match self {
             GenType::Rust => match manifest_type {
-                "kdl" => Ok(device_driver_generation::transform_kdl(
+                "kdl" => Ok(device_driver_compiler::transform_kdl(
                     manifest_contents,
                     None,
                     manifest_path,

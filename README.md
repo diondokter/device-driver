@@ -15,18 +15,17 @@ This toolkit consists of these parts:
 
 - `device-driver`: The main crate you as the writer of a driver should include in your project.
   It defines a set of types used by the generated code and (by default) reexports the macros.
-- `device-driver-generation`: The generation crate contains the device-driver compiler. It takes the KDL
-  input and generates the device driver.
-- `device-driver-macros`: A small frontend to the generation crate. It can take KDL or open a text file
+- `ddc`: A small command line interface that uses the compiler crate. It allows you to generate the driver in advance to reduce compile times.
+- `device-driver-compiler`: The compiler in library form. It takes the KDL input and generates the device driver.
+- `device-driver-macros`: A small frontend to the compiler crate. It can take KDL or open a text file
   and feed that to the compiler and it outputs the compiler output.
-- `device-driver-cli`: A small command line interface that uses the generation crate. It allows you to generate the driver in advance to reduce compile times.
 - `tests`: A suite of tests that presents input files and compares the known output with the generated output.
 
 ## Semver
 
 Anything that can reasonably break user code will warrant a *breaking* semver bump.
 
-The `generation`, `macros` & `tests` crates are considered internal and so might not be as strict in their semver bumps.
+The `compiler`, `macros` & `tests` crates are considered internal and so might not be as strict in their semver bumps.
 This is mostly to keep them somewhat in line with the version of the main crate.
 
 If you depend on these crates directly, please let me know! If I know those have direct users, I will be stricter with the versions.

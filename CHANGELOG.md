@@ -11,6 +11,8 @@
 - Removed the 'read_all_registers' functions and the accompanying enums
 - Updated `convert_case` to 0.8
 - Updated `defmt` to 1.0.1. The crate feature is now called `defmt` instead of `defmt-03`
+- device-driver-generation is renamed to device-driver-compiler
+- device-driver-cli's bin is renamed to `ddc`
 
 ### 1.0.7 (30-07-25)
 

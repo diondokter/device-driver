@@ -8,12 +8,16 @@ homepage.workspace = true
 repository.workspace = true
 keywords = ["device", "driver", "toolkit"]
 categories = ["embedded", "hardware-support", "development-tools"]
-description = "The command line tool for the device-driver toolkit"
+description = "The command line compiler for the device-driver toolkit"
 readme = "README.md"
-default-run = "device-driver-cli"
+default-run = "ddc"
+
+[[bin]]
+name = "ddc"
+path = "src/main.rs"
 
 [dependencies]
 anyhow = "1.0.98"
 clap = { version = "4.5.20", features = ["derive"] }
-device-driver-generation = { version = "=1.0.7", path = "../generation" }
+device-driver-compiler = { version = "=1.0.7", path = "../compiler" }
 syn = { version = "2.0" }
