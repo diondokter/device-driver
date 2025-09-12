@@ -125,7 +125,7 @@ fn format_code(input: &str) -> Result<String, anyhow::Error> {
     let status = child.wait()?;
     ensure!(
         status.success(),
-        "rustfmt exited unsuccesfully ({status}):\n{}",
+        "rustfmt exited unsuccessfully ({status}):\n{}",
         child
             .stderr
             .map(|mut stderr| {

@@ -45,7 +45,7 @@ fn get_block_claimed_addresses(
     current_address_offset: i64,
     name_stack: &[String],
 ) -> anyhow::Result<Vec<ClaimedAddress>> {
-    let mut claimed_adresses = Vec::new();
+    let mut claimed_addresses = Vec::new();
 
     for method in &block.methods {
         let current_address_offset =
@@ -78,7 +78,7 @@ fn get_block_claimed_addresses(
                         )])
                         .collect::<Vec<_>>();
 
-                    claimed_adresses.extend(get_block_claimed_addresses(
+                    claimed_addresses.extend(get_block_claimed_addresses(
                         device,
                         sub_block,
                         current_address_offset + i * repeat_stride,
@@ -95,7 +95,7 @@ fn get_block_claimed_addresses(
         for i in 0..repeat_count {
             use itertools::Itertools;
 
-            claimed_adresses.push(ClaimedAddress {
+            claimed_addresses.push(ClaimedAddress {
                 name: name_stack
                     .iter()
                     .cloned()
@@ -109,7 +109,7 @@ fn get_block_claimed_addresses(
         }
     }
 
-    Ok(claimed_adresses)
+    Ok(claimed_addresses)
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]

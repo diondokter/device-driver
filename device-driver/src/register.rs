@@ -19,7 +19,7 @@ pub trait RegisterInterface {
         data: &[u8],
     ) -> Result<(), Self::Error>;
 
-    /// Read the register located at the given addres to the given data slice
+    /// Read the register located at the given address to the given data slice
     fn read_register(
         &mut self,
         address: Self::AddressType,
@@ -45,7 +45,7 @@ pub trait AsyncRegisterInterface {
         data: &[u8],
     ) -> Result<(), Self::Error>;
 
-    /// Read the register located at the given addres to the given data slice
+    /// Read the register located at the given address to the given data slice
     async fn read_register(
         &mut self,
         address: Self::AddressType,
