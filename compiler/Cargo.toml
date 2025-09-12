@@ -20,7 +20,7 @@ quote = "1.0.33"
 syn = { version = "2.0", features = ["extra-traits"] }
 bitvec = "1.0.1"
 askama = { version = "0.14.0", default-features = false, features = ["derive", "alloc"] }
-kdl = "6.3.4"
+kdl = "6.5.0"
 miette = { version = "7.6.0", features = ["fancy"] }
 thiserror = "2.0.12"
 strum = { version = "0.27.1", features = ["derive"] }
