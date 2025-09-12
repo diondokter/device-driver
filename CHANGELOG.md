@@ -13,6 +13,7 @@
 - Updated `defmt` to 1.0.1. The crate feature is now called `defmt` instead of `defmt-03`
 - device-driver-generation is renamed to device-driver-compiler
 - device-driver-cli's bin is renamed to `ddc`
+- Changed the cli/ddc arguments
 
 ### 1.0.7 (30-07-25)
 

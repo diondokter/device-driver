@@ -17,5 +17,5 @@ Install with:
 
 Then check out the options with:
 ```sh
-device-driver-cli --help
+ddc --help
 ```

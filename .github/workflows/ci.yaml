@@ -48,4 +48,4 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - uses: dtolnay/rust-toolchain@stable
-    - run: cargo run -- --manifest device-driver/tests/basic-register.kdl --output generated.rs
+    - run: cargo run -- -o generated.rs device-driver/tests/basic-register.kdl
