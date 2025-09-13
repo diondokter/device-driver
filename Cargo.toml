@@ -6,6 +6,7 @@ members = [
     "macros",
     "cli",
     "tests",
+    "website/wasm",
 ]
 
 package.version = "1.0.7"

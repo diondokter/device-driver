@@ -53,6 +53,14 @@ impl Diagnostics {
 
         Ok(())
     }
+
+    pub fn print_to_fmt<W: std::fmt::Write>(&self, mut writer: W) -> std::fmt::Result {
+        for report in &self.reports {
+            writeln!(writer, "{report:?}")?;
+        }
+
+        Ok(())
+    }
 }
 
 impl Display for Diagnostics {
