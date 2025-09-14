@@ -1,8 +1,23 @@
 <html>
-  <head>
-    <meta content="text/html;charset=utf-8" http-equiv="Content-Type"/>
-  </head>
-  <body>
-    <p>TODO</p>
-  </body>
+
+<head>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
+</head>
+
+<body>
+    <textarea id="source" rows="20" cols="50">
+device Foo {
+  register-address-type u8
+
+  register Bar {
+    address 0
+    fields size-bits=8 {}
+  }
+}
+  </textarea>
+
+    <p><code id="diagnostics_output" style="font-family: Consolas; background-color: rgb(255, 192, 192);"></code></p>
+    <p><code id="code_output" style="font-family: Consolas;"></code></p>
+</body>
+
 </html>
