@@ -13,3 +13,6 @@ device-driver-compiler = { path = "../compiler", features = ["prettyplease"] }
 [patch.crates-io]
 # https://github.com/zkat/miette/pull/448
 miette = { git = "https://github.com/zkat/miette.git", rev = "a3c4ed407d975c3ae14a6f80dadeff59e8a71d15" }
+
+[profile.release]
+lto = true
