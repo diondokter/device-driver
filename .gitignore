@@ -1,9 +1,5 @@
 **/target
 Cargo.lock
 
-.idea
-.vscode/*
-!.vscode/extensions.json
-
 **/node_modules
 /dist

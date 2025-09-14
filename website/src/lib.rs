@@ -5,14 +5,16 @@ use wasm_bindgen::prelude::*;
 extern crate wasm_bindgen;
 
 #[wasm_bindgen]
-pub fn compile(input: &str) -> Output {
+pub fn compile(input: &str, chars_per_line: usize) -> Output {
     device_driver_compiler::reporting::set_miette_hook(false);
 
     let (output, diagnostics) =
         device_driver_compiler::transform_kdl(input, None, &PathBuf::from("input.kdl"));
 
     let mut diagnostics_string = String::new();
-    diagnostics.print_to_fmt(&mut diagnostics_string).unwrap();
+    diagnostics
+        .print_to_fmt(&mut diagnostics_string, Some(chars_per_line))
+        .unwrap();
 
     Output {
         code: output,
@@ -24,14 +26,4 @@ pub fn compile(input: &str) -> Output {
 pub struct Output {
     pub code: String,
     pub diagnostics: String,
-}
-
-#[wasm_bindgen]
-extern "C" {
-    fn alert(s: &str);
-}
-
-#[wasm_bindgen]
-pub fn greet(name: &str) {
-    alert(&format!("Hello, {name}!"));
 }
