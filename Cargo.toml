@@ -6,7 +6,10 @@ members = [
     "macros",
     "cli",
     "tests",
-    "website/wasm",
+]
+
+exclude = [
+    "website",
 ]
 
 package.version = "1.0.7"

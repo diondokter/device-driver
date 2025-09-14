@@ -2,6 +2,8 @@ use std::path::PathBuf;
 
 use wasm_bindgen::prelude::*;
 
+extern crate wasm_bindgen;
+
 #[wasm_bindgen]
 pub fn compile(input: &str) -> Output {
     device_driver_compiler::reporting::set_miette_hook(false);
@@ -22,4 +24,14 @@ pub fn compile(input: &str) -> Output {
 pub struct Output {
     pub code: String,
     pub diagnostics: String,
+}
+
+#[wasm_bindgen]
+extern "C" {
+    fn alert(s: &str);
+}
+
+#[wasm_bindgen]
+pub fn greet(name: &str) {
+    alert(&format!("Hello, {name}!"));
 }
