@@ -33,7 +33,7 @@ function run_compile(text, output_editor) {
     var output = wasm.compile(text, diagnostics_chars_per_line());
 
     output_editor.getModel().setValue(output.code);
-    diagnostics.innerText = output.diagnostics;
+    diagnostics.innerHTML = replace_paths_with_links(output.diagnostics);
 }
 
 var code_editor = monaco.editor.create(document.getElementById('code-editor'), {
@@ -76,4 +76,24 @@ function diagnostics_chars_per_line() {
     const charsPerLine = Math.floor(elementWidth / charWidth);
 
     return charsPerLine;
+}
+
+/** 
+ * @param {String} diagnostics
+ * @returns {String}
+ * */
+function replace_paths_with_links(diagnostics) {
+    return diagnostics.replace(/\[.+.kdl:\d+:\d+]/gm, (path_block) => {
+        var splits = path_block.replace("]", "").split(":");
+        return `<a href="javascript:Website.then((w) => w.scroll_to(${Number.parseInt(splits[1])}, ${Number.parseInt(splits[2])}))">${path_block}<\a>`;
+    });
+}
+
+/** 
+ * @param {Number} line
+ * @param {Number} column
+ * */
+export function scroll_to(line, column) {
+    code_editor.setPosition({ lineNumber: line, column: column });
+    code_editor.focus();
 }

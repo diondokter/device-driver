@@ -9,7 +9,7 @@ module.exports = {
     entry: './index.js',
     output: {
         path: path.resolve(__dirname, '..', 'dist', 'website'),
-        filename: '[name].bundle.js'
+        library: 'Website',
     },
     plugins: [
         new HtmlWebpackPlugin({
@@ -22,8 +22,8 @@ module.exports = {
             patterns: [{ from: 'assets', to: 'assets' }]
         }),
         new MonacoWebpackPlugin({
-			languages: ['kdl', 'rust']
-		}),
+            languages: ['kdl', 'rust']
+        }),
     ],
     module: {
         rules: [
