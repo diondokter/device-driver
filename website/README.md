@@ -1,3 +1,6 @@
-To build, run the `build-website.ps1` in the root of the repo.
+To build, run `npm run build` in this folder.
 
-Then use some server (like vscode preview) to visit `static/index.html`
+To serve a dev build, run `npm run serve` in this folder.
+
+You may first need to do an `npm install` first.
+https://github.com/drager/wasm-pack also needs to be installed: `npm install -g wasm-pack`
