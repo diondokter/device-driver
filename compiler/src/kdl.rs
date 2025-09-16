@@ -1045,7 +1045,16 @@ fn transform_field(
                     if let Ok(end) = end.parse::<u32>()
                         && let Ok(start) = start.parse::<u32>()
                     {
-                        address = Some((start..end + 1, entry.span()));
+                        if end >= start {
+                            address = Some((start..end + 1, entry.span()));
+                        } else {
+                            diagnostics.add(errors::AddressWrongOrder {
+                                source_code: source_code.clone(),
+                                address_entry: entry.span(),
+                                end,
+                                start,
+                            });
+                        }
                     } else {
                         diagnostics.add(errors::BadValueFormat {
                             source_code: source_code.clone(),

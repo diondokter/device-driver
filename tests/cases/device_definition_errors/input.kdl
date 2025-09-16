@@ -145,6 +145,7 @@ device FooD6 {
         }
         out size-bits=8 {
             b @0
+            c @1:2
         }
     }
     buffer {
