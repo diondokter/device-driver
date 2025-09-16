@@ -21,7 +21,6 @@ const DEFAULT_CODE =
 }
 `
 
-const diagnostics_window = document.getElementById('diagnostics-window');
 const diagnostics = document.getElementById('diagnostics');
 
 /** 
@@ -33,7 +32,7 @@ function run_compile(text, output_editor) {
     var output = wasm.compile(text, diagnostics_chars_per_line());
 
     output_editor.getModel().setValue(output.code);
-    diagnostics.innerHTML = replace_paths_with_links(output.diagnostics);
+    diagnostics.innerHTML = replace_paths_with_links(escapeHtml(output.diagnostics));
 }
 
 var code_editor = monaco.editor.create(document.getElementById('code-editor'), {
@@ -96,4 +95,24 @@ function replace_paths_with_links(diagnostics) {
 export function scroll_to(line, column) {
     code_editor.setPosition({ lineNumber: line, column: column });
     code_editor.focus();
+}
+
+function escapeHtml(str) {
+    if (typeof str !== 'string') {
+        return '';
+    }
+
+    const escapeCharacter = (match) => {
+        switch (match) {
+            case '&': return '&amp;';
+            case '<': return '&lt;';
+            case '>': return '&gt;';
+            case '"': return '&quot;';
+            case '\'': return '&#039;';
+            case '`': return '&#096;';
+            default: return match;
+        }
+    };
+
+    return str.replace(/[&<>"'`]/g, escapeCharacter);
 }
