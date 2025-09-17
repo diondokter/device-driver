@@ -2,7 +2,7 @@
   "scripts": {
     "prebuild": "mdbook build ../book",
     "preserve": "mdbook build ../book",
-    "build": "webpack",
+    "build": "webpack --mode production",
     "serve": "webpack serve"
   },
   "devDependencies": {
