@@ -23,12 +23,12 @@ jobs:
       # Install mdBook plugins
       - run: cargo binstall mdbook-alerts --no-confirm
         
-      - run: mdbook build
-        working-directory: ./book
+      - run: npm run build
+        working-directory: ./website
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
-        if: ${{ github.ref == 'refs/heads/master' }}
+        # if: ${{ github.ref == 'refs/heads/master' }}
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./book/book
+          publish_dir: ./dist/website
