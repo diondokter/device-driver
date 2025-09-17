@@ -23,6 +23,12 @@ jobs:
       # Install mdBook plugins
       - run: cargo binstall mdbook-alerts --no-confirm
         
+      - run: npm install -g wasm-pack
+        working-directory: ./website
+
+      - run: npm install
+        working-directory: ./website
+
       - run: npm run build
         working-directory: ./website
 
