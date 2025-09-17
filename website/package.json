@@ -1,5 +1,7 @@
 {
   "scripts": {
+    "prebuild": "mdbook build ../book",
+    "preserve": "mdbook build ../book",
     "build": "webpack",
     "serve": "webpack serve"
   },

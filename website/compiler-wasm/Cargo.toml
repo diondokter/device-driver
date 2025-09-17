@@ -8,7 +8,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 wasm-bindgen = "0.2.101"
-device-driver-compiler = { path = "../compiler", features = ["prettyplease"] }
+device-driver-compiler = { path = "../../compiler", features = ["prettyplease"] }
 
 [patch.crates-io]
 # https://github.com/zkat/miette/pull/448

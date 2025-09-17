@@ -6,20 +6,32 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
 
 module.exports = {
-    entry: './index.js',
+    entry: {
+        home: './pages/home/index.js',
+        playground: './pages/playground/index.js',
+    },
     output: {
         path: path.resolve(__dirname, '..', 'dist', 'website'),
         library: 'Website',
     },
     plugins: [
         new HtmlWebpackPlugin({
-            template: 'index.html'
+            template: 'pages/home/index.html',
+            chunks: ["home"],
+        }),
+        new HtmlWebpackPlugin({
+            template: 'pages/playground/index.html',
+            filename: 'playground',
+            chunks: ["playground"],
         }),
         new WasmPackPlugin({
-            crateDirectory: __dirname
+            crateDirectory: __dirname + "/compiler-wasm"
         }),
         new CopyWebpackPlugin({
-            patterns: [{ from: 'assets', to: 'assets' }]
+            patterns: [
+                { from: 'assets', to: 'assets' },
+                { from: '../book/book', to: 'book' },
+            ]
         }),
         new MonacoWebpackPlugin({
             languages: ['kdl', 'rust']

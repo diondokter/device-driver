@@ -1,4 +1,4 @@
-import * as wasm from './pkg';
+import * as wasm from '../../compiler-wasm/pkg';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import * as KDLMonarch from './kdl.monarch'
 
