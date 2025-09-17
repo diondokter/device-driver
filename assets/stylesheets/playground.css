@@ -1,0 +1,18 @@
+.editor {
+    height: 50%;
+    width: 50%;
+    float: left;
+}
+.diagnostics-window {
+    width: 100%;
+}
+#diagnostics {
+    display: block;
+}
+pre {
+    width: 100%;
+    white-space: pre-wrap;
+}
+code {
+    font-family: Consolas,monospace;
+}
