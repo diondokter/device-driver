@@ -269,9 +269,7 @@ impl ConversionNotAllowedOnEnum {
 #[derive(Error, Debug, Diagnostic)]
 #[error("Address specified in wrong order")]
 #[diagnostic(
-    help(
-        "Addresses are specified with the high bit first and the low bit last"
-    ),
+    help("Addresses are specified with the high bit first and the low bit last"),
     severity(Error)
 )]
 pub struct AddressWrongOrder {
