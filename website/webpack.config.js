@@ -21,7 +21,7 @@ module.exports = {
         }),
         new HtmlWebpackPlugin({
             template: 'pages/playground/index.html',
-            filename: 'playground',
+            filename: 'playground/index.html',
             chunks: ["playground"],
         }),
         new WasmPackPlugin({
