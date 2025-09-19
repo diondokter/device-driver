@@ -12,8 +12,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
 
     ensure!(
         device.name.as_ref().unwrap() == &converted_driver_name,
-        "The device name must be given in PascalCase, e.g. \"{}\"",
-        converted_driver_name
+        "The device name must be given in PascalCase, e.g. \"{converted_driver_name}\"",
     );
 
     Ok(())

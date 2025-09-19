@@ -53,6 +53,22 @@ impl Diagnostics {
 
         Ok(())
     }
+
+    pub fn print_to_fmt<W: std::fmt::Write>(
+        &self,
+        mut writer: W,
+        width: Option<usize>,
+    ) -> std::fmt::Result {
+        for report in &self.reports {
+            if let Some(width) = width {
+                writeln!(writer, "{report:width$?}")?;
+            } else {
+                writeln!(writer, "{report:?}")?;
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl Display for Diagnostics {

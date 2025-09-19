@@ -265,3 +265,18 @@ impl ConversionNotAllowedOnEnum {
         )
     }
 }
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Address specified in wrong order")]
+#[diagnostic(
+    help("Addresses are specified with the high bit first and the low bit last"),
+    severity(Error)
+)]
+pub struct AddressWrongOrder {
+    #[source_code]
+    pub source_code: NamedSourceCode,
+    #[label("Wrong order, try to change to `@{}:{}`", self.start, self.end)]
+    pub address_entry: SourceSpan,
+    pub end: u32,
+    pub start: u32,
+}

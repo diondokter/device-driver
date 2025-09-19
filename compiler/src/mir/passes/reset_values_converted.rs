@@ -106,10 +106,8 @@ fn convert_reset_value(
             // Check if the value is not too big
             ensure!(
                 !array_view[size_bits as usize..].any(),
-                "The reset value of {object_type_name} `{}` has (a) bit(s) specified above the size of the register. \
-                While you can specify them, this is likely a mistake and thus not accepted. Keep the bits `{}..` all at zero",
-                object_name,
-                size_bits,
+                "The reset value of {object_type_name} `{object_name}` has (a) bit(s) specified above the size of the register. \
+                While you can specify them, this is likely a mistake and thus not accepted. Keep the bits `{size_bits}..` all at zero",
             );
 
             let mut final_array = array[..target_byte_size].to_vec();
@@ -143,19 +141,15 @@ fn convert_reset_value(
                 BitOrder::LSB0 => {
                     ensure!(
                         !array.view_bits::<Lsb0>()[size_bits as usize..].any(),
-                        "The reset value of {object_type_name} `{}` has (a) bit(s) specified above the size of the register. \
-                        While you can specify them, this is likely a mistake and thus not accepted. Keep the bits `{}..` all at zero",
-                        object_name,
-                        size_bits,
+                        "The reset value of {object_type_name} `{object_name}` has (a) bit(s) specified above the size of the register. \
+                        While you can specify them, this is likely a mistake and thus not accepted. Keep the bits `{size_bits}..` all at zero",
                     );
                 }
                 BitOrder::MSB0 => {
                     ensure!(
                         !array.view_bits::<Msb0>()[size_bits as usize..].any(),
-                        "The reset value of {object_type_name} `{}` has (a) bit(s) specified above the size of the register. \
-                        While you can specify them, this is likely a mistake and thus not accepted. Keep the bits `{}..` all at zero",
-                        object_name,
-                        size_bits,
+                        "The reset value of {object_type_name} `{object_name}` has (a) bit(s) specified above the size of the register. \
+                        While you can specify them, this is likely a mistake and thus not accepted. Keep the bits `{size_bits}..` all at zero",
                     );
                 }
             }

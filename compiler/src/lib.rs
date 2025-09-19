@@ -1,12 +1,7 @@
 #![doc = include_str!(concat!("../", env!("CARGO_PKG_README")))]
 
-use std::{
-    io::{Read, Write},
-    path::Path,
-    process::Stdio,
-};
+use std::path::Path;
 
-use anyhow::ensure;
 use convert_case::Casing;
 use itertools::Itertools;
 
@@ -89,7 +84,12 @@ fn transform_mir(mut mir: mir::Device) -> Result<String, anyhow::Error> {
     Ok(formatted_output)
 }
 
+#[cfg(not(feature = "prettyplease"))]
 fn format_code(input: &str) -> Result<String, anyhow::Error> {
+    use anyhow::ensure;
+    use std::io::{Read, Write};
+    use std::process::Stdio;
+
     let mut cmd = std::process::Command::new("rustfmt");
 
     cmd.args(["--edition", "2024"])
@@ -142,4 +142,9 @@ fn format_code(input: &str) -> Result<String, anyhow::Error> {
     };
 
     Ok(String::from_utf8(output?)?)
+}
+
+#[cfg(feature = "prettyplease")]
+fn format_code(input: &str) -> Result<String, anyhow::Error> {
+    Ok(prettyplease::unparse(&syn::parse_file(input)?))
 }

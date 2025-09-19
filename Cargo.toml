@@ -8,6 +8,10 @@ members = [
     "tests",
 ]
 
+exclude = [
+    "website",
+]
+
 package.version = "1.0.7"
 package.authors = ["Dion Dokter <diondokter@gmail.com>"]
 package.license = "MIT OR Apache-2.0"

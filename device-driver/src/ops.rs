@@ -24,7 +24,7 @@ where
         while i < end {
             let byte = unsafe { ByteO::get_byte_from_index(data, i) };
 
-            if (i % 8 == 0) & (i + 8 <= end) {
+            if i.is_multiple_of(8) & (i + 8 <= end) {
                 // We are byte aligned and have a full byte of space left
                 // Do a whole byte in one go for extra performance
                 output |= T::detruncate(byte) << (i - start);
@@ -67,7 +67,7 @@ where
         while i < end {
             let byte = unsafe { ByteO::get_byte_from_index_mut(data, i) };
 
-            if (i % 8 == 0) & (i + 8 <= end) {
+            if i.is_multiple_of(8) & (i + 8 <= end) {
                 // We are byte aligned and have a full byte of space left
                 // Do a whole byte in one go for extra performance
                 *byte = (value >> (i - start)).truncate();
@@ -117,7 +117,7 @@ where
             // Get the proper byte we should be looking at
             let byte = unsafe { ByteO::get_byte_from_index(data, i) };
 
-            if (i % 8 == 0) & (i + 8 <= end) {
+            if i.is_multiple_of(8) & (i + 8 <= end) {
                 // We are byte aligned and have a full byte of space left
                 // Do a whole byte in one go for extra performance
                 output |= T::detruncate(byte) << (i - start);
@@ -166,7 +166,7 @@ where
             // Get the proper byte we should be looking at
             let byte = unsafe { ByteO::get_byte_from_index_mut(data, i) };
 
-            if (i % 8 == 0) & (i + 8 <= end) {
+            if i.is_multiple_of(8) & (i + 8 <= end) {
                 // We are byte aligned and have a full byte of space left
                 // Do a whole byte in one go for extra performance
                 *byte = (value >> (i - start)).truncate();
