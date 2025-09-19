@@ -10,7 +10,7 @@ monaco.languages.setMonarchTokensProvider('kdl', KDLMonarch.language)
 monaco.languages.setLanguageConfiguration('kdl', KDLMonarch.config)
 
 const DEFAULT_CODE =
-`device Foo {
+    `device Foo {
     register-address-type u8
 
     /// Doc comments get reflected in the output code!
@@ -55,7 +55,7 @@ if (start_code == null) {
 }
 
 var code_editor = monaco.editor.create(document.getElementById('code-editor'), {
-    value:  start_code,
+    value: start_code,
     language: 'kdl',
     theme: 'vs-dark',
     automaticLayout: true,
@@ -79,9 +79,10 @@ const ro = new ResizeObserver(entries => {
     }
     reset_timeout = setTimeout(() => { run_compile(code_editor.getModel().getValue(), output_editor) }, 500);
 
-    on_horizontal({ movementX: 0, movementY: 0 });
+    update_grid({ movementX: 0, movementY: 0, force: true });
 });
 ro.observe(diagnostics);
+ro.observe(document.body);
 run_compile(DEFAULT_CODE, output_editor);
 
 function diagnostics_chars_per_line() {
@@ -115,6 +116,7 @@ function replace_paths_with_links(diagnostics) {
  * */
 export function scroll_to(line, column) {
     code_editor.setPosition({ lineNumber: line, column: column });
+    code_editor.revealPositionInCenterIfOutsideViewport({ lineNumber: line, column: column });
     code_editor.focus();
 }
 
@@ -149,7 +151,7 @@ vertical_separator.onpointerdown = (event) => {
     vertical_dragging = true;
 };
 var horizontal_dragging = false;
-var horizontal_offset = 0;
+var horizontal_offset = 200;
 var horizontal_separator = document.getElementById("horizontal-separator");
 horizontal_separator.onpointerdown = (event) => {
     horizontal_dragging = true;
@@ -160,22 +162,37 @@ document.addEventListener("mouseup", (event) => {
     horizontal_dragging = false;
 });
 
-function on_horizontal(event) {
-    if (vertical_dragging) {
+function update_grid(event) {
+    var force = event.force !== undefined && event.force;
+
+    if (vertical_dragging || force) {
         vertical_offset += event.movementX;
         console.log("Vertical: " + vertical_offset);
-    } 
-    if (horizontal_dragging) {
-        horizontal_offset += event.movementY;
-
-        document.body.style.gridTemplateRows = `auto calc(70% + ${horizontal_offset}px) minmax(0, 100%)`
-    } 
+    }
+    if (horizontal_dragging || force) {
+        horizontal_offset -= event.movementY;
+        horizontal_offset = clamp(horizontal_offset, 50, document.body.scrollHeight - 100);
+        document.body.style.gridTemplateRows = `auto minmax(0, 100%) ${horizontal_offset}px`
+    }
 }
 
-document.addEventListener("mousemove", on_horizontal);
+document.addEventListener("mousemove", update_grid);
 
 document.onselectstart = (event) => {
     if (vertical_dragging || horizontal_dragging) {
         event.preventDefault();
     }
+};
+
+/**
+ * Returns a number whose value is limited to the given range.
+ *
+ * @param {Number} num The input
+ * @param {Number} min The lower boundary of the output range
+ * @param {Number} max The upper boundary of the output range
+ * @returns A number in the range [min, max]
+ * @type Number
+ */
+function clamp(num, min, max) {
+    return Math.min(Math.max(num, min), max);
 };
