@@ -144,42 +144,48 @@ export function reset() {
     code_editor.setValue(DEFAULT_CODE);
 }
 
-var vertical_dragging = false;
-var vertical_offset = 0;
-var vertical_separator = document.getElementById("vertical-separator");
-vertical_separator.onpointerdown = (event) => {
-    vertical_dragging = true;
-};
 var horizontal_dragging = false;
-var horizontal_offset = 200;
+var horizontal_offset = 0.5;
 var horizontal_separator = document.getElementById("horizontal-separator");
 horizontal_separator.onpointerdown = (event) => {
     horizontal_dragging = true;
 };
+var vertical_dragging = false;
+var vertical_offset = 200;
+var vertical_separator = document.getElementById("vertical-separator");
+vertical_separator.onpointerdown = (event) => {
+    vertical_dragging = true;
+};
 
 document.addEventListener("mouseup", (event) => {
-    vertical_dragging = false;
     horizontal_dragging = false;
+    vertical_dragging = false;
 });
+
+var editor_container = document.getElementById("editor-container");
 
 function update_grid(event) {
     var force = event.force !== undefined && event.force;
 
-    if (vertical_dragging || force) {
-        vertical_offset += event.movementX;
-        console.log("Vertical: " + vertical_offset);
-    }
     if (horizontal_dragging || force) {
-        horizontal_offset -= event.movementY;
-        horizontal_offset = clamp(horizontal_offset, 50, document.body.scrollHeight - 100);
-        document.body.style.gridTemplateRows = `auto minmax(0, 100%) ${horizontal_offset}px`
+        var container_width = editor_container.scrollWidth;
+        horizontal_offset += event.movementX / container_width;
+        horizontal_offset = clamp(horizontal_offset, 0.05, 0.95);
+        editor_container.style.gridTemplateColumns = `calc(${horizontal_offset * 100}% - 2.5px) 5px auto`;
+
+        console.log("horizontal: " + horizontal_offset);
+    }
+    if (vertical_dragging || force) {
+        vertical_offset -= event.movementY;
+        vertical_offset = clamp(vertical_offset, 50, document.body.scrollHeight - 100);
+        document.body.style.gridTemplateRows = `auto minmax(0, 100%) ${vertical_offset}px`
     }
 }
 
 document.addEventListener("mousemove", update_grid);
 
 document.onselectstart = (event) => {
-    if (vertical_dragging || horizontal_dragging) {
+    if (horizontal_dragging || vertical_dragging) {
         event.preventDefault();
     }
 };
