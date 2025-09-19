@@ -366,7 +366,7 @@
  80 │         address 2
  81 │         fields size-bits=0x1_0000_0000 byte-order=BLA byte-order=BE bit-order=gkd bit-order=msb0 allow-bit-overlap allow-bit-overlap=#false {
     ·                                        ───────┬──────
-    ·                                               ╰── Expected one of these values: `LSB0`, `MSB0`
+    ·                                               ╰── Expected one of these values: `LE`, `BE`
  82 │ 
     ╰────
 
@@ -375,7 +375,7 @@
  80 │         address 2
  81 │         fields size-bits=0x1_0000_0000 byte-order=BLA byte-order=BE bit-order=gkd bit-order=msb0 allow-bit-overlap allow-bit-overlap=#false {
     ·                                                                     ──────┬──────
-    ·                                                                           ╰── Expected one of these values: `LE`, `BE`
+    ·                                                                           ╰── Expected one of these values: `LSB0`, `MSB0`
  82 │ 
     ╰────
 
