@@ -3,29 +3,33 @@ body {
     margin: 0px;
     color: #dcdcdc;
     font-family: Consolas, sans-serif;
+    display: grid;
+    height: 100%;
+    grid-template-rows: auto 70% minmax(0, 100%);
+    overflow: hidden;
 }
 
 .editor-container {
-    height: 50%;
     width: 100%;
     background-color: #1e1e1e;
     clear: both;
+    display: grid;
+    grid-template-columns: calc(50% - 2.5px) 5px calc(50% - 2.5px);
+    grid-template-rows: calc(100% - 5px) 5px;
 }
 
 #code-editor,
 #output-editor {
-    height: calc(100% - 5px);
-    float: left;
     margin-top: 5px;
 }
 
-#code-editor {
+/* #code-editor {
     width: calc(50% - 2.5px);
 }
 
 #output-editor {
     width: calc(50% - 2.5px);
-}
+} */
 
 .separator {
     background-color: black;
@@ -37,27 +41,20 @@ body {
 
 .separator:hover {
     background-color: #626262;
-    cursor: grabbing;
 }
 
 .separator:active {
     cursor: grabbing;
 }
 
-#vertical-separator {
-    width: 5px;
-    height: 100%;
-    float: left;
-}
 
 #horizontal-separator {
-    height: 5px;
-    width: 100%;
-    clear: both;
+    grid-column: 1 / 4;
 }
 
 .diagnostics-window {
     width: 100%;
+    overflow: auto;
 }
 
 #diagnostics {
