@@ -45,10 +45,17 @@ function run_compile(text, output_editor) {
 
     output_editor.getModel().setValue(output.code);
     diagnostics.innerHTML = replace_paths_with_links(escapeHtml(output.diagnostics));
+
+    localStorage.setItem("code-session", text);
+}
+
+var start_code = localStorage.getItem("code-session");
+if (start_code == null) {
+    start_code = DEFAULT_CODE;
 }
 
 var code_editor = monaco.editor.create(document.getElementById('code-editor'), {
-    value: DEFAULT_CODE,
+    value:  start_code,
     language: 'kdl',
     theme: 'vs-dark',
     automaticLayout: true,
