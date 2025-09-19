@@ -5,7 +5,7 @@ body {
     font-family: Consolas, sans-serif;
     display: grid;
     height: 100%;
-    grid-template-rows: auto 70% minmax(0, 100%);
+    grid-template-rows: auto minmax(0, 100%) 200px;
     overflow: hidden;
 }
 
