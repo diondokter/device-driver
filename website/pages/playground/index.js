@@ -103,7 +103,7 @@ function diagnostics_chars_per_line() {
 function replace_paths_with_links(diagnostics) {
     return diagnostics.replace(/\[.+.kdl:\d+:\d+]/gm, (path_block) => {
         var splits = path_block.replace("]", "").split(":");
-        return `<a href="javascript:Website.then((w) => w.scroll_to(${Number.parseInt(splits[1])}, ${Number.parseInt(splits[2])}))">${path_block}<\a>`;
+        return `<a href="javascript:Website.then((w) => w.scroll_to(${Number.parseInt(splits[1])}, ${Number.parseInt(splits[2])}))">${path_block}</a>`;
     });
 }
 

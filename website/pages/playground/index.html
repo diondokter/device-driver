@@ -6,10 +6,20 @@
 </head>
 
 <body>
-    <div id="code-editor" class="editor"></div>
-    <div id="output-editor" class="editor"></div>
+    <ul id="header">
+        &emsp;Device-driver&emsp;
+        <li>Book</li>
+        <li style="float:right">Reset</li>
+    </ul>
 
-    <div class="diagnostics-window" style="clear:both">
+    <div class="editor-container">
+        <div id="code-editor"></div>
+        <div id="vertical-separator" class="separator"></div>
+        <div id="output-editor"></div>
+        <div id="horizontal-separator" class="separator"></div>
+    </div>
+
+    <div class="diagnostics-window">
         <pre><code id="diagnostics"></code></pre>
     </div>
 </body>
