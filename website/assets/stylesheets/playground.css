@@ -90,7 +90,6 @@ code {
     background-color: #41121a;
     /* Green */
     border: none;
-    padding: 10px 32px;
     text-align: center;
     text-decoration: none;
     display: inline-block;
@@ -98,6 +97,7 @@ code {
     color: #dcdcdc;
     border-radius: 4px;
     transition-duration: 0.1s;
+    cursor: pointer;
 }
 
 #header li:hover {
@@ -106,4 +106,14 @@ code {
 
 #header li:active {
     background-color: #372327;
+}
+
+#header li a {
+    display: block;
+    padding: 10px 32px;
+}
+
+#header a {
+    color: inherit;
+    text-decoration: inherit;
 }

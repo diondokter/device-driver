@@ -135,3 +135,7 @@ function escapeHtml(str) {
 
     return str.replace(/[&<>"'`]/g, escapeCharacter);
 }
+
+export function reset() {
+    code_editor.setValue(DEFAULT_CODE);
+}
