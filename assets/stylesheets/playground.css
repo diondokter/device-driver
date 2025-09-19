@@ -9,12 +9,12 @@ body {
     overflow: hidden;
 }
 
-.editor-container {
+#editor-container {
     width: 100%;
     background-color: #1e1e1e;
     clear: both;
     display: grid;
-    grid-template-columns: 1fr 5px 1fr;
+    grid-template-columns: calc(50% - 2.5px) 5px auto;
     grid-template-rows: 1fr 5px;
 }
 
@@ -42,7 +42,7 @@ body {
 }
 
 
-#horizontal-separator {
+#vertical-separator {
     grid-column: 1 / 4;
 }
 
