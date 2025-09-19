@@ -14,22 +14,16 @@ body {
     background-color: #1e1e1e;
     clear: both;
     display: grid;
-    grid-template-columns: calc(50% - 2.5px) 5px calc(50% - 2.5px);
-    grid-template-rows: calc(100% - 5px) 5px;
+    grid-template-columns: 1fr 5px 1fr;
+    grid-template-rows: 1fr 5px;
 }
 
 #code-editor,
 #output-editor {
     margin-top: 5px;
+    min-width: 0;
+    min-height: 0;
 }
-
-/* #code-editor {
-    width: calc(50% - 2.5px);
-}
-
-#output-editor {
-    width: calc(50% - 2.5px);
-} */
 
 .separator {
     background-color: black;

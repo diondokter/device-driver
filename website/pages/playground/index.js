@@ -78,6 +78,8 @@ const ro = new ResizeObserver(entries => {
         clearTimeout(reset_timeout);
     }
     reset_timeout = setTimeout(() => { run_compile(code_editor.getModel().getValue(), output_editor) }, 500);
+
+    on_horizontal({ movementX: 0, movementY: 0 });
 });
 ro.observe(diagnostics);
 run_compile(DEFAULT_CODE, output_editor);
@@ -139,3 +141,41 @@ function escapeHtml(str) {
 export function reset() {
     code_editor.setValue(DEFAULT_CODE);
 }
+
+var vertical_dragging = false;
+var vertical_offset = 0;
+var vertical_separator = document.getElementById("vertical-separator");
+vertical_separator.onpointerdown = (event) => {
+    vertical_dragging = true;
+};
+var horizontal_dragging = false;
+var horizontal_offset = 0;
+var horizontal_separator = document.getElementById("horizontal-separator");
+horizontal_separator.onpointerdown = (event) => {
+    horizontal_dragging = true;
+};
+
+document.addEventListener("mouseup", (event) => {
+    vertical_dragging = false;
+    horizontal_dragging = false;
+});
+
+function on_horizontal(event) {
+    if (vertical_dragging) {
+        vertical_offset += event.movementX;
+        console.log("Vertical: " + vertical_offset);
+    } 
+    if (horizontal_dragging) {
+        horizontal_offset += event.movementY;
+
+        document.body.style.gridTemplateRows = `auto calc(70% + ${horizontal_offset}px) minmax(0, 100%)`
+    } 
+}
+
+document.addEventListener("mousemove", on_horizontal);
+
+document.onselectstart = (event) => {
+    if (vertical_dragging || horizontal_dragging) {
+        event.preventDefault();
+    }
+};
