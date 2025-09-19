@@ -928,7 +928,7 @@ fn transform_field_set(
                     diagnostics.add(errors::UnexpectedValue {
                         source_code: source_code.clone(),
                         value_name: byte_order.span(),
-                        expected_values: BitOrder::VARIANTS.to_vec(),
+                        expected_values: ByteOrder::VARIANTS.to_vec(),
                     });
                 }
             },
@@ -952,7 +952,7 @@ fn transform_field_set(
                     diagnostics.add(errors::UnexpectedValue {
                         source_code: source_code.clone(),
                         value_name: bit_order.span(),
-                        expected_values: ByteOrder::VARIANTS.to_vec(),
+                        expected_values: BitOrder::VARIANTS.to_vec(),
                     });
                 }
             },
