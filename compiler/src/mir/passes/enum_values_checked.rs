@@ -1,12 +1,12 @@
-use anyhow::{bail, ensure};
 use itertools::Itertools;
+use miette::{bail, ensure};
 
 use crate::mir::{BaseType, Device, EnumGenerationStyle, EnumValue, Integer, Object, Unique};
 
 use super::recurse_objects_mut;
 
 /// Checks if enums are fully specified and determines the generation style
-pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
+pub fn run_pass(device: &mut Device) -> miette::Result<()> {
     recurse_objects_mut(&mut device.objects, &mut |object| {
         let object_name = object.name().to_string();
 

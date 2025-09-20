@@ -1,11 +1,11 @@
-use anyhow::ensure;
+use miette::ensure;
 
 use crate::mir::{Device, Object};
 
 use super::find_min_max_addresses;
 
 /// Checks if the various address types can fully contain the min and max addresses of the types of objects they are for
-pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
+pub fn run_pass(device: &mut Device) -> miette::Result<()> {
     if let Some(register_address_type) = device.global_config.register_address_type {
         let (min_address, max_address) = find_min_max_addresses(&device.objects, |o| {
             matches!(o, Object::Block(_) | Object::Register(_))

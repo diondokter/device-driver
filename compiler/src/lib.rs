@@ -60,7 +60,7 @@ pub fn transform_kdl(
     (output, reports)
 }
 
-fn transform_mir(mut mir: mir::Device) -> Result<String, anyhow::Error> {
+fn transform_mir(mut mir: mir::Device) -> Result<String, miette::Error> {
     // Run the MIR passes
     mir::passes::run_passes(&mut mir)?;
 
@@ -85,8 +85,8 @@ fn transform_mir(mut mir: mir::Device) -> Result<String, anyhow::Error> {
 }
 
 #[cfg(not(feature = "prettyplease"))]
-fn format_code(input: &str) -> Result<String, anyhow::Error> {
-    use anyhow::ensure;
+fn format_code(input: &str) -> Result<String, miette::Error> {
+    use miette::{IntoDiagnostic, ensure};
     use std::io::{Read, Write};
     use std::process::Stdio;
 
@@ -99,7 +99,7 @@ fn format_code(input: &str) -> Result<String, anyhow::Error> {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
-    let mut child = cmd.spawn()?;
+    let mut child = cmd.spawn().into_diagnostic()?;
     let mut child_stdin = child.stdin.take().unwrap();
     let mut child_stdout = child.stdout.take().unwrap();
 
@@ -112,17 +112,19 @@ fn format_code(input: &str) -> Result<String, anyhow::Error> {
             child_stdin.flush().unwrap();
             drop(child_stdin);
         });
-        let handle: std::thread::ScopedJoinHandle<'_, Result<Vec<u8>, anyhow::Error>> =
+        let handle: std::thread::ScopedJoinHandle<'_, Result<Vec<u8>, miette::Error>> =
             s.spawn(|| {
+                use miette::IntoDiagnostic;
+
                 let mut output = Vec::new();
-                child_stdout.read_to_end(&mut output)?;
+                child_stdout.read_to_end(&mut output).into_diagnostic()?;
                 Ok(output)
             });
 
         handle.join()
     });
 
-    let status = child.wait()?;
+    let status = child.wait().into_diagnostic()?;
     ensure!(
         status.success(),
         "rustfmt exited unsuccessfully ({status}):\n{}",
@@ -141,10 +143,10 @@ fn format_code(input: &str) -> Result<String, anyhow::Error> {
         Err(e) => std::panic::resume_unwind(e),
     };
 
-    Ok(String::from_utf8(output?)?)
+    Ok(String::from_utf8(output?).into_diagnostic()?)
 }
 
 #[cfg(feature = "prettyplease")]
-fn format_code(input: &str) -> Result<String, anyhow::Error> {
+fn format_code(input: &str) -> Result<String, miette::Error> {
     Ok(prettyplease::unparse(&syn::parse_file(input)?))
 }
