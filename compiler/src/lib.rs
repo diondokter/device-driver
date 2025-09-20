@@ -143,10 +143,14 @@ fn format_code(input: &str) -> Result<String, miette::Error> {
         Err(e) => std::panic::resume_unwind(e),
     };
 
-    Ok(String::from_utf8(output?).into_diagnostic()?)
+    String::from_utf8(output?).into_diagnostic()
 }
 
 #[cfg(feature = "prettyplease")]
 fn format_code(input: &str) -> Result<String, miette::Error> {
-    Ok(prettyplease::unparse(&syn::parse_file(input)?))
+    use miette::IntoDiagnostic;
+
+    Ok(prettyplease::unparse(
+        &syn::parse_file(input).into_diagnostic()?,
+    ))
 }
