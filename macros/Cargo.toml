@@ -6,6 +6,7 @@ edition.workspace = true
 license.workspace = true
 homepage.workspace = true
 repository.workspace = true
+rust-version.workspace = true
 keywords = ["no_std", "device", "driver", "toolkit"]
 categories = ["embedded", "hardware-support", "no-std::no-alloc", "no-std"]
 description = "Proc macro implementation for the `device-driver` crate"

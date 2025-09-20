@@ -21,7 +21,7 @@ jobs:
           mdbook-version: 'latest'
 
       # Install mdBook plugins
-      - run: cargo binstall mdbook-alerts --no-confirm
+      - run: cargo +stable binstall mdbook-alerts --no-confirm
         
       - run: npm install -g wasm-pack
         working-directory: ./website

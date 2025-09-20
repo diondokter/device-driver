@@ -47,5 +47,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - uses: dtolnay/rust-toolchain@stable
+    - uses: dtolnay/rust-toolchain@1.88 # Use 1.88 to see if everything still compiles for it
     - run: cargo run -- -o generated.rs device-driver/tests/basic-register.kdl
