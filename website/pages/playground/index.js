@@ -40,7 +40,6 @@ const diagnostics = document.getElementById('diagnostics');
  * @param {monaco.editor.IStandaloneCodeEditor} output_editor
  * */
 function run_compile(text, output_editor) {
-    console.debug("Running compile");
     var output = wasm.compile(text, diagnostics_chars_per_line());
 
     output_editor.getModel().setValue(output.code);
@@ -172,8 +171,6 @@ function update_grid(event) {
         horizontal_offset += event.movementX / container_width;
         horizontal_offset = clamp(horizontal_offset, 0.05, 0.95);
         editor_container.style.gridTemplateColumns = `calc(${horizontal_offset * 100}% - 2.5px) 5px auto`;
-
-        console.log("horizontal: " + horizontal_offset);
     }
     if (vertical_dragging || force) {
         vertical_offset -= event.movementY;
