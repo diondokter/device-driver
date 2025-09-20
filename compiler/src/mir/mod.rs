@@ -186,6 +186,7 @@ pub enum Object {
     Buffer(Buffer),
     FieldSet(FieldSet),
     Enum(Enum),
+    Extern(Extern),
 }
 
 impl Object {
@@ -212,6 +213,7 @@ impl Object {
             Object::Buffer(val) => &mut val.name,
             Object::FieldSet(val) => &mut val.name,
             Object::Enum(val) => &mut val.name,
+            Object::Extern(val) => &mut val.name,
         }
     }
 
@@ -224,6 +226,7 @@ impl Object {
             Object::Buffer(val) => &val.name,
             Object::FieldSet(val) => &val.name,
             Object::Enum(val) => &val.name,
+            Object::Extern(val) => &val.name,
         }
     }
 
@@ -246,6 +249,7 @@ impl Object {
             Object::Buffer(_) => Vec::new(),
             Object::FieldSet(_) => Vec::new(),
             Object::Enum(_) => Vec::new(),
+            Object::Extern(_) => Vec::new(),
         }
     }
 
@@ -258,6 +262,7 @@ impl Object {
             Object::Buffer(buffer) => Some(buffer.address),
             Object::FieldSet(_) => None,
             Object::Enum(_) => None,
+            Object::Extern(_) => None,
         }
     }
 
@@ -270,6 +275,7 @@ impl Object {
             Object::Buffer(_) => None,
             Object::FieldSet(_) => None,
             Object::Enum(_) => None,
+            Object::Extern(_) => None,
         }
     }
 
@@ -530,6 +536,16 @@ impl ResetValue {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Extern {
+    pub description: String,
+    pub name: String,
+    /// From/into what base type can this extern be converted?
+    pub base_type: BaseType,
+    /// We can convert safely if the base type value is under this limit
+    pub size_bits: Option<u32>,
+}
+
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct UniqueId {
     object_name: String,
@@ -575,6 +591,7 @@ impl_unique!(Block);
 impl_unique!(Enum);
 impl_unique!(EnumVariant);
 impl_unique!(FieldSet);
+impl_unique!(Extern);
 
 impl Unique for Object {
     fn id(&self) -> UniqueId {
@@ -585,6 +602,7 @@ impl Unique for Object {
             Object::Buffer(val) => val.id(),
             Object::FieldSet(val) => val.id(),
             Object::Enum(val) => val.id(),
+            Object::Extern(val) => val.id(),
         }
     }
 }
