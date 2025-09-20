@@ -16,7 +16,7 @@ pub fn transform(device: mir::Device) -> miette::Result<lir::Device> {
     let lir_enums = mir_enums
         .iter()
         .map(transform_enum)
-        .collect::<Result<_, miette::Error>>()?;
+        .collect::<Result<_, miette::Report>>()?;
 
     let field_sets = transform_field_sets(&device, mir_enums.iter())?;
 
@@ -90,7 +90,7 @@ fn get_method(
     blocks: &mut Vec<lir::Block>,
     global_config: &mir::GlobalConfig,
     device_objects: &[mir::Object],
-) -> Result<Option<lir::BlockMethod>, miette::Error> {
+) -> Result<Option<lir::BlockMethod>, miette::Report> {
     use convert_case::Casing;
 
     Ok(match object {
@@ -277,7 +277,7 @@ fn transform_field_set<'a>(
                 access: *access,
             })
         })
-        .collect::<Result<_, miette::Error>>()?;
+        .collect::<Result<_, miette::Report>>()?;
 
     Ok(lir::FieldSet {
         description: field_set.description.clone(),
@@ -354,7 +354,7 @@ fn transform_enum(e: &mir::Enum) -> miette::Result<lir::Enum> {
                 catch_all: matches!(value, mir::EnumValue::CatchAll),
             })
         })
-        .collect::<Result<_, miette::Error>>()?;
+        .collect::<Result<_, miette::Report>>()?;
 
     Ok(lir::Enum {
         description: description.clone(),

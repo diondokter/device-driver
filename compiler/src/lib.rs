@@ -60,7 +60,7 @@ pub fn transform_kdl(
     (output, reports)
 }
 
-fn transform_mir(mut mir: mir::Device) -> Result<String, miette::Error> {
+fn transform_mir(mut mir: mir::Device) -> Result<String, miette::Report> {
     // Run the MIR passes
     mir::passes::run_passes(&mut mir)?;
 
@@ -85,7 +85,7 @@ fn transform_mir(mut mir: mir::Device) -> Result<String, miette::Error> {
 }
 
 #[cfg(not(feature = "prettyplease"))]
-fn format_code(input: &str) -> Result<String, miette::Error> {
+fn format_code(input: &str) -> Result<String, miette::Report> {
     use miette::{IntoDiagnostic, ensure};
     use std::io::{Read, Write};
     use std::process::Stdio;
@@ -112,7 +112,7 @@ fn format_code(input: &str) -> Result<String, miette::Error> {
             child_stdin.flush().unwrap();
             drop(child_stdin);
         });
-        let handle: std::thread::ScopedJoinHandle<'_, Result<Vec<u8>, miette::Error>> =
+        let handle: std::thread::ScopedJoinHandle<'_, Result<Vec<u8>, miette::Report>> =
             s.spawn(|| {
                 use miette::IntoDiagnostic;
 
@@ -147,7 +147,7 @@ fn format_code(input: &str) -> Result<String, miette::Error> {
 }
 
 #[cfg(feature = "prettyplease")]
-fn format_code(input: &str) -> Result<String, miette::Error> {
+fn format_code(input: &str) -> Result<String, miette::Report> {
     use miette::IntoDiagnostic;
 
     Ok(prettyplease::unparse(
