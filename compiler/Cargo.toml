@@ -12,7 +12,6 @@ description = "Compiler library for the `device-driver` crate"
 readme = "README.md"
 
 [dependencies]
-anyhow = "1.0.86"
 convert_case = "0.8.0"
 itertools = "0.14.0"
 proc-macro2 = "1.0.70"

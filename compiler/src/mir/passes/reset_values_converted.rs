@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
-use anyhow::ensure;
 use bitvec::{
     order::{Lsb0, Msb0},
     view::BitView,
 };
+use miette::ensure;
 
 use crate::mir::{BitOrder, ByteOrder, Device, FieldSet, Object, Register, ResetValue, Unique};
 
@@ -18,7 +18,7 @@ use super::{recurse_objects, recurse_objects_mut};
 ///
 /// This function assumes all register have a valid byte order, and so depends on [super::byte_order_specified::run_pass]
 /// having been run.
-pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
+pub fn run_pass(device: &mut Device) -> miette::Result<()> {
     let mut new_reset_values = HashMap::new();
 
     recurse_objects(&device.objects, &mut |object| match object {
@@ -90,7 +90,7 @@ fn convert_reset_value(
     object_type_name: &str,
     object_name: &str,
     target_byte_order: ByteOrder,
-) -> anyhow::Result<ResetValue> {
+) -> miette::Result<ResetValue> {
     let target_byte_size = size_bits.div_ceil(8) as usize;
 
     match reset_value {

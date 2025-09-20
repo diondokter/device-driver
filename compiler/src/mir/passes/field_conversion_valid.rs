@@ -1,9 +1,9 @@
-use anyhow::{bail, ensure};
+use miette::{bail, ensure};
 
 use crate::mir::{Device, EnumGenerationStyle, Object, passes::recurse_objects};
 
 /// Checks if fields that have conversion and specified no try to be used, are valid in doing so
-pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
+pub fn run_pass(device: &mut Device) -> miette::Result<()> {
     recurse_objects(&device.objects, &mut |object| {
         if let Object::FieldSet(field_set) = object {
             for field in field_set.fields.iter() {

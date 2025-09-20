@@ -1,9 +1,9 @@
 use super::recurse_objects_mut;
 use crate::mir::{BaseType, Device};
-use anyhow::ensure;
+use miette::ensure;
 
 /// Check all bool fields. They must be exactly zero or one bits long and have no conversion
-pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
+pub fn run_pass(device: &mut Device) -> miette::Result<()> {
     recurse_objects_mut(&mut device.objects, &mut |object| {
         let object_name = object.name().to_string();
 

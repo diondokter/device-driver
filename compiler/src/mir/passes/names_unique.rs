@@ -6,14 +6,14 @@ use super::recurse_objects_mut;
 
 /// Checks if all names are unique to prevent later name collisions.
 /// If there is a collision an error is returned.
-pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
+pub fn run_pass(device: &mut Device) -> miette::Result<()> {
     let mut seen_object_ids = HashSet::new();
 
     // Nothing must clash with the device name
     seen_object_ids.insert(device.id());
 
     recurse_objects_mut(&mut device.objects, &mut |object| {
-        anyhow::ensure!(
+        miette::ensure!(
             seen_object_ids.insert(object.id()),
             "Duplicate object name found: `{}`",
             object.name()
@@ -22,7 +22,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
         if let Object::FieldSet(field_set) = object {
             let mut seen_field_names = HashSet::new();
             for field in &field_set.fields {
-                anyhow::ensure!(
+                miette::ensure!(
                     seen_field_names.insert(field.name.clone()),
                     "Duplicate field name found in fieldset `{}`: `{}`",
                     field_set.name,
@@ -35,7 +35,7 @@ pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
             let mut seen_variant_names = HashSet::new();
 
             for v in variants.iter() {
-                anyhow::ensure!(
+                miette::ensure!(
                     seen_variant_names.insert(v.id()),
                     "Duplicate field `{}` found in generated enum `{}`",
                     v.name,

@@ -1,11 +1,11 @@
-use anyhow::bail;
+use miette::bail;
 
 use crate::mir::Device;
 
 use super::recurse_objects_mut;
 
 /// Checks if the byte order is set for all registers and commands that need it and fills it out for the ones that aren't specified
-pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
+pub fn run_pass(device: &mut Device) -> miette::Result<()> {
     if let Some(default_byte_order) = device.global_config.default_byte_order {
         recurse_objects_mut(&mut device.objects, &mut |object| {
             if let Some(fs) = object.as_field_set_mut() {

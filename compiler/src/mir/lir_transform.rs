@@ -10,13 +10,13 @@ use super::{
     passes::{find_min_max_addresses, recurse_objects},
 };
 
-pub fn transform(device: mir::Device) -> anyhow::Result<lir::Device> {
+pub fn transform(device: mir::Device) -> miette::Result<lir::Device> {
     let driver_name = device.name.clone().unwrap();
     let mir_enums = collect_enums(&device)?;
     let lir_enums = mir_enums
         .iter()
         .map(transform_enum)
-        .collect::<Result<_, anyhow::Error>>()?;
+        .collect::<Result<_, miette::Report>>()?;
 
     let field_sets = transform_field_sets(&device, mir_enums.iter())?;
 
@@ -52,7 +52,7 @@ fn collect_into_blocks(
     is_root: bool,
     global_config: &mir::GlobalConfig,
     device_objects: &[mir::Object],
-) -> anyhow::Result<Vec<lir::Block>> {
+) -> miette::Result<Vec<lir::Block>> {
     let mut blocks = Vec::new();
 
     let BorrowedBlock {
@@ -90,7 +90,7 @@ fn get_method(
     blocks: &mut Vec<lir::Block>,
     global_config: &mir::GlobalConfig,
     device_objects: &[mir::Object],
-) -> Result<Option<lir::BlockMethod>, anyhow::Error> {
+) -> Result<Option<lir::BlockMethod>, miette::Report> {
     use convert_case::Casing;
 
     Ok(match object {
@@ -200,7 +200,7 @@ fn get_method(
 fn transform_field_sets<'a>(
     device: &mir::Device,
     mir_enums: impl Iterator<Item = &'a mir::Enum> + Clone,
-) -> anyhow::Result<Vec<lir::FieldSet>> {
+) -> miette::Result<Vec<lir::FieldSet>> {
     let mut field_sets = Vec::new();
 
     recurse_objects(&device.objects, &mut |object| {
@@ -217,7 +217,7 @@ fn transform_field_sets<'a>(
 fn transform_field_set<'a>(
     field_set: &mir::FieldSet,
     enum_list: impl Iterator<Item = &'a mir::Enum> + Clone,
-) -> anyhow::Result<lir::FieldSet> {
+) -> miette::Result<lir::FieldSet> {
     let fields = field_set
         .fields
         .iter()
@@ -277,7 +277,7 @@ fn transform_field_set<'a>(
                 access: *access,
             })
         })
-        .collect::<Result<_, anyhow::Error>>()?;
+        .collect::<Result<_, miette::Report>>()?;
 
     Ok(lir::FieldSet {
         description: field_set.description.clone(),
@@ -291,7 +291,7 @@ fn transform_field_set<'a>(
     })
 }
 
-fn collect_enums(device: &mir::Device) -> anyhow::Result<Vec<mir::Enum>> {
+fn collect_enums(device: &mir::Device) -> miette::Result<Vec<mir::Enum>> {
     let mut enums = Vec::new();
 
     recurse_objects(&device.objects, &mut |object| {
@@ -305,7 +305,7 @@ fn collect_enums(device: &mir::Device) -> anyhow::Result<Vec<mir::Enum>> {
     Ok(enums)
 }
 
-fn transform_enum(e: &mir::Enum) -> anyhow::Result<lir::Enum> {
+fn transform_enum(e: &mir::Enum) -> miette::Result<lir::Enum> {
     let mir::Enum {
         description,
         name,
@@ -354,7 +354,7 @@ fn transform_enum(e: &mir::Enum) -> anyhow::Result<lir::Enum> {
                 catch_all: matches!(value, mir::EnumValue::CatchAll),
             })
         })
-        .collect::<Result<_, anyhow::Error>>()?;
+        .collect::<Result<_, miette::Report>>()?;
 
     Ok(lir::Enum {
         description: description.clone(),

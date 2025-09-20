@@ -1,9 +1,9 @@
-use anyhow::bail;
 use convert_case::{Case, Casing};
+use miette::bail;
 
 use crate::lir::{Block, BlockMethodKind, BlockMethodType, Device};
 
-pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
+pub fn run_pass(device: &mut Device) -> miette::Result<()> {
     let root_block = device
         .blocks
         .iter()
@@ -44,7 +44,7 @@ fn get_block_claimed_addresses(
     block: &Block,
     current_address_offset: i64,
     name_stack: &[String],
-) -> anyhow::Result<Vec<ClaimedAddress>> {
+) -> miette::Result<Vec<ClaimedAddress>> {
     let mut claimed_addresses = Vec::new();
 
     for method in &block.methods {

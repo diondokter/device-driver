@@ -8,7 +8,7 @@ use super::recurse_objects_mut;
 ///
 /// - PascalCase: Object names, enum names, enum variant names
 /// - snake_case: Field names
-pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
+pub fn run_pass(device: &mut Device) -> miette::Result<()> {
     let boundaries = device.global_config.name_word_boundaries.clone();
 
     let pascal_converter = convert_case::Converter::new()

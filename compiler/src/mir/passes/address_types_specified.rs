@@ -1,11 +1,11 @@
-use anyhow::ensure;
+use miette::ensure;
 
 use crate::mir::{Device, Object};
 
 use super::recurse_objects;
 
 /// Checks if the various address types are specified. If not an error is given out.
-pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
+pub fn run_pass(device: &mut Device) -> miette::Result<()> {
     recurse_objects(&device.objects, &mut |object| {
         match object {
             Object::Register(_) => {

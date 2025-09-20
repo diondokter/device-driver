@@ -1,4 +1,4 @@
-use anyhow::bail;
+use miette::bail;
 
 use super::{Device, Object, Repeat};
 
@@ -16,7 +16,7 @@ mod names_normalized;
 mod names_unique;
 mod reset_values_converted;
 
-pub fn run_passes(device: &mut Device) -> anyhow::Result<()> {
+pub fn run_passes(device: &mut Device) -> miette::Result<()> {
     bit_order_specified::run_pass(device)?;
     base_types_specified::run_pass(device)?;
     device_name_is_pascal::run_pass(device)?;
@@ -36,20 +36,20 @@ pub fn run_passes(device: &mut Device) -> anyhow::Result<()> {
 
 pub(crate) fn recurse_objects_mut(
     objects: &mut [Object],
-    f: &mut impl FnMut(&mut Object) -> anyhow::Result<()>,
-) -> anyhow::Result<()> {
+    f: &mut impl FnMut(&mut Object) -> miette::Result<()>,
+) -> miette::Result<()> {
     recurse_objects_with_depth_mut(objects, &mut |o, _| f(o))
 }
 
 pub(crate) fn recurse_objects_with_depth_mut(
     objects: &mut [Object],
-    f: &mut impl FnMut(&mut Object, usize) -> anyhow::Result<()>,
-) -> anyhow::Result<()> {
+    f: &mut impl FnMut(&mut Object, usize) -> miette::Result<()>,
+) -> miette::Result<()> {
     fn recurse_objects_with_depth_mut(
         objects: &mut [Object],
-        f: &mut impl FnMut(&mut Object, usize) -> anyhow::Result<()>,
+        f: &mut impl FnMut(&mut Object, usize) -> miette::Result<()>,
         depth: usize,
-    ) -> anyhow::Result<()> {
+    ) -> miette::Result<()> {
         for object in objects.iter_mut() {
             f(object, depth)?;
 
@@ -66,20 +66,20 @@ pub(crate) fn recurse_objects_with_depth_mut(
 
 pub(crate) fn recurse_objects<'o>(
     objects: &'o [Object],
-    f: &mut impl FnMut(&'o Object) -> anyhow::Result<()>,
-) -> anyhow::Result<()> {
+    f: &mut impl FnMut(&'o Object) -> miette::Result<()>,
+) -> miette::Result<()> {
     recurse_objects_with_depth(objects, &mut |o, _| f(o))
 }
 
 pub(crate) fn recurse_objects_with_depth<'o>(
     objects: &'o [Object],
-    f: &mut impl FnMut(&'o Object, usize) -> anyhow::Result<()>,
-) -> anyhow::Result<()> {
+    f: &mut impl FnMut(&'o Object, usize) -> miette::Result<()>,
+) -> miette::Result<()> {
     fn recurse_objects_with_depth_inner<'o>(
         objects: &'o [Object],
-        f: &mut impl FnMut(&'o Object, usize) -> anyhow::Result<()>,
+        f: &mut impl FnMut(&'o Object, usize) -> miette::Result<()>,
         depth: usize,
-    ) -> anyhow::Result<()> {
+    ) -> miette::Result<()> {
         for object in objects.iter() {
             f(object, depth)?;
 

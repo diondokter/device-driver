@@ -1,8 +1,8 @@
-use anyhow::ensure;
+use miette::ensure;
 
 use crate::mir::Device;
 
-pub fn run_pass(device: &mut Device) -> anyhow::Result<()> {
+pub fn run_pass(device: &mut Device) -> miette::Result<()> {
     let lenient_pascal_converter = convert_case::Converter::new()
         .set_boundaries(&convert_case::Boundary::defaults_from(
             "aA:AAa:_:-: :a1:A1:1A",
