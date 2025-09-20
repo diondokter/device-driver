@@ -1,6 +1,7 @@
 [package]
 name = "device-driver-tests"
 edition = "2024"
+publish = false
 
 [dependencies]
 clap = "4.5.39"
