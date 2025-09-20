@@ -30,6 +30,11 @@ jobs:
         working-directory: ./website
 
       - run: npm run build
+        if: ${{ github.ref != 'refs/heads/master' }}
+        working-directory: ./website
+
+      - run: npm run build_prod
+        if: ${{ github.ref == 'refs/heads/master' }}
         working-directory: ./website
 
       - name: Deploy
