@@ -1,6 +1,6 @@
 {
     "rust-analyzer.linkedProjects": [
         "Cargo.toml",
-        "website/Cargo.toml"
+        "website/compiler-wasm/Cargo.toml"
     ]
 }
