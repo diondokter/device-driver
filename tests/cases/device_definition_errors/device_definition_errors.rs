@@ -1742,11 +1742,11 @@ pub mod foo_d_6 {
     #[derive(Copy, Clone, Eq, PartialEq)]
     pub struct Fs2 {
         /// The internal bits
-        bits: [u8; 1],
+        bits: [u8; 4],
     }
     
     impl ::device_driver::FieldSet for Fs2 {
-        const SIZE_BITS: u32 = 8;
+        const SIZE_BITS: u32 = 32;
         fn get_inner_buffer(&self) -> &[u8] {
             &self.bits
         }
@@ -1758,7 +1758,7 @@ pub mod foo_d_6 {
     impl Fs2 {
         /// Create a new instance, loaded with all zeroes
         pub const fn new() -> Self {
-            Self { bits: [0; 1] }
+            Self { bits: [0; 4] }
         }
     
         ///Read the `value` field of the register.
@@ -1768,7 +1768,17 @@ pub mod foo_d_6 {
             let raw = unsafe {
                 ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, 0, 7)
             };
-            raw.into()
+            unsafe { raw.try_into().unwrap_unchecked() }
+        }
+    
+        ///Read the `value_2` field of the register.
+        ///
+    
+        pub fn value_2(&self) -> Result<Etype3, <Etype3 as TryFrom<u8>>::Error> {
+            let raw = unsafe {
+                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, 7, 11)
+            };
+            raw.try_into()
         }
     
         ///Write the `value` field of the register.
@@ -1786,6 +1796,22 @@ pub mod foo_d_6 {
                 )
             };
         }
+    
+        ///Write the `value_2` field of the register.
+        ///
+    
+        pub fn set_value_2(&mut self, value: Etype3) {
+            let raw = value.into();
+    
+            unsafe {
+                ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
+                    raw,
+                    7,
+                    11,
+                    &mut self.bits,
+                )
+            };
+        }
     }
     
     impl Default for Fs2 {
@@ -1794,13 +1820,13 @@ pub mod foo_d_6 {
         }
     }
     
-    impl From<[u8; 1]> for Fs2 {
-        fn from(bits: [u8; 1]) -> Self {
+    impl From<[u8; 4]> for Fs2 {
+        fn from(bits: [u8; 4]) -> Self {
             Self { bits }
         }
     }
     
-    impl From<Fs2> for [u8; 1] {
+    impl From<Fs2> for [u8; 4] {
         fn from(val: Fs2) -> Self {
             val.bits
         }
@@ -1811,6 +1837,8 @@ pub mod foo_d_6 {
             let mut d = f.debug_struct("Fs2");
     
             d.field("value", &self.value());
+    
+            d.field("value_2", &self.value_2());
     
             d.finish()
         }

@@ -73,12 +73,20 @@ pub fn run_pass(device: &mut Device) -> miette::Result<()> {
                                     .size_bits
                                     .expect("Extern size_bits is already set in a previous pass");
 
-                                ensure!(
-                                    field_bits <= extern_bits,
-                                    "Field `{}` of FieldSet `{}` uses an infallible conversion for an extern of {extern_bits} bits. The field is {field_bits} bits large and thus infallible conversion is not possible",
-                                    field.name,
-                                    field_set.name
-                                )
+                                if extern_bits == 0 {
+                                    bail!(
+                                        "Field `{}` of FieldSet `{}` uses an infallible conversion for an extern that doesn't support that",
+                                        field.name,
+                                        field_set.name
+                                    )
+                                } else {
+                                    ensure!(
+                                        field_bits <= extern_bits,
+                                        "Field `{}` of FieldSet `{}` uses an infallible conversion for an extern of {extern_bits} bits. The field is {field_bits} bits large and thus infallible conversion is not possible",
+                                        field.name,
+                                        field_set.name
+                                    );
+                                }
                             }
                         }
                         Some(_) => bail!(

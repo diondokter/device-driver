@@ -38,7 +38,7 @@ pub fn run_pass(device: &mut Device) -> miette::Result<()> {
                         integer.size_bits() >= size_bits.unwrap_or_default(),
                         "Extern `{object_name}` has specified a bit size that is larger than its base type. This is not allowed"
                     );
-                    (Some(integer), size_bits.unwrap_or(integer.size_bits()))
+                    (Some(integer), size_bits.unwrap_or_default())
                 }
             };
 
