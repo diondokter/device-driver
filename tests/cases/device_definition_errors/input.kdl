@@ -201,4 +201,11 @@ device FooD6 {
         /// Wow, it's a B!
         B
     }
+    extern
+    (abc:something?)extern etype1 a unsafe-size-bits=1
+    /// Some docs over here!
+    (u8)extern etype2 unsafe-size-bits=7
+    fieldset fs2 size-bits=8 {
+        (:etype2)value @6:0
+    }
 }

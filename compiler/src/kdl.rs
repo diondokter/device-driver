@@ -8,8 +8,8 @@ use strum::VariantNames;
 use crate::{
     mir::{
         Access, BaseType, BitOrder, Block, Buffer, ByteOrder, Command, Device, Enum, EnumValue,
-        EnumVariant, Field, FieldConversion, FieldSet, FieldSetRef, GlobalConfig, Integer, Object,
-        Register, Repeat, ResetValue,
+        EnumVariant, Extern, Field, FieldConversion, FieldSet, FieldSetRef, GlobalConfig, Integer,
+        Object, Register, Repeat, ResetValue,
     },
     reporting::{
         self, Diagnostics, NamedSourceCode,
@@ -181,6 +181,10 @@ fn transform_object(
         }
         ObjectType::Enum => transform_enum(node, source_code, diagnostics)
             .map(Object::Enum)
+            .into_iter()
+            .collect(),
+        ObjectType::Extern => transform_extern(node, source_code, diagnostics)
+            .map(Object::Extern)
             .into_iter()
             .collect(),
     }
@@ -1175,7 +1179,7 @@ fn transform_enum(
     let (base_type, field_conversion) = parse_type(node.ty(), source_code.clone(), diagnostics);
 
     if let Some(field_conversion) = field_conversion {
-        diagnostics.add(errors::ConversionNotAllowedOnEnum {
+        diagnostics.add(errors::OnlyBaseTypeAllowed {
             source_code: source_code.clone(),
             existing_ty: node.ty().unwrap().span(),
             field_conversion,
@@ -1345,6 +1349,129 @@ fn transform_enum_variants(
             })
         })
         .collect()
+}
+
+fn transform_extern(
+    node: &KdlNode,
+    source_code: NamedSourceCode,
+    diagnostics: &mut Diagnostics,
+) -> Option<Extern> {
+    let mut extern_value = Extern::default();
+
+    let mut unexpected_entries = errors::UnexpectedEntries {
+        source_code: source_code.clone(),
+        superfluous_entries: Vec::new(),
+        unexpected_name_entries: Vec::new(),
+        not_anonymous_entries: Vec::new(),
+        unexpected_anonymous_entries: Vec::new(),
+    };
+
+    let (base_type, field_conversion) = parse_type(node.ty(), source_code.clone(), diagnostics);
+
+    extern_value.base_type = base_type;
+
+    if let Some(field_conversion) = field_conversion {
+        diagnostics.add(errors::OnlyBaseTypeAllowed {
+            source_code: source_code.clone(),
+            existing_ty: node.ty().unwrap().span(),
+            field_conversion,
+        });
+    }
+
+    if let Some(children) = node.children() {
+        diagnostics.add(errors::NoChildrenExpected {
+            source_code: source_code.clone(),
+            children: children.span(),
+        });
+    }
+
+    let mut name: Option<&kdl::KdlEntry> = None;
+    let mut size_bits: Option<&kdl::KdlEntry> = None;
+
+    for (i, entry) in node.entries().iter().enumerate() {
+        match entry.name().map(|n| n.value()) {
+            Some("unsafe-size-bits") => {
+                if let Some(size_bits) = size_bits {
+                    diagnostics.add(errors::DuplicateEntry {
+                        source_code: source_code.clone(),
+                        duplicate: entry.span(),
+                        original: size_bits.span(),
+                    });
+                } else {
+                    size_bits = Some(entry);
+                }
+            }
+            Some(_) => {
+                unexpected_entries
+                    .unexpected_name_entries
+                    .push(entry.span());
+            }
+            None => {
+                if i == 0 {
+                    name = Some(entry);
+                } else {
+                    unexpected_entries
+                        .unexpected_anonymous_entries
+                        .push(entry.span());
+                }
+            }
+        }
+    }
+
+    if !unexpected_entries.is_empty() {
+        diagnostics.add(unexpected_entries);
+    }
+
+    if let Some(name) = name {
+        match name.value() {
+            KdlValue::String(name) => {
+                extern_value.name = name.clone();
+            }
+            _ => {
+                diagnostics.add(errors::UnexpectedType {
+                    source_code: source_code.clone(),
+                    value_name: name.span(),
+                    expected_type: "string",
+                });
+            }
+        }
+    } else {
+        diagnostics.add(errors::MissingObjectName {
+            source_code: source_code.clone(),
+            object_keyword: node.name().span(),
+            found_instead: None,
+            object_type: node.name().value().into(),
+        });
+    }
+
+    if let Some(size_bits) = size_bits {
+        match size_bits.value() {
+            KdlValue::Integer(sb) if (0..=u32::MAX as i128).contains(sb) => {
+                extern_value.size_bits = Some(*sb as u32);
+            }
+            KdlValue::Integer(_) => {
+                diagnostics.add(errors::ValueOutOfRange {
+                    source_code: source_code.clone(),
+                    value: size_bits.span(),
+                    context: Some("size-bits is encoded as a u32"),
+                    range: "0..2^32",
+                });
+            }
+            _ => {
+                diagnostics.add(errors::UnexpectedType {
+                    source_code: source_code.clone(),
+                    value_name: size_bits.span(),
+                    expected_type: "integer",
+                });
+            }
+        }
+    }
+
+    if name.is_some() {
+        Some(extern_value)
+    } else {
+        None
+    }
 }
 
 fn parse_type(
@@ -1885,6 +2012,7 @@ const OBJECT_TYPES: &[(&str, ObjectType)] = &[
     ("buffer", ObjectType::Buffer),
     ("fieldset", ObjectType::FieldSet),
     ("enum", ObjectType::Enum),
+    ("extern", ObjectType::Extern),
 ];
 #[derive(Clone, Copy)]
 enum ObjectType {
@@ -1894,6 +2022,7 @@ enum ObjectType {
     Buffer,
     FieldSet,
     Enum,
+    Extern,
 }
 
 impl FromStr for ObjectType {

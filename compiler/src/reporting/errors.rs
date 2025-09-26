@@ -236,15 +236,15 @@ pub struct InlineEnumDefinitionWithoutName {
 }
 
 #[derive(Error, Debug, Diagnostic)]
-#[error("Conversion not allowed on enum")]
+#[error("Only base type allowed")]
 #[diagnostic(
     help(
-        "Enum definitions don't support the conversion syntax. Just specify the base type and remove the `:{}`",
+        "This object doesn't support the conversion syntax. Just specify the base type and remove the `:{}`",
         self.conversion_text()
     ),
     severity(Error)
 )]
-pub struct ConversionNotAllowedOnEnum {
+pub struct OnlyBaseTypeAllowed {
     #[source_code]
     pub source_code: NamedSourceCode,
     #[label("Type specifier contains conversion")]
@@ -252,7 +252,7 @@ pub struct ConversionNotAllowedOnEnum {
     pub field_conversion: FieldConversion,
 }
 
-impl ConversionNotAllowedOnEnum {
+impl OnlyBaseTypeAllowed {
     fn conversion_text(&self) -> String {
         format!(
             "{}{}",
@@ -279,4 +279,14 @@ pub struct AddressWrongOrder {
     pub address_entry: SourceSpan,
     pub end: u32,
     pub start: u32,
+}
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("No children were expected for this node")]
+#[diagnostic(severity(Error))]
+pub struct NoChildrenExpected {
+    #[source_code]
+    pub source_code: NamedSourceCode,
+    #[label("Try removing these child nodes")]
+    pub children: SourceSpan,
 }

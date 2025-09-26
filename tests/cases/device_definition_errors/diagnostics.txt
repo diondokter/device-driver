@@ -74,7 +74,7 @@
   help: Expected a node with one of these names: `default-register-access`, `default-field-access`, `default-buffer-
         access`, `default-byte-order`, `default-bit-order`, `register-address-type`, `command-address-type`, `buffer-
         address-type`, `name-word-boundaries`, `defmt-feature`, `block`, `register`, `command`, `buffer`, `fieldset`,
-        `enum`
+        `enum`, `extern`
 
   error: Duplicate node
     ╭─[cases/device_definition_errors/input.kdl:25:5]
@@ -172,7 +172,7 @@
   help: Expected a node with one of these names: `default-register-access`, `default-field-access`, `default-buffer-
         access`, `default-byte-order`, `default-bit-order`, `register-address-type`, `command-address-type`, `buffer-
         address-type`, `name-word-boundaries`, `defmt-feature`, `block`, `register`, `command`, `buffer`, `fieldset`,
-        `enum`
+        `enum`, `extern`
 
   error: Missing object name
     ╭─[cases/device_definition_errors/input.kdl:49:5]
@@ -699,7 +699,7 @@
  171 │         offset d
      ╰────
   help: Expected a node with one of these names: `offset`, `repeat`, `block`, `register`, `command`, `buffer`,
-        `fieldset`, `enum`
+        `fieldset`, `enum`, `extern`
 
   error: Unexpected type
      ╭─[cases/device_definition_errors/input.kdl:171:16]
@@ -801,4 +801,45 @@
      ·             ╰── Expected one of these values: ``, `<integer>`, `default`, `catch-all`
  193 │     }
      ╰────
+
+  error: Missing object name
+     ╭─[cases/device_definition_errors/input.kdl:204:5]
+ 203 │     }
+ 204 │     extern
+     ·     ───┬──
+     ·        ╰── For this object
+ 205 │     (abc:something?)extern etype1 a unsafe-size-bits=1
+     ╰────
+  help: The name is specified by the first entry of the node. It must be an anonymous string, e.g. `extern Foo { }`
+
+  error: Unexpected value
+     ╭─[cases/device_definition_errors/input.kdl:205:6]
+ 204 │     extern
+ 205 │     (abc:something?)extern etype1 a unsafe-size-bits=1
+     ·      ───────┬──────
+     ·             ╰── Expected one of these values: `bool`, `uint`, `int`, `u8`, `u16`, `u32`, `u64`, `i8`, `i16`, `i32`, `i64`, `<base>:<target>`, `<base>:<target>?`
+ 206 │     /// Some docs over here!
+     ╰────
+
+  error: Only base type allowed
+     ╭─[cases/device_definition_errors/input.kdl:205:6]
+ 204 │     extern
+ 205 │     (abc:something?)extern etype1 a unsafe-size-bits=1
+     ·      ───────┬──────
+     ·             ╰── Type specifier contains conversion
+ 206 │     /// Some docs over here!
+     ╰────
+  help: This object doesn't support the conversion syntax. Just specify the base type and remove the `:something?`
+
+  error: Unexpected entries
+     ╭─[cases/device_definition_errors/input.kdl:205:35]
+ 204 │     extern
+ 205 │     (abc:something?)extern etype1 a unsafe-size-bits=1
+     ·                                   ┬
+     ·                                   ╰── This entry was expected to have a name (and not be anonymous)
+ 206 │     /// Some docs over here!
+     ╰────
+  help: Some entries require a name, require to be anonymous or are expected to be of a certain type. Check the book
+        to see the specification
+        These entries may also just be superfluous. Try removing them or check other errors to see what's expected
 
