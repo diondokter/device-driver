@@ -13,12 +13,13 @@ use super::{
 pub fn transform(device: mir::Device) -> miette::Result<lir::Device> {
     let driver_name = device.name.clone().unwrap();
     let mir_enums = collect_enums(&device)?;
+    let mir_externs = collect_externs(&device)?;
     let lir_enums = mir_enums
         .iter()
         .map(transform_enum)
         .collect::<Result<_, miette::Report>>()?;
 
-    let field_sets = transform_field_sets(&device, mir_enums.iter())?;
+    let field_sets = transform_field_sets(&device, mir_enums.iter(), mir_externs.iter())?;
 
     // Create a root block and pass the device objects to it
     let blocks = collect_into_blocks(
@@ -201,12 +202,17 @@ fn get_method(
 fn transform_field_sets<'a>(
     device: &mir::Device,
     mir_enums: impl Iterator<Item = &'a mir::Enum> + Clone,
+    mir_externs: impl Iterator<Item = &'a mir::Extern> + Clone,
 ) -> miette::Result<Vec<lir::FieldSet>> {
     let mut field_sets = Vec::new();
 
     recurse_objects(&device.objects, &mut |object| {
         if let mir::Object::FieldSet(fs) = object {
-            field_sets.push(transform_field_set(fs, mir_enums.clone())?);
+            field_sets.push(transform_field_set(
+                fs,
+                mir_enums.clone(),
+                mir_externs.clone(),
+            )?);
         }
 
         Ok(())
@@ -218,6 +224,7 @@ fn transform_field_sets<'a>(
 fn transform_field_set<'a>(
     field_set: &mir::FieldSet,
     enum_list: impl Iterator<Item = &'a mir::Enum> + Clone,
+    extern_list: impl Iterator<Item = &'a mir::Extern> + Clone,
 ) -> miette::Result<lir::FieldSet> {
     let fields = field_set
         .fields
@@ -246,25 +253,35 @@ fn transform_field_set<'a>(
                     (integer.to_string(), lir::FieldConversionMethod::None)
                 }
                 (mir::BaseType::FixedSize(integer), Some(fc)) => (integer.to_string(), {
-                    match enum_list.clone().find(|e| e.name == fc.type_name) {
-                        // Always use try if that's specified
-                        _ if fc.use_try => {
-                            lir::FieldConversionMethod::TryInto(fc.type_name.clone())
-                        }
-                        // There is an enum we generate so we can look at its metadata
-                        Some(mir::Enum {
-                            generation_style: Some(mir::EnumGenerationStyle::InfallibleWithinRange),
-                            size_bits,
-                            ..
-                        }) if field.field_address.clone().count()
-                            <= size_bits.expect("Size_bits set in an earlier mir pass")
-                                as usize =>
-                        {
-                            // This field is equal or smaller in bits than the infallible enum. So we can do the unsafe into
-                            lir::FieldConversionMethod::UnsafeInto(fc.type_name.clone())
-                        }
-                        // Fallback is to require the into trait
-                        _ => lir::FieldConversionMethod::Into(fc.type_name.clone()),
+                    let field_bits = field.field_address.len() as u32;
+
+                    // Always use try if that's specified
+                    if fc.use_try {
+                        lir::FieldConversionMethod::TryInto(fc.type_name.clone())
+                    }
+                    // Are we pointing at a potentially infallible enum and do we fullfil the requirements?
+                    else if let Some(mir::Enum {
+                        generation_style: Some(mir::EnumGenerationStyle::InfallibleWithinRange),
+                        size_bits,
+                        ..
+                    }) = enum_list.clone().find(|e| e.name == fc.type_name)
+                        && field_bits <= size_bits.expect("Size_bits set in an earlier mir pass")
+                    {
+                        // This field is equal or smaller in bits than the infallible enum. So we can do the unsafe into
+                        lir::FieldConversionMethod::UnsafeInto(fc.type_name.clone())
+                    }
+                    // Are we pointing at an extern and are we smaller than the size-bits?
+                    else if let Some(mir::Extern { size_bits, .. }) =
+                        extern_list.clone().find(|e| e.name == fc.type_name)
+                        && field_bits <= size_bits.expect("Size_bits set in an earlier mir pass")
+                    {
+                        // This field is equal or smaller in bits than the infallible enum. So we can do the unsafe into
+                        lir::FieldConversionMethod::UnsafeInto(fc.type_name.clone())
+                    } else {
+                        // Fallback is to use the into trait.
+                        // This is correct because in the field_conversion_valid mir pass we've already exited if we need a try and didn't specify it.
+                        // The only other option is the unsafe into and we've just checked that.
+                        lir::FieldConversionMethod::Into(fc.type_name.clone())
                     }
                 }),
             };
@@ -304,6 +321,20 @@ fn collect_enums(device: &mir::Device) -> miette::Result<Vec<mir::Enum>> {
     })?;
 
     Ok(enums)
+}
+
+fn collect_externs(device: &mir::Device) -> miette::Result<Vec<mir::Extern>> {
+    let mut externs = Vec::new();
+
+    recurse_objects(&device.objects, &mut |object| {
+        if let Object::Extern(e) = object {
+            externs.push(e.clone());
+        }
+
+        Ok(())
+    })?;
+
+    Ok(externs)
 }
 
 fn transform_enum(e: &mir::Enum) -> miette::Result<lir::Enum> {
