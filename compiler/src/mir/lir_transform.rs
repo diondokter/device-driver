@@ -259,7 +259,7 @@ fn transform_field_set<'a>(
                     if fc.use_try {
                         lir::FieldConversionMethod::TryInto(fc.type_name.clone())
                     }
-                    // Are we pointing at a potentially infallible enum and do we fullfil the requirements?
+                    // Are we pointing at a potentially infallible enum and do we fulfil the requirements?
                     else if let Some(mir::Enum {
                         generation_style: Some(mir::EnumGenerationStyle::InfallibleWithinRange),
                         size_bits,
