@@ -11,6 +11,7 @@ mod bool_fields_checked;
 mod byte_order_specified;
 mod device_name_is_pascal;
 mod enum_values_checked;
+mod extern_values_checked;
 mod field_conversion_valid;
 mod names_normalized;
 mod names_unique;
@@ -23,6 +24,7 @@ pub fn run_passes(device: &mut Device) -> miette::Result<()> {
     names_normalized::run_pass(device)?;
     names_unique::run_pass(device)?;
     enum_values_checked::run_pass(device)?;
+    extern_values_checked::run_pass(device)?;
     field_conversion_valid::run_pass(device)?;
     byte_order_specified::run_pass(device)?;
     reset_values_converted::run_pass(device)?;

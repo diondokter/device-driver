@@ -1739,6 +1739,135 @@ pub mod foo_d_6 {
         }
     }
     
+    #[derive(Copy, Clone, Eq, PartialEq)]
+    pub struct Fs2 {
+        /// The internal bits
+        bits: [u8; 1],
+    }
+    
+    impl ::device_driver::FieldSet for Fs2 {
+        const SIZE_BITS: u32 = 8;
+        fn get_inner_buffer(&self) -> &[u8] {
+            &self.bits
+        }
+        fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
+            &mut self.bits
+        }
+    }
+    
+    impl Fs2 {
+        /// Create a new instance, loaded with all zeroes
+        pub const fn new() -> Self {
+            Self { bits: [0; 1] }
+        }
+    
+        ///Read the `value` field of the register.
+        ///
+    
+        pub fn value(&self) -> Etype2 {
+            let raw = unsafe {
+                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, 0, 7)
+            };
+            raw.into()
+        }
+    
+        ///Write the `value` field of the register.
+        ///
+    
+        pub fn set_value(&mut self, value: Etype2) {
+            let raw = value.into();
+    
+            unsafe {
+                ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
+                    raw,
+                    0,
+                    7,
+                    &mut self.bits,
+                )
+            };
+        }
+    }
+    
+    impl Default for Fs2 {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+    
+    impl From<[u8; 1]> for Fs2 {
+        fn from(bits: [u8; 1]) -> Self {
+            Self { bits }
+        }
+    }
+    
+    impl From<Fs2> for [u8; 1] {
+        fn from(val: Fs2) -> Self {
+            val.bits
+        }
+    }
+    
+    impl core::fmt::Debug for Fs2 {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+            let mut d = f.debug_struct("Fs2");
+    
+            d.field("value", &self.value());
+    
+            d.finish()
+        }
+    }
+    
+    impl core::ops::BitAnd for Fs2 {
+        type Output = Self;
+        fn bitand(mut self, rhs: Self) -> Self::Output {
+            self &= rhs;
+            self
+        }
+    }
+    impl core::ops::BitAndAssign for Fs2 {
+        fn bitand_assign(&mut self, rhs: Self) {
+            for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
+                *l &= *r;
+            }
+        }
+    }
+    impl core::ops::BitOr for Fs2 {
+        type Output = Self;
+        fn bitor(mut self, rhs: Self) -> Self::Output {
+            self |= rhs;
+            self
+        }
+    }
+    impl core::ops::BitOrAssign for Fs2 {
+        fn bitor_assign(&mut self, rhs: Self) {
+            for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
+                *l |= *r;
+            }
+        }
+    }
+    impl core::ops::BitXor for Fs2 {
+        type Output = Self;
+        fn bitxor(mut self, rhs: Self) -> Self::Output {
+            self ^= rhs;
+            self
+        }
+    }
+    impl core::ops::BitXorAssign for Fs2 {
+        fn bitxor_assign(&mut self, rhs: Self) {
+            for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
+                *l ^= *r;
+            }
+        }
+    }
+    impl core::ops::Not for Fs2 {
+        type Output = Self;
+        fn not(mut self) -> Self::Output {
+            for val in self.bits.iter_mut() {
+                *val = !*val;
+            }
+            self
+        }
+    }
+    
     #[repr(u8)]
     #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
     

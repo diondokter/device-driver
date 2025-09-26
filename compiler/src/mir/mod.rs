@@ -389,6 +389,18 @@ impl BaseType {
     }
 }
 
+impl Display for BaseType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BaseType::Unspecified => write!(f, "unspecified"),
+            BaseType::Bool => write!(f, "bool"),
+            BaseType::Uint => write!(f, "uint"),
+            BaseType::Int => write!(f, "int"),
+            BaseType::FixedSize(integer) => write!(f, "{integer}"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FieldConversion {
     /// The name of the type we're converting to
