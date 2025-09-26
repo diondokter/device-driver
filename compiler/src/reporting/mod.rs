@@ -61,7 +61,7 @@ impl Diagnostics {
     ) -> std::fmt::Result {
         for report in &self.reports {
             if let Some(width) = width {
-                writeln!(writer, "{report:width$?}")?;
+                writeln!(writer, "{report:.width$?}")?;
             } else {
                 writeln!(writer, "{report:?}")?;
             }
