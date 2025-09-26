@@ -74,7 +74,7 @@
   help: Expected a node with one of these names: `default-register-access`, `default-field-access`, `default-buffer-
         access`, `default-byte-order`, `default-bit-order`, `register-address-type`, `command-address-type`, `buffer-
         address-type`, `name-word-boundaries`, `defmt-feature`, `block`, `register`, `command`, `buffer`, `fieldset`,
-        `enum`
+        `enum`, `extern`
 
   error: Duplicate node
     ╭─[cases/device_definition_errors/input.kdl:25:5]
@@ -172,7 +172,7 @@
   help: Expected a node with one of these names: `default-register-access`, `default-field-access`, `default-buffer-
         access`, `default-byte-order`, `default-bit-order`, `register-address-type`, `command-address-type`, `buffer-
         address-type`, `name-word-boundaries`, `defmt-feature`, `block`, `register`, `command`, `buffer`, `fieldset`,
-        `enum`
+        `enum`, `extern`
 
   error: Missing object name
     ╭─[cases/device_definition_errors/input.kdl:49:5]
@@ -699,7 +699,7 @@
  171 │         offset d
      ╰────
   help: Expected a node with one of these names: `offset`, `repeat`, `block`, `register`, `command`, `buffer`,
-        `fieldset`, `enum`
+        `fieldset`, `enum`, `extern`
 
   error: Unexpected type
      ╭─[cases/device_definition_errors/input.kdl:171:16]

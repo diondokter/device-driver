@@ -543,6 +543,7 @@ pub struct Extern {
     /// From/into what base type can this extern be converted?
     pub base_type: BaseType,
     /// We can convert safely if the base type value is under this limit
+    /// If this is none, it's basically the size_bits of the base_type.
     pub size_bits: Option<u32>,
 }
 
