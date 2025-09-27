@@ -60,7 +60,7 @@ fn get_block_claimed_addresses(
                     .enums
                     .iter()
                     .find(|e| e.name == *enum_name)
-                    .expect("Enum existance checked in mir pass")
+                    .expect("Enum existence checked in mir pass")
                     .variants
                     .iter()
                     .map(|variant| variant.discriminant * stride)
