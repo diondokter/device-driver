@@ -274,8 +274,9 @@ pub mod foo_d_6 {
     
         pub fn foor_10(
             &mut self,
+            index: Foo10E1,
         ) -> ::device_driver::RegisterOperation<'_, I, u8, Foor10FieldSet, ::device_driver::RW> {
-            let address = self.base_address + 6;
+            let address = self.base_address + 6 + u16::from(index) as u8 * 2;
     
             ::device_driver::RegisterOperation::<'_, I, u8, Foor10FieldSet, ::device_driver::RW>::new(
                 self.interface(),
@@ -1194,7 +1195,7 @@ pub mod foo_d_6 {
     
         pub fn bar(&self) -> Foo10E1 {
             let raw = unsafe {
-                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, 0, 2)
+                ::device_driver::ops::load_lsb0::<u16, ::device_driver::ops::LE>(&self.bits, 0, 2)
             };
             raw.into()
         }
@@ -1236,7 +1237,7 @@ pub mod foo_d_6 {
             let raw = value.into();
     
             unsafe {
-                ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
+                ::device_driver::ops::store_lsb0::<u16, ::device_driver::ops::LE>(
                     raw,
                     0,
                     2,
@@ -1896,7 +1897,7 @@ pub mod foo_d_6 {
         }
     }
     
-    #[repr(u8)]
+    #[repr(u16)]
     #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
     
     pub enum Foo10E1 {
@@ -1906,7 +1907,7 @@ pub mod foo_d_6 {
     
         C = 2,
     
-        D(u8) = 3,
+        D(u16) = 3,
     }
     
     impl Default for Foo10E1 {
@@ -1915,8 +1916,8 @@ pub mod foo_d_6 {
         }
     }
     
-    impl From<u8> for Foo10E1 {
-        fn from(val: u8) -> Self {
+    impl From<u16> for Foo10E1 {
+        fn from(val: u16) -> Self {
             match val {
                 0 => Self::A,
     
@@ -1927,7 +1928,7 @@ pub mod foo_d_6 {
         }
     }
     
-    impl From<Foo10E1> for u8 {
+    impl From<Foo10E1> for u16 {
         fn from(val: Foo10E1) -> Self {
             match val {
                 Foo10E1::A => 0,

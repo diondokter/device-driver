@@ -7,7 +7,7 @@
 pub enum {{enum_value.name}} {
     {% for variant in enum_value.variants %}
         {{self::description_to_docstring(variant.description)}}
-        {{variant.name}} {% if variant.catch_all %} ({{enum_value.base_type}}) {% endif %} = {{variant.number}},
+        {{variant.name}} {% if variant.catch_all %} ({{enum_value.base_type}}) {% endif %} = {{variant.discriminant}},
     {% endfor %}
 }
 
@@ -19,7 +19,7 @@ impl Default for {{enum_value.name}} {
     fn default() -> Self {
         Self::{{default_variant.name}}
         {% if default_variant.catch_all %}
-            ({{default_variant.number}})
+            ({{default_variant.discriminant}})
         {% endif %}
     }
 }
@@ -31,7 +31,7 @@ impl From<{{enum_value.base_type}}> for {{enum_value.name}} {
         match val {
             {% for variant in enum_value.variants %}
                 {% if !(variant.default || variant.catch_all) %}
-                    {{variant.number}} => Self::{{variant.name}},
+                    {{variant.discriminant}} => Self::{{variant.name}},
                 {% endif %}
             {% endfor %}
             {% if let Some(catch_all_variant) = catch_all_variant %}
@@ -48,7 +48,7 @@ impl core::convert::TryFrom<{{enum_value.base_type}}> for {{enum_value.name}} {
     fn try_from(val: {{enum_value.base_type}}) -> Result<Self, Self::Error> {
         match val {
             {% for variant in enum_value.variants %}
-                {{variant.number}} => Ok(Self::{{variant.name}}),
+                {{variant.discriminant}} => Ok(Self::{{variant.name}}),
             {% endfor %}
             val => Err(::device_driver::ConversionError { source: val, target: "{{enum_value.name}}" })
         }
@@ -63,7 +63,7 @@ impl From<{{enum_value.name}}> for {{enum_value.base_type}} {
                 {% if variant.catch_all %}
                     {{enum_value.name}}::{{variant.name}}(num) => num,
                 {% else %}
-                    {{enum_value.name}}::{{variant.name}} => {{variant.number}},
+                    {{enum_value.name}}::{{variant.name}} => {{variant.discriminant}},
                 {% endif %}
             {% endfor %}
         }

@@ -269,9 +269,9 @@ impl Object {
     /// Return the repeat value if it exists
     fn repeat(&self) -> Option<Repeat> {
         match self {
-            Object::Block(block) => block.repeat,
-            Object::Register(register) => register.repeat,
-            Object::Command(command) => command.repeat,
+            Object::Block(block) => block.repeat.clone(),
+            Object::Register(register) => register.repeat.clone(),
+            Object::Command(command) => command.repeat.clone(),
             Object::Buffer(_) => None,
             Object::FieldSet(_) => None,
             Object::Enum(_) => None,
@@ -294,6 +294,14 @@ impl Object {
             None
         }
     }
+
+    pub fn as_enum(&self) -> Option<&Enum> {
+        if let Self::Enum(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -305,10 +313,16 @@ pub struct Block {
     pub objects: Vec<Object>,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Repeat {
-    pub count: u64,
+    pub source: RepeatSource,
     pub stride: i128,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RepeatSource {
+    Count(u64),
+    Enum(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -455,6 +469,50 @@ impl Enum {
             generation_style: Some(generation_style),
         }
     }
+
+    /// Get an iterator over the variants, but with an extra counter to get the specified discriminant for each.
+    ///
+    /// *Note:* The validity of this is checked in the [passes::enum_values_checked] pass. If this function is run
+    /// before that pass, there might be weird results.
+    pub fn iter_variants_with_discriminant(&self) -> impl Iterator<Item = (i128, &EnumVariant)> {
+        let mut next_discriminant = 0;
+        self.variants
+            .iter()
+            .map(move |variant| match variant.value {
+                EnumValue::Specified(discriminant) => {
+                    next_discriminant = discriminant + 1;
+                    (discriminant, variant)
+                }
+                _ => {
+                    let discriminant = next_discriminant;
+                    next_discriminant += 1;
+                    (discriminant, variant)
+                }
+            })
+    }
+
+    /// Get an iterator over the variants, but with an extra counter to get the specified discriminant for each.
+    ///
+    /// *Note:* The validity of this is checked in the [passes::enum_values_checked] pass. If this function is run
+    /// before that pass, there might be weird results.
+    pub fn iter_variants_with_discriminant_mut(
+        &mut self,
+    ) -> impl Iterator<Item = (i128, &mut EnumVariant)> {
+        let mut next_discriminant = 0;
+        self.variants
+            .iter_mut()
+            .map(move |variant| match variant.value {
+                EnumValue::Specified(discriminant) => {
+                    next_discriminant = discriminant + 1;
+                    (discriminant, variant)
+                }
+                _ => {
+                    let discriminant = next_discriminant;
+                    next_discriminant += 1;
+                    (discriminant, variant)
+                }
+            })
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -509,6 +567,14 @@ impl EnumValue {
     #[must_use]
     pub fn is_catch_all(&self) -> bool {
         matches!(self, Self::CatchAll)
+    }
+
+    /// Returns `true` if the enum value is [`Unspecified`].
+    ///
+    /// [`Unspecified`]: EnumValue::Unspecified
+    #[must_use]
+    pub fn is_unspecified(&self) -> bool {
+        matches!(self, Self::Unspecified)
     }
 }
 

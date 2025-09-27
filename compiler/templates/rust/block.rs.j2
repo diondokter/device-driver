@@ -48,6 +48,7 @@ impl{{block_generics}} {{ block.name }}{{block_generics}} {
             {% when BlockMethodKind::Repeated { count, .. } %}
             ///
             /// Valid index range: 0..{{count}}
+            {% when BlockMethodKind::RepeatedEnum { .. } %}
             {% endwhen %}
         {% endmatch %}
         pub fn {{ method.name }}(
@@ -55,6 +56,7 @@ impl{{block_generics}} {{ block.name }}{{block_generics}} {
             {% match method.kind %}
                 {% when BlockMethodKind::Normal %}
                 {% when BlockMethodKind::Repeated { .. } %} index: usize
+                {% when BlockMethodKind::RepeatedEnum { enum_name, .. } %} index: {{enum_name}}
             {% endmatch %}
         ) -> 
         {% match method.method_type %}
@@ -71,6 +73,8 @@ impl{{block_generics}} {{ block.name }}{{block_generics}} {
                         assert!(index < {{count}});
                         self.base_address + {{method.address}} + index as {{device.internal_address_type}} * {{stride}}
                     };
+                {% when BlockMethodKind::RepeatedEnum { enum_name, stride } %}
+                    let address = self.base_address + {{method.address}} + {{self::get_enum_base_type(device, &enum_name)}}::from(index) as {{device.internal_address_type}} * {{stride}};
                 {% endwhen %}
             {% endmatch %}
 
