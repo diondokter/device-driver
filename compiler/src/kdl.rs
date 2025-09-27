@@ -1553,15 +1553,22 @@ fn parse_repeat_entries(
 
     let mut count = None;
     let mut stride = None;
+    let mut with = None;
 
     for entry in node.entries() {
         match (entry.name().map(|id| id.value()), entry.value()) {
             (Some("count"), KdlValue::Integer(val)) => count = Some((*val, entry.span())),
             (Some("stride"), KdlValue::Integer(val)) => stride = Some(*val),
+            (Some("with"), KdlValue::String(val)) => with = Some((val.clone(), entry.span())),
             (Some("count") | Some("stride"), _) => diagnostics.add(errors::UnexpectedType {
                 source_code: source_code.clone(),
                 value_name: entry.span(),
                 expected_type: "integer",
+            }),
+            (Some("with"), _) => diagnostics.add(errors::UnexpectedType {
+                source_code: source_code.clone(),
+                value_name: entry.span(),
+                expected_type: "string",
             }),
             (Some(_), _) => {
                 unexpected_entries
@@ -1580,27 +1587,35 @@ fn parse_repeat_entries(
 
     let mut error = false;
 
-    if count.is_none() && stride.is_none() {
+    if let (Some((_, count_span)), Some((_, with_span))) = (&count, &with) {
         error = true;
-        diagnostics.add(errors::MissingEntry {
+        diagnostics.add(errors::RepeatOverSpecified {
             source_code: source_code.clone(),
-            node_name: node.name().span(),
-            expected_entries: vec!["count=<integer>", "stride=<integer>"],
+            count: *count_span,
+            with: *with_span,
         });
-    } else if count.is_none() {
+    }
+
+    let mut missing_entry_error = errors::MissingEntry {
+        source_code: source_code.clone(),
+        node_name: node.name().span(),
+        expected_entries: Vec::new(),
+    };
+
+    if count.is_none() && with.is_none() {
         error = true;
-        diagnostics.add(errors::MissingEntry {
-            source_code: source_code.clone(),
-            node_name: node.name().span(),
-            expected_entries: vec!["count=<integer>"],
-        });
-    } else if stride.is_none() {
+        missing_entry_error.expected_entries.push("count=<integer>");
+        missing_entry_error.expected_entries.push("with=<string>");
+    }
+    if stride.is_none() {
         error = true;
-        diagnostics.add(errors::MissingEntry {
-            source_code: source_code.clone(),
-            node_name: node.name().span(),
-            expected_entries: vec!["stride=<integer>"],
-        });
+        missing_entry_error
+            .expected_entries
+            .push("stride=<integer>");
+    }
+
+    if !missing_entry_error.expected_entries.is_empty() {
+        diagnostics.add(missing_entry_error);
     }
 
     if let Some((count, span)) = count
@@ -1618,10 +1633,17 @@ fn parse_repeat_entries(
     if error {
         None
     } else {
-        Some(Repeat {
-            count: count.unwrap().0 as u64,
-            stride: stride.unwrap(),
-        })
+        match (count, with, stride) {
+            (None, Some((with, _)), Some(stride)) => Some(Repeat {
+                source: crate::mir::RepeatSource::Enum(with),
+                stride,
+            }),
+            (Some((count, _)), None, Some(stride)) => Some(Repeat {
+                source: crate::mir::RepeatSource::Count(count as u64),
+                stride,
+            }),
+            _ => unreachable!(),
+        }
     }
 }
 

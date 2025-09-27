@@ -14,6 +14,7 @@
 - device-driver-generation is renamed to device-driver-compiler
 - device-driver-cli's bin is renamed to `ddc`
 - Changed the cli/ddc arguments
+- Repeats can use enums now instead of a count
 
 ### 1.0.7 (30-07-25)
 

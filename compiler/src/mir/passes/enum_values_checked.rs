@@ -17,25 +17,15 @@ pub fn run_pass(device: &mut Device) -> miette::Result<()> {
             );
 
             // Record all variant values
-            let mut seen_values = Vec::new();
-            for variant in enum_value.variants.iter_mut() {
-                match &mut variant.value {
-                    val @ EnumValue::Unspecified => {
-                        let assigned_value =
-                            seen_values.last().map(|(val, _)| *val + 1).unwrap_or(0);
-                        *val = EnumValue::Specified(assigned_value);
-                        seen_values.push((assigned_value, variant.id()));
+            let seen_values = enum_value
+                .iter_variants_with_discriminant_mut()
+                .map(|(discriminant, variant)| {
+                    if variant.value.is_unspecified() {
+                        variant.value = EnumValue::Specified(discriminant);
                     }
-                    EnumValue::Specified(num) => {
-                        seen_values.push((*num, variant.id()));
-                    }
-                    EnumValue::Default | EnumValue::CatchAll => {
-                        let assigned_value =
-                            seen_values.last().map(|(val, _)| *val + 1).unwrap_or(0);
-                        seen_values.push((assigned_value, variant.id()));
-                    }
-                }
-            }
+                    (discriminant, variant.id())
+                })
+                .collect_vec();
 
             let duplicates = seen_values
                 .iter()

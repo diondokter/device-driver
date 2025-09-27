@@ -109,8 +109,9 @@ device FooD6 {
     }
     register foor10 {
         address 6
+        repeat with=Foo10E1 stride=2
         fields size-bits=8 {
-            (:Foo10E1)bar @1:0 {
+            (u16:Foo10E1)bar @1:0 {
                 A 0
                 B 1
                 C default

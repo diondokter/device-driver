@@ -1,21 +1,24 @@
 use miette::bail;
 
+use crate::mir::RepeatSource;
+
 use super::{Device, Object, Repeat};
 
-mod address_types_big_enough;
-mod address_types_specified;
-mod base_types_specified;
-mod bit_order_specified;
-mod bit_ranges_validated;
-mod bool_fields_checked;
-mod byte_order_specified;
-mod device_name_is_pascal;
-mod enum_values_checked;
-mod extern_values_checked;
-mod field_conversion_valid;
-mod names_normalized;
-mod names_unique;
-mod reset_values_converted;
+pub mod address_types_big_enough;
+pub mod address_types_specified;
+pub mod base_types_specified;
+pub mod bit_order_specified;
+pub mod bit_ranges_validated;
+pub mod bool_fields_checked;
+pub mod byte_order_specified;
+pub mod device_name_is_pascal;
+pub mod enum_values_checked;
+pub mod extern_values_checked;
+pub mod field_conversion_valid;
+pub mod names_normalized;
+pub mod names_unique;
+pub mod repeat_with_enums_checked;
+pub mod reset_values_converted;
 
 pub fn run_passes(device: &mut Device) -> miette::Result<()> {
     bit_order_specified::run_pass(device)?;
@@ -24,6 +27,7 @@ pub fn run_passes(device: &mut Device) -> miette::Result<()> {
     names_normalized::run_pass(device)?;
     names_unique::run_pass(device)?;
     enum_values_checked::run_pass(device)?;
+    repeat_with_enums_checked::run_pass(device)?;
     extern_values_checked::run_pass(device)?;
     field_conversion_valid::run_pass(device)?;
     byte_order_specified::run_pass(device)?;
@@ -133,22 +137,39 @@ pub(crate) fn find_min_max_addresses(
 
         if let Some(address) = object.address() {
             let repeat = object.repeat().unwrap_or(Repeat {
-                count: 1,
+                source: RepeatSource::Count(1),
                 stride: 0,
             });
 
             let total_address_offsets = address_offsets.iter().sum::<i128>();
 
-            let count_0_address = total_address_offsets + address;
-            let count_max_address =
-                count_0_address + (repeat.count.saturating_sub(1) as i128 * repeat.stride);
+            match repeat.source {
+                RepeatSource::Count(count) => {
+                    let count_0_address = total_address_offsets + address;
+                    let count_max_address =
+                        count_0_address + (count.saturating_sub(1) as i128 * repeat.stride);
 
-            min_address_found = min_address_found
-                .min(count_0_address)
-                .min(count_max_address);
-            max_address_found = max_address_found
-                .max(count_0_address)
-                .max(count_max_address);
+                    min_address_found = min_address_found
+                        .min(count_0_address)
+                        .min(count_max_address);
+                    max_address_found = max_address_found
+                        .max(count_0_address)
+                        .max(count_max_address);
+                }
+                RepeatSource::Enum(enum_name) => {
+                    let enum_value = search_object(objects, &enum_name)
+                        .expect("A mir pass checked this enum exists")
+                        .as_enum()
+                        .expect("A mir pass checked this is an enum");
+
+                    for (discriminant, _) in enum_value.iter_variants_with_discriminant() {
+                        let address =
+                            total_address_offsets + address + (discriminant * repeat.stride);
+                        min_address_found = min_address_found.min(address);
+                        max_address_found = max_address_found.max(address);
+                    }
+                }
+            }
         }
 
         if let Object::Block(b) = object {

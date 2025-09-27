@@ -42,20 +42,29 @@ pub fn run_pass(device: &mut Device) -> miette::Result<()> {
 fn get_block_claimed_addresses(
     device: &Device,
     block: &Block,
-    current_address_offset: i64,
+    current_address_offset: i128,
     name_stack: &[String],
 ) -> miette::Result<Vec<ClaimedAddress>> {
     let mut claimed_addresses = Vec::new();
 
     for method in &block.methods {
-        let current_address_offset =
-            current_address_offset + method.address.to_string().parse::<i64>().unwrap();
+        let current_address_offset = current_address_offset + method.address;
 
-        let (repeat_count, repeat_stride, repeat): (i64, i64, bool) = match &method.kind {
-            BlockMethodKind::Normal => (1, 0, false),
-            BlockMethodKind::Repeated { count, stride } => (
-                count.to_string().parse().unwrap(),
-                stride.to_string().parse().unwrap(),
+        let (repeat_addresses, repeat): (Vec<i128>, bool) = match &method.kind {
+            BlockMethodKind::Normal => ((0..1).collect(), false),
+            BlockMethodKind::Repeated { count, stride } => {
+                ((0..*count).map(|i| i as i128 * stride).collect(), true)
+            }
+            BlockMethodKind::RepeatedEnum { enum_name, stride } => (
+                device
+                    .enums
+                    .iter()
+                    .find(|e| e.name == *enum_name)
+                    .expect("Enum existence checked in mir pass")
+                    .variants
+                    .iter()
+                    .map(|variant| variant.discriminant * stride)
+                    .collect(),
                 true,
             ),
         };
@@ -68,7 +77,7 @@ fn get_block_claimed_addresses(
                     .find(|b| b.name == *name)
                     .expect("There's always a root block");
 
-                for i in 0..repeat_count {
+                for (i, repeat_address) in repeat_addresses.iter().enumerate() {
                     let next_name_stack = name_stack
                         .iter()
                         .cloned()
@@ -81,7 +90,7 @@ fn get_block_claimed_addresses(
                     claimed_addresses.extend(get_block_claimed_addresses(
                         device,
                         sub_block,
-                        current_address_offset + i * repeat_stride,
+                        current_address_offset + repeat_address,
                         &next_name_stack,
                     )?);
                 }
@@ -92,7 +101,7 @@ fn get_block_claimed_addresses(
             BlockMethodType::Buffer { .. } => ClaimedAddressType::Buffer,
         };
 
-        for i in 0..repeat_count {
+        for (i, repeat_address) in repeat_addresses.iter().enumerate() {
             use itertools::Itertools;
 
             claimed_addresses.push(ClaimedAddress {
@@ -101,8 +110,8 @@ fn get_block_claimed_addresses(
                     .cloned()
                     .chain([method.name.to_string().to_case(Case::Pascal)])
                     .join("::"),
-                repeat_index: repeat.then_some(i),
-                address: current_address_offset + i * repeat_stride,
+                repeat_index: repeat.then_some(i as _),
+                address: current_address_offset + repeat_address,
                 allow_overlap: method.allow_address_overlap,
                 address_type: claimed_address_type,
             });
@@ -121,8 +130,8 @@ enum ClaimedAddressType {
 
 struct ClaimedAddress {
     name: String,
-    repeat_index: Option<i64>,
-    address: i64,
+    repeat_index: Option<i128>,
+    address: i128,
     allow_overlap: bool,
     address_type: ClaimedAddressType,
 }

@@ -290,3 +290,20 @@ pub struct NoChildrenExpected {
     #[label("Try removing these child nodes")]
     pub children: SourceSpan,
 }
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Repeat is overspecified")]
+#[diagnostic(
+    help(
+        "A repeat can either use the `count` or the `with` specifier, but not both. Remove one of them."
+    ),
+    severity(Error)
+)]
+pub struct RepeatOverSpecified {
+    #[source_code]
+    pub source_code: NamedSourceCode,
+    #[label("This repeat has a count")]
+    pub count: SourceSpan,
+    #[label("This repeat also has a with")]
+    pub with: SourceSpan,
+}

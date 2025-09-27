@@ -42,3 +42,12 @@ fn get_command_fieldset_name(fieldset: &Option<String>) -> String {
         None => "()".into(),
     }
 }
+
+fn get_enum_base_type<'d>(device: &'d Device, enum_name: &str) -> &'d str {
+    &device
+        .enums
+        .iter()
+        .find(|e| e.name == enum_name)
+        .expect("This enum reference is checked in a mir pass")
+        .base_type
+}

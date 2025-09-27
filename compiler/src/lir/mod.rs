@@ -35,6 +35,7 @@ pub struct BlockMethod {
 pub enum BlockMethodKind {
     Normal,
     Repeated { count: u64, stride: i128 },
+    RepeatedEnum { enum_name: String, stride: i128 },
 }
 
 pub enum BlockMethodType {
@@ -123,7 +124,7 @@ impl Enum {
 pub struct EnumVariant {
     pub description: String,
     pub name: String,
-    pub number: i128,
+    pub discriminant: i128,
     pub default: bool,
     pub catch_all: bool,
 }

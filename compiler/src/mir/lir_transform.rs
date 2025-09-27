@@ -341,7 +341,7 @@ fn transform_enum(e: &mir::Enum) -> miette::Result<lir::Enum> {
     let mir::Enum {
         description,
         name,
-        variants,
+        variants: _,
         base_type,
         size_bits: _,
         generation_style: _,
@@ -354,34 +354,19 @@ fn transform_enum(e: &mir::Enum) -> miette::Result<lir::Enum> {
         }
     };
 
-    let mut next_variant_number = None;
-    let variants = variants
-        .iter()
-        .map(|v| {
+    let variants = e
+        .iter_variants_with_discriminant()
+        .map(|(discriminant, v)| {
             let mir::EnumVariant {
                 description,
                 name,
                 value,
             } = v;
 
-            let number = match value {
-                mir::EnumValue::Unspecified
-                | mir::EnumValue::Default
-                | mir::EnumValue::CatchAll => {
-                    let val = next_variant_number.unwrap_or_default();
-                    next_variant_number = Some(val + 1);
-                    val
-                }
-                mir::EnumValue::Specified(num) => {
-                    next_variant_number = Some(*num + 1);
-                    *num
-                }
-            };
-
             Ok(lir::EnumVariant {
                 description: description.clone(),
                 name: name.to_string(),
-                number,
+                discriminant,
                 default: matches!(value, mir::EnumValue::Default),
                 catch_all: matches!(value, mir::EnumValue::CatchAll),
             })
@@ -398,8 +383,18 @@ fn transform_enum(e: &mir::Enum) -> miette::Result<lir::Enum> {
 
 fn repeat_to_method_kind(repeat: &Option<mir::Repeat>) -> lir::BlockMethodKind {
     match repeat {
-        Some(mir::Repeat { count, stride }) => lir::BlockMethodKind::Repeated {
+        Some(mir::Repeat {
+            source: mir::RepeatSource::Count(count),
+            stride,
+        }) => lir::BlockMethodKind::Repeated {
             count: *count,
+            stride: *stride,
+        },
+        Some(mir::Repeat {
+            source: mir::RepeatSource::Enum(enum_name),
+            stride,
+        }) => lir::BlockMethodKind::RepeatedEnum {
+            enum_name: enum_name.clone(),
             stride: *stride,
         },
         None => lir::BlockMethodKind::Normal,
