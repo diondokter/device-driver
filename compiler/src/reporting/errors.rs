@@ -294,7 +294,9 @@ pub struct NoChildrenExpected {
 #[derive(Error, Debug, Diagnostic)]
 #[error("Repeat is overspecified")]
 #[diagnostic(
-    help("A repeat can either use the `count` or the `with` specifier, but not both. Remove one of them."),
+    help(
+        "A repeat can either use the `count` or the `with` specifier, but not both. Remove one of them."
+    ),
     severity(Error)
 )]
 pub struct RepeatOverSpecified {
