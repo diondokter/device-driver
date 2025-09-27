@@ -17,6 +17,7 @@ pub mod extern_values_checked;
 pub mod field_conversion_valid;
 pub mod names_normalized;
 pub mod names_unique;
+pub mod repeat_with_enums_checked;
 pub mod reset_values_converted;
 
 pub fn run_passes(device: &mut Device) -> miette::Result<()> {
@@ -26,6 +27,7 @@ pub fn run_passes(device: &mut Device) -> miette::Result<()> {
     names_normalized::run_pass(device)?;
     names_unique::run_pass(device)?;
     enum_values_checked::run_pass(device)?;
+    repeat_with_enums_checked::run_pass(device)?;
     extern_values_checked::run_pass(device)?;
     field_conversion_valid::run_pass(device)?;
     byte_order_specified::run_pass(device)?;

@@ -230,6 +230,18 @@ impl Object {
         }
     }
 
+    pub(self) fn type_name(&self) -> &'static str {
+        match self {
+            Object::Block(_) => "block",
+            Object::Register(_) => "register",
+            Object::Command(_) => "command",
+            Object::Buffer(_) => "buffer",
+            Object::FieldSet(_) => "fieldset",
+            Object::Enum(_) => "enum",
+            Object::Extern(_) => "extern",
+        }
+    }
+
     pub(self) fn field_set_refs_mut(&mut self) -> Vec<&mut FieldSetRef> {
         match self {
             Object::Block(_) => Vec::new(),
