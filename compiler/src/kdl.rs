@@ -1386,28 +1386,27 @@ fn transform_extern(
     }
 
     let mut name: Option<&kdl::KdlEntry> = None;
-    let mut size_bits: Option<&kdl::KdlEntry> = None;
+    let mut infallible: Option<&kdl::KdlEntry> = None;
 
     for (i, entry) in node.entries().iter().enumerate() {
         match entry.name().map(|n| n.value()) {
-            Some("unsafe-size-bits") => {
-                if let Some(size_bits) = size_bits {
-                    diagnostics.add(errors::DuplicateEntry {
-                        source_code: source_code.clone(),
-                        duplicate: entry.span(),
-                        original: size_bits.span(),
-                    });
-                } else {
-                    size_bits = Some(entry);
-                }
-            }
             Some(_) => {
                 unexpected_entries
                     .unexpected_name_entries
                     .push(entry.span());
             }
             None => {
-                if i == 0 {
+                if entry.value().as_string() == Some("infallible") {
+                    if let Some(infallible) = infallible {
+                        diagnostics.add(errors::DuplicateEntry {
+                            source_code: source_code.clone(),
+                            duplicate: entry.span(),
+                            original: infallible.span(),
+                        });
+                    } else {
+                        infallible = Some(entry);
+                    }
+                } else if i == 0 {
                     name = Some(entry);
                 } else {
                     unexpected_entries
@@ -1444,28 +1443,7 @@ fn transform_extern(
         });
     }
 
-    if let Some(size_bits) = size_bits {
-        match size_bits.value() {
-            KdlValue::Integer(sb) if (0..=u32::MAX as i128).contains(sb) => {
-                extern_value.size_bits = Some(*sb as u32);
-            }
-            KdlValue::Integer(_) => {
-                diagnostics.add(errors::ValueOutOfRange {
-                    source_code: source_code.clone(),
-                    value: size_bits.span(),
-                    context: Some("size-bits is encoded as a u32"),
-                    range: "0..2^32",
-                });
-            }
-            _ => {
-                diagnostics.add(errors::UnexpectedType {
-                    source_code: source_code.clone(),
-                    value_name: size_bits.span(),
-                    expected_type: "integer",
-                });
-            }
-        }
-    }
+    extern_value.supports_infallible = infallible.is_some();
 
     if name.is_some() {
         Some(extern_value)
