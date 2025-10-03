@@ -808,23 +808,14 @@
  205 │     extern
      ·     ───┬──
      ·        ╰── For this object
- 206 │     (abc:something?)extern etype1 a unsafe-size-bits=1
+ 206 │     (i16:something?)extern etype1 a
      ╰────
   help: The name is specified by the first entry of the node. It must be an anonymous string, e.g. `extern Foo { }`
-
-  error: Unexpected value
-     ╭─[cases/device_definition_errors/input.kdl:206:6]
- 205 │     extern
- 206 │     (abc:something?)extern etype1 a unsafe-size-bits=1
-     ·      ───────┬──────
-     ·             ╰── Expected one of these values: `bool`, `uint`, `int`, `u8`, `u16`, `u32`, `u64`, `i8`, `i16`, `i32`, `i64`, `<base>:<target>`, `<base>:<target>?`
- 207 │     /// Some docs over here!
-     ╰────
 
   error: Only base type allowed
      ╭─[cases/device_definition_errors/input.kdl:206:6]
  205 │     extern
- 206 │     (abc:something?)extern etype1 a unsafe-size-bits=1
+ 206 │     (i16:something?)extern etype1 a
      ·      ───────┬──────
      ·             ╰── Type specifier contains conversion
  207 │     /// Some docs over here!
@@ -834,7 +825,7 @@
   error: Unexpected entries
      ╭─[cases/device_definition_errors/input.kdl:206:35]
  205 │     extern
- 206 │     (abc:something?)extern etype1 a unsafe-size-bits=1
+ 206 │     (i16:something?)extern etype1 a
      ·                                   ┬
      ·                                   ╰── This entry was expected to have a name (and not be anonymous)
  207 │     /// Some docs over here!

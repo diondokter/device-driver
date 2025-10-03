@@ -203,9 +203,9 @@ device FooD6 {
         B
     }
     extern
-    (abc:something?)extern etype1 a unsafe-size-bits=1
+    (i16:something?)extern etype1 a
     /// Some docs over here!
-    (u8)extern etype2 unsafe-size-bits=7
+    (u8)extern etype2 infallible
     (u8)extern etype3
     fieldset fs2 size-bits=32 byte-order=LE {
         (:etype2)value @6:0

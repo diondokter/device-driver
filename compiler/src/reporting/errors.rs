@@ -36,7 +36,7 @@ pub struct UnexpectedEntries {
     pub source_code: NamedSourceCode,
     #[label(collection, "This entry is unexpected")]
     pub superfluous_entries: Vec<SourceSpan>,
-    #[label(collection, "This entry is has a name that's unexpected")]
+    #[label(collection, "This entry has a name that's unexpected")]
     pub unexpected_name_entries: Vec<SourceSpan>,
     #[label(collection, "This entry was expected to be anonymous")]
     pub not_anonymous_entries: Vec<SourceSpan>,

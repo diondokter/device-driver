@@ -413,6 +413,14 @@ impl BaseType {
     pub fn is_unspecified(&self) -> bool {
         matches!(self, Self::Unspecified)
     }
+
+    /// Returns `true` if the base type is [`FixedSize`].
+    ///
+    /// [`FixedSize`]: BaseType::FixedSize
+    #[must_use]
+    pub fn is_fixed_size(&self) -> bool {
+        matches!(self, Self::FixedSize(..))
+    }
 }
 
 impl Display for BaseType {
@@ -632,9 +640,8 @@ pub struct Extern {
     pub name: String,
     /// From/into what base type can this extern be converted?
     pub base_type: BaseType,
-    /// We can convert safely if the base type value is under this limit
-    /// If this is none, it's basically the size_bits of the base_type.
-    pub size_bits: Option<u32>,
+    /// If true, this extern can be converted infallibly too
+    pub supports_infallible: bool,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]

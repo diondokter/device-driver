@@ -1769,7 +1769,7 @@ pub mod foo_d_6 {
             let raw = unsafe {
                 ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, 0, 7)
             };
-            unsafe { raw.try_into().unwrap_unchecked() }
+            raw.into()
         }
     
         ///Read the `value_2` field of the register.
