@@ -43,20 +43,20 @@ impl{{block_generics}} {{ block.name }}{{block_generics}} {
 
     {% for method in block.methods %}
         {{ self::description_to_docstring(method.description) }}
-        {% match method.kind %}
-            {% when BlockMethodKind::Normal %}
-            {% when BlockMethodKind::Repeated { count, .. } %}
+        {% match method.repeat %}
+            {% when Repeat::None %}
+            {% when Repeat::Count { count, .. } %}
             ///
             /// Valid index range: 0..{{count}}
-            {% when BlockMethodKind::RepeatedEnum { .. } %}
+            {% when Repeat::Enum { .. } %}
             {% endwhen %}
         {% endmatch %}
         pub fn {{ method.name }}(
             &mut self,
-            {% match method.kind %}
-                {% when BlockMethodKind::Normal %}
-                {% when BlockMethodKind::Repeated { .. } %} index: usize
-                {% when BlockMethodKind::RepeatedEnum { enum_name, .. } %} index: {{enum_name}}
+            {% match method.repeat %}
+                {% when Repeat::None %}
+                {% when Repeat::Count { .. } %} index: usize
+                {% when Repeat::Enum { enum_name, .. } %} index: {{enum_name}}
             {% endmatch %}
         ) -> 
         {% match method.method_type %}
@@ -66,14 +66,14 @@ impl{{block_generics}} {{ block.name }}{{block_generics}} {
             {% when BlockMethodType::Buffer { access, address_type } %} ::device_driver::BufferOperation<'_, I, {{address_type}}, ::device_driver::{{access}}>
         {% endmatch %}
         {
-            {% match method.kind %}
-                {% when BlockMethodKind::Normal %} let address = self.base_address + {{method.address}};
-                {% when BlockMethodKind::Repeated { count, stride } %}
+            {% match method.repeat %}
+                {% when Repeat::None %} let address = self.base_address + {{method.address}};
+                {% when Repeat::Count { count, stride } %}
                     let address = {
                         assert!(index < {{count}});
                         self.base_address + {{method.address}} + index as {{device.internal_address_type}} * {{stride}}
                     };
-                {% when BlockMethodKind::RepeatedEnum { enum_name, stride } %}
+                {% when Repeat::Enum { enum_name, stride } %}
                     let address = self.base_address + {{method.address}} + {{self::get_enum_base_type(device, &enum_name)}}::from(index) as {{device.internal_address_type}} * {{stride}};
                 {% endwhen %}
             {% endmatch %}

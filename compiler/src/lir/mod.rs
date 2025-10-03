@@ -28,14 +28,14 @@ pub struct BlockMethod {
     pub address: i128,
     // Only used for LIR passes, not codegen
     pub allow_address_overlap: bool,
-    pub kind: BlockMethodKind,
+    pub repeat: Repeat,
     pub method_type: BlockMethodType,
 }
 
-pub enum BlockMethodKind {
-    Normal,
-    Repeated { count: u64, stride: i128 },
-    RepeatedEnum { enum_name: String, stride: i128 },
+pub enum Repeat {
+    None,
+    Count { count: u64, stride: i128 },
+    Enum { enum_name: String, stride: i128 },
 }
 
 pub enum BlockMethodType {
@@ -82,6 +82,7 @@ pub struct Field {
     pub base_type: String,
     pub conversion_method: FieldConversionMethod,
     pub access: mir::Access,
+    pub repeat: Repeat,
 }
 
 pub enum FieldConversionMethod {

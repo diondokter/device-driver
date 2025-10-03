@@ -233,7 +233,7 @@ fn transform_block(
                         continue;
                     }
 
-                    repeat = parse_repeat_entries(child, source_code.clone(), diagnostics)
+                    repeat = parse_repeat_entries(child, source_code.clone(), diagnostics, true)
                         .map(|val| (val, child.name().span()));
                 }
             }
@@ -351,7 +351,7 @@ fn transform_register(
                     continue;
                 }
 
-                repeat = parse_repeat_entries(child, source_code.clone(), diagnostics)
+                repeat = parse_repeat_entries(child, source_code.clone(), diagnostics, true)
                     .map(|val| (val, child.name().span()));
             }
             Ok(RegisterField::FieldSet) => {
@@ -498,7 +498,7 @@ fn transform_command(
                     continue;
                 }
 
-                repeat = parse_repeat_entries(child, source_code.clone(), diagnostics)
+                repeat = parse_repeat_entries(child, source_code.clone(), diagnostics, true)
                     .map(|val| (val, child.name().span()));
             }
             Ok(CommandField::FieldSetIn) => {
@@ -1026,10 +1026,17 @@ fn transform_field(
     let mut address = None;
     let mut access = None;
 
+    let repeat = parse_repeat_entries(node, source_code.clone(), diagnostics, false);
+
     for entry in node.entries() {
-        if entry.name().is_some() {
-            unexpected_entries.not_anonymous_entries.push(entry.span());
-            continue;
+        match entry.name().map(|id| id.value()) {
+            // Ignore the repeat fields. they're parsed separately
+            Some("count") | Some("with") | Some("stride") => continue,
+            Some(_) => {
+                unexpected_entries.not_anonymous_entries.push(entry.span());
+                continue;
+            }
+            None => {}
         }
 
         match entry.value() {
@@ -1158,6 +1165,7 @@ fn transform_field(
             base_type,
             field_conversion,
             field_address: address.unwrap().0,
+            repeat,
         }),
         inline_enum,
     )
@@ -1516,10 +1524,15 @@ fn ensure_zero_entries(
     }
 }
 
+/// Parse the repeat specifiers.
+///
+/// If `standalone_repeat` is true, it's expected only repeat entries are to be found and appropriate errors will be emitted.
+/// If false, then the only errors emitted is when the repeat is incomplete
 fn parse_repeat_entries(
     node: &KdlNode,
     source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
+    standalone_repeat: bool,
 ) -> Option<Repeat> {
     let mut unexpected_entries = errors::UnexpectedEntries {
         source_code: source_code.clone(),
@@ -1559,7 +1572,7 @@ fn parse_repeat_entries(
         }
     }
 
-    if !unexpected_entries.is_empty() {
+    if !unexpected_entries.is_empty() && standalone_repeat {
         diagnostics.add(unexpected_entries);
     }
 
@@ -1580,16 +1593,19 @@ fn parse_repeat_entries(
         expected_entries: Vec::new(),
     };
 
-    if count.is_none() && with.is_none() {
-        error = true;
-        missing_entry_error.expected_entries.push("count=<integer>");
-        missing_entry_error.expected_entries.push("with=<string>");
-    }
-    if stride.is_none() {
-        error = true;
-        missing_entry_error
-            .expected_entries
-            .push("stride=<integer>");
+    if standalone_repeat || count.is_some() || with.is_some() || stride.is_some()
+    {
+        if count.is_none() && with.is_none() {
+            error = true;
+            missing_entry_error.expected_entries.push("count=<integer>");
+            missing_entry_error.expected_entries.push("with=<string>");
+        }
+        if stride.is_none() {
+            error = true;
+            missing_entry_error
+                .expected_entries
+                .push("stride=<integer>");
+        }
     }
 
     if !missing_entry_error.expected_entries.is_empty() {
@@ -1620,6 +1636,7 @@ fn parse_repeat_entries(
                 source: crate::mir::RepeatSource::Count(count as u64),
                 stride,
             }),
+            (None, None, None) => None,
             _ => unreachable!(),
         }
     }
