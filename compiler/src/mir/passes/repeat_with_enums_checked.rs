@@ -25,6 +25,26 @@ pub fn run_pass(device: &mut Device) -> miette::Result<()> {
             }
         }
 
+        if let Object::FieldSet(fs) = object {
+            for field in fs.fields.iter() {
+                if let Some(Repeat {
+                    source: RepeatSource::Enum(enum_name),
+                    ..
+                }) = field.repeat.as_ref()
+                {
+                    match search_object(&device.objects, enum_name) {
+                        Some(Object::Enum(_)) => {}
+                        _ => {
+                            bail!(
+                                "Cannot find the enum called `{enum_name}` that's used in the repeat specified in field `{}` in fieldset `{object_name}`",
+                                field.name
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         Ok(())
     })
 }

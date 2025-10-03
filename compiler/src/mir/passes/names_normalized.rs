@@ -1,6 +1,6 @@
 use convert_case::Case;
 
-use crate::mir::{Device, Object};
+use crate::mir::{Device, Object, Repeat, RepeatSource};
 
 use super::recurse_objects_mut;
 
@@ -31,6 +31,14 @@ pub fn run_pass(device: &mut Device) -> miette::Result<()> {
 
                 if let Some(conversion) = field.field_conversion.as_mut() {
                     conversion.type_name = pascal_converter.convert(&conversion.type_name);
+                }
+
+                if let Some(Repeat {
+                    source: RepeatSource::Enum(name),
+                    ..
+                }) = field.repeat.as_mut()
+                {
+                    *name = pascal_converter.convert(&name);
                 }
             }
         }

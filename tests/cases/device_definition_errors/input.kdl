@@ -211,4 +211,10 @@ device FooD6 {
         (:etype2)value @6:0
         (:etype3?)value2 @10:7
     }
+    fieldset fs3 size-bits=32 byte-order=LE {
+        val0 @1:0 with=e3
+        val1 @3:2 with=e3 stride=2
+        val2 @7:6 count=4 stride=2
+        val3 @13:10 stride=2
+    }
 }
