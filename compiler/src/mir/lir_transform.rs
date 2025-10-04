@@ -115,7 +115,7 @@ fn get_method(
                 name: name.to_case(convert_case::Case::Snake),
                 address: *address_offset,
                 allow_address_overlap: false,
-                kind: repeat_to_method_kind(repeat),
+                repeat: repeat_to_method_kind(repeat),
                 method_type: lir::BlockMethodType::Block {
                     name: name.to_string(),
                 },
@@ -135,7 +135,7 @@ fn get_method(
             name: name.to_case(convert_case::Case::Snake),
             address: *address,
             allow_address_overlap: *allow_address_overlap,
-            kind: repeat_to_method_kind(repeat),
+            repeat: repeat_to_method_kind(repeat),
             method_type: lir::BlockMethodType::Register {
                 field_set_name: field_set.0.clone(),
                 access: *access,
@@ -165,7 +165,7 @@ fn get_method(
             name: name.to_case(convert_case::Case::Snake),
             address: *address,
             allow_address_overlap: *allow_address_overlap,
-            kind: repeat_to_method_kind(repeat),
+            repeat: repeat_to_method_kind(repeat),
             method_type: lir::BlockMethodType::Command {
                 field_set_name_in: field_set_in.as_ref().map(|fs_in| fs_in.0.clone()),
                 field_set_name_out: field_set_out.as_ref().map(|fs_out| fs_out.0.clone()),
@@ -184,7 +184,7 @@ fn get_method(
             name: name.to_case(convert_case::Case::Snake),
             address: *address,
             allow_address_overlap: false,
-            kind: lir::BlockMethodKind::Normal, // Buffers can't be repeated (for now?)
+            repeat: lir::Repeat::None, // Buffers can't be repeated (for now?)
             method_type: lir::BlockMethodType::Buffer {
                 access: *access,
                 address_type: global_config
@@ -230,6 +230,7 @@ fn transform_field_set<'a>(
                 base_type,
                 field_conversion,
                 field_address,
+                repeat,
             } = field;
 
             let (base_type, conversion_method) = match (base_type, field_conversion) {
@@ -278,6 +279,19 @@ fn transform_field_set<'a>(
                 base_type,
                 conversion_method,
                 access: *access,
+                repeat: repeat
+                    .clone()
+                    .map(|repeat| match repeat.source {
+                        mir::RepeatSource::Count(c) => lir::Repeat::Count {
+                            count: c,
+                            stride: repeat.stride,
+                        },
+                        mir::RepeatSource::Enum(e) => lir::Repeat::Enum {
+                            enum_name: e,
+                            stride: repeat.stride,
+                        },
+                    })
+                    .unwrap_or(lir::Repeat::None),
             })
         })
         .collect::<Result<_, miette::Report>>()?;
@@ -352,23 +366,23 @@ fn transform_enum(e: &mir::Enum) -> miette::Result<lir::Enum> {
     })
 }
 
-fn repeat_to_method_kind(repeat: &Option<mir::Repeat>) -> lir::BlockMethodKind {
+fn repeat_to_method_kind(repeat: &Option<mir::Repeat>) -> lir::Repeat {
     match repeat {
         Some(mir::Repeat {
             source: mir::RepeatSource::Count(count),
             stride,
-        }) => lir::BlockMethodKind::Repeated {
+        }) => lir::Repeat::Count {
             count: *count,
             stride: *stride,
         },
         Some(mir::Repeat {
             source: mir::RepeatSource::Enum(enum_name),
             stride,
-        }) => lir::BlockMethodKind::RepeatedEnum {
+        }) => lir::Repeat::Enum {
             enum_name: enum_name.clone(),
             stride: *stride,
         },
-        None => lir::BlockMethodKind::Normal,
+        None => lir::Repeat::None,
     }
 }
 

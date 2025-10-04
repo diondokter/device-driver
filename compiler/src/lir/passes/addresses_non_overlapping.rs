@@ -1,7 +1,7 @@
 use convert_case::{Case, Casing};
 use miette::bail;
 
-use crate::lir::{Block, BlockMethodKind, BlockMethodType, Device};
+use crate::lir::{Block, BlockMethodType, Device, Repeat};
 
 pub fn run_pass(device: &mut Device) -> miette::Result<()> {
     let root_block = device
@@ -50,12 +50,12 @@ fn get_block_claimed_addresses(
     for method in &block.methods {
         let current_address_offset = current_address_offset + method.address;
 
-        let (repeat_addresses, repeat): (Vec<i128>, bool) = match &method.kind {
-            BlockMethodKind::Normal => ((0..1).collect(), false),
-            BlockMethodKind::Repeated { count, stride } => {
+        let (repeat_addresses, repeat): (Vec<i128>, bool) = match &method.repeat {
+            Repeat::None => ((0..1).collect(), false),
+            Repeat::Count { count, stride } => {
                 ((0..*count).map(|i| i as i128 * stride).collect(), true)
             }
-            BlockMethodKind::RepeatedEnum { enum_name, stride } => (
+            Repeat::Enum { enum_name, stride } => (
                 device
                     .enums
                     .iter()
@@ -159,7 +159,7 @@ mod tests {
                             name: "second_block".to_string(),
                             address: 10,
                             allow_address_overlap: false,
-                            kind: BlockMethodKind::Repeated {
+                            repeat: Repeat::Count {
                                 count: 10,
                                 stride: 10,
                             },
@@ -172,7 +172,7 @@ mod tests {
                             name: "register0".to_string(),
                             address: 75,
                             allow_address_overlap: false,
-                            kind: BlockMethodKind::Repeated {
+                            repeat: Repeat::Count {
                                 count: 2,
                                 stride: 5,
                             },
@@ -194,7 +194,7 @@ mod tests {
                         name: "register1".to_string(),
                         address: 0,
                         allow_address_overlap: false,
-                        kind: BlockMethodKind::Normal,
+                        repeat: Repeat::None,
                         method_type: BlockMethodType::Register {
                             field_set_name: "bla".to_string(),
                             access: crate::mir::Access::RW,
