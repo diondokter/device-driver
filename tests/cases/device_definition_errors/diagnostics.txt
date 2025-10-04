@@ -834,3 +834,23 @@
         to see the specification
         These entries may also just be superfluous. Try removing them or check other errors to see what's expected
 
+  error: Missing entry
+     ╭─[cases/device_definition_errors/input.kdl:215:9]
+ 214 │     fieldset fs3 size-bits=32 byte-order=LE {
+ 215 │         val0 @1:0 with=e3
+     ·         ──┬─
+     ·           ╰── This node should have one or more of these entries: `stride=<integer>`
+ 216 │         val1 @3:2 with=e3 stride=2
+     ╰────
+  help: Check the book for all the requirements
+
+  error: Missing entry
+     ╭─[cases/device_definition_errors/input.kdl:218:9]
+ 217 │         val2 @7:6 count=4 stride=2
+ 218 │         val3 @15:14 stride=2
+     ·         ──┬─
+     ·           ╰── This node should have one or more of these entries: `count=<integer>`, `with=<string>`
+ 219 │     }
+     ╰────
+  help: Check the book for all the requirements
+
