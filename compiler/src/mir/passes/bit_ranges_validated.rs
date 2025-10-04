@@ -22,7 +22,7 @@ pub fn run_pass(device: &mut Device) -> miette::Result<()> {
 
 fn validate_len(field_set: &FieldSet) -> miette::Result<()> {
     for field in &field_set.fields {
-        todo!("Consider repeats");
+        // todo!("Consider repeats");
 
         ensure!(
             field.field_address.end <= field_set.size_bits,
@@ -43,7 +43,7 @@ fn validate_len(field_set: &FieldSet) -> miette::Result<()> {
 }
 
 fn validate_overlap(field_set: &FieldSet) -> miette::Result<()> {
-    todo!("Consider repeats");
+    // todo!("Consider repeats");
 
     for (i, field) in field_set.fields.iter().enumerate() {
         for second_field in &field_set.fields[(i + 1).min(field_set.fields.len())..] {

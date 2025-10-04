@@ -1593,8 +1593,7 @@ fn parse_repeat_entries(
         expected_entries: Vec::new(),
     };
 
-    if standalone_repeat || count.is_some() || with.is_some() || stride.is_some()
-    {
+    if standalone_repeat || count.is_some() || with.is_some() || stride.is_some() {
         if count.is_none() && with.is_none() {
             error = true;
             missing_entry_error.expected_entries.push("count=<integer>");

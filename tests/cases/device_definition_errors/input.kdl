@@ -115,7 +115,7 @@ device FooD6 {
                 A 0
                 B 1
                 C default
-                D catch-all
+                D 3
             }
             baz @3:2 {
 
