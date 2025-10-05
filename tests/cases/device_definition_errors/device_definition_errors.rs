@@ -850,13 +850,16 @@ pub mod foo_d_6 {
         ///
     
         pub fn set_bar(&mut self, value: bool) {
+            let start = 3;
+            let end = 4;
+    
             let raw = value as _;
     
             unsafe {
                 ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
                     raw,
-                    3,
-                    4,
+                    start,
+                    end,
                     &mut self.bits,
                 )
             };
@@ -866,13 +869,16 @@ pub mod foo_d_6 {
         ///
     
         pub fn set_baz(&mut self, value: u8) {
+            let start = 4;
+            let end = 8;
+    
             let raw = value;
     
             unsafe {
                 ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
                     raw,
-                    4,
-                    8,
+                    start,
+                    end,
                     &mut self.bits,
                 )
             };
@@ -1039,13 +1045,16 @@ pub mod foo_d_6 {
         ///
     
         pub fn set_bar(&mut self, value: bool) {
+            let start = 0;
+            let end = 1;
+    
             let raw = value as _;
     
             unsafe {
                 ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
                     raw,
-                    0,
-                    1,
+                    start,
+                    end,
                     &mut self.bits,
                 )
             };
@@ -1055,13 +1064,16 @@ pub mod foo_d_6 {
         ///
     
         pub fn set_baz(&mut self, value: u8) {
+            let start = 1;
+            let end = 3;
+    
             let raw = value;
     
             unsafe {
                 ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
                     raw,
-                    1,
-                    3,
+                    start,
+                    end,
                     &mut self.bits,
                 )
             };
@@ -1071,13 +1083,16 @@ pub mod foo_d_6 {
         ///
     
         pub fn set_quux(&mut self, value: u8) {
+            let start = 3;
+            let end = 5;
+    
             let raw = value;
     
             unsafe {
                 ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
                     raw,
-                    3,
-                    5,
+                    start,
+                    end,
                     &mut self.bits,
                 )
             };
@@ -1087,13 +1102,16 @@ pub mod foo_d_6 {
         ///
     
         pub fn set_qus(&mut self, value: E3) {
+            let start = 5;
+            let end = 7;
+    
             let raw = value.into();
     
             unsafe {
                 ::device_driver::ops::store_lsb0::<i32, ::device_driver::ops::LE>(
                     raw,
-                    5,
-                    7,
+                    start,
+                    end,
                     &mut self.bits,
                 )
             };
@@ -1264,13 +1282,16 @@ pub mod foo_d_6 {
         ///
     
         pub fn set_bar(&mut self, value: Foo10E1) {
+            let start = 0;
+            let end = 2;
+    
             let raw = value.into();
     
             unsafe {
                 ::device_driver::ops::store_lsb0::<u16, ::device_driver::ops::LE>(
                     raw,
-                    0,
-                    2,
+                    start,
+                    end,
                     &mut self.bits,
                 )
             };
@@ -1280,13 +1301,16 @@ pub mod foo_d_6 {
         ///
     
         pub fn set_baz(&mut self, value: u8) {
+            let start = 2;
+            let end = 4;
+    
             let raw = value;
     
             unsafe {
                 ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
                     raw,
-                    2,
-                    4,
+                    start,
+                    end,
                     &mut self.bits,
                 )
             };
@@ -1296,13 +1320,16 @@ pub mod foo_d_6 {
         ///
     
         pub fn set_bam(&mut self, value: u8) {
+            let start = 4;
+            let end = 6;
+    
             let raw = value;
     
             unsafe {
                 ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
                     raw,
-                    4,
-                    6,
+                    start,
+                    end,
                     &mut self.bits,
                 )
             };
@@ -1312,13 +1339,16 @@ pub mod foo_d_6 {
         ///
     
         pub fn set_bat(&mut self, value: Foo10E2) {
+            let start = 6;
+            let end = 8;
+    
             let raw = value.into();
     
             unsafe {
                 ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
                     raw,
-                    6,
-                    8,
+                    start,
+                    end,
                     &mut self.bits,
                 )
             };
@@ -1551,13 +1581,16 @@ pub mod foo_d_6 {
         ///
     
         pub fn set_b(&mut self, value: bool) {
+            let start = 0;
+            let end = 1;
+    
             let raw = value as _;
     
             unsafe {
                 ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
                     raw,
-                    0,
-                    1,
+                    start,
+                    end,
                     &mut self.bits,
                 )
             };
@@ -1683,13 +1716,16 @@ pub mod foo_d_6 {
         ///
     
         pub fn set_value(&mut self, value: u16) {
+            let start = 0;
+            let end = 16;
+    
             let raw = value;
     
             unsafe {
                 ::device_driver::ops::store_lsb0::<u16, ::device_driver::ops::LE>(
                     raw,
-                    0,
-                    16,
+                    start,
+                    end,
                     &mut self.bits,
                 )
             };
@@ -1828,13 +1864,16 @@ pub mod foo_d_6 {
         ///
     
         pub fn set_value(&mut self, value: Etype2) {
+            let start = 0;
+            let end = 7;
+    
             let raw = value.into();
     
             unsafe {
                 ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
                     raw,
-                    0,
-                    7,
+                    start,
+                    end,
                     &mut self.bits,
                 )
             };
@@ -1844,13 +1883,16 @@ pub mod foo_d_6 {
         ///
     
         pub fn set_value_2(&mut self, value: Etype3) {
+            let start = 7;
+            let end = 11;
+    
             let raw = value.into();
     
             unsafe {
                 ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
                     raw,
-                    7,
-                    11,
+                    start,
+                    end,
                     &mut self.bits,
                 )
             };
@@ -2018,13 +2060,16 @@ pub mod foo_d_6 {
         ///
     
         pub fn set_val_0(&mut self, value: u8) {
+            let start = 0;
+            let end = 2;
+    
             let raw = value;
     
             unsafe {
                 ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
                     raw,
-                    0,
-                    2,
+                    start,
+                    end,
                     &mut self.bits,
                 )
             };
@@ -2033,14 +2078,17 @@ pub mod foo_d_6 {
         ///Write the `val_1` field of the register.
         ///
     
-        pub fn set_val_1(&mut self, value: u8) {
+        pub fn set_val_1(&mut self, index: E3, value: u8) {
+            let start = 2 + i32::from(index) as usize * 2;
+            let end = start + 2;
+    
             let raw = value;
     
             unsafe {
                 ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
                     raw,
-                    2,
-                    4,
+                    start,
+                    end,
                     &mut self.bits,
                 )
             };
@@ -2049,14 +2097,18 @@ pub mod foo_d_6 {
         ///Write the `val_2` field of the register.
         ///
     
-        pub fn set_val_2(&mut self, value: u8) {
+        pub fn set_val_2(&mut self, index: usize, value: u8) {
+            assert!(index < 4);
+            let start = 6 + index * 2;
+            let end = start + 2;
+    
             let raw = value;
     
             unsafe {
                 ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
                     raw,
-                    6,
-                    8,
+                    start,
+                    end,
                     &mut self.bits,
                 )
             };
@@ -2066,13 +2118,16 @@ pub mod foo_d_6 {
         ///
     
         pub fn set_val_3(&mut self, value: u8) {
+            let start = 14;
+            let end = 16;
+    
             let raw = value;
     
             unsafe {
                 ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
                     raw,
-                    14,
-                    16,
+                    start,
+                    end,
                     &mut self.bits,
                 )
             };
