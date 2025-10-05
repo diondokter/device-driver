@@ -73,9 +73,8 @@ impl{{block_generics}} {{ block.name }}{{block_generics}} {
                         assert!(index < {{count}});
                         self.base_address + {{method.address}} + index as {{device.internal_address_type}} * {{stride}}
                     };
-                {% when Repeat::Enum { enum_name, stride } %}
+                {% when Repeat::Enum { enum_name, stride, .. } %}
                     let address = self.base_address + {{method.address}} + {{self::get_enum_base_type(device, &enum_name)}}::from(index) as {{device.internal_address_type}} * {{stride}};
-                {% endwhen %}
             {% endmatch %}
 
             {% match method.method_type %}

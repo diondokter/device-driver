@@ -55,7 +55,11 @@ fn get_block_claimed_addresses(
             Repeat::Count { count, stride } => {
                 ((0..*count).map(|i| i as i128 * stride).collect(), true)
             }
-            Repeat::Enum { enum_name, stride } => (
+            Repeat::Enum {
+                enum_name,
+                enum_variants: _,
+                stride,
+            } => (
                 device
                     .enums
                     .iter()

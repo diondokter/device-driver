@@ -18,7 +18,7 @@ pub fn transform(device: mir::Device) -> miette::Result<lir::Device> {
         .map(transform_enum)
         .collect::<Result<_, miette::Report>>()?;
 
-    let field_sets = transform_field_sets(&device, mir_enums.iter())?;
+    let field_sets = transform_field_sets(&device, &mir_enums)?;
 
     // Create a root block and pass the device objects to it
     let blocks = collect_into_blocks(
@@ -115,7 +115,7 @@ fn get_method(
                 name: name.to_case(convert_case::Case::Snake),
                 address: *address_offset,
                 allow_address_overlap: false,
-                repeat: repeat_to_method_kind(repeat),
+                repeat: repeat_to_method_kind(repeat, device_objects),
                 method_type: lir::BlockMethodType::Block {
                     name: name.to_string(),
                 },
@@ -135,7 +135,7 @@ fn get_method(
             name: name.to_case(convert_case::Case::Snake),
             address: *address,
             allow_address_overlap: *allow_address_overlap,
-            repeat: repeat_to_method_kind(repeat),
+            repeat: repeat_to_method_kind(repeat, device_objects),
             method_type: lir::BlockMethodType::Register {
                 field_set_name: field_set.0.clone(),
                 access: *access,
@@ -165,7 +165,7 @@ fn get_method(
             name: name.to_case(convert_case::Case::Snake),
             address: *address,
             allow_address_overlap: *allow_address_overlap,
-            repeat: repeat_to_method_kind(repeat),
+            repeat: repeat_to_method_kind(repeat, device_objects),
             method_type: lir::BlockMethodType::Command {
                 field_set_name_in: field_set_in.as_ref().map(|fs_in| fs_in.0.clone()),
                 field_set_name_out: field_set_out.as_ref().map(|fs_out| fs_out.0.clone()),
@@ -198,15 +198,15 @@ fn get_method(
     })
 }
 
-fn transform_field_sets<'a>(
+fn transform_field_sets(
     device: &mir::Device,
-    mir_enums: impl Iterator<Item = &'a mir::Enum> + Clone,
+    mir_enums: &[mir::Enum],
 ) -> miette::Result<Vec<lir::FieldSet>> {
     let mut field_sets = Vec::new();
 
     recurse_objects(&device.objects, &mut |object| {
         if let mir::Object::FieldSet(fs) = object {
-            field_sets.push(transform_field_set(fs, mir_enums.clone())?);
+            field_sets.push(transform_field_set(fs, mir_enums)?);
         }
 
         Ok(())
@@ -215,9 +215,9 @@ fn transform_field_sets<'a>(
     Ok(field_sets)
 }
 
-fn transform_field_set<'a>(
+fn transform_field_set(
     field_set: &mir::FieldSet,
-    enum_list: impl Iterator<Item = &'a mir::Enum> + Clone,
+    enum_list: &[mir::Enum],
 ) -> miette::Result<lir::FieldSet> {
     let fields = field_set
         .fields
@@ -258,7 +258,7 @@ fn transform_field_set<'a>(
                         generation_style: Some(mir::EnumGenerationStyle::InfallibleWithinRange),
                         size_bits,
                         ..
-                    }) = enum_list.clone().find(|e| e.name == fc.type_name)
+                    }) = enum_list.iter().find(|e| e.name == fc.type_name)
                         && field_bits <= size_bits.expect("Size_bits set in an earlier mir pass")
                     {
                         // This field is equal or smaller in bits than the infallible enum. So we can do the unsafe into
@@ -280,14 +280,22 @@ fn transform_field_set<'a>(
                 conversion_method,
                 access: *access,
                 repeat: repeat
-                    .clone()
-                    .map(|repeat| match repeat.source {
+                    .as_ref()
+                    .map(|repeat| match &repeat.source {
                         mir::RepeatSource::Count(c) => lir::Repeat::Count {
-                            count: c,
+                            count: *c,
                             stride: repeat.stride,
                         },
-                        mir::RepeatSource::Enum(e) => lir::Repeat::Enum {
-                            enum_name: e,
+                        mir::RepeatSource::Enum(enum_name) => lir::Repeat::Enum {
+                            enum_name: enum_name.clone(),
+                            enum_variants: enum_list
+                                .iter()
+                                .find(|e| e.name == *enum_name)
+                                .expect("Checked in MIR pass")
+                                .variants
+                                .iter()
+                                .map(|variant| variant.name.clone())
+                                .collect(),
                             stride: repeat.stride,
                         },
                     })
@@ -366,7 +374,10 @@ fn transform_enum(e: &mir::Enum) -> miette::Result<lir::Enum> {
     })
 }
 
-fn repeat_to_method_kind(repeat: &Option<mir::Repeat>) -> lir::Repeat {
+fn repeat_to_method_kind(
+    repeat: &Option<mir::Repeat>,
+    device_objects: &[mir::Object],
+) -> lir::Repeat {
     match repeat {
         Some(mir::Repeat {
             source: mir::RepeatSource::Count(count),
@@ -380,6 +391,16 @@ fn repeat_to_method_kind(repeat: &Option<mir::Repeat>) -> lir::Repeat {
             stride,
         }) => lir::Repeat::Enum {
             enum_name: enum_name.clone(),
+            enum_variants: device_objects
+                .iter()
+                .find(|object| object.name() == enum_name)
+                .expect("Checked in a MIR pass")
+                .as_enum()
+                .expect("Checked in a MIR pass")
+                .variants
+                .iter()
+                .map(|variant| variant.name.clone())
+                .collect(),
             stride: *stride,
         },
         None => lir::Repeat::None,

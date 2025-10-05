@@ -363,7 +363,10 @@ mod tests {
                     Field {
                         name: "my_field".into(),
                         field_address: 0..1,
-                        repeat: Some(Repeat { source: RepeatSource::Count(6), stride: 1 }),
+                        repeat: Some(Repeat {
+                            source: RepeatSource::Count(6),
+                            stride: 1,
+                        }),
                         ..Default::default()
                     },
                     Field {

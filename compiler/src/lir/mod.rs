@@ -34,8 +34,15 @@ pub struct BlockMethod {
 
 pub enum Repeat {
     None,
-    Count { count: u64, stride: i128 },
-    Enum { enum_name: String, stride: i128 },
+    Count {
+        count: u64,
+        stride: i128,
+    },
+    Enum {
+        enum_name: String,
+        enum_variants: Vec<String>,
+        stride: i128,
+    },
 }
 
 pub enum BlockMethodType {
