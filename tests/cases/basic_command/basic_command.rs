@@ -81,13 +81,16 @@ impl FooFieldSetIn {
     ///
 
     pub fn set_value(&mut self, value: u32) {
+        let start = 0;
+        let end = 24;
+
         let raw = value;
 
         unsafe {
             ::device_driver::ops::store_lsb0::<u32, ::device_driver::ops::LE>(
                 raw,
-                0,
-                24,
+                start,
+                end,
                 &mut self.bits,
             )
         };

@@ -121,13 +121,16 @@ impl FooRoFieldSet {
     ///
 
     pub fn set_value_rw(&mut self, value: i16) {
+        let start = 16;
+        let end = 32;
+
         let raw = value;
 
         unsafe {
             ::device_driver::ops::store_lsb0::<i16, ::device_driver::ops::LE>(
                 raw,
-                16,
-                32,
+                start,
+                end,
                 &mut self.bits,
             )
         };
@@ -137,13 +140,16 @@ impl FooRoFieldSet {
     ///
 
     pub fn set_value_wo(&mut self, value: bool) {
+        let start = 32;
+        let end = 33;
+
         let raw = value as _;
 
         unsafe {
             ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
                 raw,
-                32,
-                33,
+                start,
+                end,
                 &mut self.bits,
             )
         };
@@ -284,13 +290,16 @@ impl FooRwFieldSet {
     ///
 
     pub fn set_value_rw(&mut self, value: i16) {
+        let start = 16;
+        let end = 32;
+
         let raw = value;
 
         unsafe {
             ::device_driver::ops::store_lsb0::<i16, ::device_driver::ops::LE>(
                 raw,
-                16,
-                32,
+                start,
+                end,
                 &mut self.bits,
             )
         };
@@ -300,13 +309,16 @@ impl FooRwFieldSet {
     ///
 
     pub fn set_value_wo(&mut self, value: bool) {
+        let start = 32;
+        let end = 33;
+
         let raw = value as _;
 
         unsafe {
             ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
                 raw,
-                32,
-                33,
+                start,
+                end,
                 &mut self.bits,
             )
         };
@@ -447,13 +459,16 @@ impl FooWoFieldSet {
     ///
 
     pub fn set_value_rw(&mut self, value: i16) {
+        let start = 16;
+        let end = 32;
+
         let raw = value;
 
         unsafe {
             ::device_driver::ops::store_lsb0::<i16, ::device_driver::ops::LE>(
                 raw,
-                16,
-                32,
+                start,
+                end,
                 &mut self.bits,
             )
         };
@@ -463,13 +478,16 @@ impl FooWoFieldSet {
     ///
 
     pub fn set_value_wo(&mut self, value: bool) {
+        let start = 32;
+        let end = 33;
+
         let raw = value as _;
 
         unsafe {
             ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
                 raw,
-                32,
-                33,
+                start,
+                end,
                 &mut self.bits,
             )
         };
