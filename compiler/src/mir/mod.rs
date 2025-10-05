@@ -393,6 +393,7 @@ pub struct Field {
     pub base_type: BaseType,
     pub field_conversion: Option<FieldConversion>,
     pub field_address: Range<u32>,
+    pub repeat: Option<Repeat>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

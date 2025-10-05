@@ -26,7 +26,14 @@ impl {{field_set.name}} {
             ///Read the `{{field.name}}` field of the register.
             ///
             {{self::description_to_docstring(field.description)}}
-            pub fn {{field.name}}(&self) -> 
+            pub fn {{field.name}}(
+                &self,
+                {% match field.repeat %}
+                    {% when Repeat::None %}
+                    {% when Repeat::Count { .. } %} index: usize
+                    {% when Repeat::Enum { enum_name, .. } %} index: {{enum_name}}
+                {% endmatch %}
+            ) -> 
                 {% match field.conversion_method %}
                     {% when FieldConversionMethod::None %} {{field.base_type}}
                     {% when FieldConversionMethod::Into(t) | FieldConversionMethod::UnsafeInto(t) %} {{t}}
@@ -34,11 +41,24 @@ impl {{field_set.name}} {
                     {% when FieldConversionMethod::Bool %} bool
                 {% endmatch %}
             {
+                {% match field.repeat %}
+                    {% when Repeat::None %}
+                    let start = {{field.address.start}};
+                    let end = {{field.address.end}};
+                    {% when Repeat::Count { count, stride } %}
+                    assert!(index < {{count}});
+                    let start = {{field.address.start}} + index * {{stride}};
+                    let end = start + {{field.address.len()}};
+                    {% when Repeat::Enum { enum_name, stride, .. } %}
+                    let start = {{field.address.start}} + {{self::get_enum_base_type(device, &enum_name)}}::from(index) as usize * {{stride}};
+                    let end = start + {{field.address.len()}};
+                {% endmatch %}
+
                 let raw = unsafe {
                     ::device_driver::ops::load_{{field_set.bit_order | lower}}::<
                         {{field.base_type}},
                         ::device_driver::ops::{{field_set.byte_order}},
-                    >(&self.bits, {{field.address.start}}, {{field.address.end}})
+                    >(&self.bits, start, end)
                 };
 
                 {% match field.conversion_method %}
@@ -108,7 +128,18 @@ impl core::fmt::Debug for {{field_set.name}} {
         let mut d = f.debug_struct("{{field_set.name}}");
         {% for field in field_set.fields %}
             {% if field.access.is_readable() %}
-                d.field("{{field.name}}", &self.{{field.name}}());
+                {% match field.repeat %}
+                    {% when Repeat::None %}
+                        d.field("{{field.name}}", &self.{{field.name}}());
+                    {% when Repeat::Count { count, .. } %}
+                        {% for index in 0..*count %}
+                            d.field("{{field.name}}[{{index}}]", &self.{{field.name}}({{index}}));
+                        {% endfor %}
+                    {% when Repeat::Enum { enum_name, enum_variants, .. } %}
+                        {% for variant in enum_variants %}
+                            d.field("{{field.name}}[{{variant}}]", &self.{{field.name}}({{enum_name}}::{{variant}}));
+                        {% endfor %}
+                {% endmatch %}
             {% endif %}
         {% endfor %}
         d.finish()
@@ -123,7 +154,18 @@ impl defmt::Format for {{field_set.name}} {
 
         {% for field in field_set.fields %}
             {% if field.access.is_readable() %}
-                defmt::write!(f, "{{self::get_defmt_fmt_string(field)}}", &self.{{field.name}}());
+                {% match field.repeat %}
+                    {% when Repeat::None %}
+                        defmt::write!(f, "{{self::get_defmt_fmt_string(field)}}", &self.{{field.name}}());
+                    {% when Repeat::Count { count, .. } %}
+                        {% for index in 0..*count %}
+                            defmt::write!(f, "{{self::get_defmt_fmt_string(field)}}[{{index}}]", &self.{{field.name}}({{index}}));
+                        {% endfor %}
+                    {% when Repeat::Enum { enum_name, enum_variants, .. } %}
+                        {% for variant in enum_variants %}
+                            defmt::write!(f, "{{self::get_defmt_fmt_string(field)}}[{{variant}}]", &self.{{field.name}}({{enum_name}}::{{variant}}));
+                        {% endfor %}
+                {% endmatch %}
             {% endif %}
         {% endfor %}
 

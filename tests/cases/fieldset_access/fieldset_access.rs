@@ -95,8 +95,11 @@ impl FooRoFieldSet {
     ///
 
     pub fn value_ro(&self) -> u16 {
+        let start = 0;
+        let end = 16;
+
         let raw = unsafe {
-            ::device_driver::ops::load_lsb0::<u16, ::device_driver::ops::LE>(&self.bits, 0, 16)
+            ::device_driver::ops::load_lsb0::<u16, ::device_driver::ops::LE>(&self.bits, start, end)
         };
         raw
     }
@@ -105,8 +108,11 @@ impl FooRoFieldSet {
     ///
 
     pub fn value_rw(&self) -> i16 {
+        let start = 16;
+        let end = 32;
+
         let raw = unsafe {
-            ::device_driver::ops::load_lsb0::<i16, ::device_driver::ops::LE>(&self.bits, 16, 32)
+            ::device_driver::ops::load_lsb0::<i16, ::device_driver::ops::LE>(&self.bits, start, end)
         };
         raw
     }
@@ -252,8 +258,11 @@ impl FooRwFieldSet {
     ///
 
     pub fn value_ro(&self) -> u16 {
+        let start = 0;
+        let end = 16;
+
         let raw = unsafe {
-            ::device_driver::ops::load_lsb0::<u16, ::device_driver::ops::LE>(&self.bits, 0, 16)
+            ::device_driver::ops::load_lsb0::<u16, ::device_driver::ops::LE>(&self.bits, start, end)
         };
         raw
     }
@@ -262,8 +271,11 @@ impl FooRwFieldSet {
     ///
 
     pub fn value_rw(&self) -> i16 {
+        let start = 16;
+        let end = 32;
+
         let raw = unsafe {
-            ::device_driver::ops::load_lsb0::<i16, ::device_driver::ops::LE>(&self.bits, 16, 32)
+            ::device_driver::ops::load_lsb0::<i16, ::device_driver::ops::LE>(&self.bits, start, end)
         };
         raw
     }
@@ -409,8 +421,11 @@ impl FooWoFieldSet {
     ///
 
     pub fn value_ro(&self) -> u16 {
+        let start = 0;
+        let end = 16;
+
         let raw = unsafe {
-            ::device_driver::ops::load_lsb0::<u16, ::device_driver::ops::LE>(&self.bits, 0, 16)
+            ::device_driver::ops::load_lsb0::<u16, ::device_driver::ops::LE>(&self.bits, start, end)
         };
         raw
     }
@@ -419,8 +434,11 @@ impl FooWoFieldSet {
     ///
 
     pub fn value_rw(&self) -> i16 {
+        let start = 16;
+        let end = 32;
+
         let raw = unsafe {
-            ::device_driver::ops::load_lsb0::<i16, ::device_driver::ops::LE>(&self.bits, 16, 32)
+            ::device_driver::ops::load_lsb0::<i16, ::device_driver::ops::LE>(&self.bits, start, end)
         };
         raw
     }

@@ -115,7 +115,7 @@ device FooD6 {
                 A 0
                 B 1
                 C default
-                D catch-all
+                D 3
             }
             baz @3:2 {
 
@@ -210,5 +210,11 @@ device FooD6 {
     fieldset fs2 size-bits=32 byte-order=LE {
         (:etype2)value @6:0
         (:etype3?)value2 @10:7
+    }
+    fieldset fs3 size-bits=32 byte-order=LE {
+        val0 @1:0 with=e3
+        val1 @3:2 with=e3 stride=2
+        val2 @7:6 count=4 stride=2
+        val3 @15:14 stride=2
     }
 }

@@ -68,8 +68,11 @@ impl FooFieldSetIn {
     ///
 
     pub fn value(&self) -> u32 {
+        let start = 0;
+        let end = 24;
+
         let raw = unsafe {
-            ::device_driver::ops::load_lsb0::<u32, ::device_driver::ops::LE>(&self.bits, 0, 24)
+            ::device_driver::ops::load_lsb0::<u32, ::device_driver::ops::LE>(&self.bits, start, end)
         };
         raw
     }

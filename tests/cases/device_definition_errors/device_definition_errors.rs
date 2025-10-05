@@ -824,8 +824,11 @@ pub mod foo_d_6 {
         ///
     
         pub fn bar(&self) -> bool {
+            let start = 3;
+            let end = 4;
+    
             let raw = unsafe {
-                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, 3, 4)
+                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, start, end)
             };
             raw > 0
         }
@@ -834,8 +837,11 @@ pub mod foo_d_6 {
         ///
     
         pub fn baz(&self) -> u8 {
+            let start = 4;
+            let end = 8;
+    
             let raw = unsafe {
-                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, 4, 8)
+                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, start, end)
             };
             raw
         }
@@ -981,8 +987,11 @@ pub mod foo_d_6 {
         ///
     
         pub fn bar(&self) -> bool {
+            let start = 0;
+            let end = 1;
+    
             let raw = unsafe {
-                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, 0, 1)
+                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, start, end)
             };
             raw > 0
         }
@@ -991,8 +1000,11 @@ pub mod foo_d_6 {
         ///
     
         pub fn baz(&self) -> u8 {
+            let start = 1;
+            let end = 3;
+    
             let raw = unsafe {
-                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, 1, 3)
+                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, start, end)
             };
             raw
         }
@@ -1001,8 +1013,11 @@ pub mod foo_d_6 {
         ///
     
         pub fn quux(&self) -> u8 {
+            let start = 3;
+            let end = 5;
+    
             let raw = unsafe {
-                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, 3, 5)
+                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, start, end)
             };
             raw
         }
@@ -1011,8 +1026,11 @@ pub mod foo_d_6 {
         ///
     
         pub fn qus(&self) -> Result<E3, <E3 as TryFrom<i32>>::Error> {
+            let start = 5;
+            let end = 7;
+    
             let raw = unsafe {
-                ::device_driver::ops::load_lsb0::<i32, ::device_driver::ops::LE>(&self.bits, 5, 7)
+                ::device_driver::ops::load_lsb0::<i32, ::device_driver::ops::LE>(&self.bits, start, end)
             };
             raw.try_into()
         }
@@ -1194,8 +1212,11 @@ pub mod foo_d_6 {
         ///
     
         pub fn bar(&self) -> Foo10E1 {
+            let start = 0;
+            let end = 2;
+    
             let raw = unsafe {
-                ::device_driver::ops::load_lsb0::<u16, ::device_driver::ops::LE>(&self.bits, 0, 2)
+                ::device_driver::ops::load_lsb0::<u16, ::device_driver::ops::LE>(&self.bits, start, end)
             };
             raw.into()
         }
@@ -1204,8 +1225,11 @@ pub mod foo_d_6 {
         ///
     
         pub fn baz(&self) -> u8 {
+            let start = 2;
+            let end = 4;
+    
             let raw = unsafe {
-                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, 2, 4)
+                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, start, end)
             };
             raw
         }
@@ -1214,8 +1238,11 @@ pub mod foo_d_6 {
         ///
     
         pub fn bam(&self) -> u8 {
+            let start = 4;
+            let end = 6;
+    
             let raw = unsafe {
-                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, 4, 6)
+                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, start, end)
             };
             raw
         }
@@ -1224,8 +1251,11 @@ pub mod foo_d_6 {
         ///
     
         pub fn bat(&self) -> Result<Foo10E2, <Foo10E2 as TryFrom<u8>>::Error> {
+            let start = 6;
+            let end = 8;
+    
             let raw = unsafe {
-                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, 6, 8)
+                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, start, end)
             };
             raw.try_into()
         }
@@ -1508,8 +1538,11 @@ pub mod foo_d_6 {
         ///
     
         pub fn b(&self) -> bool {
+            let start = 0;
+            let end = 1;
+    
             let raw = unsafe {
-                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, 0, 1)
+                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, start, end)
             };
             raw > 0
         }
@@ -1637,8 +1670,11 @@ pub mod foo_d_6 {
         ///
     
         pub fn value(&self) -> u16 {
+            let start = 0;
+            let end = 16;
+    
             let raw = unsafe {
-                ::device_driver::ops::load_lsb0::<u16, ::device_driver::ops::LE>(&self.bits, 0, 16)
+                ::device_driver::ops::load_lsb0::<u16, ::device_driver::ops::LE>(&self.bits, start, end)
             };
             raw
         }
@@ -1766,8 +1802,11 @@ pub mod foo_d_6 {
         ///
     
         pub fn value(&self) -> Etype2 {
+            let start = 0;
+            let end = 7;
+    
             let raw = unsafe {
-                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, 0, 7)
+                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, start, end)
             };
             raw.into()
         }
@@ -1776,8 +1815,11 @@ pub mod foo_d_6 {
         ///
     
         pub fn value_2(&self) -> Result<Etype3, <Etype3 as TryFrom<u8>>::Error> {
+            let start = 7;
+            let end = 11;
+    
             let raw = unsafe {
-                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, 7, 11)
+                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, start, end)
             };
             raw.try_into()
         }
@@ -1897,6 +1939,240 @@ pub mod foo_d_6 {
         }
     }
     
+    #[derive(Copy, Clone, Eq, PartialEq)]
+    pub struct Fs3 {
+        /// The internal bits
+        bits: [u8; 4],
+    }
+    
+    impl ::device_driver::FieldSet for Fs3 {
+        const SIZE_BITS: u32 = 32;
+        fn get_inner_buffer(&self) -> &[u8] {
+            &self.bits
+        }
+        fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
+            &mut self.bits
+        }
+    }
+    
+    impl Fs3 {
+        /// Create a new instance, loaded with all zeroes
+        pub const fn new() -> Self {
+            Self { bits: [0; 4] }
+        }
+    
+        ///Read the `val_0` field of the register.
+        ///
+    
+        pub fn val_0(&self) -> u8 {
+            let start = 0;
+            let end = 2;
+    
+            let raw = unsafe {
+                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, start, end)
+            };
+            raw
+        }
+    
+        ///Read the `val_1` field of the register.
+        ///
+    
+        pub fn val_1(&self, index: E3) -> u8 {
+            let start = 2 + i32::from(index) as usize * 2;
+            let end = start + 2;
+    
+            let raw = unsafe {
+                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, start, end)
+            };
+            raw
+        }
+    
+        ///Read the `val_2` field of the register.
+        ///
+    
+        pub fn val_2(&self, index: usize) -> u8 {
+            assert!(index < 4);
+            let start = 6 + index * 2;
+            let end = start + 2;
+    
+            let raw = unsafe {
+                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, start, end)
+            };
+            raw
+        }
+    
+        ///Read the `val_3` field of the register.
+        ///
+    
+        pub fn val_3(&self) -> u8 {
+            let start = 14;
+            let end = 16;
+    
+            let raw = unsafe {
+                ::device_driver::ops::load_lsb0::<u8, ::device_driver::ops::LE>(&self.bits, start, end)
+            };
+            raw
+        }
+    
+        ///Write the `val_0` field of the register.
+        ///
+    
+        pub fn set_val_0(&mut self, value: u8) {
+            let raw = value;
+    
+            unsafe {
+                ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
+                    raw,
+                    0,
+                    2,
+                    &mut self.bits,
+                )
+            };
+        }
+    
+        ///Write the `val_1` field of the register.
+        ///
+    
+        pub fn set_val_1(&mut self, value: u8) {
+            let raw = value;
+    
+            unsafe {
+                ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
+                    raw,
+                    2,
+                    4,
+                    &mut self.bits,
+                )
+            };
+        }
+    
+        ///Write the `val_2` field of the register.
+        ///
+    
+        pub fn set_val_2(&mut self, value: u8) {
+            let raw = value;
+    
+            unsafe {
+                ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
+                    raw,
+                    6,
+                    8,
+                    &mut self.bits,
+                )
+            };
+        }
+    
+        ///Write the `val_3` field of the register.
+        ///
+    
+        pub fn set_val_3(&mut self, value: u8) {
+            let raw = value;
+    
+            unsafe {
+                ::device_driver::ops::store_lsb0::<u8, ::device_driver::ops::LE>(
+                    raw,
+                    14,
+                    16,
+                    &mut self.bits,
+                )
+            };
+        }
+    }
+    
+    impl Default for Fs3 {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+    
+    impl From<[u8; 4]> for Fs3 {
+        fn from(bits: [u8; 4]) -> Self {
+            Self { bits }
+        }
+    }
+    
+    impl From<Fs3> for [u8; 4] {
+        fn from(val: Fs3) -> Self {
+            val.bits
+        }
+    }
+    
+    impl core::fmt::Debug for Fs3 {
+        fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+            let mut d = f.debug_struct("Fs3");
+    
+            d.field("val_0", &self.val_0());
+    
+            d.field("val_1[A]", &self.val_1(E3::A));
+    
+            d.field("val_1[B]", &self.val_1(E3::B));
+    
+            d.field("val_2[0]", &self.val_2(0));
+    
+            d.field("val_2[1]", &self.val_2(1));
+    
+            d.field("val_2[2]", &self.val_2(2));
+    
+            d.field("val_2[3]", &self.val_2(3));
+    
+            d.field("val_3", &self.val_3());
+    
+            d.finish()
+        }
+    }
+    
+    impl core::ops::BitAnd for Fs3 {
+        type Output = Self;
+        fn bitand(mut self, rhs: Self) -> Self::Output {
+            self &= rhs;
+            self
+        }
+    }
+    impl core::ops::BitAndAssign for Fs3 {
+        fn bitand_assign(&mut self, rhs: Self) {
+            for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
+                *l &= *r;
+            }
+        }
+    }
+    impl core::ops::BitOr for Fs3 {
+        type Output = Self;
+        fn bitor(mut self, rhs: Self) -> Self::Output {
+            self |= rhs;
+            self
+        }
+    }
+    impl core::ops::BitOrAssign for Fs3 {
+        fn bitor_assign(&mut self, rhs: Self) {
+            for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
+                *l |= *r;
+            }
+        }
+    }
+    impl core::ops::BitXor for Fs3 {
+        type Output = Self;
+        fn bitxor(mut self, rhs: Self) -> Self::Output {
+            self ^= rhs;
+            self
+        }
+    }
+    impl core::ops::BitXorAssign for Fs3 {
+        fn bitxor_assign(&mut self, rhs: Self) {
+            for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
+                *l ^= *r;
+            }
+        }
+    }
+    impl core::ops::Not for Fs3 {
+        type Output = Self;
+        fn not(mut self) -> Self::Output {
+            for val in self.bits.iter_mut() {
+                *val = !*val;
+            }
+            self
+        }
+    }
+    
     #[repr(u16)]
     #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
     
@@ -1907,7 +2183,7 @@ pub mod foo_d_6 {
     
         C = 2,
     
-        D(u16) = 3,
+        D = 3,
     }
     
     impl Default for Foo10E1 {
@@ -1923,7 +2199,9 @@ pub mod foo_d_6 {
     
                 1 => Self::B,
     
-                val => Self::D(val),
+                3 => Self::D,
+    
+                _ => Self::default(),
             }
         }
     }
@@ -1937,7 +2215,7 @@ pub mod foo_d_6 {
     
                 Foo10E1::C => 2,
     
-                Foo10E1::D(num) => num,
+                Foo10E1::D => 3,
             }
         }
     }
