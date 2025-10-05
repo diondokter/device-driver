@@ -23,7 +23,7 @@ impl {{field_set.name}} {
 
     {% for field in field_set.fields %}
         {% if matches!(field.access, Access::RW | Access::RO) %}
-            ///Read the `{{field.name}}` field of the register.
+            /// Read the `{{field.name}}` field of the register.
             ///
             {{self::description_to_docstring(field.description)}}
             pub fn {{field.name}}(
@@ -74,7 +74,7 @@ impl {{field_set.name}} {
 
     {% for field in field_set.fields %}
         {% if matches!(field.access, Access::RW | Access::WO) %}
-            ///Write the `{{field.name}}` field of the register.
+            /// Write the `{{field.name}}` field of the register.
             ///
             {{self::description_to_docstring(field.description)}}
             pub fn set_{{field.name}}(
