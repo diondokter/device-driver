@@ -820,7 +820,7 @@ pub mod foo_d_6 {
             Self { bits: [0; 1] }
         }
     
-        ///Read the `bar` field of the register.
+        /// Read the `bar` field of the register.
         ///
     
         pub fn bar(&self) -> bool {
@@ -833,7 +833,7 @@ pub mod foo_d_6 {
             raw > 0
         }
     
-        ///Read the `baz` field of the register.
+        /// Read the `baz` field of the register.
         ///
     
         pub fn baz(&self) -> u8 {
@@ -846,7 +846,7 @@ pub mod foo_d_6 {
             raw
         }
     
-        ///Write the `bar` field of the register.
+        /// Write the `bar` field of the register.
         ///
     
         pub fn set_bar(&mut self, value: bool) {
@@ -865,7 +865,7 @@ pub mod foo_d_6 {
             };
         }
     
-        ///Write the `baz` field of the register.
+        /// Write the `baz` field of the register.
         ///
     
         pub fn set_baz(&mut self, value: u8) {
@@ -989,7 +989,7 @@ pub mod foo_d_6 {
             Self { bits: [0; 1] }
         }
     
-        ///Read the `bar` field of the register.
+        /// Read the `bar` field of the register.
         ///
     
         pub fn bar(&self) -> bool {
@@ -1002,7 +1002,7 @@ pub mod foo_d_6 {
             raw > 0
         }
     
-        ///Read the `baz` field of the register.
+        /// Read the `baz` field of the register.
         ///
     
         pub fn baz(&self) -> u8 {
@@ -1015,7 +1015,7 @@ pub mod foo_d_6 {
             raw
         }
     
-        ///Read the `quux` field of the register.
+        /// Read the `quux` field of the register.
         ///
     
         pub fn quux(&self) -> u8 {
@@ -1028,7 +1028,7 @@ pub mod foo_d_6 {
             raw
         }
     
-        ///Read the `qus` field of the register.
+        /// Read the `qus` field of the register.
         ///
     
         pub fn qus(&self) -> Result<E3, <E3 as TryFrom<i32>>::Error> {
@@ -1041,7 +1041,7 @@ pub mod foo_d_6 {
             raw.try_into()
         }
     
-        ///Write the `bar` field of the register.
+        /// Write the `bar` field of the register.
         ///
     
         pub fn set_bar(&mut self, value: bool) {
@@ -1060,7 +1060,7 @@ pub mod foo_d_6 {
             };
         }
     
-        ///Write the `baz` field of the register.
+        /// Write the `baz` field of the register.
         ///
     
         pub fn set_baz(&mut self, value: u8) {
@@ -1079,7 +1079,7 @@ pub mod foo_d_6 {
             };
         }
     
-        ///Write the `quux` field of the register.
+        /// Write the `quux` field of the register.
         ///
     
         pub fn set_quux(&mut self, value: u8) {
@@ -1098,7 +1098,7 @@ pub mod foo_d_6 {
             };
         }
     
-        ///Write the `qus` field of the register.
+        /// Write the `qus` field of the register.
         ///
     
         pub fn set_qus(&mut self, value: E3) {
@@ -1226,7 +1226,7 @@ pub mod foo_d_6 {
             Self { bits: [0; 1] }
         }
     
-        ///Read the `bar` field of the register.
+        /// Read the `bar` field of the register.
         ///
     
         pub fn bar(&self) -> Foo10E1 {
@@ -1239,7 +1239,7 @@ pub mod foo_d_6 {
             raw.into()
         }
     
-        ///Read the `baz` field of the register.
+        /// Read the `baz` field of the register.
         ///
     
         pub fn baz(&self) -> u8 {
@@ -1252,7 +1252,7 @@ pub mod foo_d_6 {
             raw
         }
     
-        ///Read the `bam` field of the register.
+        /// Read the `bam` field of the register.
         ///
     
         pub fn bam(&self) -> u8 {
@@ -1265,7 +1265,7 @@ pub mod foo_d_6 {
             raw
         }
     
-        ///Read the `bat` field of the register.
+        /// Read the `bat` field of the register.
         ///
     
         pub fn bat(&self) -> Result<Foo10E2, <Foo10E2 as TryFrom<u8>>::Error> {
@@ -1278,7 +1278,7 @@ pub mod foo_d_6 {
             raw.try_into()
         }
     
-        ///Write the `bar` field of the register.
+        /// Write the `bar` field of the register.
         ///
     
         pub fn set_bar(&mut self, value: Foo10E1) {
@@ -1297,7 +1297,7 @@ pub mod foo_d_6 {
             };
         }
     
-        ///Write the `baz` field of the register.
+        /// Write the `baz` field of the register.
         ///
     
         pub fn set_baz(&mut self, value: u8) {
@@ -1316,7 +1316,7 @@ pub mod foo_d_6 {
             };
         }
     
-        ///Write the `bam` field of the register.
+        /// Write the `bam` field of the register.
         ///
     
         pub fn set_bam(&mut self, value: u8) {
@@ -1335,7 +1335,7 @@ pub mod foo_d_6 {
             };
         }
     
-        ///Write the `bat` field of the register.
+        /// Write the `bat` field of the register.
         ///
     
         pub fn set_bat(&mut self, value: Foo10E2) {
@@ -1564,7 +1564,7 @@ pub mod foo_d_6 {
             Self { bits: [0; 1] }
         }
     
-        ///Read the `b` field of the register.
+        /// Read the `b` field of the register.
         ///
     
         pub fn b(&self) -> bool {
@@ -1577,7 +1577,7 @@ pub mod foo_d_6 {
             raw > 0
         }
     
-        ///Write the `b` field of the register.
+        /// Write the `b` field of the register.
         ///
     
         pub fn set_b(&mut self, value: bool) {
@@ -1699,7 +1699,7 @@ pub mod foo_d_6 {
             Self { bits: [0; 2] }
         }
     
-        ///Read the `value` field of the register.
+        /// Read the `value` field of the register.
         ///
     
         pub fn value(&self) -> u16 {
@@ -1712,7 +1712,7 @@ pub mod foo_d_6 {
             raw
         }
     
-        ///Write the `value` field of the register.
+        /// Write the `value` field of the register.
         ///
     
         pub fn set_value(&mut self, value: u16) {
@@ -1834,7 +1834,7 @@ pub mod foo_d_6 {
             Self { bits: [0; 4] }
         }
     
-        ///Read the `value` field of the register.
+        /// Read the `value` field of the register.
         ///
     
         pub fn value(&self) -> Etype2 {
@@ -1847,7 +1847,7 @@ pub mod foo_d_6 {
             raw.into()
         }
     
-        ///Read the `value_2` field of the register.
+        /// Read the `value_2` field of the register.
         ///
     
         pub fn value_2(&self) -> Result<Etype3, <Etype3 as TryFrom<u8>>::Error> {
@@ -1860,7 +1860,7 @@ pub mod foo_d_6 {
             raw.try_into()
         }
     
-        ///Write the `value` field of the register.
+        /// Write the `value` field of the register.
         ///
     
         pub fn set_value(&mut self, value: Etype2) {
@@ -1879,7 +1879,7 @@ pub mod foo_d_6 {
             };
         }
     
-        ///Write the `value_2` field of the register.
+        /// Write the `value_2` field of the register.
         ///
     
         pub fn set_value_2(&mut self, value: Etype3) {
@@ -2003,7 +2003,7 @@ pub mod foo_d_6 {
             Self { bits: [0; 4] }
         }
     
-        ///Read the `val_0` field of the register.
+        /// Read the `val_0` field of the register.
         ///
     
         pub fn val_0(&self) -> u8 {
@@ -2016,7 +2016,7 @@ pub mod foo_d_6 {
             raw
         }
     
-        ///Read the `val_1` field of the register.
+        /// Read the `val_1` field of the register.
         ///
     
         pub fn val_1(&self, index: E3) -> u8 {
@@ -2029,7 +2029,7 @@ pub mod foo_d_6 {
             raw
         }
     
-        ///Read the `val_2` field of the register.
+        /// Read the `val_2` field of the register.
         ///
     
         pub fn val_2(&self, index: usize) -> u8 {
@@ -2043,7 +2043,7 @@ pub mod foo_d_6 {
             raw
         }
     
-        ///Read the `val_3` field of the register.
+        /// Read the `val_3` field of the register.
         ///
     
         pub fn val_3(&self) -> u8 {
@@ -2056,7 +2056,7 @@ pub mod foo_d_6 {
             raw
         }
     
-        ///Write the `val_0` field of the register.
+        /// Write the `val_0` field of the register.
         ///
     
         pub fn set_val_0(&mut self, value: u8) {
@@ -2075,7 +2075,7 @@ pub mod foo_d_6 {
             };
         }
     
-        ///Write the `val_1` field of the register.
+        /// Write the `val_1` field of the register.
         ///
     
         pub fn set_val_1(&mut self, index: E3, value: u8) {
@@ -2094,7 +2094,7 @@ pub mod foo_d_6 {
             };
         }
     
-        ///Write the `val_2` field of the register.
+        /// Write the `val_2` field of the register.
         ///
     
         pub fn set_val_2(&mut self, index: usize, value: u8) {
@@ -2114,7 +2114,7 @@ pub mod foo_d_6 {
             };
         }
     
-        ///Write the `val_3` field of the register.
+        /// Write the `val_3` field of the register.
         ///
     
         pub fn set_val_3(&mut self, value: u8) {

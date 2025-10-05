@@ -64,7 +64,7 @@ impl FooFieldSetIn {
         Self { bits: [0; 3] }
     }
 
-    ///Read the `value` field of the register.
+    /// Read the `value` field of the register.
     ///
 
     pub fn value(&self) -> u32 {
@@ -77,7 +77,7 @@ impl FooFieldSetIn {
         raw
     }
 
-    ///Write the `value` field of the register.
+    /// Write the `value` field of the register.
     ///
 
     pub fn set_value(&mut self, value: u32) {

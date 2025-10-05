@@ -69,7 +69,7 @@ impl FooFieldSet {
         Self { bits: [0; 3] }
     }
 
-    ///Read the `value` field of the register.
+    /// Read the `value` field of the register.
     ///
     /// \\\"#{
     /// %@&\n
@@ -83,7 +83,7 @@ impl FooFieldSet {
         raw
     }
 
-    ///Write the `value` field of the register.
+    /// Write the `value` field of the register.
     ///
     /// \\\"#{
     /// %@&\n

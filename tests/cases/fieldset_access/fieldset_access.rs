@@ -91,7 +91,7 @@ impl FooRoFieldSet {
         Self { bits: [0; 8] }
     }
 
-    ///Read the `value_ro` field of the register.
+    /// Read the `value_ro` field of the register.
     ///
 
     pub fn value_ro(&self) -> u16 {
@@ -104,7 +104,7 @@ impl FooRoFieldSet {
         raw
     }
 
-    ///Read the `value_rw` field of the register.
+    /// Read the `value_rw` field of the register.
     ///
 
     pub fn value_rw(&self) -> i16 {
@@ -117,7 +117,7 @@ impl FooRoFieldSet {
         raw
     }
 
-    ///Write the `value_rw` field of the register.
+    /// Write the `value_rw` field of the register.
     ///
 
     pub fn set_value_rw(&mut self, value: i16) {
@@ -136,7 +136,7 @@ impl FooRoFieldSet {
         };
     }
 
-    ///Write the `value_wo` field of the register.
+    /// Write the `value_wo` field of the register.
     ///
 
     pub fn set_value_wo(&mut self, value: bool) {
@@ -260,7 +260,7 @@ impl FooRwFieldSet {
         Self { bits: [0; 8] }
     }
 
-    ///Read the `value_ro` field of the register.
+    /// Read the `value_ro` field of the register.
     ///
 
     pub fn value_ro(&self) -> u16 {
@@ -273,7 +273,7 @@ impl FooRwFieldSet {
         raw
     }
 
-    ///Read the `value_rw` field of the register.
+    /// Read the `value_rw` field of the register.
     ///
 
     pub fn value_rw(&self) -> i16 {
@@ -286,7 +286,7 @@ impl FooRwFieldSet {
         raw
     }
 
-    ///Write the `value_rw` field of the register.
+    /// Write the `value_rw` field of the register.
     ///
 
     pub fn set_value_rw(&mut self, value: i16) {
@@ -305,7 +305,7 @@ impl FooRwFieldSet {
         };
     }
 
-    ///Write the `value_wo` field of the register.
+    /// Write the `value_wo` field of the register.
     ///
 
     pub fn set_value_wo(&mut self, value: bool) {
@@ -429,7 +429,7 @@ impl FooWoFieldSet {
         Self { bits: [0; 8] }
     }
 
-    ///Read the `value_ro` field of the register.
+    /// Read the `value_ro` field of the register.
     ///
 
     pub fn value_ro(&self) -> u16 {
@@ -442,7 +442,7 @@ impl FooWoFieldSet {
         raw
     }
 
-    ///Read the `value_rw` field of the register.
+    /// Read the `value_rw` field of the register.
     ///
 
     pub fn value_rw(&self) -> i16 {
@@ -455,7 +455,7 @@ impl FooWoFieldSet {
         raw
     }
 
-    ///Write the `value_rw` field of the register.
+    /// Write the `value_rw` field of the register.
     ///
 
     pub fn set_value_rw(&mut self, value: i16) {
@@ -474,7 +474,7 @@ impl FooWoFieldSet {
         };
     }
 
-    ///Write the `value_wo` field of the register.
+    /// Write the `value_wo` field of the register.
     ///
 
     pub fn set_value_wo(&mut self, value: bool) {
