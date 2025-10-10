@@ -215,6 +215,6 @@ device FooD6 {
         val0 @1:0 with=e3
         val1 @3:2 with=e3 stride=2
         val2 @7:6 count=4 stride=2
-        val3 @15:14 stride=2
+        val3 @15:14 stride=0
     }
 }

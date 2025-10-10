@@ -847,10 +847,20 @@
   error: Missing entry
      ╭─[cases/device_definition_errors/input.kdl:218:9]
  217 │         val2 @7:6 count=4 stride=2
- 218 │         val3 @15:14 stride=2
+ 218 │         val3 @15:14 stride=0
      ·         ──┬─
      ·           ╰── This node should have one or more of these entries: `count=<integer>`, `with=<string>`
  219 │     }
      ╰────
   help: Check the book for all the requirements
+
+  error: Value out of range
+     ╭─[cases/device_definition_errors/input.kdl:218:21]
+ 217 │         val2 @7:6 count=4 stride=2
+ 218 │         val3 @15:14 stride=0
+     ·                     ────┬───
+     ·                         ╰── Value is out of the allowable range: any non-0 number
+ 219 │     }
+     ╰────
+  help: The stride must not be 0
 
