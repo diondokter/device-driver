@@ -1549,7 +1549,7 @@ fn parse_repeat_entries(
     for entry in node.entries() {
         match (entry.name().map(|id| id.value()), entry.value()) {
             (Some("count"), KdlValue::Integer(val)) => count = Some((*val, entry.span())),
-            (Some("stride"), KdlValue::Integer(val)) => stride = Some(*val),
+            (Some("stride"), KdlValue::Integer(val)) => stride = Some((*val, entry.span())),
             (Some("with"), KdlValue::String(val)) => with = Some((val.clone(), entry.span())),
             (Some("count") | Some("stride"), _) => diagnostics.add(errors::UnexpectedType {
                 source_code: source_code.clone(),
@@ -1622,16 +1622,27 @@ fn parse_repeat_entries(
             range: "0..2^64",
         });
     }
+    if let Some((stride, span)) = stride
+        && stride == 0
+    {
+        error = true;
+        diagnostics.add(errors::ValueOutOfRange {
+            source_code: source_code.clone(),
+            value: span,
+            context: Some("The stride must not be 0"),
+            range: "any non-0 number",
+        });
+    }
 
     if error {
         None
     } else {
         match (count, with, stride) {
-            (None, Some((with, _)), Some(stride)) => Some(Repeat {
+            (None, Some((with, _)), Some((stride, _))) => Some(Repeat {
                 source: crate::mir::RepeatSource::Enum(with),
                 stride,
             }),
-            (Some((count, _)), None, Some(stride)) => Some(Repeat {
+            (Some((count, _)), None, Some((stride, _))) => Some(Repeat {
                 source: crate::mir::RepeatSource::Count(count as u64),
                 stride,
             }),
