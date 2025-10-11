@@ -23,7 +23,7 @@ pub fn run_pass(device: &mut Device) -> miette::Result<()> {
         if let Some(fs) = object.as_field_set_mut() {
             if fs.size_bits > 8 && fs.byte_order.is_none() {
                 bail!(
-                    "No byte order is specified for fieldset `{object_name}` while it's big enough that byte order is important. Specify it on the fieldset or in the global config",
+                    "No byte order is specified for fieldset `{object_name}` while it's big enough that byte order is important. Specify it on the fieldset or in the device config",
                 );
             } else {
                 // Even if not required, fill in a byte order so we can always unwrap it later
@@ -77,7 +77,7 @@ mod tests {
 
         assert_eq!(
             run_pass(&mut input).unwrap_err().to_string(),
-            "No byte order is specified for fieldset `MyRegister` while it's big enough that byte order is important. Specify it on the fieldset or in the global config"
+            "No byte order is specified for fieldset `MyRegister` while it's big enough that byte order is important. Specify it on the fieldset or in the device config"
         );
     }
 
