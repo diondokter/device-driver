@@ -141,7 +141,7 @@ mod tests {
     fn max_len_exceeded() {
         let mut start_mir = Device {
             name: None,
-            global_config: Default::default(),
+            device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
                 size_bits: 10,
@@ -158,7 +158,7 @@ mod tests {
 
         let mut start_mir = Device {
             name: None,
-            global_config: Default::default(),
+            device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
                 size_bits: 10,
@@ -178,7 +178,7 @@ mod tests {
 
         let mut start_mir = Device {
             name: None,
-            global_config: Default::default(),
+            device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
                 size_bits: 10,
@@ -195,7 +195,7 @@ mod tests {
 
         let mut start_mir = Device {
             name: None,
-            global_config: Default::default(),
+            device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
                 size_bits: 10,
@@ -215,7 +215,7 @@ mod tests {
 
         let mut start_mir = Device {
             name: None,
-            global_config: Default::default(),
+            device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
                 size_bits: 10,
@@ -232,7 +232,7 @@ mod tests {
 
         let mut start_mir = Device {
             name: None,
-            global_config: Default::default(),
+            device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
                 size_bits: 10,
@@ -252,7 +252,7 @@ mod tests {
 
         let mut start_mir = Device {
             name: None,
-            global_config: Default::default(),
+            device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
                 size_bits: 10,
@@ -279,7 +279,7 @@ mod tests {
     fn overlap() {
         let mut start_mir = Device {
             name: None,
-            global_config: Default::default(),
+            device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
                 size_bits: 10,
@@ -303,7 +303,7 @@ mod tests {
 
         let mut start_mir = Device {
             name: None,
-            global_config: Default::default(),
+            device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
                 size_bits: 10,
@@ -328,7 +328,7 @@ mod tests {
 
         let mut start_mir = Device {
             name: None,
-            global_config: Default::default(),
+            device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
                 size_bits: 10,
@@ -355,7 +355,7 @@ mod tests {
 
         let mut start_mir = Device {
             name: None,
-            global_config: Default::default(),
+            device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
                 size_bits: 10,

@@ -7,8 +7,8 @@ use strum::VariantNames;
 
 use crate::{
     mir::{
-        Access, BaseType, BitOrder, Block, Buffer, ByteOrder, Command, Device, Enum, EnumValue,
-        EnumVariant, Extern, Field, FieldConversion, FieldSet, FieldSetRef, GlobalConfig, Integer,
+        Access, BaseType, BitOrder, Block, Buffer, ByteOrder, Command, Device, DeviceConfig, Enum,
+        EnumValue, EnumVariant, Extern, Field, FieldConversion, FieldSet, FieldSetRef, Integer,
         Object, Register, Repeat, ResetValue,
     },
     reporting::{
@@ -77,7 +77,7 @@ fn transform_device(
 
     let mut device = Device {
         name: Some(device_name),
-        global_config: GlobalConfig::default(),
+        device_config: DeviceConfig::default(),
         objects: Vec::new(),
     };
 
@@ -709,49 +709,49 @@ fn transform_global_config_node(
     match global_config_type {
         GlobalConfigType::DefaultRegisterAccess => {
             if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
-                device.global_config.default_register_access = value;
+                device.device_config.default_register_access = value;
             }
         }
         GlobalConfigType::DefaultFieldAccess => {
             if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
-                device.global_config.default_field_access = value;
+                device.device_config.default_field_access = value;
             }
         }
         GlobalConfigType::DefaultBufferAccess => {
             if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
-                device.global_config.default_buffer_access = value;
+                device.device_config.default_buffer_access = value;
             }
         }
         GlobalConfigType::DefaultByteOrder => {
             if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
-                device.global_config.default_byte_order = Some(value);
+                device.device_config.default_byte_order = Some(value);
             }
         }
         GlobalConfigType::DefaultBitOrder => {
             if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
-                device.global_config.default_bit_order = value;
+                device.device_config.default_bit_order = value;
             }
         }
         GlobalConfigType::RegisterAddressType => {
             if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
-                device.global_config.register_address_type = Some(value);
+                device.device_config.register_address_type = Some(value);
             }
         }
         GlobalConfigType::CommandAddressType => {
             if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
-                device.global_config.command_address_type = Some(value);
+                device.device_config.command_address_type = Some(value);
             }
         }
         GlobalConfigType::BufferAddressType => {
             if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
-                device.global_config.buffer_address_type = Some(value);
+                device.device_config.buffer_address_type = Some(value);
             }
         }
         GlobalConfigType::NameWordBoundaries => {
             if let Some(value) =
                 parse_single_string_entry(node, source_code.clone(), diagnostics, None, false).0
             {
-                device.global_config.name_word_boundaries =
+                device.device_config.name_word_boundaries =
                     convert_case::Boundary::defaults_from(&value);
             }
         }
@@ -759,7 +759,7 @@ fn transform_global_config_node(
             if let Some(value) =
                 parse_single_string_entry(node, source_code.clone(), diagnostics, None, false).0
             {
-                device.global_config.defmt_feature = Some(value);
+                device.device_config.defmt_feature = Some(value);
             }
         }
     }

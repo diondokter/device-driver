@@ -6,7 +6,7 @@ use super::recurse_objects_mut;
 
 /// Checks if the byte order is set for all registers and commands that need it and fills it out for the ones that aren't specified
 pub fn run_pass(device: &mut Device) -> miette::Result<()> {
-    if let Some(default_byte_order) = device.global_config.default_byte_order {
+    if let Some(default_byte_order) = device.device_config.default_byte_order {
         recurse_objects_mut(&mut device.objects, &mut |object| {
             if let Some(fs) = object.as_field_set_mut() {
                 fs.byte_order = Some(default_byte_order);
@@ -36,7 +36,7 @@ pub fn run_pass(device: &mut Device) -> miette::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use crate::mir::{ByteOrder, FieldSet, GlobalConfig, Object};
+    use crate::mir::{ByteOrder, DeviceConfig, FieldSet, Object};
 
     use super::*;
 
@@ -44,7 +44,7 @@ mod tests {
     fn well_enough_specified() {
         let mut input = Device {
             name: None,
-            global_config: Default::default(),
+            device_config: Default::default(),
             objects: vec![
                 Object::FieldSet(FieldSet {
                     name: "MyRegister".into(),
@@ -67,7 +67,7 @@ mod tests {
     fn not_enough_specified() {
         let mut input = Device {
             name: None,
-            global_config: Default::default(),
+            device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyRegister".into(),
                 size_bits: 9,
@@ -83,14 +83,14 @@ mod tests {
 
     #[test]
     fn not_enough_specified_but_global_config() {
-        let global_config = GlobalConfig {
+        let global_config = DeviceConfig {
             default_byte_order: Some(ByteOrder::LE),
             ..Default::default()
         };
 
         let mut input = Device {
             name: None,
-            global_config,
+            device_config: global_config,
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyRegister".into(),
                 size_bits: 9,

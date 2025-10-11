@@ -11,12 +11,12 @@ pub mod passes;
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Device {
     pub name: Option<String>,
-    pub global_config: GlobalConfig,
+    pub device_config: DeviceConfig,
     pub objects: Vec<Object>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct GlobalConfig {
+pub struct DeviceConfig {
     pub default_register_access: Access,
     pub default_field_access: Access,
     pub default_buffer_access: Access,
@@ -29,7 +29,7 @@ pub struct GlobalConfig {
     pub defmt_feature: Option<String>,
 }
 
-impl Default for GlobalConfig {
+impl Default for DeviceConfig {
     fn default() -> Self {
         Self {
             default_register_access: Default::default(),

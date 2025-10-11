@@ -8,7 +8,7 @@ pub fn run_pass(device: &mut Device) -> miette::Result<()> {
         if let Some(fs) = object.as_field_set_mut()
             && fs.bit_order.is_none()
         {
-            fs.bit_order = Some(device.global_config.default_bit_order)
+            fs.bit_order = Some(device.device_config.default_bit_order)
         }
         Ok(())
     })
