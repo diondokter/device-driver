@@ -6,7 +6,7 @@ use super::find_min_max_addresses;
 
 /// Checks if the various address types can fully contain the min and max addresses of the types of objects they are for
 pub fn run_pass(device: &mut Device) -> miette::Result<()> {
-    if let Some(register_address_type) = device.global_config.register_address_type {
+    if let Some(register_address_type) = device.device_config.register_address_type {
         let (min_address, max_address) = find_min_max_addresses(&device.objects, |o| {
             matches!(o, Object::Block(_) | Object::Register(_))
         });
@@ -23,7 +23,7 @@ pub fn run_pass(device: &mut Device) -> miette::Result<()> {
         );
     }
 
-    if let Some(command_address_type) = device.global_config.command_address_type {
+    if let Some(command_address_type) = device.device_config.command_address_type {
         let (min_address, max_address) = find_min_max_addresses(&device.objects, |o| {
             matches!(o, Object::Block(_) | Object::Command(_))
         });
@@ -40,7 +40,7 @@ pub fn run_pass(device: &mut Device) -> miette::Result<()> {
         );
     }
 
-    if let Some(buffer_address_type) = device.global_config.buffer_address_type {
+    if let Some(buffer_address_type) = device.device_config.buffer_address_type {
         let (min_address, max_address) = find_min_max_addresses(&device.objects, |o| {
             matches!(o, Object::Block(_) | Object::Buffer(_))
         });
@@ -62,7 +62,7 @@ pub fn run_pass(device: &mut Device) -> miette::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use crate::mir::{Command, GlobalConfig, Integer, Register};
+    use crate::mir::{Command, DeviceConfig, Integer, Register};
 
     use super::*;
 
@@ -70,7 +70,7 @@ mod tests {
     fn not_too_low() {
         let mut start_mir = Device {
             name: None,
-            global_config: GlobalConfig {
+            device_config: DeviceConfig {
                 register_address_type: Some(Integer::I8),
                 ..Default::default()
             },
@@ -91,7 +91,7 @@ mod tests {
     fn not_too_high() {
         let mut start_mir = Device {
             name: None,
-            global_config: GlobalConfig {
+            device_config: DeviceConfig {
                 command_address_type: Some(Integer::U16),
                 ..Default::default()
             },

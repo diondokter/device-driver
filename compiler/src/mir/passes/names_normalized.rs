@@ -9,7 +9,7 @@ use super::recurse_objects_mut;
 /// - PascalCase: Object names, enum names, enum variant names
 /// - snake_case: Field names
 pub fn run_pass(device: &mut Device) -> miette::Result<()> {
-    let boundaries = device.global_config.name_word_boundaries.clone();
+    let boundaries = device.device_config.name_word_boundaries.clone();
 
     let pascal_converter = convert_case::Converter::new()
         .set_boundaries(&boundaries)
@@ -58,21 +58,21 @@ mod tests {
     use convert_case::Boundary;
 
     use crate::mir::{
-        Buffer, Enum, EnumVariant, Field, FieldConversion, FieldSet, GlobalConfig, Object, Register,
+        Buffer, DeviceConfig, Enum, EnumVariant, Field, FieldConversion, FieldSet, Object, Register,
     };
 
     use super::*;
 
     #[test]
     fn names_normalized() {
-        let global_config = GlobalConfig {
+        let global_config = DeviceConfig {
             name_word_boundaries: Boundary::defaults_from("-"),
             ..Default::default()
         };
 
         let mut start_mir = Device {
             name: None,
-            global_config: global_config.clone(),
+            device_config: global_config.clone(),
             objects: vec![
                 Object::Register(Register {
                     name: "my-reGister".into(),
@@ -114,7 +114,7 @@ mod tests {
 
         let end_mir = Device {
             name: None,
-            global_config,
+            device_config: global_config,
             objects: vec![
                 Object::Register(Register {
                     name: "MyRegister".into(),

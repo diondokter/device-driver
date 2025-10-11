@@ -10,20 +10,20 @@ pub fn run_pass(device: &mut Device) -> miette::Result<()> {
         match object {
             Object::Register(_) => {
                 ensure!(
-                    device.global_config.register_address_type.is_some(),
-                    "No register address type is specified in the global config, but it's required since a register is defined."
+                    device.device_config.register_address_type.is_some(),
+                    "No register address type is specified in the device config, but it's required since a register is defined."
                 );
             }
             Object::Command(_) => {
                 ensure!(
-                    device.global_config.command_address_type.is_some(),
-                    "No command address type is specified in the global config, but it's required since a command is defined."
+                    device.device_config.command_address_type.is_some(),
+                    "No command address type is specified in the device config, but it's required since a command is defined."
                 );
             }
             Object::Buffer(_) => {
                 ensure!(
-                    device.global_config.buffer_address_type.is_some(),
-                    "No buffer address type is specified in the global config, but it's required since a buffer is defined."
+                    device.device_config.buffer_address_type.is_some(),
+                    "No buffer address type is specified in the device config, but it's required since a buffer is defined."
                 );
             }
             _ => {}

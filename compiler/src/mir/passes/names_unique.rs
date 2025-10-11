@@ -52,21 +52,21 @@ pub fn run_pass(device: &mut Device) -> miette::Result<()> {
 mod tests {
     use convert_case::Boundary;
 
-    use crate::mir::{Buffer, EnumVariant, Field, FieldSet, GlobalConfig, Object};
+    use crate::mir::{Buffer, DeviceConfig, EnumVariant, Field, FieldSet, Object};
 
     use super::*;
 
     #[test]
     #[should_panic(expected = "Duplicate object name found: `MyBuffer`")]
     fn object_names_not_unique() {
-        let global_config = GlobalConfig {
+        let global_config = DeviceConfig {
             name_word_boundaries: Boundary::defaults_from("-"),
             ..Default::default()
         };
 
         let mut start_mir = Device {
             name: Some("Device".into()),
-            global_config,
+            device_config: global_config,
             objects: vec![
                 Object::Buffer(Buffer {
                     name: "MyBuffer".into(),
@@ -85,14 +85,14 @@ mod tests {
     #[test]
     #[should_panic(expected = "Duplicate field name found in fieldset `Reg`: `field`")]
     fn field_names_not_unique() {
-        let global_config = GlobalConfig {
+        let global_config = DeviceConfig {
             name_word_boundaries: Boundary::defaults_from("-"),
             ..Default::default()
         };
 
         let mut start_mir = Device {
             name: Some("Device".into()),
-            global_config,
+            device_config: global_config,
             objects: vec![Object::FieldSet(FieldSet {
                 name: "Reg".into(),
                 fields: vec![
@@ -115,14 +115,14 @@ mod tests {
     #[test]
     #[should_panic(expected = "Duplicate field `Variant` found in generated enum `Enum`")]
     fn duplicate_generated_enum_variants() {
-        let global_config = GlobalConfig {
+        let global_config = DeviceConfig {
             name_word_boundaries: Boundary::defaults_from("-"),
             ..Default::default()
         };
 
         let mut start_mir = Device {
             name: Some("Device".into()),
-            global_config,
+            device_config: global_config,
             objects: vec![Object::Enum(Enum {
                 name: "Enum".into(),
                 variants: vec![

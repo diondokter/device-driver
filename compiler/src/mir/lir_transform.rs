@@ -30,27 +30,27 @@ pub fn transform(device: mir::Device) -> miette::Result<lir::Device> {
             objects: &device.objects,
         },
         true,
-        &device.global_config,
+        &device.device_config,
         &device.objects,
     )?;
 
     Ok(lir::Device {
         internal_address_type: find_best_internal_address_type(&device),
         register_address_type: device
-            .global_config
+            .device_config
             .register_address_type
             .unwrap_or(mir::Integer::U8),
         blocks,
         field_sets,
         enums: lir_enums,
-        defmt_feature: device.global_config.defmt_feature,
+        defmt_feature: device.device_config.defmt_feature,
     })
 }
 
 fn collect_into_blocks(
     block: BorrowedBlock,
     is_root: bool,
-    global_config: &mir::GlobalConfig,
+    global_config: &mir::DeviceConfig,
     device_objects: &[mir::Object],
 ) -> miette::Result<Vec<lir::Block>> {
     let mut blocks = Vec::new();
@@ -88,7 +88,7 @@ fn collect_into_blocks(
 fn get_method(
     object: &mir::Object,
     blocks: &mut Vec<lir::Block>,
-    global_config: &mir::GlobalConfig,
+    global_config: &mir::DeviceConfig,
     device_objects: &[mir::Object],
 ) -> Result<Option<lir::BlockMethod>, miette::Report> {
     use convert_case::Casing;
