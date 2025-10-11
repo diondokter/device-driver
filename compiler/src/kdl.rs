@@ -9,7 +9,7 @@ use crate::{
     mir::{
         Access, BaseType, BitOrder, Block, Buffer, ByteOrder, Command, Device, DeviceConfig, Enum,
         EnumValue, EnumVariant, Extern, Field, FieldConversion, FieldSet, FieldSetRef, Integer,
-        Object, Register, Repeat, ResetValue,
+        Manifest, Object, Register, Repeat, ResetValue, RootObject,
     },
     reporting::{
         self, Diagnostics, NamedSourceCode,
@@ -22,7 +22,7 @@ pub fn transform(
     source_span: Option<SourceSpan>,
     file_path: &Path,
     diagnostics: &mut Diagnostics,
-) -> Vec<Device> {
+) -> Manifest {
     let source_code = NamedSourceCode::new(file_path.display().to_string(), file_contents.into());
 
     let file_subslice = if let Some(span) = source_span {
@@ -43,7 +43,9 @@ pub fn transform(
                     source_span,
                 ));
             }
-            return Vec::new();
+            return Manifest {
+                root_objects: Vec::new(),
+            };
         }
     };
 
@@ -51,11 +53,62 @@ pub fn transform(
         reporting::kdl_span_changer::change_document_span(&mut document, &source_span);
     }
 
-    document
-        .nodes()
-        .iter()
-        .filter_map(|node| transform_device(node, source_code.clone(), diagnostics))
-        .collect()
+    transform_manifest(&document, source_code, diagnostics)
+}
+
+fn transform_manifest(
+    manifest_document: &KdlDocument,
+    source_code: NamedSourceCode,
+    diagnostics: &mut Diagnostics,
+) -> Manifest {
+    let mut manifest = Manifest {
+        root_objects: Vec::new(),
+    };
+
+    for node in manifest_document.nodes() {
+        if let Ok(root_object_type) = node.name().value().parse::<RootObjectType>() {
+            match root_object_type {
+                RootObjectType::Device => {
+                    let Some(device) = transform_device(node, source_code.clone(), diagnostics)
+                    else {
+                        continue;
+                    };
+                    manifest.root_objects.push(RootObject::Device(device));
+                }
+                RootObjectType::FieldSet => {
+                    let (fs, enums) =
+                        transform_field_set(node, source_code.clone(), diagnostics, None);
+                    if let Some(fs) = fs {
+                        manifest.root_objects.push(RootObject::FieldSet(fs));
+                    }
+                    manifest
+                        .root_objects
+                        .extend(enums.into_iter().map(RootObject::Enum));
+                }
+                RootObjectType::Enum => {
+                    if let Some(enum_value) = transform_enum(node, source_code.clone(), diagnostics)
+                    {
+                        manifest.root_objects.push(RootObject::Enum(enum_value));
+                    }
+                }
+                RootObjectType::Extern => {
+                    if let Some(extern_value) =
+                        transform_extern(node, source_code.clone(), diagnostics)
+                    {
+                        manifest.root_objects.push(RootObject::Extern(extern_value));
+                    }
+                }
+            };
+        } else {
+            diagnostics.add(errors::UnexpectedNode {
+                source_code: source_code.clone(),
+                node_name: node.name().span(),
+                expected_names: ROOT_OBJECT_TYPES.iter().map(|v| v.0).collect(),
+            });
+        }
+    }
+
+    manifest
 }
 
 fn transform_device(
@@ -63,15 +116,6 @@ fn transform_device(
     source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
 ) -> Option<Device> {
-    if node.name().value() != "device" {
-        diagnostics.add(errors::UnexpectedNode {
-            source_code,
-            node_name: node.name().span(),
-            expected_names: vec!["device"],
-        });
-        return None;
-    }
-
     let device_name =
         parse_single_string_entry(node, source_code.clone(), diagnostics, None, true).0?;
 
@@ -101,15 +145,15 @@ fn transform_device_internals(
     source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
 ) {
-    let mut seen_global_configs = HashMap::<GlobalConfigType, SourceSpan>::new();
+    let mut seen_device_configs = HashMap::<DeviceConfigType, SourceSpan>::new();
 
     for node in device_document.nodes() {
-        if let Ok(global_config_type) = node.name().value().parse::<GlobalConfigType>() {
-            match seen_global_configs.insert(global_config_type, node.span()) {
-                None => transform_global_config_node(
+        if let Ok(device_config_type) = node.name().value().parse::<DeviceConfigType>() {
+            match seen_device_configs.insert(device_config_type, node.span()) {
+                None => transform_device_config_node(
                     device,
                     node,
-                    global_config_type,
+                    device_config_type,
                     source_code.clone(),
                     diagnostics,
                 ),
@@ -129,7 +173,7 @@ fn transform_device_internals(
             diagnostics.add(errors::UnexpectedNode {
                 source_code: source_code.clone(),
                 node_name: node.name().span(),
-                expected_names: GLOBAL_CONFIG_TYPES
+                expected_names: DEVICE_CONFIG_TYPES
                     .iter()
                     .map(|v| v.0)
                     .chain(OBJECT_TYPES.iter().map(|v| v.0))
@@ -699,55 +743,55 @@ fn transform_buffer(
     }
 }
 
-fn transform_global_config_node(
+fn transform_device_config_node(
     device: &mut Device,
     node: &KdlNode,
-    global_config_type: GlobalConfigType,
+    device_config_type: DeviceConfigType,
     source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
 ) {
-    match global_config_type {
-        GlobalConfigType::DefaultRegisterAccess => {
+    match device_config_type {
+        DeviceConfigType::DefaultRegisterAccess => {
             if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
                 device.device_config.default_register_access = value;
             }
         }
-        GlobalConfigType::DefaultFieldAccess => {
+        DeviceConfigType::DefaultFieldAccess => {
             if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
                 device.device_config.default_field_access = value;
             }
         }
-        GlobalConfigType::DefaultBufferAccess => {
+        DeviceConfigType::DefaultBufferAccess => {
             if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
                 device.device_config.default_buffer_access = value;
             }
         }
-        GlobalConfigType::DefaultByteOrder => {
+        DeviceConfigType::DefaultByteOrder => {
             if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
                 device.device_config.default_byte_order = Some(value);
             }
         }
-        GlobalConfigType::DefaultBitOrder => {
+        DeviceConfigType::DefaultBitOrder => {
             if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
                 device.device_config.default_bit_order = value;
             }
         }
-        GlobalConfigType::RegisterAddressType => {
+        DeviceConfigType::RegisterAddressType => {
             if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
                 device.device_config.register_address_type = Some(value);
             }
         }
-        GlobalConfigType::CommandAddressType => {
+        DeviceConfigType::CommandAddressType => {
             if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
                 device.device_config.command_address_type = Some(value);
             }
         }
-        GlobalConfigType::BufferAddressType => {
+        DeviceConfigType::BufferAddressType => {
             if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
                 device.device_config.buffer_address_type = Some(value);
             }
         }
-        GlobalConfigType::NameWordBoundaries => {
+        DeviceConfigType::NameWordBoundaries => {
             if let Some(value) =
                 parse_single_string_entry(node, source_code.clone(), diagnostics, None, false).0
             {
@@ -755,7 +799,7 @@ fn transform_global_config_node(
                     convert_case::Boundary::defaults_from(&value);
             }
         }
-        GlobalConfigType::DefmtFeature => {
+        DeviceConfigType::DefmtFeature => {
             if let Some(value) =
                 parse_single_string_entry(node, source_code.clone(), diagnostics, None, false).0
             {
@@ -1991,20 +2035,20 @@ impl FromStr for BlockField {
 }
 
 #[rustfmt::skip]
-const GLOBAL_CONFIG_TYPES: &[(&str, GlobalConfigType)] = &[
-    ("default-register-access", GlobalConfigType::DefaultRegisterAccess),
-    ("default-field-access", GlobalConfigType::DefaultFieldAccess),
-    ("default-buffer-access", GlobalConfigType::DefaultBufferAccess),
-    ("default-byte-order", GlobalConfigType::DefaultByteOrder),
-    ("default-bit-order", GlobalConfigType::DefaultBitOrder),
-    ("register-address-type", GlobalConfigType::RegisterAddressType),
-    ("command-address-type", GlobalConfigType::CommandAddressType),
-    ("buffer-address-type", GlobalConfigType::BufferAddressType),
-    ("name-word-boundaries", GlobalConfigType::NameWordBoundaries),
-    ("defmt-feature", GlobalConfigType::DefmtFeature),
+const DEVICE_CONFIG_TYPES: &[(&str, DeviceConfigType)] = &[
+    ("default-register-access", DeviceConfigType::DefaultRegisterAccess),
+    ("default-field-access", DeviceConfigType::DefaultFieldAccess),
+    ("default-buffer-access", DeviceConfigType::DefaultBufferAccess),
+    ("default-byte-order", DeviceConfigType::DefaultByteOrder),
+    ("default-bit-order", DeviceConfigType::DefaultBitOrder),
+    ("register-address-type", DeviceConfigType::RegisterAddressType),
+    ("command-address-type", DeviceConfigType::CommandAddressType),
+    ("buffer-address-type", DeviceConfigType::BufferAddressType),
+    ("name-word-boundaries", DeviceConfigType::NameWordBoundaries),
+    ("defmt-feature", DeviceConfigType::DefmtFeature),
 ];
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-enum GlobalConfigType {
+enum DeviceConfigType {
     DefaultRegisterAccess,
     DefaultFieldAccess,
     DefaultBufferAccess,
@@ -2017,11 +2061,11 @@ enum GlobalConfigType {
     DefmtFeature,
 }
 
-impl FromStr for GlobalConfigType {
+impl FromStr for DeviceConfigType {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        for (name, val) in GLOBAL_CONFIG_TYPES {
+        for (name, val) in DEVICE_CONFIG_TYPES {
             if *name == s {
                 return Ok(*val);
             }
@@ -2057,6 +2101,35 @@ impl FromStr for ObjectType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         for (name, val) in OBJECT_TYPES {
+            if *name == s {
+                return Ok(*val);
+            }
+        }
+
+        Err(())
+    }
+}
+
+#[rustfmt::skip]
+const ROOT_OBJECT_TYPES: &[(&str, RootObjectType)] = &[
+    ("device", RootObjectType::Device),
+    ("fieldset", RootObjectType::FieldSet),
+    ("enum", RootObjectType::Enum),
+    ("extern", RootObjectType::Extern),
+];
+#[derive(Clone, Copy)]
+enum RootObjectType {
+    Device,
+    FieldSet,
+    Enum,
+    Extern,
+}
+
+impl FromStr for RootObjectType {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        for (name, val) in ROOT_OBJECT_TYPES {
             if *name == s {
                 return Ok(*val);
             }

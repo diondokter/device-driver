@@ -8,6 +8,19 @@ use convert_case::Boundary;
 pub mod lir_transform;
 pub mod passes;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Manifest {
+    pub root_objects: Vec<RootObject>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RootObject {
+    Device(Device),
+    FieldSet(FieldSet),
+    Enum(Enum),
+    Extern(Extern),
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Device {
     pub name: Option<String>,
