@@ -1,15 +1,14 @@
 use miette::{bail, ensure};
 
-use crate::mir::{Device, EnumGenerationStyle, Object, passes::recurse_objects};
+use crate::mir::{EnumGenerationStyle, Manifest, Object};
 
 /// Checks if fields that have conversion and specified no try to be used, are valid in doing so
-pub fn run_pass(device: &mut Device) -> miette::Result<()> {
-    recurse_objects(&device.objects, &mut |object| {
+pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
+    for object in manifest.iter_objects() {
         if let Object::FieldSet(field_set) = object {
             for field in field_set.fields.iter() {
                 if let Some(conversion) = field.field_conversion.as_ref() {
-                    let target_object =
-                        super::search_object(&device.objects, &conversion.type_name);
+                    let target_object = super::search_object(&manifest, &conversion.type_name);
 
                     match target_object {
                         Some(Object::Enum(target_enum)) => {
@@ -93,7 +92,7 @@ pub fn run_pass(device: &mut Device) -> miette::Result<()> {
                 }
             }
         }
+    }
 
-        Ok(())
-    })
+    Ok(())
 }

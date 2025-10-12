@@ -1,4 +1,4 @@
-use crate::mir::{Manifest, RepeatSource};
+use crate::mir::{Device, Manifest, RepeatSource};
 
 use super::{Object, Repeat};
 
@@ -44,15 +44,16 @@ pub(crate) fn search_object<'o>(manifest: &'o Manifest, name: &str) -> Option<&'
 
 pub(crate) fn find_min_max_addresses(
     manifest: &Manifest,
+    device: &Device,
     filter: impl Fn(&Object) -> bool,
 ) -> (i128, i128) {
     let mut min_address_found = 0;
     let mut max_address_found = 0;
 
-    let mut children_left = vec![manifest.root_objects.len()];
+    let mut children_left = vec![device.objects.len()];
     let mut address_offsets = vec![0];
 
-    for object in manifest.iter_objects() {
+    for object in device.iter_objects() {
         while children_left.last() == Some(&0) {
             children_left.pop();
             address_offsets.pop();

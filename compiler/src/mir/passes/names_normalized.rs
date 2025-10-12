@@ -1,24 +1,30 @@
 use convert_case::Case;
 
-use crate::mir::{Device, Object, Repeat, RepeatSource};
-
-use super::recurse_objects_mut;
+use crate::mir::{Manifest, Object, Repeat, RepeatSource};
 
 /// Changes all names of all objects, enums, enum variants and fieldsets to either Pascal case or snake case
 ///
 /// - PascalCase: Object names, enum names, enum variant names
 /// - snake_case: Field names
-pub fn run_pass(device: &mut Device) -> miette::Result<()> {
-    let boundaries = device.device_config.name_word_boundaries.clone();
+pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
+    for (object, config) in manifest.iter_objects_with_config_mut() {
+        if let Object::Device(_) = object {
+            // The name rules for devices are slightly different and are done in a different pass
+            continue;
+        }
 
-    let pascal_converter = convert_case::Converter::new()
-        .set_boundaries(&boundaries)
-        .to_case(Case::Pascal);
-    let snake_converter = convert_case::Converter::new()
-        .set_boundaries(&boundaries)
-        .to_case(Case::Snake);
+        let boundaries = config
+            .name_word_boundaries
+            .as_deref()
+            .unwrap_or_else(|| &const { convert_case::Boundary::defaults() });
 
-    recurse_objects_mut(&mut device.objects, &mut |object| {
+        let pascal_converter = convert_case::Converter::new()
+            .set_boundaries(&boundaries)
+            .to_case(Case::Pascal);
+        let snake_converter = convert_case::Converter::new()
+            .set_boundaries(&boundaries)
+            .to_case(Case::Snake);
+
         *object.name_mut() = pascal_converter.convert(object.name_mut());
 
         for fs_name in object.field_set_refs_mut() {
@@ -48,9 +54,9 @@ pub fn run_pass(device: &mut Device) -> miette::Result<()> {
                 variant.name = pascal_converter.convert(&variant.name);
             }
         }
+    }
 
-        Ok(())
-    })
+    Ok(())
 }
 
 #[cfg(test)]
@@ -58,7 +64,8 @@ mod tests {
     use convert_case::Boundary;
 
     use crate::mir::{
-        Buffer, DeviceConfig, Enum, EnumVariant, Field, FieldConversion, FieldSet, Object, Register,
+        Buffer, Device, DeviceConfig, Enum, EnumVariant, Field, FieldConversion, FieldSet, Object,
+        Register,
     };
 
     use super::*;
@@ -66,11 +73,11 @@ mod tests {
     #[test]
     fn names_normalized() {
         let global_config = DeviceConfig {
-            name_word_boundaries: Boundary::defaults_from("-"),
+            name_word_boundaries: Some(Boundary::defaults_from("-")),
             ..Default::default()
         };
 
-        let mut start_mir = Device {
+        let mut start_mir: Manifest = Device {
             name: "Device".into(),
             device_config: global_config.clone(),
             objects: vec![
@@ -110,9 +117,10 @@ mod tests {
                     ..Default::default()
                 }),
             ],
-        };
+        }
+        .into();
 
-        let end_mir = Device {
+        let end_mir: Manifest = Device {
             name: "Device".into(),
             device_config: global_config,
             objects: vec![
@@ -152,7 +160,8 @@ mod tests {
                     ..Default::default()
                 }),
             ],
-        };
+        }
+        .into();
 
         run_pass(&mut start_mir).unwrap();
 

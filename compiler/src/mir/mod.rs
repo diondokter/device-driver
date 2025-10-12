@@ -16,7 +16,7 @@ pub struct Manifest {
 
 impl Manifest {
     pub fn iter_objects_mut(&mut self) -> impl Iterator<Item = &mut Object> {
-        ManifestIterMut {
+        ObjectIterMut {
             children: &mut self.root_objects,
             parent: None,
             collection_object_returned: false,
@@ -25,8 +25,8 @@ impl Manifest {
         .map(|(object, _)| object)
     }
 
-    pub fn iter_objects_with_config_mut(&mut self) -> ManifestIterMut<'_> {
-        ManifestIterMut {
+    pub fn iter_objects_with_config_mut(&mut self) -> ObjectIterMut<'_> {
+        ObjectIterMut {
             children: &mut self.root_objects,
             parent: None,
             collection_object_returned: false,
@@ -35,7 +35,7 @@ impl Manifest {
     }
 
     pub fn iter_objects(&self) -> impl Iterator<Item = &Object> {
-        ManifestIter {
+        ObjectIter {
             children: &self.root_objects,
             parent: None,
             collection_object_returned: false,
@@ -44,8 +44,8 @@ impl Manifest {
         .map(|(object, _)| object)
     }
 
-    pub fn iter_objects_with_config(&self) -> ManifestIter<'_> {
-        ManifestIter {
+    pub fn iter_objects_with_config(&self) -> ObjectIter<'_> {
+        ObjectIter {
             children: &self.root_objects,
             parent: None,
             collection_object_returned: false,
@@ -55,14 +55,14 @@ impl Manifest {
 }
 
 #[derive(Default)]
-struct ManifestIterMut<'a> {
+struct ObjectIterMut<'a> {
     children: &'a mut [Object],
-    parent: Option<Box<ManifestIterMut<'a>>>,
+    parent: Option<Box<ObjectIterMut<'a>>>,
     collection_object_returned: bool,
     current_device_config: Rc<DeviceConfig>,
 }
 
-impl<'a> Iterator for ManifestIterMut<'a> {
+impl<'a> Iterator for ObjectIterMut<'a> {
     type Item = (&'a mut Object, Rc<DeviceConfig>);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -101,7 +101,7 @@ impl<'a> Iterator for ManifestIterMut<'a> {
                         self.current_device_config.clone()
                     };
 
-                    *self = ManifestIterMut {
+                    *self = ObjectIterMut {
                         children: first.child_objects_mut(),
                         parent: Some(Box::new(std::mem::take(self))),
                         collection_object_returned: false,
@@ -115,14 +115,14 @@ impl<'a> Iterator for ManifestIterMut<'a> {
 }
 
 #[derive(Default)]
-struct ManifestIter<'a> {
+struct ObjectIter<'a> {
     children: &'a [Object],
-    parent: Option<Box<ManifestIter<'a>>>,
+    parent: Option<Box<ObjectIter<'a>>>,
     collection_object_returned: bool,
     current_device_config: Rc<DeviceConfig>,
 }
 
-impl<'a> Iterator for ManifestIter<'a> {
+impl<'a> Iterator for ObjectIter<'a> {
     type Item = (&'a Object, Rc<DeviceConfig>);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -161,7 +161,7 @@ impl<'a> Iterator for ManifestIter<'a> {
                         self.current_device_config.clone()
                     };
 
-                    *self = ManifestIter {
+                    *self = ObjectIter {
                         children: first.child_objects(),
                         parent: Some(Box::new(std::mem::take(self))),
                         collection_object_returned: false,
@@ -174,6 +174,16 @@ impl<'a> Iterator for ManifestIter<'a> {
     }
 }
 
+/// Implementation meant for testing to easily create a manifest with just one device
+impl From<Device> for Manifest {
+    fn from(value: Device) -> Self {
+        Self {
+            root_objects: vec![Object::Device(value)],
+            config: Default::default(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Device {
     pub name: String,
@@ -181,6 +191,27 @@ pub struct Device {
     pub objects: Vec<Object>,
 }
 
+impl Device {
+    pub fn iter_objects_mut(&mut self) -> impl Iterator<Item = &mut Object> {
+        ObjectIterMut {
+            children: &mut self.objects,
+            parent: None,
+            collection_object_returned: false,
+            current_device_config: Rc::new(Default::default()),
+        }
+        .map(|(object, _)| object)
+    }
+
+    pub fn iter_objects(&self) -> impl Iterator<Item = &Object> {
+        ObjectIter {
+            children: &self.objects,
+            parent: None,
+            collection_object_returned: false,
+            current_device_config: Rc::new(Default::default()),
+        }
+        .map(|(object, _)| object)
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct DeviceConfig {
     pub register_access: Option<Access>,
@@ -499,6 +530,14 @@ impl Object {
 
     pub(self) fn as_enum(&self) -> Option<&Enum> {
         if let Self::Enum(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_device(&self) -> Option<&Device> {
+        if let Self::Device(v) = self {
             Some(v)
         } else {
             None

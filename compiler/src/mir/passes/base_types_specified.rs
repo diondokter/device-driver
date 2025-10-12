@@ -1,11 +1,10 @@
 use miette::bail;
 
-use super::recurse_objects_mut;
-use crate::mir::{BaseType, Device, Integer};
+use crate::mir::{BaseType, Integer, Manifest};
 
 /// Turn all unspecified base types into either bools or uints based on the size of the field
-pub fn run_pass(device: &mut Device) -> miette::Result<()> {
-    recurse_objects_mut(&mut device.objects, &mut |object| {
+pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
+    for object in manifest.iter_objects_mut() {
         if let Some(field_set) = object.as_field_set_mut() {
             for field in field_set.fields.iter_mut() {
                 let size_bits = field.field_address.len() as u32;
@@ -38,7 +37,7 @@ pub fn run_pass(device: &mut Device) -> miette::Result<()> {
                 }
             }
         }
+    }
 
-        Ok(())
-    })
+    Ok(())
 }

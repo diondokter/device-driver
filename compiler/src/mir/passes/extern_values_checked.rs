@@ -1,10 +1,10 @@
 use miette::ensure;
 
-use crate::mir::{Device, Object, passes::recurse_objects};
+use crate::mir::{Manifest, Object};
 
 /// Checks if externs are fully specified
-pub fn run_pass(device: &mut Device) -> miette::Result<()> {
-    recurse_objects(&device.objects, &mut |object| {
+pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
+    for object in manifest.iter_objects() {
         let object_name = object.name();
 
         if let Object::Extern(extern_value) = object {
@@ -14,7 +14,7 @@ pub fn run_pass(device: &mut Device) -> miette::Result<()> {
                 extern_value.base_type
             );
         }
+    }
 
-        Ok(())
-    })
+    Ok(())
 }

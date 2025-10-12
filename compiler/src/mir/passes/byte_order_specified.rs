@@ -1,42 +1,33 @@
 use miette::bail;
 
-use crate::mir::Device;
-
-use super::recurse_objects_mut;
+use crate::mir::Manifest;
 
 /// Checks if the byte order is set for all registers and commands that need it and fills it out for the ones that aren't specified
-pub fn run_pass(device: &mut Device) -> miette::Result<()> {
-    if let Some(default_byte_order) = device.device_config.byte_order {
-        recurse_objects_mut(&mut device.objects, &mut |object| {
-            if let Some(fs) = object.as_field_set_mut() {
-                fs.byte_order = Some(default_byte_order);
-            }
-            Ok(())
-        })?;
-
-        return Ok(());
-    }
-
-    recurse_objects_mut(&mut device.objects, &mut |object| {
-        let object_name = object.name().to_string();
-
+pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
+    for (object, config) in manifest.iter_objects_with_config_mut() {
         if let Some(fs) = object.as_field_set_mut() {
+            if fs.byte_order.is_none() {
+                fs.byte_order = config.byte_order;
+            }
+
             if fs.size_bits > 8 && fs.byte_order.is_none() {
                 bail!(
-                    "No byte order is specified for fieldset `{object_name}` while it's big enough that byte order is important. Specify it on the fieldset or in the device config",
+                    "No byte order is specified for fieldset `{}` while it's big enough that byte order is important. Specify it on the fieldset or in the device config",
+                    object.name()
                 );
             } else {
                 // Even if not required, fill in a byte order so we can always unwrap it later
                 fs.byte_order.get_or_insert(crate::mir::ByteOrder::LE);
             }
         }
-        Ok(())
-    })
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::mir::{ByteOrder, DeviceConfig, FieldSet, Object};
+    use crate::mir::{ByteOrder, Device, DeviceConfig, FieldSet, Object};
 
     use super::*;
 
@@ -58,7 +49,8 @@ mod tests {
                     ..Default::default()
                 }),
             ],
-        };
+        }
+        .into();
 
         run_pass(&mut input).unwrap();
     }
@@ -73,7 +65,8 @@ mod tests {
                 size_bits: 9,
                 ..Default::default()
             })],
-        };
+        }
+        .into();
 
         assert_eq!(
             run_pass(&mut input).unwrap_err().to_string(),
@@ -96,7 +89,8 @@ mod tests {
                 size_bits: 9,
                 ..Default::default()
             })],
-        };
+        }
+        .into();
 
         run_pass(&mut input).unwrap();
     }

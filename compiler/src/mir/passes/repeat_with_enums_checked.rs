@@ -1,12 +1,10 @@
 use miette::{bail, ensure};
 
-use crate::mir::{Device, Enum, Object, Repeat, RepeatSource, passes::search_object};
-
-use super::recurse_objects;
+use crate::mir::{Enum, Manifest, Object, Repeat, RepeatSource, passes::search_object};
 
 /// Checks if the enums referenced by repeats actually exist
-pub fn run_pass(device: &mut Device) -> miette::Result<()> {
-    recurse_objects(&device.objects, &mut |object| {
+pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
+    for object in manifest.iter_objects() {
         let object_name = object.name();
         let object_type = object.type_name();
 
@@ -15,7 +13,7 @@ pub fn run_pass(device: &mut Device) -> miette::Result<()> {
             ..
         }) = object.repeat().as_ref()
         {
-            match search_object(&device.objects, enum_name) {
+            match search_object(manifest, enum_name) {
                 Some(Object::Enum(enum_value)) => {
                     ensure!(
                         !enum_has_catch_all(enum_value),
@@ -37,7 +35,7 @@ pub fn run_pass(device: &mut Device) -> miette::Result<()> {
                     ..
                 }) = field.repeat.as_ref()
                 {
-                    match search_object(&device.objects, enum_name) {
+                    match search_object(manifest, enum_name) {
                         Some(Object::Enum(enum_value)) => {
                             ensure!(
                                 !enum_has_catch_all(enum_value),
@@ -55,9 +53,9 @@ pub fn run_pass(device: &mut Device) -> miette::Result<()> {
                 }
             }
         }
+    }
 
-        Ok(())
-    })
+    Ok(())
 }
 
 fn enum_has_catch_all(enum_value: &Enum) -> bool {
