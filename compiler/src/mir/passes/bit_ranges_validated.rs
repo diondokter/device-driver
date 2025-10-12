@@ -140,7 +140,7 @@ mod tests {
     #[test]
     fn max_len_exceeded() {
         let mut start_mir = Device {
-            name: None,
+            name: "Device".into(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
@@ -157,7 +157,7 @@ mod tests {
         run_pass(&mut start_mir).unwrap();
 
         let mut start_mir = Device {
-            name: None,
+            name: "Device".into(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
@@ -177,7 +177,7 @@ mod tests {
         );
 
         let mut start_mir = Device {
-            name: None,
+            name: "Device".into(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
@@ -194,7 +194,7 @@ mod tests {
         run_pass(&mut start_mir).unwrap();
 
         let mut start_mir = Device {
-            name: None,
+            name: "Device".into(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
@@ -214,7 +214,7 @@ mod tests {
         );
 
         let mut start_mir = Device {
-            name: None,
+            name: "Device".into(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
@@ -231,7 +231,7 @@ mod tests {
         run_pass(&mut start_mir).unwrap();
 
         let mut start_mir = Device {
-            name: None,
+            name: "Device".into(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
@@ -251,7 +251,7 @@ mod tests {
         );
 
         let mut start_mir = Device {
-            name: None,
+            name: "Device".into(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
@@ -278,7 +278,7 @@ mod tests {
     #[test]
     fn overlap() {
         let mut start_mir = Device {
-            name: None,
+            name: "Device".into(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
@@ -302,7 +302,7 @@ mod tests {
         run_pass(&mut start_mir).unwrap();
 
         let mut start_mir = Device {
-            name: None,
+            name: "Device".into(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
@@ -327,7 +327,7 @@ mod tests {
         run_pass(&mut start_mir).unwrap();
 
         let mut start_mir = Device {
-            name: None,
+            name: "Device".into(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
@@ -354,7 +354,7 @@ mod tests {
         );
 
         let mut start_mir = Device {
-            name: None,
+            name: "Device".into(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),

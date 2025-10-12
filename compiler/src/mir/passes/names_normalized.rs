@@ -71,7 +71,7 @@ mod tests {
         };
 
         let mut start_mir = Device {
-            name: None,
+            name: "Device".into(),
             device_config: global_config.clone(),
             objects: vec![
                 Object::Register(Register {
@@ -113,7 +113,7 @@ mod tests {
         };
 
         let end_mir = Device {
-            name: None,
+            name: "Device".into(),
             device_config: global_config,
             objects: vec![
                 Object::Register(Register {

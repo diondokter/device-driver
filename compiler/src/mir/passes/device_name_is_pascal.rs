@@ -8,10 +8,10 @@ pub fn run_pass(device: &mut Device) -> miette::Result<()> {
             "aA:AAa:_:-: :a1:A1:1A",
         ))
         .set_pattern(convert_case::pattern::capital);
-    let converted_driver_name = lenient_pascal_converter.convert(device.name.as_ref().unwrap());
+    let converted_driver_name = lenient_pascal_converter.convert(&device.name);
 
     ensure!(
-        device.name.as_ref().unwrap() == &converted_driver_name,
+        device.name == converted_driver_name,
         "The device name must be given in PascalCase, e.g. \"{converted_driver_name}\"",
     );
 

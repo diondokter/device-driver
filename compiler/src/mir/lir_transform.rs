@@ -11,7 +11,7 @@ use super::{
 };
 
 pub fn transform(device: mir::Device) -> miette::Result<lir::Device> {
-    let driver_name = device.name.clone().unwrap();
+    let driver_name = &device.name;
     let mir_enums = collect_enums(&device)?;
     let lir_enums = mir_enums
         .iter()

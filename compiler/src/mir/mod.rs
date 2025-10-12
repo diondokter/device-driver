@@ -23,7 +23,7 @@ pub enum RootObject {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Device {
-    pub name: Option<String>,
+    pub name: String,
     pub device_config: DeviceConfig,
     pub objects: Vec<Object>,
 }

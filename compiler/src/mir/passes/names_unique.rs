@@ -65,7 +65,7 @@ mod tests {
         };
 
         let mut start_mir = Device {
-            name: Some("Device".into()),
+            name: "Device".into(),
             device_config: global_config,
             objects: vec![
                 Object::Buffer(Buffer {
@@ -91,7 +91,7 @@ mod tests {
         };
 
         let mut start_mir = Device {
-            name: Some("Device".into()),
+            name: "Device".into(),
             device_config: global_config,
             objects: vec![Object::FieldSet(FieldSet {
                 name: "Reg".into(),
@@ -121,7 +121,7 @@ mod tests {
         };
 
         let mut start_mir = Device {
-            name: Some("Device".into()),
+            name: "Device".into(),
             device_config: global_config,
             objects: vec![Object::Enum(Enum {
                 name: "Enum".into(),
