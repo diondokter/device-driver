@@ -10,15 +10,113 @@ pub mod passes;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Manifest {
-    pub root_objects: Vec<RootObject>,
+    pub root_objects: Vec<Object>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum RootObject {
-    Device(Device),
-    FieldSet(FieldSet),
-    Enum(Enum),
-    Extern(Extern),
+impl Manifest {
+    pub fn iter_objects_mut(&mut self) -> ManifestIterMut<'_> {
+        ManifestIterMut {
+            children: &mut self.root_objects,
+            parent: None,
+            collection_object_returned: false,
+        }
+    }
+
+    pub fn iter_objects(&self) -> ManifestIter<'_> {
+        ManifestIter {
+            children: &self.root_objects,
+            parent: None,
+            collection_object_returned: false,
+        }
+    }
+}
+
+#[derive(Default)]
+struct ManifestIterMut<'a> {
+    children: &'a mut [Object],
+    parent: Option<Box<ManifestIterMut<'a>>>,
+    collection_object_returned: bool,
+}
+
+impl<'a> Iterator for ManifestIterMut<'a> {
+    type Item = &'a mut Object;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let children = std::mem::take(&mut self.children);
+
+        match children.split_first_mut() {
+            None => match self.parent.take() {
+                Some(parent) => {
+                    // continue with the parent node
+                    *self = *parent;
+                    self.next()
+                }
+                None => None,
+            },
+            Some((first, rest)) => {
+                self.children = rest;
+
+                if first.child_objects_mut().is_empty() {
+                    Some(first)
+                } else if !self.collection_object_returned {
+                    self.collection_object_returned = true;
+                    Some(first)
+                } else {
+                    self.collection_object_returned = false;
+                    *self = ManifestIterMut {
+                        children: first.child_objects_mut(),
+                        parent: Some(Box::new(std::mem::take(self))),
+                        ..Default::default()
+                    };
+                    self.next()
+                }
+            }
+        }
+    }
+}
+
+#[derive(Default)]
+struct ManifestIter<'a> {
+    children: &'a [Object],
+    parent: Option<Box<ManifestIter<'a>>>,
+    collection_object_returned: bool,
+}
+
+impl<'a> Iterator for ManifestIter<'a> {
+    type Item = &'a Object;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let children = std::mem::take(&mut self.children);
+
+        match children.split_first() {
+            None => match self.parent.take() {
+                Some(parent) => {
+                    // continue with the parent node
+                    *self = *parent;
+                    self.next()
+                }
+                None => None,
+            },
+            Some((first, rest)) => {
+                self.children = rest;
+
+                if first.child_objects().is_empty() {
+                    Some(first)
+                } else if !self.collection_object_returned {
+                    self.collection_object_returned = true;
+                    Some(first)
+                } else {
+                    self.collection_object_returned = false;
+                    *self = ManifestIter {
+                        children: first.child_objects(),
+                        parent: Some(Box::new(std::mem::take(self))),
+                        ..Default::default()
+                    };
+                    self.next()
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -193,6 +291,7 @@ pub enum BitOrder {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Object {
+    Device(Device),
     Block(Block),
     Register(Register),
     Command(Command),
@@ -203,23 +302,26 @@ pub enum Object {
 }
 
 impl Object {
-    pub(self) fn get_block_object_list_mut(&mut self) -> Option<&mut Vec<Self>> {
+    pub(self) fn child_objects_mut(&mut self) -> &mut [Object] {
         match self {
-            Object::Block(b) => Some(&mut b.objects),
-            _ => None,
+            Object::Device(device) => &mut device.objects,
+            Object::Block(block) => &mut block.objects,
+            _ => &mut [],
         }
     }
 
-    pub(self) fn get_block_object_list(&self) -> Option<&[Self]> {
+    pub(self) fn child_objects(&self) -> &[Object] {
         match self {
-            Object::Block(b) => Some(&b.objects),
-            _ => None,
+            Object::Device(device) => &device.objects,
+            Object::Block(block) => &block.objects,
+            _ => &[],
         }
     }
 
     /// Get a mutable reference to the name of the specific object
     pub(self) fn name_mut(&mut self) -> &mut String {
         match self {
+            Object::Device(val) => &mut val.name,
             Object::Block(val) => &mut val.name,
             Object::Register(val) => &mut val.name,
             Object::Command(val) => &mut val.name,
@@ -233,6 +335,7 @@ impl Object {
     /// Get a reference to the name of the specific object
     pub(self) fn name(&self) -> &str {
         match self {
+            Object::Device(val) => &val.name,
             Object::Block(val) => &val.name,
             Object::Register(val) => &val.name,
             Object::Command(val) => &val.name,
@@ -245,6 +348,7 @@ impl Object {
 
     pub(self) fn type_name(&self) -> &'static str {
         match self {
+            Object::Device(_) => "device",
             Object::Block(_) => "block",
             Object::Register(_) => "register",
             Object::Command(_) => "command",
@@ -257,6 +361,7 @@ impl Object {
 
     pub(self) fn field_set_refs_mut(&mut self) -> Vec<&mut FieldSetRef> {
         match self {
+            Object::Device(_) => Vec::new(),
             Object::Block(_) => Vec::new(),
             Object::Register(register) => vec![&mut register.field_set_ref],
             Object::Command(command) => {
@@ -281,6 +386,7 @@ impl Object {
     /// Return the address if it is specified.
     fn address(&self) -> Option<i128> {
         match self {
+            Object::Device(_) => None,
             Object::Block(block) => Some(block.address_offset),
             Object::Register(register) => Some(register.address),
             Object::Command(command) => Some(command.address),
@@ -294,6 +400,7 @@ impl Object {
     /// Return the repeat value if it exists
     fn repeat(&self) -> Option<Repeat> {
         match self {
+            Object::Device(_) => None,
             Object::Block(block) => block.repeat.clone(),
             Object::Register(register) => register.repeat.clone(),
             Object::Command(command) => command.repeat.clone(),
@@ -320,7 +427,7 @@ impl Object {
         }
     }
 
-    pub fn as_enum(&self) -> Option<&Enum> {
+    pub(self) fn as_enum(&self) -> Option<&Enum> {
         if let Self::Enum(v) = self {
             Some(v)
         } else {
@@ -673,17 +780,6 @@ pub trait Unique {
     fn id(&self) -> UniqueId;
 }
 
-impl Unique for Device {
-    fn id(&self) -> UniqueId {
-        UniqueId {
-            object_name: self
-                .name
-                .clone()
-                .expect("Can only get a device unique id when it's initialized with a name"),
-        }
-    }
-}
-
 macro_rules! impl_unique {
     ($t:ty) => {
         impl Unique for $t {
@@ -696,6 +792,7 @@ macro_rules! impl_unique {
     };
 }
 
+impl_unique!(Device);
 impl_unique!(Register);
 impl_unique!(Command);
 impl_unique!(Buffer);
@@ -708,6 +805,7 @@ impl_unique!(Extern);
 impl Unique for Object {
     fn id(&self) -> UniqueId {
         match self {
+            Object::Device(val) => val.id(),
             Object::Block(val) => val.id(),
             Object::Register(val) => val.id(),
             Object::Command(val) => val.id(),

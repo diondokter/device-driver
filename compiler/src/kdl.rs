@@ -9,7 +9,7 @@ use crate::{
     mir::{
         Access, BaseType, BitOrder, Block, Buffer, ByteOrder, Command, Device, DeviceConfig, Enum,
         EnumValue, EnumVariant, Extern, Field, FieldConversion, FieldSet, FieldSetRef, Integer,
-        Manifest, Object, Register, Repeat, ResetValue, RootObject,
+        Manifest, Object, Register, Repeat, ResetValue,
     },
     reporting::{
         self, Diagnostics, NamedSourceCode,
@@ -73,29 +73,29 @@ fn transform_manifest(
                     else {
                         continue;
                     };
-                    manifest.root_objects.push(RootObject::Device(device));
+                    manifest.root_objects.push(Object::Device(device));
                 }
                 RootObjectType::FieldSet => {
                     let (fs, enums) =
                         transform_field_set(node, source_code.clone(), diagnostics, None);
                     if let Some(fs) = fs {
-                        manifest.root_objects.push(RootObject::FieldSet(fs));
+                        manifest.root_objects.push(Object::FieldSet(fs));
                     }
                     manifest
                         .root_objects
-                        .extend(enums.into_iter().map(RootObject::Enum));
+                        .extend(enums.into_iter().map(Object::Enum));
                 }
                 RootObjectType::Enum => {
                     if let Some(enum_value) = transform_enum(node, source_code.clone(), diagnostics)
                     {
-                        manifest.root_objects.push(RootObject::Enum(enum_value));
+                        manifest.root_objects.push(Object::Enum(enum_value));
                     }
                 }
                 RootObjectType::Extern => {
                     if let Some(extern_value) =
                         transform_extern(node, source_code.clone(), diagnostics)
                     {
-                        manifest.root_objects.push(RootObject::Extern(extern_value));
+                        manifest.root_objects.push(Object::Extern(extern_value));
                     }
                 }
             };

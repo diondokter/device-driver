@@ -94,6 +94,7 @@ fn get_method(
     use convert_case::Casing;
 
     Ok(match object {
+        mir::Object::Device(_) => None,
         mir::Object::Block(
             b @ mir::Block {
                 description,
