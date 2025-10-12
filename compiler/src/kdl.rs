@@ -45,6 +45,7 @@ pub fn transform(
             }
             return Manifest {
                 root_objects: Vec::new(),
+                config: DeviceConfig::default(),
             };
         }
     };
@@ -63,6 +64,7 @@ fn transform_manifest(
 ) -> Manifest {
     let mut manifest = Manifest {
         root_objects: Vec::new(),
+        config: DeviceConfig::default(), // TODO: Parse this
     };
 
     for node in manifest_document.nodes() {
@@ -751,29 +753,29 @@ fn transform_device_config_node(
     diagnostics: &mut Diagnostics,
 ) {
     match device_config_type {
-        DeviceConfigType::DefaultRegisterAccess => {
+        DeviceConfigType::RegisterAccess => {
             if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
-                device.device_config.default_register_access = value;
+                device.device_config.register_access = Some(value);
             }
         }
-        DeviceConfigType::DefaultFieldAccess => {
+        DeviceConfigType::FieldAccess => {
             if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
-                device.device_config.default_field_access = value;
+                device.device_config.field_access = Some(value);
             }
         }
-        DeviceConfigType::DefaultBufferAccess => {
+        DeviceConfigType::BufferAccess => {
             if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
-                device.device_config.default_buffer_access = value;
+                device.device_config.buffer_access = Some(value);
             }
         }
-        DeviceConfigType::DefaultByteOrder => {
+        DeviceConfigType::ByteOrder => {
             if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
-                device.device_config.default_byte_order = Some(value);
+                device.device_config.byte_order = Some(value);
             }
         }
-        DeviceConfigType::DefaultBitOrder => {
+        DeviceConfigType::BitOrder => {
             if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
-                device.device_config.default_bit_order = value;
+                device.device_config.bit_order = Some(value);
             }
         }
         DeviceConfigType::RegisterAddressType => {
@@ -796,7 +798,7 @@ fn transform_device_config_node(
                 parse_single_string_entry(node, source_code.clone(), diagnostics, None, false).0
             {
                 device.device_config.name_word_boundaries =
-                    convert_case::Boundary::defaults_from(&value);
+                    Some(convert_case::Boundary::defaults_from(&value));
             }
         }
         DeviceConfigType::DefmtFeature => {
@@ -2036,11 +2038,11 @@ impl FromStr for BlockField {
 
 #[rustfmt::skip]
 const DEVICE_CONFIG_TYPES: &[(&str, DeviceConfigType)] = &[
-    ("default-register-access", DeviceConfigType::DefaultRegisterAccess),
-    ("default-field-access", DeviceConfigType::DefaultFieldAccess),
-    ("default-buffer-access", DeviceConfigType::DefaultBufferAccess),
-    ("default-byte-order", DeviceConfigType::DefaultByteOrder),
-    ("default-bit-order", DeviceConfigType::DefaultBitOrder),
+    ("register-access", DeviceConfigType::RegisterAccess),
+    ("field-access", DeviceConfigType::FieldAccess),
+    ("buffer-access", DeviceConfigType::BufferAccess),
+    ("byte-order", DeviceConfigType::ByteOrder),
+    ("bit-order", DeviceConfigType::BitOrder),
     ("register-address-type", DeviceConfigType::RegisterAddressType),
     ("command-address-type", DeviceConfigType::CommandAddressType),
     ("buffer-address-type", DeviceConfigType::BufferAddressType),
@@ -2049,11 +2051,11 @@ const DEVICE_CONFIG_TYPES: &[(&str, DeviceConfigType)] = &[
 ];
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 enum DeviceConfigType {
-    DefaultRegisterAccess,
-    DefaultFieldAccess,
-    DefaultBufferAccess,
-    DefaultByteOrder,
-    DefaultBitOrder,
+    RegisterAccess,
+    FieldAccess,
+    BufferAccess,
+    ByteOrder,
+    BitOrder,
     RegisterAddressType,
     CommandAddressType,
     BufferAddressType,

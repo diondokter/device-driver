@@ -1,7 +1,7 @@
 //! The MIR takes its data from HIR and makes sure all required data is there
 //! and all optional data is filled in with defaults.
 
-use std::{fmt::Display, ops::Range};
+use std::{fmt::Display, ops::Range, rc::Rc};
 
 use convert_case::Boundary;
 
@@ -11,22 +11,45 @@ pub mod passes;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Manifest {
     pub root_objects: Vec<Object>,
+    pub config: DeviceConfig,
 }
 
 impl Manifest {
-    pub fn iter_objects_mut(&mut self) -> ManifestIterMut<'_> {
+    pub fn iter_objects_mut(&mut self) -> impl Iterator<Item = &mut Object> {
         ManifestIterMut {
             children: &mut self.root_objects,
             parent: None,
             collection_object_returned: false,
+            current_device_config: Rc::new(self.config.clone()),
+        }
+        .map(|(object, _)| object)
+    }
+
+    pub fn iter_objects_with_config_mut(&mut self) -> ManifestIterMut<'_> {
+        ManifestIterMut {
+            children: &mut self.root_objects,
+            parent: None,
+            collection_object_returned: false,
+            current_device_config: Rc::new(self.config.clone()),
         }
     }
 
-    pub fn iter_objects(&self) -> ManifestIter<'_> {
+    pub fn iter_objects(&self) -> impl Iterator<Item = &Object> {
         ManifestIter {
             children: &self.root_objects,
             parent: None,
             collection_object_returned: false,
+            current_device_config: Rc::new(self.config.clone()),
+        }
+        .map(|(object, _)| object)
+    }
+
+    pub fn iter_objects_with_config(&self) -> ManifestIter<'_> {
+        ManifestIter {
+            children: &self.root_objects,
+            parent: None,
+            collection_object_returned: false,
+            current_device_config: Rc::new(self.config.clone()),
         }
     }
 }
@@ -36,10 +59,11 @@ struct ManifestIterMut<'a> {
     children: &'a mut [Object],
     parent: Option<Box<ManifestIterMut<'a>>>,
     collection_object_returned: bool,
+    current_device_config: Rc<DeviceConfig>,
 }
 
 impl<'a> Iterator for ManifestIterMut<'a> {
-    type Item = &'a mut Object;
+    type Item = (&'a mut Object, Rc<DeviceConfig>);
 
     fn next(&mut self) -> Option<Self::Item> {
         let children = std::mem::take(&mut self.children);
@@ -57,16 +81,31 @@ impl<'a> Iterator for ManifestIterMut<'a> {
                 self.children = rest;
 
                 if first.child_objects_mut().is_empty() {
-                    Some(first)
+                    Some((first, self.current_device_config.clone()))
                 } else if !self.collection_object_returned {
                     self.collection_object_returned = true;
-                    Some(first)
+
+                    let next_device_config = if let Some(new_config) = first.device_config() {
+                        Rc::new(self.current_device_config.override_with(new_config))
+                    } else {
+                        self.current_device_config.clone()
+                    };
+
+                    Some((first, next_device_config))
                 } else {
                     self.collection_object_returned = false;
+
+                    let next_device_config = if let Some(new_config) = first.device_config() {
+                        Rc::new(self.current_device_config.override_with(new_config))
+                    } else {
+                        self.current_device_config.clone()
+                    };
+
                     *self = ManifestIterMut {
                         children: first.child_objects_mut(),
                         parent: Some(Box::new(std::mem::take(self))),
-                        ..Default::default()
+                        collection_object_returned: false,
+                        current_device_config: next_device_config,
                     };
                     self.next()
                 }
@@ -80,10 +119,11 @@ struct ManifestIter<'a> {
     children: &'a [Object],
     parent: Option<Box<ManifestIter<'a>>>,
     collection_object_returned: bool,
+    current_device_config: Rc<DeviceConfig>,
 }
 
 impl<'a> Iterator for ManifestIter<'a> {
-    type Item = &'a Object;
+    type Item = (&'a Object, Rc<DeviceConfig>);
 
     fn next(&mut self) -> Option<Self::Item> {
         let children = std::mem::take(&mut self.children);
@@ -101,16 +141,31 @@ impl<'a> Iterator for ManifestIter<'a> {
                 self.children = rest;
 
                 if first.child_objects().is_empty() {
-                    Some(first)
+                    Some((first, self.current_device_config.clone()))
                 } else if !self.collection_object_returned {
                     self.collection_object_returned = true;
-                    Some(first)
+
+                    let next_device_config = if let Some(new_config) = first.device_config() {
+                        Rc::new(self.current_device_config.override_with(new_config))
+                    } else {
+                        self.current_device_config.clone()
+                    };
+
+                    Some((first, next_device_config))
                 } else {
                     self.collection_object_returned = false;
+
+                    let next_device_config = if let Some(new_config) = first.device_config() {
+                        Rc::new(self.current_device_config.override_with(new_config))
+                    } else {
+                        self.current_device_config.clone()
+                    };
+
                     *self = ManifestIter {
                         children: first.child_objects(),
                         parent: Some(Box::new(std::mem::take(self))),
-                        ..Default::default()
+                        collection_object_returned: false,
+                        current_device_config: next_device_config,
                     };
                     self.next()
                 }
@@ -126,33 +181,41 @@ pub struct Device {
     pub objects: Vec<Object>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct DeviceConfig {
-    pub default_register_access: Access,
-    pub default_field_access: Access,
-    pub default_buffer_access: Access,
-    pub default_byte_order: Option<ByteOrder>,
-    pub default_bit_order: BitOrder,
+    pub register_access: Option<Access>,
+    pub field_access: Option<Access>,
+    pub buffer_access: Option<Access>,
+    pub byte_order: Option<ByteOrder>,
+    pub bit_order: Option<BitOrder>,
     pub register_address_type: Option<Integer>,
     pub command_address_type: Option<Integer>,
     pub buffer_address_type: Option<Integer>,
-    pub name_word_boundaries: Vec<Boundary>,
+    pub name_word_boundaries: Option<Vec<Boundary>>,
     pub defmt_feature: Option<String>,
 }
 
-impl Default for DeviceConfig {
-    fn default() -> Self {
+impl DeviceConfig {
+    pub fn override_with(&self, other: &Self) -> DeviceConfig {
         Self {
-            default_register_access: Default::default(),
-            default_field_access: Default::default(),
-            default_buffer_access: Default::default(),
-            default_byte_order: Default::default(),
-            default_bit_order: Default::default(),
-            register_address_type: Default::default(),
-            command_address_type: Default::default(),
-            buffer_address_type: Default::default(),
-            name_word_boundaries: convert_case::Boundary::defaults().to_vec(),
-            defmt_feature: Default::default(),
+            register_access: other.register_access.or(self.register_access),
+            field_access: other.field_access.or(self.field_access),
+            buffer_access: other.buffer_access.or(self.buffer_access),
+            byte_order: other.byte_order.or(self.byte_order),
+            bit_order: other.bit_order.or(self.bit_order),
+            register_address_type: other.register_address_type.or(self.register_address_type),
+            command_address_type: other.command_address_type.or(self.command_address_type),
+            buffer_address_type: other.buffer_address_type.or(self.buffer_address_type),
+            name_word_boundaries: other
+                .name_word_boundaries
+                .as_ref()
+                .or(self.name_word_boundaries.as_ref())
+                .cloned(),
+            defmt_feature: other
+                .defmt_feature
+                .as_ref()
+                .or(self.defmt_feature.as_ref())
+                .cloned(),
         }
     }
 }
@@ -302,6 +365,13 @@ pub enum Object {
 }
 
 impl Object {
+    pub(self) fn device_config(&self) -> Option<&DeviceConfig> {
+        match self {
+            Object::Device(device) => Some(&device.device_config),
+            _ => None,
+        }
+    }
+
     pub(self) fn child_objects_mut(&mut self) -> &mut [Object] {
         match self {
             Object::Device(device) => &mut device.objects,

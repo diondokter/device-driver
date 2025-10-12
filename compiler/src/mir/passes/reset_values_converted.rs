@@ -263,7 +263,7 @@ mod tests {
         let mut start_mir = Device {
             name: "Device".into(),
             device_config: DeviceConfig {
-                default_byte_order: Some(ByteOrder::LE),
+                byte_order: Some(ByteOrder::LE),
                 ..Default::default()
             },
             objects: vec![
@@ -288,7 +288,7 @@ mod tests {
         let end_mir = Device {
             name: "Device".into(),
             device_config: DeviceConfig {
-                default_byte_order: Some(ByteOrder::LE),
+                byte_order: Some(ByteOrder::LE),
                 ..Default::default()
             },
             objects: vec![
@@ -404,7 +404,7 @@ mod tests {
         let mut start_mir = Device {
             name: "Device".into(),
             device_config: DeviceConfig {
-                default_byte_order: Some(ByteOrder::LE),
+                byte_order: Some(ByteOrder::LE),
                 ..Default::default()
             },
             objects: vec![

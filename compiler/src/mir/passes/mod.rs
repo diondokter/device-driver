@@ -1,6 +1,6 @@
 use crate::mir::{Manifest, RepeatSource};
 
-use super::{Device, Object, Repeat};
+use super::{Object, Repeat};
 
 pub mod address_types_big_enough;
 pub mod address_types_specified;
@@ -18,22 +18,22 @@ pub mod names_unique;
 pub mod repeat_with_enums_checked;
 pub mod reset_values_converted;
 
-pub fn run_passes(device: &mut Device) -> miette::Result<()> {
-    bit_order_specified::run_pass(device)?;
-    base_types_specified::run_pass(device)?;
-    device_name_is_pascal::run_pass(device)?;
-    names_normalized::run_pass(device)?;
-    names_unique::run_pass(device)?;
-    enum_values_checked::run_pass(device)?;
-    repeat_with_enums_checked::run_pass(device)?;
-    extern_values_checked::run_pass(device)?;
-    field_conversion_valid::run_pass(device)?;
-    byte_order_specified::run_pass(device)?;
-    reset_values_converted::run_pass(device)?;
-    bool_fields_checked::run_pass(device)?;
-    bit_ranges_validated::run_pass(device)?;
-    address_types_specified::run_pass(device)?;
-    address_types_big_enough::run_pass(device)?;
+pub fn run_passes(manifest: &mut Manifest) -> miette::Result<()> {
+    bit_order_specified::run_pass(manifest)?;
+    base_types_specified::run_pass(manifest)?;
+    device_name_is_pascal::run_pass(manifest)?;
+    names_normalized::run_pass(manifest)?;
+    names_unique::run_pass(manifest)?;
+    enum_values_checked::run_pass(manifest)?;
+    repeat_with_enums_checked::run_pass(manifest)?;
+    extern_values_checked::run_pass(manifest)?;
+    field_conversion_valid::run_pass(manifest)?;
+    byte_order_specified::run_pass(manifest)?;
+    reset_values_converted::run_pass(manifest)?;
+    bool_fields_checked::run_pass(manifest)?;
+    bit_ranges_validated::run_pass(manifest)?;
+    address_types_specified::run_pass(manifest)?;
+    address_types_big_enough::run_pass(manifest)?;
 
     Ok(())
 }
