@@ -1,37 +1,39 @@
 use convert_case::{Case, Casing};
 use miette::bail;
 
-use crate::lir::{Block, BlockMethodType, Driver, Repeat};
+use crate::lir::{Block, BlockMethodType, Device, Driver, Repeat};
 
 pub fn run_pass(driver: &mut Driver) -> miette::Result<()> {
-    let root_block = driver
-        .blocks
-        .iter()
-        .find(|b| b.root)
-        .expect("There's always a root block");
+    for device in driver.devices.iter() {
+        let root_block = device
+            .blocks
+            .iter()
+            .find(|b| b.root)
+            .expect("There's always a root block");
 
-    let claimed_addresses = get_block_claimed_addresses(driver, root_block, 0, &[])?;
+        let claimed_addresses = get_block_claimed_addresses(driver, device, root_block, 0, &[]);
 
-    for (i, claimed_address) in claimed_addresses.iter().enumerate() {
-        for other_claimed_address in claimed_addresses.get(i + 1..).unwrap_or_default() {
-            let types_same = claimed_address.address_type == other_claimed_address.address_type;
-            let both_allow_overlap =
-                claimed_address.allow_overlap && other_claimed_address.allow_overlap;
-            let address_same = claimed_address.address == other_claimed_address.address;
+        for (i, claimed_address) in claimed_addresses.iter().enumerate() {
+            for other_claimed_address in claimed_addresses.get(i + 1..).unwrap_or_default() {
+                let types_same = claimed_address.address_type == other_claimed_address.address_type;
+                let both_allow_overlap =
+                    claimed_address.allow_overlap && other_claimed_address.allow_overlap;
+                let address_same = claimed_address.address == other_claimed_address.address;
 
-            if address_same && types_same && !both_allow_overlap {
-                let mut name0 = claimed_address.name.clone();
-                if let Some(repeat_index) = claimed_address.repeat_index {
-                    name0 += &format!(" (index: {repeat_index})");
+                if address_same && types_same && !both_allow_overlap {
+                    let mut name0 = claimed_address.name.clone();
+                    if let Some(repeat_index) = claimed_address.repeat_index {
+                        name0 += &format!(" (index: {repeat_index})");
+                    }
+                    let mut name1 = other_claimed_address.name.clone();
+                    if let Some(repeat_index) = other_claimed_address.repeat_index {
+                        name1 += &format!(" (index: {repeat_index})");
+                    }
+                    bail!(
+                        "Objects \"{name0}\" and \"{name1}\" use the same address ({}). If this is intended, then allow address overlap on both objects.",
+                        claimed_address.address
+                    );
                 }
-                let mut name1 = other_claimed_address.name.clone();
-                if let Some(repeat_index) = other_claimed_address.repeat_index {
-                    name1 += &format!(" (index: {repeat_index})");
-                }
-                bail!(
-                    "Objects \"{name0}\" and \"{name1}\" use the same address ({}). If this is intended, then allow address overlap on both objects.",
-                    claimed_address.address
-                );
             }
         }
     }
@@ -41,10 +43,11 @@ pub fn run_pass(driver: &mut Driver) -> miette::Result<()> {
 
 fn get_block_claimed_addresses(
     driver: &Driver,
+    device: &Device,
     block: &Block,
     current_address_offset: i128,
     name_stack: &[String],
-) -> miette::Result<Vec<ClaimedAddress>> {
+) -> Vec<ClaimedAddress> {
     let mut claimed_addresses = Vec::new();
 
     for method in &block.methods {
@@ -75,7 +78,7 @@ fn get_block_claimed_addresses(
 
         let claimed_address_type = match &method.method_type {
             BlockMethodType::Block { name } => {
-                let sub_block = driver
+                let sub_block = device
                     .blocks
                     .iter()
                     .find(|b| b.name == *name)
@@ -93,10 +96,11 @@ fn get_block_claimed_addresses(
 
                     claimed_addresses.extend(get_block_claimed_addresses(
                         driver,
+                        device,
                         sub_block,
                         current_address_offset + repeat_address,
                         &next_name_stack,
-                    )?);
+                    ));
                 }
                 continue;
             }
@@ -122,7 +126,7 @@ fn get_block_claimed_addresses(
         }
     }
 
-    Ok(claimed_addresses)
+    claimed_addresses
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -150,67 +154,69 @@ mod tests {
     #[test]
     fn deep_overlap_detected() {
         let mut driver = Driver {
-            internal_address_type: crate::mir::Integer::U8,
-            register_address_type: crate::mir::Integer::U8,
-            blocks: vec![
-                Block {
-                    description: Default::default(),
-                    root: true,
-                    name: "Root".to_string(),
-                    methods: vec![
-                        BlockMethod {
+            devices: vec![Device {
+                internal_address_type: crate::mir::Integer::U8,
+                register_address_type: crate::mir::Integer::U8,
+                blocks: vec![
+                    Block {
+                        description: Default::default(),
+                        root: true,
+                        name: "Root".to_string(),
+                        methods: vec![
+                            BlockMethod {
+                                description: Default::default(),
+                                name: "second_block".to_string(),
+                                address: 10,
+                                allow_address_overlap: false,
+                                repeat: Repeat::Count {
+                                    count: 10,
+                                    stride: 10,
+                                },
+                                method_type: BlockMethodType::Block {
+                                    name: "SecondBlock".to_string(),
+                                },
+                            },
+                            BlockMethod {
+                                description: Default::default(),
+                                name: "register0".to_string(),
+                                address: 75,
+                                allow_address_overlap: false,
+                                repeat: Repeat::Count {
+                                    count: 2,
+                                    stride: 5,
+                                },
+                                method_type: BlockMethodType::Register {
+                                    field_set_name: "bla".to_string(),
+                                    access: crate::mir::Access::RW,
+                                    address_type: crate::mir::Integer::U8,
+                                    reset_value: None,
+                                },
+                            },
+                        ],
+                    },
+                    Block {
+                        description: Default::default(),
+                        root: true,
+                        name: "SecondBlock".to_string(),
+                        methods: vec![BlockMethod {
                             description: Default::default(),
-                            name: "second_block".to_string(),
-                            address: 10,
+                            name: "register1".to_string(),
+                            address: 0,
                             allow_address_overlap: false,
-                            repeat: Repeat::Count {
-                                count: 10,
-                                stride: 10,
-                            },
-                            method_type: BlockMethodType::Block {
-                                name: "SecondBlock".to_string(),
-                            },
-                        },
-                        BlockMethod {
-                            description: Default::default(),
-                            name: "register0".to_string(),
-                            address: 75,
-                            allow_address_overlap: false,
-                            repeat: Repeat::Count {
-                                count: 2,
-                                stride: 5,
-                            },
+                            repeat: Repeat::None,
                             method_type: BlockMethodType::Register {
                                 field_set_name: "bla".to_string(),
                                 access: crate::mir::Access::RW,
                                 address_type: crate::mir::Integer::U8,
                                 reset_value: None,
                             },
-                        },
-                    ],
-                },
-                Block {
-                    description: Default::default(),
-                    root: true,
-                    name: "SecondBlock".to_string(),
-                    methods: vec![BlockMethod {
-                        description: Default::default(),
-                        name: "register1".to_string(),
-                        address: 0,
-                        allow_address_overlap: false,
-                        repeat: Repeat::None,
-                        method_type: BlockMethodType::Register {
-                            field_set_name: "bla".to_string(),
-                            access: crate::mir::Access::RW,
-                            address_type: crate::mir::Integer::U8,
-                            reset_value: None,
-                        },
-                    }],
-                },
-            ],
+                        }],
+                    },
+                ],
+                defmt_feature: None,
+            }],
             field_sets: Vec::new(),
             enums: Vec::new(),
-            defmt_feature: None,
         };
 
         pretty_assertions::assert_eq!(
