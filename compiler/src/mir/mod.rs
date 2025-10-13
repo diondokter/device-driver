@@ -96,10 +96,8 @@ impl<'a> Iterator for ObjectIterMut<'a> {
     type Item = (&'a mut Object, Rc<DeviceConfig>);
 
     fn next(&mut self) -> Option<Self::Item> {
-        let children = std::mem::take(&mut self.children);
-
-        match children.split_first_mut() {
-            None => match self.parent.take() {
+        match self.children.is_empty() {
+            true => match self.parent.take() {
                 Some(parent) => {
                     // continue with the parent node
                     *self = *parent;
@@ -107,29 +105,40 @@ impl<'a> Iterator for ObjectIterMut<'a> {
                 }
                 None => None,
             },
-            Some((first, rest)) => {
-                self.children = rest;
-
-                if first.child_objects_mut().is_empty() {
+            false => {
+                if self.children[0].child_objects_mut().is_empty() {
+                    let (first, rest) = std::mem::take(&mut self.children)
+                        .split_first_mut()
+                        .expect("Already checked not empty");
+                    self.children = rest;
                     Some((first, self.current_device_config.clone()))
                 } else if !self.collection_object_returned {
                     self.collection_object_returned = true;
 
-                    let next_device_config = if let Some(new_config) = first.device_config() {
-                        Rc::new(self.current_device_config.override_with(new_config))
-                    } else {
-                        self.current_device_config.clone()
-                    };
+                    let next_device_config =
+                        if let Some(new_config) = self.children[0].device_config() {
+                            Rc::new(self.current_device_config.override_with(new_config))
+                        } else {
+                            self.current_device_config.clone()
+                        };
 
+                    // TODO: Don't do this
+                    let first = unsafe { std::mem::transmute(&mut self.children[0]) };
                     Some((first, next_device_config))
                 } else {
                     self.collection_object_returned = false;
 
-                    let next_device_config = if let Some(new_config) = first.device_config() {
-                        Rc::new(self.current_device_config.override_with(new_config))
-                    } else {
-                        self.current_device_config.clone()
-                    };
+                    let next_device_config =
+                        if let Some(new_config) = self.children[0].device_config() {
+                            Rc::new(self.current_device_config.override_with(new_config))
+                        } else {
+                            self.current_device_config.clone()
+                        };
+
+                    let (first, rest) = std::mem::take(&mut self.children)
+                        .split_first_mut()
+                        .expect("Already checked not empty");
+                    self.children = rest;
 
                     *self = ObjectIterMut {
                         children: first.child_objects_mut(),
@@ -181,7 +190,9 @@ impl<'a> Iterator for ObjectIter<'a> {
                         self.current_device_config.clone()
                     };
 
-                    Some((first, next_device_config))
+                    self.children = children;
+
+                    Some((&children[0], next_device_config))
                 } else {
                     self.collection_object_returned = false;
 
@@ -953,5 +964,47 @@ impl Unique for Object {
             Object::Enum(val) => val.id(),
             Object::Extern(val) => val.id(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn iter_works() {
+        const NAME_ORDER: &[&str] = &["a", "b", "c", "d"];
+
+        let mut manifest = Manifest {
+            root_objects: vec![
+                Object::Device(Device {
+                    name: "a".into(),
+                    device_config: DeviceConfig {
+                        register_access: Some(Access::RW),
+                        ..Default::default()
+                    },
+                    objects: vec![
+                        Object::Extern(Extern {
+                            name: "b".into(),
+                            ..Default::default()
+                        }),
+                        Object::Extern(Extern {
+                            name: "c".into(),
+                            ..Default::default()
+                        }),
+                    ],
+                }),
+                Object::Extern(Extern {
+                    name: "d".into(),
+                    ..Default::default()
+                }),
+            ],
+            config: Default::default(),
+        };
+
+        let names: Vec<_> = manifest.iter_objects().map(|o| o.name()).collect();
+        assert_eq!(&names, NAME_ORDER);
+        let names: Vec<_> = manifest.iter_objects_mut().map(|o| o.name()).collect();
+        assert_eq!(&names, NAME_ORDER);
     }
 }
