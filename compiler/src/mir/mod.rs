@@ -85,7 +85,7 @@ impl Manifest {
 }
 
 #[derive(Default)]
-struct ObjectIterMut<'a> {
+pub struct ObjectIterMut<'a> {
     children: &'a mut [Object],
     parent: Option<Box<ObjectIterMut<'a>>>,
     collection_object_returned: bool,
@@ -145,7 +145,7 @@ impl<'a> Iterator for ObjectIterMut<'a> {
 }
 
 #[derive(Default)]
-struct ObjectIter<'a> {
+pub struct ObjectIter<'a> {
     children: &'a [Object],
     parent: Option<Box<ObjectIter<'a>>>,
     collection_object_returned: bool,

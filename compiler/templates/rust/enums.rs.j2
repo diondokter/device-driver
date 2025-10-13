@@ -1,7 +1,7 @@
 {{self::description_to_docstring(enum_value.description)}}
 #[repr({{enum_value.base_type}})]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
-{% if let Some(defmt_feature) = device.defmt_feature %}
+{% if let Some(defmt_feature) = enum_value.defmt_feature %}
 #[cfg_attr(feature = "{{defmt_feature}}", derive(defmt::Format))]
 {% endif %}
 pub enum {{enum_value.name}} {

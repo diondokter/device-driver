@@ -1,6 +1,6 @@
 use miette::ensure;
 
-use crate::mir::{Device, Manifest, Object};
+use crate::mir::Manifest;
 
 pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
     for device in manifest.iter_objects().filter_map(|o| o.as_device()) {

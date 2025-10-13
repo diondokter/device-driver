@@ -1,11 +1,13 @@
-{% for block in device.blocks %}
-    {% include "block.rs.j2" %}
+{% for device in driver.devices %}
+    {% for block in device.blocks %}
+        {% include "block.rs.j2" %}
+    {% endfor %}
 {% endfor %}
 
-{% for field_set in device.field_sets %}
+{% for field_set in driver.field_sets %}
     {% include "fieldset.rs.j2" %}
 {% endfor %}
 
-{% for enum_value in device.enums %}
+{% for enum_value in driver.enums %}
     {% include "enums.rs.j2" %}
 {% endfor %}
