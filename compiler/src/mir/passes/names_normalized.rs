@@ -1,13 +1,14 @@
 use convert_case::Case;
 
-use crate::mir::{Manifest, Object, Repeat, RepeatSource};
+use crate::mir::{LendingIterator, Manifest, Object, Repeat, RepeatSource};
 
 /// Changes all names of all objects, enums, enum variants and fieldsets to either Pascal case or snake case
 ///
 /// - PascalCase: Object names, enum names, enum variant names
 /// - snake_case: Field names
 pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
-    for (object, config) in manifest.iter_objects_with_config_mut() {
+    let mut iter = manifest.iter_objects_with_config_mut();
+    while let Some((object, config)) = iter.next() {
         if let Object::Device(_) = object {
             // The name rules for devices are slightly different and are done in a different pass
             continue;

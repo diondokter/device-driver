@@ -1,11 +1,14 @@
 use itertools::Itertools;
 use miette::{bail, ensure};
 
-use crate::mir::{BaseType, EnumGenerationStyle, EnumValue, Integer, Manifest, Object, Unique};
+use crate::mir::{
+    BaseType, EnumGenerationStyle, EnumValue, Integer, LendingIterator, Manifest, Object, Unique,
+};
 
 /// Checks if enums are fully specified and determines the generation style
 pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
-    for object in manifest.iter_objects_mut() {
+    let mut iter = manifest.iter_objects_with_config_mut();
+    while let Some((object, _)) = iter.next() {
         let object_name = object.name().to_string();
 
         if let Object::Enum(enum_value) = object {

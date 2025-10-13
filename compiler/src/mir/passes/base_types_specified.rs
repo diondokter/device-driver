@@ -1,10 +1,11 @@
 use miette::bail;
 
-use crate::mir::{BaseType, Integer, Manifest};
+use crate::mir::{BaseType, Integer, LendingIterator, Manifest};
 
 /// Turn all unspecified base types into either bools or uints based on the size of the field
 pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
-    for object in manifest.iter_objects_mut() {
+    let mut iter = manifest.iter_objects_with_config_mut();
+    while let Some((object, _)) = iter.next() {
         if let Some(field_set) = object.as_field_set_mut() {
             for field in field_set.fields.iter_mut() {
                 let size_bits = field.field_address.len() as u32;

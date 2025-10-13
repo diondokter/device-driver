@@ -7,7 +7,7 @@ use bitvec::{
 use miette::ensure;
 
 use crate::mir::{
-    BitOrder, ByteOrder, FieldSet, Manifest, Object, Register, ResetValue, Unique,
+    BitOrder, ByteOrder, FieldSet, LendingIterator, Manifest, Object, Register, ResetValue, Unique,
     passes::search_object,
 };
 
@@ -46,7 +46,8 @@ pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
         }
     }
 
-    for object in manifest.iter_objects_mut() {
+    let mut iter = manifest.iter_objects_with_config_mut();
+    while let Some((object, _)) = iter.next() {
         if let Object::Register(register) = object
             && let Some(new_reset_value) = new_reset_values.remove(&register.id())
         {

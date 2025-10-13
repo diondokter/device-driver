@@ -15,16 +15,6 @@ pub struct Manifest {
 }
 
 impl Manifest {
-    pub fn iter_objects_mut(&mut self) -> impl Iterator<Item = &mut Object> {
-        ObjectIterMut {
-            children: &mut self.root_objects,
-            parent: None,
-            collection_object_returned: false,
-            current_device_config: Rc::new(self.config.clone()),
-        }
-        .map(|(object, _)| object)
-    }
-
     pub fn iter_objects_with_config_mut(&mut self) -> ObjectIterMut<'_> {
         ObjectIterMut {
             children: &mut self.root_objects,
@@ -92,10 +82,23 @@ pub struct ObjectIterMut<'a> {
     current_device_config: Rc<DeviceConfig>,
 }
 
-impl<'a> Iterator for ObjectIterMut<'a> {
-    type Item = (&'a mut Object, Rc<DeviceConfig>);
+/// A GAT based lending iterator.
+/// Can't do anything fancy with it yet though.
+pub trait LendingIterator {
+    type Item<'a>
+    where
+        Self: 'a;
 
-    fn next(&mut self) -> Option<Self::Item> {
+    fn next(&mut self) -> Option<Self::Item<'_>>;
+}
+
+impl<'a> LendingIterator for ObjectIterMut<'a> {
+    type Item<'b>
+        = (&'b mut Object, Rc<DeviceConfig>)
+    where
+        Self: 'b;
+
+    fn next(&mut self) -> Option<Self::Item<'_>> {
         match self.children.is_empty() {
             true => match self.parent.take() {
                 Some(parent) => {
@@ -122,11 +125,7 @@ impl<'a> Iterator for ObjectIterMut<'a> {
                             self.current_device_config.clone()
                         };
 
-                    // TODO: Don't do this
-                    let first = unsafe {
-                        std::mem::transmute::<&mut Object, &mut Object>(&mut self.children[0])
-                    };
-                    Some((first, next_device_config))
+                    Some((&mut self.children[0], next_device_config))
                 } else {
                     self.collection_object_returned = false;
 
@@ -235,16 +234,6 @@ pub struct Device {
 }
 
 impl Device {
-    pub fn iter_objects_mut(&mut self) -> impl Iterator<Item = &mut Object> {
-        ObjectIterMut {
-            children: &mut self.objects,
-            parent: None,
-            collection_object_returned: false,
-            current_device_config: Rc::new(Default::default()),
-        }
-        .map(|(object, _)| object)
-    }
-
     pub fn iter_objects(&self) -> impl Iterator<Item = &Object> {
         ObjectIter {
             children: &self.objects,
@@ -1006,7 +995,12 @@ mod tests {
 
         let names: Vec<_> = manifest.iter_objects().map(|o| o.name()).collect();
         assert_eq!(&names, NAME_ORDER);
-        let names: Vec<_> = manifest.iter_objects_mut().map(|o| o.name()).collect();
+
+        let mut names = Vec::new();
+        let mut lender = manifest.iter_objects_with_config_mut();
+        while let Some((object, _)) = lender.next() {
+            names.push(object.name().to_string());
+        }
         assert_eq!(&names, NAME_ORDER);
     }
 }

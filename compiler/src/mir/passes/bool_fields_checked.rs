@@ -1,9 +1,10 @@
-use crate::mir::{BaseType, Manifest};
+use crate::mir::{BaseType, LendingIterator, Manifest};
 use miette::ensure;
 
 /// Check all bool fields. They must be exactly zero or one bits long and have no conversion
 pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
-    for object in manifest.iter_objects_mut() {
+    let mut iter = manifest.iter_objects_with_config_mut();
+    while let Some((object, _)) = iter.next() {
         let object_name = object.name().to_string();
 
         for field in object

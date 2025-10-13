@@ -1,10 +1,11 @@
 use miette::bail;
 
-use crate::mir::Manifest;
+use crate::mir::{LendingIterator, Manifest};
 
 /// Checks if the byte order is set for all registers and commands that need it and fills it out for the ones that aren't specified
 pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
-    for (object, config) in manifest.iter_objects_with_config_mut() {
+    let mut iter = manifest.iter_objects_with_config_mut();
+    while let Some((object, config)) = iter.next() {
         if let Some(fs) = object.as_field_set_mut() {
             if fs.byte_order.is_none() {
                 fs.byte_order = config.byte_order;
