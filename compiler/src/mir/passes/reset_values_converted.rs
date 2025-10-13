@@ -47,10 +47,10 @@ pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
     }
 
     for object in manifest.iter_objects_mut() {
-        if let Object::Register(register) = object {
-            if let Some(new_reset_value) = new_reset_values.remove(&register.id()) {
-                register.reset_value = Some(new_reset_value);
-            }
+        if let Object::Register(register) = object
+            && let Some(new_reset_value) = new_reset_values.remove(&register.id())
+        {
+            register.reset_value = Some(new_reset_value);
         }
     }
 

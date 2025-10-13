@@ -8,7 +8,7 @@ pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
         if let Object::FieldSet(field_set) = object {
             for field in field_set.fields.iter() {
                 if let Some(conversion) = field.field_conversion.as_ref() {
-                    let target_object = super::search_object(&manifest, &conversion.type_name);
+                    let target_object = super::search_object(manifest, &conversion.type_name);
 
                     match target_object {
                         Some(Object::Enum(target_enum)) => {

@@ -16,13 +16,13 @@ pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
         let boundaries = config
             .name_word_boundaries
             .as_deref()
-            .unwrap_or_else(|| &const { convert_case::Boundary::defaults() });
+            .unwrap_or(&const { convert_case::Boundary::defaults() });
 
         let pascal_converter = convert_case::Converter::new()
-            .set_boundaries(&boundaries)
+            .set_boundaries(boundaries)
             .to_case(Case::Pascal);
         let snake_converter = convert_case::Converter::new()
-            .set_boundaries(&boundaries)
+            .set_boundaries(boundaries)
             .to_case(Case::Snake);
 
         *object.name_mut() = pascal_converter.convert(object.name_mut());

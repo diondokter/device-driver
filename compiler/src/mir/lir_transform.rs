@@ -38,7 +38,7 @@ fn transform_devices(manifest: &mir::Manifest) -> Vec<lir::Device> {
             );
 
             lir::Device {
-                internal_address_type: find_best_internal_address_type(manifest, &device),
+                internal_address_type: find_best_internal_address_type(manifest, device),
                 register_address_type: config.register_address_type.unwrap_or(mir::Integer::U8),
                 blocks,
                 defmt_feature: config.defmt_feature.clone(),
@@ -428,8 +428,7 @@ impl<'o> From<&'o mir::Block> for BorrowedBlock<'o> {
 }
 
 fn find_best_internal_address_type(manifest: &mir::Manifest, device: &mir::Device) -> Integer {
-    let (min_address_found, max_address_found) =
-        find_min_max_addresses(manifest, &device, |_| true);
+    let (min_address_found, max_address_found) = find_min_max_addresses(manifest, device, |_| true);
 
     let needs_signed = min_address_found < 0;
     let needs_bits = (min_address_found

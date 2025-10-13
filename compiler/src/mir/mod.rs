@@ -123,7 +123,9 @@ impl<'a> Iterator for ObjectIterMut<'a> {
                         };
 
                     // TODO: Don't do this
-                    let first = unsafe { std::mem::transmute(&mut self.children[0]) };
+                    let first = unsafe {
+                        std::mem::transmute::<&mut Object, &mut Object>(&mut self.children[0])
+                    };
                     Some((first, next_device_config))
                 } else {
                     self.collection_object_returned = false;
