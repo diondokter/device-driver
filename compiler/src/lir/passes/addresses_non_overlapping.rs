@@ -1,16 +1,16 @@
 use convert_case::{Case, Casing};
 use miette::bail;
 
-use crate::lir::{Block, BlockMethodType, Device, Repeat};
+use crate::lir::{Block, BlockMethodType, Driver, Repeat};
 
-pub fn run_pass(device: &mut Device) -> miette::Result<()> {
-    let root_block = device
+pub fn run_pass(driver: &mut Driver) -> miette::Result<()> {
+    let root_block = driver
         .blocks
         .iter()
         .find(|b| b.root)
         .expect("There's always a root block");
 
-    let claimed_addresses = get_block_claimed_addresses(device, root_block, 0, &[])?;
+    let claimed_addresses = get_block_claimed_addresses(driver, root_block, 0, &[])?;
 
     for (i, claimed_address) in claimed_addresses.iter().enumerate() {
         for other_claimed_address in claimed_addresses.get(i + 1..).unwrap_or_default() {
@@ -40,7 +40,7 @@ pub fn run_pass(device: &mut Device) -> miette::Result<()> {
 }
 
 fn get_block_claimed_addresses(
-    device: &Device,
+    driver: &Driver,
     block: &Block,
     current_address_offset: i128,
     name_stack: &[String],
@@ -60,7 +60,7 @@ fn get_block_claimed_addresses(
                 enum_variants: _,
                 stride,
             } => (
-                device
+                driver
                     .enums
                     .iter()
                     .find(|e| e.name == *enum_name)
@@ -75,7 +75,7 @@ fn get_block_claimed_addresses(
 
         let claimed_address_type = match &method.method_type {
             BlockMethodType::Block { name } => {
-                let sub_block = device
+                let sub_block = driver
                     .blocks
                     .iter()
                     .find(|b| b.name == *name)
@@ -92,7 +92,7 @@ fn get_block_claimed_addresses(
                         .collect::<Vec<_>>();
 
                     claimed_addresses.extend(get_block_claimed_addresses(
-                        device,
+                        driver,
                         sub_block,
                         current_address_offset + repeat_address,
                         &next_name_stack,
@@ -149,7 +149,7 @@ mod tests {
 
     #[test]
     fn deep_overlap_detected() {
-        let mut device = Device {
+        let mut driver = Driver {
             internal_address_type: crate::mir::Integer::U8,
             register_address_type: crate::mir::Integer::U8,
             blocks: vec![
@@ -214,7 +214,7 @@ mod tests {
         };
 
         pretty_assertions::assert_eq!(
-            run_pass(&mut device).unwrap_err().to_string(),
+            run_pass(&mut driver).unwrap_err().to_string(),
             indoc!(
                 "Objects \"SecondBlock (index: 7)::Register1\" and \"Register0 (index: 1)\" use the same address (80). If this is intended, then allow address overlap on both objects."
             )

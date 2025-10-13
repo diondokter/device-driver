@@ -52,6 +52,36 @@ impl Manifest {
             current_device_config: Rc::new(self.config.clone()),
         }
     }
+
+    pub fn iter_enums(&self) -> impl Iterator<Item = &'_ Enum> {
+        self.iter_objects_with_config().filter_map(|(o, _)| {
+            if let Object::Enum(e) = o {
+                Some(e)
+            } else {
+                None
+            }
+        })
+    }
+
+    pub fn iter_enums_with_config(&self) -> impl Iterator<Item = (&'_ Enum, Rc<DeviceConfig>)> {
+        self.iter_objects_with_config().filter_map(|(o, config)| {
+            if let Object::Enum(e) = o {
+                Some((e, config))
+            } else {
+                None
+            }
+        })
+    }
+
+    pub fn iter_devices_with_config(&self) -> impl Iterator<Item = (&'_ Device, Rc<DeviceConfig>)> {
+        self.iter_objects_with_config().filter_map(|(o, config)| {
+            if let Object::Device(d) = o {
+                Some((d, config))
+            } else {
+                None
+            }
+        })
+    }
 }
 
 #[derive(Default)]

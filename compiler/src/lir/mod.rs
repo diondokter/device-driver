@@ -5,12 +5,16 @@ use crate::mir::{self, Access, BitOrder, ByteOrder, Integer};
 pub mod code_transform;
 pub mod passes;
 
+pub struct Driver {
+    pub devices: Vec<Device>,
+    pub field_sets: Vec<FieldSet>,
+    pub enums: Vec<Enum>,
+}
+
 pub struct Device {
     pub internal_address_type: Integer,
     pub register_address_type: Integer,
     pub blocks: Vec<Block>,
-    pub field_sets: Vec<FieldSet>,
-    pub enums: Vec<Enum>,
     pub defmt_feature: Option<String>,
 }
 
@@ -74,6 +78,7 @@ pub struct FieldSet {
     pub bit_order: BitOrder,
     pub size_bits: u32,
     pub fields: Vec<Field>,
+    pub defmt_feature: Option<String>,
 }
 
 impl FieldSet {
@@ -117,6 +122,7 @@ pub struct Enum {
     pub name: String,
     pub base_type: String,
     pub variants: Vec<EnumVariant>,
+    pub defmt_feature: Option<String>,
 }
 
 impl Enum {
