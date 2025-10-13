@@ -49,7 +49,7 @@ impl RegisterInterface for DeviceInterface {
 device_driver::create_device!(
     kdl: "
         device MyTestDevice {
-            default-byte-order LE
+            byte-order LE
             register-address-type u8
             /// This is the Foo register
             register Foo {

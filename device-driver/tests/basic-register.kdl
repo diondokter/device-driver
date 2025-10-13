@@ -1,5 +1,5 @@
 device MyTestDevice {
-    default-byte-order LE
+    byte-order LE
     register-address-type u8
     /// This is the Foo register
     register Foo {

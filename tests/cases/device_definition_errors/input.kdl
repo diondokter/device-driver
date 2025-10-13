@@ -21,21 +21,21 @@ device FooD2 {
 }
 
 device FooD3 {
-    default-register-access RW
-    default-register-access RO
+    register-access RW
+    register-access RO
 }
 
 device FooD4 {
-    default-register-access Blah
-    default-buffer-access
-    default-field-access RW RO WO
+    register-access Blah
+    buffer-access
+    field-access RW RO WO
 }
 
 device FooD5 {
-    default-register-access value=RW
+    register-access value=RW
     register-address-type u8
     command-address-type 16
-    default-bit-order msb0
+    bit-order msb0
     defmt-feature lol
     name-word-boundaries aA:1a
 }
@@ -126,7 +126,7 @@ device FooD6 {
             (:Foo10E2?)bat @7:6 {
                 A
                 B 1.0
-                C default-value
+                C value
                 D #null 2
             }
         }
@@ -189,7 +189,7 @@ device FooD6 {
     enum e1 {
         A
         B 1.0
-        C default-value
+        C value
         D #null 2
     }
     enum e2 size-bits=1 {

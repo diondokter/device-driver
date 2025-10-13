@@ -43,7 +43,7 @@ impl BufferInterface for DeviceInterface {
 device_driver::create_device!(
     kdl: "
         device MyTestDevice {
-            default-byte-order LE
+            byte-order LE
             buffer-address-type u8
 
             /// A read only buffer
