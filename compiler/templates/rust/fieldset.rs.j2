@@ -50,7 +50,7 @@ impl {{field_set.name}} {
                     let start = {{field.address.start}} + index * {{stride}};
                     let end = start + {{field.address.len()}};
                     {% when Repeat::Enum { enum_name, stride, .. } %}
-                    let start = {{field.address.start}} + {{self::get_enum_base_type(device, &enum_name)}}::from(index) as usize * {{stride}};
+                    let start = {{field.address.start}} + {{self::get_enum_base_type(driver, &enum_name)}}::from(index) as usize * {{stride}};
                     let end = start + {{field.address.len()}};
                 {% endmatch %}
 
@@ -101,7 +101,7 @@ impl {{field_set.name}} {
                     let start = {{field.address.start}} + index * {{stride}};
                     let end = start + {{field.address.len()}};
                     {% when Repeat::Enum { enum_name, stride, .. } %}
-                    let start = {{field.address.start}} + {{self::get_enum_base_type(device, &enum_name)}}::from(index) as usize * {{stride}};
+                    let start = {{field.address.start}} + {{self::get_enum_base_type(driver, &enum_name)}}::from(index) as usize * {{stride}};
                     let end = start + {{field.address.len()}};
                 {% endmatch %}
 
@@ -164,7 +164,7 @@ impl core::fmt::Debug for {{field_set.name}} {
     }
 }
 
-{% if let Some(defmt_feature) = device.defmt_feature %}
+{% if let Some(defmt_feature) = field_set.defmt_feature %}
 #[cfg(feature = "{{defmt_feature}}")]
 impl defmt::Format for {{field_set.name}} {
     fn format(&self, f: defmt::Formatter) {

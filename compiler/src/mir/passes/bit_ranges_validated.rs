@@ -2,23 +2,23 @@ use std::ops::Range;
 
 use miette::ensure;
 
-use crate::mir::{Device, FieldSet, RepeatSource, passes::recurse_objects};
+use crate::mir::{FieldSet, Manifest, RepeatSource};
 
 /// Validate that the bit ranges of fields fall within the max size and don't have overlap if they're not allowed
-pub fn run_pass(device: &mut Device) -> miette::Result<()> {
-    recurse_objects(&device.objects, &mut |object| {
+pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
+    for object in manifest.iter_objects() {
         if let Some(field_set) = object.as_field_set() {
-            validate_len(field_set, device)?;
+            validate_len(field_set, manifest)?;
             if !field_set.allow_bit_overlap {
-                validate_overlap(field_set, device)?;
+                validate_overlap(field_set, manifest)?;
             }
         }
+    }
 
-        Ok(())
-    })
+    Ok(())
 }
 
-fn validate_len(field_set: &FieldSet, device: &Device) -> miette::Result<()> {
+fn validate_len(field_set: &FieldSet, manifest: &Manifest) -> miette::Result<()> {
     for field in &field_set.fields {
         ensure!(
             field.field_address.clone().count() > 0,
@@ -27,7 +27,7 @@ fn validate_len(field_set: &FieldSet, device: &Device) -> miette::Result<()> {
             field.name
         );
 
-        let (offset_iter, repeated) = get_repeat_iter(device, field);
+        let (offset_iter, repeated) = get_repeat_iter(manifest, field);
 
         for offset in offset_iter {
             let repeat_info = if repeated {
@@ -54,12 +54,12 @@ fn validate_len(field_set: &FieldSet, device: &Device) -> miette::Result<()> {
     Ok(())
 }
 
-fn validate_overlap(field_set: &FieldSet, device: &Device) -> miette::Result<()> {
+fn validate_overlap(field_set: &FieldSet, manifest: &Manifest) -> miette::Result<()> {
     for (i, field) in field_set.fields.iter().enumerate() {
-        let (offsets, repeated) = get_repeat_iter(device, field);
+        let (offsets, repeated) = get_repeat_iter(manifest, field);
 
         for (j, second_field) in field_set.fields.iter().enumerate() {
-            let (second_offsets, second_repeated) = get_repeat_iter(device, second_field);
+            let (second_offsets, second_repeated) = get_repeat_iter(manifest, second_field);
 
             for offset in offsets.iter() {
                 let repeat_info = if repeated {
@@ -105,7 +105,7 @@ fn ranges_overlap(l: &Range<u32>, offset: i128, r: &Range<u32>, second_offset: i
         && (r.start as i128 + second_offset) < (l.end as i128 + offset)
 }
 
-fn get_repeat_iter(device: &Device, field: &crate::mir::Field) -> (Vec<i128>, bool) {
+fn get_repeat_iter(manifest: &Manifest, field: &crate::mir::Field) -> (Vec<i128>, bool) {
     if let Some(repeat) = &field.repeat {
         let stride = repeat.stride;
         match &repeat.source {
@@ -116,7 +116,7 @@ fn get_repeat_iter(device: &Device, field: &crate::mir::Field) -> (Vec<i128>, bo
                 true,
             ),
             RepeatSource::Enum(enum_name) => (
-                super::search_object(&device.objects, enum_name)
+                super::search_object(manifest, enum_name)
                     .expect("Checked in earlier pass")
                     .as_enum()
                     .expect("Checked in earlier pass")
@@ -133,15 +133,15 @@ fn get_repeat_iter(device: &Device, field: &crate::mir::Field) -> (Vec<i128>, bo
 
 #[cfg(test)]
 mod tests {
-    use crate::mir::{Field, Object, Repeat};
+    use crate::mir::{Device, Field, Object, Repeat};
 
     use super::*;
 
     #[test]
     fn max_len_exceeded() {
         let mut start_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
                 size_bits: 10,
@@ -152,13 +152,14 @@ mod tests {
                 }],
                 ..Default::default()
             })],
-        };
+        }
+        .into();
 
         run_pass(&mut start_mir).unwrap();
 
         let mut start_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
                 size_bits: 10,
@@ -169,7 +170,8 @@ mod tests {
                 }],
                 ..Default::default()
             })],
-        };
+        }
+        .into();
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
@@ -177,8 +179,8 @@ mod tests {
         );
 
         let mut start_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
                 size_bits: 10,
@@ -189,13 +191,14 @@ mod tests {
                 }],
                 ..Default::default()
             })],
-        };
+        }
+        .into();
 
         run_pass(&mut start_mir).unwrap();
 
         let mut start_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
                 size_bits: 10,
@@ -206,7 +209,8 @@ mod tests {
                 }],
                 ..Default::default()
             })],
-        };
+        }
+        .into();
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
@@ -214,8 +218,8 @@ mod tests {
         );
 
         let mut start_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
                 size_bits: 10,
@@ -226,13 +230,14 @@ mod tests {
                 }],
                 ..Default::default()
             })],
-        };
+        }
+        .into();
 
         run_pass(&mut start_mir).unwrap();
 
         let mut start_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
                 size_bits: 10,
@@ -243,7 +248,8 @@ mod tests {
                 }],
                 ..Default::default()
             })],
-        };
+        }
+        .into();
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
@@ -251,8 +257,8 @@ mod tests {
         );
 
         let mut start_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
                 size_bits: 10,
@@ -267,7 +273,8 @@ mod tests {
                 }],
                 ..Default::default()
             })],
-        };
+        }
+        .into();
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
@@ -278,8 +285,8 @@ mod tests {
     #[test]
     fn overlap() {
         let mut start_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
                 size_bits: 10,
@@ -297,13 +304,14 @@ mod tests {
                 ],
                 ..Default::default()
             })],
-        };
+        }
+        .into();
 
         run_pass(&mut start_mir).unwrap();
 
         let mut start_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
                 size_bits: 10,
@@ -322,13 +330,14 @@ mod tests {
                 ],
                 ..Default::default()
             })],
-        };
+        }
+        .into();
 
         run_pass(&mut start_mir).unwrap();
 
         let mut start_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
                 size_bits: 10,
@@ -346,7 +355,8 @@ mod tests {
                 ],
                 ..Default::default()
             })],
-        };
+        }
+        .into();
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
@@ -354,8 +364,8 @@ mod tests {
         );
 
         let mut start_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
                 size_bits: 10,
@@ -377,7 +387,8 @@ mod tests {
                 ],
                 ..Default::default()
             })],
-        };
+        }
+        .into();
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),

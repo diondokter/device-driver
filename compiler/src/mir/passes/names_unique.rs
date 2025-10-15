@@ -1,18 +1,13 @@
 use std::collections::HashSet;
 
-use crate::mir::{Device, Enum, Object, Unique};
-
-use super::recurse_objects_mut;
+use crate::mir::{Enum, Manifest, Object, Unique};
 
 /// Checks if all names are unique to prevent later name collisions.
 /// If there is a collision an error is returned.
-pub fn run_pass(device: &mut Device) -> miette::Result<()> {
+pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
     let mut seen_object_ids = HashSet::new();
 
-    // Nothing must clash with the device name
-    seen_object_ids.insert(device.id());
-
-    recurse_objects_mut(&mut device.objects, &mut |object| {
+    for object in manifest.iter_objects() {
         miette::ensure!(
             seen_object_ids.insert(object.id()),
             "Duplicate object name found: `{}`",
@@ -43,30 +38,30 @@ pub fn run_pass(device: &mut Device) -> miette::Result<()> {
                 );
             }
         }
+    }
 
-        Ok(())
-    })
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use convert_case::Boundary;
 
-    use crate::mir::{Buffer, EnumVariant, Field, FieldSet, GlobalConfig, Object};
+    use crate::mir::{Buffer, Device, DeviceConfig, EnumVariant, Field, FieldSet, Object};
 
     use super::*;
 
     #[test]
     #[should_panic(expected = "Duplicate object name found: `MyBuffer`")]
     fn object_names_not_unique() {
-        let global_config = GlobalConfig {
-            name_word_boundaries: Boundary::defaults_from("-"),
+        let global_config = DeviceConfig {
+            name_word_boundaries: Some(Boundary::defaults_from("-")),
             ..Default::default()
         };
 
         let mut start_mir = Device {
-            name: Some("Device".into()),
-            global_config,
+            name: "Device".into(),
+            device_config: global_config,
             objects: vec![
                 Object::Buffer(Buffer {
                     name: "MyBuffer".into(),
@@ -77,7 +72,8 @@ mod tests {
                     ..Default::default()
                 }),
             ],
-        };
+        }
+        .into();
 
         run_pass(&mut start_mir).unwrap();
     }
@@ -85,14 +81,14 @@ mod tests {
     #[test]
     #[should_panic(expected = "Duplicate field name found in fieldset `Reg`: `field`")]
     fn field_names_not_unique() {
-        let global_config = GlobalConfig {
-            name_word_boundaries: Boundary::defaults_from("-"),
+        let global_config = DeviceConfig {
+            name_word_boundaries: Some(Boundary::defaults_from("-")),
             ..Default::default()
         };
 
         let mut start_mir = Device {
-            name: Some("Device".into()),
-            global_config,
+            name: "Device".into(),
+            device_config: global_config,
             objects: vec![Object::FieldSet(FieldSet {
                 name: "Reg".into(),
                 fields: vec![
@@ -107,7 +103,8 @@ mod tests {
                 ],
                 ..Default::default()
             })],
-        };
+        }
+        .into();
 
         run_pass(&mut start_mir).unwrap();
     }
@@ -115,14 +112,14 @@ mod tests {
     #[test]
     #[should_panic(expected = "Duplicate field `Variant` found in generated enum `Enum`")]
     fn duplicate_generated_enum_variants() {
-        let global_config = GlobalConfig {
-            name_word_boundaries: Boundary::defaults_from("-"),
+        let global_config = DeviceConfig {
+            name_word_boundaries: Some(Boundary::defaults_from("-")),
             ..Default::default()
         };
 
         let mut start_mir = Device {
-            name: Some("Device".into()),
-            global_config,
+            name: "Device".into(),
+            device_config: global_config,
             objects: vec![Object::Enum(Enum {
                 name: "Enum".into(),
                 variants: vec![
@@ -137,7 +134,8 @@ mod tests {
                 ],
                 ..Default::default()
             })],
-        };
+        }
+        .into();
 
         run_pass(&mut start_mir).unwrap();
     }

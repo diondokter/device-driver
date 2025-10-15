@@ -5,7 +5,7 @@
    · ╰── The unexpected node
  2 │ 
    ╰────
-  help: Expected a node with one of these names: `device`
+  help: Expected a node with one of these names: `device`, `fieldset`, `enum`, `extern`
 
   error: Missing object name
    ╭─[cases/device_definition_errors/input.kdl:3:1]
@@ -71,50 +71,49 @@
     ·       ╰── The unexpected node
  21 │ }
     ╰────
-  help: Expected a node with one of these names: `default-register-access`, `default-field-access`, `default-buffer-
-        access`, `default-byte-order`, `default-bit-order`, `register-address-type`, `command-address-type`, `buffer-
-        address-type`, `name-word-boundaries`, `defmt-feature`, `block`, `register`, `command`, `buffer`, `fieldset`,
-        `enum`, `extern`
+  help: Expected a node with one of these names: `register-access`, `field-access`, `buffer-access`, `byte-order`,
+        `bit-order`, `register-address-type`, `command-address-type`, `buffer-address-type`, `name-word-boundaries`,
+        `defmt-feature`, `block`, `register`, `command`, `buffer`, `fieldset`, `enum`, `extern`
 
   error: Duplicate node
     ╭─[cases/device_definition_errors/input.kdl:25:5]
  23 │ device FooD3 {
- 24 │     default-register-access RW
-    ·     ─────────────┬────────────
-    ·                  ╰── The original node
- 25 │     default-register-access RO
-    ·     ─────────────┬────────────
-    ·                  ╰── The duplicate node
+ 24 │     register-access RW
+    ·     ─────────┬────────
+    ·              ╰── The original node
+ 25 │     register-access RO
+    ·     ─────────┬────────
+    ·              ╰── The duplicate node
  26 │ }
     ╰────
   help: This type of node can only appear once. Try removing one of the nodes
 
   error: Unexpected value
-    ╭─[cases/device_definition_errors/input.kdl:29:29]
+    ╭─[cases/device_definition_errors/input.kdl:29:21]
  28 │ device FooD4 {
- 29 │     default-register-access Blah
-    ·                             ──┬─
-    ·                               ╰── Expected one of these values: `RW`, `RO`, `WO`
- 30 │     default-buffer-access
+ 29 │     register-access Blah
+    ·                     ──┬─
+    ·                       ╰── Expected one of these values: `RW`, `RO`, `WO`
+ 30 │     buffer-access
     ╰────
 
   error: Missing entry
     ╭─[cases/device_definition_errors/input.kdl:30:5]
- 29 │     default-register-access Blah
- 30 │     default-buffer-access
-    ·     ──────────┬──────────
-    ·               ╰── This node should have one or more of these entries: `RW`, `RO`, `WO`
- 31 │     default-field-access RW RO WO
+ 29 │     register-access Blah
+ 30 │     buffer-access
+    ·     ──────┬──────
+    ·           ╰── This node should have one or more of these entries: `RW`, `RO`, `WO`
+ 31 │     field-access RW RO WO
     ╰────
   help: Check the book for all the requirements
 
   error: Unexpected entries
-    ╭─[cases/device_definition_errors/input.kdl:31:29]
- 30 │     default-buffer-access
- 31 │     default-field-access RW RO WO
-    ·                             ─┬ ─┬
-    ·                              │  ╰── This entry is unexpected
-    ·                              ╰── This entry is unexpected
+    ╭─[cases/device_definition_errors/input.kdl:31:21]
+ 30 │     buffer-access
+ 31 │     field-access RW RO WO
+    ·                     ─┬ ─┬
+    ·                      │  ╰── This entry is unexpected
+    ·                      ╰── This entry is unexpected
  32 │ }
     ╰────
   help: Some entries require a name, require to be anonymous or are expected to be of a certain type. Check the book
@@ -122,11 +121,11 @@
         These entries may also just be superfluous. Try removing them or check other errors to see what's expected
 
   error: Unexpected entries
-    ╭─[cases/device_definition_errors/input.kdl:35:29]
+    ╭─[cases/device_definition_errors/input.kdl:35:21]
  34 │ device FooD5 {
- 35 │     default-register-access value=RW
-    ·                             ────┬───
-    ·                                 ╰── This entry was expected to be anonymous
+ 35 │     register-access value=RW
+    ·                     ────┬───
+    ·                         ╰── This entry was expected to be anonymous
  36 │     register-address-type u8
     ╰────
   help: Some entries require a name, require to be anonymous or are expected to be of a certain type. Check the book
@@ -136,9 +135,9 @@
   error: Missing entry
     ╭─[cases/device_definition_errors/input.kdl:35:5]
  34 │ device FooD5 {
- 35 │     default-register-access value=RW
-    ·     ───────────┬───────────
-    ·                ╰── This node should have one or more of these entries: `RW`, `RO`, `WO`
+ 35 │     register-access value=RW
+    ·     ───────┬───────
+    ·            ╰── This node should have one or more of these entries: `RW`, `RO`, `WO`
  36 │     register-address-type u8
     ╰────
   help: Check the book for all the requirements
@@ -149,15 +148,15 @@
  37 │     command-address-type 16
     ·                          ─┬
     ·                           ╰── Unexpected type: expected a string
- 38 │     default-bit-order msb0
+ 38 │     bit-order msb0
     ╰────
 
   error: Unexpected value
-    ╭─[cases/device_definition_errors/input.kdl:38:23]
+    ╭─[cases/device_definition_errors/input.kdl:38:15]
  37 │     command-address-type 16
- 38 │     default-bit-order msb0
-    ·                       ──┬─
-    ·                         ╰── Expected one of these values: `LSB0`, `MSB0`
+ 38 │     bit-order msb0
+    ·               ──┬─
+    ·                 ╰── Expected one of these values: `LSB0`, `MSB0`
  39 │     defmt-feature lol
     ╰────
 
@@ -169,10 +168,9 @@
     ·         ╰── The unexpected node
  49 │     register
     ╰────
-  help: Expected a node with one of these names: `default-register-access`, `default-field-access`, `default-buffer-
-        access`, `default-byte-order`, `default-bit-order`, `register-address-type`, `command-address-type`, `buffer-
-        address-type`, `name-word-boundaries`, `defmt-feature`, `block`, `register`, `command`, `buffer`, `fieldset`,
-        `enum`, `extern`
+  help: Expected a node with one of these names: `register-access`, `field-access`, `buffer-access`, `byte-order`,
+        `bit-order`, `register-address-type`, `command-address-type`, `buffer-address-type`, `name-word-boundaries`,
+        `defmt-feature`, `block`, `register`, `command`, `buffer`, `fieldset`, `enum`, `extern`
 
   error: Missing object name
     ╭─[cases/device_definition_errors/input.kdl:49:5]
@@ -190,7 +188,7 @@
  50 │     register foor1 {
     ·              ──┬──
     ·                ╰── This register is missing the required `address` node
- 51 │         
+ 51 │ 
     ╰────
   help: Check the book to see all required nodes
 
@@ -200,7 +198,7 @@
  50 │     register foor1 {
     ·              ──┬──
     ·                ╰── This register is missing the required `fields` node
- 51 │         
+ 51 │ 
     ╰────
   help: Check the book to see all required nodes
 
@@ -504,21 +502,21 @@
  128 │                 B 1.0
      ·                   ─┬─
      ·                    ╰── Expected one of these values: ``, `<integer>`, `default`, `catch-all`
- 129 │                 C default-value
+ 129 │                 C value
      ╰────
 
   error: Unexpected value
      ╭─[cases/device_definition_errors/input.kdl:129:19]
  128 │                 B 1.0
- 129 │                 C default-value
-     ·                   ──────┬──────
-     ·                         ╰── Expected one of these values: ``, `<integer>`, `default`, `catch-all`
+ 129 │                 C value
+     ·                   ──┬──
+     ·                     ╰── Expected one of these values: ``, `<integer>`, `default`, `catch-all`
  130 │                 D #null 2
      ╰────
 
   error: Unexpected entries
      ╭─[cases/device_definition_errors/input.kdl:130:25]
- 129 │                 C default-value
+ 129 │                 C value
  130 │                 D #null 2
      ·                         ┬
      ·                         ╰── This entry is unexpected
@@ -530,7 +528,7 @@
 
   error: Unexpected value
      ╭─[cases/device_definition_errors/input.kdl:130:19]
- 129 │                 C default-value
+ 129 │                 C value
  130 │                 D #null 2
      ·                   ──┬──
      ·                     ╰── Expected one of these values: ``, `<integer>`, `default`, `catch-all`
@@ -593,7 +591,7 @@
  144 │         in {
      ·         ─┬
      ·          ╰── This node should have one or more of these entries: `size-bits=<integer>`
- 145 │             
+ 145 │ 
      ╰────
   help: Check the book for all the requirements
 
@@ -643,7 +641,7 @@
  155 │     buffer foob0 {
      ·            ──┬──
      ·              ╰── This register is missing the required `address` node
- 156 │         
+ 156 │ 
      ╰────
   help: Check the book to see all required nodes
 
@@ -769,21 +767,21 @@
  191 │         B 1.0
      ·           ─┬─
      ·            ╰── Expected one of these values: ``, `<integer>`, `default`, `catch-all`
- 192 │         C default-value
+ 192 │         C value
      ╰────
 
   error: Unexpected value
      ╭─[cases/device_definition_errors/input.kdl:192:11]
  191 │         B 1.0
- 192 │         C default-value
-     ·           ──────┬──────
-     ·                 ╰── Expected one of these values: ``, `<integer>`, `default`, `catch-all`
+ 192 │         C value
+     ·           ──┬──
+     ·             ╰── Expected one of these values: ``, `<integer>`, `default`, `catch-all`
  193 │         D #null 2
      ╰────
 
   error: Unexpected entries
      ╭─[cases/device_definition_errors/input.kdl:193:17]
- 192 │         C default-value
+ 192 │         C value
  193 │         D #null 2
      ·                 ┬
      ·                 ╰── This entry is unexpected
@@ -795,7 +793,7 @@
 
   error: Unexpected value
      ╭─[cases/device_definition_errors/input.kdl:193:11]
- 192 │         C default-value
+ 192 │         C value
  193 │         D #null 2
      ·           ──┬──
      ·             ╰── Expected one of these values: ``, `<integer>`, `default`, `catch-all`

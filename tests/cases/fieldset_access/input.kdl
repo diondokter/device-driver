@@ -1,5 +1,5 @@
 device Device {
-    default-byte-order LE
+    byte-order LE
     register-address-type u8
     register foo_ro {
         access RO

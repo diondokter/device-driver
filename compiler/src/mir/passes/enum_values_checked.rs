@@ -1,13 +1,14 @@
 use itertools::Itertools;
 use miette::{bail, ensure};
 
-use crate::mir::{BaseType, Device, EnumGenerationStyle, EnumValue, Integer, Object, Unique};
-
-use super::recurse_objects_mut;
+use crate::mir::{
+    BaseType, EnumGenerationStyle, EnumValue, Integer, LendingIterator, Manifest, Object, Unique,
+};
 
 /// Checks if enums are fully specified and determines the generation style
-pub fn run_pass(device: &mut Device) -> miette::Result<()> {
-    recurse_objects_mut(&mut device.objects, &mut |object| {
+pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
+    let mut iter = manifest.iter_objects_with_config_mut();
+    while let Some((object, _)) = iter.next() {
         let object_name = object.name().to_string();
 
         if let Object::Enum(enum_value) = object {
@@ -156,22 +157,22 @@ pub fn run_pass(device: &mut Device) -> miette::Result<()> {
                 "More than one catch all defined on enum `{object_name}`",
             );
         }
+    }
 
-        Ok(())
-    })
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::mir::{Enum, EnumVariant, Object};
+    use crate::mir::{Device, Enum, EnumVariant, Object};
 
     use super::*;
 
     #[test]
     fn enum_values_correct() {
         let mut start_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new(
                 Default::default(),
                 "MyEnum".into(),
@@ -200,11 +201,12 @@ mod tests {
                 BaseType::Unspecified,
                 Some(2),
             ))],
-        };
+        }
+        .into();
 
         let end_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new_with_style(
                 Default::default(),
                 "MyEnum".into(),
@@ -234,7 +236,8 @@ mod tests {
                 Some(2),
                 EnumGenerationStyle::InfallibleWithinRange,
             ))],
-        };
+        }
+        .into();
 
         run_pass(&mut start_mir).unwrap();
 
@@ -244,8 +247,8 @@ mod tests {
     #[test]
     fn enum_values_infallible_with_fallback() {
         let mut start_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new(
                 Default::default(),
                 "MyEnum".into(),
@@ -264,11 +267,12 @@ mod tests {
                 BaseType::Unspecified,
                 Some(8),
             ))],
-        };
+        }
+        .into();
 
         let end_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new_with_style(
                 Default::default(),
                 "MyEnum".into(),
@@ -288,7 +292,8 @@ mod tests {
                 Some(8),
                 EnumGenerationStyle::Fallback,
             ))],
-        };
+        }
+        .into();
 
         run_pass(&mut start_mir).unwrap();
 
@@ -298,8 +303,8 @@ mod tests {
     #[test]
     fn enum_values_fallible() {
         let mut start_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new(
                 Default::default(),
                 "MyEnum".into(),
@@ -311,11 +316,12 @@ mod tests {
                 BaseType::Unspecified,
                 Some(16),
             ))],
-        };
+        }
+        .into();
 
         let end_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new_with_style(
                 Default::default(),
                 "MyEnum".into(),
@@ -328,7 +334,8 @@ mod tests {
                 Some(16),
                 EnumGenerationStyle::Fallible,
             ))],
-        };
+        }
+        .into();
 
         run_pass(&mut start_mir).unwrap();
 
@@ -338,8 +345,8 @@ mod tests {
     #[test]
     fn enum_values_dont_fit() {
         let mut start_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new(
                 Default::default(),
                 "MyEnum".into(),
@@ -363,7 +370,8 @@ mod tests {
                 BaseType::Unspecified,
                 Some(1),
             ))],
-        };
+        }
+        .into();
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
@@ -374,8 +382,8 @@ mod tests {
     #[test]
     fn enum_values_no_duplicates() {
         let mut start_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new(
                 Default::default(),
                 "MyEnum".into(),
@@ -394,7 +402,8 @@ mod tests {
                 BaseType::Unspecified,
                 Some(8),
             ))],
-        };
+        }
+        .into();
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),

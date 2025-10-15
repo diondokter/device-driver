@@ -7,12 +7,12 @@ use crate::mir::Access;
 #[derive(Template)]
 #[template(path = "rust/device.rs.j2", escape = "none", whitespace = "minimize")]
 pub struct DeviceTemplateRust<'a> {
-    device: &'a Device,
+    driver: &'a Driver,
 }
 
 impl<'a> DeviceTemplateRust<'a> {
-    pub fn new(device: &'a Device) -> Self {
-        Self { device }
+    pub fn new(device: &'a Driver) -> Self {
+        Self { driver: device }
     }
 }
 
@@ -43,8 +43,8 @@ fn get_command_fieldset_name(fieldset: &Option<String>) -> String {
     }
 }
 
-fn get_enum_base_type<'d>(device: &'d Device, enum_name: &str) -> &'d str {
-    &device
+fn get_enum_base_type<'d>(driver: &'d Driver, enum_name: &str) -> &'d str {
+    &driver
         .enums
         .iter()
         .find(|e| e.name == enum_name)

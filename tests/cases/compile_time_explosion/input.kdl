@@ -1,5 +1,5 @@
 device Device {
-    default-byte-order LE
+    byte-order LE
     register-address-type u32
 
     register Foo0 {

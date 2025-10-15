@@ -1,10 +1,10 @@
-use super::recurse_objects_mut;
-use crate::mir::{BaseType, Device};
+use crate::mir::{BaseType, LendingIterator, Manifest};
 use miette::ensure;
 
 /// Check all bool fields. They must be exactly zero or one bits long and have no conversion
-pub fn run_pass(device: &mut Device) -> miette::Result<()> {
-    recurse_objects_mut(&mut device.objects, &mut |object| {
+pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
+    let mut iter = manifest.iter_objects_with_config_mut();
+    while let Some((object, _)) = iter.next() {
         let object_name = object.name().to_string();
 
         for field in object
@@ -33,7 +33,7 @@ pub fn run_pass(device: &mut Device) -> miette::Result<()> {
                 );
             }
         }
+    }
 
-        Ok(())
-    })
+    Ok(())
 }

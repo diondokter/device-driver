@@ -5,54 +5,54 @@ use crate::{
     mir::{self, Object},
 };
 
-use super::{
-    Integer,
-    passes::{find_min_max_addresses, recurse_objects},
-};
+use super::{Integer, passes::find_min_max_addresses};
 
-pub fn transform(device: mir::Device) -> miette::Result<lir::Device> {
-    let driver_name = device.name.clone().unwrap();
-    let mir_enums = collect_enums(&device)?;
-    let lir_enums = mir_enums
-        .iter()
-        .map(transform_enum)
-        .collect::<Result<_, miette::Report>>()?;
+pub fn transform(manifest: mir::Manifest) -> miette::Result<lir::Driver> {
+    let enums = transform_enums(&manifest);
+    let field_sets = transform_field_sets(&manifest);
+    let devices = transform_devices(&manifest);
 
-    let field_sets = transform_field_sets(&device, &mir_enums)?;
-
-    // Create a root block and pass the device objects to it
-    let blocks = collect_into_blocks(
-        BorrowedBlock {
-            description: &format!("Root block of the {driver_name} driver"),
-            name: &driver_name,
-            address_offset: &0,
-            repeat: &None,
-            objects: &device.objects,
-        },
-        true,
-        &device.global_config,
-        &device.objects,
-    )?;
-
-    Ok(lir::Device {
-        internal_address_type: find_best_internal_address_type(&device),
-        register_address_type: device
-            .global_config
-            .register_address_type
-            .unwrap_or(mir::Integer::U8),
-        blocks,
+    Ok(lir::Driver {
+        devices,
         field_sets,
-        enums: lir_enums,
-        defmt_feature: device.global_config.defmt_feature,
+        enums,
     })
+}
+
+fn transform_devices(manifest: &mir::Manifest) -> Vec<lir::Device> {
+    manifest
+        .iter_devices_with_config()
+        .map(|(device, config)| {
+            // Create a root block and pass the device objects to it
+            let blocks = collect_into_blocks(
+                BorrowedBlock {
+                    description: &format!("Root block of the {} driver", device.name),
+                    name: &device.name,
+                    address_offset: &0,
+                    repeat: &None,
+                    objects: &device.objects,
+                },
+                true,
+                &device.device_config,
+                &device.objects,
+            );
+
+            lir::Device {
+                internal_address_type: find_best_internal_address_type(manifest, device),
+                register_address_type: config.register_address_type.unwrap_or(mir::Integer::U8),
+                blocks,
+                defmt_feature: config.defmt_feature.clone(),
+            }
+        })
+        .collect()
 }
 
 fn collect_into_blocks(
     block: BorrowedBlock,
     is_root: bool,
-    global_config: &mir::GlobalConfig,
+    global_config: &mir::DeviceConfig,
     device_objects: &[mir::Object],
-) -> miette::Result<Vec<lir::Block>> {
+) -> Vec<lir::Block> {
     let mut blocks = Vec::new();
 
     let BorrowedBlock {
@@ -66,7 +66,7 @@ fn collect_into_blocks(
     let mut methods = Vec::new();
 
     for object in objects {
-        let Some(method) = get_method(object, &mut blocks, global_config, device_objects)? else {
+        let Some(method) = get_method(object, &mut blocks, global_config, device_objects) else {
             continue;
         };
 
@@ -82,18 +82,19 @@ fn collect_into_blocks(
 
     blocks.insert(0, new_block);
 
-    Ok(blocks)
+    blocks
 }
 
 fn get_method(
     object: &mir::Object,
     blocks: &mut Vec<lir::Block>,
-    global_config: &mir::GlobalConfig,
+    global_config: &mir::DeviceConfig,
     device_objects: &[mir::Object],
-) -> Result<Option<lir::BlockMethod>, miette::Report> {
+) -> Option<lir::BlockMethod> {
     use convert_case::Casing;
 
-    Ok(match object {
+    match object {
+        mir::Object::Device(_) => None,
         mir::Object::Block(
             b @ mir::Block {
                 description,
@@ -108,7 +109,7 @@ fn get_method(
                 false,
                 global_config,
                 device_objects,
-            )?);
+            ));
 
             Some(lir::BlockMethod {
                 description: description.clone(),
@@ -195,30 +196,28 @@ fn get_method(
         mir::Object::FieldSet(_) => None,
         mir::Object::Enum(_) => None,
         mir::Object::Extern(_) => None,
-    })
+    }
 }
 
-fn transform_field_sets(
-    device: &mir::Device,
-    mir_enums: &[mir::Enum],
-) -> miette::Result<Vec<lir::FieldSet>> {
-    let mut field_sets = Vec::new();
-
-    recurse_objects(&device.objects, &mut |object| {
-        if let mir::Object::FieldSet(fs) = object {
-            field_sets.push(transform_field_set(fs, mir_enums)?);
-        }
-
-        Ok(())
-    })?;
-
-    Ok(field_sets)
+fn transform_field_sets(manifest: &mir::Manifest) -> Vec<lir::FieldSet> {
+    manifest
+        .iter_objects_with_config()
+        .filter_map(|(o, config)| {
+            if let Object::FieldSet(fs) = o {
+                Some((fs, config))
+            } else {
+                None
+            }
+        })
+        .map(|(fs, config)| transform_field_set(manifest, fs, &config))
+        .collect()
 }
 
 fn transform_field_set(
+    manifest: &mir::Manifest,
     field_set: &mir::FieldSet,
-    enum_list: &[mir::Enum],
-) -> miette::Result<lir::FieldSet> {
+    config: &mir::DeviceConfig,
+) -> lir::FieldSet {
     let fields = field_set
         .fields
         .iter()
@@ -258,7 +257,7 @@ fn transform_field_set(
                         generation_style: Some(mir::EnumGenerationStyle::InfallibleWithinRange),
                         size_bits,
                         ..
-                    }) = enum_list.iter().find(|e| e.name == fc.type_name)
+                    }) = manifest.iter_enums().find(|e| e.name == fc.type_name)
                         && field_bits <= size_bits.expect("Size_bits set in an earlier mir pass")
                     {
                         // This field is equal or smaller in bits than the infallible enum. So we can do the unsafe into
@@ -272,7 +271,7 @@ fn transform_field_set(
                 }),
             };
 
-            Ok(lir::Field {
+            lir::Field {
                 description: description.clone(),
                 name: name.clone(),
                 address: field_address.clone(),
@@ -288,8 +287,8 @@ fn transform_field_set(
                         },
                         mir::RepeatSource::Enum(enum_name) => lir::Repeat::Enum {
                             enum_name: enum_name.clone(),
-                            enum_variants: enum_list
-                                .iter()
+                            enum_variants: manifest
+                                .iter_enums()
                                 .find(|e| e.name == *enum_name)
                                 .expect("Checked in MIR pass")
                                 .variants
@@ -300,78 +299,70 @@ fn transform_field_set(
                         },
                     })
                     .unwrap_or(lir::Repeat::None),
-            })
+            }
         })
-        .collect::<Result<_, miette::Report>>()?;
+        .collect();
 
-    Ok(lir::FieldSet {
+    lir::FieldSet {
         description: field_set.description.clone(),
         name: field_set.name.clone(),
-        byte_order: field_set.byte_order.unwrap(),
+        byte_order: field_set
+            .byte_order
+            .expect("Byte order should never be none at this point after the MIR passes"),
         bit_order: field_set
             .bit_order
             .expect("Bitorder should never be none at this point after the MIR passes"),
         size_bits: field_set.size_bits,
         fields,
-    })
+        defmt_feature: config.defmt_feature.clone(),
+    }
 }
 
-fn collect_enums(device: &mir::Device) -> miette::Result<Vec<mir::Enum>> {
-    let mut enums = Vec::new();
+fn transform_enums(manifest: &mir::Manifest) -> Vec<lir::Enum> {
+    manifest.iter_enums_with_config().map(|(e, config)| {
+        let mir::Enum {
+            description,
+            name,
+            variants: _,
+            base_type,
+            size_bits: _,
+            generation_style: _,
+        } = e;
 
-    recurse_objects(&device.objects, &mut |object| {
-        if let Object::Enum(e) = object {
-            enums.push(e.clone());
-        }
+        let base_type = match base_type {
+            mir::BaseType::FixedSize(integer) => integer.to_string(),
+            _ => {
+                panic!("Enum base type should be set to fixed size integer in a mir pass at this point")
+            }
+        };
 
-        Ok(())
-    })?;
+        let variants = e
+            .iter_variants_with_discriminant()
+            .map(|(discriminant, v)| {
+                let mir::EnumVariant {
+                    description,
+                    name,
+                    value,
+                } = v;
 
-    Ok(enums)
-}
-
-fn transform_enum(e: &mir::Enum) -> miette::Result<lir::Enum> {
-    let mir::Enum {
-        description,
-        name,
-        variants: _,
-        base_type,
-        size_bits: _,
-        generation_style: _,
-    } = e;
-
-    let base_type = match base_type {
-        mir::BaseType::FixedSize(integer) => integer.to_string(),
-        _ => {
-            panic!("Enum base type should be set to fixed size integer in a mir pass at this point")
-        }
-    };
-
-    let variants = e
-        .iter_variants_with_discriminant()
-        .map(|(discriminant, v)| {
-            let mir::EnumVariant {
-                description,
-                name,
-                value,
-            } = v;
-
-            Ok(lir::EnumVariant {
-                description: description.clone(),
-                name: name.to_string(),
-                discriminant,
-                default: matches!(value, mir::EnumValue::Default),
-                catch_all: matches!(value, mir::EnumValue::CatchAll),
+                lir::EnumVariant {
+                    description: description.clone(),
+                    name: name.to_string(),
+                    discriminant,
+                    default: matches!(value, mir::EnumValue::Default),
+                    catch_all: matches!(value, mir::EnumValue::CatchAll),
+                }
             })
-        })
-        .collect::<Result<_, miette::Report>>()?;
+            .collect();
 
-    Ok(lir::Enum {
-        description: description.clone(),
-        name: name.to_string(),
-        base_type,
-        variants,
-    })
+        lir::Enum {
+            description: description.clone(),
+            name: name.to_string(),
+            base_type,
+            variants,
+            defmt_feature: config.defmt_feature.clone(),
+        }
+    }).collect()
 }
 
 fn repeat_to_method_kind(
@@ -436,8 +427,8 @@ impl<'o> From<&'o mir::Block> for BorrowedBlock<'o> {
     }
 }
 
-fn find_best_internal_address_type(device: &mir::Device) -> Integer {
-    let (min_address_found, max_address_found) = find_min_max_addresses(&device.objects, |_| true);
+fn find_best_internal_address_type(manifest: &mir::Manifest, device: &mir::Device) -> Integer {
+    let (min_address_found, max_address_found) = find_min_max_addresses(manifest, device, |_| true);
 
     let needs_signed = min_address_found < 0;
     let needs_bits = (min_address_found
@@ -463,6 +454,7 @@ fn find_best_internal_address_type(device: &mir::Device) -> Integer {
             8 => Integer::U8,
             16 => Integer::U16,
             32 => Integer::U32,
+            64 => Integer::U64,
             _ => unreachable!(),
         }
     }

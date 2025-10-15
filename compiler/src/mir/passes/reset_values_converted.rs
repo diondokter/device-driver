@@ -6,9 +6,10 @@ use bitvec::{
 };
 use miette::ensure;
 
-use crate::mir::{BitOrder, ByteOrder, Device, FieldSet, Object, Register, ResetValue, Unique};
-
-use super::{recurse_objects, recurse_objects_mut};
+use crate::mir::{
+    BitOrder, ByteOrder, FieldSet, LendingIterator, Manifest, Object, Register, ResetValue, Unique,
+    passes::search_object,
+};
 
 /// Checks if the reset values of registers are valid.
 /// Also converts integer values to the array representation using the correct bit and byte order.
@@ -18,69 +19,52 @@ use super::{recurse_objects, recurse_objects_mut};
 ///
 /// This function assumes all register have a valid byte order, and so depends on [super::byte_order_specified::run_pass]
 /// having been run.
-pub fn run_pass(device: &mut Device) -> miette::Result<()> {
+pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
     let mut new_reset_values = HashMap::new();
 
-    recurse_objects(&device.objects, &mut |object| match object {
-        Object::Register(reg) => {
-            let target_field_set = get_target_field_set(reg, device);
+    for object in manifest.iter_objects() {
+        if let Object::Register(reg) = object {
+            let target_field_set = get_target_field_set(reg, manifest);
 
-            match reg.reset_value.as_ref() {
-                Some(reset_value) => {
-                    let new_reset_value = convert_reset_value(
-                        reset_value.clone(),
-                        target_field_set
-                            .bit_order
-                            .expect("Bitorder should be set at this point"),
-                        target_field_set.size_bits,
-                        "register",
-                        &reg.name,
-                        target_field_set.byte_order.unwrap(),
-                    )?;
-                    assert_eq!(
-                        new_reset_values.insert(reg.id(), new_reset_value),
-                        None,
-                        "All names must be unique"
-                    );
-                    Ok(())
-                }
-                None => Ok(()),
+            if let Some(reset_value) = reg.reset_value.as_ref() {
+                let new_reset_value = convert_reset_value(
+                    reset_value.clone(),
+                    target_field_set
+                        .bit_order
+                        .expect("Bitorder should be set at this point"),
+                    target_field_set.size_bits,
+                    "register",
+                    &reg.name,
+                    target_field_set.byte_order.unwrap(),
+                )?;
+                assert_eq!(
+                    new_reset_values.insert(reg.id(), new_reset_value),
+                    None,
+                    "All names must be unique"
+                );
             }
         }
-        _ => Ok(()),
-    })?;
+    }
 
-    recurse_objects_mut(&mut device.objects, &mut |object| match object {
-        Object::Register(register) => {
-            if let Some(new_reset_value) = new_reset_values.remove(&register.id()) {
-                register.reset_value = Some(new_reset_value);
-            }
-
-            Ok(())
+    let mut iter = manifest.iter_objects_with_config_mut();
+    while let Some((object, _)) = iter.next() {
+        if let Object::Register(register) = object
+            && let Some(new_reset_value) = new_reset_values.remove(&register.id())
+        {
+            register.reset_value = Some(new_reset_value);
         }
-        _ => Ok(()),
-    })?;
+    }
 
     assert!(new_reset_values.is_empty());
 
     Ok(())
 }
 
-fn get_target_field_set(reg: &Register, device: &Device) -> FieldSet {
-    let mut field_set = None;
-
-    recurse_objects(&device.objects, &mut |object| {
-        if let Object::FieldSet(fs) = object
-            && fs.name == reg.field_set_ref.0
-        {
-            field_set = Some(fs.clone());
-        }
-
-        Ok(())
-    })
-    .unwrap();
-
-    field_set.expect("All fieldset refs should already be checked and valid here")
+fn get_target_field_set<'m>(reg: &Register, manifest: &'m Manifest) -> &'m FieldSet {
+    search_object(manifest, &reg.field_set_ref.0)
+        .expect("All fieldset refs should already be checked and valid here")
+        .as_field_set()
+        .expect("All fieldset refs should already be checked and valid here")
 }
 
 fn convert_reset_value(
@@ -166,15 +150,15 @@ fn convert_reset_value(
 
 #[cfg(test)]
 mod tests {
-    use crate::mir::{FieldSet, GlobalConfig, Register};
+    use crate::mir::{Device, DeviceConfig, FieldSet, Register};
 
     use super::*;
 
     #[test]
     fn correct_sizes() {
         let mut start_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".into(),
@@ -190,13 +174,14 @@ mod tests {
                     ..Default::default()
                 }),
             ],
-        };
+        }
+        .into();
 
         run_pass(&mut start_mir).unwrap();
 
         let end_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".into(),
@@ -212,13 +197,14 @@ mod tests {
                     ..Default::default()
                 }),
             ],
-        };
+        }
+        .into();
 
         assert_eq!(start_mir, end_mir);
 
         let mut start_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".into(),
@@ -234,13 +220,14 @@ mod tests {
                     ..Default::default()
                 }),
             ],
-        };
+        }
+        .into();
 
         run_pass(&mut start_mir).unwrap();
 
         let end_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".into(),
@@ -256,14 +243,15 @@ mod tests {
                     ..Default::default()
                 }),
             ],
-        };
+        }
+        .into();
 
         assert_eq!(start_mir, end_mir);
 
         let mut start_mir = Device {
-            name: None,
-            global_config: GlobalConfig {
-                default_byte_order: Some(ByteOrder::LE),
+            name: "Device".into(),
+            device_config: DeviceConfig {
+                byte_order: Some(ByteOrder::LE),
                 ..Default::default()
             },
             objects: vec![
@@ -281,14 +269,15 @@ mod tests {
                     ..Default::default()
                 }),
             ],
-        };
+        }
+        .into();
 
         run_pass(&mut start_mir).unwrap();
 
         let end_mir = Device {
-            name: None,
-            global_config: GlobalConfig {
-                default_byte_order: Some(ByteOrder::LE),
+            name: "Device".into(),
+            device_config: DeviceConfig {
+                byte_order: Some(ByteOrder::LE),
                 ..Default::default()
             },
             objects: vec![
@@ -306,13 +295,14 @@ mod tests {
                     ..Default::default()
                 }),
             ],
-        };
+        }
+        .into();
 
         assert_eq!(start_mir, end_mir);
 
         let mut start_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".into(),
@@ -328,13 +318,14 @@ mod tests {
                     ..Default::default()
                 }),
             ],
-        };
+        }
+        .into();
 
         run_pass(&mut start_mir).unwrap();
 
         let end_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".into(),
@@ -350,13 +341,14 @@ mod tests {
                     ..Default::default()
                 }),
             ],
-        };
+        }
+        .into();
 
         assert_eq!(start_mir, end_mir);
 
         let mut start_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".into(),
@@ -372,13 +364,14 @@ mod tests {
                     ..Default::default()
                 }),
             ],
-        };
+        }
+        .into();
 
         run_pass(&mut start_mir).unwrap();
 
         let end_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".into(),
@@ -394,7 +387,8 @@ mod tests {
                     ..Default::default()
                 }),
             ],
-        };
+        }
+        .into();
 
         assert_eq!(start_mir, end_mir);
     }
@@ -402,9 +396,9 @@ mod tests {
     #[test]
     fn incorrect_sizes() {
         let mut start_mir = Device {
-            name: None,
-            global_config: GlobalConfig {
-                default_byte_order: Some(ByteOrder::LE),
+            name: "Device".into(),
+            device_config: DeviceConfig {
+                byte_order: Some(ByteOrder::LE),
                 ..Default::default()
             },
             objects: vec![
@@ -422,7 +416,8 @@ mod tests {
                     ..Default::default()
                 }),
             ],
-        };
+        }
+        .into();
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
@@ -430,8 +425,8 @@ mod tests {
         );
 
         let mut start_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".into(),
@@ -447,7 +442,8 @@ mod tests {
                     ..Default::default()
                 }),
             ],
-        };
+        }
+        .into();
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
@@ -455,8 +451,8 @@ mod tests {
         );
 
         let mut start_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".into(),
@@ -472,7 +468,8 @@ mod tests {
                     ..Default::default()
                 }),
             ],
-        };
+        }
+        .into();
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
@@ -483,8 +480,8 @@ mod tests {
     #[test]
     fn wrong_num_bytes_array() {
         let mut start_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".into(),
@@ -500,7 +497,8 @@ mod tests {
                     ..Default::default()
                 }),
             ],
-        };
+        }
+        .into();
 
         assert_eq!(
             run_pass(&mut start_mir).unwrap_err().to_string(),
@@ -511,8 +509,8 @@ mod tests {
     #[test]
     fn int_msb0_parsed_correct() {
         let mut start_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".into(),
@@ -528,13 +526,14 @@ mod tests {
                     ..Default::default()
                 }),
             ],
-        };
+        }
+        .into();
 
         run_pass(&mut start_mir).unwrap();
 
         let end_mir = Device {
-            name: None,
-            global_config: Default::default(),
+            name: "Device".into(),
+            device_config: Default::default(),
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".into(),
@@ -550,7 +549,8 @@ mod tests {
                     ..Default::default()
                 }),
             ],
-        };
+        }
+        .into();
 
         assert_eq!(start_mir, end_mir);
     }
