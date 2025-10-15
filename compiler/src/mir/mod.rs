@@ -610,15 +610,6 @@ pub struct Register {
     pub field_set_ref: FieldSetRef,
 }
 
-/// Here for DSL + Manifest codegen.
-/// There fieldsets have functions for the reset value.
-/// Once we hit 2.0, this can be removed
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LegacyFieldSetInfo {
-    pub reset_value: Option<Vec<u8>>,
-    pub ref_reset_overrides: Vec<(String, Vec<u8>)>,
-}
-
 /// An externally defined fieldset. This is the name of that fieldset
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct FieldSetRef(pub String);

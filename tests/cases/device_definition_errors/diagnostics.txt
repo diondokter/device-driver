@@ -188,7 +188,7 @@
  50 │     register foor1 {
     ·              ──┬──
     ·                ╰── This register is missing the required `address` node
- 51 │         
+ 51 │ 
     ╰────
   help: Check the book to see all required nodes
 
@@ -198,7 +198,7 @@
  50 │     register foor1 {
     ·              ──┬──
     ·                ╰── This register is missing the required `fields` node
- 51 │         
+ 51 │ 
     ╰────
   help: Check the book to see all required nodes
 
@@ -591,7 +591,7 @@
  144 │         in {
      ·         ─┬
      ·          ╰── This node should have one or more of these entries: `size-bits=<integer>`
- 145 │             
+ 145 │ 
      ╰────
   help: Check the book for all the requirements
 
@@ -641,7 +641,7 @@
  155 │     buffer foob0 {
      ·            ──┬──
      ·              ╰── This register is missing the required `address` node
- 156 │         
+ 156 │ 
      ╰────
   help: Check the book to see all required nodes
 
