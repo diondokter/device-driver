@@ -8,11 +8,9 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
     let mut iter = manifest.iter_objects_with_config_mut();
     while let Some((object, _)) = iter.next() {
         if let Some(field_set) = object.as_field_set_mut() {
-            let mut error_fields = Vec::new();
-
-            for (index, field) in field_set.fields.iter_mut().enumerate() {
-                let size_bits = field.field_address.len() as u32;
+            for field in field_set.fields.iter_mut() {
                 loop {
+                    let size_bits = field.field_address.len() as u32;
                     field.base_type = match field.base_type {
                         BaseType::Unspecified => match size_bits {
                             0 => unreachable!(),
@@ -27,8 +25,9 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
                                     field_address: field.field_address.span,
                                     size_bits,
                                 });
-                                error_fields.push(index);
-                                break;
+                                // Fix the size for now so we can continue using this field later
+                                field.field_address.end = field.field_address.start + 64;
+                                continue;
                             }
                         },
                         BaseType::Int => match Integer::find_smallest(-1, 0, size_bits) {
@@ -38,18 +37,14 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
                                     field_address: field.field_address.span,
                                     size_bits,
                                 });
-                                error_fields.push(index);
-                                break;
+                                // Fix the size for now so we can continue using this field later
+                                field.field_address.end = field.field_address.start + 64;
+                                continue;
                             }
                         },
                         BaseType::FixedSize(_) => break,
                     }
                 }
-            }
-
-            // Remove the fields with errors
-            for error_field in error_fields {
-                field_set.fields.remove(error_field);
             }
         }
     }

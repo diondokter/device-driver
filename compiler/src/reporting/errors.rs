@@ -276,7 +276,7 @@ pub struct RepeatOverSpecified {
 
 #[derive(Error, Debug, Diagnostic)]
 #[error("Field size is too big")]
-#[diagnostic(severity(Error))]
+#[diagnostic(severity(Error), help("A field can be at most 64 bits"))]
 pub struct FieldSizeTooBig {
     #[label("{} bits is too big for any of the supported integers", self.size_bits)]
     pub field_address: SourceSpan,
@@ -292,7 +292,7 @@ pub struct FieldSizeTooBig {
     )
 )]
 pub struct DeviceNameNotPascal {
-    #[label("This is not Pascal cased")]
+    #[label("This is not Pascal cased. `{}` would be accepted", self.suggestion)]
     pub device_name: SourceSpan,
     pub suggestion: String,
 }
