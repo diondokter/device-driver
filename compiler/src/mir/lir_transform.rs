@@ -26,7 +26,15 @@ fn transform_devices(manifest: &mir::Manifest) -> Vec<lir::Device> {
             // Create a root block and pass the device objects to it
             let blocks = collect_into_blocks(
                 BorrowedBlock {
-                    description: &format!("Root block of the {} driver", device.name),
+                    description: &format!(
+                        "{}Root block of the {} driver",
+                        if device.description.is_empty() {
+                            String::new()
+                        } else {
+                            format!("{}\n\n", device.description)
+                        },
+                        device.name,
+                    ),
                     name: &device.name,
                     address_offset: &0,
                     repeat: &None,

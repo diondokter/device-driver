@@ -35,6 +35,7 @@ mod tests {
     #[test]
     fn well_enough_specified() {
         let mut input = Device {
+            description: String::new(),
             name: "Device".into(),
             device_config: Default::default(),
             objects: vec![
@@ -59,6 +60,7 @@ mod tests {
     #[test]
     fn not_enough_specified() {
         let mut input = Device {
+            description: String::new(),
             name: "Device".into(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
@@ -83,6 +85,7 @@ mod tests {
         };
 
         let mut input = Device {
+            description: String::new(),
             name: "Device".into(),
             device_config: global_config,
             objects: vec![Object::FieldSet(FieldSet {

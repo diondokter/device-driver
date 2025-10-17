@@ -60,6 +60,7 @@ mod tests {
         };
 
         let mut start_mir = Device {
+            description: String::new(),
             name: "Device".into(),
             device_config: global_config,
             objects: vec![
@@ -87,6 +88,7 @@ mod tests {
         };
 
         let mut start_mir = Device {
+            description: String::new(),
             name: "Device".into(),
             device_config: global_config,
             objects: vec![Object::FieldSet(FieldSet {
@@ -118,6 +120,7 @@ mod tests {
         };
 
         let mut start_mir = Device {
+            description: String::new(),
             name: "Device".into(),
             device_config: global_config,
             objects: vec![Object::Enum(Enum {

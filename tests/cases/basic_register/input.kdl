@@ -1,3 +1,4 @@
+/// This is the testing device
 device Device {
     byte-order LE
     register-address-type u8

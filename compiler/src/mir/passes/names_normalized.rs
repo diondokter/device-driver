@@ -79,6 +79,7 @@ mod tests {
         };
 
         let mut start_mir: Manifest = Device {
+            description: String::new(),
             name: "Device".into(),
             device_config: global_config.clone(),
             objects: vec![
@@ -122,6 +123,7 @@ mod tests {
         .into();
 
         let end_mir: Manifest = Device {
+            description: String::new(),
             name: "Device".into(),
             device_config: global_config,
             objects: vec![

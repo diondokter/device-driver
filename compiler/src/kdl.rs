@@ -122,6 +122,7 @@ fn transform_device(
         parse_single_string_entry(node, source_code.clone(), diagnostics, None, true).0?;
 
     let mut device = Device {
+        description: parse_description(node),
         name: device_name,
         device_config: DeviceConfig::default(),
         objects: Vec::new(),

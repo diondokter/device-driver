@@ -40,6 +40,7 @@ device FooD5 {
     name-word-boundaries aA:1a
 }
 
+/// Comments here :D
 device FooD6 {
     register-address-type u8
     command-address-type u8
