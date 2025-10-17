@@ -66,7 +66,7 @@ mod tests {
 
     use crate::mir::{
         Buffer, Device, DeviceConfig, Enum, EnumVariant, Field, FieldConversion, FieldSet, Object,
-        Register,
+        Register, Span,
     };
 
     use super::*;
@@ -80,7 +80,7 @@ mod tests {
 
         let mut start_mir: Manifest = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: global_config.clone(),
             objects: vec![
                 Object::Register(Register {
@@ -124,7 +124,7 @@ mod tests {
 
         let end_mir: Manifest = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: global_config,
             objects: vec![
                 Object::Register(Register {

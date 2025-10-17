@@ -9,7 +9,7 @@ use crate::{
     mir::{
         Access, BaseType, BitOrder, Block, Buffer, ByteOrder, Command, Device, DeviceConfig, Enum,
         EnumValue, EnumVariant, Extern, Field, FieldConversion, FieldSet, FieldSetRef, Integer,
-        Manifest, Object, Register, Repeat, ResetValue,
+        Manifest, Object, Register, Repeat, ResetValue, Span,
     },
     reporting::{
         self, Diagnostics,
@@ -100,11 +100,12 @@ fn transform_manifest(manifest_document: &KdlDocument, diagnostics: &mut Diagnos
 }
 
 fn transform_device(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Device> {
-    let device_name = parse_single_string_entry(node, diagnostics, None, true).0?;
+    let (device_name, device_name_span) = parse_single_string_entry(node, diagnostics, None, true);
+    let (device_name, device_name_span) = (device_name?, device_name_span?);
 
     let mut device = Device {
         description: parse_description(node),
-        name: device_name,
+        name: device_name.with_span(device_name_span),
         device_config: DeviceConfig::default(),
         objects: Vec::new(),
     };

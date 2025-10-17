@@ -24,7 +24,7 @@ pub mod reset_values_converted;
 pub fn run_passes(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> miette::Result<()> {
     bit_order_specified::run_pass(manifest);
     base_types_specified::run_pass(manifest, diagnostics);
-    device_name_is_pascal::run_pass(manifest)?;
+    device_name_is_pascal::run_pass(manifest, diagnostics);
     names_normalized::run_pass(manifest)?;
     names_unique::run_pass(manifest)?;
     enum_values_checked::run_pass(manifest)?;

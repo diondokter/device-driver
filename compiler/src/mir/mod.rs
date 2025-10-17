@@ -230,7 +230,7 @@ impl From<Device> for Manifest {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Device {
     pub description: String,
-    pub name: String,
+    pub name: Spanned<String>,
     pub device_config: DeviceConfig,
     pub objects: Vec<Object>,
 }
@@ -918,8 +918,9 @@ macro_rules! impl_unique {
     ($t:ty) => {
         impl Unique for $t {
             fn id(&self) -> UniqueId {
+                use std::ops::Deref;
                 UniqueId {
-                    object_name: self.name.clone(),
+                    object_name: self.name.deref().into(),
                 }
             }
         }
@@ -999,18 +1000,18 @@ impl<T> From<(T, SourceSpan)> for Spanned<T> {
 }
 
 pub trait Span {
-    fn span(self, span: impl Into<SourceSpan>) -> Spanned<Self>
+    fn with_span(self, span: impl Into<SourceSpan>) -> Spanned<Self>
     where
         Self: Sized,
     {
         Spanned::new(span.into(), self)
     }
 
-    fn span_dummy(self) -> Spanned<Self>
+    fn with_dummy_span(self) -> Spanned<Self>
     where
         Self: Sized,
     {
-        self.span((0, 0))
+        self.with_span((0, 0))
     }
 }
 impl<T> Span for T {}
@@ -1027,7 +1028,7 @@ mod tests {
             root_objects: vec![
                 Object::Device(Device {
                     description: String::new(),
-                    name: "a".into(),
+                    name: "a".to_owned().with_dummy_span(),
                     device_config: DeviceConfig {
                         register_access: Some(Access::RW),
                         ..Default::default()

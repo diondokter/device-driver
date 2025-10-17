@@ -282,3 +282,17 @@ pub struct FieldSizeTooBig {
     pub field_address: SourceSpan,
     pub size_bits: u32,
 }
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Device name is not Pascal cased")]
+#[diagnostic(
+    severity(Error),
+    help(
+        "Device names tend to be a bit weird, so the casing is not automatically changed from the input.\nBut it is required for them to be roughly PascalCase shaped. Try changing it to `{}`", self.suggestion
+    )
+)]
+pub struct DeviceNameNotPascal {
+    #[label("This is not Pascal cased")]
+    pub device_name: SourceSpan,
+    pub suggestion: String,
+}

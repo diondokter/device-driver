@@ -141,14 +141,14 @@ mod tests {
     fn max_len_exceeded() {
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
                 size_bits: 10,
                 fields: vec![Field {
                     name: "my_field".into(),
-                    field_address: (0..10).span_dummy(),
+                    field_address: (0..10).with_dummy_span(),
                     ..Default::default()
                 }],
                 ..Default::default()
@@ -160,14 +160,14 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
                 size_bits: 10,
                 fields: vec![Field {
                     name: "my_field".into(),
-                    field_address: (0..11).span_dummy(),
+                    field_address: (0..11).with_dummy_span(),
                     ..Default::default()
                 }],
                 ..Default::default()
@@ -182,14 +182,14 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
                 size_bits: 10,
                 fields: vec![Field {
                     name: "my_field".into(),
-                    field_address: (0..10).span_dummy(),
+                    field_address: (0..10).with_dummy_span(),
                     ..Default::default()
                 }],
                 ..Default::default()
@@ -201,14 +201,14 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
                 size_bits: 10,
                 fields: vec![Field {
                     name: "my_field".into(),
-                    field_address: (0..11).span_dummy(),
+                    field_address: (0..11).with_dummy_span(),
                     ..Default::default()
                 }],
                 ..Default::default()
@@ -223,14 +223,14 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
                 size_bits: 10,
                 fields: vec![Field {
                     name: "my_field".into(),
-                    field_address: (0..10).span_dummy(),
+                    field_address: (0..10).with_dummy_span(),
                     ..Default::default()
                 }],
                 ..Default::default()
@@ -242,14 +242,14 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
                 size_bits: 10,
                 fields: vec![Field {
                     name: "my_field".into(),
-                    field_address: (0..11).span_dummy(),
+                    field_address: (0..11).with_dummy_span(),
                     ..Default::default()
                 }],
                 ..Default::default()
@@ -264,14 +264,14 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
                 size_bits: 10,
                 fields: vec![Field {
                     name: "my_field".into(),
-                    field_address: (0..5).span_dummy(),
+                    field_address: (0..5).with_dummy_span(),
                     repeat: Some(Repeat {
                         source: RepeatSource::Count(3),
                         stride: 5,
@@ -293,7 +293,7 @@ mod tests {
     fn overlap() {
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
@@ -301,12 +301,12 @@ mod tests {
                 fields: vec![
                     Field {
                         name: "my_field".into(),
-                        field_address: (0..5).span_dummy(),
+                        field_address: (0..5).with_dummy_span(),
                         ..Default::default()
                     },
                     Field {
                         name: "my_field2".into(),
-                        field_address: (5..10).span_dummy(),
+                        field_address: (5..10).with_dummy_span(),
                         ..Default::default()
                     },
                 ],
@@ -319,7 +319,7 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
@@ -328,12 +328,12 @@ mod tests {
                 fields: vec![
                     Field {
                         name: "my_field".into(),
-                        field_address: (0..6).span_dummy(),
+                        field_address: (0..6).with_dummy_span(),
                         ..Default::default()
                     },
                     Field {
                         name: "my_field2".into(),
-                        field_address: (5..10).span_dummy(),
+                        field_address: (5..10).with_dummy_span(),
                         ..Default::default()
                     },
                 ],
@@ -346,7 +346,7 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
@@ -354,12 +354,12 @@ mod tests {
                 fields: vec![
                     Field {
                         name: "my_field".into(),
-                        field_address: (0..6).span_dummy(),
+                        field_address: (0..6).with_dummy_span(),
                         ..Default::default()
                     },
                     Field {
                         name: "my_field2".into(),
-                        field_address: (5..10).span_dummy(),
+                        field_address: (5..10).with_dummy_span(),
                         ..Default::default()
                     },
                 ],
@@ -375,7 +375,7 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into(),
@@ -383,7 +383,7 @@ mod tests {
                 fields: vec![
                     Field {
                         name: "my_field".into(),
-                        field_address: (0..1).span_dummy(),
+                        field_address: (0..1).with_dummy_span(),
                         repeat: Some(Repeat {
                             source: RepeatSource::Count(6),
                             stride: 1,
@@ -392,7 +392,7 @@ mod tests {
                     },
                     Field {
                         name: "my_field2".into(),
-                        field_address: (5..10).span_dummy(),
+                        field_address: (5..10).with_dummy_span(),
                         ..Default::default()
                     },
                 ],

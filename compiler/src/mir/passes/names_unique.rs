@@ -47,7 +47,7 @@ pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
 mod tests {
     use convert_case::Boundary;
 
-    use crate::mir::{Buffer, Device, DeviceConfig, EnumVariant, Field, FieldSet, Object};
+    use crate::mir::{Buffer, Device, DeviceConfig, EnumVariant, Field, FieldSet, Object, Span};
 
     use super::*;
 
@@ -61,7 +61,7 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: global_config,
             objects: vec![
                 Object::Buffer(Buffer {
@@ -89,7 +89,7 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: global_config,
             objects: vec![Object::FieldSet(FieldSet {
                 name: "Reg".into(),
@@ -121,7 +121,7 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: global_config,
             objects: vec![Object::Enum(Enum {
                 name: "Enum".into(),

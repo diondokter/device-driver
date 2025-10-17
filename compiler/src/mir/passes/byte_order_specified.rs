@@ -28,7 +28,7 @@ pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use crate::mir::{ByteOrder, Device, DeviceConfig, FieldSet, Object};
+    use crate::mir::{ByteOrder, Device, DeviceConfig, FieldSet, Object, Span};
 
     use super::*;
 
@@ -36,7 +36,7 @@ mod tests {
     fn well_enough_specified() {
         let mut input = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![
                 Object::FieldSet(FieldSet {
@@ -61,7 +61,7 @@ mod tests {
     fn not_enough_specified() {
         let mut input = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyRegister".into(),
@@ -86,7 +86,7 @@ mod tests {
 
         let mut input = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: global_config,
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyRegister".into(),

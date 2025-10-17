@@ -164,7 +164,7 @@ pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use crate::mir::{Device, Enum, EnumVariant, Object};
+    use crate::mir::{Device, Enum, EnumVariant, Object, Span};
 
     use super::*;
 
@@ -172,7 +172,7 @@ mod tests {
     fn enum_values_correct() {
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new(
                 Default::default(),
@@ -207,7 +207,7 @@ mod tests {
 
         let end_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new_with_style(
                 Default::default(),
@@ -250,7 +250,7 @@ mod tests {
     fn enum_values_infallible_with_fallback() {
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new(
                 Default::default(),
@@ -275,7 +275,7 @@ mod tests {
 
         let end_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new_with_style(
                 Default::default(),
@@ -308,7 +308,7 @@ mod tests {
     fn enum_values_fallible() {
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new(
                 Default::default(),
@@ -326,7 +326,7 @@ mod tests {
 
         let end_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new_with_style(
                 Default::default(),
@@ -352,7 +352,7 @@ mod tests {
     fn enum_values_dont_fit() {
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new(
                 Default::default(),
@@ -390,7 +390,7 @@ mod tests {
     fn enum_values_no_duplicates() {
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new(
                 Default::default(),
