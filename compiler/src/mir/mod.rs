@@ -228,6 +228,7 @@ impl From<Device> for Manifest {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Device {
+    pub description: String,
     pub name: String,
     pub device_config: DeviceConfig,
     pub objects: Vec<Object>,
@@ -960,6 +961,7 @@ mod tests {
         let mut manifest = Manifest {
             root_objects: vec![
                 Object::Device(Device {
+                    description: String::new(),
                     name: "a".into(),
                     device_config: DeviceConfig {
                         register_access: Some(Access::RW),

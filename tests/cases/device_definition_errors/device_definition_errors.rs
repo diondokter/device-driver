@@ -153,6 +153,8 @@ impl<I> FooD5<I> {
     }
 }
 
+/// Comments here :D
+///
 /// Root block of the FooD6 driver
 #[derive(Debug)]
 pub struct FooD6<I> {

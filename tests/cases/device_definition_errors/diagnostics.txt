@@ -161,704 +161,704 @@
     ╰────
 
   error: Unexpected node
-    ╭─[cases/device_definition_errors/input.kdl:48:5]
- 47 │ 
- 48 │     registah
+    ╭─[cases/device_definition_errors/input.kdl:49:5]
+ 48 │ 
+ 49 │     registah
     ·     ────┬───
     ·         ╰── The unexpected node
- 49 │     register
+ 50 │     register
     ╰────
   help: Expected a node with one of these names: `register-access`, `field-access`, `buffer-access`, `byte-order`,
         `bit-order`, `register-address-type`, `command-address-type`, `buffer-address-type`, `name-word-boundaries`,
         `defmt-feature`, `block`, `register`, `command`, `buffer`, `fieldset`, `enum`, `extern`
 
   error: Missing object name
-    ╭─[cases/device_definition_errors/input.kdl:49:5]
- 48 │     registah
- 49 │     register
+    ╭─[cases/device_definition_errors/input.kdl:50:5]
+ 49 │     registah
+ 50 │     register
     ·     ────┬───
     ·         ╰── For this object
- 50 │     register foor1 {
+ 51 │     register foor1 {
     ╰────
   help: The name is specified by the first entry of the node. It must be an anonymous string, e.g. `register Foo { }`
 
   error: Missing child node
-    ╭─[cases/device_definition_errors/input.kdl:50:14]
- 49 │     register
- 50 │     register foor1 {
+    ╭─[cases/device_definition_errors/input.kdl:51:14]
+ 50 │     register
+ 51 │     register foor1 {
     ·              ──┬──
     ·                ╰── This register is missing the required `address` node
- 51 │ 
+ 52 │ 
     ╰────
   help: Check the book to see all required nodes
 
   error: Missing child node
-    ╭─[cases/device_definition_errors/input.kdl:50:14]
- 49 │     register
- 50 │     register foor1 {
+    ╭─[cases/device_definition_errors/input.kdl:51:14]
+ 50 │     register
+ 51 │     register foor1 {
     ·              ──┬──
     ·                ╰── This register is missing the required `fields` node
- 51 │ 
+ 52 │ 
     ╰────
   help: Check the book to see all required nodes
 
   error: Missing entry
-    ╭─[cases/device_definition_errors/input.kdl:54:9]
- 53 │     register foor2 {
- 54 │         address
+    ╭─[cases/device_definition_errors/input.kdl:55:9]
+ 54 │     register foor2 {
+ 55 │         address
     ·         ───┬───
     ·            ╰── This node should have one or more of these entries: `integer`
- 55 │         address a
+ 56 │         address a
     ╰────
   help: Check the book for all the requirements
 
   error: Unexpected type
-    ╭─[cases/device_definition_errors/input.kdl:55:17]
- 54 │         address
- 55 │         address a
+    ╭─[cases/device_definition_errors/input.kdl:56:17]
+ 55 │         address
+ 56 │         address a
     ·                 ┬
     ·                 ╰── Unexpected type: expected a integer
- 56 │         address 1
+ 57 │         address 1
     ╰────
 
   error: Duplicate node
-    ╭─[cases/device_definition_errors/input.kdl:57:9]
- 55 │         address a
- 56 │         address 1
+    ╭─[cases/device_definition_errors/input.kdl:58:9]
+ 56 │         address a
+ 57 │         address 1
     ·         ───┬───
     ·            ╰── The original node
- 57 │         address 2
+ 58 │         address 2
     ·         ───┬───
     ·            ╰── The duplicate node
- 58 │         repeat
+ 59 │         repeat
     ╰────
   help: This type of node can only appear once. Try removing one of the nodes
 
   error: Missing entry
-    ╭─[cases/device_definition_errors/input.kdl:58:9]
- 57 │         address 2
- 58 │         repeat
+    ╭─[cases/device_definition_errors/input.kdl:59:9]
+ 58 │         address 2
+ 59 │         repeat
     ·         ───┬──
     ·            ╰── This node should have one or more of these entries: `count=<integer>`, `with=<string>`, `stride=<integer>`
- 59 │         reset-value 0x2000_0000
+ 60 │         reset-value 0x2000_0000
     ╰────
   help: Check the book for all the requirements
 
   error: Missing child node
-    ╭─[cases/device_definition_errors/input.kdl:53:14]
- 52 │     }
- 53 │     register foor2 {
+    ╭─[cases/device_definition_errors/input.kdl:54:14]
+ 53 │     }
+ 54 │     register foor2 {
     ·              ──┬──
     ·                ╰── This register is missing the required `fields` node
- 54 │         address
+ 55 │         address
     ╰────
   help: Check the book to see all required nodes
 
   error: Value out of range
-    ╭─[cases/device_definition_errors/input.kdl:63:16]
- 62 │         address -1
- 63 │         repeat count=18_446_744_073_709_551_616 stride=1
+    ╭─[cases/device_definition_errors/input.kdl:64:16]
+ 63 │         address -1
+ 64 │         repeat count=18_446_744_073_709_551_616 stride=1
     ·                ────────────────┬───────────────
     ·                                ╰── Value is out of the allowable range: 0..2^64
- 64 │         allow-address-overlap #true
+ 65 │         allow-address-overlap #true
     ╰────
   help: The count is encoded as a u64
 
   error: Unexpected entries
-    ╭─[cases/device_definition_errors/input.kdl:64:31]
- 63 │         repeat count=18_446_744_073_709_551_616 stride=1
- 64 │         allow-address-overlap #true
+    ╭─[cases/device_definition_errors/input.kdl:65:31]
+ 64 │         repeat count=18_446_744_073_709_551_616 stride=1
+ 65 │         allow-address-overlap #true
     ·                               ──┬──
     ·                                 ╰── This entry is unexpected
- 65 │         reset-value 0x100 0x00
+ 66 │         reset-value 0x100 0x00
     ╰────
   help: Some entries require a name, require to be anonymous or are expected to be of a certain type. Check the book
         to see the specification
         These entries may also just be superfluous. Try removing them or check other errors to see what's expected
 
   error: Value out of range
-    ╭─[cases/device_definition_errors/input.kdl:65:21]
- 64 │         allow-address-overlap #true
- 65 │         reset-value 0x100 0x00
+    ╭─[cases/device_definition_errors/input.kdl:66:21]
+ 65 │         allow-address-overlap #true
+ 66 │         reset-value 0x100 0x00
     ·                     ──┬──
     ·                       ╰── Value is out of the allowable range: 0..256
- 66 │     }
+ 67 │     }
     ╰────
   help: When specifying the reset values as an array, all numbers must be bytes
 
   error: Missing child node
-    ╭─[cases/device_definition_errors/input.kdl:61:14]
- 60 │     }
- 61 │     register foor3 {
+    ╭─[cases/device_definition_errors/input.kdl:62:14]
+ 61 │     }
+ 62 │     register foor3 {
     ·              ──┬──
     ·                ╰── This register is missing the required `fields` node
- 62 │         address -1
+ 63 │         address -1
     ╰────
   help: Check the book to see all required nodes
 
   error: Missing entry
-    ╭─[cases/device_definition_errors/input.kdl:69:9]
- 68 │         address 0
- 69 │         fields {
+    ╭─[cases/device_definition_errors/input.kdl:70:9]
+ 69 │         address 0
+ 70 │         fields {
     ·         ───┬──
     ·            ╰── This node should have one or more of these entries: `size-bits=<integer>`
- 70 │ 
+ 71 │ 
     ╰────
   help: Check the book for all the requirements
 
   error: Value out of range
-    ╭─[cases/device_definition_errors/input.kdl:75:16]
- 74 │         address 1
- 75 │         fields size-bits=-1 {
+    ╭─[cases/device_definition_errors/input.kdl:76:16]
+ 75 │         address 1
+ 76 │         fields size-bits=-1 {
     ·                ──────┬─────
     ·                      ╰── Value is out of the allowable range: 0..2^32
- 76 │ 
+ 77 │ 
     ╰────
   help: size-bits is encoded as a u32
 
   error: Duplicate entry
-    ╭─[cases/device_definition_errors/input.kdl:81:55]
- 80 │         address 2
- 81 │         fields size-bits=0x1_0000_0000 byte-order=BLA byte-order=BE bit-order=gkd bit-order=msb0 allow-bit-overlap allow-bit-overlap=#false {
+    ╭─[cases/device_definition_errors/input.kdl:82:55]
+ 81 │         address 2
+ 82 │         fields size-bits=0x1_0000_0000 byte-order=BLA byte-order=BE bit-order=gkd bit-order=msb0 allow-bit-overlap allow-bit-overlap=#false {
     ·                                        ───────┬────── ──────┬──────
     ·                                               │             ╰── The duplicate entry
     ·                                               ╰── The original entry
- 82 │ 
+ 83 │ 
     ╰────
   help: This type of entry can only appear once. Try removing one of the entries
 
   error: Duplicate entry
-    ╭─[cases/device_definition_errors/input.kdl:81:83]
- 80 │         address 2
- 81 │         fields size-bits=0x1_0000_0000 byte-order=BLA byte-order=BE bit-order=gkd bit-order=msb0 allow-bit-overlap allow-bit-overlap=#false {
+    ╭─[cases/device_definition_errors/input.kdl:82:83]
+ 81 │         address 2
+ 82 │         fields size-bits=0x1_0000_0000 byte-order=BLA byte-order=BE bit-order=gkd bit-order=msb0 allow-bit-overlap allow-bit-overlap=#false {
     ·                                                                     ──────┬────── ───────┬──────
     ·                                                                           │              ╰── The duplicate entry
     ·                                                                           ╰── The original entry
- 82 │ 
+ 83 │ 
     ╰────
   help: This type of entry can only appear once. Try removing one of the entries
 
   error: Duplicate entry
-    ╭─[cases/device_definition_errors/input.kdl:81:116]
- 80 │         address 2
- 81 │         fields size-bits=0x1_0000_0000 byte-order=BLA byte-order=BE bit-order=gkd bit-order=msb0 allow-bit-overlap allow-bit-overlap=#false {
+    ╭─[cases/device_definition_errors/input.kdl:82:116]
+ 81 │         address 2
+ 82 │         fields size-bits=0x1_0000_0000 byte-order=BLA byte-order=BE bit-order=gkd bit-order=msb0 allow-bit-overlap allow-bit-overlap=#false {
     ·                                                                                                  ────────┬──────── ────────────┬───────────
     ·                                                                                                          │                     ╰── The duplicate entry
     ·                                                                                                          ╰── The original entry
- 82 │ 
+ 83 │ 
     ╰────
   help: This type of entry can only appear once. Try removing one of the entries
 
   error: Value out of range
-    ╭─[cases/device_definition_errors/input.kdl:81:16]
- 80 │         address 2
- 81 │         fields size-bits=0x1_0000_0000 byte-order=BLA byte-order=BE bit-order=gkd bit-order=msb0 allow-bit-overlap allow-bit-overlap=#false {
+    ╭─[cases/device_definition_errors/input.kdl:82:16]
+ 81 │         address 2
+ 82 │         fields size-bits=0x1_0000_0000 byte-order=BLA byte-order=BE bit-order=gkd bit-order=msb0 allow-bit-overlap allow-bit-overlap=#false {
     ·                ───────────┬───────────
     ·                           ╰── Value is out of the allowable range: 0..2^32
- 82 │ 
+ 83 │ 
     ╰────
   help: size-bits is encoded as a u32
 
   error: Unexpected value
-    ╭─[cases/device_definition_errors/input.kdl:81:40]
- 80 │         address 2
- 81 │         fields size-bits=0x1_0000_0000 byte-order=BLA byte-order=BE bit-order=gkd bit-order=msb0 allow-bit-overlap allow-bit-overlap=#false {
+    ╭─[cases/device_definition_errors/input.kdl:82:40]
+ 81 │         address 2
+ 82 │         fields size-bits=0x1_0000_0000 byte-order=BLA byte-order=BE bit-order=gkd bit-order=msb0 allow-bit-overlap allow-bit-overlap=#false {
     ·                                        ───────┬──────
     ·                                               ╰── Expected one of these values: `LE`, `BE`
- 82 │ 
+ 83 │ 
     ╰────
 
   error: Unexpected value
-    ╭─[cases/device_definition_errors/input.kdl:81:69]
- 80 │         address 2
- 81 │         fields size-bits=0x1_0000_0000 byte-order=BLA byte-order=BE bit-order=gkd bit-order=msb0 allow-bit-overlap allow-bit-overlap=#false {
+    ╭─[cases/device_definition_errors/input.kdl:82:69]
+ 81 │         address 2
+ 82 │         fields size-bits=0x1_0000_0000 byte-order=BLA byte-order=BE bit-order=gkd bit-order=msb0 allow-bit-overlap allow-bit-overlap=#false {
     ·                                                                     ──────┬──────
     ·                                                                           ╰── Expected one of these values: `LSB0`, `MSB0`
- 82 │ 
+ 83 │ 
     ╰────
 
   error: Value out of range
-    ╭─[cases/device_definition_errors/input.kdl:87:16]
- 86 │         address 3
- 87 │         fields size-bits=0x1_0000_0000 byte-order=1 bit-order=#true allow-bit-overlap  {
+    ╭─[cases/device_definition_errors/input.kdl:88:16]
+ 87 │         address 3
+ 88 │         fields size-bits=0x1_0000_0000 byte-order=1 bit-order=#true allow-bit-overlap  {
     ·                ───────────┬───────────
     ·                           ╰── Value is out of the allowable range: 0..2^32
- 88 │ 
+ 89 │ 
     ╰────
   help: size-bits is encoded as a u32
 
   error: Unexpected type
-    ╭─[cases/device_definition_errors/input.kdl:87:40]
- 86 │         address 3
- 87 │         fields size-bits=0x1_0000_0000 byte-order=1 bit-order=#true allow-bit-overlap  {
+    ╭─[cases/device_definition_errors/input.kdl:88:40]
+ 87 │         address 3
+ 88 │         fields size-bits=0x1_0000_0000 byte-order=1 bit-order=#true allow-bit-overlap  {
     ·                                        ──────┬─────
     ·                                              ╰── Unexpected type: expected a string
- 88 │ 
+ 89 │ 
     ╰────
 
   error: Unexpected type
-    ╭─[cases/device_definition_errors/input.kdl:87:53]
- 86 │         address 3
- 87 │         fields size-bits=0x1_0000_0000 byte-order=1 bit-order=#true allow-bit-overlap  {
+    ╭─[cases/device_definition_errors/input.kdl:88:53]
+ 87 │         address 3
+ 88 │         fields size-bits=0x1_0000_0000 byte-order=1 bit-order=#true allow-bit-overlap  {
     ·                                                     ───────┬───────
     ·                                                            ╰── Unexpected type: expected a string
- 88 │ 
+ 89 │ 
     ╰────
 
   error: Duplicate entry
-    ╭─[cases/device_definition_errors/input.kdl:96:20]
- 95 │         fields CustomFieldSetName size-bits=8 {
- 96 │             bar RW RO
+    ╭─[cases/device_definition_errors/input.kdl:97:20]
+ 96 │         fields CustomFieldSetName size-bits=8 {
+ 97 │             bar RW RO
     ·                 ─┬ ─┬
     ·                  │  ╰── The duplicate entry
     ·                  ╰── The original entry
- 97 │             bar @a @-1:8 @3 @3:0
+ 98 │             bar @a @-1:8 @3 @3:0
     ╰────
   help: This type of entry can only appear once. Try removing one of the entries
 
   error: Missing entry
-    ╭─[cases/device_definition_errors/input.kdl:96:13]
- 95 │         fields CustomFieldSetName size-bits=8 {
- 96 │             bar RW RO
+    ╭─[cases/device_definition_errors/input.kdl:97:13]
+ 96 │         fields CustomFieldSetName size-bits=8 {
+ 97 │             bar RW RO
     ·             ─┬─
     ·              ╰── This node should have one or more of these entries: `address ("@<u32>:<u32>")`
- 97 │             bar @a @-1:8 @3 @3:0
+ 98 │             bar @a @-1:8 @3 @3:0
     ╰────
   help: Check the book for all the requirements
 
   error: Bad format
-    ╭─[cases/device_definition_errors/input.kdl:97:17]
- 96 │             bar RW RO
- 97 │             bar @a @-1:8 @3 @3:0
+    ╭─[cases/device_definition_errors/input.kdl:98:17]
+ 97 │             bar RW RO
+ 98 │             bar @a @-1:8 @3 @3:0
     ·                 ─┬
     ·                  ╰── Value could not be parsed correctly. Use the following format: `@<u32>`
- 98 │             baz @7:4 blah
+ 99 │             baz @7:4 blah
     ╰────
   help: An example: `@10`
 
   error: Bad format
-    ╭─[cases/device_definition_errors/input.kdl:97:20]
- 96 │             bar RW RO
- 97 │             bar @a @-1:8 @3 @3:0
+    ╭─[cases/device_definition_errors/input.kdl:98:20]
+ 97 │             bar RW RO
+ 98 │             bar @a @-1:8 @3 @3:0
     ·                    ──┬──
     ·                      ╰── Value could not be parsed correctly. Use the following format: `@<u32>:<u32>`
- 98 │             baz @7:4 blah
+ 99 │             baz @7:4 blah
     ╰────
   help: An example: `@7:0`
 
   error: Duplicate entry
-    ╭─[cases/device_definition_errors/input.kdl:97:29]
- 96 │             bar RW RO
- 97 │             bar @a @-1:8 @3 @3:0
+    ╭─[cases/device_definition_errors/input.kdl:98:29]
+ 97 │             bar RW RO
+ 98 │             bar @a @-1:8 @3 @3:0
     ·                          ─┬ ──┬─
     ·                           │   ╰── The duplicate entry
     ·                           ╰── The original entry
- 98 │             baz @7:4 blah
+ 99 │             baz @7:4 blah
     ╰────
   help: This type of entry can only appear once. Try removing one of the entries
 
   error: Unexpected value
-    ╭─[cases/device_definition_errors/input.kdl:98:22]
- 97 │             bar @a @-1:8 @3 @3:0
- 98 │             baz @7:4 blah
-    ·                      ──┬─
-    ·                        ╰── Expected one of these values: `@<u32>`, `@<u32>:<u32>`, `RW`, `RO`, `WO`
- 99 │         }
-    ╰────
+     ╭─[cases/device_definition_errors/input.kdl:99:22]
+  98 │             bar @a @-1:8 @3 @3:0
+  99 │             baz @7:4 blah
+     ·                      ──┬─
+     ·                        ╰── Expected one of these values: `@<u32>`, `@<u32>:<u32>`, `RW`, `RO`, `WO`
+ 100 │         }
+     ╰────
 
   error: Unexpected value
-     ╭─[cases/device_definition_errors/input.kdl:106:14]
- 105 │             (uint)baz @2:1
- 106 │             (i16a)quux @4:3
+     ╭─[cases/device_definition_errors/input.kdl:107:14]
+ 106 │             (uint)baz @2:1
+ 107 │             (i16a)quux @4:3
      ·              ──┬─
      ·                ╰── Expected one of these values: `bool`, `uint`, `int`, `u8`, `u16`, `u32`, `u64`, `i8`, `i16`, `i32`, `i64`, `<base>:<target>`, `<base>:<target>?`
- 107 │             (i32:e3?)qus @6:5
+ 108 │             (i32:e3?)qus @6:5
      ╰────
 
   error: Inline enum definition without name
-     ╭─[cases/device_definition_errors/input.kdl:120:13]
- 119 │             }
- 120 │             baz @3:2 {
+     ╭─[cases/device_definition_errors/input.kdl:121:13]
+ 120 │             }
+ 121 │             baz @3:2 {
      ·             ─┬─
      ·              ╰── Add conversion type specification to this field
- 121 │ 
+ 122 │ 
      ╰────
   help: An inline enum definition is only possible when a conversion is specified, for example: `(uint:EnumName)`
 
   error: Inline enum definition without name
-     ╭─[cases/device_definition_errors/input.kdl:123:14]
- 122 │             }
- 123 │             (uint)bam @5:4 {
+     ╭─[cases/device_definition_errors/input.kdl:124:14]
+ 123 │             }
+ 124 │             (uint)bam @5:4 {
      ·              ──┬─ ─┬─
      ·                │   ╰── Add conversion type specification to this field
      ·                ╰── A type specifier already exists, but misses the conversion
- 124 │ 
+ 125 │ 
      ╰────
   help: An inline enum definition is only possible when a conversion is specified, for example: `(uint:EnumName)`
 
   error: Unexpected value
-     ╭─[cases/device_definition_errors/input.kdl:128:19]
- 127 │                 A
- 128 │                 B 1.0
+     ╭─[cases/device_definition_errors/input.kdl:129:19]
+ 128 │                 A
+ 129 │                 B 1.0
      ·                   ─┬─
      ·                    ╰── Expected one of these values: ``, `<integer>`, `default`, `catch-all`
- 129 │                 C value
+ 130 │                 C value
      ╰────
 
   error: Unexpected value
-     ╭─[cases/device_definition_errors/input.kdl:129:19]
- 128 │                 B 1.0
- 129 │                 C value
+     ╭─[cases/device_definition_errors/input.kdl:130:19]
+ 129 │                 B 1.0
+ 130 │                 C value
      ·                   ──┬──
      ·                     ╰── Expected one of these values: ``, `<integer>`, `default`, `catch-all`
- 130 │                 D #null 2
+ 131 │                 D #null 2
      ╰────
 
   error: Unexpected entries
-     ╭─[cases/device_definition_errors/input.kdl:130:25]
- 129 │                 C value
- 130 │                 D #null 2
+     ╭─[cases/device_definition_errors/input.kdl:131:25]
+ 130 │                 C value
+ 131 │                 D #null 2
      ·                         ┬
      ·                         ╰── This entry is unexpected
- 131 │             }
+ 132 │             }
      ╰────
   help: Some entries require a name, require to be anonymous or are expected to be of a certain type. Check the book
         to see the specification
         These entries may also just be superfluous. Try removing them or check other errors to see what's expected
 
   error: Unexpected value
-     ╭─[cases/device_definition_errors/input.kdl:130:19]
- 129 │                 C value
- 130 │                 D #null 2
+     ╭─[cases/device_definition_errors/input.kdl:131:19]
+ 130 │                 C value
+ 131 │                 D #null 2
      ·                   ──┬──
      ·                     ╰── Expected one of these values: ``, `<integer>`, `default`, `catch-all`
- 131 │             }
+ 132 │             }
      ╰────
 
   error: Missing object name
-     ╭─[cases/device_definition_errors/input.kdl:134:5]
- 133 │     }
- 134 │     command {
+     ╭─[cases/device_definition_errors/input.kdl:135:5]
+ 134 │     }
+ 135 │     command {
      ·     ───┬───
      ·        ╰── For this object
- 135 │ 
+ 136 │ 
      ╰────
   help: The name is specified by the first entry of the node. It must be an anonymous string, e.g. `command Foo { }`
 
   error: Missing child node
-     ╭─[cases/device_definition_errors/input.kdl:134:5]
- 133 │     }
- 134 │     command {
+     ╭─[cases/device_definition_errors/input.kdl:135:5]
+ 134 │     }
+ 135 │     command {
      ·     ───┬───
      ·        ╰── This command is missing the required `address` node
- 135 │ 
+ 136 │ 
      ╰────
   help: Check the book to see all required nodes
 
   error: Missing child node
-     ╭─[cases/device_definition_errors/input.kdl:137:13]
- 136 │     }
- 137 │     command fooc0 {
+     ╭─[cases/device_definition_errors/input.kdl:138:13]
+ 137 │     }
+ 138 │     command fooc0 {
      ·             ──┬──
      ·               ╰── This command is missing the required `address` node
- 138 │ 
+ 139 │ 
      ╰────
   help: Check the book to see all required nodes
 
   error: Missing entry
-     ╭─[cases/device_definition_errors/input.kdl:142:9]
- 141 │         address 0
- 142 │         repeat
+     ╭─[cases/device_definition_errors/input.kdl:143:9]
+ 142 │         address 0
+ 143 │         repeat
      ·         ───┬──
      ·            ╰── This node should have one or more of these entries: `count=<integer>`, `with=<string>`, `stride=<integer>`
- 143 │         blah
+ 144 │         blah
      ╰────
   help: Check the book for all the requirements
 
   error: Unexpected node
-     ╭─[cases/device_definition_errors/input.kdl:143:9]
- 142 │         repeat
- 143 │         blah
+     ╭─[cases/device_definition_errors/input.kdl:144:9]
+ 143 │         repeat
+ 144 │         blah
      ·         ──┬─
      ·           ╰── The unexpected node
- 144 │         in {
+ 145 │         in {
      ╰────
   help: Expected a node with one of these names: `allow-address-overlap`, `address`, `repeat`, `in`, `out`
 
   error: Missing entry
-     ╭─[cases/device_definition_errors/input.kdl:144:9]
- 143 │         blah
- 144 │         in {
+     ╭─[cases/device_definition_errors/input.kdl:145:9]
+ 144 │         blah
+ 145 │         in {
      ·         ─┬
      ·          ╰── This node should have one or more of these entries: `size-bits=<integer>`
- 145 │ 
+ 146 │ 
      ╰────
   help: Check the book for all the requirements
 
   error: Address specified in wrong order
-     ╭─[cases/device_definition_errors/input.kdl:149:15]
- 148 │             b @0
- 149 │             c @1:2
+     ╭─[cases/device_definition_errors/input.kdl:150:15]
+ 149 │             b @0
+ 150 │             c @1:2
      ·               ──┬─
      ·                 ╰── Wrong order, try to change to `@2:1`
- 150 │         }
+ 151 │         }
      ╰────
   help: Addresses are specified with the high bit first and the low bit last
 
   error: Missing entry
-     ╭─[cases/device_definition_errors/input.kdl:149:13]
- 148 │             b @0
- 149 │             c @1:2
+     ╭─[cases/device_definition_errors/input.kdl:150:13]
+ 149 │             b @0
+ 150 │             c @1:2
      ·             ┬
      ·             ╰── This node should have one or more of these entries: `address ("@<u32>:<u32>")`
- 150 │         }
+ 151 │         }
      ╰────
   help: Check the book for all the requirements
 
   error: Missing object name
-     ╭─[cases/device_definition_errors/input.kdl:152:5]
- 151 │     }
- 152 │     buffer {
+     ╭─[cases/device_definition_errors/input.kdl:153:5]
+ 152 │     }
+ 153 │     buffer {
      ·     ───┬──
      ·        ╰── For this object
- 153 │ 
+ 154 │ 
      ╰────
   help: The name is specified by the first entry of the node. It must be an anonymous string, e.g. `buffer Foo { }`
 
   error: Missing child node
-     ╭─[cases/device_definition_errors/input.kdl:152:5]
- 151 │     }
- 152 │     buffer {
+     ╭─[cases/device_definition_errors/input.kdl:153:5]
+ 152 │     }
+ 153 │     buffer {
      ·     ───┬──
      ·        ╰── This register is missing the required `address` node
- 153 │ 
+ 154 │ 
      ╰────
   help: Check the book to see all required nodes
 
   error: Missing child node
-     ╭─[cases/device_definition_errors/input.kdl:155:12]
- 154 │     }
- 155 │     buffer foob0 {
+     ╭─[cases/device_definition_errors/input.kdl:156:12]
+ 155 │     }
+ 156 │     buffer foob0 {
      ·            ──┬──
      ·              ╰── This register is missing the required `address` node
- 156 │ 
+ 157 │ 
      ╰────
   help: Check the book to see all required nodes
 
   error: Unexpected node
-     ╭─[cases/device_definition_errors/input.kdl:160:9]
- 159 │         address 0
- 160 │         addressssss 500
+     ╭─[cases/device_definition_errors/input.kdl:161:9]
+ 160 │         address 0
+ 161 │         addressssss 500
      ·         ─────┬─────
      ·              ╰── The unexpected node
- 161 │         address 1
+ 162 │         address 1
      ╰────
   help: Expected a node with one of these names: `access`, `address`
 
   error: Duplicate node
-     ╭─[cases/device_definition_errors/input.kdl:161:9]
- 158 │     buffer foob1 {
- 159 │         address 0
+     ╭─[cases/device_definition_errors/input.kdl:162:9]
+ 159 │     buffer foob1 {
+ 160 │         address 0
      ·         ───┬───
      ·            ╰── The original node
- 160 │         addressssss 500
- 161 │         address 1
+ 161 │         addressssss 500
+ 162 │         address 1
      ·         ───┬───
      ·            ╰── The duplicate node
- 162 │     }
+ 163 │     }
      ╰────
   help: This type of node can only appear once. Try removing one of the nodes
 
   error: Unexpected value
-     ╭─[cases/device_definition_errors/input.kdl:165:16]
- 164 │         address 2
- 165 │         access BLAH
+     ╭─[cases/device_definition_errors/input.kdl:166:16]
+ 165 │         address 2
+ 166 │         access BLAH
      ·                ──┬─
      ·                  ╰── Expected one of these values: `RW`, `RO`, `WO`
- 166 │         access RO
+ 167 │         access RO
      ╰────
 
   error: Missing object name
-     ╭─[cases/device_definition_errors/input.kdl:168:5]
- 167 │     }
- 168 │     block
+     ╭─[cases/device_definition_errors/input.kdl:169:5]
+ 168 │     }
+ 169 │     block
      ·     ──┬──
      ·       ╰── For this object
- 169 │     /// This is a block
+ 170 │     /// This is a block
      ╰────
   help: The name is specified by the first entry of the node. It must be an anonymous string, e.g. `block Foo { }`
 
   error: Unexpected node
-     ╭─[cases/device_definition_errors/input.kdl:171:9]
- 170 │     block b1 {
- 171 │         foo
+     ╭─[cases/device_definition_errors/input.kdl:172:9]
+ 171 │     block b1 {
+ 172 │         foo
      ·         ─┬─
      ·          ╰── The unexpected node
- 172 │         offset d
+ 173 │         offset d
      ╰────
   help: Expected a node with one of these names: `offset`, `repeat`, `block`, `register`, `command`, `buffer`,
         `fieldset`, `enum`, `extern`
 
   error: Unexpected type
-     ╭─[cases/device_definition_errors/input.kdl:172:16]
- 171 │         foo
- 172 │         offset d
+     ╭─[cases/device_definition_errors/input.kdl:173:16]
+ 172 │         foo
+ 173 │         offset d
      ·                ┬
      ·                ╰── Unexpected type: expected a integer
- 173 │         offset 5
+ 174 │         offset 5
      ╰────
 
   error: Duplicate node
-     ╭─[cases/device_definition_errors/input.kdl:174:9]
- 172 │         offset d
- 173 │         offset 5
+     ╭─[cases/device_definition_errors/input.kdl:175:9]
+ 173 │         offset d
+ 174 │         offset 5
      ·         ───┬──
      ·            ╰── The original node
- 174 │         offset 20
+ 175 │         offset 20
      ·         ───┬──
      ·            ╰── The duplicate node
- 175 │     }
+ 176 │     }
      ╰────
   help: This type of node can only appear once. Try removing one of the nodes
 
   error: Missing entry
-     ╭─[cases/device_definition_errors/input.kdl:177:9]
- 176 │     block b2 {
- 177 │         repeat
+     ╭─[cases/device_definition_errors/input.kdl:178:9]
+ 177 │     block b2 {
+ 178 │         repeat
      ·         ───┬──
      ·            ╰── This node should have one or more of these entries: `count=<integer>`, `with=<string>`, `stride=<integer>`
- 178 │         repeat count=2 stride=4
+ 179 │         repeat count=2 stride=4
      ╰────
   help: Check the book for all the requirements
 
   error: Missing object name
-     ╭─[cases/device_definition_errors/input.kdl:184:5]
- 183 │     }
- 184 │     fieldset
+     ╭─[cases/device_definition_errors/input.kdl:185:5]
+ 184 │     }
+ 185 │     fieldset
      ·     ────┬───
      ·         ╰── For this object
- 185 │     fieldset fs1 size-bits=16 byte-order=LE {
+ 186 │     fieldset fs1 size-bits=16 byte-order=LE {
      ╰────
   help: The name is specified by the first entry of the node. It must be an anonymous string, e.g. `fieldset Foo { }`
 
   error: Missing entry
-     ╭─[cases/device_definition_errors/input.kdl:184:5]
- 183 │     }
- 184 │     fieldset
+     ╭─[cases/device_definition_errors/input.kdl:185:5]
+ 184 │     }
+ 185 │     fieldset
      ·     ────┬───
      ·         ╰── This node should have one or more of these entries: `size-bits=<integer>`
- 185 │     fieldset fs1 size-bits=16 byte-order=LE {
+ 186 │     fieldset fs1 size-bits=16 byte-order=LE {
      ╰────
   help: Check the book for all the requirements
 
   error: Missing object name
-     ╭─[cases/device_definition_errors/input.kdl:188:5]
- 187 │     }
- 188 │     enum
+     ╭─[cases/device_definition_errors/input.kdl:189:5]
+ 188 │     }
+ 189 │     enum
      ·     ──┬─
      ·       ╰── For this object
- 189 │     enum e1 {
+ 190 │     enum e1 {
      ╰────
   help: The name is specified by the first entry of the node. It must be an anonymous string, e.g. `enum Foo { }`
 
   error: Unexpected value
-     ╭─[cases/device_definition_errors/input.kdl:191:11]
- 190 │         A
- 191 │         B 1.0
+     ╭─[cases/device_definition_errors/input.kdl:192:11]
+ 191 │         A
+ 192 │         B 1.0
      ·           ─┬─
      ·            ╰── Expected one of these values: ``, `<integer>`, `default`, `catch-all`
- 192 │         C value
+ 193 │         C value
      ╰────
 
   error: Unexpected value
-     ╭─[cases/device_definition_errors/input.kdl:192:11]
- 191 │         B 1.0
- 192 │         C value
+     ╭─[cases/device_definition_errors/input.kdl:193:11]
+ 192 │         B 1.0
+ 193 │         C value
      ·           ──┬──
      ·             ╰── Expected one of these values: ``, `<integer>`, `default`, `catch-all`
- 193 │         D #null 2
+ 194 │         D #null 2
      ╰────
 
   error: Unexpected entries
-     ╭─[cases/device_definition_errors/input.kdl:193:17]
- 192 │         C value
- 193 │         D #null 2
+     ╭─[cases/device_definition_errors/input.kdl:194:17]
+ 193 │         C value
+ 194 │         D #null 2
      ·                 ┬
      ·                 ╰── This entry is unexpected
- 194 │     }
+ 195 │     }
      ╰────
   help: Some entries require a name, require to be anonymous or are expected to be of a certain type. Check the book
         to see the specification
         These entries may also just be superfluous. Try removing them or check other errors to see what's expected
 
   error: Unexpected value
-     ╭─[cases/device_definition_errors/input.kdl:193:11]
- 192 │         C value
- 193 │         D #null 2
+     ╭─[cases/device_definition_errors/input.kdl:194:11]
+ 193 │         C value
+ 194 │         D #null 2
      ·           ──┬──
      ·             ╰── Expected one of these values: ``, `<integer>`, `default`, `catch-all`
- 194 │     }
+ 195 │     }
      ╰────
 
   error: Missing object name
-     ╭─[cases/device_definition_errors/input.kdl:205:5]
- 204 │     }
- 205 │     extern
+     ╭─[cases/device_definition_errors/input.kdl:206:5]
+ 205 │     }
+ 206 │     extern
      ·     ───┬──
      ·        ╰── For this object
- 206 │     (i16:something?)extern etype1 a
+ 207 │     (i16:something?)extern etype1 a
      ╰────
   help: The name is specified by the first entry of the node. It must be an anonymous string, e.g. `extern Foo { }`
 
   error: Only base type allowed
-     ╭─[cases/device_definition_errors/input.kdl:206:6]
- 205 │     extern
- 206 │     (i16:something?)extern etype1 a
+     ╭─[cases/device_definition_errors/input.kdl:207:6]
+ 206 │     extern
+ 207 │     (i16:something?)extern etype1 a
      ·      ───────┬──────
      ·             ╰── Type specifier contains conversion
- 207 │     /// Some docs over here!
+ 208 │     /// Some docs over here!
      ╰────
   help: This object doesn't support the conversion syntax. Just specify the base type and remove the `:something?`
 
   error: Unexpected entries
-     ╭─[cases/device_definition_errors/input.kdl:206:35]
- 205 │     extern
- 206 │     (i16:something?)extern etype1 a
+     ╭─[cases/device_definition_errors/input.kdl:207:35]
+ 206 │     extern
+ 207 │     (i16:something?)extern etype1 a
      ·                                   ┬
      ·                                   ╰── This entry was expected to have a name (and not be anonymous)
- 207 │     /// Some docs over here!
+ 208 │     /// Some docs over here!
      ╰────
   help: Some entries require a name, require to be anonymous or are expected to be of a certain type. Check the book
         to see the specification
         These entries may also just be superfluous. Try removing them or check other errors to see what's expected
 
   error: Missing entry
-     ╭─[cases/device_definition_errors/input.kdl:215:9]
- 214 │     fieldset fs3 size-bits=32 byte-order=LE {
- 215 │         val0 @1:0 with=e3
+     ╭─[cases/device_definition_errors/input.kdl:216:9]
+ 215 │     fieldset fs3 size-bits=32 byte-order=LE {
+ 216 │         val0 @1:0 with=e3
      ·         ──┬─
      ·           ╰── This node should have one or more of these entries: `stride=<integer>`
- 216 │         val1 @3:2 with=e3 stride=2
+ 217 │         val1 @3:2 with=e3 stride=2
      ╰────
   help: Check the book for all the requirements
 
   error: Missing entry
-     ╭─[cases/device_definition_errors/input.kdl:218:9]
- 217 │         val2 @7:6 count=4 stride=2
- 218 │         val3 @15:14 stride=0
+     ╭─[cases/device_definition_errors/input.kdl:219:9]
+ 218 │         val2 @7:6 count=4 stride=2
+ 219 │         val3 @15:14 stride=0
      ·         ──┬─
      ·           ╰── This node should have one or more of these entries: `count=<integer>`, `with=<string>`
- 219 │     }
+ 220 │     }
      ╰────
   help: Check the book for all the requirements
 
   error: Value out of range
-     ╭─[cases/device_definition_errors/input.kdl:218:21]
- 217 │         val2 @7:6 count=4 stride=2
- 218 │         val3 @15:14 stride=0
+     ╭─[cases/device_definition_errors/input.kdl:219:21]
+ 218 │         val2 @7:6 count=4 stride=2
+ 219 │         val3 @15:14 stride=0
      ·                     ────┬───
      ·                         ╰── Value is out of the allowable range: any non-0 number
- 219 │     }
+ 220 │     }
      ╰────
   help: The stride must not be 0
 

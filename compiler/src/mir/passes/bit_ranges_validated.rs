@@ -140,6 +140,7 @@ mod tests {
     #[test]
     fn max_len_exceeded() {
         let mut start_mir = Device {
+            description: String::new(),
             name: "Device".into(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
@@ -158,6 +159,7 @@ mod tests {
         run_pass(&mut start_mir).unwrap();
 
         let mut start_mir = Device {
+            description: String::new(),
             name: "Device".into(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
@@ -179,6 +181,7 @@ mod tests {
         );
 
         let mut start_mir = Device {
+            description: String::new(),
             name: "Device".into(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
@@ -197,6 +200,7 @@ mod tests {
         run_pass(&mut start_mir).unwrap();
 
         let mut start_mir = Device {
+            description: String::new(),
             name: "Device".into(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
@@ -218,6 +222,7 @@ mod tests {
         );
 
         let mut start_mir = Device {
+            description: String::new(),
             name: "Device".into(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
@@ -236,6 +241,7 @@ mod tests {
         run_pass(&mut start_mir).unwrap();
 
         let mut start_mir = Device {
+            description: String::new(),
             name: "Device".into(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
@@ -257,6 +263,7 @@ mod tests {
         );
 
         let mut start_mir = Device {
+            description: String::new(),
             name: "Device".into(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
@@ -285,6 +292,7 @@ mod tests {
     #[test]
     fn overlap() {
         let mut start_mir = Device {
+            description: String::new(),
             name: "Device".into(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
@@ -310,6 +318,7 @@ mod tests {
         run_pass(&mut start_mir).unwrap();
 
         let mut start_mir = Device {
+            description: String::new(),
             name: "Device".into(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
@@ -336,6 +345,7 @@ mod tests {
         run_pass(&mut start_mir).unwrap();
 
         let mut start_mir = Device {
+            description: String::new(),
             name: "Device".into(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
@@ -364,6 +374,7 @@ mod tests {
         );
 
         let mut start_mir = Device {
+            description: String::new(),
             name: "Device".into(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {

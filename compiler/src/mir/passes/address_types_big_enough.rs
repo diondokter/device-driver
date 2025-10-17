@@ -75,6 +75,7 @@ mod tests {
     #[test]
     fn not_too_low() {
         let mut start_mir = Device {
+            description: String::new(),
             name: "Device".into(),
             device_config: DeviceConfig {
                 register_address_type: Some(Integer::I8),
@@ -97,6 +98,7 @@ mod tests {
     #[test]
     fn not_too_high() {
         let mut start_mir = Device {
+            description: String::new(),
             name: "Device".into(),
             device_config: DeviceConfig {
                 command_address_type: Some(Integer::U16),

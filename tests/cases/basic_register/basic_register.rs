@@ -9,6 +9,8 @@ device-driver = { path="../../../device-driver", default-features=false }
 #![allow(unexpected_cfgs)]
 fn main() {}
 
+/// This is the testing device
+///
 /// Root block of the Device driver
 #[derive(Debug)]
 pub struct Device<I> {
