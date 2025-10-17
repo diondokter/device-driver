@@ -2,7 +2,7 @@ use itertools::Itertools;
 use miette::{Diagnostic, SourceSpan};
 use thiserror::Error;
 
-use crate::{mir::FieldConversion, reporting::NamedSourceCode};
+use crate::mir::FieldConversion;
 
 #[derive(Error, Debug, Diagnostic)]
 #[error("Missing object name")]
@@ -13,8 +13,6 @@ use crate::{mir::FieldConversion, reporting::NamedSourceCode};
     severity(Error)
 )]
 pub struct MissingObjectName {
-    #[source_code]
-    pub source_code: NamedSourceCode,
     #[label("For this object")]
     pub object_keyword: SourceSpan,
     #[label("Found this entry instead which is not a valid name")]
@@ -32,8 +30,6 @@ These entries may also just be superfluous. Try removing them or check other err
     severity(Error)
 )]
 pub struct UnexpectedEntries {
-    #[source_code]
-    pub source_code: NamedSourceCode,
     #[label(collection, "This entry is unexpected")]
     pub superfluous_entries: Vec<SourceSpan>,
     #[label(collection, "This entry has a name that's unexpected")]
@@ -63,8 +59,6 @@ impl UnexpectedEntries {
     severity(Error)
 )]
 pub struct UnexpectedNode {
-    #[source_code]
-    pub source_code: NamedSourceCode,
     #[label("The unexpected node")]
     pub node_name: SourceSpan,
 
@@ -84,8 +78,6 @@ impl UnexpectedNode {
 #[error("Unexpected type")]
 #[diagnostic(severity(Error))]
 pub struct UnexpectedType {
-    #[source_code]
-    pub source_code: NamedSourceCode,
     #[label("Unexpected type: expected a {}", self.expected_type)]
     pub value_name: SourceSpan,
 
@@ -96,8 +88,6 @@ pub struct UnexpectedType {
 #[error("Unexpected value")]
 #[diagnostic(severity(Error))]
 pub struct UnexpectedValue {
-    #[source_code]
-    pub source_code: NamedSourceCode,
     #[label("Expected one of these values: {}", self.print_expected_values())]
     pub value_name: SourceSpan,
 
@@ -120,8 +110,6 @@ impl UnexpectedValue {
     severity(Error)
 )]
 pub struct BadValueFormat {
-    #[source_code]
-    pub source_code: NamedSourceCode,
     #[label("Value could not be parsed correctly. Use the following format: `{}`", self.expected_format)]
     pub span: SourceSpan,
 
@@ -133,8 +121,6 @@ pub struct BadValueFormat {
 #[error("Value out of range")]
 #[diagnostic(severity(Error))]
 pub struct ValueOutOfRange {
-    #[source_code]
-    pub source_code: NamedSourceCode,
     #[label("Value is out of the allowable range: {}", self.range)]
     pub value: SourceSpan,
     #[help]
@@ -146,8 +132,6 @@ pub struct ValueOutOfRange {
 #[error("Missing entry")]
 #[diagnostic(help("Check the book for all the requirements"), severity(Error))]
 pub struct MissingEntry {
-    #[source_code]
-    pub source_code: NamedSourceCode,
     #[label("This node should have one or more of these entries: {}", self.print_expected_entries())]
     pub node_name: SourceSpan,
 
@@ -169,8 +153,6 @@ impl MissingEntry {
     severity(Error)
 )]
 pub struct DuplicateNode {
-    #[source_code]
-    pub source_code: NamedSourceCode,
     #[label(primary, "The duplicate node")]
     pub duplicate: SourceSpan,
     #[label("The original node")]
@@ -184,8 +166,6 @@ pub struct DuplicateNode {
     severity(Error)
 )]
 pub struct DuplicateEntry {
-    #[source_code]
-    pub source_code: NamedSourceCode,
     #[label(primary, "The duplicate entry")]
     pub duplicate: SourceSpan,
     #[label("The original entry")]
@@ -199,8 +179,6 @@ pub struct DuplicateEntry {
     severity(Warning)
 )]
 pub struct EmptyNode {
-    #[source_code]
-    pub source_code: NamedSourceCode,
     #[label("The empty node")]
     pub node: SourceSpan,
 }
@@ -209,8 +187,6 @@ pub struct EmptyNode {
 #[error("Missing child node")]
 #[diagnostic(help("Check the book to see all required nodes"), severity(Error))]
 pub struct MissingChildNode {
-    #[source_code]
-    pub source_code: NamedSourceCode,
     #[label("This {} is missing the required `{}` node", self.node_type.unwrap_or("node"), self.missing_node_type)]
     pub node: SourceSpan,
 
@@ -227,8 +203,6 @@ pub struct MissingChildNode {
     severity(Error)
 )]
 pub struct InlineEnumDefinitionWithoutName {
-    #[source_code]
-    pub source_code: NamedSourceCode,
     #[label("Add conversion type specification to this field")]
     pub field_name: SourceSpan,
     #[label("A type specifier already exists, but misses the conversion")]
@@ -245,8 +219,6 @@ pub struct InlineEnumDefinitionWithoutName {
     severity(Error)
 )]
 pub struct OnlyBaseTypeAllowed {
-    #[source_code]
-    pub source_code: NamedSourceCode,
     #[label("Type specifier contains conversion")]
     pub existing_ty: SourceSpan,
     pub field_conversion: FieldConversion,
@@ -273,8 +245,6 @@ impl OnlyBaseTypeAllowed {
     severity(Error)
 )]
 pub struct AddressWrongOrder {
-    #[source_code]
-    pub source_code: NamedSourceCode,
     #[label("Wrong order, try to change to `@{}:{}`", self.start, self.end)]
     pub address_entry: SourceSpan,
     pub end: u32,
@@ -285,8 +255,6 @@ pub struct AddressWrongOrder {
 #[error("No children were expected for this node")]
 #[diagnostic(severity(Error))]
 pub struct NoChildrenExpected {
-    #[source_code]
-    pub source_code: NamedSourceCode,
     #[label("Try removing these child nodes")]
     pub children: SourceSpan,
 }
@@ -300,10 +268,17 @@ pub struct NoChildrenExpected {
     severity(Error)
 )]
 pub struct RepeatOverSpecified {
-    #[source_code]
-    pub source_code: NamedSourceCode,
     #[label("This repeat has a count")]
     pub count: SourceSpan,
     #[label("This repeat also has a with")]
     pub with: SourceSpan,
+}
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Field size is too big")]
+#[diagnostic(severity(Error))]
+pub struct FieldSizeTooBig {
+    #[label("{} bits is too big for any of the supported integers", self.size_bits)]
+    pub field_address: SourceSpan,
+    pub size_bits: u32,
 }

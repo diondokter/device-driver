@@ -1,4 +1,7 @@
-use crate::mir::{Device, Manifest, RepeatSource};
+use crate::{
+    mir::{Device, Manifest, RepeatSource},
+    reporting::Diagnostics,
+};
 
 use super::{Object, Repeat};
 
@@ -18,9 +21,9 @@ pub mod names_unique;
 pub mod repeat_with_enums_checked;
 pub mod reset_values_converted;
 
-pub fn run_passes(manifest: &mut Manifest) -> miette::Result<()> {
-    bit_order_specified::run_pass(manifest)?;
-    base_types_specified::run_pass(manifest)?;
+pub fn run_passes(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> miette::Result<()> {
+    bit_order_specified::run_pass(manifest);
+    base_types_specified::run_pass(manifest, diagnostics);
     device_name_is_pascal::run_pass(manifest)?;
     names_normalized::run_pass(manifest)?;
     names_unique::run_pass(manifest)?;

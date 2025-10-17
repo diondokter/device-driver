@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::Path, str::FromStr};
+use std::{collections::HashMap, str::FromStr};
 
 use itertools::Itertools;
 use kdl::{KdlDocument, KdlIdentifier, KdlNode, KdlValue};
@@ -12,7 +12,7 @@ use crate::{
         Manifest, Object, Register, Repeat, ResetValue,
     },
     reporting::{
-        self, Diagnostics, NamedSourceCode,
+        self, Diagnostics,
         errors::{self, UnexpectedEntries},
     },
 };
@@ -20,11 +20,8 @@ use crate::{
 pub fn transform(
     file_contents: &str,
     source_span: Option<SourceSpan>,
-    file_path: &Path,
     diagnostics: &mut Diagnostics,
 ) -> Manifest {
-    let source_code = NamedSourceCode::new(file_path.display().to_string(), file_contents.into());
-
     let file_subslice = if let Some(span) = source_span {
         file_contents
             .get(span.offset()..span.offset() + span.len())
@@ -39,7 +36,6 @@ pub fn transform(
             for diagnostic in e.diagnostics {
                 diagnostics.add(reporting::ConvertedKdlDiagnostic::from_original_and_span(
                     diagnostic,
-                    source_code.clone(),
                     source_span,
                 ));
             }
@@ -54,14 +50,10 @@ pub fn transform(
         reporting::kdl_span_changer::change_document_span(&mut document, &source_span);
     }
 
-    transform_manifest(&document, source_code, diagnostics)
+    transform_manifest(&document, diagnostics)
 }
 
-fn transform_manifest(
-    manifest_document: &KdlDocument,
-    source_code: NamedSourceCode,
-    diagnostics: &mut Diagnostics,
-) -> Manifest {
+fn transform_manifest(manifest_document: &KdlDocument, diagnostics: &mut Diagnostics) -> Manifest {
     let mut manifest = Manifest {
         root_objects: Vec::new(),
         config: DeviceConfig::default(), // TODO: Parse this
@@ -71,15 +63,13 @@ fn transform_manifest(
         if let Ok(root_object_type) = node.name().value().parse::<RootObjectType>() {
             match root_object_type {
                 RootObjectType::Device => {
-                    let Some(device) = transform_device(node, source_code.clone(), diagnostics)
-                    else {
+                    let Some(device) = transform_device(node, diagnostics) else {
                         continue;
                     };
                     manifest.root_objects.push(Object::Device(device));
                 }
                 RootObjectType::FieldSet => {
-                    let (fs, enums) =
-                        transform_field_set(node, source_code.clone(), diagnostics, None);
+                    let (fs, enums) = transform_field_set(node, diagnostics, None);
                     if let Some(fs) = fs {
                         manifest.root_objects.push(Object::FieldSet(fs));
                     }
@@ -88,22 +78,18 @@ fn transform_manifest(
                         .extend(enums.into_iter().map(Object::Enum));
                 }
                 RootObjectType::Enum => {
-                    if let Some(enum_value) = transform_enum(node, source_code.clone(), diagnostics)
-                    {
+                    if let Some(enum_value) = transform_enum(node, diagnostics) {
                         manifest.root_objects.push(Object::Enum(enum_value));
                     }
                 }
                 RootObjectType::Extern => {
-                    if let Some(extern_value) =
-                        transform_extern(node, source_code.clone(), diagnostics)
-                    {
+                    if let Some(extern_value) = transform_extern(node, diagnostics) {
                         manifest.root_objects.push(Object::Extern(extern_value));
                     }
                 }
             };
         } else {
             diagnostics.add(errors::UnexpectedNode {
-                source_code: source_code.clone(),
                 node_name: node.name().span(),
                 expected_names: ROOT_OBJECT_TYPES.iter().map(|v| v.0).collect(),
             });
@@ -113,13 +99,8 @@ fn transform_manifest(
     manifest
 }
 
-fn transform_device(
-    node: &KdlNode,
-    source_code: NamedSourceCode,
-    diagnostics: &mut Diagnostics,
-) -> Option<Device> {
-    let device_name =
-        parse_single_string_entry(node, source_code.clone(), diagnostics, None, true).0?;
+fn transform_device(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Device> {
+    let device_name = parse_single_string_entry(node, diagnostics, None, true).0?;
 
     let mut device = Device {
         description: parse_description(node),
@@ -131,12 +112,9 @@ fn transform_device(
     if let Some(device_document) = node.children()
         && !device_document.nodes().is_empty()
     {
-        transform_device_internals(&mut device, device_document, source_code, diagnostics);
+        transform_device_internals(&mut device, device_document, diagnostics);
     } else {
-        diagnostics.add(errors::EmptyNode {
-            source_code,
-            node: node.span(),
-        });
+        diagnostics.add(errors::EmptyNode { node: node.span() });
     }
 
     Some(device)
@@ -145,7 +123,6 @@ fn transform_device(
 fn transform_device_internals(
     device: &mut Device,
     device_document: &KdlDocument,
-    source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
 ) {
     let mut seen_device_configs = HashMap::<DeviceConfigType, SourceSpan>::new();
@@ -153,28 +130,20 @@ fn transform_device_internals(
     for node in device_document.nodes() {
         if let Ok(device_config_type) = node.name().value().parse::<DeviceConfigType>() {
             match seen_device_configs.insert(device_config_type, node.span()) {
-                None => transform_device_config_node(
-                    device,
-                    node,
-                    device_config_type,
-                    source_code.clone(),
-                    diagnostics,
-                ),
+                None => transform_device_config_node(device, node, device_config_type, diagnostics),
                 Some(original_node) => {
                     diagnostics.add(errors::DuplicateNode {
-                        source_code: source_code.clone(),
                         duplicate: node.span(),
                         original: original_node,
                     });
                 }
             }
         } else if let Ok(object_type) = node.name().value().parse::<ObjectType>() {
-            for object in transform_object(node, source_code.clone(), diagnostics, object_type) {
+            for object in transform_object(node, diagnostics, object_type) {
                 device.objects.push(object);
             }
         } else {
             diagnostics.add(errors::UnexpectedNode {
-                source_code: source_code.clone(),
                 node_name: node.name().span(),
                 expected_names: DEVICE_CONFIG_TYPES
                     .iter()
@@ -188,17 +157,16 @@ fn transform_device_internals(
 
 fn transform_object(
     node: &KdlNode,
-    source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
     object_type: ObjectType,
 ) -> Vec<Object> {
     match object_type {
-        ObjectType::Block => transform_block(node, source_code, diagnostics)
+        ObjectType::Block => transform_block(node, diagnostics)
             .map(Object::Block)
             .into_iter()
             .collect(),
         ObjectType::Register => {
-            let (register, fieldset, enums) = transform_register(node, source_code, diagnostics);
+            let (register, fieldset, enums) = transform_register(node, diagnostics);
             register
                 .map(Object::Register)
                 .into_iter()
@@ -207,7 +175,7 @@ fn transform_object(
                 .collect()
         }
         ObjectType::Command => {
-            let (command, field_sets, enums) = transform_command(node, source_code, diagnostics);
+            let (command, field_sets, enums) = transform_command(node, diagnostics);
             command
                 .map(Object::Command)
                 .into_iter()
@@ -215,34 +183,30 @@ fn transform_object(
                 .chain(enums.into_iter().map(Object::Enum))
                 .collect()
         }
-        ObjectType::Buffer => transform_buffer(node, source_code, diagnostics)
+        ObjectType::Buffer => transform_buffer(node, diagnostics)
             .map(Object::Buffer)
             .into_iter()
             .collect(),
         ObjectType::FieldSet => {
-            let (fs, enums) = transform_field_set(node, source_code, diagnostics, None);
+            let (fs, enums) = transform_field_set(node, diagnostics, None);
             fs.map(Object::FieldSet)
                 .into_iter()
                 .chain(enums.into_iter().map(Object::Enum))
                 .collect()
         }
-        ObjectType::Enum => transform_enum(node, source_code, diagnostics)
+        ObjectType::Enum => transform_enum(node, diagnostics)
             .map(Object::Enum)
             .into_iter()
             .collect(),
-        ObjectType::Extern => transform_extern(node, source_code, diagnostics)
+        ObjectType::Extern => transform_extern(node, diagnostics)
             .map(Object::Extern)
             .into_iter()
             .collect(),
     }
 }
 
-fn transform_block(
-    node: &KdlNode,
-    source_code: NamedSourceCode,
-    diagnostics: &mut Diagnostics,
-) -> Option<Block> {
-    let (name, _) = parse_single_string_entry(node, source_code.clone(), diagnostics, None, true);
+fn transform_block(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Block> {
+    let (name, _) = parse_single_string_entry(node, diagnostics, None, true);
 
     if name.is_none() && node.children().is_none() {
         // We only have a block keyword. No need for further diagnostics
@@ -259,38 +223,35 @@ fn transform_block(
                 BlockField::Offset => {
                     if let Some((_, span)) = offset {
                         diagnostics.add(errors::DuplicateNode {
-                            source_code: source_code.clone(),
                             duplicate: child.name().span(),
                             original: span,
                         });
                         continue;
                     }
 
-                    offset = parse_single_integer_entry(child, source_code.clone(), diagnostics)
+                    offset = parse_single_integer_entry(child, diagnostics)
                         .0
                         .map(|val| (val, child.name().span()));
                 }
                 BlockField::Repeat => {
                     if let Some((_, span)) = repeat {
                         diagnostics.add(errors::DuplicateNode {
-                            source_code: source_code.clone(),
                             duplicate: child.name().span(),
                             original: span,
                         });
                         continue;
                     }
 
-                    repeat = parse_repeat_entries(child, source_code.clone(), diagnostics, true)
+                    repeat = parse_repeat_entries(child, diagnostics, true)
                         .map(|val| (val, child.name().span()));
                 }
             }
         } else if let Ok(object_type) = child.name().value().parse::<ObjectType>() {
-            for object in transform_object(child, source_code.clone(), diagnostics, object_type) {
+            for object in transform_object(child, diagnostics, object_type) {
                 block_objects.push(object);
             }
         } else {
             diagnostics.add(errors::UnexpectedNode {
-                source_code: source_code.clone(),
                 node_name: child.name().span(),
                 expected_names: BLOCK_FIELDS
                     .iter()
@@ -312,11 +273,9 @@ fn transform_block(
 
 fn transform_register(
     node: &KdlNode,
-    source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
 ) -> (Option<Register>, Option<FieldSet>, Vec<Enum>) {
-    let (name, name_span) =
-        parse_single_string_entry(node, source_code.clone(), diagnostics, None, true);
+    let (name, name_span) = parse_single_string_entry(node, diagnostics, None, true);
 
     let mut inline_enums = Vec::new();
 
@@ -337,74 +296,67 @@ fn transform_register(
             Ok(RegisterField::Access) => {
                 if let Some((_, span)) = access {
                     diagnostics.add(errors::DuplicateNode {
-                        source_code: source_code.clone(),
                         duplicate: child.name().span(),
                         original: span,
                     });
                     continue;
                 }
 
-                access =
-                    parse_single_string_value::<Access>(child, source_code.clone(), diagnostics)
-                        .map(|val| (val, child.name().span()));
+                access = parse_single_string_value::<Access>(child, diagnostics)
+                    .map(|val| (val, child.name().span()));
             }
             Ok(RegisterField::AllowAddressOverlap) => {
                 if let Some((_, span)) = allow_address_overlap {
                     diagnostics.add(errors::DuplicateNode {
-                        source_code: source_code.clone(),
                         duplicate: child.name().span(),
                         original: span,
                     });
                     continue;
                 }
 
-                ensure_zero_entries(child, source_code.clone(), diagnostics);
+                ensure_zero_entries(child, diagnostics);
                 allow_address_overlap = Some(true).map(|val| (val, child.name().span()));
             }
             Ok(RegisterField::Address) => {
                 if let Some((_, span)) = address {
                     diagnostics.add(errors::DuplicateNode {
-                        source_code: source_code.clone(),
                         duplicate: child.name().span(),
                         original: span,
                     });
                     continue;
                 }
 
-                address = parse_single_integer_entry(child, source_code.clone(), diagnostics)
+                address = parse_single_integer_entry(child, diagnostics)
                     .0
                     .map(|val| (val, child.name().span()));
             }
             Ok(RegisterField::ResetValue) => {
                 if let Some((_, span)) = reset_value {
                     diagnostics.add(errors::DuplicateNode {
-                        source_code: source_code.clone(),
                         duplicate: child.name().span(),
                         original: span,
                     });
                     continue;
                 }
 
-                reset_value = parse_reset_value_entries(child, source_code.clone(), diagnostics)
+                reset_value = parse_reset_value_entries(child, diagnostics)
                     .map(|val| (val, child.name().span()))
             }
             Ok(RegisterField::Repeat) => {
                 if let Some((_, span)) = repeat {
                     diagnostics.add(errors::DuplicateNode {
-                        source_code: source_code.clone(),
                         duplicate: child.name().span(),
                         original: span,
                     });
                     continue;
                 }
 
-                repeat = parse_repeat_entries(child, source_code.clone(), diagnostics, true)
+                repeat = parse_repeat_entries(child, diagnostics, true)
                     .map(|val| (val, child.name().span()));
             }
             Ok(RegisterField::FieldSet) => {
                 if let Some((_, span)) = field_set {
                     diagnostics.add(errors::DuplicateNode {
-                        source_code: source_code.clone(),
                         duplicate: child.name().span(),
                         original: span,
                     });
@@ -413,7 +365,6 @@ fn transform_register(
 
                 let (fs, mut enums) = transform_field_set(
                     child,
-                    source_code.clone(),
                     diagnostics,
                     Some(
                         name.as_ref()
@@ -427,7 +378,6 @@ fn transform_register(
             }
             Err(()) => {
                 diagnostics.add(errors::UnexpectedNode {
-                    source_code: source_code.clone(),
                     node_name: child.name().span(),
                     expected_names: REGISTER_FIELDS.iter().map(|v| v.0).collect(),
                 });
@@ -444,7 +394,6 @@ fn transform_register(
     if address.is_none() {
         error = true;
         diagnostics.add(errors::MissingChildNode {
-            source_code: source_code.clone(),
             node: name_span.unwrap_or(node.name().span()),
             node_type: Some("register"),
             missing_node_type: "address",
@@ -454,7 +403,6 @@ fn transform_register(
     if field_set.is_none() {
         error = true;
         diagnostics.add(errors::MissingChildNode {
-            source_code: source_code.clone(),
             node: name_span.unwrap_or(node.name().span()),
             node_type: Some("register"),
             missing_node_type: "fields",
@@ -487,11 +435,9 @@ fn transform_register(
 
 fn transform_command(
     node: &KdlNode,
-    source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
 ) -> (Option<Command>, Vec<FieldSet>, Vec<Enum>) {
-    let (name, name_span) =
-        parse_single_string_entry(node, source_code.clone(), diagnostics, None, true);
+    let (name, name_span) = parse_single_string_entry(node, diagnostics, None, true);
 
     let mut inline_enums = Vec::new();
 
@@ -511,47 +457,43 @@ fn transform_command(
             Ok(CommandField::AllowAddressOverlap) => {
                 if let Some((_, span)) = allow_address_overlap {
                     diagnostics.add(errors::DuplicateNode {
-                        source_code: source_code.clone(),
                         duplicate: child.name().span(),
                         original: span,
                     });
                     continue;
                 }
 
-                ensure_zero_entries(child, source_code.clone(), diagnostics);
+                ensure_zero_entries(child, diagnostics);
                 allow_address_overlap = Some(true).map(|val| (val, child.name().span()));
             }
             Ok(CommandField::Address) => {
                 if let Some((_, span)) = address {
                     diagnostics.add(errors::DuplicateNode {
-                        source_code: source_code.clone(),
                         duplicate: child.name().span(),
                         original: span,
                     });
                     continue;
                 }
 
-                address = parse_single_integer_entry(child, source_code.clone(), diagnostics)
+                address = parse_single_integer_entry(child, diagnostics)
                     .0
                     .map(|val| (val, child.name().span()));
             }
             Ok(CommandField::Repeat) => {
                 if let Some((_, span)) = repeat {
                     diagnostics.add(errors::DuplicateNode {
-                        source_code: source_code.clone(),
                         duplicate: child.name().span(),
                         original: span,
                     });
                     continue;
                 }
 
-                repeat = parse_repeat_entries(child, source_code.clone(), diagnostics, true)
+                repeat = parse_repeat_entries(child, diagnostics, true)
                     .map(|val| (val, child.name().span()));
             }
             Ok(CommandField::FieldSetIn) => {
                 if let Some((_, span)) = field_set_in {
                     diagnostics.add(errors::DuplicateNode {
-                        source_code: source_code.clone(),
                         duplicate: child.name().span(),
                         original: span,
                     });
@@ -560,7 +502,6 @@ fn transform_command(
 
                 let (fs, mut enums) = transform_field_set(
                     child,
-                    source_code.clone(),
                     diagnostics,
                     Some(format!("{}FieldSetIn", name.as_deref().unwrap_or_default())),
                 );
@@ -571,7 +512,6 @@ fn transform_command(
             Ok(CommandField::FieldSetOut) => {
                 if let Some((_, span)) = field_set_out {
                     diagnostics.add(errors::DuplicateNode {
-                        source_code: source_code.clone(),
                         duplicate: child.name().span(),
                         original: span,
                     });
@@ -580,7 +520,6 @@ fn transform_command(
 
                 let (fs, mut enums) = transform_field_set(
                     child,
-                    source_code.clone(),
                     diagnostics,
                     Some(format!(
                         "{}FieldSetOut",
@@ -593,7 +532,6 @@ fn transform_command(
             }
             Err(()) => {
                 diagnostics.add(errors::UnexpectedNode {
-                    source_code: source_code.clone(),
                     node_name: child.name().span(),
                     expected_names: COMMAND_FIELDS.iter().map(|v| v.0).collect(),
                 });
@@ -610,7 +548,6 @@ fn transform_command(
     if address.is_none() {
         error = true;
         diagnostics.add(errors::MissingChildNode {
-            source_code: source_code.clone(),
             node: name_span.unwrap_or(node.name().span()),
             node_type: Some("command"),
             missing_node_type: "address",
@@ -656,13 +593,8 @@ fn transform_command(
     }
 }
 
-fn transform_buffer(
-    node: &KdlNode,
-    source_code: NamedSourceCode,
-    diagnostics: &mut Diagnostics,
-) -> Option<Buffer> {
-    let (name, name_span) =
-        parse_single_string_entry(node, source_code.clone(), diagnostics, None, true);
+fn transform_buffer(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Buffer> {
+    let (name, name_span) = parse_single_string_entry(node, diagnostics, None, true);
 
     if name.is_none() && node.children().is_none() {
         // We only have a buffer keyword. No need for further diagnostics
@@ -677,34 +609,30 @@ fn transform_buffer(
             Ok(BufferField::Access) => {
                 if let Some((_, span)) = access {
                     diagnostics.add(errors::DuplicateNode {
-                        source_code: source_code.clone(),
                         duplicate: child.name().span(),
                         original: span,
                     });
                     continue;
                 }
 
-                access =
-                    parse_single_string_value::<Access>(child, source_code.clone(), diagnostics)
-                        .map(|val| (val, child.name().span()));
+                access = parse_single_string_value::<Access>(child, diagnostics)
+                    .map(|val| (val, child.name().span()));
             }
             Ok(BufferField::Address) => {
                 if let Some((_, span)) = address {
                     diagnostics.add(errors::DuplicateNode {
-                        source_code: source_code.clone(),
                         duplicate: child.name().span(),
                         original: span,
                     });
                     continue;
                 }
 
-                address = parse_single_integer_entry(child, source_code.clone(), diagnostics)
+                address = parse_single_integer_entry(child, diagnostics)
                     .0
                     .map(|val| (val, child.name().span()));
             }
             Err(()) => {
                 diagnostics.add(errors::UnexpectedNode {
-                    source_code: source_code.clone(),
                     node_name: child.name().span(),
                     expected_names: BUFFER_FIELDS.iter().map(|v| v.0).collect(),
                 });
@@ -721,7 +649,6 @@ fn transform_buffer(
     if address.is_none() {
         error = true;
         diagnostics.add(errors::MissingChildNode {
-            source_code: source_code.clone(),
             node: name_span.unwrap_or(node.name().span()),
             node_type: Some("register"),
             missing_node_type: "address",
@@ -750,62 +677,57 @@ fn transform_device_config_node(
     device: &mut Device,
     node: &KdlNode,
     device_config_type: DeviceConfigType,
-    source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
 ) {
     match device_config_type {
         DeviceConfigType::RegisterAccess => {
-            if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
+            if let Some(value) = parse_single_string_value(node, diagnostics) {
                 device.device_config.register_access = Some(value);
             }
         }
         DeviceConfigType::FieldAccess => {
-            if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
+            if let Some(value) = parse_single_string_value(node, diagnostics) {
                 device.device_config.field_access = Some(value);
             }
         }
         DeviceConfigType::BufferAccess => {
-            if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
+            if let Some(value) = parse_single_string_value(node, diagnostics) {
                 device.device_config.buffer_access = Some(value);
             }
         }
         DeviceConfigType::ByteOrder => {
-            if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
+            if let Some(value) = parse_single_string_value(node, diagnostics) {
                 device.device_config.byte_order = Some(value);
             }
         }
         DeviceConfigType::BitOrder => {
-            if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
+            if let Some(value) = parse_single_string_value(node, diagnostics) {
                 device.device_config.bit_order = Some(value);
             }
         }
         DeviceConfigType::RegisterAddressType => {
-            if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
+            if let Some(value) = parse_single_string_value(node, diagnostics) {
                 device.device_config.register_address_type = Some(value);
             }
         }
         DeviceConfigType::CommandAddressType => {
-            if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
+            if let Some(value) = parse_single_string_value(node, diagnostics) {
                 device.device_config.command_address_type = Some(value);
             }
         }
         DeviceConfigType::BufferAddressType => {
-            if let Some(value) = parse_single_string_value(node, source_code.clone(), diagnostics) {
+            if let Some(value) = parse_single_string_value(node, diagnostics) {
                 device.device_config.buffer_address_type = Some(value);
             }
         }
         DeviceConfigType::NameWordBoundaries => {
-            if let Some(value) =
-                parse_single_string_entry(node, source_code.clone(), diagnostics, None, false).0
-            {
+            if let Some(value) = parse_single_string_entry(node, diagnostics, None, false).0 {
                 device.device_config.name_word_boundaries =
                     Some(convert_case::Boundary::defaults_from(&value));
             }
         }
         DeviceConfigType::DefmtFeature => {
-            if let Some(value) =
-                parse_single_string_entry(node, source_code.clone(), diagnostics, None, false).0
-            {
+            if let Some(value) = parse_single_string_entry(node, diagnostics, None, false).0 {
                 device.device_config.defmt_feature = Some(value);
             }
         }
@@ -814,7 +736,6 @@ fn transform_device_config_node(
 
 fn transform_field_set(
     node: &KdlNode,
-    source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
     default_name: Option<String>,
 ) -> (Option<FieldSet>, Vec<Enum>) {
@@ -826,7 +747,6 @@ fn transform_field_set(
     };
 
     let mut unexpected_entries = errors::UnexpectedEntries {
-        source_code: source_code.clone(),
         superfluous_entries: Vec::new(),
         unexpected_name_entries: Vec::new(),
         not_anonymous_entries: Vec::new(),
@@ -844,7 +764,6 @@ fn transform_field_set(
             Some("size-bits") => {
                 if let Some(size_bits) = size_bits {
                     diagnostics.add(errors::DuplicateEntry {
-                        source_code: source_code.clone(),
                         duplicate: entry.span(),
                         original: size_bits.span(),
                     });
@@ -855,7 +774,6 @@ fn transform_field_set(
             Some("byte-order") => {
                 if let Some(byte_order) = byte_order {
                     diagnostics.add(errors::DuplicateEntry {
-                        source_code: source_code.clone(),
                         duplicate: entry.span(),
                         original: byte_order.span(),
                     });
@@ -866,7 +784,6 @@ fn transform_field_set(
             Some("bit-order") => {
                 if let Some(bit_order) = bit_order {
                     diagnostics.add(errors::DuplicateEntry {
-                        source_code: source_code.clone(),
                         duplicate: entry.span(),
                         original: bit_order.span(),
                     });
@@ -877,7 +794,6 @@ fn transform_field_set(
             Some("allow-bit-overlap") => {
                 if let Some(allow_bit_overlap) = allow_bit_overlap {
                     diagnostics.add(errors::DuplicateEntry {
-                        source_code: source_code.clone(),
                         duplicate: entry.span(),
                         original: allow_bit_overlap.span(),
                     });
@@ -894,7 +810,6 @@ fn transform_field_set(
                 if entry.value().as_string() == Some("allow-bit-overlap") {
                     if let Some(allow_bit_overlap) = allow_bit_overlap {
                         diagnostics.add(errors::DuplicateEntry {
-                            source_code: source_code.clone(),
                             duplicate: entry.span(),
                             original: allow_bit_overlap.span(),
                         });
@@ -923,7 +838,6 @@ fn transform_field_set(
             }
             _ => {
                 diagnostics.add(errors::UnexpectedType {
-                    source_code: source_code.clone(),
                     value_name: name.span(),
                     expected_type: "string",
                 });
@@ -933,7 +847,6 @@ fn transform_field_set(
         field_set.name = default_name;
     } else {
         diagnostics.add(errors::MissingObjectName {
-            source_code: source_code.clone(),
             object_keyword: node.name().span(),
             found_instead: None,
             object_type: node.name().value().into(),
@@ -947,7 +860,6 @@ fn transform_field_set(
             }
             KdlValue::Integer(_) => {
                 diagnostics.add(errors::ValueOutOfRange {
-                    source_code: source_code.clone(),
                     value: size_bits.span(),
                     context: Some("size-bits is encoded as a u32"),
                     range: "0..2^32",
@@ -955,7 +867,6 @@ fn transform_field_set(
             }
             _ => {
                 diagnostics.add(errors::UnexpectedType {
-                    source_code: source_code.clone(),
                     value_name: size_bits.span(),
                     expected_type: "integer",
                 });
@@ -963,7 +874,6 @@ fn transform_field_set(
         }
     } else {
         diagnostics.add(errors::MissingEntry {
-            source_code: source_code.clone(),
             node_name: node.name().span(),
             expected_entries: vec!["size-bits=<integer>"],
         });
@@ -977,7 +887,6 @@ fn transform_field_set(
                 }
                 Err(_) => {
                     diagnostics.add(errors::UnexpectedValue {
-                        source_code: source_code.clone(),
                         value_name: byte_order.span(),
                         expected_values: ByteOrder::VARIANTS.to_vec(),
                     });
@@ -985,7 +894,6 @@ fn transform_field_set(
             },
             _ => {
                 diagnostics.add(errors::UnexpectedType {
-                    source_code: source_code.clone(),
                     value_name: byte_order.span(),
                     expected_type: "string",
                 });
@@ -1001,7 +909,6 @@ fn transform_field_set(
                 }
                 Err(_) => {
                     diagnostics.add(errors::UnexpectedValue {
-                        source_code: source_code.clone(),
                         value_name: bit_order.span(),
                         expected_values: BitOrder::VARIANTS.to_vec(),
                     });
@@ -1009,7 +916,6 @@ fn transform_field_set(
             },
             _ => {
                 diagnostics.add(errors::UnexpectedType {
-                    source_code: source_code.clone(),
                     value_name: bit_order.span(),
                     expected_type: "string",
                 });
@@ -1027,7 +933,6 @@ fn transform_field_set(
             }
             _ => {
                 diagnostics.add(errors::UnexpectedType {
-                    source_code: source_code.clone(),
                     value_name: allow_bit_overlap.span(),
                     expected_type: "bool",
                 });
@@ -1036,7 +941,7 @@ fn transform_field_set(
     }
 
     for field_node in node.iter_children() {
-        let (field, inline_enum) = transform_field(field_node, source_code.clone(), diagnostics);
+        let (field, inline_enum) = transform_field(field_node, diagnostics);
 
         if let Some(field) = field {
             field_set.fields.push(field);
@@ -1055,15 +960,10 @@ fn transform_field_set(
 }
 
 #[allow(clippy::collapsible_else_if)]
-fn transform_field(
-    node: &KdlNode,
-    source_code: NamedSourceCode,
-    diagnostics: &mut Diagnostics,
-) -> (Option<Field>, Option<Enum>) {
+fn transform_field(node: &KdlNode, diagnostics: &mut Diagnostics) -> (Option<Field>, Option<Enum>) {
     let mut inline_enum = None;
 
     let mut unexpected_entries = UnexpectedEntries {
-        source_code: source_code.clone(),
         superfluous_entries: Vec::new(),
         unexpected_name_entries: Vec::new(),
         not_anonymous_entries: Vec::new(),
@@ -1073,7 +973,7 @@ fn transform_field(
     let mut address = None;
     let mut access = None;
 
-    let repeat = parse_repeat_entries(node, source_code.clone(), diagnostics, false);
+    let repeat = parse_repeat_entries(node, diagnostics, false);
 
     for entry in node.entries() {
         match entry.name().map(|id| id.value()) {
@@ -1090,7 +990,6 @@ fn transform_field(
             KdlValue::String(s) if s.starts_with("@") => {
                 if let Some((_, span)) = address {
                     diagnostics.add(errors::DuplicateEntry {
-                        source_code: source_code.clone(),
                         duplicate: entry.span(),
                         original: span,
                     });
@@ -1107,7 +1006,6 @@ fn transform_field(
                             address = Some((start..end + 1, entry.span()));
                         } else {
                             diagnostics.add(errors::AddressWrongOrder {
-                                source_code: source_code.clone(),
                                 address_entry: entry.span(),
                                 end,
                                 start,
@@ -1115,7 +1013,6 @@ fn transform_field(
                         }
                     } else {
                         diagnostics.add(errors::BadValueFormat {
-                            source_code: source_code.clone(),
                             span: entry.span(),
                             expected_format: "@<u32>:<u32>",
                             example: "@7:0",
@@ -1126,7 +1023,6 @@ fn transform_field(
                         address = Some((addr..addr + 1, entry.span()));
                     } else {
                         diagnostics.add(errors::BadValueFormat {
-                            source_code: source_code.clone(),
                             span: entry.span(),
                             expected_format: "@<u32>",
                             example: "@10",
@@ -1137,7 +1033,6 @@ fn transform_field(
             KdlValue::String(s) if s.parse::<Access>().is_ok() => {
                 if let Some((_, span)) = access {
                     diagnostics.add(errors::DuplicateEntry {
-                        source_code: source_code.clone(),
                         duplicate: entry.span(),
                         original: span,
                     });
@@ -1148,7 +1043,6 @@ fn transform_field(
             }
             KdlValue::String(_) => {
                 diagnostics.add(errors::UnexpectedValue {
-                    source_code: source_code.clone(),
                     value_name: entry.span(),
                     expected_values: ["@<u32>", "@<u32>:<u32>"]
                         .iter()
@@ -1159,7 +1053,6 @@ fn transform_field(
             }
             _ => {
                 diagnostics.add(errors::UnexpectedType {
-                    source_code: source_code.clone(),
                     value_name: entry.span(),
                     expected_type: "string",
                 });
@@ -1171,12 +1064,12 @@ fn transform_field(
         diagnostics.add(unexpected_entries);
     }
 
-    let (base_type, mut field_conversion) = parse_type(node.ty(), source_code.clone(), diagnostics);
+    let (base_type, mut field_conversion) = parse_type(node.ty(), diagnostics);
 
     if let Some(variants) = node.children() {
         if let Some(field_conversion) = field_conversion.as_mut() {
             // This is an enum, change the field conversion with that info
-            let variants = transform_enum_variants(variants, source_code.clone(), diagnostics);
+            let variants = transform_enum_variants(variants, diagnostics);
 
             inline_enum = Some(Enum::new(
                 // Take the description of the field
@@ -1188,7 +1081,6 @@ fn transform_field(
             ));
         } else {
             diagnostics.add(errors::InlineEnumDefinitionWithoutName {
-                source_code: source_code.clone(),
                 field_name: node.name().span(),
                 existing_ty: node.ty().map(|ty| ty.span()),
             });
@@ -1197,7 +1089,6 @@ fn transform_field(
 
     if address.is_none() {
         diagnostics.add(errors::MissingEntry {
-            source_code: source_code.clone(),
             node_name: node.name().span(),
             expected_entries: vec!["address (\"@<u32>:<u32>\")"],
         });
@@ -1211,31 +1102,25 @@ fn transform_field(
             access: access.map(|(a, _)| a).unwrap_or_default(),
             base_type,
             field_conversion,
-            field_address: address.unwrap().0,
+            field_address: address.unwrap().into(),
             repeat,
         }),
         inline_enum,
     )
 }
 
-fn transform_enum(
-    node: &KdlNode,
-    source_code: NamedSourceCode,
-    diagnostics: &mut Diagnostics,
-) -> Option<Enum> {
+fn transform_enum(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Enum> {
     let mut unexpected_entries = errors::UnexpectedEntries {
-        source_code: source_code.clone(),
         superfluous_entries: Vec::new(),
         unexpected_name_entries: Vec::new(),
         not_anonymous_entries: Vec::new(),
         unexpected_anonymous_entries: Vec::new(),
     };
 
-    let (base_type, field_conversion) = parse_type(node.ty(), source_code.clone(), diagnostics);
+    let (base_type, field_conversion) = parse_type(node.ty(), diagnostics);
 
     if let Some(field_conversion) = field_conversion {
         diagnostics.add(errors::OnlyBaseTypeAllowed {
-            source_code: source_code.clone(),
             existing_ty: node.ty().unwrap().span(),
             field_conversion,
         });
@@ -1245,7 +1130,7 @@ fn transform_enum(
         parse_description(node),
         String::new(),
         node.children()
-            .map(|children| transform_enum_variants(children, source_code.clone(), diagnostics))
+            .map(|children| transform_enum_variants(children, diagnostics))
             .unwrap_or_default(),
         base_type,
         None,
@@ -1259,7 +1144,6 @@ fn transform_enum(
             Some("size-bits") => {
                 if let Some(size_bits) = size_bits {
                     diagnostics.add(errors::DuplicateEntry {
-                        source_code: source_code.clone(),
                         duplicate: entry.span(),
                         original: size_bits.span(),
                     });
@@ -1295,7 +1179,6 @@ fn transform_enum(
             }
             _ => {
                 diagnostics.add(errors::UnexpectedType {
-                    source_code: source_code.clone(),
                     value_name: name.span(),
                     expected_type: "string",
                 });
@@ -1303,7 +1186,6 @@ fn transform_enum(
         }
     } else {
         diagnostics.add(errors::MissingObjectName {
-            source_code: source_code.clone(),
             object_keyword: node.name().span(),
             found_instead: None,
             object_type: node.name().value().into(),
@@ -1317,7 +1199,6 @@ fn transform_enum(
             }
             KdlValue::Integer(_) => {
                 diagnostics.add(errors::ValueOutOfRange {
-                    source_code: source_code.clone(),
                     value: size_bits.span(),
                     context: Some("size-bits is encoded as a u32"),
                     range: "0..2^32",
@@ -1325,7 +1206,6 @@ fn transform_enum(
             }
             _ => {
                 diagnostics.add(errors::UnexpectedType {
-                    source_code: source_code.clone(),
                     value_name: size_bits.span(),
                     expected_type: "integer",
                 });
@@ -1340,11 +1220,7 @@ fn transform_enum(
     }
 }
 
-fn transform_enum_variants(
-    nodes: &KdlDocument,
-    source_code: NamedSourceCode,
-    diagnostics: &mut Diagnostics,
-) -> Vec<EnumVariant> {
+fn transform_enum_variants(nodes: &KdlDocument, diagnostics: &mut Diagnostics) -> Vec<EnumVariant> {
     nodes
         .nodes()
         .iter()
@@ -1356,7 +1232,6 @@ fn transform_enum_variants(
                 1 if node.entries()[0].name().is_none() => Some(&node.entries()[0]),
                 _ => {
                     diagnostics.add(errors::UnexpectedEntries {
-                        source_code: source_code.clone(),
                         superfluous_entries: node
                             .entries()
                             .get(1..)
@@ -1387,7 +1262,6 @@ fn transform_enum_variants(
                     KdlValue::Integer(val) => EnumValue::Specified(*val),
                     _ => {
                         diagnostics.add(errors::UnexpectedValue {
-                            source_code: source_code.clone(),
                             value_name: variant_value.span(),
                             expected_values: vec!["", "<integer>", "default", "catch-all"],
                         });
@@ -1406,28 +1280,22 @@ fn transform_enum_variants(
         .collect()
 }
 
-fn transform_extern(
-    node: &KdlNode,
-    source_code: NamedSourceCode,
-    diagnostics: &mut Diagnostics,
-) -> Option<Extern> {
+fn transform_extern(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Extern> {
     let mut extern_value = Extern::default();
 
     let mut unexpected_entries = errors::UnexpectedEntries {
-        source_code: source_code.clone(),
         superfluous_entries: Vec::new(),
         unexpected_name_entries: Vec::new(),
         not_anonymous_entries: Vec::new(),
         unexpected_anonymous_entries: Vec::new(),
     };
 
-    let (base_type, field_conversion) = parse_type(node.ty(), source_code.clone(), diagnostics);
+    let (base_type, field_conversion) = parse_type(node.ty(), diagnostics);
 
     extern_value.base_type = base_type;
 
     if let Some(field_conversion) = field_conversion {
         diagnostics.add(errors::OnlyBaseTypeAllowed {
-            source_code: source_code.clone(),
             existing_ty: node.ty().unwrap().span(),
             field_conversion,
         });
@@ -1435,7 +1303,6 @@ fn transform_extern(
 
     if let Some(children) = node.children() {
         diagnostics.add(errors::NoChildrenExpected {
-            source_code: source_code.clone(),
             children: children.span(),
         });
     }
@@ -1454,7 +1321,6 @@ fn transform_extern(
                 if entry.value().as_string() == Some("infallible") {
                     if let Some(infallible) = infallible {
                         diagnostics.add(errors::DuplicateEntry {
-                            source_code: source_code.clone(),
                             duplicate: entry.span(),
                             original: infallible.span(),
                         });
@@ -1483,7 +1349,6 @@ fn transform_extern(
             }
             _ => {
                 diagnostics.add(errors::UnexpectedType {
-                    source_code: source_code.clone(),
                     value_name: name.span(),
                     expected_type: "string",
                 });
@@ -1491,7 +1356,6 @@ fn transform_extern(
         }
     } else {
         diagnostics.add(errors::MissingObjectName {
-            source_code: source_code.clone(),
             object_keyword: node.name().span(),
             found_instead: None,
             object_type: node.name().value().into(),
@@ -1509,7 +1373,6 @@ fn transform_extern(
 
 fn parse_type(
     ty: Option<&KdlIdentifier>,
-    source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
 ) -> (BaseType, Option<FieldConversion>) {
     let Some(ty) = ty else {
@@ -1539,7 +1402,6 @@ fn parse_type(
         "" => BaseType::Unspecified,
         _ => {
             diagnostics.add(errors::UnexpectedValue {
-                source_code,
                 value_name: ty.span(),
                 expected_values: ["bool", "uint", "int"]
                     .iter()
@@ -1555,14 +1417,9 @@ fn parse_type(
     (base_type, field_conversion)
 }
 
-fn ensure_zero_entries(
-    node: &KdlNode,
-    source_code: NamedSourceCode,
-    diagnostics: &mut Diagnostics,
-) {
+fn ensure_zero_entries(node: &KdlNode, diagnostics: &mut Diagnostics) {
     if !node.entries().is_empty() {
         diagnostics.add(errors::UnexpectedEntries {
-            source_code: source_code.clone(),
             superfluous_entries: node.entries().iter().map(|entry| entry.span()).collect(),
             unexpected_name_entries: Vec::new(),
             not_anonymous_entries: Vec::new(),
@@ -1577,12 +1434,10 @@ fn ensure_zero_entries(
 /// If false, then the only errors emitted is when the repeat is incomplete
 fn parse_repeat_entries(
     node: &KdlNode,
-    source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
     standalone_repeat: bool,
 ) -> Option<Repeat> {
     let mut unexpected_entries = errors::UnexpectedEntries {
-        source_code: source_code.clone(),
         superfluous_entries: Vec::new(),
         unexpected_name_entries: Vec::new(),
         not_anonymous_entries: Vec::new(),
@@ -1599,12 +1454,10 @@ fn parse_repeat_entries(
             (Some("stride"), KdlValue::Integer(val)) => stride = Some((*val, entry.span())),
             (Some("with"), KdlValue::String(val)) => with = Some((val.clone(), entry.span())),
             (Some("count") | Some("stride"), _) => diagnostics.add(errors::UnexpectedType {
-                source_code: source_code.clone(),
                 value_name: entry.span(),
                 expected_type: "integer",
             }),
             (Some("with"), _) => diagnostics.add(errors::UnexpectedType {
-                source_code: source_code.clone(),
                 value_name: entry.span(),
                 expected_type: "string",
             }),
@@ -1628,14 +1481,12 @@ fn parse_repeat_entries(
     if let (Some((_, count_span)), Some((_, with_span))) = (&count, &with) {
         error = true;
         diagnostics.add(errors::RepeatOverSpecified {
-            source_code: source_code.clone(),
             count: *count_span,
             with: *with_span,
         });
     }
 
     let mut missing_entry_error = errors::MissingEntry {
-        source_code: source_code.clone(),
         node_name: node.name().span(),
         expected_entries: Vec::new(),
     };
@@ -1663,7 +1514,6 @@ fn parse_repeat_entries(
     {
         error = true;
         diagnostics.add(errors::ValueOutOfRange {
-            source_code: source_code.clone(),
             value: span,
             context: Some("The count is encoded as a u64"),
             range: "0..2^64",
@@ -1674,7 +1524,6 @@ fn parse_repeat_entries(
     {
         error = true;
         diagnostics.add(errors::ValueOutOfRange {
-            source_code: source_code.clone(),
             value: span,
             context: Some("The stride must not be 0"),
             range: "any non-0 number",
@@ -1699,11 +1548,7 @@ fn parse_repeat_entries(
     }
 }
 
-fn parse_reset_value_entries(
-    node: &KdlNode,
-    source_code: NamedSourceCode,
-    diagnostics: &mut Diagnostics,
-) -> Option<ResetValue> {
+fn parse_reset_value_entries(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<ResetValue> {
     let mut error = false;
     let mut array = Vec::new();
 
@@ -1713,7 +1558,6 @@ fn parse_reset_value_entries(
             _ => {
                 error = true;
                 diagnostics.add(errors::UnexpectedType {
-                    source_code: source_code.clone(),
                     value_name: entry.span(),
                     expected_type: "integer",
                 });
@@ -1730,7 +1574,6 @@ fn parse_reset_value_entries(
 
         if integer.is_negative() {
             diagnostics.add(errors::ValueOutOfRange {
-                source_code: source_code.clone(),
                 value: span,
                 range: "0..",
                 context: Some("Negative reset values are not allowed"),
@@ -1745,7 +1588,6 @@ fn parse_reset_value_entries(
             if !(0..=255).contains(byte) {
                 error = true;
                 diagnostics.add(errors::ValueOutOfRange {
-                    source_code: source_code.clone(),
                     value: *span,
                     range: "0..256",
                     context: Some(
@@ -1767,11 +1609,9 @@ fn parse_reset_value_entries(
 
 fn parse_single_integer_entry(
     node: &KdlNode,
-    source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
 ) -> (Option<i128>, Option<SourceSpan>) {
     let unexpected_entries = errors::UnexpectedEntries {
-        source_code: source_code.clone(),
         superfluous_entries: node
             .entries()
             .iter()
@@ -1796,7 +1636,6 @@ fn parse_single_integer_entry(
             KdlValue::Integer(val) => (Some(*val), Some(entry.span())),
             _ => {
                 diagnostics.add(errors::UnexpectedType {
-                    source_code,
                     value_name: entry.span(),
                     expected_type: "integer",
                 });
@@ -1805,7 +1644,6 @@ fn parse_single_integer_entry(
         },
         _ => {
             diagnostics.add(errors::MissingEntry {
-                source_code,
                 node_name: node.name().span(),
                 expected_entries: vec!["integer"],
             });
@@ -1816,13 +1654,11 @@ fn parse_single_integer_entry(
 
 fn parse_single_string_entry(
     node: &KdlNode,
-    source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
     expected_entries: Option<&[&'static str]>,
     is_name: bool,
 ) -> (Option<String>, Option<SourceSpan>) {
     let unexpected_entries = errors::UnexpectedEntries {
-        source_code: source_code.clone(),
         superfluous_entries: node
             .entries()
             .iter()
@@ -1848,13 +1684,11 @@ fn parse_single_string_entry(
             _ => {
                 if !is_name {
                     diagnostics.add(errors::UnexpectedType {
-                        source_code,
                         value_name: entry.span(),
                         expected_type: "string",
                     });
                 } else {
                     diagnostics.add(errors::MissingObjectName {
-                        source_code,
                         object_keyword: node.name().span(),
                         object_type: node.name().value().into(),
                         found_instead: Some(entry.span()),
@@ -1866,7 +1700,6 @@ fn parse_single_string_entry(
         _ => {
             if !is_name {
                 diagnostics.add(errors::MissingEntry {
-                    source_code,
                     node_name: node.name().span(),
                     expected_entries: expected_entries
                         .map(|ee| ee.to_vec())
@@ -1874,7 +1707,6 @@ fn parse_single_string_entry(
                 });
             } else {
                 diagnostics.add(errors::MissingObjectName {
-                    source_code,
                     object_keyword: node.name().span(),
                     object_type: node.name().value().into(),
                     found_instead: None,
@@ -1887,20 +1719,12 @@ fn parse_single_string_entry(
 
 fn parse_single_string_value<T: strum::VariantNames + FromStr>(
     node: &KdlNode,
-    source_code: NamedSourceCode,
     diagnostics: &mut Diagnostics,
 ) -> Option<T> {
-    match parse_single_string_entry(
-        node,
-        source_code.clone(),
-        diagnostics,
-        Some(T::VARIANTS),
-        false,
-    ) {
+    match parse_single_string_entry(node, diagnostics, Some(T::VARIANTS), false) {
         (Some(val), _) if T::from_str(&val).is_ok() => T::from_str(&val).ok(),
         (Some(_), Some(entry)) => {
             diagnostics.add(errors::UnexpectedValue {
-                source_code,
                 value_name: entry,
                 expected_values: T::VARIANTS.to_vec(),
             });

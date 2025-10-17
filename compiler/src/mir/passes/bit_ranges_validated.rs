@@ -21,7 +21,7 @@ pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
 fn validate_len(field_set: &FieldSet, manifest: &Manifest) -> miette::Result<()> {
     for field in &field_set.fields {
         ensure!(
-            field.field_address.clone().count() > 0,
+            field.field_address.value.clone().count() > 0,
             "Fieldset `{}` has field `{}` that is 0 bits. This is likely a mistake",
             field_set.name,
             field.name
@@ -133,7 +133,7 @@ fn get_repeat_iter(manifest: &Manifest, field: &crate::mir::Field) -> (Vec<i128>
 
 #[cfg(test)]
 mod tests {
-    use crate::mir::{Device, Field, Object, Repeat};
+    use crate::mir::{Device, Field, Object, Repeat, Span};
 
     use super::*;
 
@@ -148,7 +148,7 @@ mod tests {
                 size_bits: 10,
                 fields: vec![Field {
                     name: "my_field".into(),
-                    field_address: 0..10,
+                    field_address: (0..10).span_dummy(),
                     ..Default::default()
                 }],
                 ..Default::default()
@@ -167,7 +167,7 @@ mod tests {
                 size_bits: 10,
                 fields: vec![Field {
                     name: "my_field".into(),
-                    field_address: 0..11,
+                    field_address: (0..11).span_dummy(),
                     ..Default::default()
                 }],
                 ..Default::default()
@@ -189,7 +189,7 @@ mod tests {
                 size_bits: 10,
                 fields: vec![Field {
                     name: "my_field".into(),
-                    field_address: 0..10,
+                    field_address: (0..10).span_dummy(),
                     ..Default::default()
                 }],
                 ..Default::default()
@@ -208,7 +208,7 @@ mod tests {
                 size_bits: 10,
                 fields: vec![Field {
                     name: "my_field".into(),
-                    field_address: 0..11,
+                    field_address: (0..11).span_dummy(),
                     ..Default::default()
                 }],
                 ..Default::default()
@@ -230,7 +230,7 @@ mod tests {
                 size_bits: 10,
                 fields: vec![Field {
                     name: "my_field".into(),
-                    field_address: 0..10,
+                    field_address: (0..10).span_dummy(),
                     ..Default::default()
                 }],
                 ..Default::default()
@@ -249,7 +249,7 @@ mod tests {
                 size_bits: 10,
                 fields: vec![Field {
                     name: "my_field".into(),
-                    field_address: 0..11,
+                    field_address: (0..11).span_dummy(),
                     ..Default::default()
                 }],
                 ..Default::default()
@@ -271,7 +271,7 @@ mod tests {
                 size_bits: 10,
                 fields: vec![Field {
                     name: "my_field".into(),
-                    field_address: 0..5,
+                    field_address: (0..5).span_dummy(),
                     repeat: Some(Repeat {
                         source: RepeatSource::Count(3),
                         stride: 5,
@@ -301,12 +301,12 @@ mod tests {
                 fields: vec![
                     Field {
                         name: "my_field".into(),
-                        field_address: 0..5,
+                        field_address: (0..5).span_dummy(),
                         ..Default::default()
                     },
                     Field {
                         name: "my_field2".into(),
-                        field_address: 5..10,
+                        field_address: (5..10).span_dummy(),
                         ..Default::default()
                     },
                 ],
@@ -328,12 +328,12 @@ mod tests {
                 fields: vec![
                     Field {
                         name: "my_field".into(),
-                        field_address: 0..6,
+                        field_address: (0..6).span_dummy(),
                         ..Default::default()
                     },
                     Field {
                         name: "my_field2".into(),
-                        field_address: 5..10,
+                        field_address: (5..10).span_dummy(),
                         ..Default::default()
                     },
                 ],
@@ -354,12 +354,12 @@ mod tests {
                 fields: vec![
                     Field {
                         name: "my_field".into(),
-                        field_address: 0..6,
+                        field_address: (0..6).span_dummy(),
                         ..Default::default()
                     },
                     Field {
                         name: "my_field2".into(),
-                        field_address: 5..10,
+                        field_address: (5..10).span_dummy(),
                         ..Default::default()
                     },
                 ],
@@ -383,7 +383,7 @@ mod tests {
                 fields: vec![
                     Field {
                         name: "my_field".into(),
-                        field_address: 0..1,
+                        field_address: (0..1).span_dummy(),
                         repeat: Some(Repeat {
                             source: RepeatSource::Count(6),
                             stride: 1,
@@ -392,7 +392,7 @@ mod tests {
                     },
                     Field {
                         name: "my_field2".into(),
-                        field_address: 5..10,
+                        field_address: (5..10).span_dummy(),
                         ..Default::default()
                     },
                 ],

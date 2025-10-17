@@ -4,6 +4,7 @@
 use std::{fmt::Display, ops::Range, rc::Rc};
 
 use convert_case::Boundary;
+use miette::SourceSpan;
 
 pub mod lir_transform;
 pub mod passes;
@@ -645,7 +646,7 @@ pub struct Field {
     pub access: Access,
     pub base_type: BaseType,
     pub field_conversion: Option<FieldConversion>,
-    pub field_address: Range<u32>,
+    pub field_address: Spanned<Range<u32>>,
     pub repeat: Option<Repeat>,
 }
 
@@ -949,6 +950,70 @@ impl Unique for Object {
         }
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Spanned<T> {
+    pub span: SourceSpan,
+    pub value: T,
+}
+
+impl<T: Default> Default for Spanned<T> {
+    fn default() -> Self {
+        Self {
+            span: (0, 0).into(),
+            value: Default::default(),
+        }
+    }
+}
+
+impl<T: Display> Display for Spanned<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.value.fmt(f)
+    }
+}
+
+impl<T> std::ops::Deref for Spanned<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.value
+    }
+}
+
+impl<T> std::ops::DerefMut for Spanned<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.value
+    }
+}
+
+impl<T> Spanned<T> {
+    pub fn new(span: SourceSpan, value: T) -> Self {
+        Self { span, value }
+    }
+}
+
+impl<T> From<(T, SourceSpan)> for Spanned<T> {
+    fn from((value, span): (T, SourceSpan)) -> Self {
+        Self { span, value }
+    }
+}
+
+pub trait Span {
+    fn span(self, span: impl Into<SourceSpan>) -> Spanned<Self>
+    where
+        Self: Sized,
+    {
+        Spanned::new(span.into(), self)
+    }
+
+    fn span_dummy(self) -> Spanned<Self>
+    where
+        Self: Sized,
+    {
+        self.span((0, 0))
+    }
+}
+impl<T> Span for T {}
 
 #[cfg(test)]
 mod tests {

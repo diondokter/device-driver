@@ -282,7 +282,7 @@ fn transform_field_set(
             lir::Field {
                 description: description.clone(),
                 name: name.clone(),
-                address: field_address.clone(),
+                address: field_address.value.clone(),
                 base_type,
                 conversion_method,
                 access: *access,
