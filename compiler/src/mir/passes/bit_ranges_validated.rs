@@ -144,7 +144,7 @@ mod tests {
             name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
-                name: "MyReg".into(),
+                name: "MyReg".to_owned().with_dummy_span(),
                 size_bits: 10,
                 fields: vec![Field {
                     name: "my_field".into(),
@@ -163,7 +163,7 @@ mod tests {
             name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
-                name: "MyReg".into(),
+                name: "MyReg".to_owned().with_dummy_span(),
                 size_bits: 10,
                 fields: vec![Field {
                     name: "my_field".into(),
@@ -185,7 +185,7 @@ mod tests {
             name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
-                name: "MyReg".into(),
+                name: "MyReg".to_owned().with_dummy_span(),
                 size_bits: 10,
                 fields: vec![Field {
                     name: "my_field".into(),
@@ -204,7 +204,7 @@ mod tests {
             name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
-                name: "MyReg".into(),
+                name: "MyReg".to_owned().with_dummy_span(),
                 size_bits: 10,
                 fields: vec![Field {
                     name: "my_field".into(),
@@ -226,7 +226,7 @@ mod tests {
             name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
-                name: "MyReg".into(),
+                name: "MyReg".to_owned().with_dummy_span(),
                 size_bits: 10,
                 fields: vec![Field {
                     name: "my_field".into(),
@@ -245,7 +245,7 @@ mod tests {
             name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
-                name: "MyReg".into(),
+                name: "MyReg".to_owned().with_dummy_span(),
                 size_bits: 10,
                 fields: vec![Field {
                     name: "my_field".into(),
@@ -267,7 +267,7 @@ mod tests {
             name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
-                name: "MyReg".into(),
+                name: "MyReg".to_owned().with_dummy_span(),
                 size_bits: 10,
                 fields: vec![Field {
                     name: "my_field".into(),
@@ -296,7 +296,7 @@ mod tests {
             name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
-                name: "MyReg".into(),
+                name: "MyReg".to_owned().with_dummy_span(),
                 size_bits: 10,
                 fields: vec![
                     Field {
@@ -322,7 +322,7 @@ mod tests {
             name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
-                name: "MyReg".into(),
+                name: "MyReg".to_owned().with_dummy_span(),
                 size_bits: 10,
                 allow_bit_overlap: true,
                 fields: vec![
@@ -349,7 +349,7 @@ mod tests {
             name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
-                name: "MyReg".into(),
+                name: "MyReg".to_owned().with_dummy_span(),
                 size_bits: 10,
                 fields: vec![
                     Field {
@@ -378,7 +378,7 @@ mod tests {
             name: "Device".to_owned().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
-                name: "MyReg".into(),
+                name: "MyReg".to_owned().with_dummy_span(),
                 size_bits: 10,
                 fields: vec![
                     Field {

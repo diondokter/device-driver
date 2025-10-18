@@ -6,7 +6,7 @@ use crate::mir::{LendingIterator, Manifest, Object, Repeat, RepeatSource};
 ///
 /// - PascalCase: Object names, enum names, enum variant names
 /// - snake_case: Field names
-pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
+pub fn run_pass(manifest: &mut Manifest) {
     let mut iter = manifest.iter_objects_with_config_mut();
     while let Some((object, config)) = iter.next() {
         if let Object::Device(_) = object {
@@ -37,7 +37,7 @@ pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
                 field.name = snake_converter.convert(&field.name);
 
                 if let Some(conversion) = field.field_conversion.as_mut() {
-                    conversion.type_name = pascal_converter.convert(&conversion.type_name);
+                    conversion.type_name.value = pascal_converter.convert(&conversion.type_name.value);
                 }
 
                 if let Some(Repeat {
@@ -52,12 +52,10 @@ pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
 
         if let Object::Enum(enum_value) = object {
             for variant in enum_value.variants.iter_mut() {
-                variant.name = pascal_converter.convert(&variant.name);
+                variant.name.value = pascal_converter.convert(&variant.name.value);
             }
         }
     }
-
-    Ok(())
 }
 
 #[cfg(test)]
@@ -84,16 +82,16 @@ mod tests {
             device_config: global_config.clone(),
             objects: vec![
                 Object::Register(Register {
-                    name: "my-reGister".into(),
+                    name: "my-reGister".to_owned().with_dummy_span(),
                     field_set_ref: crate::mir::FieldSetRef("my-fieldseT".into()),
                     ..Default::default()
                 }),
                 Object::Buffer(Buffer {
-                    name: "my-buffer".into(),
+                    name: "my-buffer".to_owned().with_dummy_span(),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
-                    name: "my-fieldseT".into(),
+                    name: "my-fieldseT".to_owned().with_dummy_span(),
                     fields: vec![
                         Field {
                             name: "my-fielD".into(),
@@ -102,7 +100,7 @@ mod tests {
                         Field {
                             name: "my-fielD2".into(),
                             field_conversion: Some(FieldConversion {
-                                type_name: "mY-enum".into(),
+                                type_name: "mY-enum".to_owned().with_dummy_span(),
                                 use_try: false,
                             }),
                             ..Default::default()
@@ -111,9 +109,9 @@ mod tests {
                     ..Default::default()
                 }),
                 Object::Enum(Enum {
-                    name: "mY-enum".into(),
+                    name: "mY-enum".to_owned().with_dummy_span(),
                     variants: vec![EnumVariant {
-                        name: "eNum-Variant".into(),
+                        name: "eNum-Variant".to_owned().with_dummy_span(),
                         ..Default::default()
                     }],
                     ..Default::default()
@@ -128,16 +126,16 @@ mod tests {
             device_config: global_config,
             objects: vec![
                 Object::Register(Register {
-                    name: "MyRegister".into(),
+                    name: "MyRegister".to_owned().with_dummy_span(),
                     field_set_ref: crate::mir::FieldSetRef("MyFieldset".into()),
                     ..Default::default()
                 }),
                 Object::Buffer(Buffer {
-                    name: "MyBuffer".into(),
+                    name: "MyBuffer".to_owned().with_dummy_span(),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
-                    name: "MyFieldset".into(),
+                    name: "MyFieldset".to_owned().with_dummy_span(),
                     fields: vec![
                         Field {
                             name: "my_field".into(),
@@ -146,7 +144,7 @@ mod tests {
                         Field {
                             name: "my_field2".into(),
                             field_conversion: Some(FieldConversion {
-                                type_name: "MyEnum".into(),
+                                type_name: "MyEnum".to_owned().with_dummy_span(),
                                 use_try: false,
                             }),
                             ..Default::default()
@@ -155,9 +153,9 @@ mod tests {
                     ..Default::default()
                 }),
                 Object::Enum(Enum {
-                    name: "MyEnum".into(),
+                    name: "MyEnum".to_owned().with_dummy_span(),
                     variants: vec![EnumVariant {
-                        name: "EnumVariant".into(),
+                        name: "EnumVariant".to_owned().with_dummy_span(),
                         ..Default::default()
                     }],
                     ..Default::default()
@@ -166,7 +164,7 @@ mod tests {
         }
         .into();
 
-        run_pass(&mut start_mir).unwrap();
+        run_pass(&mut start_mir);
 
         pretty_assertions::assert_eq!(start_mir, end_mir);
     }

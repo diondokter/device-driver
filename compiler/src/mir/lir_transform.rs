@@ -258,7 +258,7 @@ fn transform_field_set(
 
                     // Always use try if that's specified
                     if fc.use_try {
-                        lir::FieldConversionMethod::TryInto(fc.type_name.clone())
+                        lir::FieldConversionMethod::TryInto(fc.type_name.value.clone())
                     }
                     // Are we pointing at a potentially infallible enum and do we fulfil the requirements?
                     else if let Some(mir::Enum {
@@ -269,12 +269,12 @@ fn transform_field_set(
                         && field_bits <= size_bits.expect("Size_bits set in an earlier mir pass")
                     {
                         // This field is equal or smaller in bits than the infallible enum. So we can do the unsafe into
-                        lir::FieldConversionMethod::UnsafeInto(fc.type_name.clone())
+                        lir::FieldConversionMethod::UnsafeInto(fc.type_name.value.clone())
                     } else {
                         // Fallback is to use the into trait.
                         // This is correct because in the field_conversion_valid mir pass we've already exited if we need a try and didn't specify it.
                         // The only other option is the unsafe into and we've just checked that.
-                        lir::FieldConversionMethod::Into(fc.type_name.clone())
+                        lir::FieldConversionMethod::Into(fc.type_name.value.clone())
                     }
                 }),
             };
@@ -297,11 +297,11 @@ fn transform_field_set(
                             enum_name: enum_name.clone(),
                             enum_variants: manifest
                                 .iter_enums()
-                                .find(|e| e.name == *enum_name)
+                                .find(|e| e.name.value == *enum_name)
                                 .expect("Checked in MIR pass")
                                 .variants
                                 .iter()
-                                .map(|variant| variant.name.clone())
+                                .map(|variant| variant.name.value.clone())
                                 .collect(),
                             stride: repeat.stride,
                         },
@@ -313,7 +313,7 @@ fn transform_field_set(
 
     lir::FieldSet {
         description: field_set.description.clone(),
-        name: field_set.name.clone(),
+        name: field_set.name.value.clone(),
         byte_order: field_set
             .byte_order
             .expect("Byte order should never be none at this point after the MIR passes"),
@@ -398,7 +398,7 @@ fn repeat_to_method_kind(
                 .expect("Checked in a MIR pass")
                 .variants
                 .iter()
-                .map(|variant| variant.name.clone())
+                .map(|variant| variant.name.value.clone())
                 .collect(),
             stride: *stride,
         },

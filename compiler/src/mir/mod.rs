@@ -582,7 +582,7 @@ impl Object {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Block {
     pub description: String,
-    pub name: String,
+    pub name: Spanned<String>,
     pub address_offset: i128,
     pub repeat: Option<Repeat>,
     pub objects: Vec<Object>,
@@ -603,7 +603,7 @@ pub enum RepeatSource {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Register {
     pub description: String,
-    pub name: String,
+    pub name: Spanned<String>,
     pub access: Access,
     pub allow_address_overlap: bool,
     pub address: i128,
@@ -631,7 +631,7 @@ impl<'a> From<&'a str> for FieldSetRef {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct FieldSet {
     pub description: String,
-    pub name: String,
+    pub name: Spanned<String>,
     pub size_bits: u32,
     pub byte_order: Option<ByteOrder>,
     pub bit_order: Option<BitOrder>,
@@ -693,7 +693,7 @@ impl Display for BaseType {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FieldConversion {
     /// The name of the type we're converting to
-    pub type_name: String,
+    pub type_name: Spanned<String>,
     /// True when we want to use the fallible interface (like a Result<type, error>)
     pub use_try: bool,
 }
@@ -701,7 +701,7 @@ pub struct FieldConversion {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Enum {
     pub description: String,
-    pub name: String,
+    pub name: Spanned<String>,
     pub variants: Vec<EnumVariant>,
     pub base_type: BaseType,
     pub size_bits: Option<u32>,
@@ -711,7 +711,7 @@ pub struct Enum {
 impl Enum {
     pub fn new(
         description: String,
-        name: String,
+        name: Spanned<String>,
         variants: Vec<EnumVariant>,
         base_type: BaseType,
         size_bits: Option<u32>,
@@ -729,7 +729,7 @@ impl Enum {
     #[cfg(test)]
     pub fn new_with_style(
         description: String,
-        name: String,
+        name: Spanned<String>,
         variants: Vec<EnumVariant>,
         base_type: BaseType,
         size_bits: Option<u32>,
@@ -814,7 +814,7 @@ impl EnumGenerationStyle {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct EnumVariant {
     pub description: String,
-    pub name: String,
+    pub name: Spanned<String>,
     pub value: EnumValue,
 }
 
@@ -856,7 +856,7 @@ impl EnumValue {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Command {
     pub description: String,
-    pub name: String,
+    pub name: Spanned<String>,
     pub address: i128,
     pub allow_address_overlap: bool,
     pub repeat: Option<Repeat>,
@@ -868,7 +868,7 @@ pub struct Command {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Buffer {
     pub description: String,
-    pub name: String,
+    pub name: Spanned<String>,
     pub access: Access,
     pub address: i128,
 }
@@ -892,7 +892,7 @@ impl ResetValue {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Extern {
     pub description: String,
-    pub name: String,
+    pub name: Spanned<String>,
     /// From/into what base type can this extern be converted?
     pub base_type: BaseType,
     /// If true, this extern can be converted infallibly too
@@ -901,7 +901,7 @@ pub struct Extern {
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct UniqueId {
-    object_name: String,
+    object_name: Spanned<String>,
 }
 
 impl Display for UniqueId {
@@ -918,9 +918,8 @@ macro_rules! impl_unique {
     ($t:ty) => {
         impl Unique for $t {
             fn id(&self) -> UniqueId {
-                use std::ops::Deref;
                 UniqueId {
-                    object_name: self.name.deref().into(),
+                    object_name: self.name.clone(),
                 }
             }
         }
@@ -952,10 +951,24 @@ impl Unique for Object {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Eq)]
 pub struct Spanned<T> {
     pub span: SourceSpan,
     pub value: T,
+}
+
+impl<T: PartialEq> PartialEq for Spanned<T> {
+    fn eq(&self, other: &Self) -> bool {
+        // Only compare value. The span is transparent
+        self.value == other.value
+    }
+}
+
+impl<T: std::hash::Hash> std::hash::Hash for Spanned<T> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.value.hash(state);
+        // Only hash value. The span is transparent
+    }
 }
 
 impl<T: Default> Default for Spanned<T> {
@@ -1035,17 +1048,17 @@ mod tests {
                     },
                     objects: vec![
                         Object::Extern(Extern {
-                            name: "b".into(),
+                            name: "b".to_owned().with_dummy_span(),
                             ..Default::default()
                         }),
                         Object::Extern(Extern {
-                            name: "c".into(),
+                            name: "c".to_owned().with_dummy_span(),
                             ..Default::default()
                         }),
                     ],
                 }),
                 Object::Extern(Extern {
-                    name: "d".into(),
+                    name: "d".to_owned().with_dummy_span(),
                     ..Default::default()
                 }),
             ],

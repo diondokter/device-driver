@@ -82,7 +82,7 @@ mod tests {
                 ..Default::default()
             },
             objects: vec![Object::Register(Register {
-                name: "MyReg".into(),
+                name: "MyReg".to_owned().with_dummy_span(),
                 address: -300,
                 ..Default::default()
             })],
@@ -105,7 +105,7 @@ mod tests {
                 ..Default::default()
             },
             objects: vec![Object::Command(Command {
-                name: "MyReg".into(),
+                name: "MyReg".to_owned().with_dummy_span(),
                 address: 128000,
                 ..Default::default()
             })],

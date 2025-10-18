@@ -207,12 +207,10 @@ fn transform_object(
 }
 
 fn transform_block(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Block> {
-    let (name, _) = parse_single_string_entry(node, diagnostics, None, true);
-
-    if name.is_none() && node.children().is_none() {
-        // We only have a block keyword. No need for further diagnostics
+    let (Some(name), Some(name_span)) = parse_single_string_entry(node, diagnostics, None, true)
+    else {
         return None;
-    }
+    };
 
     let mut block_objects = Vec::new();
     let mut offset = None;
@@ -263,9 +261,9 @@ fn transform_block(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Bloc
         }
     }
 
-    name.map(|name| Block {
+    Some(Block {
         description: parse_description(node),
-        name,
+        name: (name, name_span).into(),
         address_offset: offset.map(|(o, _)| o).unwrap_or_default(),
         repeat: repeat.map(|(r, _)| r),
         objects: block_objects,
@@ -276,14 +274,12 @@ fn transform_register(
     node: &KdlNode,
     diagnostics: &mut Diagnostics,
 ) -> (Option<Register>, Option<FieldSet>, Vec<Enum>) {
-    let (name, name_span) = parse_single_string_entry(node, diagnostics, None, true);
+    let (Some(name), Some(name_span)) = parse_single_string_entry(node, diagnostics, None, true)
+    else {
+        return (None, None, Vec::new());
+    };
 
     let mut inline_enums = Vec::new();
-
-    if name.is_none() && node.children().is_none() {
-        // We only have a register keyword. No need for further diagnostics
-        return (None, None, inline_enums);
-    }
 
     let mut access = None;
     let mut allow_address_overlap = None;
@@ -364,15 +360,8 @@ fn transform_register(
                     continue;
                 }
 
-                let (fs, mut enums) = transform_field_set(
-                    child,
-                    diagnostics,
-                    Some(
-                        name.as_ref()
-                            .map(|name| format!("{name}FieldSet"))
-                            .unwrap_or_default(),
-                    ),
-                );
+                let (fs, mut enums) =
+                    transform_field_set(child, diagnostics, Some(format!("{name}FieldSet")));
 
                 field_set = fs.map(|val| (val, child.name().span()));
                 inline_enums.append(&mut enums);
@@ -387,15 +376,11 @@ fn transform_register(
     }
 
     let mut error = false;
-    if name.is_none() {
-        error = true;
-        // Just continue. Error is already emitted
-    }
 
     if address.is_none() {
         error = true;
         diagnostics.add(errors::MissingChildNode {
-            node: name_span.unwrap_or(node.name().span()),
+            node: name_span,
             node_type: Some("register"),
             missing_node_type: "address",
         });
@@ -404,7 +389,7 @@ fn transform_register(
     if field_set.is_none() {
         error = true;
         diagnostics.add(errors::MissingChildNode {
-            node: name_span.unwrap_or(node.name().span()),
+            node: name_span,
             node_type: Some("register"),
             missing_node_type: "fields",
         });
@@ -415,11 +400,11 @@ fn transform_register(
     } else {
         let mut register = Register {
             description: parse_description(node),
-            name: name.unwrap(),
+            name: (name, name_span).into(),
             address: address.unwrap().0,
             reset_value: reset_value.map(|(rv, _)| rv),
             repeat: repeat.map(|(r, _)| r),
-            field_set_ref: FieldSetRef(field_set.as_ref().unwrap().0.name.clone()),
+            field_set_ref: FieldSetRef(field_set.as_ref().unwrap().0.name.value.clone()),
             ..Default::default()
         };
 
@@ -438,14 +423,12 @@ fn transform_command(
     node: &KdlNode,
     diagnostics: &mut Diagnostics,
 ) -> (Option<Command>, Vec<FieldSet>, Vec<Enum>) {
-    let (name, name_span) = parse_single_string_entry(node, diagnostics, None, true);
+    let (Some(name), Some(name_span)) = parse_single_string_entry(node, diagnostics, None, true)
+    else {
+        return (None, Vec::new(), Vec::new());
+    };
 
     let mut inline_enums = Vec::new();
-
-    if name.is_none() && node.children().is_none() {
-        // We only have a command keyword. No need for further diagnostics
-        return (None, Vec::new(), inline_enums);
-    }
 
     let mut allow_address_overlap = None;
     let mut address = None;
@@ -501,11 +484,8 @@ fn transform_command(
                     continue;
                 }
 
-                let (fs, mut enums) = transform_field_set(
-                    child,
-                    diagnostics,
-                    Some(format!("{}FieldSetIn", name.as_deref().unwrap_or_default())),
-                );
+                let (fs, mut enums) =
+                    transform_field_set(child, diagnostics, Some(format!("{name}FieldSetIn")));
 
                 field_set_in = fs.map(|val| (val, child.name().span()));
                 inline_enums.append(&mut enums);
@@ -519,14 +499,8 @@ fn transform_command(
                     continue;
                 }
 
-                let (fs, mut enums) = transform_field_set(
-                    child,
-                    diagnostics,
-                    Some(format!(
-                        "{}FieldSetOut",
-                        name.as_deref().unwrap_or_default()
-                    )),
-                );
+                let (fs, mut enums) =
+                    transform_field_set(child, diagnostics, Some(format!("{name}FieldSetOut")));
 
                 field_set_out = fs.map(|val| (val, child.name().span()));
                 inline_enums.append(&mut enums);
@@ -541,15 +515,11 @@ fn transform_command(
     }
 
     let mut error = false;
-    if name.is_none() {
-        error = true;
-        // Just continue. Error is already emitted
-    }
 
     if address.is_none() {
         error = true;
         diagnostics.add(errors::MissingChildNode {
-            node: name_span.unwrap_or(node.name().span()),
+            node: name_span,
             node_type: Some("command"),
             missing_node_type: "address",
         });
@@ -567,15 +537,15 @@ fn transform_command(
     } else {
         let mut command = Command {
             description: parse_description(node),
-            name: name.unwrap(),
+            name: (name, name_span).into(),
             address: address.unwrap().0,
             repeat: repeat.map(|(r, _)| r),
             field_set_ref_in: field_set_in
                 .as_ref()
-                .map(|(f, _)| FieldSetRef(f.name.clone())),
+                .map(|(f, _)| FieldSetRef(f.name.value.clone())),
             field_set_ref_out: field_set_out
                 .as_ref()
-                .map(|(f, _)| FieldSetRef(f.name.clone())),
+                .map(|(f, _)| FieldSetRef(f.name.value.clone())),
             ..Default::default()
         };
 
@@ -595,12 +565,10 @@ fn transform_command(
 }
 
 fn transform_buffer(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Buffer> {
-    let (name, name_span) = parse_single_string_entry(node, diagnostics, None, true);
-
-    if name.is_none() && node.children().is_none() {
-        // We only have a buffer keyword. No need for further diagnostics
+    let (Some(name), Some(name_span)) = parse_single_string_entry(node, diagnostics, None, true)
+    else {
         return None;
-    }
+    };
 
     let mut access = None;
     let mut address = None;
@@ -642,15 +610,11 @@ fn transform_buffer(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Buf
     }
 
     let mut error = false;
-    if name.is_none() {
-        error = true;
-        // Just continue. Error is already emitted
-    }
 
     if address.is_none() {
         error = true;
         diagnostics.add(errors::MissingChildNode {
-            node: name_span.unwrap_or(node.name().span()),
+            node: name_span,
             node_type: Some("register"),
             missing_node_type: "address",
         });
@@ -661,7 +625,7 @@ fn transform_buffer(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Buf
     } else {
         let mut buffer = Buffer {
             description: parse_description(node),
-            name: name.unwrap(),
+            name: (name, name_span).into(),
             address: address.unwrap().0,
             ..Default::default()
         };
@@ -834,8 +798,8 @@ fn transform_field_set(
 
     if let Some(name) = name {
         match name.value() {
-            KdlValue::String(name) => {
-                field_set.name = name.clone();
+            KdlValue::String(name_value) => {
+                field_set.name = name_value.clone().with_span(name.span());
             }
             _ => {
                 diagnostics.add(errors::UnexpectedType {
@@ -845,7 +809,7 @@ fn transform_field_set(
             }
         }
     } else if let Some(default_name) = default_name {
-        field_set.name = default_name;
+        field_set.name = default_name.with_span(node.span());
     } else {
         diagnostics.add(errors::MissingObjectName {
             object_keyword: node.name().span(),
@@ -1065,10 +1029,10 @@ fn transform_field(node: &KdlNode, diagnostics: &mut Diagnostics) -> (Option<Fie
         diagnostics.add(unexpected_entries);
     }
 
-    let (base_type, mut field_conversion) = parse_type(node.ty(), diagnostics);
+    let (base_type, field_conversion) = parse_type(node.ty(), diagnostics);
 
     if let Some(variants) = node.children() {
-        if let Some(field_conversion) = field_conversion.as_mut() {
+        if let Some(field_conversion) = field_conversion.as_ref() {
             // This is an enum, change the field conversion with that info
             let variants = transform_enum_variants(variants, diagnostics);
 
@@ -1129,7 +1093,7 @@ fn transform_enum(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Enum>
 
     let mut enum_value = Enum::new(
         parse_description(node),
-        String::new(),
+        String::new().with_dummy_span(),
         node.children()
             .map(|children| transform_enum_variants(children, diagnostics))
             .unwrap_or_default(),
@@ -1175,8 +1139,8 @@ fn transform_enum(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Enum>
 
     if let Some(name) = name {
         match name.value() {
-            KdlValue::String(name) => {
-                enum_value.name = name.clone();
+            KdlValue::String(name_value) => {
+                enum_value.name = name_value.clone().with_span(name.span());
             }
             _ => {
                 diagnostics.add(errors::UnexpectedType {
@@ -1274,7 +1238,10 @@ fn transform_enum_variants(nodes: &KdlDocument, diagnostics: &mut Diagnostics) -
 
             Some(EnumVariant {
                 description: parse_description(node),
-                name: variant_name.value().to_string(),
+                name: variant_name
+                    .value()
+                    .to_string()
+                    .with_span(variant_name.span()),
                 value: variant_value,
             })
         })
@@ -1345,8 +1312,8 @@ fn transform_extern(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Ext
 
     if let Some(name) = name {
         match name.value() {
-            KdlValue::String(name) => {
-                extern_value.name = name.clone();
+            KdlValue::String(name_value) => {
+                extern_value.name = name_value.clone().with_span(name.span());
             }
             _ => {
                 diagnostics.add(errors::UnexpectedType {
@@ -1388,7 +1355,10 @@ fn parse_type(
         base_type_str = base_type;
 
         field_conversion = Some(FieldConversion {
-            type_name: conversion.trim_end_matches('?').into(),
+            type_name: conversion
+                .trim_end_matches('?')
+                .to_owned()
+                .with_span(ty.span()),
             use_try: conversion.ends_with('?'),
         })
     } else {

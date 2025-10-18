@@ -65,11 +65,11 @@ mod tests {
             device_config: global_config,
             objects: vec![
                 Object::Buffer(Buffer {
-                    name: "MyBuffer".into(),
+                    name: "MyBuffer".to_owned().with_dummy_span(),
                     ..Default::default()
                 }),
                 Object::Buffer(Buffer {
-                    name: "MyBuffer".into(),
+                    name: "MyBuffer".to_owned().with_dummy_span(),
                     ..Default::default()
                 }),
             ],
@@ -92,7 +92,7 @@ mod tests {
             name: "Device".to_owned().with_dummy_span(),
             device_config: global_config,
             objects: vec![Object::FieldSet(FieldSet {
-                name: "Reg".into(),
+                name: "Reg".to_owned().with_dummy_span(),
                 fields: vec![
                     Field {
                         name: "field".into(),
@@ -124,14 +124,14 @@ mod tests {
             name: "Device".to_owned().with_dummy_span(),
             device_config: global_config,
             objects: vec![Object::Enum(Enum {
-                name: "Enum".into(),
+                name: "Enum".to_owned().with_dummy_span(),
                 variants: vec![
                     EnumVariant {
-                        name: "Variant".into(),
+                        name: "Variant".to_owned().with_dummy_span(),
                         ..Default::default()
                     },
                     EnumVariant {
-                        name: "Variant".into(),
+                        name: "Variant".to_owned().with_dummy_span(),
                         ..Default::default()
                     },
                 ],

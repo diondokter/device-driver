@@ -162,13 +162,13 @@ mod tests {
             device_config: Default::default(),
             objects: vec![
                 Object::Register(Register {
-                    name: "Reg".into(),
+                    name: "Reg".to_owned().with_dummy_span(),
                     reset_value: Some(ResetValue::Integer(0x1F)),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
-                    name: "fs".into(),
+                    name: "fs".to_owned().with_dummy_span(),
                     size_bits: 5,
                     bit_order: Some(BitOrder::LSB0),
                     byte_order: Some(ByteOrder::LE),
@@ -186,13 +186,13 @@ mod tests {
             device_config: Default::default(),
             objects: vec![
                 Object::Register(Register {
-                    name: "Reg".into(),
+                    name: "Reg".to_owned().with_dummy_span(),
                     reset_value: Some(ResetValue::Array(vec![0x1F])),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
-                    name: "fs".into(),
+                    name: "fs".to_owned().with_dummy_span(),
                     size_bits: 5,
                     bit_order: Some(BitOrder::LSB0),
                     byte_order: Some(ByteOrder::LE),
@@ -210,13 +210,13 @@ mod tests {
             device_config: Default::default(),
             objects: vec![
                 Object::Register(Register {
-                    name: "Reg".into(),
+                    name: "Reg".to_owned().with_dummy_span(),
                     reset_value: Some(ResetValue::Array(vec![0x1F])),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
-                    name: "fs".into(),
+                    name: "fs".to_owned().with_dummy_span(),
                     size_bits: 5,
                     bit_order: Some(BitOrder::LSB0),
                     byte_order: Some(ByteOrder::LE),
@@ -234,13 +234,13 @@ mod tests {
             device_config: Default::default(),
             objects: vec![
                 Object::Register(Register {
-                    name: "Reg".into(),
+                    name: "Reg".to_owned().with_dummy_span(),
                     reset_value: Some(ResetValue::Array(vec![0x1F])),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
-                    name: "fs".into(),
+                    name: "fs".to_owned().with_dummy_span(),
                     size_bits: 5,
                     bit_order: Some(BitOrder::LSB0),
                     byte_order: Some(ByteOrder::LE),
@@ -261,13 +261,13 @@ mod tests {
             },
             objects: vec![
                 Object::Register(Register {
-                    name: "Reg".into(),
+                    name: "Reg".to_owned().with_dummy_span(),
                     reset_value: Some(ResetValue::Integer(0x423)),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
-                    name: "fs".into(),
+                    name: "fs".to_owned().with_dummy_span(),
                     size_bits: 11,
                     bit_order: Some(BitOrder::LSB0),
                     byte_order: Some(ByteOrder::LE),
@@ -288,13 +288,13 @@ mod tests {
             },
             objects: vec![
                 Object::Register(Register {
-                    name: "Reg".into(),
+                    name: "Reg".to_owned().with_dummy_span(),
                     reset_value: Some(ResetValue::Array(vec![0x23, 0x04])),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
-                    name: "fs".into(),
+                    name: "fs".to_owned().with_dummy_span(),
                     size_bits: 11,
                     bit_order: Some(BitOrder::LSB0),
                     byte_order: Some(ByteOrder::LE),
@@ -312,13 +312,13 @@ mod tests {
             device_config: Default::default(),
             objects: vec![
                 Object::Register(Register {
-                    name: "Reg".into(),
+                    name: "Reg".to_owned().with_dummy_span(),
                     reset_value: Some(ResetValue::Array(vec![0x04, 0x23])),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
-                    name: "fs".into(),
+                    name: "fs".to_owned().with_dummy_span(),
                     size_bits: 11,
                     byte_order: Some(ByteOrder::BE),
                     bit_order: Some(BitOrder::LSB0),
@@ -336,13 +336,13 @@ mod tests {
             device_config: Default::default(),
             objects: vec![
                 Object::Register(Register {
-                    name: "Reg".into(),
+                    name: "Reg".to_owned().with_dummy_span(),
                     reset_value: Some(ResetValue::Array(vec![0x04, 0x23])),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
-                    name: "fs".into(),
+                    name: "fs".to_owned().with_dummy_span(),
                     size_bits: 11,
                     byte_order: Some(ByteOrder::BE),
                     bit_order: Some(BitOrder::LSB0),
@@ -360,13 +360,13 @@ mod tests {
             device_config: Default::default(),
             objects: vec![
                 Object::Register(Register {
-                    name: "Reg".into(),
+                    name: "Reg".to_owned().with_dummy_span(),
                     reset_value: Some(ResetValue::Array(vec![0x20, 0xC4])),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
-                    name: "fs".into(),
+                    name: "fs".to_owned().with_dummy_span(),
                     size_bits: 11,
                     byte_order: Some(ByteOrder::BE),
                     bit_order: Some(BitOrder::MSB0),
@@ -384,13 +384,13 @@ mod tests {
             device_config: Default::default(),
             objects: vec![
                 Object::Register(Register {
-                    name: "Reg".into(),
+                    name: "Reg".to_owned().with_dummy_span(),
                     reset_value: Some(ResetValue::Array(vec![0x20, 0xC4])),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
-                    name: "fs".into(),
+                    name: "fs".to_owned().with_dummy_span(),
                     size_bits: 11,
                     byte_order: Some(ByteOrder::BE),
                     bit_order: Some(BitOrder::MSB0),
@@ -414,13 +414,13 @@ mod tests {
             },
             objects: vec![
                 Object::Register(Register {
-                    name: "Reg".into(),
+                    name: "Reg".to_owned().with_dummy_span(),
                     reset_value: Some(ResetValue::Integer(0x423)),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
-                    name: "fs".into(),
+                    name: "fs".to_owned().with_dummy_span(),
                     size_bits: 10,
                     bit_order: Some(BitOrder::LSB0),
                     byte_order: Some(ByteOrder::LE),
@@ -441,13 +441,13 @@ mod tests {
             device_config: Default::default(),
             objects: vec![
                 Object::Register(Register {
-                    name: "Reg".into(),
+                    name: "Reg".to_owned().with_dummy_span(),
                     reset_value: Some(ResetValue::Array(vec![0x04, 0x23])),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
-                    name: "fs".into(),
+                    name: "fs".to_owned().with_dummy_span(),
                     size_bits: 10,
                     byte_order: Some(ByteOrder::BE),
                     bit_order: Some(BitOrder::LSB0),
@@ -468,13 +468,13 @@ mod tests {
             device_config: Default::default(),
             objects: vec![
                 Object::Register(Register {
-                    name: "Reg".into(),
+                    name: "Reg".to_owned().with_dummy_span(),
                     reset_value: Some(ResetValue::Array(vec![0x20, 0xC4])),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
-                    name: "fs".into(),
+                    name: "fs".to_owned().with_dummy_span(),
                     size_bits: 10,
                     byte_order: Some(ByteOrder::BE),
                     bit_order: Some(BitOrder::MSB0),
@@ -498,13 +498,13 @@ mod tests {
             device_config: Default::default(),
             objects: vec![
                 Object::Register(Register {
-                    name: "Reg".into(),
+                    name: "Reg".to_owned().with_dummy_span(),
                     reset_value: Some(ResetValue::Array(vec![0, 0, 0])),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
-                    name: "fs".into(),
+                    name: "fs".to_owned().with_dummy_span(),
                     size_bits: 32,
                     byte_order: Some(ByteOrder::LE),
                     bit_order: Some(BitOrder::LSB0),
@@ -528,13 +528,13 @@ mod tests {
             device_config: Default::default(),
             objects: vec![
                 Object::Register(Register {
-                    name: "Reg".into(),
+                    name: "Reg".to_owned().with_dummy_span(),
                     reset_value: Some(ResetValue::Integer(0xF8)),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
-                    name: "fs".into(),
+                    name: "fs".to_owned().with_dummy_span(),
                     size_bits: 5,
                     bit_order: Some(BitOrder::MSB0),
                     byte_order: Some(ByteOrder::LE),
@@ -552,13 +552,13 @@ mod tests {
             device_config: Default::default(),
             objects: vec![
                 Object::Register(Register {
-                    name: "Reg".into(),
+                    name: "Reg".to_owned().with_dummy_span(),
                     reset_value: Some(ResetValue::Array(vec![0xF8])),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
-                    name: "fs".into(),
+                    name: "fs".to_owned().with_dummy_span(),
                     size_bits: 5,
                     bit_order: Some(BitOrder::MSB0),
                     byte_order: Some(ByteOrder::LE),
