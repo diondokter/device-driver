@@ -147,7 +147,7 @@ mod tests {
                 name: "MyReg".to_owned().with_dummy_span(),
                 size_bits: 10,
                 fields: vec![Field {
-                    name: "my_field".into(),
+                    name: "my_field".to_owned().with_dummy_span(),
                     field_address: (0..10).with_dummy_span(),
                     ..Default::default()
                 }],
@@ -166,7 +166,7 @@ mod tests {
                 name: "MyReg".to_owned().with_dummy_span(),
                 size_bits: 10,
                 fields: vec![Field {
-                    name: "my_field".into(),
+                    name: "my_field".to_owned().with_dummy_span(),
                     field_address: (0..11).with_dummy_span(),
                     ..Default::default()
                 }],
@@ -188,7 +188,7 @@ mod tests {
                 name: "MyReg".to_owned().with_dummy_span(),
                 size_bits: 10,
                 fields: vec![Field {
-                    name: "my_field".into(),
+                    name: "my_field".to_owned().with_dummy_span(),
                     field_address: (0..10).with_dummy_span(),
                     ..Default::default()
                 }],
@@ -207,7 +207,7 @@ mod tests {
                 name: "MyReg".to_owned().with_dummy_span(),
                 size_bits: 10,
                 fields: vec![Field {
-                    name: "my_field".into(),
+                    name: "my_field".to_owned().with_dummy_span(),
                     field_address: (0..11).with_dummy_span(),
                     ..Default::default()
                 }],
@@ -229,7 +229,7 @@ mod tests {
                 name: "MyReg".to_owned().with_dummy_span(),
                 size_bits: 10,
                 fields: vec![Field {
-                    name: "my_field".into(),
+                    name: "my_field".to_owned().with_dummy_span(),
                     field_address: (0..10).with_dummy_span(),
                     ..Default::default()
                 }],
@@ -248,7 +248,7 @@ mod tests {
                 name: "MyReg".to_owned().with_dummy_span(),
                 size_bits: 10,
                 fields: vec![Field {
-                    name: "my_field".into(),
+                    name: "my_field".to_owned().with_dummy_span(),
                     field_address: (0..11).with_dummy_span(),
                     ..Default::default()
                 }],
@@ -270,7 +270,7 @@ mod tests {
                 name: "MyReg".to_owned().with_dummy_span(),
                 size_bits: 10,
                 fields: vec![Field {
-                    name: "my_field".into(),
+                    name: "my_field".to_owned().with_dummy_span(),
                     field_address: (0..5).with_dummy_span(),
                     repeat: Some(Repeat {
                         source: RepeatSource::Count(3),
@@ -300,12 +300,12 @@ mod tests {
                 size_bits: 10,
                 fields: vec![
                     Field {
-                        name: "my_field".into(),
+                        name: "my_field".to_owned().with_dummy_span(),
                         field_address: (0..5).with_dummy_span(),
                         ..Default::default()
                     },
                     Field {
-                        name: "my_field2".into(),
+                        name: "my_field2".to_owned().with_dummy_span(),
                         field_address: (5..10).with_dummy_span(),
                         ..Default::default()
                     },
@@ -327,12 +327,12 @@ mod tests {
                 allow_bit_overlap: true,
                 fields: vec![
                     Field {
-                        name: "my_field".into(),
+                        name: "my_field".to_owned().with_dummy_span(),
                         field_address: (0..6).with_dummy_span(),
                         ..Default::default()
                     },
                     Field {
-                        name: "my_field2".into(),
+                        name: "my_field2".to_owned().with_dummy_span(),
                         field_address: (5..10).with_dummy_span(),
                         ..Default::default()
                     },
@@ -353,12 +353,12 @@ mod tests {
                 size_bits: 10,
                 fields: vec![
                     Field {
-                        name: "my_field".into(),
+                        name: "my_field".to_owned().with_dummy_span(),
                         field_address: (0..6).with_dummy_span(),
                         ..Default::default()
                     },
                     Field {
-                        name: "my_field2".into(),
+                        name: "my_field2".to_owned().with_dummy_span(),
                         field_address: (5..10).with_dummy_span(),
                         ..Default::default()
                     },
@@ -382,7 +382,7 @@ mod tests {
                 size_bits: 10,
                 fields: vec![
                     Field {
-                        name: "my_field".into(),
+                        name: "my_field".to_owned().with_dummy_span(),
                         field_address: (0..1).with_dummy_span(),
                         repeat: Some(Repeat {
                             source: RepeatSource::Count(6),
@@ -391,7 +391,7 @@ mod tests {
                         ..Default::default()
                     },
                     Field {
-                        name: "my_field2".into(),
+                        name: "my_field2".to_owned().with_dummy_span(),
                         field_address: (5..10).with_dummy_span(),
                         ..Default::default()
                     },

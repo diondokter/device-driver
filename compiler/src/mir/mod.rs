@@ -227,7 +227,7 @@ impl From<Device> for Manifest {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Device {
     pub description: String,
     pub name: Spanned<String>,
@@ -246,7 +246,7 @@ impl Device {
         .map(|(object, _)| object)
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct DeviceConfig {
     pub register_access: Option<Access>,
     pub field_access: Option<Access>,
@@ -286,7 +286,7 @@ impl DeviceConfig {
 }
 
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, strum::VariantNames, strum::Display, strum::EnumString,
+    Debug, Clone, Copy, PartialEq, Eq, strum::VariantNames, strum::Display, strum::EnumString, Hash,
 )]
 #[strum(serialize_all = "lowercase")]
 pub enum Integer {
@@ -374,6 +374,7 @@ impl Integer {
     strum::VariantNames,
     strum::Display,
     strum::EnumString,
+    Hash,
 )]
 pub enum Access {
     #[default]
@@ -393,7 +394,7 @@ impl Access {
 }
 
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, strum::VariantNames, strum::Display, strum::EnumString,
+    Debug, Clone, Copy, PartialEq, Eq, strum::VariantNames, strum::Display, strum::EnumString, Hash,
 )]
 pub enum ByteOrder {
     LE,
@@ -410,6 +411,7 @@ pub enum ByteOrder {
     strum::VariantNames,
     strum::Display,
     strum::EnumString,
+    Hash,
 )]
 pub enum BitOrder {
     #[default]
@@ -417,7 +419,7 @@ pub enum BitOrder {
     MSB0,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Object {
     Device(Device),
     Block(Block),
@@ -579,7 +581,7 @@ impl Object {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Block {
     pub description: String,
     pub name: Spanned<String>,
@@ -588,19 +590,19 @@ pub struct Block {
     pub objects: Vec<Object>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Repeat {
     pub source: RepeatSource,
     pub stride: i128,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RepeatSource {
     Count(u64),
     Enum(String),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Register {
     pub description: String,
     pub name: Spanned<String>,
@@ -613,7 +615,7 @@ pub struct Register {
 }
 
 /// An externally defined fieldset. This is the name of that fieldset
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct FieldSetRef(pub String);
 
 impl From<String> for FieldSetRef {
@@ -628,7 +630,7 @@ impl<'a> From<&'a str> for FieldSetRef {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct FieldSet {
     pub description: String,
     pub name: Spanned<String>,
@@ -639,10 +641,10 @@ pub struct FieldSet {
     pub fields: Vec<Field>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Field {
     pub description: String,
-    pub name: String,
+    pub name: Spanned<String>,
     pub access: Access,
     pub base_type: BaseType,
     pub field_conversion: Option<FieldConversion>,
@@ -650,7 +652,7 @@ pub struct Field {
     pub repeat: Option<Repeat>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
 pub enum BaseType {
     Unspecified,
     Bool,
@@ -690,7 +692,7 @@ impl Display for BaseType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FieldConversion {
     /// The name of the type we're converting to
     pub type_name: Spanned<String>,
@@ -698,7 +700,7 @@ pub struct FieldConversion {
     pub use_try: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Enum {
     pub description: String,
     pub name: Spanned<String>,
@@ -790,7 +792,7 @@ impl Enum {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum EnumGenerationStyle {
     /// Not all basetype values can be converted to a variant
     Fallible,
@@ -811,14 +813,14 @@ impl EnumGenerationStyle {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct EnumVariant {
     pub description: String,
     pub name: Spanned<String>,
     pub value: EnumValue,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub enum EnumValue {
     #[default]
     Unspecified,
@@ -853,7 +855,7 @@ impl EnumValue {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Command {
     pub description: String,
     pub name: Spanned<String>,
@@ -865,7 +867,7 @@ pub struct Command {
     pub field_set_ref_out: Option<FieldSetRef>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Buffer {
     pub description: String,
     pub name: Spanned<String>,
@@ -873,7 +875,7 @@ pub struct Buffer {
     pub address: i128,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ResetValue {
     Integer(u128),
     Array(Vec<u8>),
@@ -889,7 +891,7 @@ impl ResetValue {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Extern {
     pub description: String,
     pub name: Spanned<String>,
@@ -902,6 +904,12 @@ pub struct Extern {
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct UniqueId {
     object_name: Spanned<String>,
+}
+
+impl UniqueId {
+    pub fn span(&self) -> SourceSpan {
+        self.object_name.span
+    }
 }
 
 impl Display for UniqueId {
@@ -935,6 +943,7 @@ impl_unique!(Enum);
 impl_unique!(EnumVariant);
 impl_unique!(FieldSet);
 impl_unique!(Extern);
+impl_unique!(Field);
 
 impl Unique for Object {
     fn id(&self) -> UniqueId {

@@ -34,10 +34,11 @@ pub fn run_pass(manifest: &mut Manifest) {
 
         if let Object::FieldSet(field_set) = object {
             for field in field_set.fields.iter_mut() {
-                field.name = snake_converter.convert(&field.name);
+                field.name.value = snake_converter.convert(&field.name.value);
 
                 if let Some(conversion) = field.field_conversion.as_mut() {
-                    conversion.type_name.value = pascal_converter.convert(&conversion.type_name.value);
+                    conversion.type_name.value =
+                        pascal_converter.convert(&conversion.type_name.value);
                 }
 
                 if let Some(Repeat {
@@ -94,11 +95,11 @@ mod tests {
                     name: "my-fieldseT".to_owned().with_dummy_span(),
                     fields: vec![
                         Field {
-                            name: "my-fielD".into(),
+                            name: "my-fielD".to_owned().with_dummy_span(),
                             ..Default::default()
                         },
                         Field {
-                            name: "my-fielD2".into(),
+                            name: "my-fielD2".to_owned().with_dummy_span(),
                             field_conversion: Some(FieldConversion {
                                 type_name: "mY-enum".to_owned().with_dummy_span(),
                                 use_try: false,
@@ -138,11 +139,11 @@ mod tests {
                     name: "MyFieldset".to_owned().with_dummy_span(),
                     fields: vec![
                         Field {
-                            name: "my_field".into(),
+                            name: "my_field".to_owned().with_dummy_span(),
                             ..Default::default()
                         },
                         Field {
-                            name: "my_field2".into(),
+                            name: "my_field2".to_owned().with_dummy_span(),
                             field_conversion: Some(FieldConversion {
                                 type_name: "MyEnum".to_owned().with_dummy_span(),
                                 use_try: false,

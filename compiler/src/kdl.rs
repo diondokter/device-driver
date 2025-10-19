@@ -1063,7 +1063,7 @@ fn transform_field(node: &KdlNode, diagnostics: &mut Diagnostics) -> (Option<Fie
     (
         Some(Field {
             description: parse_description(node),
-            name: node.name().value().into(),
+            name: (node.name().value().to_owned(), node.name().span()).into(),
             access: access.map(|(a, _)| a).unwrap_or_default(),
             base_type,
             field_conversion,

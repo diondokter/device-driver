@@ -281,7 +281,7 @@ fn transform_field_set(
 
             lir::Field {
                 description: description.clone(),
-                name: name.clone(),
+                name: name.value.clone(),
                 address: field_address.value.clone(),
                 base_type,
                 conversion_method,

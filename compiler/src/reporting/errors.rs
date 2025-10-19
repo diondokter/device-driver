@@ -296,3 +296,18 @@ pub struct DeviceNameNotPascal {
     pub device_name: SourceSpan,
     pub suggestion: String,
 }
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Duplicate name found")]
+#[diagnostic(
+    severity(Error),
+    help(
+        "No two objects can have the same name. The same is true for fields in a field set and variants in an enum"
+    )
+)]
+pub struct DuplicateName {
+    #[label("The original")]
+    pub original: SourceSpan,
+    #[label(primary, "The duplicate")]
+    pub duplicate: SourceSpan,
+}
