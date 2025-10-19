@@ -311,3 +311,20 @@ pub struct DuplicateName {
     #[label(primary, "The duplicate")]
     pub duplicate: SourceSpan,
 }
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Enum has no variants")]
+#[diagnostic(severity(Error), help("All enums must have at least one variant"))]
+pub struct EmptyEnum {
+    #[label("Empty enum")]
+    pub enum_name: SourceSpan,
+}
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Two or more enum variants have the same value: {} ({:#X})", self.value, self.value)]
+#[diagnostic(severity(Error), help("All enum variants must have a unique value"))]
+pub struct DuplicateVariantValue {
+    #[label(collection)]
+    pub duplicates: Vec<SourceSpan>,
+    pub value: i128,
+}

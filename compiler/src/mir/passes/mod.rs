@@ -27,7 +27,7 @@ pub fn run_passes(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> mie
     device_name_is_pascal::run_pass(manifest, diagnostics);
     names_normalized::run_pass(manifest);
     names_unique::run_pass(manifest, diagnostics);
-    enum_values_checked::run_pass(manifest)?;
+    enum_values_checked::run_pass(manifest, diagnostics)?;
     repeat_with_enums_checked::run_pass(manifest)?;
     extern_values_checked::run_pass(manifest)?;
     field_conversion_valid::run_pass(manifest)?;
