@@ -1,5 +1,5 @@
 use crate::{
-    mir::{Device, Manifest, RepeatSource},
+    mir::{Device, Manifest, RepeatSource, Unique, UniqueId},
     reporting::Diagnostics,
 };
 
@@ -27,7 +27,8 @@ pub fn run_passes(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> mie
     device_name_is_pascal::run_pass(manifest, diagnostics);
     names_normalized::run_pass(manifest);
     names_unique::run_pass(manifest, diagnostics);
-    enum_values_checked::run_pass(manifest, diagnostics)?;
+    let removals = enum_values_checked::run_pass(manifest, diagnostics)?;
+    remove_objects(manifest, &removals);
     repeat_with_enums_checked::run_pass(manifest)?;
     extern_values_checked::run_pass(manifest)?;
     field_conversion_valid::run_pass(manifest)?;
@@ -119,4 +120,17 @@ pub(crate) fn find_min_max_addresses(
     }
 
     (min_address_found, max_address_found)
+}
+
+fn remove_objects(manifest: &mut Manifest, removals: &[UniqueId]) {
+    fn try_remove_from_vec(objects: &mut Vec<Object>, removal: &UniqueId) -> bool {
+        if let Some((index, _)) = objects.iter().enumerate().find(|(_, obj)| obj.id() == removal) {
+            objects.remove(index);
+            true
+        } else {
+            false
+        }
+    }
+
+    unimplemented!();
 }

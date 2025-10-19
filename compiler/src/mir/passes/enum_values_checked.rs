@@ -15,7 +15,9 @@ use crate::{
 };
 
 /// Checks if enums are fully specified and determines the generation style
-pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> miette::Result<()> {
+pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> miette::Result<Vec<UniqueId>> {
+    let mut removals = Vec::new();
+    
     let mut iter = manifest.iter_objects_with_config_mut();
     while let Some((object, _)) = iter.next() {
         let object_name = object.name().to_string();
@@ -28,6 +30,9 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> miett
             diagnostics.add(EmptyEnum {
                 enum_name: enum_value.name.span,
             });
+
+            removals.push(enum_value.id());
+            continue;
         }
 
         // Record all variant values
@@ -176,7 +181,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> miett
         );
     }
 
-    Ok(())
+    Ok(removals)
 }
 
 #[cfg(test)]
