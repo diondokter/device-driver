@@ -4,6 +4,7 @@
 use std::{fmt::Display, ops::Range, rc::Rc};
 
 use convert_case::Boundary;
+use miette::SourceSpan;
 
 pub mod lir_transform;
 pub mod passes;
@@ -226,10 +227,10 @@ impl From<Device> for Manifest {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Device {
     pub description: String,
-    pub name: String,
+    pub name: Spanned<String>,
     pub device_config: DeviceConfig,
     pub objects: Vec<Object>,
 }
@@ -245,7 +246,7 @@ impl Device {
         .map(|(object, _)| object)
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct DeviceConfig {
     pub register_access: Option<Access>,
     pub field_access: Option<Access>,
@@ -285,7 +286,7 @@ impl DeviceConfig {
 }
 
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, strum::VariantNames, strum::Display, strum::EnumString,
+    Debug, Clone, Copy, PartialEq, Eq, strum::VariantNames, strum::Display, strum::EnumString, Hash,
 )]
 #[strum(serialize_all = "lowercase")]
 pub enum Integer {
@@ -373,6 +374,7 @@ impl Integer {
     strum::VariantNames,
     strum::Display,
     strum::EnumString,
+    Hash,
 )]
 pub enum Access {
     #[default]
@@ -392,7 +394,7 @@ impl Access {
 }
 
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, strum::VariantNames, strum::Display, strum::EnumString,
+    Debug, Clone, Copy, PartialEq, Eq, strum::VariantNames, strum::Display, strum::EnumString, Hash,
 )]
 pub enum ByteOrder {
     LE,
@@ -409,6 +411,7 @@ pub enum ByteOrder {
     strum::VariantNames,
     strum::Display,
     strum::EnumString,
+    Hash,
 )]
 pub enum BitOrder {
     #[default]
@@ -416,7 +419,7 @@ pub enum BitOrder {
     MSB0,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Object {
     Device(Device),
     Block(Block),
@@ -441,6 +444,14 @@ impl Object {
             Object::Device(device) => &mut device.objects,
             Object::Block(block) => &mut block.objects,
             _ => &mut [],
+        }
+    }
+
+    pub(self) fn child_objects_vec(&mut self) -> Option<&mut Vec<Object>> {
+        match self {
+            Object::Device(device) => Some(&mut device.objects),
+            Object::Block(block) => Some(&mut block.objects),
+            _ => None,
         }
     }
 
@@ -578,31 +589,31 @@ impl Object {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Block {
     pub description: String,
-    pub name: String,
+    pub name: Spanned<String>,
     pub address_offset: i128,
     pub repeat: Option<Repeat>,
     pub objects: Vec<Object>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Repeat {
     pub source: RepeatSource,
     pub stride: i128,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RepeatSource {
     Count(u64),
     Enum(String),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Register {
     pub description: String,
-    pub name: String,
+    pub name: Spanned<String>,
     pub access: Access,
     pub allow_address_overlap: bool,
     pub address: i128,
@@ -612,7 +623,7 @@ pub struct Register {
 }
 
 /// An externally defined fieldset. This is the name of that fieldset
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct FieldSetRef(pub String);
 
 impl From<String> for FieldSetRef {
@@ -627,10 +638,10 @@ impl<'a> From<&'a str> for FieldSetRef {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct FieldSet {
     pub description: String,
-    pub name: String,
+    pub name: Spanned<String>,
     pub size_bits: u32,
     pub byte_order: Option<ByteOrder>,
     pub bit_order: Option<BitOrder>,
@@ -638,18 +649,18 @@ pub struct FieldSet {
     pub fields: Vec<Field>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Field {
     pub description: String,
-    pub name: String,
+    pub name: Spanned<String>,
     pub access: Access,
-    pub base_type: BaseType,
+    pub base_type: Spanned<BaseType>,
     pub field_conversion: Option<FieldConversion>,
-    pub field_address: Range<u32>,
+    pub field_address: Spanned<Range<u32>>,
     pub repeat: Option<Repeat>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
 pub enum BaseType {
     Unspecified,
     Bool,
@@ -689,20 +700,20 @@ impl Display for BaseType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FieldConversion {
     /// The name of the type we're converting to
-    pub type_name: String,
+    pub type_name: Spanned<String>,
     /// True when we want to use the fallible interface (like a Result<type, error>)
     pub use_try: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Enum {
     pub description: String,
-    pub name: String,
+    pub name: Spanned<String>,
     pub variants: Vec<EnumVariant>,
-    pub base_type: BaseType,
+    pub base_type: Spanned<BaseType>,
     pub size_bits: Option<u32>,
     generation_style: Option<EnumGenerationStyle>,
 }
@@ -710,9 +721,9 @@ pub struct Enum {
 impl Enum {
     pub fn new(
         description: String,
-        name: String,
+        name: Spanned<String>,
         variants: Vec<EnumVariant>,
-        base_type: BaseType,
+        base_type: Spanned<BaseType>,
         size_bits: Option<u32>,
     ) -> Self {
         Self {
@@ -728,9 +739,9 @@ impl Enum {
     #[cfg(test)]
     pub fn new_with_style(
         description: String,
-        name: String,
+        name: Spanned<String>,
         variants: Vec<EnumVariant>,
-        base_type: BaseType,
+        base_type: Spanned<BaseType>,
         size_bits: Option<u32>,
         generation_style: EnumGenerationStyle,
     ) -> Self {
@@ -789,7 +800,7 @@ impl Enum {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum EnumGenerationStyle {
     /// Not all basetype values can be converted to a variant
     Fallible,
@@ -810,14 +821,14 @@ impl EnumGenerationStyle {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct EnumVariant {
     pub description: String,
-    pub name: String,
+    pub name: Spanned<String>,
     pub value: EnumValue,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub enum EnumValue {
     #[default]
     Unspecified,
@@ -852,10 +863,10 @@ impl EnumValue {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Command {
     pub description: String,
-    pub name: String,
+    pub name: Spanned<String>,
     pub address: i128,
     pub allow_address_overlap: bool,
     pub repeat: Option<Repeat>,
@@ -864,15 +875,15 @@ pub struct Command {
     pub field_set_ref_out: Option<FieldSetRef>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Buffer {
     pub description: String,
-    pub name: String,
+    pub name: Spanned<String>,
     pub access: Access,
     pub address: i128,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ResetValue {
     Integer(u128),
     Array(Vec<u8>),
@@ -888,19 +899,33 @@ impl ResetValue {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Extern {
     pub description: String,
-    pub name: String,
+    pub name: Spanned<String>,
     /// From/into what base type can this extern be converted?
-    pub base_type: BaseType,
+    pub base_type: Spanned<BaseType>,
     /// If true, this extern can be converted infallibly too
     pub supports_infallible: bool,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct UniqueId {
-    object_name: String,
+    object_name: Spanned<String>,
+}
+
+impl UniqueId {
+    pub fn span(&self) -> SourceSpan {
+        self.object_name.span
+    }
+
+    /// *Only for tests:* Create a new instance with a dummy span.
+    #[cfg(test)]
+    pub fn new_test(object_name: String) -> Self {
+        Self {
+            object_name: object_name.with_dummy_span(),
+        }
+    }
 }
 
 impl Display for UniqueId {
@@ -911,6 +936,7 @@ impl Display for UniqueId {
 
 pub trait Unique {
     fn id(&self) -> UniqueId;
+    fn has_id(&self, id: &UniqueId) -> bool;
 }
 
 macro_rules! impl_unique {
@@ -920,6 +946,10 @@ macro_rules! impl_unique {
                 UniqueId {
                     object_name: self.name.clone(),
                 }
+            }
+
+            fn has_id(&self, id: &UniqueId) -> bool {
+                self.name.value == id.object_name.value
             }
         }
     };
@@ -934,6 +964,7 @@ impl_unique!(Enum);
 impl_unique!(EnumVariant);
 impl_unique!(FieldSet);
 impl_unique!(Extern);
+impl_unique!(Field);
 
 impl Unique for Object {
     fn id(&self) -> UniqueId {
@@ -948,7 +979,105 @@ impl Unique for Object {
             Object::Extern(val) => val.id(),
         }
     }
+
+    fn has_id(&self, id: &UniqueId) -> bool {
+        match self {
+            Object::Device(val) => val.has_id(id),
+            Object::Block(val) => val.has_id(id),
+            Object::Register(val) => val.has_id(id),
+            Object::Command(val) => val.has_id(id),
+            Object::Buffer(val) => val.has_id(id),
+            Object::FieldSet(val) => val.has_id(id),
+            Object::Enum(val) => val.has_id(id),
+            Object::Extern(val) => val.has_id(id),
+        }
+    }
 }
+
+#[derive(Debug, Clone, Eq, Copy)]
+pub struct Spanned<T> {
+    pub span: SourceSpan,
+    pub value: T,
+}
+
+impl<T: PartialEq> PartialEq for Spanned<T> {
+    fn eq(&self, other: &Self) -> bool {
+        // Only compare value. The span is transparent
+        self.value == other.value
+    }
+}
+
+impl<T: PartialEq> PartialEq<T> for Spanned<T> {
+    fn eq(&self, other: &T) -> bool {
+        // Only compare value. The span is transparent
+        &self.value == other
+    }
+}
+
+impl<T: std::hash::Hash> std::hash::Hash for Spanned<T> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.value.hash(state);
+        // Only hash value. The span is transparent
+    }
+}
+
+impl<T: Default> Default for Spanned<T> {
+    fn default() -> Self {
+        Self {
+            span: (0, 0).into(),
+            value: Default::default(),
+        }
+    }
+}
+
+impl<T: Display> Display for Spanned<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.value.fmt(f)
+    }
+}
+
+impl<T> std::ops::Deref for Spanned<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.value
+    }
+}
+
+impl<T> std::ops::DerefMut for Spanned<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.value
+    }
+}
+
+impl<T> Spanned<T> {
+    pub fn new(span: SourceSpan, value: T) -> Self {
+        Self { span, value }
+    }
+}
+
+impl<T> From<(T, SourceSpan)> for Spanned<T> {
+    fn from((value, span): (T, SourceSpan)) -> Self {
+        Self { span, value }
+    }
+}
+
+pub trait Span {
+    fn with_span(self, span: impl Into<SourceSpan>) -> Spanned<Self>
+    where
+        Self: Sized,
+    {
+        Spanned::new(span.into(), self)
+    }
+
+    fn with_dummy_span(self) -> Spanned<Self>
+    where
+        Self: Sized,
+    {
+        self.with_span((0, 0))
+    }
+}
+impl<T> Span for T {}
 
 #[cfg(test)]
 mod tests {
@@ -962,24 +1091,24 @@ mod tests {
             root_objects: vec![
                 Object::Device(Device {
                     description: String::new(),
-                    name: "a".into(),
+                    name: "a".to_owned().with_dummy_span(),
                     device_config: DeviceConfig {
                         register_access: Some(Access::RW),
                         ..Default::default()
                     },
                     objects: vec![
                         Object::Extern(Extern {
-                            name: "b".into(),
+                            name: "b".to_owned().with_dummy_span(),
                             ..Default::default()
                         }),
                         Object::Extern(Extern {
-                            name: "c".into(),
+                            name: "c".to_owned().with_dummy_span(),
                             ..Default::default()
                         }),
                     ],
                 }),
                 Object::Extern(Extern {
-                    name: "d".into(),
+                    name: "d".to_owned().with_dummy_span(),
                     ..Default::default()
                 }),
             ],
