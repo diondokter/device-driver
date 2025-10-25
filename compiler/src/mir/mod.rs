@@ -646,7 +646,7 @@ pub struct Field {
     pub description: String,
     pub name: Spanned<String>,
     pub access: Access,
-    pub base_type: BaseType,
+    pub base_type: Spanned<BaseType>,
     pub field_conversion: Option<FieldConversion>,
     pub field_address: Spanned<Range<u32>>,
     pub repeat: Option<Repeat>,
@@ -705,7 +705,7 @@ pub struct Enum {
     pub description: String,
     pub name: Spanned<String>,
     pub variants: Vec<EnumVariant>,
-    pub base_type: BaseType,
+    pub base_type: Spanned<BaseType>,
     pub size_bits: Option<u32>,
     generation_style: Option<EnumGenerationStyle>,
 }
@@ -715,7 +715,7 @@ impl Enum {
         description: String,
         name: Spanned<String>,
         variants: Vec<EnumVariant>,
-        base_type: BaseType,
+        base_type: Spanned<BaseType>,
         size_bits: Option<u32>,
     ) -> Self {
         Self {
@@ -733,7 +733,7 @@ impl Enum {
         description: String,
         name: Spanned<String>,
         variants: Vec<EnumVariant>,
-        base_type: BaseType,
+        base_type: Spanned<BaseType>,
         size_bits: Option<u32>,
         generation_style: EnumGenerationStyle,
     ) -> Self {
@@ -896,7 +896,7 @@ pub struct Extern {
     pub description: String,
     pub name: Spanned<String>,
     /// From/into what base type can this extern be converted?
-    pub base_type: BaseType,
+    pub base_type: Spanned<BaseType>,
     /// If true, this extern can be converted infallibly too
     pub supports_infallible: bool,
 }
@@ -960,7 +960,7 @@ impl Unique for Object {
     }
 }
 
-#[derive(Debug, Clone, Eq)]
+#[derive(Debug, Clone, Eq, Copy)]
 pub struct Spanned<T> {
     pub span: SourceSpan,
     pub value: T,
@@ -970,6 +970,13 @@ impl<T: PartialEq> PartialEq for Spanned<T> {
     fn eq(&self, other: &Self) -> bool {
         // Only compare value. The span is transparent
         self.value == other.value
+    }
+}
+
+impl<T: PartialEq> PartialEq<T> for Spanned<T> {
+    fn eq(&self, other: &T) -> bool {
+        // Only compare value. The span is transparent
+        &self.value == other
     }
 }
 

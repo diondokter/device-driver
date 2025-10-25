@@ -13,7 +13,7 @@ pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
                     match target_object {
                         Some(Object::Enum(target_enum)) => {
                             ensure!(
-                                field.base_type == target_enum.base_type,
+                                target_enum.base_type == field.base_type,
                                 "Field `{}` of FieldSet `{}` has a {} base type. It converts to enum `{}` which has a {} base type. These may not be different, but are.",
                                 field.name,
                                 field_set.name,

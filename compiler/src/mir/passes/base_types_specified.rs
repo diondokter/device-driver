@@ -11,7 +11,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
             for field in field_set.fields.iter_mut() {
                 loop {
                     let size_bits = field.field_address.len() as u32;
-                    field.base_type = match field.base_type {
+                    field.base_type.value = match field.base_type.value {
                         BaseType::Unspecified => match size_bits {
                             0 => unreachable!(),
                             1 => BaseType::Bool,

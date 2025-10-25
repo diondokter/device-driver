@@ -240,7 +240,7 @@ fn transform_field_set(
                 repeat,
             } = field;
 
-            let (base_type, conversion_method) = match (base_type, field_conversion) {
+            let (base_type, conversion_method) = match (base_type.value, field_conversion) {
                 (mir::BaseType::Unspecified | mir::BaseType::Uint | mir::BaseType::Int, _) => {
                     unreachable!("Nothing is left unspecified or unsized in the mir passes")
                 }
@@ -337,7 +337,7 @@ fn transform_enums(manifest: &mir::Manifest) -> Vec<lir::Enum> {
             generation_style: _,
         } = e;
 
-        let base_type = match base_type {
+        let base_type = match base_type.value {
             mir::BaseType::FixedSize(integer) => integer.to_string(),
             _ => {
                 panic!("Enum base type should be set to fixed size integer in a mir pass at this point")

@@ -124,7 +124,11 @@ pub(crate) fn find_min_max_addresses(
 
 fn remove_objects(manifest: &mut Manifest, removals: &[UniqueId]) {
     fn try_remove_from_vec(objects: &mut Vec<Object>, removal: &UniqueId) -> bool {
-        if let Some((index, _)) = objects.iter().enumerate().find(|(_, obj)| obj.id() == removal) {
+        if let Some((index, _)) = objects
+            .iter()
+            .enumerate()
+            .find(|(_, obj)| &obj.id() == removal)
+        {
             objects.remove(index);
             true
         } else {

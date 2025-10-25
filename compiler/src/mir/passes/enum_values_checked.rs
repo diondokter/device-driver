@@ -10,14 +10,17 @@ use crate::{
     },
     reporting::{
         Diagnostics,
-        errors::{DuplicateVariantValue, EmptyEnum},
+        errors::{DuplicateVariantValue, EmptyEnum, EnumBadBasetype},
     },
 };
 
 /// Checks if enums are fully specified and determines the generation style
-pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> miette::Result<Vec<UniqueId>> {
+pub fn run_pass(
+    manifest: &mut Manifest,
+    diagnostics: &mut Diagnostics,
+) -> miette::Result<Vec<UniqueId>> {
     let mut removals = Vec::new();
-    
+
     let mut iter = manifest.iter_objects_with_config_mut();
     while let Some((object, _)) = iter.next() {
         let object_name = object.name().to_string();
@@ -76,11 +79,16 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> miett
             .max()
             .unwrap_or_default();
 
-        let base_type_integer = match enum_value.base_type {
+        let base_type_integer = match enum_value.base_type.value {
             BaseType::Unspecified => {
                 Integer::find_smallest(seen_min, seen_max, enum_value.size_bits.unwrap_or_default())
             }
             BaseType::Bool => {
+                diagnostics.add(EnumBadBasetype {
+                    enum_name: enum_value.name.span,
+                    base_type: enum_value.base_type.span,
+                });
+                removals.push(enum_value.id());
                 bail!("Enum `{object_name}` uses a bool as base type, which is not allowed")
             }
             BaseType::Uint => {
@@ -130,7 +138,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> miett
             Some(size_bits) => size_bits,
         };
 
-        enum_value.base_type = BaseType::FixedSize(base_type_integer);
+        enum_value.base_type.value = BaseType::FixedSize(base_type_integer);
         enum_value.size_bits = Some(size_bits);
 
         let highest_value = (1 << size_bits) - 1;
@@ -221,7 +229,7 @@ mod tests {
                         ..Default::default()
                     },
                 ],
-                BaseType::Unspecified,
+                BaseType::Unspecified.with_dummy_span(),
                 Some(2),
             ))],
         }
@@ -256,7 +264,7 @@ mod tests {
                         ..Default::default()
                     },
                 ],
-                BaseType::FixedSize(crate::mir::Integer::U8),
+                BaseType::FixedSize(crate::mir::Integer::U8).with_dummy_span(),
                 Some(2),
                 EnumGenerationStyle::InfallibleWithinRange,
             ))],
@@ -289,7 +297,7 @@ mod tests {
                         ..Default::default()
                     },
                 ],
-                BaseType::Unspecified,
+                BaseType::Unspecified.with_dummy_span(),
                 Some(8),
             ))],
         }
@@ -314,7 +322,7 @@ mod tests {
                         ..Default::default()
                     },
                 ],
-                BaseType::FixedSize(crate::mir::Integer::U8),
+                BaseType::FixedSize(crate::mir::Integer::U8).with_dummy_span(),
                 Some(8),
                 EnumGenerationStyle::Fallback,
             ))],
@@ -340,7 +348,7 @@ mod tests {
                     value: EnumValue::Unspecified,
                     ..Default::default()
                 }],
-                BaseType::Unspecified,
+                BaseType::Unspecified.with_dummy_span(),
                 Some(16),
             ))],
         }
@@ -358,7 +366,7 @@ mod tests {
                     value: EnumValue::Specified(0),
                     ..Default::default()
                 }],
-                BaseType::FixedSize(Integer::U16),
+                BaseType::FixedSize(Integer::U16).with_dummy_span(),
                 Some(16),
                 EnumGenerationStyle::Fallible,
             ))],
@@ -396,7 +404,7 @@ mod tests {
                         ..Default::default()
                     },
                 ],
-                BaseType::Unspecified,
+                BaseType::Unspecified.with_dummy_span(),
                 Some(1),
             ))],
         }
@@ -429,7 +437,7 @@ mod tests {
                         ..Default::default()
                     },
                 ],
-                BaseType::Unspecified,
+                BaseType::Unspecified.with_dummy_span(),
                 Some(8),
             ))],
         }

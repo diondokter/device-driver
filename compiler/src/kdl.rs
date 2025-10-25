@@ -9,7 +9,7 @@ use crate::{
     mir::{
         Access, BaseType, BitOrder, Block, Buffer, ByteOrder, Command, Device, DeviceConfig, Enum,
         EnumValue, EnumVariant, Extern, Field, FieldConversion, FieldSet, FieldSetRef, Integer,
-        Manifest, Object, Register, Repeat, ResetValue, Span,
+        Manifest, Object, Register, Repeat, ResetValue, Span, Spanned,
     },
     reporting::{
         self, Diagnostics,
@@ -1342,9 +1342,9 @@ fn transform_extern(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Ext
 fn parse_type(
     ty: Option<&KdlIdentifier>,
     diagnostics: &mut Diagnostics,
-) -> (BaseType, Option<FieldConversion>) {
+) -> (Spanned<BaseType>, Option<FieldConversion>) {
     let Some(ty) = ty else {
-        return (BaseType::Unspecified, None);
+        return (BaseType::Unspecified.with_dummy_span(), None);
     };
 
     let ty_str = ty.value();
@@ -1385,7 +1385,7 @@ fn parse_type(
         }
     };
 
-    (base_type, field_conversion)
+    (base_type.with_span(ty.span()), field_conversion)
 }
 
 fn ensure_zero_entries(node: &KdlNode, diagnostics: &mut Diagnostics) {

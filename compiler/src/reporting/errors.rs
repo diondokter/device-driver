@@ -328,3 +328,13 @@ pub struct DuplicateVariantValue {
     pub duplicates: Vec<SourceSpan>,
     pub value: i128,
 }
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Enum uses non-integer base type")]
+#[diagnostic(severity(Error), help("All enums must have an integer as base type"))]
+pub struct EnumBadBasetype {
+    #[label("Enum with wrong base type")]
+    pub enum_name: SourceSpan,
+    #[label("Base type being used")]
+    pub base_type: SourceSpan,
+}
