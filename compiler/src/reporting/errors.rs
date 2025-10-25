@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use miette::{Diagnostic, SourceSpan};
+use miette::{Diagnostic, LabeledSpan, SourceSpan};
 use thiserror::Error;
 
 use crate::mir::FieldConversion;
@@ -330,11 +330,15 @@ pub struct DuplicateVariantValue {
 }
 
 #[derive(Error, Debug, Diagnostic)]
-#[error("Enum uses non-integer base type")]
-#[diagnostic(severity(Error), help("All enums must have an integer as base type"))]
+#[error("Enum uses an invalid base type")]
+#[diagnostic(severity(Error))]
 pub struct EnumBadBasetype {
-    #[label("Enum with wrong base type")]
+    #[label("Enum with invalid base type")]
     pub enum_name: SourceSpan,
     #[label("Base type being used")]
     pub base_type: SourceSpan,
+    #[help]
+    pub help: &'static str,
+    #[label(collection, "Context")]
+    pub context: Vec<LabeledSpan>,
 }

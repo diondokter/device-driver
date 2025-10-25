@@ -447,6 +447,14 @@ impl Object {
         }
     }
 
+    pub(self) fn child_objects_vec(&mut self) -> Option<&mut Vec<Object>> {
+        match self {
+            Object::Device(device) => Some(&mut device.objects),
+            Object::Block(block) => Some(&mut block.objects),
+            _ => None,
+        }
+    }
+
     pub(self) fn child_objects(&self) -> &[Object] {
         match self {
             Object::Device(device) => &device.objects,
@@ -910,6 +918,14 @@ impl UniqueId {
     pub fn span(&self) -> SourceSpan {
         self.object_name.span
     }
+
+    /// *Only for tests:* Create a new instance with a dummy span.
+    #[cfg(test)]
+    pub fn new_test(object_name: String) -> Self {
+        Self {
+            object_name: object_name.with_dummy_span(),
+        }
+    }
 }
 
 impl Display for UniqueId {
@@ -920,6 +936,7 @@ impl Display for UniqueId {
 
 pub trait Unique {
     fn id(&self) -> UniqueId;
+    fn has_id(&self, id: &UniqueId) -> bool;
 }
 
 macro_rules! impl_unique {
@@ -929,6 +946,10 @@ macro_rules! impl_unique {
                 UniqueId {
                     object_name: self.name.clone(),
                 }
+            }
+
+            fn has_id(&self, id: &UniqueId) -> bool {
+                self.name.value == id.object_name.value
             }
         }
     };
@@ -956,6 +977,19 @@ impl Unique for Object {
             Object::FieldSet(val) => val.id(),
             Object::Enum(val) => val.id(),
             Object::Extern(val) => val.id(),
+        }
+    }
+
+    fn has_id(&self, id: &UniqueId) -> bool {
+        match self {
+            Object::Device(val) => val.has_id(id),
+            Object::Block(val) => val.has_id(id),
+            Object::Register(val) => val.has_id(id),
+            Object::Command(val) => val.has_id(id),
+            Object::Buffer(val) => val.has_id(id),
+            Object::FieldSet(val) => val.has_id(id),
+            Object::Enum(val) => val.has_id(id),
+            Object::Extern(val) => val.has_id(id),
         }
     }
 }

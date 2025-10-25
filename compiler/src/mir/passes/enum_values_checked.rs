@@ -1,7 +1,7 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use itertools::Itertools;
-use miette::{bail, ensure};
+use miette::{LabeledSpan, bail, ensure};
 
 use crate::{
     mir::{
@@ -18,8 +18,8 @@ use crate::{
 pub fn run_pass(
     manifest: &mut Manifest,
     diagnostics: &mut Diagnostics,
-) -> miette::Result<Vec<UniqueId>> {
-    let mut removals = Vec::new();
+) -> miette::Result<HashSet<UniqueId>> {
+    let mut removals = HashSet::new();
 
     let mut iter = manifest.iter_objects_with_config_mut();
     while let Some((object, _)) = iter.next() {
@@ -33,8 +33,7 @@ pub fn run_pass(
             diagnostics.add(EmptyEnum {
                 enum_name: enum_value.name.span,
             });
-
-            removals.push(enum_value.id());
+            removals.insert(enum_value.id());
             continue;
         }
 
@@ -65,48 +64,58 @@ pub fn run_pass(
                     duplicates: variants.iter().map(|id| id.span()).collect(),
                     value,
                 });
+                removals.insert(enum_value.id());
             }
         }
 
-        let seen_min = seen_values
+        let (seen_min, seen_min_id) = seen_values
             .iter()
-            .map(|(val, _)| *val)
-            .min()
-            .unwrap_or_default();
-        let seen_max = seen_values
+            .min_by_key(|(val, _)| val)
+            .expect("Enums must not be empty");
+        let (seen_max, _) = seen_values
             .iter()
-            .map(|(val, _)| *val)
-            .max()
-            .unwrap_or_default();
+            .max_by_key(|(val, _)| val)
+            .expect("Enums must not be empty");
 
         let base_type_integer = match enum_value.base_type.value {
-            BaseType::Unspecified => {
-                Integer::find_smallest(seen_min, seen_max, enum_value.size_bits.unwrap_or_default())
-            }
+            BaseType::Unspecified => Integer::find_smallest(
+                *seen_min,
+                *seen_max,
+                enum_value.size_bits.unwrap_or_default(),
+            ),
             BaseType::Bool => {
                 diagnostics.add(EnumBadBasetype {
                     enum_name: enum_value.name.span,
                     base_type: enum_value.base_type.span,
+                    help: "All enums must have an integer as base type",
+                    context: vec![],
                 });
-                removals.push(enum_value.id());
-                bail!("Enum `{object_name}` uses a bool as base type, which is not allowed")
+                removals.insert(enum_value.id());
+                continue;
             }
             BaseType::Uint => {
                 let integer = Integer::find_smallest(
-                    seen_min,
-                    seen_max,
+                    *seen_min,
+                    *seen_max,
                     enum_value.size_bits.unwrap_or_default(),
                 );
-                ensure!(
-                    integer.map(|i| !i.is_signed()).unwrap_or(true),
-                    "Enum `{object_name}` has a variant that uses a negative number, but the base type was specified as unsigned"
-                );
+
+                if integer.map(|i| i.is_signed()).unwrap_or(false) {
+                    diagnostics.add(EnumBadBasetype {
+                        enum_name: enum_value.name.span,
+                        base_type: enum_value.base_type.span,
+                        help: "All enums must use a signed integer if it contains a variant with a negative value",
+                        context: vec![LabeledSpan::new_with_span(Some(format!("Variant with negative value: {seen_min}")), seen_min_id.span())],
+                    });
+                    removals.insert(enum_value.id());
+                    continue;
+                }
 
                 integer
             }
             BaseType::Int => Integer::find_smallest(
-                seen_min.min(-1),
-                seen_max,
+                (*seen_min).min(-1),
+                *seen_max,
                 enum_value.size_bits.unwrap_or_default(),
             ),
             BaseType::FixedSize(integer) => {
@@ -271,8 +280,10 @@ mod tests {
         }
         .into();
 
-        run_pass(&mut start_mir).unwrap();
+        let mut diagnostics = Diagnostics::new();
+        run_pass(&mut start_mir, &mut diagnostics).unwrap();
 
+        assert!(!diagnostics.has_error());
         assert_eq!(start_mir, end_mir);
     }
 
@@ -329,8 +340,10 @@ mod tests {
         }
         .into();
 
-        run_pass(&mut start_mir).unwrap();
+        let mut diagnostics = Diagnostics::new();
+        run_pass(&mut start_mir, &mut diagnostics).unwrap();
 
+        assert!(!diagnostics.has_error());
         assert_eq!(start_mir, end_mir);
     }
 
@@ -373,8 +386,10 @@ mod tests {
         }
         .into();
 
-        run_pass(&mut start_mir).unwrap();
+        let mut diagnostics = Diagnostics::new();
+        run_pass(&mut start_mir, &mut diagnostics).unwrap();
 
+        assert!(!diagnostics.has_error());
         assert_eq!(start_mir, end_mir);
     }
 
@@ -410,10 +425,15 @@ mod tests {
         }
         .into();
 
+        let mut diagnostics = Diagnostics::new();
         assert_eq!(
-            run_pass(&mut start_mir).unwrap_err().to_string(),
+            run_pass(&mut start_mir, &mut diagnostics)
+                .unwrap_err()
+                .to_string(),
             "The value of variant `var0` is too high for enum `MyEnum`: 2 (max = 1)"
         );
+
+        // TODO: Remove UI assert and assert that the enum is in the removal list
     }
 
     #[test]
@@ -443,9 +463,11 @@ mod tests {
         }
         .into();
 
-        assert_eq!(
-            run_pass(&mut start_mir).unwrap_err().to_string(),
-            "Duplicated assigned value(s) for enum `MyEnum`: [\"var0: 0\"]"
-        );
+        let mut diagnostics = Diagnostics::new();
+        let removals = run_pass(&mut start_mir, &mut diagnostics).unwrap();
+
+        assert!(diagnostics.has_error());
+        assert_eq!(removals.len(), 1);
+        assert!(removals.contains(&UniqueId::new_test("MyEnum".to_owned())));
     }
 }
