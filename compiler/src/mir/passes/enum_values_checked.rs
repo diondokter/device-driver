@@ -10,7 +10,9 @@ use crate::{
     },
     reporting::{
         Diagnostics,
-        errors::{DuplicateVariantValue, EmptyEnum, EnumBadBasetype},
+        errors::{
+            DuplicateVariantValue, EmptyEnum, EnumBadBasetype, EnumSizeBitsBiggerThanBaseType,
+        },
     },
 };
 
@@ -119,10 +121,27 @@ pub fn run_pass(
                 enum_value.size_bits.unwrap_or_default(),
             ),
             BaseType::FixedSize(integer) => {
-                ensure!(
-                    integer.size_bits() >= enum_value.size_bits.unwrap_or_default(),
-                    "Enum `{object_name}` has specified a 'size-bits' that is larger than its base type. This is not allowed"
-                );
+                if enum_value.size_bits.unwrap_or_default() > integer.size_bits() {
+                    diagnostics.add(EnumSizeBitsBiggerThanBaseType {
+                        enum_name: enum_value.name.span,
+                        base_type: enum_value.base_type.span,
+                        size_bits: enum_value.size_bits.unwrap_or_default(),
+                    });
+                    removals.insert(enum_value.id());
+                    continue;
+                }
+
+                if !integer.is_signed() && seen_min.is_negative() {
+                    diagnostics.add(EnumBadBasetype {
+                        enum_name: enum_value.name.span,
+                        base_type: enum_value.base_type.span,
+                        help: "All enums must use a signed integer if it contains a variant with a negative value",
+                        context: vec![LabeledSpan::new_with_span(Some(format!("Variant with negative value: {seen_min}")), seen_min_id.span())],
+                    });
+                    removals.insert(enum_value.id());
+                    continue;
+                }
+
                 Some(integer)
             }
         };
@@ -150,15 +169,21 @@ pub fn run_pass(
         enum_value.base_type.value = BaseType::FixedSize(base_type_integer);
         enum_value.size_bits = Some(size_bits);
 
-        let highest_value = (1 << size_bits) - 1;
+        let all_values = if base_type_integer.is_signed() {
+            let max = (1 << size_bits) / 2;
+            -max..=max - 1
+        } else {
+            0..=(1 << size_bits) - 1
+        };
 
         // Check if all bits are covered or if there's a fallback variant
         let has_fallback = enum_value
             .variants
             .iter()
             .any(|v| matches!(v.value, EnumValue::Default | EnumValue::CatchAll));
-        let has_bits_covered =
-            (0..=highest_value).all(|val| seen_values.iter().any(|(seen_val, _)| val == *seen_val));
+        let has_bits_covered = all_values
+            .clone()
+            .all(|val| seen_values.iter().any(|(seen_val, _)| val == *seen_val));
 
         enum_value.generation_style = Some(match (has_fallback, has_bits_covered) {
             (true, _) => EnumGenerationStyle::Fallback,
@@ -167,11 +192,22 @@ pub fn run_pass(
         });
 
         // Check if the enum has variants that fall outside of the available bits
-        if let Some(too_big_variant) = seen_values.iter().find(|(val, _)| *val > highest_value) {
+        if let Some(too_big_variant) = seen_values.iter().find(|(val, _)| val > all_values.end()) {
             bail!(
-                "The value of variant `{}` is too high for enum `{object_name}`: {} (max = {highest_value})",
+                "The value of variant `{}` is too high for enum `{object_name}`: {} (max = {})",
                 too_big_variant.1,
-                too_big_variant.0
+                too_big_variant.0,
+                all_values.end()
+            )
+        }
+        if let Some(too_small_variant) =
+            seen_values.iter().find(|(val, _)| val < all_values.start())
+        {
+            bail!(
+                "The value of variant `{}` is too low for enum `{object_name}`: {} (min = {})",
+                too_small_variant.1,
+                too_small_variant.0,
+                all_values.start()
             )
         }
 

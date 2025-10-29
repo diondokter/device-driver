@@ -342,3 +342,19 @@ pub struct EnumBadBasetype {
     #[label(collection, "Context")]
     pub context: Vec<LabeledSpan>,
 }
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Enum size-bits is bigger than its base type")]
+#[diagnostic(
+    severity(Error),
+    help(
+        "The enum is `{size_bits}` bits long, but uses a base type that can't fit that many bits. Use a bigger base type or take a look whether the size-bits is correct"
+    )
+)]
+pub struct EnumSizeBitsBiggerThanBaseType {
+    #[label("Enum with too large size-bits or too small base type")]
+    pub enum_name: SourceSpan,
+    #[label("Base type being used")]
+    pub base_type: SourceSpan,
+    pub size_bits: u32,
+}
