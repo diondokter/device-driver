@@ -425,7 +425,7 @@ pub struct EnumMultipleCatchalls {
 #[diagnostic(
     severity(Error),
     help(
-        "All objects must be specified in the manifest. It's possible a previous analysis step removed it due to some error. See the previous diagnosics"
+        "All objects must be specified in the manifest. It's possible a previous analysis step removed it due to some error. See the previous diagnostics"
     )
 )]
 pub struct ReferencedObjectDoesNotExist {
