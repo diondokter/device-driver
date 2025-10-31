@@ -358,7 +358,7 @@ impl Integer {
             (-0x80.., ..0x80, ..=8) => Integer::I8,
             (-0x8000.., ..0x8000, ..=16) => Integer::I16,
             (-0x8000_00000.., ..0x8000_0000, ..=32) => Integer::I32,
-            (-0x8000_0000_0000_0000.., ..0x8000_0000_0000_0000, ..=32) => Integer::I64,
+            (-0x8000_0000_0000_0000.., ..0x8000_0000_0000_0000, ..=64) => Integer::I64,
             _ => return None,
         })
     }
@@ -949,9 +949,9 @@ impl UniqueId {
 
     /// *Only for tests:* Create a new instance with a dummy span.
     #[cfg(test)]
-    pub fn new_test(object_name: String) -> Self {
+    pub fn new_test(object_name: impl Into<String>) -> Self {
         Self {
-            object_name: object_name.with_dummy_span(),
+            object_name: object_name.into().with_dummy_span(),
         }
     }
 }

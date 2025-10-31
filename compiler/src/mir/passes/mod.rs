@@ -29,7 +29,7 @@ pub fn run_passes(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> mie
     device_name_is_pascal::run_pass(manifest, diagnostics);
     names_normalized::run_pass(manifest);
     names_unique::run_pass(manifest, diagnostics);
-    let removals = enum_values_checked::run_pass(manifest, diagnostics)?;
+    let removals = enum_values_checked::run_pass(manifest, diagnostics);
     remove_objects(manifest, removals);
     repeat_with_enums_checked::run_pass(manifest)?;
     extern_values_checked::run_pass(manifest)?;

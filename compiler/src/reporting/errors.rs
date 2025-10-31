@@ -358,3 +358,64 @@ pub struct EnumSizeBitsBiggerThanBaseType {
     pub base_type: SourceSpan,
     pub size_bits: u32,
 }
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("No valid base type could be selected")]
+#[diagnostic(
+    severity(Error),
+    help(
+        "Either the specified size-bits or the variants cannot fit within any of the supported integer types"
+    )
+)]
+pub struct EnumNoAutoBaseTypeSelected {
+    #[label("Enum with no valid base type")]
+    pub enum_name: SourceSpan,
+}
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("One or more variant values are too high")]
+#[diagnostic(
+    severity(Error),
+    help("The values must fit in the enum integer base type and size-bits. Max = {max_value}")
+)]
+pub struct VariantValuesTooHigh {
+    #[label(collection, "Value too high")]
+    pub variant_names: Vec<SourceSpan>,
+    #[label("Part of this enum")]
+    pub enum_name: SourceSpan,
+    pub max_value: i128,
+}
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("One or more variant values are too low")]
+#[diagnostic(
+    severity(Error),
+    help("The value must fit in the enum integer base type and size-bits. Min = {min_value}")
+)]
+pub struct VariantValuesTooLow {
+    #[label(collection, "Value too low")]
+    pub variant_names: Vec<SourceSpan>,
+    #[label("Part of this enum")]
+    pub enum_name: SourceSpan,
+    pub min_value: i128,
+}
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("More than one default defined on enum")]
+#[diagnostic(severity(Error), help("An enum can have at most 1 default variant"))]
+pub struct EnumMultipleDefaults {
+    #[label("Multiple defaults on this enum")]
+    pub enum_name: SourceSpan,
+    #[label(collection, "Variant defined as default")]
+    pub variant_names: Vec<SourceSpan>,
+}
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("More than one catch-all defined on enum")]
+#[diagnostic(severity(Error), help("An enum can have at most 1 catch-all variant"))]
+pub struct EnumMultipleCatchalls {
+    #[label("Multiple catch-alls on this enum")]
+    pub enum_name: SourceSpan,
+    #[label(collection, "Variant defined as catch-all")]
+    pub variant_names: Vec<SourceSpan>,
+}

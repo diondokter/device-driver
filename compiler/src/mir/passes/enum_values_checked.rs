@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use itertools::Itertools;
-use miette::{LabeledSpan, bail, ensure};
+use miette::LabeledSpan;
 
 use crate::{
     mir::{
@@ -11,22 +11,19 @@ use crate::{
     reporting::{
         Diagnostics,
         errors::{
-            DuplicateVariantValue, EmptyEnum, EnumBadBasetype, EnumSizeBitsBiggerThanBaseType,
+            DuplicateVariantValue, EmptyEnum, EnumBadBasetype, EnumMultipleCatchalls,
+            EnumMultipleDefaults, EnumNoAutoBaseTypeSelected, EnumSizeBitsBiggerThanBaseType,
+            VariantValuesTooHigh, VariantValuesTooLow,
         },
     },
 };
 
 /// Checks if enums are fully specified and determines the generation style
-pub fn run_pass(
-    manifest: &mut Manifest,
-    diagnostics: &mut Diagnostics,
-) -> miette::Result<HashSet<UniqueId>> {
+pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashSet<UniqueId> {
     let mut removals = HashSet::new();
 
     let mut iter = manifest.iter_objects_with_config_mut();
     while let Some((object, _)) = iter.next() {
-        let object_name = object.name().to_string();
-
         let Object::Enum(enum_value) = object else {
             continue;
         };
@@ -147,9 +144,11 @@ pub fn run_pass(
         };
 
         let Some(base_type_integer) = base_type_integer else {
-            bail!(
-                "No valid base type could be selected for enum `{object_name}`. Either the specified size-bits or the variants cannot fit within any of the supported integer types"
-            )
+            diagnostics.add(EnumNoAutoBaseTypeSelected {
+                enum_name: enum_value.name.span,
+            });
+            removals.insert(enum_value.id());
+            continue;
         };
 
         let size_bits = match enum_value.size_bits {
@@ -183,49 +182,90 @@ pub fn run_pass(
         });
 
         // Check if the enum has variants that fall outside of the available bits
-        if let Some(too_big_variant) = seen_values.iter().find(|(val, _)| val > all_values.end()) {
-            bail!(
-                "The value of variant `{}` is too high for enum `{object_name}`: {} (max = {})",
-                too_big_variant.1,
-                too_big_variant.0,
-                all_values.end()
-            )
+        let too_high_values = seen_values
+            .iter()
+            .filter(|(val, _)| val > all_values.end())
+            .map(|(_, id)| id.span())
+            .collect::<Vec<_>>();
+        let too_low_values = seen_values
+            .iter()
+            .filter(|(val, _)| val < all_values.start())
+            .map(|(_, id)| id.span())
+            .collect::<Vec<_>>();
+
+        if !too_high_values.is_empty() {
+            diagnostics.add(VariantValuesTooHigh {
+                variant_names: too_high_values,
+                enum_name: enum_value.name.span,
+                max_value: *all_values.end(),
+            });
+            removals.insert(enum_value.id());
+            continue;
         }
-        if let Some(too_small_variant) =
-            seen_values.iter().find(|(val, _)| val < all_values.start())
-        {
-            bail!(
-                "The value of variant `{}` is too low for enum `{object_name}`: {} (min = {})",
-                too_small_variant.1,
-                too_small_variant.0,
-                all_values.start()
-            )
+        if !too_low_values.is_empty() {
+            diagnostics.add(VariantValuesTooLow {
+                variant_names: too_low_values,
+                enum_name: enum_value.name.span,
+                min_value: *all_values.start(),
+            });
+            removals.insert(enum_value.id());
+            continue;
         }
 
         // Check whether the enum has more than one default
-        ensure!(
-            enum_value
-                .variants
-                .iter()
-                .filter(|v| v.value.is_default())
-                .count()
-                < 2,
-            "More than one default defined on enum `{object_name}`",
-        );
+        let default_variants = enum_value
+            .variants
+            .iter()
+            .filter(|v| v.value.is_default())
+            .map(|v| v.name.span)
+            .collect::<Vec<_>>();
+
+        if default_variants.len() > 1 {
+            diagnostics.add(EnumMultipleDefaults {
+                variant_names: default_variants,
+                enum_name: enum_value.name.span,
+            });
+
+            // Set all but the first default to unspecified. This aids keeping the generated code available
+            let mut defaults_seen = 0;
+            for variant in enum_value.variants.iter_mut() {
+                if variant.value.is_default() {
+                    if defaults_seen != 0 {
+                        variant.value = EnumValue::Unspecified;
+                    }
+                    defaults_seen += 1;
+                }
+            }
+        };
 
         // Check whether the enum has more than one catch all
-        ensure!(
-            enum_value
-                .variants
-                .iter()
-                .filter(|v| v.value.is_catch_all())
-                .count()
-                < 2,
-            "More than one catch all defined on enum `{object_name}`",
-        );
+        let catch_all_variants = enum_value
+            .variants
+            .iter()
+            .filter(|v| v.value.is_catch_all())
+            .map(|v| v.name.span)
+            .collect::<Vec<_>>();
+
+        if catch_all_variants.len() > 1 {
+            diagnostics.add(EnumMultipleCatchalls {
+                variant_names: catch_all_variants,
+                enum_name: enum_value.name.span,
+            });
+
+            // Set all but the first catch-all to unspecified. This aids keeping the generated code available
+            let mut catch_alls_seen = 0;
+            for variant in enum_value.variants.iter_mut() {
+                if variant.value.is_catch_all() {
+                    if catch_alls_seen != 0 {
+                        variant.value = EnumValue::Unspecified;
+                    }
+                    catch_alls_seen += 1;
+                }
+            }
+        };
     }
 
-    Ok(removals)
+    removals
 }
 
 #[cfg(test)]
@@ -308,7 +348,7 @@ mod tests {
         .into();
 
         let mut diagnostics = Diagnostics::new();
-        run_pass(&mut start_mir, &mut diagnostics).unwrap();
+        run_pass(&mut start_mir, &mut diagnostics);
 
         assert!(!diagnostics.has_error());
         assert_eq!(start_mir, end_mir);
@@ -368,7 +408,7 @@ mod tests {
         .into();
 
         let mut diagnostics = Diagnostics::new();
-        run_pass(&mut start_mir, &mut diagnostics).unwrap();
+        run_pass(&mut start_mir, &mut diagnostics);
 
         assert!(!diagnostics.has_error());
         assert_eq!(start_mir, end_mir);
@@ -414,7 +454,7 @@ mod tests {
         .into();
 
         let mut diagnostics = Diagnostics::new();
-        run_pass(&mut start_mir, &mut diagnostics).unwrap();
+        run_pass(&mut start_mir, &mut diagnostics);
 
         assert!(!diagnostics.has_error());
         assert_eq!(start_mir, end_mir);
@@ -453,14 +493,10 @@ mod tests {
         .into();
 
         let mut diagnostics = Diagnostics::new();
-        assert_eq!(
-            run_pass(&mut start_mir, &mut diagnostics)
-                .unwrap_err()
-                .to_string(),
-            "The value of variant `var0` is too high for enum `MyEnum`: 2 (max = 1)"
-        );
+        let removals = run_pass(&mut start_mir, &mut diagnostics);
 
-        // TODO: Remove UI assert and assert that the enum is in the removal list
+        assert!(diagnostics.has_error());
+        assert!(removals.contains(&UniqueId::new_test("MyEnum")));
     }
 
     #[test]
@@ -491,10 +527,10 @@ mod tests {
         .into();
 
         let mut diagnostics = Diagnostics::new();
-        let removals = run_pass(&mut start_mir, &mut diagnostics).unwrap();
+        let removals = run_pass(&mut start_mir, &mut diagnostics);
 
         assert!(diagnostics.has_error());
         assert_eq!(removals.len(), 1);
-        assert!(removals.contains(&UniqueId::new_test("MyEnum".to_owned())));
+        assert!(removals.contains(&UniqueId::new_test("MyEnum")));
     }
 }
