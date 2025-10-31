@@ -301,11 +301,11 @@ pub enum Integer {
 }
 
 impl Integer {
-    pub fn is_signed(&self) -> bool {
+    pub const fn is_signed(&self) -> bool {
         self.min_value() != 0
     }
 
-    pub fn min_value(&self) -> i128 {
+    pub const fn min_value(&self) -> i128 {
         match self {
             Integer::U8 => u8::MIN as i128,
             Integer::U16 => u16::MIN as i128,
@@ -318,7 +318,7 @@ impl Integer {
         }
     }
 
-    pub fn max_value(&self) -> i128 {
+    pub const fn max_value(&self) -> i128 {
         match self {
             Integer::U8 => u8::MAX as i128,
             Integer::U16 => u16::MAX as i128,
@@ -331,7 +331,7 @@ impl Integer {
         }
     }
 
-    pub fn size_bits(&self) -> u32 {
+    pub const fn size_bits(&self) -> u32 {
         match self {
             Integer::U8 => 8,
             Integer::U16 => 16,
@@ -349,7 +349,7 @@ impl Integer {
     ///
     /// This function has a preference for unsigned integers.
     /// You can force a signed integer by making the min be negative (e.g. -1)
-    pub fn find_smallest(min: i128, max: i128, size_bits: u32) -> Option<Integer> {
+    pub const fn find_smallest(min: i128, max: i128, size_bits: u32) -> Option<Integer> {
         Some(match (min, max, size_bits) {
             (0.., ..0x1_00, ..=8) => Integer::U8,
             (0.., ..0x1_0000, ..=16) => Integer::U16,
@@ -361,6 +361,34 @@ impl Integer {
             (-0x8000_0000_0000_0000.., ..0x8000_0000_0000_0000, ..=32) => Integer::I64,
             _ => return None,
         })
+    }
+
+    /// Given the min and the max and the sign of the integer,
+    /// how many bits are required to fit the min and max? (inclusive)
+    pub const fn bits_required(&self, min: i128, max: i128) -> u32 {
+        assert!(max >= min);
+
+        if self.is_signed() {
+            let min_bits = if min.is_negative() {
+                i128::BITS - (min.abs() - 1).leading_zeros() + 1
+            } else {
+                0
+            };
+            let max_bits = if max.is_positive() {
+                i128::BITS - max.leading_zeros() + 1
+            } else {
+                0
+            };
+
+            if min_bits > max_bits {
+                min_bits
+            } else {
+                max_bits
+            }
+        } else {
+            assert!(min >= 0);
+            i128::BITS - max.leading_zeros()
+        }
     }
 }
 
@@ -1124,5 +1152,28 @@ mod tests {
             names.push(object.name().to_string());
         }
         assert_eq!(&names, NAME_ORDER);
+    }
+
+    #[test]
+    fn correct_integer_size_bits() {
+        assert_eq!(Integer::U8.bits_required(0, 0), 0);
+        assert_eq!(Integer::U8.bits_required(0, 1), 1);
+        assert_eq!(Integer::U8.bits_required(0, 2), 2);
+        assert_eq!(Integer::U8.bits_required(0, 3), 2);
+        assert_eq!(Integer::U8.bits_required(0, 4), 3);
+
+        assert_eq!(Integer::I8.bits_required(0, 0), 0);
+        assert_eq!(Integer::I8.bits_required(-1, 0), 1);
+        assert_eq!(Integer::I8.bits_required(-1, 1), 2);
+        assert_eq!(Integer::I8.bits_required(0, 1), 2);
+        assert_eq!(Integer::I8.bits_required(-2, 1), 2);
+        assert_eq!(Integer::I8.bits_required(0, 2), 3);
+        assert_eq!(Integer::I8.bits_required(-128, 0), 8);
+        assert_eq!(Integer::I8.bits_required(-129, 0), 9);
+        assert_eq!(Integer::I8.bits_required(0, 127), 8);
+        assert_eq!(Integer::I8.bits_required(0, 128), 9);
+        assert_eq!(Integer::I8.bits_required(-16, 15), 5);
+        assert_eq!(Integer::I8.bits_required(-16, 16), 6);
+        assert_eq!(Integer::I8.bits_required(-17, 15), 6);
     }
 }

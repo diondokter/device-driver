@@ -153,16 +153,7 @@ pub fn run_pass(
         };
 
         let size_bits = match enum_value.size_bits {
-            None => {
-                if base_type_integer.is_signed() {
-                    u32::max(
-                        i128::BITS - seen_min.unsigned_abs().leading_zeros(),
-                        i128::BITS - seen_max.unsigned_abs().leading_zeros(),
-                    ) + seen_min.is_negative() as u32
-                } else {
-                    i128::BITS - seen_max.leading_zeros()
-                }
-            }
+            None => base_type_integer.bits_required(*seen_min, *seen_max),
             Some(size_bits) => size_bits,
         };
 
