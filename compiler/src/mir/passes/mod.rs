@@ -1,4 +1,9 @@
-use crate::mir::{Device, Manifest, RepeatSource};
+use std::collections::HashSet;
+
+use crate::{
+    mir::{Device, LendingIterator, Manifest, RepeatSource, Unique, UniqueId},
+    reporting::Diagnostics,
+};
 
 use super::{Object, Repeat};
 
@@ -18,15 +23,17 @@ pub mod names_unique;
 pub mod repeat_with_enums_checked;
 pub mod reset_values_converted;
 
-pub fn run_passes(manifest: &mut Manifest) -> miette::Result<()> {
-    bit_order_specified::run_pass(manifest)?;
-    base_types_specified::run_pass(manifest)?;
-    device_name_is_pascal::run_pass(manifest)?;
-    names_normalized::run_pass(manifest)?;
-    names_unique::run_pass(manifest)?;
-    enum_values_checked::run_pass(manifest)?;
-    repeat_with_enums_checked::run_pass(manifest)?;
-    extern_values_checked::run_pass(manifest)?;
+pub fn run_passes(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> miette::Result<()> {
+    bit_order_specified::run_pass(manifest);
+    base_types_specified::run_pass(manifest, diagnostics);
+    device_name_is_pascal::run_pass(manifest, diagnostics);
+    names_normalized::run_pass(manifest);
+    names_unique::run_pass(manifest, diagnostics);
+    let removals = enum_values_checked::run_pass(manifest, diagnostics);
+    remove_objects(manifest, removals);
+    repeat_with_enums_checked::run_pass(manifest, diagnostics);
+    let removals = extern_values_checked::run_pass(manifest, diagnostics);
+    remove_objects(manifest, removals);
     field_conversion_valid::run_pass(manifest)?;
     byte_order_specified::run_pass(manifest)?;
     reset_values_converted::run_pass(manifest)?;
@@ -66,7 +73,7 @@ pub(crate) fn find_min_max_addresses(
         }
 
         if let Some(address) = object.address() {
-            let repeat = object.repeat().unwrap_or(Repeat {
+            let repeat = object.repeat().cloned().unwrap_or(Repeat {
                 source: RepeatSource::Count(1),
                 stride: 0,
             });
@@ -116,4 +123,44 @@ pub(crate) fn find_min_max_addresses(
     }
 
     (min_address_found, max_address_found)
+}
+
+fn remove_objects(manifest: &mut Manifest, mut removals: HashSet<UniqueId>) {
+    fn try_remove_from_vec(objects: &mut Vec<Object>, removals: &mut HashSet<UniqueId>) {
+        removals.retain(|removal| {
+            if let Some((index, _)) = objects
+                .iter()
+                .enumerate()
+                .find(|(_, obj)| obj.has_id(removal))
+            {
+                objects.remove(index);
+                false
+            } else {
+                true
+            }
+        })
+    }
+
+    if removals.is_empty() {
+        return;
+    }
+
+    try_remove_from_vec(&mut manifest.root_objects, &mut removals);
+
+    if removals.is_empty() {
+        return;
+    }
+
+    let mut iter = manifest.iter_objects_with_config_mut();
+    while let Some((object, _)) = iter.next() {
+        let Some(child_objects) = object.child_objects_vec() else {
+            continue;
+        };
+
+        try_remove_from_vec(child_objects, &mut removals);
+
+        if removals.is_empty() {
+            return;
+        }
+    }
 }

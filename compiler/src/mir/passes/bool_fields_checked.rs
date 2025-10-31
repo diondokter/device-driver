@@ -19,7 +19,7 @@ pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
                 }
 
                 ensure!(
-                    field.field_address.clone().count() == 1,
+                    field.field_address.value.clone().count() == 1,
                     "Fieldset `{}` has field `{}` which is of base type `bool` and is larger than 1 bit. A bool can only be zero or one bit.",
                     object_name,
                     field.name

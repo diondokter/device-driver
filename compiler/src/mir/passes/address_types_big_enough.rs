@@ -68,7 +68,7 @@ pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use crate::mir::{Command, Device, DeviceConfig, Integer, Register};
+    use crate::mir::{Command, Device, DeviceConfig, Integer, Register, Span};
 
     use super::*;
 
@@ -76,13 +76,13 @@ mod tests {
     fn not_too_low() {
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: DeviceConfig {
                 register_address_type: Some(Integer::I8),
                 ..Default::default()
             },
             objects: vec![Object::Register(Register {
-                name: "MyReg".into(),
+                name: "MyReg".to_owned().with_dummy_span(),
                 address: -300,
                 ..Default::default()
             })],
@@ -99,13 +99,13 @@ mod tests {
     fn not_too_high() {
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: DeviceConfig {
                 command_address_type: Some(Integer::U16),
                 ..Default::default()
             },
             objects: vec![Object::Command(Command {
-                name: "MyReg".into(),
+                name: "MyReg".to_owned().with_dummy_span(),
                 address: 128000,
                 ..Default::default()
             })],
