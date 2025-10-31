@@ -419,3 +419,31 @@ pub struct EnumMultipleCatchalls {
     #[label(collection, "Variant defined as catch-all")]
     pub variant_names: Vec<SourceSpan>,
 }
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("The referenced object does not exist")]
+#[diagnostic(
+    severity(Error),
+    help(
+        "All objects must be specified in the manifest. It's possible a previous analysis step removed it due to some error. See the previous diagnosics"
+    )
+)]
+pub struct ReferencedObjectDoesNotExist {
+    #[label("The referenced enum does not exist")]
+    pub enum_name: Option<SourceSpan>,
+}
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("The repeat uses an enum that has defined a catch-all")]
+#[diagnostic(
+    severity(Error),
+    help("Repeats have to be statically known. Thus, repeats cannot use enums with a catch-all")
+)]
+pub struct RepeatEnumWithCatchAll {
+    #[label(primary, "Repeat references enum")]
+    pub repeat_enum: SourceSpan,
+    #[label("Referenced enum")]
+    pub enum_name: SourceSpan,
+    #[label("The offending catch-all")]
+    pub catch_all: SourceSpan,
+}

@@ -31,7 +31,7 @@ pub fn run_passes(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> mie
     names_unique::run_pass(manifest, diagnostics);
     let removals = enum_values_checked::run_pass(manifest, diagnostics);
     remove_objects(manifest, removals);
-    repeat_with_enums_checked::run_pass(manifest)?;
+    repeat_with_enums_checked::run_pass(manifest, diagnostics);
     extern_values_checked::run_pass(manifest)?;
     field_conversion_valid::run_pass(manifest)?;
     byte_order_specified::run_pass(manifest)?;
@@ -72,7 +72,7 @@ pub(crate) fn find_min_max_addresses(
         }
 
         if let Some(address) = object.address() {
-            let repeat = object.repeat().unwrap_or(Repeat {
+            let repeat = object.repeat().cloned().unwrap_or(Repeat {
                 source: RepeatSource::Count(1),
                 stride: 0,
             });

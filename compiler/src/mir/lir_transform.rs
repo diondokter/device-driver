@@ -294,10 +294,10 @@ fn transform_field_set(
                             stride: repeat.stride,
                         },
                         mir::RepeatSource::Enum(enum_name) => lir::Repeat::Enum {
-                            enum_name: enum_name.clone(),
+                            enum_name: enum_name.value.clone(),
                             enum_variants: manifest
                                 .iter_enums()
-                                .find(|e| e.name.value == *enum_name)
+                                .find(|e| e.name.value == enum_name.value)
                                 .expect("Checked in MIR pass")
                                 .variants
                                 .iter()
@@ -389,10 +389,10 @@ fn repeat_to_method_kind(
             source: mir::RepeatSource::Enum(enum_name),
             stride,
         }) => lir::Repeat::Enum {
-            enum_name: enum_name.clone(),
+            enum_name: enum_name.value.clone(),
             enum_variants: device_objects
                 .iter()
-                .find(|object| object.name() == enum_name)
+                .find(|object| object.name() == enum_name.value)
                 .expect("Checked in a MIR pass")
                 .as_enum()
                 .expect("Checked in a MIR pass")

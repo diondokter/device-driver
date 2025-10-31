@@ -1505,8 +1505,8 @@ fn parse_repeat_entries(
         None
     } else {
         match (count, with, stride) {
-            (None, Some((with, _)), Some((stride, _))) => Some(Repeat {
-                source: crate::mir::RepeatSource::Enum(with),
+            (None, Some((with, with_span)), Some((stride, _))) => Some(Repeat {
+                source: crate::mir::RepeatSource::Enum(with.with_span(with_span)),
                 stride,
             }),
             (Some((count, _)), None, Some((stride, _))) => Some(Repeat {

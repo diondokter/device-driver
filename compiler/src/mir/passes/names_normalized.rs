@@ -46,7 +46,7 @@ pub fn run_pass(manifest: &mut Manifest) {
                     ..
                 }) = field.repeat.as_mut()
                 {
-                    *name = pascal_converter.convert(&name);
+                    name.value = pascal_converter.convert(&name.value);
                 }
             }
         }

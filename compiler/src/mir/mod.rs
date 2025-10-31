@@ -519,19 +519,6 @@ impl Object {
         }
     }
 
-    pub(self) fn type_name(&self) -> &'static str {
-        match self {
-            Object::Device(_) => "device",
-            Object::Block(_) => "block",
-            Object::Register(_) => "register",
-            Object::Command(_) => "command",
-            Object::Buffer(_) => "buffer",
-            Object::FieldSet(_) => "fieldset",
-            Object::Enum(_) => "enum",
-            Object::Extern(_) => "extern",
-        }
-    }
-
     pub(self) fn field_set_refs_mut(&mut self) -> Vec<&mut FieldSetRef> {
         match self {
             Object::Device(_) => Vec::new(),
@@ -571,12 +558,26 @@ impl Object {
     }
 
     /// Return the repeat value if it exists
-    fn repeat(&self) -> Option<Repeat> {
+    fn repeat(&self) -> Option<&Repeat> {
         match self {
             Object::Device(_) => None,
-            Object::Block(block) => block.repeat.clone(),
-            Object::Register(register) => register.repeat.clone(),
-            Object::Command(command) => command.repeat.clone(),
+            Object::Block(block) => block.repeat.as_ref(),
+            Object::Register(register) => register.repeat.as_ref(),
+            Object::Command(command) => command.repeat.as_ref(),
+            Object::Buffer(_) => None,
+            Object::FieldSet(_) => None,
+            Object::Enum(_) => None,
+            Object::Extern(_) => None,
+        }
+    }
+
+    /// Return the repeat value if it exists
+    fn repeat_mut(&mut self) -> Option<&mut Repeat> {
+        match self {
+            Object::Device(_) => None,
+            Object::Block(block) => block.repeat.as_mut(),
+            Object::Register(register) => register.repeat.as_mut(),
+            Object::Command(command) => command.repeat.as_mut(),
             Object::Buffer(_) => None,
             Object::FieldSet(_) => None,
             Object::Enum(_) => None,
@@ -635,7 +636,7 @@ pub struct Repeat {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RepeatSource {
     Count(u64),
-    Enum(String),
+    Enum(Spanned<String>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
