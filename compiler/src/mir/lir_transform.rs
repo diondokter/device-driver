@@ -2,7 +2,7 @@ use std::ops::Add;
 
 use crate::{
     lir,
-    mir::{self, Object},
+    mir::{self, Manifest, Object},
 };
 
 use super::{Integer, passes::find_min_max_addresses};
@@ -42,7 +42,7 @@ fn transform_devices(manifest: &mir::Manifest) -> Vec<lir::Device> {
                 },
                 true,
                 &device.device_config,
-                &device.objects,
+                manifest,
             );
 
             lir::Device {
@@ -59,7 +59,7 @@ fn collect_into_blocks(
     block: BorrowedBlock,
     is_root: bool,
     global_config: &mir::DeviceConfig,
-    device_objects: &[mir::Object],
+    manifest: &Manifest,
 ) -> Vec<lir::Block> {
     let mut blocks = Vec::new();
 
@@ -74,7 +74,7 @@ fn collect_into_blocks(
     let mut methods = Vec::new();
 
     for object in objects {
-        let Some(method) = get_method(object, &mut blocks, global_config, device_objects) else {
+        let Some(method) = get_method(object, &mut blocks, global_config, manifest) else {
             continue;
         };
 
@@ -97,7 +97,7 @@ fn get_method(
     object: &mir::Object,
     blocks: &mut Vec<lir::Block>,
     global_config: &mir::DeviceConfig,
-    device_objects: &[mir::Object],
+    manifest: &Manifest,
 ) -> Option<lir::BlockMethod> {
     use convert_case::Casing;
 
@@ -116,7 +116,7 @@ fn get_method(
                 b.into(),
                 false,
                 global_config,
-                device_objects,
+                manifest,
             ));
 
             Some(lir::BlockMethod {
@@ -124,7 +124,7 @@ fn get_method(
                 name: name.to_case(convert_case::Case::Snake),
                 address: *address_offset,
                 allow_address_overlap: false,
-                repeat: repeat_to_method_kind(repeat, device_objects),
+                repeat: repeat_to_method_kind(repeat, manifest),
                 method_type: lir::BlockMethodType::Block {
                     name: name.to_string(),
                 },
@@ -144,7 +144,7 @@ fn get_method(
             name: name.to_case(convert_case::Case::Snake),
             address: *address,
             allow_address_overlap: *allow_address_overlap,
-            repeat: repeat_to_method_kind(repeat, device_objects),
+            repeat: repeat_to_method_kind(repeat, manifest),
             method_type: lir::BlockMethodType::Register {
                 field_set_name: field_set.0.clone(),
                 access: *access,
@@ -174,7 +174,7 @@ fn get_method(
             name: name.to_case(convert_case::Case::Snake),
             address: *address,
             allow_address_overlap: *allow_address_overlap,
-            repeat: repeat_to_method_kind(repeat, device_objects),
+            repeat: repeat_to_method_kind(repeat, manifest),
             method_type: lir::BlockMethodType::Command {
                 field_set_name_in: field_set_in.as_ref().map(|fs_in| fs_in.0.clone()),
                 field_set_name_out: field_set_out.as_ref().map(|fs_out| fs_out.0.clone()),
@@ -373,10 +373,7 @@ fn transform_enums(manifest: &mir::Manifest) -> Vec<lir::Enum> {
     }).collect()
 }
 
-fn repeat_to_method_kind(
-    repeat: &Option<mir::Repeat>,
-    device_objects: &[mir::Object],
-) -> lir::Repeat {
+fn repeat_to_method_kind(repeat: &Option<mir::Repeat>, manifest: &Manifest) -> lir::Repeat {
     match repeat {
         Some(mir::Repeat {
             source: mir::RepeatSource::Count(count),
@@ -390,11 +387,9 @@ fn repeat_to_method_kind(
             stride,
         }) => lir::Repeat::Enum {
             enum_name: enum_name.value.clone(),
-            enum_variants: device_objects
-                .iter()
-                .find(|object| object.name() == enum_name.value)
-                .expect("Checked in a MIR pass")
-                .as_enum()
+            enum_variants: manifest
+                .iter_enums()
+                .find(|object| object.name == enum_name.value)
                 .expect("Checked in a MIR pass")
                 .variants
                 .iter()

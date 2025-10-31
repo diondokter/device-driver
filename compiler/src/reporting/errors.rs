@@ -447,3 +447,18 @@ pub struct RepeatEnumWithCatchAll {
     #[label("The offending catch-all")]
     pub catch_all: SourceSpan,
 }
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Extern object uses invalid base type")]
+#[diagnostic(
+    severity(Error),
+    help(
+        "Externs must use a fixed size integer type as its base type. It cannot be left unspecied either"
+    )
+)]
+pub struct ExternInvalidBaseType {
+    #[label(primary, "Extern has invalid base type")]
+    pub extern_name: SourceSpan,
+    #[label("The invalid base type")]
+    pub base_type: Option<SourceSpan>,
+}
