@@ -1,3 +1,8 @@
+#![allow(
+    unused_assignments,
+    reason = "Something going on with the diagnostics derive"
+)]
+
 use std::{
     fmt::{Debug, Display},
     sync::{

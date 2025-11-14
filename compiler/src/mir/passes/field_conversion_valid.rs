@@ -1,9 +1,19 @@
+use std::collections::HashSet;
+
 use miette::{bail, ensure};
 
-use crate::mir::{EnumGenerationStyle, Manifest, Object};
+use crate::{
+    mir::{EnumGenerationStyle, Manifest, Object, UniqueId},
+    reporting::{Diagnostics, errors::DifferentBaseTypes},
+};
 
 /// Checks if fields that have conversion and specified no try to be used, are valid in doing so
-pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
+pub fn run_pass(
+    manifest: &mut Manifest,
+    diagnostics: &mut Diagnostics,
+) -> miette::Result<HashSet<UniqueId>> {
+    let mut removals = HashSet::new();
+
     for object in manifest.iter_objects() {
         if let Object::FieldSet(field_set) = object {
             for field in field_set.fields.iter() {
@@ -12,15 +22,18 @@ pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
 
                     match target_object {
                         Some(Object::Enum(target_enum)) => {
-                            ensure!(
-                                target_enum.base_type == field.base_type,
-                                "Field `{}` of FieldSet `{}` has a {} base type. It converts to enum `{}` which has a {} base type. These may not be different, but are.",
-                                field.name,
-                                field_set.name,
-                                field.base_type,
-                                target_enum.name,
-                                target_enum.base_type,
-                            );
+                            if field.base_type != target_enum.base_type {
+                                diagnostics.add(DifferentBaseTypes {
+                                    field: field.name.span,
+                                    field_base_type: field.base_type.value,
+                                    conversion: conversion.type_name.span,
+                                    conversion_object: target_enum.name.span,
+                                    conversion_base_type: target_enum.base_type.value,
+                                });
+
+                                // TODO: Add field to removals once supported
+                                continue;
+                            }
 
                             if !conversion.use_try {
                                 // Check if we know the value we're converting to and if we can support non-try conversion
@@ -56,15 +69,18 @@ pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
                             }
                         }
                         Some(Object::Extern(target_extern)) => {
-                            ensure!(
-                                field.base_type == target_extern.base_type,
-                                "Field `{}` of FieldSet `{}` has a {} base type. It converts to extern `{}` which has a {} base type. These may not be different, but are.",
-                                field.name,
-                                field_set.name,
-                                field.base_type,
-                                target_extern.name,
-                                target_extern.base_type,
-                            );
+                            if field.base_type != target_extern.base_type {
+                                diagnostics.add(DifferentBaseTypes {
+                                    field: field.name.span,
+                                    field_base_type: field.base_type.value,
+                                    conversion: conversion.type_name.span,
+                                    conversion_object: target_extern.name.span,
+                                    conversion_base_type: target_extern.base_type.value,
+                                });
+
+                                // TODO: Add field to removals once supported
+                                continue;
+                            }
 
                             if !conversion.use_try && !target_extern.supports_infallible {
                                 bail!(
@@ -94,5 +110,5 @@ pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
         }
     }
 
-    Ok(())
+    Ok(removals)
 }

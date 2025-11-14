@@ -1,8 +1,13 @@
+#![allow(
+    unused_assignments,
+    reason = "Something going on with the diagnostics derive"
+)]
+
 use itertools::Itertools;
 use miette::{Diagnostic, LabeledSpan, SourceSpan};
 use thiserror::Error;
 
-use crate::mir::FieldConversion;
+use crate::mir::{BaseType, FieldConversion};
 
 #[derive(Error, Debug, Diagnostic)]
 #[error("Missing object name")]
@@ -461,4 +466,21 @@ pub struct ExternInvalidBaseType {
     pub extern_name: SourceSpan,
     #[label("The invalid base type")]
     pub base_type: Option<SourceSpan>,
+}
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Field uses a conversion with a different base type")]
+#[diagnostic(
+    severity(Error),
+    help("A conversion can't change the base type. Make sure they are the same")
+)]
+pub struct DifferentBaseTypes {
+    #[label(primary, "This field uses base type: {field_base_type}")]
+    pub field: SourceSpan,
+    pub field_base_type: BaseType,
+    #[label("It has specified a conversion")]
+    pub conversion: SourceSpan,
+    #[label("The conversion type uses base type: {conversion_base_type}")]
+    pub conversion_object: SourceSpan,
+    pub conversion_base_type: BaseType,
 }
