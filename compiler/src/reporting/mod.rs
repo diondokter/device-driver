@@ -1,3 +1,8 @@
+#![allow(
+    unused_assignments,
+    reason = "Something going on with the diagnostics derive"
+)]
+
 use std::{
     fmt::{Debug, Display},
     sync::{
@@ -29,6 +34,17 @@ impl Diagnostics {
     pub fn new() -> Self {
         Self {
             reports: Vec::new(),
+        }
+    }
+
+    /// Create a new Diagnostics instance where all reports have their source code set
+    pub fn with_source_code(self, source_code: NamedSourceCode) -> Self {
+        Self {
+            reports: self
+                .reports
+                .into_iter()
+                .map(|report| report.with_source_code(source_code.clone()))
+                .collect(),
         }
     }
 
@@ -121,10 +137,6 @@ pub fn set_miette_hook(user_facing: bool) {
 #[derive(Debug, Diagnostic, Clone, Eq, PartialEq, Error)]
 #[error("{}", message.clone().unwrap_or_else(|| "Unexpected error".into()))]
 pub struct ConvertedKdlDiagnostic {
-    /// Shared source for the diagnostic.
-    #[source_code]
-    pub input: NamedSourceCode,
-
     /// Offset in chars of the error.
     #[label("{}", label.clone().unwrap_or_else(|| "here".into()))]
     pub span: SourceSpan,
@@ -145,11 +157,7 @@ pub struct ConvertedKdlDiagnostic {
 }
 
 impl ConvertedKdlDiagnostic {
-    pub fn from_original_and_span(
-        original: KdlDiagnostic,
-        input: NamedSourceCode,
-        input_span: Option<SourceSpan>,
-    ) -> Self {
+    pub fn from_original_and_span(original: KdlDiagnostic, input_span: Option<SourceSpan>) -> Self {
         let KdlDiagnostic {
             input: _,
             span,
@@ -160,7 +168,6 @@ impl ConvertedKdlDiagnostic {
         } = original;
 
         Self {
-            input,
             span: if let Some(input_span) = input_span {
                 (input_span.offset() + span.offset(), span.len()).into()
             } else {

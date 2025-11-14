@@ -1,7 +1,7 @@
 use crate::mir::{LendingIterator, Manifest};
 
 /// Set the unset bit orders to the device config value
-pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
+pub fn run_pass(manifest: &mut Manifest) {
     let mut iter = manifest.iter_objects_with_config_mut();
     while let Some((object, config)) = iter.next() {
         if let Some(fs) = object.as_field_set_mut()
@@ -11,6 +11,4 @@ pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
             fs.bit_order = Some(config.bit_order.unwrap_or(crate::mir::BitOrder::LSB0))
         }
     }
-
-    Ok(())
 }
