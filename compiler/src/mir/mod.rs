@@ -939,19 +939,28 @@ pub struct Extern {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct UniqueId {
-    object_name: Spanned<String>,
+pub enum UniqueId {
+    Object {
+        object_name: Spanned<String>,
+    },
+    Field {
+        parent_id: Box<UniqueId>,
+        field_name: Spanned<String>,
+    },
 }
 
 impl UniqueId {
     pub fn span(&self) -> SourceSpan {
-        self.object_name.span
+        match self {
+            UniqueId::Object { object_name } => object_name.span,
+            UniqueId::Field { field_name, .. } => field_name.span,
+        }
     }
 
     /// *Only for tests:* Create a new instance with a dummy span.
     #[cfg(test)]
     pub fn new_test(object_name: impl Into<String>) -> Self {
-        Self {
+        Self::Object {
             object_name: object_name.into().with_dummy_span(),
         }
     }
@@ -959,43 +968,92 @@ impl UniqueId {
 
 impl Display for UniqueId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.object_name)
+        match self {
+            UniqueId::Object { object_name } => write!(f, "{}", object_name),
+            UniqueId::Field {
+                parent_id,
+                field_name,
+            } => write!(f, "{} {{ {} }}", parent_id, field_name),
+        }
     }
 }
 
 pub trait Unique {
-    fn id(&self) -> UniqueId;
-    fn has_id(&self, id: &UniqueId) -> bool;
+    type Metadata;
+
+    fn id(&self) -> UniqueId
+    where
+        Self::Metadata: Empty;
+    fn id_with(&self, meta: Self::Metadata) -> UniqueId;
+
+    fn has_id(&self, id: &UniqueId) -> bool
+    where
+        Self::Metadata: Empty;
+    fn has_id_with(&self, meta: Self::Metadata, id: &UniqueId) -> bool {
+        self.id_with(meta) == *id
+    }
 }
 
-macro_rules! impl_unique {
+pub trait Empty {}
+impl Empty for () {}
+
+macro_rules! impl_unique_object {
     ($t:ty) => {
         impl Unique for $t {
+            type Metadata = ();
+
             fn id(&self) -> UniqueId {
-                UniqueId {
+                UniqueId::Object {
                     object_name: self.name.clone(),
                 }
             }
 
+            fn id_with(&self, _: Self::Metadata) -> UniqueId {
+                self.id()
+            }
+
             fn has_id(&self, id: &UniqueId) -> bool {
-                self.name.value == id.object_name.value
+                match id {
+                    UniqueId::Object { object_name } => &self.name == object_name,
+                    _ => false,
+                }
             }
         }
     };
 }
 
-impl_unique!(Device);
-impl_unique!(Register);
-impl_unique!(Command);
-impl_unique!(Buffer);
-impl_unique!(Block);
-impl_unique!(Enum);
-impl_unique!(EnumVariant);
-impl_unique!(FieldSet);
-impl_unique!(Extern);
-impl_unique!(Field);
+impl_unique_object!(Device);
+impl_unique_object!(Register);
+impl_unique_object!(Command);
+impl_unique_object!(Buffer);
+impl_unique_object!(Block);
+impl_unique_object!(Enum);
+impl_unique_object!(EnumVariant);
+impl_unique_object!(FieldSet);
+impl_unique_object!(Extern);
+
+impl Unique for Field {
+    type Metadata = UniqueId;
+
+    fn id(&self) -> UniqueId {
+        unreachable!()
+    }
+
+    fn id_with(&self, parent: Self::Metadata) -> UniqueId {
+        UniqueId::Field {
+            parent_id: Box::new(parent),
+            field_name: self.name.clone(),
+        }
+    }
+
+    fn has_id(&self, _id: &UniqueId) -> bool {
+        unreachable!()
+    }
+}
 
 impl Unique for Object {
+    type Metadata = ();
+
     fn id(&self) -> UniqueId {
         match self {
             Object::Device(val) => val.id(),
@@ -1007,6 +1065,10 @@ impl Unique for Object {
             Object::Enum(val) => val.id(),
             Object::Extern(val) => val.id(),
         }
+    }
+
+    fn id_with(&self, _: Self::Metadata) -> UniqueId {
+        self.id()
     }
 
     fn has_id(&self, id: &UniqueId) -> bool {

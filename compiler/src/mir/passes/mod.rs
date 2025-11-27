@@ -137,6 +137,17 @@ fn remove_objects(manifest: &mut Manifest, mut removals: HashSet<UniqueId>) {
                 objects.remove(index);
                 false
             } else {
+                // Find a field
+                for fs in objects.iter_mut().filter_map(|o| o.as_field_set_mut()) {
+                    let fs_id = fs.id();
+                    for field_index in 0..fs.fields.len() {
+                        if fs.fields[field_index].has_id_with(fs_id.clone(), removal) {
+                            fs.fields.remove(field_index);
+                            return false;
+                        }
+                    }
+                }
+
                 true
             }
         })

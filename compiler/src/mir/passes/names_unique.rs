@@ -11,14 +11,14 @@ use crate::{
 /// Checks if all names are unique to prevent later name collisions.
 /// If there is a collision an error is returned.
 pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
-    let mut seen_object_ids = HashSet::new();
+    let mut seen_ids = HashSet::new();
 
     let mut object_index = 0;
     let mut iter = manifest.iter_objects_with_config_mut();
     while let Some((object, _)) = iter.next() {
-        if !seen_object_ids.insert(object.id()) {
+        if !seen_ids.insert(object.id()) {
             diagnostics.add(DuplicateName {
-                original: seen_object_ids.get(&object.id()).unwrap().span(),
+                original: seen_ids.get(&object.id()).unwrap().span(),
                 duplicate: object.id().span(),
             });
 
@@ -28,12 +28,13 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
         }
 
         if let Object::FieldSet(field_set) = object {
-            let mut seen_field_names = HashSet::new();
+            let fs_id = field_set.id();
             for (field_index, field) in field_set.fields.iter_mut().enumerate() {
-                if !seen_field_names.insert(field.id()) {
+                let field_id = field.id_with(fs_id.clone());
+                if !seen_ids.insert(field_id.clone()) {
                     diagnostics.add(DuplicateName {
-                        original: seen_field_names.get(&field.id()).unwrap().span(),
-                        duplicate: field.id().span(),
+                        original: seen_ids.get(&field_id).unwrap().span(),
+                        duplicate: field_id.span(),
                     });
 
                     // Duplicate name found. Let's add to the name to make it unique again so it can contribute to later passes

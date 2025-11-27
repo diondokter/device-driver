@@ -30,7 +30,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
                 if let Some(repeat) = field.repeat.as_ref()
                     && !repeat_is_ok(repeat, manifest, diagnostics)
                 {
-                    bad_field_repeat.insert((object.id(), field.id()));
+                    bad_field_repeat.insert((object.id(), field.id_with(fs.id())));
                 }
             }
         }
@@ -48,8 +48,9 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
         }
 
         if let Object::FieldSet(fs) = object {
+            let fs_id = fs.id();
             for field in fs.fields.iter_mut() {
-                let field_id = field.id();
+                let field_id = field.id_with(fs_id.clone());
                 if let Some(repeat) = field.repeat.as_mut()
                     && bad_field_repeat.contains(&(id.clone(), field_id))
                 {

@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use miette::{bail, ensure};
 
 use crate::{
-    mir::{EnumGenerationStyle, Manifest, Object, UniqueId},
+    mir::{EnumGenerationStyle, Manifest, Object, Unique, UniqueId},
     reporting::{Diagnostics, errors::DifferentBaseTypes},
 };
 
@@ -30,8 +30,7 @@ pub fn run_pass(
                                     conversion_object: target_enum.name.span,
                                     conversion_base_type: target_enum.base_type.value,
                                 });
-
-                                // TODO: Add field to removals once supported
+                                removals.insert(field.id_with(field_set.id()));
                                 continue;
                             }
 
@@ -77,8 +76,7 @@ pub fn run_pass(
                                     conversion_object: target_extern.name.span,
                                     conversion_base_type: target_extern.base_type.value,
                                 });
-
-                                // TODO: Add field to removals once supported
+                                removals.insert(field.id_with(field_set.id()));
                                 continue;
                             }
 
