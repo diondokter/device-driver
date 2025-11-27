@@ -1,10 +1,13 @@
 use std::collections::HashSet;
 
-use miette::{bail, ensure};
+use miette::{LabeledSpan, bail, ensure};
 
 use crate::{
     mir::{EnumGenerationStyle, Manifest, Object, Unique, UniqueId},
-    reporting::{Diagnostics, errors::DifferentBaseTypes},
+    reporting::{
+        Diagnostics,
+        errors::{DifferentBaseTypes, InvalidInfallibleConversion},
+    },
 };
 
 /// Checks if fields that have conversion and specified no try to be used, are valid in doing so
@@ -42,11 +45,18 @@ pub fn run_pass(
                                     .expect("Generation style has been set here in an earlier pass")
                                 {
                                     EnumGenerationStyle::Fallible => {
-                                        bail!(
-                                            "Field `{}` of FieldSet `{}` uses an infallible conversion for an enum that only has fallible conversion. Try adding a '?' to mark the conversion as fallible",
-                                            field.name,
-                                            field_set.name
-                                        );
+                                        diagnostics.add(InvalidInfallibleConversion {
+                                            conversion: conversion.type_name.span,
+                                            context: vec![LabeledSpan::new_with_span(
+                                                Some(
+                                                    "Target only supports fallible conversion"
+                                                        .into(),
+                                                ),
+                                                target_enum.name.span,
+                                            )],
+                                        });
+                                        removals.insert(field.id_with(field_set.id()));
+                                        continue;
                                     }
                                     EnumGenerationStyle::InfallibleWithinRange => {
                                         let field_bits = field.field_address.len() as u32;
@@ -81,11 +91,15 @@ pub fn run_pass(
                             }
 
                             if !conversion.use_try && !target_extern.supports_infallible {
-                                bail!(
-                                    "Field `{}` of FieldSet `{}` uses an infallible conversion for an extern that doesn't support that",
-                                    field.name,
-                                    field_set.name
-                                );
+                                diagnostics.add(InvalidInfallibleConversion {
+                                    conversion: conversion.type_name.span,
+                                    context: vec![LabeledSpan::new_with_span(
+                                        Some("Target only supports fallible conversion".into()),
+                                        target_extern.name.span,
+                                    )],
+                                });
+                                removals.insert(field.id_with(field_set.id()));
+                                continue;
                             }
                         }
                         Some(_) => bail!(

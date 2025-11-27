@@ -484,3 +484,16 @@ pub struct DifferentBaseTypes {
     pub conversion_object: SourceSpan,
     pub conversion_base_type: BaseType,
 }
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Invalid infallible conversion")]
+#[diagnostic(
+    severity(Error),
+    help("Try adding a `?` to mark the conversion as fallible")
+)]
+pub struct InvalidInfallibleConversion {
+    #[label(primary, "Conversion specified here")]
+    pub conversion: SourceSpan,
+    #[label(collection)]
+    pub context: Vec<LabeledSpan>,
+}
