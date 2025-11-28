@@ -1,9 +1,10 @@
-use miette::bail;
-
-use crate::mir::{LendingIterator, Manifest};
+use crate::{
+    mir::{LendingIterator, Manifest},
+    reporting::{Diagnostics, errors::UnspecifiedByteOrder},
+};
 
 /// Checks if the byte order is set for all registers and commands that need it and fills it out for the ones that aren't specified
-pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
+pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
     let mut iter = manifest.iter_objects_with_config_mut();
     while let Some((object, config)) = iter.next() {
         if let Some(fs) = object.as_field_set_mut() {
@@ -12,18 +13,15 @@ pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
             }
 
             if fs.size_bits > 8 && fs.byte_order.is_none() {
-                bail!(
-                    "No byte order is specified for fieldset `{}` while it's big enough that byte order is important. Specify it on the fieldset or in the device config",
-                    object.name()
-                );
-            } else {
-                // Even if not required, fill in a byte order so we can always unwrap it later
-                fs.byte_order.get_or_insert(crate::mir::ByteOrder::LE);
+                diagnostics.add(UnspecifiedByteOrder {
+                    fieldset_name: fs.name.span,
+                });
             }
+
+            // Even if not required, fill in a byte order so we can always unwrap it later
+            fs.byte_order.get_or_insert(crate::mir::ByteOrder::LE);
         }
     }
-
-    Ok(())
 }
 
 #[cfg(test)]
@@ -54,7 +52,9 @@ mod tests {
         }
         .into();
 
-        run_pass(&mut input).unwrap();
+        let mut d = Diagnostics::new();
+        run_pass(&mut input, &mut d);
+        assert!(!d.has_error());
     }
 
     #[test]
@@ -71,10 +71,9 @@ mod tests {
         }
         .into();
 
-        assert_eq!(
-            run_pass(&mut input).unwrap_err().to_string(),
-            "No byte order is specified for fieldset `MyRegister` while it's big enough that byte order is important. Specify it on the fieldset or in the device config"
-        );
+        let mut d = Diagnostics::new();
+        run_pass(&mut input, &mut d);
+        assert!(d.has_error());
     }
 
     #[test]
@@ -96,6 +95,8 @@ mod tests {
         }
         .into();
 
-        run_pass(&mut input).unwrap();
+        let mut d = Diagnostics::new();
+        run_pass(&mut input, &mut d);
+        assert!(!d.has_error());
     }
 }

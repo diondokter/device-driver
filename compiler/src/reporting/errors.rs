@@ -509,3 +509,16 @@ pub struct InvalidInfallibleConversion {
     #[label(collection)]
     pub context: Vec<LabeledSpan>,
 }
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Unspecied byte order")]
+#[diagnostic(
+    severity(Error),
+    help(
+        "Every fieldset larger than 8 bits must specify its byte order. This can be done on each fieldset individually or in the device/global config"
+    )
+)]
+pub struct UnspecifiedByteOrder {
+    #[label("No byte order specified. Try adding `byte-order=LE` or `byte-order=BE`")]
+    pub fieldset_name: SourceSpan,
+}
