@@ -1,12 +1,12 @@
-use crate::mir::{BaseType, LendingIterator, Manifest};
-use miette::ensure;
+use crate::{
+    mir::{BaseType, LendingIterator, Manifest},
+    reporting::{Diagnostics, errors::BoolFieldTooLarge},
+};
 
-/// Check all bool fields. They must be exactly zero or one bits long and have no conversion
-pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
+/// Check all bool fields. They must be exactly zero or one bits
+pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
     let mut iter = manifest.iter_objects_with_config_mut();
     while let Some((object, _)) = iter.next() {
-        let object_name = object.name().to_string();
-
         for field in object
             .as_field_set_mut()
             .into_iter()
@@ -18,22 +18,20 @@ pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
                     field.field_address.end += 1;
                 }
 
-                ensure!(
-                    field.field_address.value.clone().count() == 1,
-                    "Fieldset `{}` has field `{}` which is of base type `bool` and is larger than 1 bit. A bool can only be zero or one bit.",
-                    object_name,
-                    field.name
-                );
-
-                ensure!(
-                    field.field_conversion.is_none(),
-                    "Fieldset `{}` has field `{}` which is of base type `bool` and has specified a conversion. This is not supported for bools.",
-                    object_name,
-                    field.name
-                );
+                if field.field_address.value.clone().count() != 1 {
+                    diagnostics.add(BoolFieldTooLarge {
+                        base_type: if field.base_type.span.is_empty() {
+                            None
+                        } else {
+                            Some(field.base_type.span)
+                        },
+                        address: field.field_address.span,
+                        address_bits: field.field_address.len() as u32,
+                    });
+                    // To fix for further use, set the len to just 1
+                    field.field_address.end = field.field_address.start + 1;
+                };
             }
         }
     }
-
-    Ok(())
 }

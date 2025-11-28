@@ -554,3 +554,17 @@ pub struct ResetValueArrayWrongSize {
     pub reset_value_size_bytes: u32,
     pub register_size_bytes: u32,
 }
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Bool field too large")]
+#[diagnostic(
+    severity(Error),
+    help("A field can only use `bool` as its base type when its size is 1 bit")
+)]
+pub struct BoolFieldTooLarge {
+    #[label("Field set to `bool` here")]
+    pub base_type: Option<SourceSpan>,
+    #[label("Address is {address_bits} bits")]
+    pub address: SourceSpan,
+    pub address_bits: u32,
+}
