@@ -402,7 +402,7 @@ fn transform_register(
             description: parse_description(node),
             name: (name, name_span).into(),
             address: address.unwrap().0,
-            reset_value: reset_value.map(|(rv, _)| rv),
+            reset_value: reset_value.map(Into::into),
             repeat: repeat.map(|(r, _)| r),
             field_set_ref: FieldSetRef(field_set.as_ref().unwrap().0.name.value.clone()),
             ..Default::default()

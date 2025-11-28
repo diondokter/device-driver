@@ -673,7 +673,7 @@ pub struct Register {
     pub access: Access,
     pub allow_address_overlap: bool,
     pub address: i128,
-    pub reset_value: Option<ResetValue>,
+    pub reset_value: Option<Spanned<ResetValue>>,
     pub repeat: Option<Repeat>,
     pub field_set_ref: FieldSetRef,
 }

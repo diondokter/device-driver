@@ -522,3 +522,35 @@ pub struct UnspecifiedByteOrder {
     #[label("No byte order specified. Try adding `byte-order=LE` or `byte-order=BE`")]
     pub fieldset_name: SourceSpan,
 }
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Reset value is too big")]
+#[diagnostic(
+    severity(Error),
+    help(
+        "Reset values must have the same size as their associated register. Integer-specified values are allowed to be smaller and will be 0-padded to the required size"
+    )
+)]
+pub struct ResetValueTooBig {
+    #[label(
+        "The reset value is specified with {reset_value_size_bits} bits, but the register only has {register_size_bits}"
+    )]
+    pub reset_value: SourceSpan,
+    pub reset_value_size_bits: u32,
+    pub register_size_bits: u32,
+}
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Reset value is too big")]
+#[diagnostic(
+    severity(Error),
+    help("Reset values must have the same size as their associated register")
+)]
+pub struct ResetValueArrayWrongSize {
+    #[label(
+        "The reset value is specified with {reset_value_size_bytes} bytes and the register has {register_size_bytes}"
+    )]
+    pub reset_value: SourceSpan,
+    pub reset_value_size_bytes: u32,
+    pub register_size_bytes: u32,
+}

@@ -4,11 +4,16 @@ use bitvec::{
     order::{Lsb0, Msb0},
     view::BitView,
 };
-use miette::ensure;
 
-use crate::mir::{
-    BitOrder, ByteOrder, FieldSet, LendingIterator, Manifest, Object, Register, ResetValue, Unique,
-    passes::search_object,
+use crate::{
+    mir::{
+        BitOrder, ByteOrder, FieldSet, LendingIterator, Manifest, Object, Register, ResetValue,
+        Span, Spanned, Unique, passes::search_object,
+    },
+    reporting::{
+        Diagnostics,
+        errors::{ResetValueArrayWrongSize, ResetValueTooBig},
+    },
 };
 
 /// Checks if the reset values of registers are valid.
@@ -19,7 +24,7 @@ use crate::mir::{
 ///
 /// This function assumes all register have a valid byte order, and so depends on [super::byte_order_specified::run_pass]
 /// having been run.
-pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
+pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
     let mut new_reset_values = HashMap::new();
 
     for object in manifest.iter_objects() {
@@ -33,10 +38,9 @@ pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
                         .bit_order
                         .expect("Bitorder should be set at this point"),
                     target_field_set.size_bits,
-                    "register",
-                    &reg.name,
                     target_field_set.byte_order.unwrap(),
-                )?;
+                    diagnostics,
+                );
                 assert_eq!(
                     new_reset_values.insert(reg.id(), new_reset_value),
                     None,
@@ -51,13 +55,11 @@ pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
         if let Object::Register(register) = object
             && let Some(new_reset_value) = new_reset_values.remove(&register.id())
         {
-            register.reset_value = Some(new_reset_value);
+            register.reset_value = new_reset_value;
         }
     }
 
     assert!(new_reset_values.is_empty());
-
-    Ok(())
 }
 
 fn get_target_field_set<'m>(reg: &Register, manifest: &'m Manifest) -> &'m FieldSet {
@@ -68,16 +70,15 @@ fn get_target_field_set<'m>(reg: &Register, manifest: &'m Manifest) -> &'m Field
 }
 
 fn convert_reset_value(
-    reset_value: ResetValue,
+    reset_value: Spanned<ResetValue>,
     bit_order: BitOrder,
     size_bits: u32,
-    object_type_name: &str,
-    object_name: &str,
     target_byte_order: ByteOrder,
-) -> miette::Result<ResetValue> {
+    diagnostics: &mut Diagnostics,
+) -> Option<Spanned<ResetValue>> {
     let target_byte_size = size_bits.div_ceil(8) as usize;
 
-    match reset_value {
+    match reset_value.value {
         ResetValue::Integer(int) => {
             // Convert the integer to LE and LSB0
             let mut array = int.to_le_bytes();
@@ -88,11 +89,14 @@ fn convert_reset_value(
             let array_view = array.view_bits_mut::<Lsb0>();
 
             // Check if the value is not too big
-            ensure!(
-                !array_view[size_bits as usize..].any(),
-                "The reset value of {object_type_name} `{object_name}` has (a) bit(s) specified above the size of the register. \
-                While you can specify them, this is likely a mistake and thus not accepted. Keep the bits `{size_bits}..` all at zero",
-            );
+            if array_view[size_bits as usize..].any() {
+                diagnostics.add(ResetValueTooBig {
+                    reset_value: reset_value.span,
+                    reset_value_size_bits: (array_view.len() - array_view.trailing_zeros()) as u32,
+                    register_size_bits: size_bits,
+                });
+                return None;
+            };
 
             let mut final_array = array[..target_byte_size].to_vec();
 
@@ -106,15 +110,17 @@ fn convert_reset_value(
                 final_array.reverse();
             }
 
-            Ok(ResetValue::Array(final_array))
+            Some(ResetValue::Array(final_array).with_span(reset_value.span))
         }
         ResetValue::Array(mut array) => {
-            ensure!(
-                array.len() == target_byte_size,
-                "The reset value of {object_type_name} `{}` has the incorrect length. It must be specified as {target_byte_size} bytes, but now only has {} elements",
-                object_name,
-                array.len(),
-            );
+            if array.len() != target_byte_size {
+                diagnostics.add(ResetValueArrayWrongSize {
+                    reset_value: reset_value.span,
+                    reset_value_size_bytes: array.len() as u32,
+                    register_size_bytes: target_byte_size as u32,
+                });
+                return None;
+            };
 
             // Convert to little endian to do the check since that's what bitvec needs
             if target_byte_order == ByteOrder::BE {
@@ -123,18 +129,28 @@ fn convert_reset_value(
 
             match bit_order {
                 BitOrder::LSB0 => {
-                    ensure!(
-                        !array.view_bits::<Lsb0>()[size_bits as usize..].any(),
-                        "The reset value of {object_type_name} `{object_name}` has (a) bit(s) specified above the size of the register. \
-                        While you can specify them, this is likely a mistake and thus not accepted. Keep the bits `{size_bits}..` all at zero",
-                    );
+                    if array.view_bits::<Lsb0>()[size_bits as usize..].any() {
+                        diagnostics.add(ResetValueTooBig {
+                            reset_value: reset_value.span,
+                            reset_value_size_bits: (array.view_bits::<Lsb0>().len()
+                                - array.view_bits::<Lsb0>().trailing_zeros())
+                                as u32,
+                            register_size_bits: size_bits,
+                        });
+                        return None;
+                    };
                 }
                 BitOrder::MSB0 => {
-                    ensure!(
-                        !array.view_bits::<Msb0>()[size_bits as usize..].any(),
-                        "The reset value of {object_type_name} `{object_name}` has (a) bit(s) specified above the size of the register. \
-                        While you can specify them, this is likely a mistake and thus not accepted. Keep the bits `{size_bits}..` all at zero",
-                    );
+                    if array.view_bits::<Msb0>()[size_bits as usize..].any() {
+                        diagnostics.add(ResetValueTooBig {
+                            reset_value: reset_value.span,
+                            reset_value_size_bits: (array.view_bits::<Msb0>().len()
+                                - array.view_bits::<Msb0>().trailing_zeros())
+                                as u32,
+                            register_size_bits: size_bits,
+                        });
+                        return None;
+                    };
                 }
             }
 
@@ -143,7 +159,7 @@ fn convert_reset_value(
                 array.reverse();
             }
 
-            Ok(ResetValue::Array(array))
+            Some(ResetValue::Array(array).with_span(reset_value.span))
         }
     }
 }
@@ -163,7 +179,7 @@ mod tests {
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".to_owned().with_dummy_span(),
-                    reset_value: Some(ResetValue::Integer(0x1F)),
+                    reset_value: Some(ResetValue::Integer(0x1F).with_dummy_span()),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
@@ -178,7 +194,9 @@ mod tests {
         }
         .into();
 
-        run_pass(&mut start_mir).unwrap();
+        let mut diagnostics = Diagnostics::new();
+        run_pass(&mut start_mir, &mut diagnostics);
+        assert!(!diagnostics.has_error());
 
         let end_mir = Device {
             description: String::new(),
@@ -187,7 +205,7 @@ mod tests {
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".to_owned().with_dummy_span(),
-                    reset_value: Some(ResetValue::Array(vec![0x1F])),
+                    reset_value: Some(ResetValue::Array(vec![0x1F]).with_dummy_span()),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
@@ -211,7 +229,7 @@ mod tests {
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".to_owned().with_dummy_span(),
-                    reset_value: Some(ResetValue::Array(vec![0x1F])),
+                    reset_value: Some(ResetValue::Array(vec![0x1F]).with_dummy_span()),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
@@ -226,7 +244,9 @@ mod tests {
         }
         .into();
 
-        run_pass(&mut start_mir).unwrap();
+        let mut diagnostics = Diagnostics::new();
+        run_pass(&mut start_mir, &mut diagnostics);
+        assert!(!diagnostics.has_error());
 
         let end_mir = Device {
             description: String::new(),
@@ -235,7 +255,7 @@ mod tests {
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".to_owned().with_dummy_span(),
-                    reset_value: Some(ResetValue::Array(vec![0x1F])),
+                    reset_value: Some(ResetValue::Array(vec![0x1F]).with_dummy_span()),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
@@ -262,7 +282,7 @@ mod tests {
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".to_owned().with_dummy_span(),
-                    reset_value: Some(ResetValue::Integer(0x423)),
+                    reset_value: Some(ResetValue::Integer(0x423).with_dummy_span()),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
@@ -277,7 +297,9 @@ mod tests {
         }
         .into();
 
-        run_pass(&mut start_mir).unwrap();
+        let mut diagnostics = Diagnostics::new();
+        run_pass(&mut start_mir, &mut diagnostics);
+        assert!(!diagnostics.has_error());
 
         let end_mir = Device {
             description: String::new(),
@@ -289,7 +311,7 @@ mod tests {
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".to_owned().with_dummy_span(),
-                    reset_value: Some(ResetValue::Array(vec![0x23, 0x04])),
+                    reset_value: Some(ResetValue::Array(vec![0x23, 0x04]).with_dummy_span()),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
@@ -313,7 +335,7 @@ mod tests {
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".to_owned().with_dummy_span(),
-                    reset_value: Some(ResetValue::Array(vec![0x04, 0x23])),
+                    reset_value: Some(ResetValue::Array(vec![0x04, 0x23]).with_dummy_span()),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
@@ -328,7 +350,9 @@ mod tests {
         }
         .into();
 
-        run_pass(&mut start_mir).unwrap();
+        let mut diagnostics = Diagnostics::new();
+        run_pass(&mut start_mir, &mut diagnostics);
+        assert!(!diagnostics.has_error());
 
         let end_mir = Device {
             description: String::new(),
@@ -337,7 +361,7 @@ mod tests {
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".to_owned().with_dummy_span(),
-                    reset_value: Some(ResetValue::Array(vec![0x04, 0x23])),
+                    reset_value: Some(ResetValue::Array(vec![0x04, 0x23]).with_dummy_span()),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
@@ -361,7 +385,7 @@ mod tests {
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".to_owned().with_dummy_span(),
-                    reset_value: Some(ResetValue::Array(vec![0x20, 0xC4])),
+                    reset_value: Some(ResetValue::Array(vec![0x20, 0xC4]).with_dummy_span()),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
@@ -376,7 +400,9 @@ mod tests {
         }
         .into();
 
-        run_pass(&mut start_mir).unwrap();
+        let mut diagnostics = Diagnostics::new();
+        run_pass(&mut start_mir, &mut diagnostics);
+        assert!(!diagnostics.has_error());
 
         let end_mir = Device {
             description: String::new(),
@@ -385,7 +411,7 @@ mod tests {
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".to_owned().with_dummy_span(),
-                    reset_value: Some(ResetValue::Array(vec![0x20, 0xC4])),
+                    reset_value: Some(ResetValue::Array(vec![0x20, 0xC4]).with_dummy_span()),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
@@ -415,7 +441,7 @@ mod tests {
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".to_owned().with_dummy_span(),
-                    reset_value: Some(ResetValue::Integer(0x423)),
+                    reset_value: Some(ResetValue::Integer(0x423).with_dummy_span()),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
@@ -430,10 +456,9 @@ mod tests {
         }
         .into();
 
-        assert_eq!(
-            run_pass(&mut start_mir).unwrap_err().to_string(),
-            "The reset value of register `Reg` has (a) bit(s) specified above the size of the register. While you can specify them, this is likely a mistake and thus not accepted. Keep the bits `10..` all at zero"
-        );
+        let mut diagnostics = Diagnostics::new();
+        run_pass(&mut start_mir, &mut diagnostics);
+        assert!(diagnostics.has_error());
 
         let mut start_mir = Device {
             description: String::new(),
@@ -442,7 +467,7 @@ mod tests {
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".to_owned().with_dummy_span(),
-                    reset_value: Some(ResetValue::Array(vec![0x04, 0x23])),
+                    reset_value: Some(ResetValue::Array(vec![0x04, 0x23]).with_dummy_span()),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
@@ -457,10 +482,9 @@ mod tests {
         }
         .into();
 
-        assert_eq!(
-            run_pass(&mut start_mir).unwrap_err().to_string(),
-            "The reset value of register `Reg` has (a) bit(s) specified above the size of the register. While you can specify them, this is likely a mistake and thus not accepted. Keep the bits `10..` all at zero"
-        );
+        let mut diagnostics = Diagnostics::new();
+        run_pass(&mut start_mir, &mut diagnostics);
+        assert!(diagnostics.has_error());
 
         let mut start_mir = Device {
             description: String::new(),
@@ -469,7 +493,7 @@ mod tests {
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".to_owned().with_dummy_span(),
-                    reset_value: Some(ResetValue::Array(vec![0x20, 0xC4])),
+                    reset_value: Some(ResetValue::Array(vec![0x20, 0xC4]).with_dummy_span()),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
@@ -484,10 +508,9 @@ mod tests {
         }
         .into();
 
-        assert_eq!(
-            run_pass(&mut start_mir).unwrap_err().to_string(),
-            "The reset value of register `Reg` has (a) bit(s) specified above the size of the register. While you can specify them, this is likely a mistake and thus not accepted. Keep the bits `10..` all at zero"
-        );
+        let mut diagnostics = Diagnostics::new();
+        run_pass(&mut start_mir, &mut diagnostics);
+        assert!(diagnostics.has_error());
     }
 
     #[test]
@@ -499,7 +522,7 @@ mod tests {
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".to_owned().with_dummy_span(),
-                    reset_value: Some(ResetValue::Array(vec![0, 0, 0])),
+                    reset_value: Some(ResetValue::Array(vec![0, 0, 0]).with_dummy_span()),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
@@ -514,10 +537,9 @@ mod tests {
         }
         .into();
 
-        assert_eq!(
-            run_pass(&mut start_mir).unwrap_err().to_string(),
-            "The reset value of register `Reg` has the incorrect length. It must be specified as 4 bytes, but now only has 3 elements"
-        );
+        let mut diagnostics = Diagnostics::new();
+        run_pass(&mut start_mir, &mut diagnostics);
+        assert!(diagnostics.has_error());
     }
 
     #[test]
@@ -529,7 +551,7 @@ mod tests {
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".to_owned().with_dummy_span(),
-                    reset_value: Some(ResetValue::Integer(0xF8)),
+                    reset_value: Some(ResetValue::Integer(0xF8).with_dummy_span()),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
@@ -544,7 +566,9 @@ mod tests {
         }
         .into();
 
-        run_pass(&mut start_mir).unwrap();
+        let mut diagnostics = Diagnostics::new();
+        run_pass(&mut start_mir, &mut diagnostics);
+        assert!(!diagnostics.has_error());
 
         let end_mir = Device {
             description: String::new(),
@@ -553,7 +577,7 @@ mod tests {
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".to_owned().with_dummy_span(),
-                    reset_value: Some(ResetValue::Array(vec![0xF8])),
+                    reset_value: Some(ResetValue::Array(vec![0xF8]).with_dummy_span()),
                     field_set_ref: "fs".into(),
                     ..Default::default()
                 }),
