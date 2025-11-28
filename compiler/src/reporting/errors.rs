@@ -434,8 +434,20 @@ pub struct EnumMultipleCatchalls {
     )
 )]
 pub struct ReferencedObjectDoesNotExist {
-    #[label("The referenced enum does not exist")]
-    pub enum_name: Option<SourceSpan>,
+    #[label("This object cannot be found")]
+    pub object_reference: SourceSpan,
+}
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("The referenced object is invalid")]
+#[diagnostic(severity(Error))]
+pub struct ReferencedObjectInvalid {
+    #[label(primary, "Object referenced here has the wrong type")]
+    pub object_reference: SourceSpan,
+    #[label("The referenced object")]
+    pub referenced_object: SourceSpan,
+    #[help]
+    pub help: String,
 }
 
 #[derive(Error, Debug, Diagnostic)]

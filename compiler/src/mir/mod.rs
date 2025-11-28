@@ -519,6 +519,20 @@ impl Object {
         }
     }
 
+    /// Get the span of the name of the object
+    pub(self) fn name_span(&self) -> SourceSpan {
+        match self {
+            Object::Device(val) => val.name.span,
+            Object::Block(val) => val.name.span,
+            Object::Register(val) => val.name.span,
+            Object::Command(val) => val.name.span,
+            Object::Buffer(val) => val.name.span,
+            Object::FieldSet(val) => val.name.span,
+            Object::Enum(val) => val.name.span,
+            Object::Extern(val) => val.name.span,
+        }
+    }
+
     pub(self) fn field_set_refs_mut(&mut self) -> Vec<&mut FieldSetRef> {
         match self {
             Object::Device(_) => Vec::new(),
@@ -614,6 +628,19 @@ impl Object {
             Some(v)
         } else {
             None
+        }
+    }
+
+    pub(self) fn object_type_name(&self) -> &'static str {
+        match self {
+            Object::Device(_) => "device",
+            Object::Block(_) => "block",
+            Object::Register(_) => "register",
+            Object::Command(_) => "command",
+            Object::Buffer(_) => "buffer",
+            Object::FieldSet(_) => "fieldset",
+            Object::Enum(_) => "enum",
+            Object::Extern(_) => "extern",
         }
     }
 }

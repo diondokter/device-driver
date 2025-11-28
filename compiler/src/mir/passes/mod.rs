@@ -34,7 +34,7 @@ pub fn run_passes(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> mie
     repeat_with_enums_checked::run_pass(manifest, diagnostics);
     let removals = extern_values_checked::run_pass(manifest, diagnostics);
     remove_objects(manifest, removals);
-    let removals = field_conversion_valid::run_pass(manifest, diagnostics)?;
+    let removals = field_conversion_valid::run_pass(manifest, diagnostics);
     remove_objects(manifest, removals);
     byte_order_specified::run_pass(manifest)?;
     reset_values_converted::run_pass(manifest)?;

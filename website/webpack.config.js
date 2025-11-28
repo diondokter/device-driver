@@ -25,7 +25,10 @@ module.exports = {
             chunks: ["playground"],
         }),
         new WasmPackPlugin({
-            crateDirectory: __dirname + "/compiler-wasm"
+            crateDirectory: __dirname + "/compiler-wasm",
+            watchDirectories: [
+                path.resolve(__dirname, "../compiler")
+            ]
         }),
         new CopyWebpackPlugin({
             patterns: [

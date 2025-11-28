@@ -81,7 +81,7 @@ fn repeat_is_ok(repeat: &Repeat, manifest: &Manifest, diagnostics: &mut Diagnost
         }
         _ => {
             diagnostics.add(ReferencedObjectDoesNotExist {
-                enum_name: Some(repeat_enum.span),
+                object_reference: repeat_enum.span,
             });
             false
         }
