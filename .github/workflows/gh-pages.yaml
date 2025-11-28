@@ -19,9 +19,6 @@ jobs:
         uses: peaceiris/actions-mdbook@v2
         with:
           mdbook-version: 'latest'
-
-      # Install mdBook plugins
-      - run: cargo +stable binstall mdbook-alerts --no-confirm
         
       - run: npm install -g wasm-pack
         working-directory: ./website
