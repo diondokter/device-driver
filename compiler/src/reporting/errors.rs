@@ -568,3 +568,62 @@ pub struct BoolFieldTooLarge {
     pub address: SourceSpan,
     pub address_bits: u32,
 }
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Field has a size of 0")]
+#[diagnostic(
+    severity(Warning),
+    help("The field has no information, so this is likely a mistake")
+)]
+pub struct ZeroSizeField {
+    #[label("Address is {address_bits} bits")]
+    pub address: SourceSpan,
+    pub address_bits: u32,
+}
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Field address exceeds fieldset size")]
+#[diagnostic(
+    severity(Error),
+    help("Fields, including all repeats, must be fully contained in a fieldset")
+)]
+pub struct FieldAddressExceedsFieldsetSize {
+    #[label("Address goes up to {max_field_end}{}", self.get_repeat_message())]
+    pub address: SourceSpan,
+    pub max_field_end: i128,
+    pub repeat_offset: Option<i128>,
+    #[label("The fieldset is only {fieldset_size} bits")]
+    pub fieldset_size_bits: SourceSpan,
+    pub fieldset_size: u32,
+}
+
+impl FieldAddressExceedsFieldsetSize {
+    fn get_repeat_message(&self) -> String {
+        match self.repeat_offset {
+            Some(repeat_offset) => format!(" with a repeat offset of {repeat_offset}"),
+            None => String::new(),
+        }
+    }
+}
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Field address is negative")]
+#[diagnostic(
+    severity(Error),
+    help("Fields, including all repeats, must be fully contained in a fieldset")
+)]
+pub struct FieldAddressNegative {
+    #[label("Address goes down to {min_field_start}{}", self.get_repeat_message())]
+    pub address: SourceSpan,
+    pub min_field_start: i128,
+    pub repeat_offset: Option<i128>,
+}
+
+impl FieldAddressNegative {
+    fn get_repeat_message(&self) -> String {
+        match self.repeat_offset {
+            Some(repeat_offset) => format!(" with a repeat offset of {repeat_offset}"),
+            None => String::new(),
+        }
+    }
+}

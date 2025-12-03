@@ -698,7 +698,7 @@ impl<'a> From<&'a str> for FieldSetRef {
 pub struct FieldSet {
     pub description: String,
     pub name: Spanned<String>,
-    pub size_bits: u32,
+    pub size_bits: Spanned<u32>,
     pub byte_order: Option<ByteOrder>,
     pub bit_order: Option<BitOrder>,
     pub allow_bit_overlap: bool,
@@ -1177,6 +1177,12 @@ impl<T> Spanned<T> {
 impl<T> From<(T, SourceSpan)> for Spanned<T> {
     fn from((value, span): (T, SourceSpan)) -> Self {
         Self { span, value }
+    }
+}
+
+impl<T: PartialOrd> PartialOrd<T> for Spanned<T> {
+    fn partial_cmp(&self, other: &T) -> Option<std::cmp::Ordering> {
+        self.value.partial_cmp(other)
     }
 }
 

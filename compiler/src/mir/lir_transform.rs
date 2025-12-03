@@ -320,7 +320,7 @@ fn transform_field_set(
         bit_order: field_set
             .bit_order
             .expect("Bitorder should never be none at this point after the MIR passes"),
-        size_bits: field_set.size_bits,
+        size_bits: field_set.size_bits.value,
         fields,
         defmt_feature: config.defmt_feature.clone(),
     }

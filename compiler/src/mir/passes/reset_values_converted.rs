@@ -37,7 +37,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
                     target_field_set
                         .bit_order
                         .expect("Bitorder should be set at this point"),
-                    target_field_set.size_bits,
+                    target_field_set.size_bits.value,
                     target_field_set.byte_order.unwrap(),
                     diagnostics,
                 );
@@ -185,7 +185,7 @@ mod tests {
                 }),
                 Object::FieldSet(FieldSet {
                     name: "fs".to_owned().with_dummy_span(),
-                    size_bits: 5,
+                    size_bits: 5.with_dummy_span(),
                     bit_order: Some(BitOrder::LSB0),
                     byte_order: Some(ByteOrder::LE),
                     ..Default::default()
@@ -211,7 +211,7 @@ mod tests {
                 }),
                 Object::FieldSet(FieldSet {
                     name: "fs".to_owned().with_dummy_span(),
-                    size_bits: 5,
+                    size_bits: 5.with_dummy_span(),
                     bit_order: Some(BitOrder::LSB0),
                     byte_order: Some(ByteOrder::LE),
                     ..Default::default()
@@ -235,7 +235,7 @@ mod tests {
                 }),
                 Object::FieldSet(FieldSet {
                     name: "fs".to_owned().with_dummy_span(),
-                    size_bits: 5,
+                    size_bits: 5.with_dummy_span(),
                     bit_order: Some(BitOrder::LSB0),
                     byte_order: Some(ByteOrder::LE),
                     ..Default::default()
@@ -261,7 +261,7 @@ mod tests {
                 }),
                 Object::FieldSet(FieldSet {
                     name: "fs".to_owned().with_dummy_span(),
-                    size_bits: 5,
+                    size_bits: 5.with_dummy_span(),
                     bit_order: Some(BitOrder::LSB0),
                     byte_order: Some(ByteOrder::LE),
                     ..Default::default()
@@ -288,7 +288,7 @@ mod tests {
                 }),
                 Object::FieldSet(FieldSet {
                     name: "fs".to_owned().with_dummy_span(),
-                    size_bits: 11,
+                    size_bits: 11.with_dummy_span(),
                     bit_order: Some(BitOrder::LSB0),
                     byte_order: Some(ByteOrder::LE),
                     ..Default::default()
@@ -317,7 +317,7 @@ mod tests {
                 }),
                 Object::FieldSet(FieldSet {
                     name: "fs".to_owned().with_dummy_span(),
-                    size_bits: 11,
+                    size_bits: 11.with_dummy_span(),
                     bit_order: Some(BitOrder::LSB0),
                     byte_order: Some(ByteOrder::LE),
                     ..Default::default()
@@ -341,7 +341,7 @@ mod tests {
                 }),
                 Object::FieldSet(FieldSet {
                     name: "fs".to_owned().with_dummy_span(),
-                    size_bits: 11,
+                    size_bits: 11.with_dummy_span(),
                     byte_order: Some(ByteOrder::BE),
                     bit_order: Some(BitOrder::LSB0),
                     ..Default::default()
@@ -367,7 +367,7 @@ mod tests {
                 }),
                 Object::FieldSet(FieldSet {
                     name: "fs".to_owned().with_dummy_span(),
-                    size_bits: 11,
+                    size_bits: 11.with_dummy_span(),
                     byte_order: Some(ByteOrder::BE),
                     bit_order: Some(BitOrder::LSB0),
                     ..Default::default()
@@ -391,7 +391,7 @@ mod tests {
                 }),
                 Object::FieldSet(FieldSet {
                     name: "fs".to_owned().with_dummy_span(),
-                    size_bits: 11,
+                    size_bits: 11.with_dummy_span(),
                     byte_order: Some(ByteOrder::BE),
                     bit_order: Some(BitOrder::MSB0),
                     ..Default::default()
@@ -417,7 +417,7 @@ mod tests {
                 }),
                 Object::FieldSet(FieldSet {
                     name: "fs".to_owned().with_dummy_span(),
-                    size_bits: 11,
+                    size_bits: 11.with_dummy_span(),
                     byte_order: Some(ByteOrder::BE),
                     bit_order: Some(BitOrder::MSB0),
                     ..Default::default()
@@ -447,7 +447,7 @@ mod tests {
                 }),
                 Object::FieldSet(FieldSet {
                     name: "fs".to_owned().with_dummy_span(),
-                    size_bits: 10,
+                    size_bits: 10.with_dummy_span(),
                     bit_order: Some(BitOrder::LSB0),
                     byte_order: Some(ByteOrder::LE),
                     ..Default::default()
@@ -473,7 +473,7 @@ mod tests {
                 }),
                 Object::FieldSet(FieldSet {
                     name: "fs".to_owned().with_dummy_span(),
-                    size_bits: 10,
+                    size_bits: 10.with_dummy_span(),
                     byte_order: Some(ByteOrder::BE),
                     bit_order: Some(BitOrder::LSB0),
                     ..Default::default()
@@ -499,7 +499,7 @@ mod tests {
                 }),
                 Object::FieldSet(FieldSet {
                     name: "fs".to_owned().with_dummy_span(),
-                    size_bits: 10,
+                    size_bits: 10.with_dummy_span(),
                     byte_order: Some(ByteOrder::BE),
                     bit_order: Some(BitOrder::MSB0),
                     ..Default::default()
@@ -528,7 +528,7 @@ mod tests {
                 }),
                 Object::FieldSet(FieldSet {
                     name: "fs".to_owned().with_dummy_span(),
-                    size_bits: 32,
+                    size_bits: 32.with_dummy_span(),
                     byte_order: Some(ByteOrder::LE),
                     bit_order: Some(BitOrder::LSB0),
                     ..Default::default()
@@ -557,7 +557,7 @@ mod tests {
                 }),
                 Object::FieldSet(FieldSet {
                     name: "fs".to_owned().with_dummy_span(),
-                    size_bits: 5,
+                    size_bits: 5.with_dummy_span(),
                     bit_order: Some(BitOrder::MSB0),
                     byte_order: Some(ByteOrder::LE),
                     ..Default::default()
@@ -583,7 +583,7 @@ mod tests {
                 }),
                 Object::FieldSet(FieldSet {
                     name: "fs".to_owned().with_dummy_span(),
-                    size_bits: 5,
+                    size_bits: 5.with_dummy_span(),
                     bit_order: Some(BitOrder::MSB0),
                     byte_order: Some(ByteOrder::LE),
                     ..Default::default()

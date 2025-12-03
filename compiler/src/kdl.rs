@@ -821,7 +821,7 @@ fn transform_field_set(
     if let Some(size_bits) = size_bits {
         match size_bits.value() {
             KdlValue::Integer(sb) if (0..=u32::MAX as i128).contains(sb) => {
-                field_set.size_bits = *sb as u32;
+                field_set.size_bits = (*sb as u32).with_span(size_bits.span());
             }
             KdlValue::Integer(_) => {
                 diagnostics.add(errors::ValueOutOfRange {
@@ -1009,11 +1009,17 @@ fn transform_field(node: &KdlNode, diagnostics: &mut Diagnostics) -> (Option<Fie
             KdlValue::String(_) => {
                 diagnostics.add(errors::UnexpectedValue {
                     value_name: entry.span(),
-                    expected_values: ["@<u32>", "@<u32>:<u32>"]
-                        .iter()
-                        .chain(Access::VARIANTS)
-                        .copied()
-                        .collect(),
+                    expected_values: [
+                        "@<u32>",
+                        "@<u32>:<u32>",
+                        "count=<integer>",
+                        "with=<string>",
+                        "stride=<integer>",
+                    ]
+                    .iter()
+                    .chain(Access::VARIANTS)
+                    .copied()
+                    .collect(),
                 });
             }
             _ => {

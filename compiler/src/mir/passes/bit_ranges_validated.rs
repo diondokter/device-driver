@@ -1,53 +1,76 @@
-use std::ops::Range;
+use std::{collections::HashSet, ops::Range};
 
 use miette::ensure;
 
-use crate::mir::{FieldSet, Manifest, RepeatSource};
+use crate::{
+    mir::{FieldSet, Manifest, RepeatSource, Unique, UniqueId},
+    reporting::{
+        Diagnostics,
+        errors::{FieldAddressExceedsFieldsetSize, FieldAddressNegative, ZeroSizeField},
+    },
+};
 
 /// Validate that the bit ranges of fields fall within the max size and don't have overlap if they're not allowed
-pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
+pub fn run_pass(
+    manifest: &mut Manifest,
+    diagnostics: &mut Diagnostics,
+) -> miette::Result<HashSet<UniqueId>> {
+    let mut removals = HashSet::new();
+
     for object in manifest.iter_objects() {
         if let Some(field_set) = object.as_field_set() {
-            validate_len(field_set, manifest)?;
+            validate_len(field_set, manifest, diagnostics, &mut removals)?;
             if !field_set.allow_bit_overlap {
                 validate_overlap(field_set, manifest)?;
             }
         }
     }
 
-    Ok(())
+    Ok(removals)
 }
 
-fn validate_len(field_set: &FieldSet, manifest: &Manifest) -> miette::Result<()> {
+fn validate_len(
+    field_set: &FieldSet,
+    manifest: &Manifest,
+    diagnostics: &mut Diagnostics,
+    removals: &mut HashSet<UniqueId>,
+) -> miette::Result<()> {
     for field in &field_set.fields {
-        ensure!(
-            field.field_address.value.clone().count() > 0,
-            "Fieldset `{}` has field `{}` that is 0 bits. This is likely a mistake",
-            field_set.name,
-            field.name
-        );
+        let field_len = field.field_address.value.clone().count();
+
+        if field_len == 0 {
+            diagnostics.add(ZeroSizeField {
+                address: field.field_address.span,
+                address_bits: field_len as u32,
+            });
+        }
 
         let (offset_iter, repeated) = get_repeat_iter(manifest, field);
 
-        for offset in offset_iter {
-            let repeat_info = if repeated {
-                format!(" (at repeat offset: {offset})")
-            } else {
-                "".into()
-            };
+        let max_repeat_offset = offset_iter.iter().max().unwrap();
+        let min_repeat_offset = offset_iter.iter().min().unwrap();
 
-            ensure!(
-                (field.field_address.end as i128 + offset) <= field_set.size_bits as i128,
-                "Fieldset `{}` has field `{}` who's address exceeds the given max size bits{repeat_info}",
-                field_set.name,
-                field.name
-            );
-            ensure!(
-                (field.field_address.start as i128 + offset) >= 0,
-                "Fieldset `{}` has field `{}` who's address is negative{repeat_info}",
-                field_set.name,
-                field.name
-            );
+        let max_field_end = field.field_address.end as i128 + max_repeat_offset;
+        let min_field_start = field.field_address.start as i128 + min_repeat_offset;
+
+        if max_field_end > field_set.size_bits.value as i128 {
+            diagnostics.add(FieldAddressExceedsFieldsetSize {
+                address: field.field_address.span,
+                max_field_end: max_field_end - 1,
+                repeat_offset: repeated.then_some(*max_repeat_offset),
+                fieldset_size: field_set.size_bits.value,
+                fieldset_size_bits: field_set.size_bits.span,
+            });
+            removals.insert(field.id_with(field_set.id()));
+        }
+
+        if min_field_start < 0 {
+            diagnostics.add(FieldAddressNegative {
+                address: field.field_address.span,
+                min_field_start,
+                repeat_offset: repeated.then_some(*min_repeat_offset),
+            });
+            removals.insert(field.id_with(field_set.id()));
         }
     }
 
@@ -145,7 +168,7 @@ mod tests {
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".to_owned().with_dummy_span(),
-                size_bits: 10,
+                size_bits: 10.with_dummy_span(),
                 fields: vec![Field {
                     name: "my_field".to_owned().with_dummy_span(),
                     field_address: (0..10).with_dummy_span(),
@@ -164,7 +187,7 @@ mod tests {
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".to_owned().with_dummy_span(),
-                size_bits: 10,
+                size_bits: 10.with_dummy_span(),
                 fields: vec![Field {
                     name: "my_field".to_owned().with_dummy_span(),
                     field_address: (0..11).with_dummy_span(),
@@ -186,7 +209,7 @@ mod tests {
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".to_owned().with_dummy_span(),
-                size_bits: 10,
+                size_bits: 10.with_dummy_span(),
                 fields: vec![Field {
                     name: "my_field".to_owned().with_dummy_span(),
                     field_address: (0..10).with_dummy_span(),
@@ -205,7 +228,7 @@ mod tests {
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".to_owned().with_dummy_span(),
-                size_bits: 10,
+                size_bits: 10.with_dummy_span(),
                 fields: vec![Field {
                     name: "my_field".to_owned().with_dummy_span(),
                     field_address: (0..11).with_dummy_span(),
@@ -227,7 +250,7 @@ mod tests {
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".to_owned().with_dummy_span(),
-                size_bits: 10,
+                size_bits: 10.with_dummy_span(),
                 fields: vec![Field {
                     name: "my_field".to_owned().with_dummy_span(),
                     field_address: (0..10).with_dummy_span(),
@@ -246,7 +269,7 @@ mod tests {
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".to_owned().with_dummy_span(),
-                size_bits: 10,
+                size_bits: 10.with_dummy_span(),
                 fields: vec![Field {
                     name: "my_field".to_owned().with_dummy_span(),
                     field_address: (0..11).with_dummy_span(),
@@ -268,7 +291,7 @@ mod tests {
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".to_owned().with_dummy_span(),
-                size_bits: 10,
+                size_bits: 10.with_dummy_span(),
                 fields: vec![Field {
                     name: "my_field".to_owned().with_dummy_span(),
                     field_address: (0..5).with_dummy_span(),
@@ -297,7 +320,7 @@ mod tests {
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".to_owned().with_dummy_span(),
-                size_bits: 10,
+                size_bits: 10.with_dummy_span(),
                 fields: vec![
                     Field {
                         name: "my_field".to_owned().with_dummy_span(),
@@ -323,7 +346,7 @@ mod tests {
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".to_owned().with_dummy_span(),
-                size_bits: 10,
+                size_bits: 10.with_dummy_span(),
                 allow_bit_overlap: true,
                 fields: vec![
                     Field {
@@ -350,7 +373,7 @@ mod tests {
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".to_owned().with_dummy_span(),
-                size_bits: 10,
+                size_bits: 10.with_dummy_span(),
                 fields: vec![
                     Field {
                         name: "my_field".to_owned().with_dummy_span(),
@@ -379,7 +402,7 @@ mod tests {
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".to_owned().with_dummy_span(),
-                size_bits: 10,
+                size_bits: 10.with_dummy_span(),
                 fields: vec![
                     Field {
                         name: "my_field".to_owned().with_dummy_span(),

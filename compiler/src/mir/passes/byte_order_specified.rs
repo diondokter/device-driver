@@ -39,12 +39,12 @@ mod tests {
             objects: vec![
                 Object::FieldSet(FieldSet {
                     name: "MyRegister".to_owned().with_dummy_span(),
-                    size_bits: 8,
+                    size_bits: 8.with_dummy_span(),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
                     name: "MyRegister2".to_owned().with_dummy_span(),
-                    size_bits: 9,
+                    size_bits: 9.with_dummy_span(),
                     byte_order: Some(ByteOrder::LE),
                     ..Default::default()
                 }),
@@ -65,7 +65,7 @@ mod tests {
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyRegister".to_owned().with_dummy_span(),
-                size_bits: 9,
+                size_bits: 9.with_dummy_span(),
                 ..Default::default()
             })],
         }
@@ -89,7 +89,7 @@ mod tests {
             device_config: global_config,
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyRegister".to_owned().with_dummy_span(),
-                size_bits: 9,
+                size_bits: 9.with_dummy_span(),
                 ..Default::default()
             })],
         }
