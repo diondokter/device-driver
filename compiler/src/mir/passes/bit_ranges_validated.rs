@@ -1,32 +1,29 @@
 use std::{collections::HashSet, ops::Range};
 
-use miette::ensure;
-
 use crate::{
     mir::{FieldSet, Manifest, RepeatSource, Unique, UniqueId},
     reporting::{
         Diagnostics,
-        errors::{FieldAddressExceedsFieldsetSize, FieldAddressNegative, ZeroSizeField},
+        errors::{
+            FieldAddressExceedsFieldsetSize, FieldAddressNegative, OverlappingFields, ZeroSizeField,
+        },
     },
 };
 
 /// Validate that the bit ranges of fields fall within the max size and don't have overlap if they're not allowed
-pub fn run_pass(
-    manifest: &mut Manifest,
-    diagnostics: &mut Diagnostics,
-) -> miette::Result<HashSet<UniqueId>> {
+pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashSet<UniqueId> {
     let mut removals = HashSet::new();
 
     for object in manifest.iter_objects() {
         if let Some(field_set) = object.as_field_set() {
-            validate_len(field_set, manifest, diagnostics, &mut removals)?;
+            validate_len(field_set, manifest, diagnostics, &mut removals);
             if !field_set.allow_bit_overlap {
-                validate_overlap(field_set, manifest)?;
+                validate_overlap(field_set, manifest, diagnostics);
             }
         }
     }
 
-    Ok(removals)
+    removals
 }
 
 fn validate_len(
@@ -34,7 +31,7 @@ fn validate_len(
     manifest: &Manifest,
     diagnostics: &mut Diagnostics,
     removals: &mut HashSet<UniqueId>,
-) -> miette::Result<()> {
+) {
     for field in &field_set.fields {
         let field_len = field.field_address.value.clone().count();
 
@@ -73,54 +70,42 @@ fn validate_len(
             removals.insert(field.id_with(field_set.id()));
         }
     }
-
-    Ok(())
 }
 
-fn validate_overlap(field_set: &FieldSet, manifest: &Manifest) -> miette::Result<()> {
+fn validate_overlap(field_set: &FieldSet, manifest: &Manifest, diagnostics: &mut Diagnostics) {
     for (i, field) in field_set.fields.iter().enumerate() {
         let (offsets, repeated) = get_repeat_iter(manifest, field);
 
-        for (j, second_field) in field_set.fields.iter().enumerate() {
+        'second_field: for second_field in field_set.fields.iter().skip(i + 1) {
             let (second_offsets, second_repeated) = get_repeat_iter(manifest, second_field);
 
             for offset in offsets.iter() {
-                let repeat_info = if repeated {
-                    format!(" (at repeat offset: {offset})")
-                } else {
-                    "".into()
-                };
-
                 for second_offset in second_offsets.iter() {
-                    let second_repeat_info = if second_repeated {
-                        format!(" (at repeat offset: {second_offset})")
-                    } else {
-                        "".into()
-                    };
+                    if ranges_overlap(
+                        &field.field_address,
+                        *offset,
+                        &second_field.field_address,
+                        *second_offset,
+                    ) {
+                        diagnostics.add(OverlappingFields {
+                            field_address_1: field.field_address.span,
+                            repeat_offset_1: repeated.then_some(*offset),
+                            field_address_start_1: field.field_address.start as i128 + offset,
+                            field_address_end_1: field.field_address.end as i128 + offset,
+                            field_address_2: second_field.field_address.span,
+                            repeat_offset_2: second_repeated.then_some(*second_offset),
+                            field_address_start_2: second_field.field_address.start as i128
+                                + second_offset,
+                            field_address_end_2: second_field.field_address.end as i128
+                                + second_offset,
+                        });
 
-                    if i == j && offset == second_offset {
-                        // No need to compare with self
-                        continue;
+                        continue 'second_field;
                     }
-
-                    ensure!(
-                        !ranges_overlap(
-                            &field.field_address,
-                            *offset,
-                            &second_field.field_address,
-                            *second_offset
-                        ),
-                        "Fieldset `{}` has two overlapping fields: `{}`{repeat_info} and `{}`{second_repeat_info}. If this is intended, set the `AllowBitOverlap` option to true",
-                        field_set.name,
-                        field.name,
-                        second_field.name
-                    )
                 }
             }
         }
     }
-
-    Ok(())
 }
 
 fn ranges_overlap(l: &Range<u32>, offset: i128, r: &Range<u32>, second_offset: i128) -> bool {
@@ -179,7 +164,9 @@ mod tests {
         }
         .into();
 
-        run_pass(&mut start_mir).unwrap();
+        let mut diagnostics = Diagnostics::new();
+        run_pass(&mut start_mir, &mut diagnostics);
+        assert!(!diagnostics.has_error());
 
         let mut start_mir = Device {
             description: String::new(),
@@ -198,10 +185,9 @@ mod tests {
         }
         .into();
 
-        assert_eq!(
-            run_pass(&mut start_mir).unwrap_err().to_string(),
-            "Fieldset `MyReg` has field `my_field` who's address exceeds the given max size bits"
-        );
+        let mut diagnostics = Diagnostics::new();
+        run_pass(&mut start_mir, &mut diagnostics);
+        assert!(diagnostics.has_error());
 
         let mut start_mir = Device {
             description: String::new(),
@@ -220,7 +206,9 @@ mod tests {
         }
         .into();
 
-        run_pass(&mut start_mir).unwrap();
+        let mut diagnostics = Diagnostics::new();
+        run_pass(&mut start_mir, &mut diagnostics);
+        assert!(!diagnostics.has_error());
 
         let mut start_mir = Device {
             description: String::new(),
@@ -239,10 +227,9 @@ mod tests {
         }
         .into();
 
-        assert_eq!(
-            run_pass(&mut start_mir).unwrap_err().to_string(),
-            "Fieldset `MyReg` has field `my_field` who's address exceeds the given max size bits"
-        );
+        let mut diagnostics = Diagnostics::new();
+        run_pass(&mut start_mir, &mut diagnostics);
+        assert!(diagnostics.has_error());
 
         let mut start_mir = Device {
             description: String::new(),
@@ -261,7 +248,9 @@ mod tests {
         }
         .into();
 
-        run_pass(&mut start_mir).unwrap();
+        let mut diagnostics = Diagnostics::new();
+        run_pass(&mut start_mir, &mut diagnostics);
+        assert!(!diagnostics.has_error());
 
         let mut start_mir = Device {
             description: String::new(),
@@ -280,10 +269,9 @@ mod tests {
         }
         .into();
 
-        assert_eq!(
-            run_pass(&mut start_mir).unwrap_err().to_string(),
-            "Fieldset `MyReg` has field `my_field` who's address exceeds the given max size bits"
-        );
+        let mut diagnostics = Diagnostics::new();
+        run_pass(&mut start_mir, &mut diagnostics);
+        assert!(diagnostics.has_error());
 
         let mut start_mir = Device {
             description: String::new(),
@@ -306,10 +294,9 @@ mod tests {
         }
         .into();
 
-        assert_eq!(
-            run_pass(&mut start_mir).unwrap_err().to_string(),
-            "Fieldset `MyReg` has field `my_field` who's address exceeds the given max size bits (at repeat offset: 10)"
-        );
+        let mut diagnostics = Diagnostics::new();
+        run_pass(&mut start_mir, &mut diagnostics);
+        assert!(diagnostics.has_error());
     }
 
     #[test]
@@ -338,7 +325,9 @@ mod tests {
         }
         .into();
 
-        run_pass(&mut start_mir).unwrap();
+        let mut diagnostics = Diagnostics::new();
+        run_pass(&mut start_mir, &mut diagnostics);
+        assert!(!diagnostics.has_error());
 
         let mut start_mir = Device {
             description: String::new(),
@@ -365,7 +354,9 @@ mod tests {
         }
         .into();
 
-        run_pass(&mut start_mir).unwrap();
+        let mut diagnostics = Diagnostics::new();
+        run_pass(&mut start_mir, &mut diagnostics);
+        assert!(!diagnostics.has_error());
 
         let mut start_mir = Device {
             description: String::new(),
@@ -391,10 +382,9 @@ mod tests {
         }
         .into();
 
-        assert_eq!(
-            run_pass(&mut start_mir).unwrap_err().to_string(),
-            "Fieldset `MyReg` has two overlapping fields: `my_field` and `my_field2`. If this is intended, set the `AllowBitOverlap` option to true"
-        );
+        let mut diagnostics = Diagnostics::new();
+        run_pass(&mut start_mir, &mut diagnostics);
+        assert!(diagnostics.has_error());
 
         let mut start_mir = Device {
             description: String::new(),
@@ -424,9 +414,8 @@ mod tests {
         }
         .into();
 
-        assert_eq!(
-            run_pass(&mut start_mir).unwrap_err().to_string(),
-            "Fieldset `MyReg` has two overlapping fields: `my_field` (at repeat offset: 5) and `my_field2`. If this is intended, set the `AllowBitOverlap` option to true"
-        );
+        let mut diagnostics = Diagnostics::new();
+        run_pass(&mut start_mir, &mut diagnostics);
+        assert!(diagnostics.has_error());
     }
 }

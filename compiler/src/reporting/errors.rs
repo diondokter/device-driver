@@ -627,3 +627,37 @@ impl FieldAddressNegative {
         }
     }
 }
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Overlapping fields")]
+#[diagnostic(
+    severity(Error),
+    help("If this was intended, enable the `allow-bit-overlap` option on the fieldset")
+)]
+pub struct OverlappingFields {
+    #[label("Field sits at address range @{field_address_end_1}:{field_address_start_1}{}", self.get_repeat_message_1())]
+    pub field_address_1: SourceSpan,
+    pub repeat_offset_1: Option<i128>,
+    pub field_address_start_1: i128,
+    pub field_address_end_1: i128,
+    #[label("Field sits at address range @{field_address_end_2}:{field_address_start_2}{}", self.get_repeat_message_2())]
+    pub field_address_2: SourceSpan,
+    pub repeat_offset_2: Option<i128>,
+    pub field_address_start_2: i128,
+    pub field_address_end_2: i128,
+}
+
+impl OverlappingFields {
+    fn get_repeat_message_1(&self) -> String {
+        match self.repeat_offset_1 {
+            Some(repeat_offset) => format!(" with a repeat offset of {repeat_offset}"),
+            None => String::new(),
+        }
+    }
+    fn get_repeat_message_2(&self) -> String {
+        match self.repeat_offset_2 {
+            Some(repeat_offset) => format!(" with a repeat offset of {repeat_offset}"),
+            None => String::new(),
+        }
+    }
+}

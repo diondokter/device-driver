@@ -462,7 +462,7 @@
   98 │             bar @a @-1:8 @3 @3:0
   99 │             baz @7:4 blah
      ·                      ──┬─
-     ·                        ╰── Expected one of these values: `@<u32>`, `@<u32>:<u32>`, `RW`, `RO`, `WO`
+     ·                        ╰── Expected one of these values: `@<u32>`, `@<u32>:<u32>`, `count=<integer>`, `with=<string>`, `stride=<integer>`, `RW`, `RO`, `WO`
  100 │         }
      ╰────
 
