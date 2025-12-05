@@ -501,13 +501,17 @@ pub struct DifferentBaseTypes {
 #[error("Invalid infallible conversion")]
 #[diagnostic(
     severity(Error),
-    help("Try adding a `?` to mark the conversion as fallible")
+    help(
+        "Try adding a `?` to mark the conversion as fallible:\n> ({existing_type_specifier_content}?)
+        "
+    )
 )]
 pub struct InvalidInfallibleConversion {
     #[label(primary, "Conversion specified here")]
     pub conversion: SourceSpan,
     #[label(collection)]
     pub context: Vec<LabeledSpan>,
+    pub existing_type_specifier_content: String,
 }
 
 #[derive(Error, Debug, Diagnostic)]

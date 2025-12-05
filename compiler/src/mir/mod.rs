@@ -716,6 +716,22 @@ pub struct Field {
     pub repeat: Option<Repeat>,
 }
 
+impl Field {
+    pub fn get_type_specifier_string(&self) -> String {
+        match &self.field_conversion {
+            Some(fc) => {
+                format!(
+                    "{}:{}{}",
+                    self.base_type,
+                    fc.type_name,
+                    if fc.use_try { "?" } else { "" }
+                )
+            }
+            None => self.base_type.to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
 pub enum BaseType {
     Unspecified,

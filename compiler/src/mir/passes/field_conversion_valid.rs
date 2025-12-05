@@ -54,6 +54,8 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                                                 ),
                                                 target_enum.name.span,
                                             )],
+                                            existing_type_specifier_content: field
+                                                .get_type_specifier_string(),
                                         });
                                         removals.insert(field.id_with(field_set.id()));
                                         continue;
@@ -80,7 +82,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                                                         )),
                                                         target_enum.name.span,
                                                     ),
-                                                ],
+                                                ],existing_type_specifier_content: field.get_type_specifier_string()
                                             });
                                             removals.insert(field.id_with(field_set.id()));
                                             continue;
@@ -112,6 +114,8 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                                         Some("Target only supports fallible conversion".into()),
                                         target_extern.name.span,
                                     )],
+                                    existing_type_specifier_content: field
+                                        .get_type_specifier_string(),
                                 });
                                 removals.insert(field.id_with(field_set.id()));
                                 continue;
