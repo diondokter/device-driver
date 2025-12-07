@@ -41,7 +41,8 @@ pub fn run_passes(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> mie
     bool_fields_checked::run_pass(manifest, diagnostics);
     let removals = bit_ranges_validated::run_pass(manifest, diagnostics);
     remove_objects(manifest, removals);
-    address_types_specified::run_pass(manifest)?;
+    let removals = address_types_specified::run_pass(manifest, diagnostics);
+    remove_objects(manifest, removals);
     address_types_big_enough::run_pass(manifest)?;
 
     Ok(())

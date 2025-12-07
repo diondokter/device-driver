@@ -9,7 +9,7 @@ use crate::{
     mir::{
         Access, BaseType, BitOrder, Block, Buffer, ByteOrder, Command, Device, DeviceConfig, Enum,
         EnumValue, EnumVariant, Extern, Field, FieldConversion, FieldSet, FieldSetRef, Integer,
-        Manifest, Object, Register, Repeat, ResetValue, Span, Spanned,
+        Manifest, Object, Register, Repeat, ResetValue, Span, Spanned, Unique,
     },
     reporting::{
         self, Diagnostics,
@@ -109,6 +109,8 @@ fn transform_device(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Dev
         device_config: DeviceConfig::default(),
         objects: Vec::new(),
     };
+
+    device.device_config.owner = Some(device.id());
 
     if let Some(device_document) = node.children()
         && !device_document.nodes().is_empty()

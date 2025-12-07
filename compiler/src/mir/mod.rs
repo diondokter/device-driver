@@ -248,6 +248,8 @@ impl Device {
 }
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct DeviceConfig {
+    /// The id of the device that owns this config. If None, then this is a global config
+    pub owner: Option<UniqueId>,
     pub register_access: Option<Access>,
     pub field_access: Option<Access>,
     pub buffer_access: Option<Access>,
@@ -263,6 +265,7 @@ pub struct DeviceConfig {
 impl DeviceConfig {
     pub fn override_with(&self, other: &Self) -> DeviceConfig {
         Self {
+            owner: other.owner.clone().or(self.owner.clone()),
             register_access: other.register_access.or(self.register_access),
             field_access: other.field_access.or(self.field_access),
             buffer_access: other.buffer_access.or(self.buffer_access),

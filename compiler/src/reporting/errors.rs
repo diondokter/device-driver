@@ -3,6 +3,7 @@
     reason = "Something going on with the diagnostics derive"
 )]
 
+use convert_case::{Case, Casing};
 use itertools::Itertools;
 use miette::{Diagnostic, LabeledSpan, SourceSpan};
 use thiserror::Error;
@@ -664,4 +665,18 @@ impl OverlappingFields {
             None => String::new(),
         }
     }
+}
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("{} address type not defined", object_type.to_case(Case::Pascal))]
+#[diagnostic(
+    severity(Error),
+    help("Add the address type to the config, e.g.:\n> {}-address-type u16", object_type.to_case(Case::Lower))
+)]
+pub struct AddressTypeUndefined {
+    #[label("{} defined here", object_type.to_case(Case::Pascal))]
+    pub object: SourceSpan,
+    #[label("This device doesn't define a {}-address-type", object_type.to_case(Case::Lower))]
+    pub config_device: SourceSpan,
+    pub object_type: &'static str,
 }
