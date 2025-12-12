@@ -255,9 +255,9 @@ pub struct DeviceConfig {
     pub buffer_access: Option<Access>,
     pub byte_order: Option<ByteOrder>,
     pub bit_order: Option<BitOrder>,
-    pub register_address_type: Option<Integer>,
-    pub command_address_type: Option<Integer>,
-    pub buffer_address_type: Option<Integer>,
+    pub register_address_type: Option<Spanned<Integer>>,
+    pub command_address_type: Option<Spanned<Integer>>,
+    pub buffer_address_type: Option<Spanned<Integer>>,
     pub name_word_boundaries: Option<Vec<Boundary>>,
     pub defmt_feature: Option<String>,
 }
@@ -561,7 +561,7 @@ impl Object {
     }
 
     /// Return the address if it is specified.
-    fn address(&self) -> Option<i128> {
+    fn address(&self) -> Option<Spanned<i128>> {
         match self {
             Object::Device(_) => None,
             Object::Block(block) => Some(block.address_offset),
@@ -652,7 +652,7 @@ impl Object {
 pub struct Block {
     pub description: String,
     pub name: Spanned<String>,
-    pub address_offset: i128,
+    pub address_offset: Spanned<i128>,
     pub repeat: Option<Repeat>,
     pub objects: Vec<Object>,
 }
@@ -675,7 +675,7 @@ pub struct Register {
     pub name: Spanned<String>,
     pub access: Access,
     pub allow_address_overlap: bool,
-    pub address: i128,
+    pub address: Spanned<i128>,
     pub reset_value: Option<Spanned<ResetValue>>,
     pub repeat: Option<Repeat>,
     pub field_set_ref: FieldSetRef,
@@ -942,7 +942,7 @@ impl EnumValue {
 pub struct Command {
     pub description: String,
     pub name: Spanned<String>,
-    pub address: i128,
+    pub address: Spanned<i128>,
     pub allow_address_overlap: bool,
     pub repeat: Option<Repeat>,
 
@@ -955,7 +955,7 @@ pub struct Buffer {
     pub description: String,
     pub name: Spanned<String>,
     pub access: Access,
-    pub address: i128,
+    pub address: Spanned<i128>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

@@ -8,7 +8,7 @@ use itertools::Itertools;
 use miette::{Diagnostic, LabeledSpan, SourceSpan};
 use thiserror::Error;
 
-use crate::mir::{BaseType, FieldConversion};
+use crate::mir::{BaseType, FieldConversion, Integer};
 
 #[derive(Error, Debug, Diagnostic)]
 #[error("Missing object name")]
@@ -679,4 +679,20 @@ pub struct AddressTypeUndefined {
     #[label("This device doesn't define a {}-address-type", object_type.to_case(Case::Lower))]
     pub config_device: SourceSpan,
     pub object_type: &'static str,
+}
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Address out of range")]
+#[diagnostic(
+    severity(Error),
+    help("Use an address type that fits the whole range being used")
+)]
+pub struct AddressOutOfRange {
+    #[label("Address goes up/down to {address_value}{}", if *has_repeat {" (including repeats)" } else { "" })]
+    pub address: SourceSpan,
+    pub address_value: i128,
+    pub has_repeat: bool,
+    #[label("Address type supports a range of {} to {}", address_type.min_value(), address_type.max_value())]
+    pub address_type_config: SourceSpan,
+    pub address_type: Integer,
 }

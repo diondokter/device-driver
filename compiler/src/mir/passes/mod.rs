@@ -43,7 +43,8 @@ pub fn run_passes(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> mie
     remove_objects(manifest, removals);
     let removals = address_types_specified::run_pass(manifest, diagnostics);
     remove_objects(manifest, removals);
-    address_types_big_enough::run_pass(manifest)?;
+    let removals = address_types_big_enough::run_pass(manifest, diagnostics);
+    remove_objects(manifest, removals);
 
     Ok(())
 }
@@ -52,13 +53,17 @@ pub(crate) fn search_object<'o>(manifest: &'o Manifest, name: &str) -> Option<&'
     manifest.iter_objects().find(|o| o.name() == name)
 }
 
-pub(crate) fn find_min_max_addresses(
-    manifest: &Manifest,
-    device: &Device,
-    filter: impl Fn(&Object) -> bool,
-) -> (i128, i128) {
-    let mut min_address_found = 0;
-    let mut max_address_found = 0;
+/// Returns None if device has no objects that pass the filter
+#[expect(clippy::type_complexity, reason = "I disagree")]
+pub(crate) fn find_min_max_addresses<'m>(
+    manifest: &'m Manifest,
+    device: &'m Device,
+    filter: impl Fn(&'m Object) -> bool,
+) -> Option<((i128, &'m Object), (i128, &'m Object))> {
+    let mut min_address_found = i128::MAX;
+    let mut min_obj_found = None;
+    let mut max_address_found = i128::MIN;
+    let mut max_obj_found = None;
 
     let mut children_left = vec![device.objects.len()];
     let mut address_offsets = vec![0];
@@ -85,16 +90,21 @@ pub(crate) fn find_min_max_addresses(
 
             match repeat.source {
                 RepeatSource::Count(count) => {
-                    let count_0_address = total_address_offsets + address;
+                    let count_0_address = total_address_offsets + address.value;
                     let count_max_address =
                         count_0_address + (count.saturating_sub(1) as i128 * repeat.stride);
+                    let min_address = count_0_address.min(count_max_address);
+                    let max_address = count_0_address.max(count_max_address);
 
-                    min_address_found = min_address_found
-                        .min(count_0_address)
-                        .min(count_max_address);
-                    max_address_found = max_address_found
-                        .max(count_0_address)
-                        .max(count_max_address);
+                    if min_address < min_address_found {
+                        min_address_found = min_address;
+                        min_obj_found = Some(object);
+                    }
+
+                    if max_address > max_address_found {
+                        max_address_found = max_address;
+                        max_obj_found = Some(object);
+                    }
                 }
                 RepeatSource::Enum(enum_name) => {
                     let enum_value = search_object(manifest, &enum_name)
@@ -104,9 +114,16 @@ pub(crate) fn find_min_max_addresses(
 
                     for (discriminant, _) in enum_value.iter_variants_with_discriminant() {
                         let address =
-                            total_address_offsets + address + (discriminant * repeat.stride);
-                        min_address_found = min_address_found.min(address);
-                        max_address_found = max_address_found.max(address);
+                            total_address_offsets + address.value + (discriminant * repeat.stride);
+                        if address < min_address_found {
+                            min_address_found = address;
+                            min_obj_found = Some(object);
+                        }
+
+                        if address > max_address_found {
+                            max_address_found = address;
+                            max_obj_found = Some(object);
+                        }
                     }
                 }
             }
@@ -118,14 +135,17 @@ pub(crate) fn find_min_max_addresses(
                 children_left.push(d.objects.len());
             }
             Object::Block(b) => {
-                address_offsets.push(b.address_offset);
+                address_offsets.push(b.address_offset.value);
                 children_left.push(b.objects.len());
             }
             _ => (),
         }
     }
 
-    (min_address_found, max_address_found)
+    Some((
+        (min_address_found, min_obj_found?),
+        (max_address_found, max_obj_found?),
+    ))
 }
 
 fn remove_objects(manifest: &mut Manifest, mut removals: HashSet<UniqueId>) {

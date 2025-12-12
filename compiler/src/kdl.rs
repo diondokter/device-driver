@@ -266,7 +266,7 @@ fn transform_block(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Bloc
     Some(Block {
         description: parse_description(node),
         name: (name, name_span).into(),
-        address_offset: offset.map(|(o, _)| o).unwrap_or_default(),
+        address_offset: offset.unwrap_or((0, name_span)).into(),
         repeat: repeat.map(|(r, _)| r),
         objects: block_objects,
     })
@@ -403,7 +403,7 @@ fn transform_register(
         let mut register = Register {
             description: parse_description(node),
             name: (name, name_span).into(),
-            address: address.unwrap().0,
+            address: address.unwrap().into(),
             reset_value: reset_value.map(Into::into),
             repeat: repeat.map(|(r, _)| r),
             field_set_ref: FieldSetRef(field_set.as_ref().unwrap().0.name.value.clone()),
@@ -411,7 +411,7 @@ fn transform_register(
         };
 
         if let Some((access, _)) = access {
-            register.access = access;
+            register.access = access.value;
         }
         if let Some((allow_address_overlap, _)) = allow_address_overlap {
             register.allow_address_overlap = allow_address_overlap;
@@ -540,7 +540,7 @@ fn transform_command(
         let mut command = Command {
             description: parse_description(node),
             name: (name, name_span).into(),
-            address: address.unwrap().0,
+            address: address.unwrap().into(),
             repeat: repeat.map(|(r, _)| r),
             field_set_ref_in: field_set_in
                 .as_ref()
@@ -628,12 +628,12 @@ fn transform_buffer(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Buf
         let mut buffer = Buffer {
             description: parse_description(node),
             name: (name, name_span).into(),
-            address: address.unwrap().0,
+            address: address.unwrap().into(),
             ..Default::default()
         };
 
         if let Some((access, _)) = access {
-            buffer.access = access;
+            buffer.access = access.value;
         }
 
         Some(buffer)
@@ -649,27 +649,27 @@ fn transform_device_config_node(
     match device_config_type {
         DeviceConfigType::RegisterAccess => {
             if let Some(value) = parse_single_string_value(node, diagnostics) {
-                device.device_config.register_access = Some(value);
+                device.device_config.register_access = Some(value.value);
             }
         }
         DeviceConfigType::FieldAccess => {
             if let Some(value) = parse_single_string_value(node, diagnostics) {
-                device.device_config.field_access = Some(value);
+                device.device_config.field_access = Some(value.value);
             }
         }
         DeviceConfigType::BufferAccess => {
             if let Some(value) = parse_single_string_value(node, diagnostics) {
-                device.device_config.buffer_access = Some(value);
+                device.device_config.buffer_access = Some(value.value);
             }
         }
         DeviceConfigType::ByteOrder => {
             if let Some(value) = parse_single_string_value(node, diagnostics) {
-                device.device_config.byte_order = Some(value);
+                device.device_config.byte_order = Some(value.value);
             }
         }
         DeviceConfigType::BitOrder => {
             if let Some(value) = parse_single_string_value(node, diagnostics) {
-                device.device_config.bit_order = Some(value);
+                device.device_config.bit_order = Some(value.value);
             }
         }
         DeviceConfigType::RegisterAddressType => {
@@ -1699,9 +1699,11 @@ fn parse_single_string_entry(
 fn parse_single_string_value<T: strum::VariantNames + FromStr>(
     node: &KdlNode,
     diagnostics: &mut Diagnostics,
-) -> Option<T> {
+) -> Option<Spanned<T>> {
     match parse_single_string_entry(node, diagnostics, Some(T::VARIANTS), false) {
-        (Some(val), _) if T::from_str(&val).is_ok() => T::from_str(&val).ok(),
+        (Some(val), Some(entry)) if T::from_str(&val).is_ok() => {
+            T::from_str(&val).ok().map(|val| val.with_span(entry))
+        }
         (Some(_), Some(entry)) => {
             diagnostics.add(errors::UnexpectedValue {
                 value_name: entry,

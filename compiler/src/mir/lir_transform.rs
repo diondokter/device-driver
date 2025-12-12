@@ -47,7 +47,10 @@ fn transform_devices(manifest: &mir::Manifest) -> Vec<lir::Device> {
 
             lir::Device {
                 internal_address_type: find_best_internal_address_type(manifest, device),
-                register_address_type: config.register_address_type.unwrap_or(mir::Integer::U8),
+                register_address_type: config
+                    .register_address_type
+                    .map(|t| t.value)
+                    .unwrap_or(mir::Integer::U8),
                 blocks,
                 defmt_feature: config.defmt_feature.clone(),
             }
@@ -122,7 +125,7 @@ fn get_method(
             Some(lir::BlockMethod {
                 description: description.clone(),
                 name: name.to_case(convert_case::Case::Snake),
-                address: *address_offset,
+                address: address_offset.value,
                 allow_address_overlap: false,
                 repeat: repeat_to_method_kind(repeat, manifest),
                 method_type: lir::BlockMethodType::Block {
@@ -142,7 +145,7 @@ fn get_method(
         }) => Some(lir::BlockMethod {
             description: description.clone(),
             name: name.to_case(convert_case::Case::Snake),
-            address: *address,
+            address: address.value,
             allow_address_overlap: *allow_address_overlap,
             repeat: repeat_to_method_kind(repeat, manifest),
             method_type: lir::BlockMethodType::Register {
@@ -150,7 +153,8 @@ fn get_method(
                 access: *access,
                 address_type: global_config
                     .register_address_type
-                    .expect("The presence of the address type is already checked in a mir pass"),
+                    .expect("The presence of the address type is already checked in a mir pass")
+                    .value,
                 reset_value: reset_value.clone().map(|rv| {
                     rv.as_array()
                         .expect(
@@ -172,7 +176,7 @@ fn get_method(
         }) => Some(lir::BlockMethod {
             description: description.clone(),
             name: name.to_case(convert_case::Case::Snake),
-            address: *address,
+            address: address.value,
             allow_address_overlap: *allow_address_overlap,
             repeat: repeat_to_method_kind(repeat, manifest),
             method_type: lir::BlockMethodType::Command {
@@ -180,7 +184,8 @@ fn get_method(
                 field_set_name_out: field_set_out.as_ref().map(|fs_out| fs_out.0.clone()),
                 address_type: global_config
                     .command_address_type
-                    .expect("The presence of the address type is already checked in a mir pass"),
+                    .expect("The presence of the address type is already checked in a mir pass")
+                    .value,
             },
         }),
         mir::Object::Buffer(mir::Buffer {
@@ -191,14 +196,15 @@ fn get_method(
         }) => Some(lir::BlockMethod {
             description: description.clone(),
             name: name.to_case(convert_case::Case::Snake),
-            address: *address,
+            address: address.value,
             allow_address_overlap: false,
             repeat: lir::Repeat::None, // Buffers can't be repeated (for now?)
             method_type: lir::BlockMethodType::Buffer {
                 access: *access,
                 address_type: global_config
                     .buffer_address_type
-                    .expect("The presence of the address type is already checked in a mir pass"),
+                    .expect("The presence of the address type is already checked in a mir pass")
+                    .value,
             },
         }),
         mir::Object::FieldSet(_) => None,
@@ -431,7 +437,9 @@ impl<'o> From<&'o mir::Block> for BorrowedBlock<'o> {
 }
 
 fn find_best_internal_address_type(manifest: &mir::Manifest, device: &mir::Device) -> Integer {
-    let (min_address_found, max_address_found) = find_min_max_addresses(manifest, device, |_| true);
+    let (min_address_found, max_address_found) = find_min_max_addresses(manifest, device, |_| true)
+        .map(|((min, _), (max, _))| (min, max))
+        .unwrap_or_default();
 
     let needs_signed = min_address_found < 0;
     let needs_bits = (min_address_found
