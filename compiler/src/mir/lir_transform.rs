@@ -47,10 +47,6 @@ fn transform_devices(manifest: &mir::Manifest) -> Vec<lir::Device> {
 
             lir::Device {
                 internal_address_type: find_best_internal_address_type(manifest, device),
-                register_address_type: config
-                    .register_address_type
-                    .map(|t| t.value)
-                    .unwrap_or(mir::Integer::U8),
                 blocks,
                 defmt_feature: config.defmt_feature.clone(),
             }

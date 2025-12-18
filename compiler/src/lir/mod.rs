@@ -13,7 +13,6 @@ pub struct Driver {
 
 pub struct Device {
     pub internal_address_type: Integer,
-    pub register_address_type: Integer,
     pub blocks: Vec<Block>,
     pub defmt_feature: Option<String>,
 }

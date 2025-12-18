@@ -156,7 +156,6 @@ mod tests {
         let mut driver = Driver {
             devices: vec![Device {
                 internal_address_type: crate::mir::Integer::U8,
-                register_address_type: crate::mir::Integer::U8,
                 blocks: vec![
                     Block {
                         description: Default::default(),
