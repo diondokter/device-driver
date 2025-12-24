@@ -4,6 +4,7 @@
 use std::{fmt::Display, ops::Range, rc::Rc};
 
 use convert_case::Boundary;
+use miette::SourceSpan;
 
 pub mod lir_transform;
 pub mod passes;
@@ -226,10 +227,10 @@ impl From<Device> for Manifest {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Device {
     pub description: String,
-    pub name: String,
+    pub name: Spanned<String>,
     pub device_config: DeviceConfig,
     pub objects: Vec<Object>,
 }
@@ -245,16 +246,18 @@ impl Device {
         .map(|(object, _)| object)
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct DeviceConfig {
+    /// The id of the device that owns this config. If None, then this is a global config
+    pub owner: Option<UniqueId>,
     pub register_access: Option<Access>,
     pub field_access: Option<Access>,
     pub buffer_access: Option<Access>,
     pub byte_order: Option<ByteOrder>,
     pub bit_order: Option<BitOrder>,
-    pub register_address_type: Option<Integer>,
-    pub command_address_type: Option<Integer>,
-    pub buffer_address_type: Option<Integer>,
+    pub register_address_type: Option<Spanned<Integer>>,
+    pub command_address_type: Option<Spanned<Integer>>,
+    pub buffer_address_type: Option<Spanned<Integer>>,
     pub name_word_boundaries: Option<Vec<Boundary>>,
     pub defmt_feature: Option<String>,
 }
@@ -262,6 +265,7 @@ pub struct DeviceConfig {
 impl DeviceConfig {
     pub fn override_with(&self, other: &Self) -> DeviceConfig {
         Self {
+            owner: other.owner.clone().or(self.owner.clone()),
             register_access: other.register_access.or(self.register_access),
             field_access: other.field_access.or(self.field_access),
             buffer_access: other.buffer_access.or(self.buffer_access),
@@ -285,7 +289,7 @@ impl DeviceConfig {
 }
 
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, strum::VariantNames, strum::Display, strum::EnumString,
+    Debug, Clone, Copy, PartialEq, Eq, strum::VariantNames, strum::Display, strum::EnumString, Hash,
 )]
 #[strum(serialize_all = "lowercase")]
 pub enum Integer {
@@ -300,11 +304,11 @@ pub enum Integer {
 }
 
 impl Integer {
-    pub fn is_signed(&self) -> bool {
+    pub const fn is_signed(&self) -> bool {
         self.min_value() != 0
     }
 
-    pub fn min_value(&self) -> i128 {
+    pub const fn min_value(&self) -> i128 {
         match self {
             Integer::U8 => u8::MIN as i128,
             Integer::U16 => u16::MIN as i128,
@@ -317,7 +321,7 @@ impl Integer {
         }
     }
 
-    pub fn max_value(&self) -> i128 {
+    pub const fn max_value(&self) -> i128 {
         match self {
             Integer::U8 => u8::MAX as i128,
             Integer::U16 => u16::MAX as i128,
@@ -330,7 +334,7 @@ impl Integer {
         }
     }
 
-    pub fn size_bits(&self) -> u32 {
+    pub const fn size_bits(&self) -> u32 {
         match self {
             Integer::U8 => 8,
             Integer::U16 => 16,
@@ -348,7 +352,7 @@ impl Integer {
     ///
     /// This function has a preference for unsigned integers.
     /// You can force a signed integer by making the min be negative (e.g. -1)
-    pub fn find_smallest(min: i128, max: i128, size_bits: u32) -> Option<Integer> {
+    pub const fn find_smallest(min: i128, max: i128, size_bits: u32) -> Option<Integer> {
         Some(match (min, max, size_bits) {
             (0.., ..0x1_00, ..=8) => Integer::U8,
             (0.., ..0x1_0000, ..=16) => Integer::U16,
@@ -357,9 +361,37 @@ impl Integer {
             (-0x80.., ..0x80, ..=8) => Integer::I8,
             (-0x8000.., ..0x8000, ..=16) => Integer::I16,
             (-0x8000_00000.., ..0x8000_0000, ..=32) => Integer::I32,
-            (-0x8000_0000_0000_0000.., ..0x8000_0000_0000_0000, ..=32) => Integer::I64,
+            (-0x8000_0000_0000_0000.., ..0x8000_0000_0000_0000, ..=64) => Integer::I64,
             _ => return None,
         })
+    }
+
+    /// Given the min and the max and the sign of the integer,
+    /// how many bits are required to fit the min and max? (inclusive)
+    pub const fn bits_required(&self, min: i128, max: i128) -> u32 {
+        assert!(max >= min);
+
+        if self.is_signed() {
+            let min_bits = if min.is_negative() {
+                i128::BITS - (min.abs() - 1).leading_zeros() + 1
+            } else {
+                0
+            };
+            let max_bits = if max.is_positive() {
+                i128::BITS - max.leading_zeros() + 1
+            } else {
+                0
+            };
+
+            if min_bits > max_bits {
+                min_bits
+            } else {
+                max_bits
+            }
+        } else {
+            assert!(min >= 0);
+            i128::BITS - max.leading_zeros()
+        }
     }
 }
 
@@ -373,6 +405,7 @@ impl Integer {
     strum::VariantNames,
     strum::Display,
     strum::EnumString,
+    Hash,
 )]
 pub enum Access {
     #[default]
@@ -392,7 +425,7 @@ impl Access {
 }
 
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, strum::VariantNames, strum::Display, strum::EnumString,
+    Debug, Clone, Copy, PartialEq, Eq, strum::VariantNames, strum::Display, strum::EnumString, Hash,
 )]
 pub enum ByteOrder {
     LE,
@@ -409,6 +442,7 @@ pub enum ByteOrder {
     strum::VariantNames,
     strum::Display,
     strum::EnumString,
+    Hash,
 )]
 pub enum BitOrder {
     #[default]
@@ -416,7 +450,7 @@ pub enum BitOrder {
     MSB0,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Object {
     Device(Device),
     Block(Block),
@@ -441,6 +475,14 @@ impl Object {
             Object::Device(device) => &mut device.objects,
             Object::Block(block) => &mut block.objects,
             _ => &mut [],
+        }
+    }
+
+    pub(self) fn child_objects_vec(&mut self) -> Option<&mut Vec<Object>> {
+        match self {
+            Object::Device(device) => Some(&mut device.objects),
+            Object::Block(block) => Some(&mut block.objects),
+            _ => None,
         }
     }
 
@@ -480,16 +522,17 @@ impl Object {
         }
     }
 
-    pub(self) fn type_name(&self) -> &'static str {
+    /// Get the span of the name of the object
+    pub(self) fn name_span(&self) -> SourceSpan {
         match self {
-            Object::Device(_) => "device",
-            Object::Block(_) => "block",
-            Object::Register(_) => "register",
-            Object::Command(_) => "command",
-            Object::Buffer(_) => "buffer",
-            Object::FieldSet(_) => "fieldset",
-            Object::Enum(_) => "enum",
-            Object::Extern(_) => "extern",
+            Object::Device(val) => val.name.span,
+            Object::Block(val) => val.name.span,
+            Object::Register(val) => val.name.span,
+            Object::Command(val) => val.name.span,
+            Object::Buffer(val) => val.name.span,
+            Object::FieldSet(val) => val.name.span,
+            Object::Enum(val) => val.name.span,
+            Object::Extern(val) => val.name.span,
         }
     }
 
@@ -518,7 +561,7 @@ impl Object {
     }
 
     /// Return the address if it is specified.
-    fn address(&self) -> Option<i128> {
+    fn address(&self) -> Option<Spanned<i128>> {
         match self {
             Object::Device(_) => None,
             Object::Block(block) => Some(block.address_offset),
@@ -532,12 +575,26 @@ impl Object {
     }
 
     /// Return the repeat value if it exists
-    fn repeat(&self) -> Option<Repeat> {
+    fn repeat(&self) -> Option<&Repeat> {
         match self {
             Object::Device(_) => None,
-            Object::Block(block) => block.repeat.clone(),
-            Object::Register(register) => register.repeat.clone(),
-            Object::Command(command) => command.repeat.clone(),
+            Object::Block(block) => block.repeat.as_ref(),
+            Object::Register(register) => register.repeat.as_ref(),
+            Object::Command(command) => command.repeat.as_ref(),
+            Object::Buffer(_) => None,
+            Object::FieldSet(_) => None,
+            Object::Enum(_) => None,
+            Object::Extern(_) => None,
+        }
+    }
+
+    /// Return the repeat value if it exists
+    fn repeat_mut(&mut self) -> Option<&mut Repeat> {
+        match self {
+            Object::Device(_) => None,
+            Object::Block(block) => block.repeat.as_mut(),
+            Object::Register(register) => register.repeat.as_mut(),
+            Object::Command(command) => command.repeat.as_mut(),
             Object::Buffer(_) => None,
             Object::FieldSet(_) => None,
             Object::Enum(_) => None,
@@ -576,43 +633,69 @@ impl Object {
             None
         }
     }
+
+    pub(self) fn object_type_name(&self) -> &'static str {
+        match self {
+            Object::Device(_) => "device",
+            Object::Block(_) => "block",
+            Object::Register(_) => "register",
+            Object::Command(_) => "command",
+            Object::Buffer(_) => "buffer",
+            Object::FieldSet(_) => "fieldset",
+            Object::Enum(_) => "enum",
+            Object::Extern(_) => "extern",
+        }
+    }
+
+    pub(self) fn allow_address_overlap(&self) -> bool {
+        match self {
+            Object::Device(_) => false,
+            Object::Block(_) => false,
+            Object::Register(register) => register.allow_address_overlap,
+            Object::Command(command) => command.allow_address_overlap,
+            Object::Buffer(_) => false,
+            Object::FieldSet(_) => false,
+            Object::Enum(_) => false,
+            Object::Extern(_) => false,
+        }
+    }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Block {
     pub description: String,
-    pub name: String,
-    pub address_offset: i128,
+    pub name: Spanned<String>,
+    pub address_offset: Spanned<i128>,
     pub repeat: Option<Repeat>,
     pub objects: Vec<Object>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Repeat {
     pub source: RepeatSource,
     pub stride: i128,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RepeatSource {
     Count(u64),
-    Enum(String),
+    Enum(Spanned<String>),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Register {
     pub description: String,
-    pub name: String,
+    pub name: Spanned<String>,
     pub access: Access,
     pub allow_address_overlap: bool,
-    pub address: i128,
-    pub reset_value: Option<ResetValue>,
+    pub address: Spanned<i128>,
+    pub reset_value: Option<Spanned<ResetValue>>,
     pub repeat: Option<Repeat>,
     pub field_set_ref: FieldSetRef,
 }
 
 /// An externally defined fieldset. This is the name of that fieldset
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct FieldSetRef(pub String);
 
 impl From<String> for FieldSetRef {
@@ -627,29 +710,45 @@ impl<'a> From<&'a str> for FieldSetRef {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct FieldSet {
     pub description: String,
-    pub name: String,
-    pub size_bits: u32,
+    pub name: Spanned<String>,
+    pub size_bits: Spanned<u32>,
     pub byte_order: Option<ByteOrder>,
     pub bit_order: Option<BitOrder>,
     pub allow_bit_overlap: bool,
     pub fields: Vec<Field>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Field {
     pub description: String,
-    pub name: String,
+    pub name: Spanned<String>,
     pub access: Access,
-    pub base_type: BaseType,
+    pub base_type: Spanned<BaseType>,
     pub field_conversion: Option<FieldConversion>,
-    pub field_address: Range<u32>,
+    pub field_address: Spanned<Range<u32>>,
     pub repeat: Option<Repeat>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+impl Field {
+    pub fn get_type_specifier_string(&self) -> String {
+        match &self.field_conversion {
+            Some(fc) => {
+                format!(
+                    "{}:{}{}",
+                    self.base_type,
+                    fc.type_name,
+                    if fc.use_try { "?" } else { "" }
+                )
+            }
+            None => self.base_type.to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
 pub enum BaseType {
     Unspecified,
     Bool,
@@ -689,20 +788,20 @@ impl Display for BaseType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FieldConversion {
     /// The name of the type we're converting to
-    pub type_name: String,
+    pub type_name: Spanned<String>,
     /// True when we want to use the fallible interface (like a Result<type, error>)
     pub use_try: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Enum {
     pub description: String,
-    pub name: String,
+    pub name: Spanned<String>,
     pub variants: Vec<EnumVariant>,
-    pub base_type: BaseType,
+    pub base_type: Spanned<BaseType>,
     pub size_bits: Option<u32>,
     generation_style: Option<EnumGenerationStyle>,
 }
@@ -710,9 +809,9 @@ pub struct Enum {
 impl Enum {
     pub fn new(
         description: String,
-        name: String,
+        name: Spanned<String>,
         variants: Vec<EnumVariant>,
-        base_type: BaseType,
+        base_type: Spanned<BaseType>,
         size_bits: Option<u32>,
     ) -> Self {
         Self {
@@ -728,9 +827,9 @@ impl Enum {
     #[cfg(test)]
     pub fn new_with_style(
         description: String,
-        name: String,
+        name: Spanned<String>,
         variants: Vec<EnumVariant>,
-        base_type: BaseType,
+        base_type: Spanned<BaseType>,
         size_bits: Option<u32>,
         generation_style: EnumGenerationStyle,
     ) -> Self {
@@ -789,7 +888,7 @@ impl Enum {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum EnumGenerationStyle {
     /// Not all basetype values can be converted to a variant
     Fallible,
@@ -810,14 +909,14 @@ impl EnumGenerationStyle {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct EnumVariant {
     pub description: String,
-    pub name: String,
+    pub name: Spanned<String>,
     pub value: EnumValue,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub enum EnumValue {
     #[default]
     Unspecified,
@@ -852,11 +951,11 @@ impl EnumValue {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Command {
     pub description: String,
-    pub name: String,
-    pub address: i128,
+    pub name: Spanned<String>,
+    pub address: Spanned<i128>,
     pub allow_address_overlap: bool,
     pub repeat: Option<Repeat>,
 
@@ -864,15 +963,15 @@ pub struct Command {
     pub field_set_ref_out: Option<FieldSetRef>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Buffer {
     pub description: String,
-    pub name: String,
+    pub name: Spanned<String>,
     pub access: Access,
-    pub address: i128,
+    pub address: Spanned<i128>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ResetValue {
     Integer(u128),
     Array(Vec<u8>),
@@ -888,54 +987,132 @@ impl ResetValue {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Extern {
     pub description: String,
-    pub name: String,
+    pub name: Spanned<String>,
     /// From/into what base type can this extern be converted?
-    pub base_type: BaseType,
+    pub base_type: Spanned<BaseType>,
     /// If true, this extern can be converted infallibly too
     pub supports_infallible: bool,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
-pub struct UniqueId {
-    object_name: String,
+pub enum UniqueId {
+    Object {
+        object_name: Spanned<String>,
+    },
+    Field {
+        parent_id: Box<UniqueId>,
+        field_name: Spanned<String>,
+    },
+}
+
+impl UniqueId {
+    pub fn span(&self) -> SourceSpan {
+        match self {
+            UniqueId::Object { object_name } => object_name.span,
+            UniqueId::Field { field_name, .. } => field_name.span,
+        }
+    }
+
+    /// *Only for tests:* Create a new instance with a dummy span.
+    #[cfg(test)]
+    pub fn new_test(object_name: impl Into<String>) -> Self {
+        Self::Object {
+            object_name: object_name.into().with_dummy_span(),
+        }
+    }
 }
 
 impl Display for UniqueId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.object_name)
+        match self {
+            UniqueId::Object { object_name } => write!(f, "{}", object_name),
+            UniqueId::Field {
+                parent_id,
+                field_name,
+            } => write!(f, "{} {{ {} }}", parent_id, field_name),
+        }
     }
 }
 
 pub trait Unique {
-    fn id(&self) -> UniqueId;
+    type Metadata;
+
+    fn id(&self) -> UniqueId
+    where
+        Self::Metadata: Empty;
+    fn id_with(&self, meta: Self::Metadata) -> UniqueId;
+
+    fn has_id(&self, id: &UniqueId) -> bool
+    where
+        Self::Metadata: Empty;
+    fn has_id_with(&self, meta: Self::Metadata, id: &UniqueId) -> bool {
+        self.id_with(meta) == *id
+    }
 }
 
-macro_rules! impl_unique {
+pub trait Empty {}
+impl Empty for () {}
+
+macro_rules! impl_unique_object {
     ($t:ty) => {
         impl Unique for $t {
+            type Metadata = ();
+
             fn id(&self) -> UniqueId {
-                UniqueId {
+                UniqueId::Object {
                     object_name: self.name.clone(),
+                }
+            }
+
+            fn id_with(&self, _: Self::Metadata) -> UniqueId {
+                self.id()
+            }
+
+            fn has_id(&self, id: &UniqueId) -> bool {
+                match id {
+                    UniqueId::Object { object_name } => &self.name == object_name,
+                    _ => false,
                 }
             }
         }
     };
 }
 
-impl_unique!(Device);
-impl_unique!(Register);
-impl_unique!(Command);
-impl_unique!(Buffer);
-impl_unique!(Block);
-impl_unique!(Enum);
-impl_unique!(EnumVariant);
-impl_unique!(FieldSet);
-impl_unique!(Extern);
+impl_unique_object!(Device);
+impl_unique_object!(Register);
+impl_unique_object!(Command);
+impl_unique_object!(Buffer);
+impl_unique_object!(Block);
+impl_unique_object!(Enum);
+impl_unique_object!(EnumVariant);
+impl_unique_object!(FieldSet);
+impl_unique_object!(Extern);
+
+impl Unique for Field {
+    type Metadata = UniqueId;
+
+    fn id(&self) -> UniqueId {
+        unreachable!()
+    }
+
+    fn id_with(&self, parent: Self::Metadata) -> UniqueId {
+        UniqueId::Field {
+            parent_id: Box::new(parent),
+            field_name: self.name.clone(),
+        }
+    }
+
+    fn has_id(&self, _id: &UniqueId) -> bool {
+        unreachable!()
+    }
+}
 
 impl Unique for Object {
+    type Metadata = ();
+
     fn id(&self) -> UniqueId {
         match self {
             Object::Device(val) => val.id(),
@@ -948,7 +1125,115 @@ impl Unique for Object {
             Object::Extern(val) => val.id(),
         }
     }
+
+    fn id_with(&self, _: Self::Metadata) -> UniqueId {
+        self.id()
+    }
+
+    fn has_id(&self, id: &UniqueId) -> bool {
+        match self {
+            Object::Device(val) => val.has_id(id),
+            Object::Block(val) => val.has_id(id),
+            Object::Register(val) => val.has_id(id),
+            Object::Command(val) => val.has_id(id),
+            Object::Buffer(val) => val.has_id(id),
+            Object::FieldSet(val) => val.has_id(id),
+            Object::Enum(val) => val.has_id(id),
+            Object::Extern(val) => val.has_id(id),
+        }
+    }
 }
+
+#[derive(Debug, Clone, Eq, Copy)]
+pub struct Spanned<T> {
+    pub span: SourceSpan,
+    pub value: T,
+}
+
+impl<T: PartialEq> PartialEq for Spanned<T> {
+    fn eq(&self, other: &Self) -> bool {
+        // Only compare value. The span is transparent
+        self.value == other.value
+    }
+}
+
+impl<T: PartialEq> PartialEq<T> for Spanned<T> {
+    fn eq(&self, other: &T) -> bool {
+        // Only compare value. The span is transparent
+        &self.value == other
+    }
+}
+
+impl<T: std::hash::Hash> std::hash::Hash for Spanned<T> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.value.hash(state);
+        // Only hash value. The span is transparent
+    }
+}
+
+impl<T: Default> Default for Spanned<T> {
+    fn default() -> Self {
+        Self {
+            span: (0, 0).into(),
+            value: Default::default(),
+        }
+    }
+}
+
+impl<T: Display> Display for Spanned<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.value.fmt(f)
+    }
+}
+
+impl<T> std::ops::Deref for Spanned<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.value
+    }
+}
+
+impl<T> std::ops::DerefMut for Spanned<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.value
+    }
+}
+
+impl<T> Spanned<T> {
+    pub fn new(span: SourceSpan, value: T) -> Self {
+        Self { span, value }
+    }
+}
+
+impl<T> From<(T, SourceSpan)> for Spanned<T> {
+    fn from((value, span): (T, SourceSpan)) -> Self {
+        Self { span, value }
+    }
+}
+
+impl<T: PartialOrd> PartialOrd<T> for Spanned<T> {
+    fn partial_cmp(&self, other: &T) -> Option<std::cmp::Ordering> {
+        self.value.partial_cmp(other)
+    }
+}
+
+pub trait Span {
+    fn with_span(self, span: impl Into<SourceSpan>) -> Spanned<Self>
+    where
+        Self: Sized,
+    {
+        Spanned::new(span.into(), self)
+    }
+
+    fn with_dummy_span(self) -> Spanned<Self>
+    where
+        Self: Sized,
+    {
+        self.with_span((0, 0))
+    }
+}
+impl<T> Span for T {}
 
 #[cfg(test)]
 mod tests {
@@ -962,24 +1247,24 @@ mod tests {
             root_objects: vec![
                 Object::Device(Device {
                     description: String::new(),
-                    name: "a".into(),
+                    name: "a".to_owned().with_dummy_span(),
                     device_config: DeviceConfig {
                         register_access: Some(Access::RW),
                         ..Default::default()
                     },
                     objects: vec![
                         Object::Extern(Extern {
-                            name: "b".into(),
+                            name: "b".to_owned().with_dummy_span(),
                             ..Default::default()
                         }),
                         Object::Extern(Extern {
-                            name: "c".into(),
+                            name: "c".to_owned().with_dummy_span(),
                             ..Default::default()
                         }),
                     ],
                 }),
                 Object::Extern(Extern {
-                    name: "d".into(),
+                    name: "d".to_owned().with_dummy_span(),
                     ..Default::default()
                 }),
             ],
@@ -995,5 +1280,28 @@ mod tests {
             names.push(object.name().to_string());
         }
         assert_eq!(&names, NAME_ORDER);
+    }
+
+    #[test]
+    fn correct_integer_size_bits() {
+        assert_eq!(Integer::U8.bits_required(0, 0), 0);
+        assert_eq!(Integer::U8.bits_required(0, 1), 1);
+        assert_eq!(Integer::U8.bits_required(0, 2), 2);
+        assert_eq!(Integer::U8.bits_required(0, 3), 2);
+        assert_eq!(Integer::U8.bits_required(0, 4), 3);
+
+        assert_eq!(Integer::I8.bits_required(0, 0), 0);
+        assert_eq!(Integer::I8.bits_required(-1, 0), 1);
+        assert_eq!(Integer::I8.bits_required(-1, 1), 2);
+        assert_eq!(Integer::I8.bits_required(0, 1), 2);
+        assert_eq!(Integer::I8.bits_required(-2, 1), 2);
+        assert_eq!(Integer::I8.bits_required(0, 2), 3);
+        assert_eq!(Integer::I8.bits_required(-128, 0), 8);
+        assert_eq!(Integer::I8.bits_required(-129, 0), 9);
+        assert_eq!(Integer::I8.bits_required(0, 127), 8);
+        assert_eq!(Integer::I8.bits_required(0, 128), 9);
+        assert_eq!(Integer::I8.bits_required(-16, 15), 5);
+        assert_eq!(Integer::I8.bits_required(-16, 16), 6);
+        assert_eq!(Integer::I8.bits_required(-17, 15), 6);
     }
 }

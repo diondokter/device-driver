@@ -31,4 +31,5 @@ pretty_assertions = "1.4.0"
 indoc = "2.0.5"
 
 [features]
+default = ["prettyplease"]
 prettyplease = ["dep:prettyplease"]

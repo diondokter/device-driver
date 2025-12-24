@@ -1,8 +1,10 @@
 use std::ops::Add;
 
+use convert_case::Boundary;
+
 use crate::{
     lir,
-    mir::{self, Object},
+    mir::{self, Manifest, Object},
 };
 
 use super::{Integer, passes::find_min_max_addresses};
@@ -42,12 +44,11 @@ fn transform_devices(manifest: &mir::Manifest) -> Vec<lir::Device> {
                 },
                 true,
                 &device.device_config,
-                &device.objects,
+                manifest,
             );
 
             lir::Device {
                 internal_address_type: find_best_internal_address_type(manifest, device),
-                register_address_type: config.register_address_type.unwrap_or(mir::Integer::U8),
                 blocks,
                 defmt_feature: config.defmt_feature.clone(),
             }
@@ -59,7 +60,7 @@ fn collect_into_blocks(
     block: BorrowedBlock,
     is_root: bool,
     global_config: &mir::DeviceConfig,
-    device_objects: &[mir::Object],
+    manifest: &Manifest,
 ) -> Vec<lir::Block> {
     let mut blocks = Vec::new();
 
@@ -74,7 +75,7 @@ fn collect_into_blocks(
     let mut methods = Vec::new();
 
     for object in objects {
-        let Some(method) = get_method(object, &mut blocks, global_config, device_objects) else {
+        let Some(method) = get_method(object, &mut blocks, global_config, manifest) else {
             continue;
         };
 
@@ -97,9 +98,14 @@ fn get_method(
     object: &mir::Object,
     blocks: &mut Vec<lir::Block>,
     global_config: &mir::DeviceConfig,
-    device_objects: &[mir::Object],
+    manifest: &Manifest,
 ) -> Option<lir::BlockMethod> {
     use convert_case::Casing;
+    let default_word_boundary = Boundary::defaults();
+    let word_boundary = match &global_config.name_word_boundaries {
+        Some(name_word_boundaries) => name_word_boundaries.as_slice(),
+        None => default_word_boundary.as_slice(),
+    };
 
     match object {
         mir::Object::Device(_) => None,
@@ -116,15 +122,17 @@ fn get_method(
                 b.into(),
                 false,
                 global_config,
-                device_objects,
+                manifest,
             ));
 
             Some(lir::BlockMethod {
                 description: description.clone(),
-                name: name.to_case(convert_case::Case::Snake),
-                address: *address_offset,
+                name: name
+                    .with_boundaries(word_boundary)
+                    .to_case(convert_case::Case::Snake),
+                address: address_offset.value,
                 allow_address_overlap: false,
-                repeat: repeat_to_method_kind(repeat, device_objects),
+                repeat: repeat_to_method_kind(repeat, manifest),
                 method_type: lir::BlockMethodType::Block {
                     name: name.to_string(),
                 },
@@ -141,16 +149,19 @@ fn get_method(
             reset_value,
         }) => Some(lir::BlockMethod {
             description: description.clone(),
-            name: name.to_case(convert_case::Case::Snake),
-            address: *address,
+            name: name
+                .with_boundaries(word_boundary)
+                .to_case(convert_case::Case::Snake),
+            address: address.value,
             allow_address_overlap: *allow_address_overlap,
-            repeat: repeat_to_method_kind(repeat, device_objects),
+            repeat: repeat_to_method_kind(repeat, manifest),
             method_type: lir::BlockMethodType::Register {
                 field_set_name: field_set.0.clone(),
                 access: *access,
                 address_type: global_config
                     .register_address_type
-                    .expect("The presence of the address type is already checked in a mir pass"),
+                    .expect("The presence of the address type is already checked in a mir pass")
+                    .value,
                 reset_value: reset_value.clone().map(|rv| {
                     rv.as_array()
                         .expect(
@@ -171,16 +182,19 @@ fn get_method(
             ..
         }) => Some(lir::BlockMethod {
             description: description.clone(),
-            name: name.to_case(convert_case::Case::Snake),
-            address: *address,
+            name: name
+                .with_boundaries(word_boundary)
+                .to_case(convert_case::Case::Snake),
+            address: address.value,
             allow_address_overlap: *allow_address_overlap,
-            repeat: repeat_to_method_kind(repeat, device_objects),
+            repeat: repeat_to_method_kind(repeat, manifest),
             method_type: lir::BlockMethodType::Command {
                 field_set_name_in: field_set_in.as_ref().map(|fs_in| fs_in.0.clone()),
                 field_set_name_out: field_set_out.as_ref().map(|fs_out| fs_out.0.clone()),
                 address_type: global_config
                     .command_address_type
-                    .expect("The presence of the address type is already checked in a mir pass"),
+                    .expect("The presence of the address type is already checked in a mir pass")
+                    .value,
             },
         }),
         mir::Object::Buffer(mir::Buffer {
@@ -190,15 +204,18 @@ fn get_method(
             address,
         }) => Some(lir::BlockMethod {
             description: description.clone(),
-            name: name.to_case(convert_case::Case::Snake),
-            address: *address,
+            name: name
+                .with_boundaries(word_boundary)
+                .to_case(convert_case::Case::Snake),
+            address: address.value,
             allow_address_overlap: false,
             repeat: lir::Repeat::None, // Buffers can't be repeated (for now?)
             method_type: lir::BlockMethodType::Buffer {
                 access: *access,
                 address_type: global_config
                     .buffer_address_type
-                    .expect("The presence of the address type is already checked in a mir pass"),
+                    .expect("The presence of the address type is already checked in a mir pass")
+                    .value,
             },
         }),
         mir::Object::FieldSet(_) => None,
@@ -240,7 +257,7 @@ fn transform_field_set(
                 repeat,
             } = field;
 
-            let (base_type, conversion_method) = match (base_type, field_conversion) {
+            let (base_type, conversion_method) = match (base_type.value, field_conversion) {
                 (mir::BaseType::Unspecified | mir::BaseType::Uint | mir::BaseType::Int, _) => {
                     unreachable!("Nothing is left unspecified or unsized in the mir passes")
                 }
@@ -258,7 +275,7 @@ fn transform_field_set(
 
                     // Always use try if that's specified
                     if fc.use_try {
-                        lir::FieldConversionMethod::TryInto(fc.type_name.clone())
+                        lir::FieldConversionMethod::TryInto(fc.type_name.value.clone())
                     }
                     // Are we pointing at a potentially infallible enum and do we fulfil the requirements?
                     else if let Some(mir::Enum {
@@ -269,20 +286,20 @@ fn transform_field_set(
                         && field_bits <= size_bits.expect("Size_bits set in an earlier mir pass")
                     {
                         // This field is equal or smaller in bits than the infallible enum. So we can do the unsafe into
-                        lir::FieldConversionMethod::UnsafeInto(fc.type_name.clone())
+                        lir::FieldConversionMethod::UnsafeInto(fc.type_name.value.clone())
                     } else {
                         // Fallback is to use the into trait.
                         // This is correct because in the field_conversion_valid mir pass we've already exited if we need a try and didn't specify it.
                         // The only other option is the unsafe into and we've just checked that.
-                        lir::FieldConversionMethod::Into(fc.type_name.clone())
+                        lir::FieldConversionMethod::Into(fc.type_name.value.clone())
                     }
                 }),
             };
 
             lir::Field {
                 description: description.clone(),
-                name: name.clone(),
-                address: field_address.clone(),
+                name: name.value.clone(),
+                address: field_address.value.clone(),
                 base_type,
                 conversion_method,
                 access: *access,
@@ -294,14 +311,14 @@ fn transform_field_set(
                             stride: repeat.stride,
                         },
                         mir::RepeatSource::Enum(enum_name) => lir::Repeat::Enum {
-                            enum_name: enum_name.clone(),
+                            enum_name: enum_name.value.clone(),
                             enum_variants: manifest
                                 .iter_enums()
-                                .find(|e| e.name == *enum_name)
+                                .find(|e| e.name.value == enum_name.value)
                                 .expect("Checked in MIR pass")
                                 .variants
                                 .iter()
-                                .map(|variant| variant.name.clone())
+                                .map(|variant| variant.name.value.clone())
                                 .collect(),
                             stride: repeat.stride,
                         },
@@ -313,14 +330,14 @@ fn transform_field_set(
 
     lir::FieldSet {
         description: field_set.description.clone(),
-        name: field_set.name.clone(),
+        name: field_set.name.value.clone(),
         byte_order: field_set
             .byte_order
             .expect("Byte order should never be none at this point after the MIR passes"),
         bit_order: field_set
             .bit_order
             .expect("Bitorder should never be none at this point after the MIR passes"),
-        size_bits: field_set.size_bits,
+        size_bits: field_set.size_bits.value,
         fields,
         defmt_feature: config.defmt_feature.clone(),
     }
@@ -337,7 +354,7 @@ fn transform_enums(manifest: &mir::Manifest) -> Vec<lir::Enum> {
             generation_style: _,
         } = e;
 
-        let base_type = match base_type {
+        let base_type = match base_type.value {
             mir::BaseType::FixedSize(integer) => integer.to_string(),
             _ => {
                 panic!("Enum base type should be set to fixed size integer in a mir pass at this point")
@@ -373,10 +390,7 @@ fn transform_enums(manifest: &mir::Manifest) -> Vec<lir::Enum> {
     }).collect()
 }
 
-fn repeat_to_method_kind(
-    repeat: &Option<mir::Repeat>,
-    device_objects: &[mir::Object],
-) -> lir::Repeat {
+fn repeat_to_method_kind(repeat: &Option<mir::Repeat>, manifest: &Manifest) -> lir::Repeat {
     match repeat {
         Some(mir::Repeat {
             source: mir::RepeatSource::Count(count),
@@ -389,16 +403,14 @@ fn repeat_to_method_kind(
             source: mir::RepeatSource::Enum(enum_name),
             stride,
         }) => lir::Repeat::Enum {
-            enum_name: enum_name.clone(),
-            enum_variants: device_objects
-                .iter()
-                .find(|object| object.name() == enum_name)
-                .expect("Checked in a MIR pass")
-                .as_enum()
+            enum_name: enum_name.value.clone(),
+            enum_variants: manifest
+                .iter_enums()
+                .find(|object| object.name == enum_name.value)
                 .expect("Checked in a MIR pass")
                 .variants
                 .iter()
-                .map(|variant| variant.name.clone())
+                .map(|variant| variant.name.value.clone())
                 .collect(),
             stride: *stride,
         },
@@ -436,7 +448,9 @@ impl<'o> From<&'o mir::Block> for BorrowedBlock<'o> {
 }
 
 fn find_best_internal_address_type(manifest: &mir::Manifest, device: &mir::Device) -> Integer {
-    let (min_address_found, max_address_found) = find_min_max_addresses(manifest, device, |_| true);
+    let (min_address_found, max_address_found) = find_min_max_addresses(manifest, device, |_| true)
+        .map(|((min, _), (max, _))| (min, max))
+        .unwrap_or_default();
 
     let needs_signed = min_address_found < 0;
     let needs_bits = (min_address_found

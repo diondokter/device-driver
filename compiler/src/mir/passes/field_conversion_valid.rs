@@ -1,9 +1,22 @@
-use miette::{bail, ensure};
+use std::collections::HashSet;
 
-use crate::mir::{EnumGenerationStyle, Manifest, Object};
+use miette::LabeledSpan;
+
+use crate::{
+    mir::{EnumGenerationStyle, Manifest, Object, Unique, UniqueId},
+    reporting::{
+        Diagnostics,
+        errors::{
+            DifferentBaseTypes, InvalidInfallibleConversion, ReferencedObjectDoesNotExist,
+            ReferencedObjectInvalid,
+        },
+    },
+};
 
 /// Checks if fields that have conversion and specified no try to be used, are valid in doing so
-pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
+pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashSet<UniqueId> {
+    let mut removals = HashSet::new();
+
     for object in manifest.iter_objects() {
         if let Object::FieldSet(field_set) = object {
             for field in field_set.fields.iter() {
@@ -12,15 +25,17 @@ pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
 
                     match target_object {
                         Some(Object::Enum(target_enum)) => {
-                            ensure!(
-                                field.base_type == target_enum.base_type,
-                                "Field `{}` of FieldSet `{}` has a {} base type. It converts to enum `{}` which has a {} base type. These may not be different, but are.",
-                                field.name,
-                                field_set.name,
-                                field.base_type,
-                                target_enum.name,
-                                target_enum.base_type,
-                            );
+                            if field.base_type != target_enum.base_type {
+                                diagnostics.add(DifferentBaseTypes {
+                                    field: field.name.span,
+                                    field_base_type: field.base_type.value,
+                                    conversion: conversion.type_name.span,
+                                    conversion_object: target_enum.name.span,
+                                    conversion_base_type: target_enum.base_type.value,
+                                });
+                                removals.insert(field.id_with(field_set.id()));
+                                continue;
+                            }
 
                             if !conversion.use_try {
                                 // Check if we know the value we're converting to and if we can support non-try conversion
@@ -30,11 +45,20 @@ pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
                                     .expect("Generation style has been set here in an earlier pass")
                                 {
                                     EnumGenerationStyle::Fallible => {
-                                        bail!(
-                                            "Field `{}` of FieldSet `{}` uses an infallible conversion for an enum that only has fallible conversion. Try adding a '?' to mark the conversion as fallible",
-                                            field.name,
-                                            field_set.name
-                                        );
+                                        diagnostics.add(InvalidInfallibleConversion {
+                                            conversion: conversion.type_name.span,
+                                            context: vec![LabeledSpan::new_with_span(
+                                                Some(
+                                                    "Target only supports fallible conversion"
+                                                        .into(),
+                                                ),
+                                                target_enum.name.span,
+                                            )],
+                                            existing_type_specifier_content: field
+                                                .get_type_specifier_string(),
+                                        });
+                                        removals.insert(field.id_with(field_set.id()));
+                                        continue;
                                     }
                                     EnumGenerationStyle::InfallibleWithinRange => {
                                         let field_bits = field.field_address.len() as u32;
@@ -42,12 +66,27 @@ pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
                                             "Enum size_bits is already set in a previous pass",
                                         );
 
-                                        ensure!(
-                                            field_bits <= enum_bits,
-                                            "Field `{}` of FieldSet `{}` uses an infallible conversion for an enum of {enum_bits} bits. The field is {field_bits} bits large and thus infallible conversion is not possible",
-                                            field.name,
-                                            field_set.name
-                                        )
+                                        if field_bits > enum_bits {
+                                            diagnostics.add(InvalidInfallibleConversion {
+                                            conversion: conversion.type_name.span,
+                                            context: vec![
+                                                    LabeledSpan::new_with_span(
+                                                        Some(format!(
+                                                            "The field has a size of {field_bits} bits"
+                                                        )),
+                                                        field.field_address.span,
+                                                    ),
+                                                    LabeledSpan::new_with_span(
+                                                        Some(format!(
+                                                            "Target enum only has a size of {enum_bits} bits. This means not all possible field values can be converted to an enum"
+                                                        )),
+                                                        target_enum.name.span,
+                                                    ),
+                                                ],existing_type_specifier_content: field.get_type_specifier_string()
+                                            });
+                                            removals.insert(field.id_with(field_set.id()));
+                                            continue;
+                                        }
                                     }
                                     EnumGenerationStyle::Fallback => {
                                         // This always works
@@ -56,37 +95,47 @@ pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
                             }
                         }
                         Some(Object::Extern(target_extern)) => {
-                            ensure!(
-                                field.base_type == target_extern.base_type,
-                                "Field `{}` of FieldSet `{}` has a {} base type. It converts to extern `{}` which has a {} base type. These may not be different, but are.",
-                                field.name,
-                                field_set.name,
-                                field.base_type,
-                                target_extern.name,
-                                target_extern.base_type,
-                            );
+                            if field.base_type != target_extern.base_type {
+                                diagnostics.add(DifferentBaseTypes {
+                                    field: field.name.span,
+                                    field_base_type: field.base_type.value,
+                                    conversion: conversion.type_name.span,
+                                    conversion_object: target_extern.name.span,
+                                    conversion_base_type: target_extern.base_type.value,
+                                });
+                                removals.insert(field.id_with(field_set.id()));
+                                continue;
+                            }
 
                             if !conversion.use_try && !target_extern.supports_infallible {
-                                bail!(
-                                    "Field `{}` of FieldSet `{}` uses an infallible conversion for an extern that doesn't support that",
-                                    field.name,
-                                    field_set.name
-                                );
+                                diagnostics.add(InvalidInfallibleConversion {
+                                    conversion: conversion.type_name.span,
+                                    context: vec![LabeledSpan::new_with_span(
+                                        Some("Target only supports fallible conversion".into()),
+                                        target_extern.name.span,
+                                    )],
+                                    existing_type_specifier_content: field
+                                        .get_type_specifier_string(),
+                                });
+                                removals.insert(field.id_with(field_set.id()));
+                                continue;
                             }
                         }
-                        Some(_) => bail!(
-                            "Field `{}` of FieldSet `{}` specifies a conversion to type: `{}`. This is not an enum or external type and is thus not allowed",
-                            field.name,
-                            field_set.name,
-                            conversion.type_name
-                        ),
+                        Some(invalid_object) => {
+                            diagnostics.add(ReferencedObjectInvalid {
+                                object_reference: conversion.type_name.span,
+                                referenced_object: invalid_object.name_span(),
+                                help: format!("The referenced object is of type `{}`. But conversions can only reference `enum` and `external` objects.", invalid_object.object_type_name())
+                            });
+                            removals.insert(field.id_with(field_set.id()));
+                            continue;
+                        }
                         None => {
-                            bail!(
-                                "Field `{}` of FieldSet `{}` specifies a conversion to type: `{}`. This is type is unknown",
-                                field.name,
-                                field_set.name,
-                                conversion.type_name
-                            )
+                            diagnostics.add(ReferencedObjectDoesNotExist {
+                                object_reference: conversion.type_name.span,
+                            });
+                            removals.insert(field.id_with(field_set.id()));
+                            continue;
                         }
                     }
                 }
@@ -94,5 +143,5 @@ pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
         }
     }
 
-    Ok(())
+    removals
 }

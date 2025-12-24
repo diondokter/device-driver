@@ -1,63 +1,97 @@
-use miette::{bail, ensure};
+use std::collections::HashSet;
 
-use crate::mir::{Enum, Manifest, Object, Repeat, RepeatSource, passes::search_object};
+use miette::SourceSpan;
+
+use crate::{
+    mir::{
+        Enum, LendingIterator, Manifest, Object, Repeat, RepeatSource, Unique,
+        passes::search_object,
+    },
+    reporting::{
+        Diagnostics,
+        errors::{ReferencedObjectDoesNotExist, RepeatEnumWithCatchAll},
+    },
+};
 
 /// Checks if the enums referenced by repeats actually exist
-pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
-    for object in manifest.iter_objects() {
-        let object_name = object.name();
-        let object_type = object.type_name();
+pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
+    let mut bad_object_repeat = HashSet::new();
+    let mut bad_field_repeat = HashSet::new();
 
-        if let Some(Repeat {
-            source: RepeatSource::Enum(enum_name),
-            ..
-        }) = object.repeat().as_ref()
+    for object in manifest.iter_objects() {
+        if let Some(repeat) = object.repeat().as_ref()
+            && !repeat_is_ok(repeat, manifest, diagnostics)
         {
-            match search_object(manifest, enum_name) {
-                Some(Object::Enum(enum_value)) => {
-                    ensure!(
-                        !enum_has_catch_all(enum_value),
-                        "The repeat specified in {object_type} `{object_name}` uses enum `{enum_name}` that has a catch-all. This is not allowed."
-                    );
-                }
-                _ => {
-                    bail!(
-                        "Cannot find the enum called `{enum_name}` that's used in the repeat specified in {object_type} `{object_name}`"
-                    )
-                }
-            }
+            bad_object_repeat.insert(object.id());
         }
 
         if let Object::FieldSet(fs) = object {
             for field in fs.fields.iter() {
-                if let Some(Repeat {
-                    source: RepeatSource::Enum(enum_name),
-                    ..
-                }) = field.repeat.as_ref()
+                if let Some(repeat) = field.repeat.as_ref()
+                    && !repeat_is_ok(repeat, manifest, diagnostics)
                 {
-                    match search_object(manifest, enum_name) {
-                        Some(Object::Enum(enum_value)) => {
-                            ensure!(
-                                !enum_has_catch_all(enum_value),
-                                "The repeat specified in field `{}` in fieldset `{object_name}` uses enum `{enum_name}` that has a catch-all. This is not allowed.",
-                                field.name
-                            );
-                        }
-                        _ => {
-                            bail!(
-                                "Cannot find the enum called `{enum_name}` that's used in the repeat specified in field `{}` in fieldset `{object_name}`",
-                                field.name
-                            )
-                        }
-                    }
+                    bad_field_repeat.insert((object.id(), field.id_with(fs.id())));
                 }
             }
         }
     }
 
-    Ok(())
+    // Second pass: Go though all repeats that have a bad enum and replace it with a count of 1.
+    // This way we can still pass them on for further
+    let mut iter = manifest.iter_objects_with_config_mut();
+    while let Some((object, _)) = iter.next() {
+        let id = object.id();
+        if let Some(repeat) = object.repeat_mut()
+            && bad_object_repeat.contains(&id)
+        {
+            repeat.source = RepeatSource::Count(1);
+        }
+
+        if let Object::FieldSet(fs) = object {
+            let fs_id = fs.id();
+            for field in fs.fields.iter_mut() {
+                let field_id = field.id_with(fs_id.clone());
+                if let Some(repeat) = field.repeat.as_mut()
+                    && bad_field_repeat.contains(&(id.clone(), field_id))
+                {
+                    repeat.source = RepeatSource::Count(1);
+                }
+            }
+        }
+    }
 }
 
-fn enum_has_catch_all(enum_value: &Enum) -> bool {
-    enum_value.variants.iter().any(|v| v.value.is_catch_all())
+fn repeat_is_ok(repeat: &Repeat, manifest: &Manifest, diagnostics: &mut Diagnostics) -> bool {
+    let RepeatSource::Enum(repeat_enum) = &repeat.source else {
+        return true;
+    };
+
+    match search_object(manifest, repeat_enum) {
+        Some(Object::Enum(enum_value)) => {
+            if let Some(catch_all) = enum_catch_all(enum_value) {
+                diagnostics.add(RepeatEnumWithCatchAll {
+                    repeat_enum: repeat_enum.span,
+                    enum_name: enum_value.name.span,
+                    catch_all,
+                });
+                false
+            } else {
+                true
+            }
+        }
+        _ => {
+            diagnostics.add(ReferencedObjectDoesNotExist {
+                object_reference: repeat_enum.span,
+            });
+            false
+        }
+    }
+}
+
+fn enum_catch_all(enum_value: &Enum) -> Option<SourceSpan> {
+    enum_value
+        .variants
+        .iter()
+        .find(|v| v.value.is_catch_all())
+        .map(|v| v.name.span)
 }

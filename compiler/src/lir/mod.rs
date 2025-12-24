@@ -3,7 +3,6 @@ use std::ops::Range;
 use crate::mir::{self, Access, BitOrder, ByteOrder, Integer};
 
 pub mod code_transform;
-pub mod passes;
 
 pub struct Driver {
     pub devices: Vec<Device>,
@@ -13,7 +12,6 @@ pub struct Driver {
 
 pub struct Device {
     pub internal_address_type: Integer,
-    pub register_address_type: Integer,
     pub blocks: Vec<Block>,
     pub defmt_feature: Option<String>,
 }

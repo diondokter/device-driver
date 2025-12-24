@@ -462,7 +462,7 @@
   98 │             bar @a @-1:8 @3 @3:0
   99 │             baz @7:4 blah
      ·                      ──┬─
-     ·                        ╰── Expected one of these values: `@<u32>`, `@<u32>:<u32>`, `RW`, `RO`, `WO`
+     ·                        ╰── Expected one of these values: `@<u32>`, `@<u32>:<u32>`, `count=<integer>`, `with=<string>`, `stride=<integer>`, `RW`, `RO`, `WO`
  100 │         }
      ╰────
 
@@ -546,16 +546,6 @@
   help: The name is specified by the first entry of the node. It must be an anonymous string, e.g. `command Foo { }`
 
   error: Missing child node
-     ╭─[cases/device_definition_errors/input.kdl:135:5]
- 134 │     }
- 135 │     command {
-     ·     ───┬───
-     ·        ╰── This command is missing the required `address` node
- 136 │ 
-     ╰────
-  help: Check the book to see all required nodes
-
-  error: Missing child node
      ╭─[cases/device_definition_errors/input.kdl:138:13]
  137 │     }
  138 │     command fooc0 {
@@ -624,16 +614,6 @@
  154 │ 
      ╰────
   help: The name is specified by the first entry of the node. It must be an anonymous string, e.g. `buffer Foo { }`
-
-  error: Missing child node
-     ╭─[cases/device_definition_errors/input.kdl:153:5]
- 152 │     }
- 153 │     buffer {
-     ·     ───┬──
-     ·        ╰── This register is missing the required `address` node
- 154 │ 
-     ╰────
-  help: Check the book to see all required nodes
 
   error: Missing child node
      ╭─[cases/device_definition_errors/input.kdl:156:12]

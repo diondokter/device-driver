@@ -1,74 +1,99 @@
-use miette::ensure;
+use std::collections::HashSet;
 
-use crate::mir::{Manifest, Object};
+use crate::{
+    mir::{Device, Integer, Manifest, Object, Spanned, Unique, UniqueId},
+    reporting::{Diagnostics, errors::AddressOutOfRange},
+};
 
 use super::find_min_max_addresses;
 
 /// Checks if the various address types can fully contain the min and max addresses of the types of objects they are for
-pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
+pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashSet<UniqueId> {
+    let mut removals = HashSet::new();
+
     for object in manifest.iter_objects() {
         let Object::Device(device) = object else {
             continue;
         };
 
-        if let Some(register_address_type) = device.device_config.register_address_type {
-            let (min_address, max_address) = find_min_max_addresses(manifest, device, |o| {
-                matches!(o, Object::Block(_) | Object::Register(_))
-            });
-
-            ensure!(
-                min_address >= register_address_type.min_value(),
-                "The register addresses go as low as {min_address}, but the selected address type `{register_address_type}` only goes down to {}. Choose an address type that can fit the full address range",
-                register_address_type.min_value()
-            );
-            ensure!(
-                max_address <= register_address_type.max_value(),
-                "The register addresses go as high as {max_address}, but the selected address type `{register_address_type}` only goes up to {}. Choose an address type that can fit the full address range",
-                register_address_type.max_value()
-            );
-        }
-
-        if let Some(command_address_type) = device.device_config.command_address_type {
-            let (min_address, max_address) = find_min_max_addresses(manifest, device, |o| {
-                matches!(o, Object::Block(_) | Object::Command(_))
-            });
-
-            ensure!(
-                min_address >= command_address_type.min_value(),
-                "The command addresses go as low as {min_address}, but the selected address type `{command_address_type}` only goes down to {}. Choose an address type that can fit the full address range",
-                command_address_type.min_value()
-            );
-            ensure!(
-                max_address <= command_address_type.max_value(),
-                "The command addresses go as high as {max_address}, but the selected address type `{command_address_type}` only goes up to {}. Choose an address type that can fit the full address range",
-                command_address_type.max_value()
-            );
-        }
-
-        if let Some(buffer_address_type) = device.device_config.buffer_address_type {
-            let (min_address, max_address) = find_min_max_addresses(manifest, device, |o| {
-                matches!(o, Object::Block(_) | Object::Buffer(_))
-            });
-
-            ensure!(
-                min_address >= buffer_address_type.min_value(),
-                "The buffer addresses go as low as {min_address}, but the selected address type `{buffer_address_type}` only goes down to {}. Choose an address type that can fit the full address range",
-                buffer_address_type.min_value()
-            );
-            ensure!(
-                max_address <= buffer_address_type.max_value(),
-                "The buffer addresses go as high as {max_address}, but the selected address type `{buffer_address_type}` only goes up to {}. Choose an address type that can fit the full address range",
-                buffer_address_type.max_value()
-            );
-        }
+        check_device(
+            device.device_config.register_address_type.as_ref(),
+            manifest,
+            device,
+            |o| matches!(o, Object::Block(_) | Object::Register(_)),
+            diagnostics,
+            &mut removals,
+        );
+        check_device(
+            device.device_config.command_address_type.as_ref(),
+            manifest,
+            device,
+            |o| matches!(o, Object::Block(_) | Object::Command(_)),
+            diagnostics,
+            &mut removals,
+        );
+        check_device(
+            device.device_config.buffer_address_type.as_ref(),
+            manifest,
+            device,
+            |o| matches!(o, Object::Block(_) | Object::Buffer(_)),
+            diagnostics,
+            &mut removals,
+        );
     }
 
-    Ok(())
+    removals
+}
+
+fn check_device(
+    address_type: Option<&Spanned<Integer>>,
+    manifest: &Manifest,
+    device: &Device,
+    filter: impl Fn(&Object) -> bool,
+    diagnostics: &mut Diagnostics,
+    removals: &mut HashSet<UniqueId>,
+) {
+    let Some(address_type) = address_type else {
+        return;
+    };
+
+    let Some(((min_address, min_obj), (max_address, max_obj))) =
+        find_min_max_addresses(manifest, device, filter)
+    else {
+        return;
+    };
+
+    if min_address < address_type.min_value() {
+        diagnostics.add(AddressOutOfRange {
+            address: min_obj
+                .address()
+                .expect("All objects here should have addresses")
+                .span,
+            address_value: min_address,
+            has_repeat: min_obj.repeat().is_some(),
+            address_type_config: address_type.span,
+            address_type: address_type.value,
+        });
+        removals.insert(device.id());
+    }
+    if max_address > address_type.max_value() {
+        diagnostics.add(AddressOutOfRange {
+            address: max_obj
+                .address()
+                .expect("All objects here should have addresses")
+                .span,
+            address_value: max_address,
+            has_repeat: max_obj.repeat().is_some(),
+            address_type_config: address_type.span,
+            address_type: address_type.value,
+        });
+        removals.insert(device.id());
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::mir::{Command, Device, DeviceConfig, Integer, Register};
+    use crate::mir::{Command, Device, DeviceConfig, Integer, Register, Span};
 
     use super::*;
 
@@ -76,45 +101,43 @@ mod tests {
     fn not_too_low() {
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: DeviceConfig {
-                register_address_type: Some(Integer::I8),
+                register_address_type: Some(Integer::I8.with_dummy_span()),
                 ..Default::default()
             },
             objects: vec![Object::Register(Register {
-                name: "MyReg".into(),
-                address: -300,
+                name: "MyReg".to_owned().with_dummy_span(),
+                address: (-300).with_dummy_span(),
                 ..Default::default()
             })],
         }
         .into();
 
-        assert_eq!(
-            run_pass(&mut start_mir).unwrap_err().to_string(),
-            "The register addresses go as low as -300, but the selected address type `i8` only goes down to -128. Choose an address type that can fit the full address range"
-        );
+        let mut diagnostics = Diagnostics::new();
+        assert!(!run_pass(&mut start_mir, &mut diagnostics).is_empty());
+        assert!(diagnostics.has_error());
     }
 
     #[test]
     fn not_too_high() {
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: DeviceConfig {
-                command_address_type: Some(Integer::U16),
+                command_address_type: Some(Integer::U16.with_dummy_span()),
                 ..Default::default()
             },
             objects: vec![Object::Command(Command {
-                name: "MyReg".into(),
-                address: 128000,
+                name: "MyReg".to_owned().with_dummy_span(),
+                address: 128000.with_dummy_span(),
                 ..Default::default()
             })],
         }
         .into();
 
-        assert_eq!(
-            run_pass(&mut start_mir).unwrap_err().to_string(),
-            "The command addresses go as high as 128000, but the selected address type `u16` only goes up to 65535. Choose an address type that can fit the full address range"
-        );
+        let mut diagnostics = Diagnostics::new();
+        assert!(!run_pass(&mut start_mir, &mut diagnostics).is_empty());
+        assert!(diagnostics.has_error());
     }
 }

@@ -1,58 +1,86 @@
-use std::collections::HashSet;
+use std::{
+    collections::HashSet,
+    hash::{DefaultHasher, Hash, Hasher},
+};
 
-use crate::mir::{Enum, Manifest, Object, Unique};
+use crate::{
+    mir::{Enum, LendingIterator, Manifest, Object, Unique},
+    reporting::{Diagnostics, errors::DuplicateName},
+};
 
 /// Checks if all names are unique to prevent later name collisions.
 /// If there is a collision an error is returned.
-pub fn run_pass(manifest: &mut Manifest) -> miette::Result<()> {
-    let mut seen_object_ids = HashSet::new();
+pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
+    let mut seen_ids = HashSet::new();
 
-    for object in manifest.iter_objects() {
-        miette::ensure!(
-            seen_object_ids.insert(object.id()),
-            "Duplicate object name found: `{}`",
-            object.name()
-        );
+    let mut object_index = 0;
+    let mut iter = manifest.iter_objects_with_config_mut();
+    while let Some((object, _)) = iter.next() {
+        if !seen_ids.insert(object.id()) {
+            diagnostics.add(DuplicateName {
+                original: seen_ids.get(&object.id()).unwrap().span(),
+                duplicate: object.id().span(),
+            });
+
+            // Duplicate name found. Let's add to the name to make it unique again so it can contribute to later passes
+            let extension = get_extension(object, object_index);
+            object.name_mut().push_str(&extension);
+        }
 
         if let Object::FieldSet(field_set) = object {
-            let mut seen_field_names = HashSet::new();
-            for field in &field_set.fields {
-                miette::ensure!(
-                    seen_field_names.insert(field.name.clone()),
-                    "Duplicate field name found in fieldset `{}`: `{}`",
-                    field_set.name,
-                    field.name
-                );
+            let fs_id = field_set.id();
+            for (field_index, field) in field_set.fields.iter_mut().enumerate() {
+                let field_id = field.id_with(fs_id.clone());
+                if !seen_ids.insert(field_id.clone()) {
+                    diagnostics.add(DuplicateName {
+                        original: seen_ids.get(&field_id).unwrap().span(),
+                        duplicate: field_id.span(),
+                    });
+
+                    // Duplicate name found. Let's add to the name to make it unique again so it can contribute to later passes
+                    let extension = get_extension(field, field_index);
+                    field.name.push_str(&extension);
+                }
             }
         }
 
-        if let Object::Enum(Enum { name, variants, .. }) = object {
+        if let Object::Enum(Enum { variants, .. }) = object {
             let mut seen_variant_names = HashSet::new();
 
-            for v in variants.iter() {
-                miette::ensure!(
-                    seen_variant_names.insert(v.id()),
-                    "Duplicate field `{}` found in generated enum `{}`",
-                    v.name,
-                    name,
-                );
+            for (variant_index, variant) in variants.iter_mut().enumerate() {
+                if !seen_variant_names.insert(variant.id()) {
+                    diagnostics.add(DuplicateName {
+                        original: seen_variant_names.get(&variant.id()).unwrap().span(),
+                        duplicate: variant.id().span(),
+                    });
+
+                    // Duplicate name found. Let's add to the name to make it unique again so it can contribute to later passes
+                    let extension = get_extension(variant, variant_index);
+                    variant.name.push_str(&extension);
+                }
             }
         }
-    }
 
-    Ok(())
+        object_index += 1;
+    }
+}
+
+fn get_extension(val: &impl Hash, index: usize) -> String {
+    let mut hasher = DefaultHasher::new();
+    val.hash(&mut hasher);
+    index.hash(&mut hasher);
+    format!("_dup_{:016x}", hasher.finish())
 }
 
 #[cfg(test)]
 mod tests {
     use convert_case::Boundary;
 
-    use crate::mir::{Buffer, Device, DeviceConfig, EnumVariant, Field, FieldSet, Object};
+    use crate::mir::{Buffer, Device, DeviceConfig, EnumVariant, Field, FieldSet, Object, Span};
 
     use super::*;
 
     #[test]
-    #[should_panic(expected = "Duplicate object name found: `MyBuffer`")]
     fn object_names_not_unique() {
         let global_config = DeviceConfig {
             name_word_boundaries: Some(Boundary::defaults_from("-")),
@@ -61,26 +89,27 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: global_config,
             objects: vec![
                 Object::Buffer(Buffer {
-                    name: "MyBuffer".into(),
+                    name: "MyBuffer".to_owned().with_dummy_span(),
                     ..Default::default()
                 }),
                 Object::Buffer(Buffer {
-                    name: "MyBuffer".into(),
+                    name: "MyBuffer".to_owned().with_dummy_span(),
                     ..Default::default()
                 }),
             ],
         }
         .into();
 
-        run_pass(&mut start_mir).unwrap();
+        let mut diagnostics = Diagnostics::new();
+        run_pass(&mut start_mir, &mut diagnostics);
+        assert!(diagnostics.has_error())
     }
 
     #[test]
-    #[should_panic(expected = "Duplicate field name found in fieldset `Reg`: `field`")]
     fn field_names_not_unique() {
         let global_config = DeviceConfig {
             name_word_boundaries: Some(Boundary::defaults_from("-")),
@@ -89,17 +118,17 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: global_config,
             objects: vec![Object::FieldSet(FieldSet {
-                name: "Reg".into(),
+                name: "Reg".to_owned().with_dummy_span(),
                 fields: vec![
                     Field {
-                        name: "field".into(),
+                        name: "field".to_owned().with_dummy_span(),
                         ..Default::default()
                     },
                     Field {
-                        name: "field".into(),
+                        name: "field".to_owned().with_dummy_span(),
                         ..Default::default()
                     },
                 ],
@@ -108,11 +137,12 @@ mod tests {
         }
         .into();
 
-        run_pass(&mut start_mir).unwrap();
+        let mut diagnostics = Diagnostics::new();
+        run_pass(&mut start_mir, &mut diagnostics);
+        assert!(diagnostics.has_error())
     }
 
     #[test]
-    #[should_panic(expected = "Duplicate field `Variant` found in generated enum `Enum`")]
     fn duplicate_generated_enum_variants() {
         let global_config = DeviceConfig {
             name_word_boundaries: Some(Boundary::defaults_from("-")),
@@ -121,17 +151,17 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".to_owned().with_dummy_span(),
             device_config: global_config,
             objects: vec![Object::Enum(Enum {
-                name: "Enum".into(),
+                name: "Enum".to_owned().with_dummy_span(),
                 variants: vec![
                     EnumVariant {
-                        name: "Variant".into(),
+                        name: "Variant".to_owned().with_dummy_span(),
                         ..Default::default()
                     },
                     EnumVariant {
-                        name: "Variant".into(),
+                        name: "Variant".to_owned().with_dummy_span(),
                         ..Default::default()
                     },
                 ],
@@ -140,6 +170,8 @@ mod tests {
         }
         .into();
 
-        run_pass(&mut start_mir).unwrap();
+        let mut diagnostics = Diagnostics::new();
+        run_pass(&mut start_mir, &mut diagnostics);
+        assert!(diagnostics.has_error())
     }
 }
