@@ -8,15 +8,15 @@ use crate::{
 /// Checks if object addresses aren't overlapping when not allowed
 pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
     for (device, _) in manifest.iter_devices_with_config() {
-        let register_addresses = find_object_adresses(manifest, device, |o| {
+        let register_addresses = find_object_addresses(manifest, device, |o| {
             matches!(o, Object::Block(_) | Object::Register(_))
         });
         check_for_overlap(&register_addresses, diagnostics);
-        let command_addresses = find_object_adresses(manifest, device, |o| {
+        let command_addresses = find_object_addresses(manifest, device, |o| {
             matches!(o, Object::Block(_) | Object::Command(_))
         });
         check_for_overlap(&command_addresses, diagnostics);
-        let buffer_addresses = find_object_adresses(manifest, device, |o| {
+        let buffer_addresses = find_object_addresses(manifest, device, |o| {
             matches!(o, Object::Block(_) | Object::Buffer(_))
         });
         check_for_overlap(&buffer_addresses, diagnostics);
@@ -49,7 +49,7 @@ struct ObjectAddress {
     allow_overlap: bool,
 }
 
-fn find_object_adresses<'m>(
+fn find_object_addresses<'m>(
     manifest: &'m Manifest,
     device: &'m Device,
     filter: impl Fn(&'m Object) -> bool,

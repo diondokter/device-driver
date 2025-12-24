@@ -638,7 +638,7 @@ impl FieldAddressNegative {
 #[diagnostic(
     severity(Error),
     help(
-        "If this was intended, the error can be supressed by allowing overlap on the fieldset:\n> fieldset Foo allow-bit-overlap {{ }}"
+        "If this was intended, the error can be suppressed by allowing overlap on the fieldset:\n> fieldset Foo allow-bit-overlap {{ }}"
     )
 )]
 pub struct OverlappingFields {
@@ -704,7 +704,7 @@ pub struct AddressOutOfRange {
 #[diagnostic(
     severity(Error),
     help(
-        "If this is intended, the error can be supressed by allowing overlap on both objects:\n> allow-address-overlap"
+        "If this is intended, the error can be suppressed by allowing overlap on both objects:\n> allow-address-overlap"
     )
 )]
 pub struct AddressOverlap {
