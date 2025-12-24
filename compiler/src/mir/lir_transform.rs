@@ -127,7 +127,9 @@ fn get_method(
 
             Some(lir::BlockMethod {
                 description: description.clone(),
-                name: name.with_boundaries(word_boundary).to_case(convert_case::Case::Snake),
+                name: name
+                    .with_boundaries(word_boundary)
+                    .to_case(convert_case::Case::Snake),
                 address: address_offset.value,
                 allow_address_overlap: false,
                 repeat: repeat_to_method_kind(repeat, manifest),
@@ -147,7 +149,9 @@ fn get_method(
             reset_value,
         }) => Some(lir::BlockMethod {
             description: description.clone(),
-            name: name.with_boundaries(word_boundary).to_case(convert_case::Case::Snake),
+            name: name
+                .with_boundaries(word_boundary)
+                .to_case(convert_case::Case::Snake),
             address: address.value,
             allow_address_overlap: *allow_address_overlap,
             repeat: repeat_to_method_kind(repeat, manifest),
@@ -178,7 +182,9 @@ fn get_method(
             ..
         }) => Some(lir::BlockMethod {
             description: description.clone(),
-            name: name.with_boundaries(word_boundary).to_case(convert_case::Case::Snake),
+            name: name
+                .with_boundaries(word_boundary)
+                .to_case(convert_case::Case::Snake),
             address: address.value,
             allow_address_overlap: *allow_address_overlap,
             repeat: repeat_to_method_kind(repeat, manifest),
@@ -198,7 +204,9 @@ fn get_method(
             address,
         }) => Some(lir::BlockMethod {
             description: description.clone(),
-            name: name.with_boundaries(word_boundary).to_case(convert_case::Case::Snake),
+            name: name
+                .with_boundaries(word_boundary)
+                .to_case(convert_case::Case::Snake),
             address: address.value,
             allow_address_overlap: false,
             repeat: lir::Repeat::None, // Buffers can't be repeated (for now?)

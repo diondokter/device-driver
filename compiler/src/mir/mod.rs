@@ -646,6 +646,19 @@ impl Object {
             Object::Extern(_) => "extern",
         }
     }
+
+    pub(self) fn allow_address_overlap(&self) -> bool {
+        match self {
+            Object::Device(_) => false,
+            Object::Block(_) => false,
+            Object::Register(register) => register.allow_address_overlap,
+            Object::Command(command) => command.allow_address_overlap,
+            Object::Buffer(_) => false,
+            Object::FieldSet(_) => false,
+            Object::Enum(_) => false,
+            Object::Extern(_) => false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]

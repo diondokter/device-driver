@@ -49,10 +49,7 @@ fn transform_mir(
     mir::passes::run_passes(&mut mir, diagnostics)?;
 
     // Transform into LIR
-    let mut lir = mir::lir_transform::transform(mir)?;
-
-    // Run the LIR passes
-    lir::passes::run_passes(&mut lir)?;
+    let lir = mir::lir_transform::transform(mir)?;
 
     // Transform into Rust source token output
     let output = lir::code_transform::DeviceTemplateRust::new(&lir).to_string();

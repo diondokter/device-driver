@@ -9,6 +9,7 @@ use super::{Object, Repeat};
 
 pub mod address_types_big_enough;
 pub mod address_types_specified;
+pub mod addresses_non_overlapping;
 pub mod base_types_specified;
 pub mod bit_order_specified;
 pub mod bit_ranges_validated;
@@ -45,6 +46,7 @@ pub fn run_passes(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> mie
     remove_objects(manifest, removals);
     let removals = address_types_big_enough::run_pass(manifest, diagnostics);
     remove_objects(manifest, removals);
+    addresses_non_overlapping::run_pass(manifest, diagnostics);
 
     Ok(())
 }
