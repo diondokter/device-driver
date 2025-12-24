@@ -2,7 +2,7 @@ use crate::{
     mir::{
         Device, Manifest, Object, Repeat, RepeatSource, Unique, UniqueId, passes::search_object,
     },
-    reporting::Diagnostics,
+    reporting::{Diagnostics, errors::AddressOverlap},
 };
 
 /// Checks if object addresses aren't overlapping when not allowed
@@ -29,7 +29,13 @@ fn check_for_overlap(addresses: &[ObjectAddress], diagnostics: &mut Diagnostics)
             if address.address == check_address.address
                 && (!address.allow_overlap || !check_address.allow_overlap)
             {
-                diagnostics.add_msg(format!("Overlap between {} (repeat offset {:?}) & {} (repeat offset {:?}) at address {}", address.id, address.repeat_offset, check_address.id, check_address.repeat_offset, address.address));
+                diagnostics.add(AddressOverlap {
+                    address: address.address,
+                    object_1: address.id.span(),
+                    repeat_offset_1: address.repeat_offset,
+                    object_2: check_address.id.span(),
+                    repeat_offset_2: check_address.repeat_offset,
+                });
             }
         }
     }
@@ -67,7 +73,10 @@ fn find_object_adresses<'m>(
 
         // Only non-block and non-device objects are cared about for the addresses
         if let Some(address) = object.address()
-            && object.child_objects().is_empty()
+            && matches!(
+                object,
+                Object::Register(_) | Object::Command(_) | Object::Buffer(_)
+            )
         {
             let repeat = object.repeat().cloned().unwrap_or(Repeat {
                 source: RepeatSource::Count(1),

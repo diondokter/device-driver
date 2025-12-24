@@ -637,7 +637,9 @@ impl FieldAddressNegative {
 #[error("Overlapping fields")]
 #[diagnostic(
     severity(Error),
-    help("If this was intended, enable the `allow-bit-overlap` option on the fieldset")
+    help(
+        "If this was intended, the error can be supressed by allowing overlap on the fieldset:\n> fieldset Foo allow-bit-overlap {{ }}"
+    )
 )]
 pub struct OverlappingFields {
     #[label("Field sits at address range @{field_address_end_1}:{field_address_start_1}{}", self.get_repeat_message_1())]
@@ -695,4 +697,22 @@ pub struct AddressOutOfRange {
     #[label("Address type supports a range of {} to {}", address_type.min_value(), address_type.max_value())]
     pub address_type_config: SourceSpan,
     pub address_type: Integer,
+}
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Address overlap at {address} ({address:#X})")]
+#[diagnostic(
+    severity(Error),
+    help(
+        "If this is intended, the error can be supressed by allowing overlap on both objects:\n> allow-address-overlap"
+    )
+)]
+pub struct AddressOverlap {
+    pub address: i128,
+    #[label("Object overlaps with other object{}", if let Some(repeat_offset) = repeat_offset_1 { format!(" at repeat offset {repeat_offset}") } else { "".into() })]
+    pub object_1: SourceSpan,
+    pub repeat_offset_1: Option<i128>,
+    #[label("Object overlaps with other object{}", if let Some(repeat_offset) = repeat_offset_2 { format!(" at repeat offset {repeat_offset}") } else { "".into() })]
+    pub object_2: SourceSpan,
+    pub repeat_offset_2: Option<i128>,
 }
