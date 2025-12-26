@@ -14,7 +14,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
             .set_boundaries(&convert_case::Boundary::defaults_from(
                 "aA:AAa:_:-: :a1:A1:1A",
             ))
-            .set_pattern(convert_case::pattern::capital);
+            .set_pattern(convert_case::Pattern::Capital);
         let converted_driver_name = lenient_pascal_converter.convert(&device.name.value);
 
         if device.name.value != converted_driver_name {
