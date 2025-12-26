@@ -41,7 +41,7 @@ fn generate_test_function(test_dir: DirEntry) -> String {
 
     let test_name = test_dir.file_name().to_string_lossy().to_string();
 
-    let ignore_tag = if test_name.ends_with("_") {
+    let ignore_tag = if test_name.ends_with('_') {
         "#[ignore = \"Test case ignored because case name ends with `_`\"]\n"
     } else {
         ""

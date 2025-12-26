@@ -47,10 +47,10 @@ fn validate_len(
         let max_repeat_offset = offset_iter.iter().max().unwrap();
         let min_repeat_offset = offset_iter.iter().min().unwrap();
 
-        let max_field_end = field.field_address.end as i128 + max_repeat_offset;
-        let min_field_start = field.field_address.start as i128 + min_repeat_offset;
+        let max_field_end = i128::from(field.field_address.end) + max_repeat_offset;
+        let min_field_start = i128::from(field.field_address.start) + min_repeat_offset;
 
-        if max_field_end > field_set.size_bits.value as i128 {
+        if max_field_end > i128::from(field_set.size_bits.value) {
             diagnostics.add(FieldAddressExceedsFieldsetSize {
                 address: field.field_address.span,
                 max_field_end: max_field_end - 1,
@@ -79,8 +79,8 @@ fn validate_overlap(field_set: &FieldSet, manifest: &Manifest, diagnostics: &mut
         'second_field: for second_field in field_set.fields.iter().skip(i + 1) {
             let (second_offsets, second_repeated) = get_repeat_iter(manifest, second_field);
 
-            for offset in offsets.iter() {
-                for second_offset in second_offsets.iter() {
+            for offset in &offsets {
+                for second_offset in &second_offsets {
                     if ranges_overlap(
                         &field.field_address,
                         *offset,
@@ -90,13 +90,13 @@ fn validate_overlap(field_set: &FieldSet, manifest: &Manifest, diagnostics: &mut
                         diagnostics.add(OverlappingFields {
                             field_address_1: field.field_address.span,
                             repeat_offset_1: repeated.then_some(*offset),
-                            field_address_start_1: field.field_address.start as i128 + offset,
-                            field_address_end_1: field.field_address.end as i128 + offset,
+                            field_address_start_1: i128::from(field.field_address.start) + offset,
+                            field_address_end_1: i128::from(field.field_address.end) + offset,
                             field_address_2: second_field.field_address.span,
                             repeat_offset_2: second_repeated.then_some(*second_offset),
-                            field_address_start_2: second_field.field_address.start as i128
+                            field_address_start_2: i128::from(second_field.field_address.start)
                                 + second_offset,
-                            field_address_end_2: second_field.field_address.end as i128
+                            field_address_end_2: i128::from(second_field.field_address.end)
                                 + second_offset,
                         });
 
@@ -109,8 +109,8 @@ fn validate_overlap(field_set: &FieldSet, manifest: &Manifest, diagnostics: &mut
 }
 
 fn ranges_overlap(l: &Range<u32>, offset: i128, r: &Range<u32>, second_offset: i128) -> bool {
-    (l.start as i128 + offset) < (r.end as i128 + second_offset)
-        && (r.start as i128 + second_offset) < (l.end as i128 + offset)
+    (i128::from(l.start) + offset) < (i128::from(r.end) + second_offset)
+        && (i128::from(r.start) + second_offset) < (i128::from(l.end) + offset)
 }
 
 fn get_repeat_iter(manifest: &Manifest, field: &crate::mir::Field) -> (Vec<i128>, bool) {
@@ -118,7 +118,7 @@ fn get_repeat_iter(manifest: &Manifest, field: &crate::mir::Field) -> (Vec<i128>
         let stride = repeat.stride;
         match &repeat.source {
             RepeatSource::Count(count) => (
-                (0..*count as i128)
+                (0..i128::from(*count))
                     .map(move |count| count * stride)
                     .collect(),
                 true,

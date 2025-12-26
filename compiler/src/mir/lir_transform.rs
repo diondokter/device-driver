@@ -85,7 +85,7 @@ fn collect_into_blocks(
     let new_block = lir::Block {
         description: description.clone(),
         root: is_root,
-        name: name.to_string(),
+        name: name.clone(),
         methods,
     };
 
@@ -305,7 +305,7 @@ fn transform_field_set(
                 access: *access,
                 repeat: repeat
                     .as_ref()
-                    .map(|repeat| match &repeat.source {
+                    .map_or(lir::Repeat::None, |repeat| match &repeat.source {
                         mir::RepeatSource::Count(c) => lir::Repeat::Count {
                             count: *c,
                             stride: repeat.stride,
@@ -322,8 +322,7 @@ fn transform_field_set(
                                 .collect(),
                             stride: repeat.stride,
                         },
-                    })
-                    .unwrap_or(lir::Repeat::None),
+                    }),
             }
         })
         .collect();
@@ -459,9 +458,9 @@ fn find_best_internal_address_type(manifest: &mir::Manifest, device: &mir::Devic
         .add(1)
         .next_power_of_two()
         .ilog2()
-        + needs_signed as u32)
-        .next_power_of_two()
-        .max(8);
+        + u32::from(needs_signed))
+    .next_power_of_two()
+    .max(8);
 
     if needs_signed {
         match needs_bits {

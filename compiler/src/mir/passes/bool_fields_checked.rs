@@ -30,7 +30,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
                     });
                     // To fix for further use, set the len to just 1
                     field.field_address.end = field.field_address.start + 1;
-                };
+                }
             }
         }
     }

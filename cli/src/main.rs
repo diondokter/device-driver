@@ -74,8 +74,7 @@ fn run() -> miette::Result<ExitCode> {
             format!(
                 "Could not write output to {}",
                 args.output_path
-                    .map(|path| format!("{:?}", path.display()))
-                    .unwrap_or_else(|| "stdout".into())
+                    .map_or_else(|| "stdout".into(), |path| format!("{:?}", path.display()))
             )
         })?;
 
@@ -88,6 +87,7 @@ pub enum Target {
 }
 
 impl Target {
+    #[must_use]
     pub fn generate(&self, input_contents: &str, input_path: &Path) -> (String, Diagnostics) {
         match self {
             Target::Rust => device_driver_compiler::transform_kdl(input_contents, None, input_path),

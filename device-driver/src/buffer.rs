@@ -1,7 +1,7 @@
 use crate::{ReadCapability, WriteCapability};
 use core::marker::PhantomData;
 
-/// Common error definition for (async) [BufferInterface]
+/// Common error definition for (async) [`BufferInterface`]
 pub trait BufferInterfaceError {
     /// The error type
     type Error;
@@ -16,15 +16,15 @@ pub trait BufferInterface: BufferInterfaceError {
 
     /// Write to the buffer with the given address.
     ///
-    /// This interface must adhere to [embedded_io::Write::write].
+    /// This interface must adhere to [`embedded_io::Write::write`].
     fn write(&mut self, address: Self::AddressType, buf: &[u8]) -> Result<usize, Self::Error>;
     /// Flush this output stream with the given address.
     ///
-    /// This interface must adhere to [embedded_io::Write::flush].
+    /// This interface must adhere to [`embedded_io::Write::flush`].
     fn flush(&mut self, address: Self::AddressType) -> Result<(), Self::Error>;
     /// Read from the buffer with the given address.
     ///
-    /// This interface must adhere to [embedded_io::Read::read].
+    /// This interface must adhere to [`embedded_io::Read::read`].
     fn read(&mut self, address: Self::AddressType, buf: &mut [u8]) -> Result<usize, Self::Error>;
 }
 
@@ -37,16 +37,16 @@ pub trait AsyncBufferInterface: BufferInterfaceError {
 
     /// Write to the buffer with the given address.
     ///
-    /// This interface must adhere to [embedded_io_async::Write::write].
+    /// This interface must adhere to [`embedded_io_async::Write::write`].
     async fn write(&mut self, address: Self::AddressType, buf: &[u8])
     -> Result<usize, Self::Error>;
     /// Flush this output stream with the given address.
     ///
-    /// This interface must adhere to [embedded_io_async::Write::flush].
+    /// This interface must adhere to [`embedded_io_async::Write::flush`].
     async fn flush(&mut self, address: Self::AddressType) -> Result<(), Self::Error>;
     /// Read from the buffer with the given address.
     ///
-    /// This interface must adhere to [embedded_io_async::Read::read].
+    /// This interface must adhere to [`embedded_io_async::Read::read`].
     async fn read(
         &mut self,
         address: Self::AddressType,
@@ -56,8 +56,8 @@ pub trait AsyncBufferInterface: BufferInterfaceError {
 
 /// Intermediate type for doing buffer operations
 ///
-/// If the interface error implements [embedded_io::Error],
-/// then this operation type also implements the [embedded_io] traits
+/// If the interface error implements [`embedded_io::Error`],
+/// then this operation type also implements the [`embedded_io`] traits
 pub struct BufferOperation<'i, Interface, AddressType: Copy, Access> {
     interface: &'i mut Interface,
     address: AddressType,
@@ -82,16 +82,16 @@ where
 {
     /// Write a buffer into this writer, returning how many bytes were written.
     ///
-    /// Mirror function of [embedded_io::Write::write].
+    /// Mirror function of [`embedded_io::Write::write`].
     pub fn write(&mut self, buf: &[u8]) -> Result<usize, Interface::Error> {
         self.interface.write(self.address, buf)
     }
 
     /// Write an entire buffer into this writer.
     ///
-    /// This function calls write() in a loop until exactly buf.len() bytes have been written, blocking if needed.
+    /// This function calls `write()` in a loop until exactly `buf.len()` bytes have been written, blocking if needed.
     ///
-    /// Mirror function of [embedded_io::Write::write_all].
+    /// Mirror function of [`embedded_io::Write::write_all`].
     pub fn write_all(&mut self, mut buf: &[u8]) -> Result<(), Interface::Error> {
         while !buf.is_empty() {
             match self.write(buf) {
@@ -105,7 +105,7 @@ where
 
     /// Flush this output stream, blocking until all intermediately buffered contents reach their destination.
     ///
-    /// Mirror function of [embedded_io::Write::flush].
+    /// Mirror function of [`embedded_io::Write::flush`].
     pub fn flush(&mut self) -> Result<(), Interface::Error> {
         self.interface.flush(self.address)
     }
@@ -118,15 +118,15 @@ where
 {
     /// Read some bytes from this source into the specified buffer, returning how many bytes were read.
     ///
-    /// Mirror function of [embedded_io::Read::read].
+    /// Mirror function of [`embedded_io::Read::read`].
     pub fn read(&mut self, buf: &mut [u8]) -> Result<usize, Interface::Error> {
         self.interface.read(self.address, buf)
     }
 
     /// Read the exact number of bytes required to fill buf.
-    /// This function calls read() in a loop until exactly buf.len() bytes have been read, blocking if needed.
+    /// This function calls `read()` in a loop until exactly `buf.len()` bytes have been read, blocking if needed.
     ///
-    /// Mirror function of [embedded_io::Read::read_exact].
+    /// Mirror function of [`embedded_io::Read::read_exact`].
     pub fn read_exact(
         &mut self,
         mut buf: &mut [u8],
@@ -153,16 +153,16 @@ where
 {
     /// Write a buffer into this writer, returning how many bytes were written.
     ///
-    /// Mirror function of [embedded_io_async::Write::write].
+    /// Mirror function of [`embedded_io_async::Write::write`].
     pub async fn write_async(&mut self, buf: &[u8]) -> Result<usize, Interface::Error> {
         self.interface.write(self.address, buf).await
     }
 
     /// Write an entire buffer into this writer.
     ///
-    /// This function calls write() in a loop until exactly buf.len() bytes have been written, blocking if needed.
+    /// This function calls `write()` in a loop until exactly `buf.len()` bytes have been written, blocking if needed.
     ///
-    /// Mirror function of [embedded_io_async::Write::write_all].
+    /// Mirror function of [`embedded_io_async::Write::write_all`].
     pub async fn write_all_async(&mut self, mut buf: &[u8]) -> Result<(), Interface::Error> {
         while !buf.is_empty() {
             match self.write_async(buf).await {
@@ -176,7 +176,7 @@ where
 
     /// Flush this output stream, blocking until all intermediately buffered contents reach their destination.
     ///
-    /// Mirror function of [embedded_io_async::Write::flush].
+    /// Mirror function of [`embedded_io_async::Write::flush`].
     pub async fn flush_async(&mut self) -> Result<(), Interface::Error> {
         self.interface.flush(self.address).await
     }
@@ -189,16 +189,16 @@ where
 {
     /// Read some bytes from this source into the specified buffer, returning how many bytes were read.
     ///
-    /// Mirror function of [embedded_io_async::Read::read].
+    /// Mirror function of [`embedded_io_async::Read::read`].
     pub async fn read_async(&mut self, buf: &mut [u8]) -> Result<usize, Interface::Error> {
         self.interface.read(self.address, buf).await
     }
 
     /// Read the exact number of bytes required to fill buf.
     ///
-    /// This function calls read() in a loop until exactly buf.len() bytes have been read, waiting if needed.
+    /// This function calls `read()` in a loop until exactly `buf.len()` bytes have been read, waiting if needed.
     ///
-    /// Mirror function of [embedded_io_async::Read::read_exact].
+    /// Mirror function of [`embedded_io_async::Read::read_exact`].
     pub async fn read_exact_async(
         &mut self,
         mut buf: &mut [u8],

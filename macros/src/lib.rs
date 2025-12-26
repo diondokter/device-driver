@@ -41,15 +41,16 @@ pub fn create_device(item: TokenStream) -> TokenStream {
     match input.generation_type {
         GenerationType::Kdl(kdl_input) => {
             let (file_contents, span) = if cfg!(feature = "nightly") && rustversion::cfg!(nightly) {
-                std::fs::read_to_string(Path::new(&kdl_input.span().file()))
-                    .map(|fc| {
+                std::fs::read_to_string(Path::new(&kdl_input.span().file())).map_or(
+                    (kdl_input.value(), None),
+                    |fc| {
                         (
                             // Bug in Rust? The byte range is only correct when we remove the \r from newlines
                             fc.replace("\r\n", "\n"),
                             Some(kdl_input.span().byte_range()),
                         )
-                    })
-                    .unwrap_or_else(|_| (kdl_input.value(), None))
+                    },
+                )
             } else {
                 (kdl_input.value(), None)
             };

@@ -94,7 +94,7 @@ pub(crate) fn find_min_max_addresses<'m>(
                 RepeatSource::Count(count) => {
                     let count_0_address = total_address_offsets + address.value;
                     let count_max_address =
-                        count_0_address + (count.saturating_sub(1) as i128 * repeat.stride);
+                        count_0_address + (i128::from(count.saturating_sub(1)) * repeat.stride);
                     let min_address = count_0_address.min(count_max_address);
                     let max_address = count_0_address.max(count_max_address);
 
@@ -174,7 +174,7 @@ fn remove_objects(manifest: &mut Manifest, mut removals: HashSet<UniqueId>) {
 
                 true
             }
-        })
+        });
     }
 
     if removals.is_empty() {

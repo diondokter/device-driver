@@ -7,6 +7,7 @@ use core::ops::{BitAnd, BitOr, BitOrAssign, Shl, Shr};
 ///
 /// `start` and `end` must lie in the range `0..=data.len()*8`
 #[inline(always)]
+#[must_use]
 pub unsafe fn load_lsb0<T, ByteO: ByteOrder>(data: &[u8], start: usize, end: usize) -> T
 where
     T: Default + Shl<usize, Output = T> + BitOrAssign + Integer + TruncateToU8,
@@ -93,12 +94,13 @@ where
 
 /// Load an integer from a byte slice located at the `start`..`end` range.
 /// The integer is loaded with the [LE] or [BE] byte order generic param and using msb0 bit order.
-/// This is more expensive than the [load_lsb0] function.
+/// This is more expensive than the [`load_lsb0`] function.
 ///
 /// ## Safety:
 ///
 /// `start` and `end` must lie in the range `0..=data.len()*8`
 #[inline(always)]
+#[must_use]
 pub unsafe fn load_msb0<T, ByteO: ByteOrder>(data: &[u8], start: usize, end: usize) -> T
 where
     T: Default + Shl<usize, Output = T> + BitOrAssign + Integer + TruncateToU8,
@@ -145,7 +147,7 @@ where
 
 /// Store an integer into byte slice located at the `start`..`end` range.
 /// The integer is stored with the [LE] or [BE] byte order generic param and using msb0 bit order.
-/// This is more expensive than the [store_lsb0] function.
+/// This is more expensive than the [`store_lsb0`] function.
 ///
 /// ## Safety:
 ///
@@ -229,7 +231,7 @@ fn pivot_msb0(start: usize, end: usize, i: usize) -> usize {
 
     if diff <= 0 {
         // If we have an even number of bits, we should not have a diff of 0
-        diff -= num_bits_even as isize;
+        diff -= isize::from(num_bits_even);
     }
 
     // To do the reversing, we need to move the index towards the pivot
@@ -240,9 +242,9 @@ fn pivot_msb0(start: usize, end: usize, i: usize) -> usize {
     // The pivot is off by a half if we have an even number of bits.
     // But we've done a `* 2` previously now, so we can correct the half-error with a whole number.
     if diff > 0 {
-        j -= num_bits_even as isize;
+        j -= isize::from(num_bits_even);
     } else {
-        j += num_bits_even as isize;
+        j += isize::from(num_bits_even);
     }
 
     j as usize
@@ -262,6 +264,7 @@ pub trait ByteOrder {
     /// ## Safety:
     ///
     /// `bit_index` must lie in the range `0..data.len()*8`.
+    #[must_use]
     unsafe fn get_byte_from_index(data: &[u8], bit_index: usize) -> u8 {
         debug_assert!((0..data.len() * 8).contains(&bit_index));
         unsafe { *data.get_unchecked(Self::get_byte_index(data.len(), bit_index)) }
@@ -335,6 +338,7 @@ pub trait Integer:
     fn cast_deduplicate_back(val: Self::DedupType) -> Self;
 
     #[inline]
+    #[must_use]
     fn sign_extend(self, sign_bit_index: usize) -> Self {
         let sign_bit = Self::ONE << sign_bit_index;
 

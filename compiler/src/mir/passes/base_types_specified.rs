@@ -8,7 +8,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
     let mut iter = manifest.iter_objects_with_config_mut();
     while let Some((object, _)) = iter.next() {
         if let Some(field_set) = object.as_field_set_mut() {
-            for field in field_set.fields.iter_mut() {
+            for field in &mut field_set.fields {
                 loop {
                     let size_bits = field.field_address.len() as u32;
                     field.base_type.value = match field.base_type.value {
@@ -18,9 +18,10 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
                             _ => BaseType::Uint,
                         },
                         BaseType::Bool => break,
-                        BaseType::Uint => match Integer::find_smallest(0, 0, size_bits) {
-                            Some(integer) => BaseType::FixedSize(integer),
-                            None => {
+                        BaseType::Uint => {
+                            if let Some(integer) = Integer::find_smallest(0, 0, size_bits) {
+                                BaseType::FixedSize(integer)
+                            } else {
                                 diagnostics.add(FieldSizeTooBig {
                                     field_address: field.field_address.span,
                                     size_bits,
@@ -29,10 +30,11 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
                                 field.field_address.end = field.field_address.start + 64;
                                 continue;
                             }
-                        },
-                        BaseType::Int => match Integer::find_smallest(-1, 0, size_bits) {
-                            Some(integer) => BaseType::FixedSize(integer),
-                            None => {
+                        }
+                        BaseType::Int => {
+                            if let Some(integer) = Integer::find_smallest(-1, 0, size_bits) {
+                                BaseType::FixedSize(integer)
+                            } else {
                                 diagnostics.add(FieldSizeTooBig {
                                     field_address: field.field_address.span,
                                     size_bits,
@@ -41,7 +43,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
                                 field.field_address.end = field.field_address.start + 64;
                                 continue;
                             }
-                        },
+                        }
                         BaseType::FixedSize(_) => break,
                     }
                 }

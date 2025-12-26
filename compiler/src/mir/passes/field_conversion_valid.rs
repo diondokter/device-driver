@@ -19,7 +19,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
 
     for object in manifest.iter_objects() {
         if let Object::FieldSet(field_set) = object {
-            for field in field_set.fields.iter() {
+            for field in &field_set.fields {
                 if let Some(conversion) = field.field_conversion.as_ref() {
                     let target_object = super::search_object(manifest, &conversion.type_name);
 

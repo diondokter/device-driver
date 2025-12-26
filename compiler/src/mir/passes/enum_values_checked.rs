@@ -48,7 +48,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
             .collect_vec();
 
         let mut seen_values_map = HashMap::<i128, Vec<&UniqueId>>::new();
-        for (variant_value, variant_id) in seen_values.iter() {
+        for (variant_value, variant_id) in &seen_values {
             seen_values_map
                 .entry(*variant_value)
                 .or_default()
@@ -99,7 +99,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                     enum_value.size_bits.unwrap_or_default(),
                 );
 
-                if integer.map(|i| i.is_signed()).unwrap_or(false) {
+                if integer.is_some_and(|i| i.is_signed()) {
                     diagnostics.add(EnumBadBasetype {
                         enum_name: enum_value.name.span,
                         base_type: enum_value.base_type.span,
@@ -228,7 +228,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
 
             // Set all but the first default to unspecified. This aids keeping the generated code available
             let mut defaults_seen = 0;
-            for variant in enum_value.variants.iter_mut() {
+            for variant in &mut enum_value.variants {
                 if variant.value.is_default() {
                     if defaults_seen != 0 {
                         variant.value = EnumValue::Unspecified;
@@ -236,7 +236,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                     defaults_seen += 1;
                 }
             }
-        };
+        }
 
         // Check whether the enum has more than one catch all
         let catch_all_variants = enum_value
@@ -254,7 +254,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
 
             // Set all but the first catch-all to unspecified. This aids keeping the generated code available
             let mut catch_alls_seen = 0;
-            for variant in enum_value.variants.iter_mut() {
+            for variant in &mut enum_value.variants {
                 if variant.value.is_catch_all() {
                     if catch_alls_seen != 0 {
                         variant.value = EnumValue::Unspecified;
@@ -262,7 +262,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                     catch_alls_seen += 1;
                 }
             }
-        };
+        }
     }
 
     removals
