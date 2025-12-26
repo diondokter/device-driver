@@ -22,7 +22,7 @@ use crate::{
 /// For the array representation, the rule is that the input must have the same spec as the bit and byte order.
 /// The reset values are left with the specified bit order and byte order.
 ///
-/// This function assumes all register have a valid byte order, and so depends on [super::byte_order_specified::run_pass]
+/// This function assumes all register have a valid byte order, and so depends on [`super::byte_order_specified::run_pass`]
 /// having been run.
 pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
     let mut new_reset_values = HashMap::new();
@@ -96,7 +96,7 @@ fn convert_reset_value(
                     register_size_bits: size_bits,
                 });
                 return None;
-            };
+            }
 
             let mut final_array = array[..target_byte_size].to_vec();
 
@@ -120,7 +120,7 @@ fn convert_reset_value(
                     register_size_bytes: target_byte_size as u32,
                 });
                 return None;
-            };
+            }
 
             // Convert to little endian to do the check since that's what bitvec needs
             if target_byte_order == ByteOrder::BE {
@@ -138,7 +138,7 @@ fn convert_reset_value(
                             register_size_bits: size_bits,
                         });
                         return None;
-                    };
+                    }
                 }
                 BitOrder::MSB0 => {
                     if array.view_bits::<Msb0>()[size_bits as usize..].any() {
@@ -150,7 +150,7 @@ fn convert_reset_value(
                             register_size_bits: size_bits,
                         });
                         return None;
-                    };
+                    }
                 }
             }
 

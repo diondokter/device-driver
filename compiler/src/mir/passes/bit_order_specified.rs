@@ -8,7 +8,7 @@ pub fn run_pass(manifest: &mut Manifest) {
             && fs.bit_order.is_none()
         {
             // Set to what's in the config, or use the default LSB0
-            fs.bit_order = Some(config.bit_order.unwrap_or(crate::mir::BitOrder::LSB0))
+            fs.bit_order = Some(config.bit_order.unwrap_or(crate::mir::BitOrder::LSB0));
         }
     }
 }

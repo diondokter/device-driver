@@ -14,6 +14,7 @@ pub mod mir;
 
 pub mod reporting;
 
+#[must_use]
 pub fn transform_kdl(
     file_contents: &str,
     source_span: Option<miette::SourceSpan>,
@@ -31,11 +32,11 @@ pub fn transform_kdl(
         Err(e) => diagnostics.add_msg(e.to_string()),
     }
 
-    diagnostics = diagnostics.with_source_code(source_code);
+    diagnostics = diagnostics.with_source_code(&source_code);
 
     if diagnostics.has_error() {
         output +=
-            "\ncompile_error!(\"The device driver input has errors that need to be solved!\");\n"
+            "\ncompile_error!(\"The device driver input has errors that need to be solved!\");\n";
     }
 
     (output, diagnostics)

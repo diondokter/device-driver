@@ -31,6 +31,7 @@ impl Default for Diagnostics {
 }
 
 impl Diagnostics {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             reports: Vec::new(),
@@ -38,7 +39,8 @@ impl Diagnostics {
     }
 
     /// Create a new Diagnostics instance where all reports have their source code set
-    pub fn with_source_code(self, source_code: NamedSourceCode) -> Self {
+    #[must_use]
+    pub fn with_source_code(self, source_code: &NamedSourceCode) -> Self {
         Self {
             reports: self
                 .reports
@@ -56,6 +58,7 @@ impl Diagnostics {
         self.reports.push(Report::msg(message));
     }
 
+    #[must_use]
     pub fn has_error(&self) -> bool {
         self.reports
             .iter()
@@ -133,7 +136,7 @@ pub fn set_miette_hook(user_facing: bool) {
     }
 }
 
-/// The same as the [kdl::KdlDiagnostic], but with a named source input and updated spans
+/// The same as the [`kdl::KdlDiagnostic`], but with a named source input and updated spans
 #[derive(Debug, Diagnostic, Clone, Eq, PartialEq, Error)]
 #[error("{}", message.clone().unwrap_or_else(|| "Unexpected error".into()))]
 pub struct ConvertedKdlDiagnostic {
@@ -157,6 +160,7 @@ pub struct ConvertedKdlDiagnostic {
 }
 
 impl ConvertedKdlDiagnostic {
+    #[must_use]
     pub fn from_original_and_span(original: KdlDiagnostic, input_span: Option<SourceSpan>) -> Self {
         let KdlDiagnostic {
             input: _,

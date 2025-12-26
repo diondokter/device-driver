@@ -35,6 +35,7 @@ impl Manifest {
         .map(|(object, _)| object)
     }
 
+    #[must_use]
     pub fn iter_objects_with_config(&self) -> ObjectIter<'_> {
         ObjectIter {
             children: &self.root_objects,
@@ -93,64 +94,59 @@ pub trait LendingIterator {
     fn next(&mut self) -> Option<Self::Item<'_>>;
 }
 
-impl<'a> LendingIterator for ObjectIterMut<'a> {
+impl LendingIterator for ObjectIterMut<'_> {
     type Item<'b>
         = (&'b mut Object, Rc<DeviceConfig>)
     where
         Self: 'b;
 
     fn next(&mut self) -> Option<Self::Item<'_>> {
-        match self.children.is_empty() {
-            true => match self.parent.take() {
+        if self.children.is_empty() {
+            match self.parent.take() {
                 Some(parent) => {
                     // continue with the parent node
                     *self = *parent;
                     self.next()
                 }
                 None => None,
-            },
-            false => {
-                if self.children[0].child_objects_mut().is_empty() {
-                    let (first, rest) = std::mem::take(&mut self.children)
-                        .split_first_mut()
-                        .expect("Already checked not empty");
-                    self.children = rest;
-                    Some((first, self.current_device_config.clone()))
-                } else if !self.collection_object_returned {
-                    self.collection_object_returned = true;
-
-                    let next_device_config =
-                        if let Some(new_config) = self.children[0].device_config() {
-                            Rc::new(self.current_device_config.override_with(new_config))
-                        } else {
-                            self.current_device_config.clone()
-                        };
-
-                    Some((&mut self.children[0], next_device_config))
-                } else {
-                    self.collection_object_returned = false;
-
-                    let next_device_config =
-                        if let Some(new_config) = self.children[0].device_config() {
-                            Rc::new(self.current_device_config.override_with(new_config))
-                        } else {
-                            self.current_device_config.clone()
-                        };
-
-                    let (first, rest) = std::mem::take(&mut self.children)
-                        .split_first_mut()
-                        .expect("Already checked not empty");
-                    self.children = rest;
-
-                    *self = ObjectIterMut {
-                        children: first.child_objects_mut(),
-                        parent: Some(Box::new(std::mem::take(self))),
-                        collection_object_returned: false,
-                        current_device_config: next_device_config,
-                    };
-                    self.next()
-                }
             }
+        } else if self.children[0].child_objects_mut().is_empty() {
+            let (first, rest) = std::mem::take(&mut self.children)
+                .split_first_mut()
+                .expect("Already checked not empty");
+            self.children = rest;
+            Some((first, self.current_device_config.clone()))
+        } else if !self.collection_object_returned {
+            self.collection_object_returned = true;
+
+            let next_device_config = if let Some(new_config) = self.children[0].device_config() {
+                Rc::new(self.current_device_config.override_with(new_config))
+            } else {
+                self.current_device_config.clone()
+            };
+
+            Some((&mut self.children[0], next_device_config))
+        } else {
+            self.collection_object_returned = false;
+
+            let next_device_config = if let Some(new_config) = self.children[0].device_config() {
+                Rc::new(self.current_device_config.override_with(new_config))
+            } else {
+                self.current_device_config.clone()
+            };
+
+            let (first, rest) = std::mem::take(&mut self.children)
+                .split_first_mut()
+                .expect("Already checked not empty");
+            self.children = rest;
+
+            *self = ObjectIterMut {
+                children: first.child_objects_mut(),
+                parent: Some(Box::new(std::mem::take(self))),
+                collection_object_returned: false,
+                current_device_config: next_device_config,
+            };
+            self.next()
         }
     }
 }
@@ -222,7 +218,7 @@ impl From<Device> for Manifest {
     fn from(value: Device) -> Self {
         Self {
             root_objects: vec![Object::Device(value)],
-            config: Default::default(),
+            config: DeviceConfig::default(),
         }
     }
 }
@@ -241,7 +237,7 @@ impl Device {
             children: &self.objects,
             parent: None,
             collection_object_returned: false,
-            current_device_config: Rc::new(Default::default()),
+            current_device_config: Rc::new(DeviceConfig::default()),
         }
         .map(|(object, _)| object)
     }
@@ -263,6 +259,7 @@ pub struct DeviceConfig {
 }
 
 impl DeviceConfig {
+    #[must_use]
     pub fn override_with(&self, other: &Self) -> DeviceConfig {
         Self {
             owner: other.owner.clone().or(self.owner.clone()),
@@ -304,10 +301,12 @@ pub enum Integer {
 }
 
 impl Integer {
+    #[must_use]
     pub const fn is_signed(&self) -> bool {
         self.min_value() != 0
     }
 
+    #[must_use]
     pub const fn min_value(&self) -> i128 {
         match self {
             Integer::U8 => u8::MIN as i128,
@@ -321,6 +320,7 @@ impl Integer {
         }
     }
 
+    #[must_use]
     pub const fn max_value(&self) -> i128 {
         match self {
             Integer::U8 => u8::MAX as i128,
@@ -334,6 +334,7 @@ impl Integer {
         }
     }
 
+    #[must_use]
     pub const fn size_bits(&self) -> u32 {
         match self {
             Integer::U8 => 8,
@@ -348,10 +349,11 @@ impl Integer {
     }
 
     /// Find the smallest integer type that can fully contain the min and max
-    /// and is equal or larger than the given size_bits.
+    /// and is equal or larger than the given `size_bits`.
     ///
     /// This function has a preference for unsigned integers.
     /// You can force a signed integer by making the min be negative (e.g. -1)
+    #[must_use]
     pub const fn find_smallest(min: i128, max: i128, size_bits: u32) -> Option<Integer> {
         Some(match (min, max, size_bits) {
             (0.., ..0x1_00, ..=8) => Integer::U8,
@@ -368,6 +370,7 @@ impl Integer {
 
     /// Given the min and the max and the sign of the integer,
     /// how many bits are required to fit the min and max? (inclusive)
+    #[must_use]
     pub const fn bits_required(&self, min: i128, max: i128) -> u32 {
         assert!(max >= min);
 
@@ -415,6 +418,7 @@ pub enum Access {
 }
 
 impl Access {
+    #[must_use]
     pub fn is_readable(&self) -> bool {
         match self {
             Access::RW => true,
@@ -626,6 +630,7 @@ impl Object {
         }
     }
 
+    #[must_use]
     pub fn as_device(&self) -> Option<&Device> {
         if let Self::Device(v) = self {
             Some(v)
@@ -733,6 +738,7 @@ pub struct Field {
 }
 
 impl Field {
+    #[must_use]
     pub fn get_type_specifier_string(&self) -> String {
         match &self.field_conversion {
             Some(fc) => {
@@ -807,6 +813,7 @@ pub struct Enum {
 }
 
 impl Enum {
+    #[must_use]
     pub fn new(
         description: String,
         name: Spanned<String>,
@@ -845,46 +852,40 @@ impl Enum {
 
     /// Get an iterator over the variants, but with an extra counter to get the specified discriminant for each.
     ///
-    /// *Note:* The validity of this is checked in the [passes::enum_values_checked] pass. If this function is run
+    /// *Note:* The validity of this is checked in the [`passes::enum_values_checked`] pass. If this function is run
     /// before that pass, there might be weird results.
     pub fn iter_variants_with_discriminant(&self) -> impl Iterator<Item = (i128, &EnumVariant)> {
         let mut next_discriminant = 0;
-        self.variants
-            .iter()
-            .map(move |variant| match variant.value {
-                EnumValue::Specified(discriminant) => {
-                    next_discriminant = discriminant + 1;
-                    (discriminant, variant)
-                }
-                _ => {
-                    let discriminant = next_discriminant;
-                    next_discriminant += 1;
-                    (discriminant, variant)
-                }
-            })
+        self.variants.iter().map(move |variant| {
+            if let EnumValue::Specified(discriminant) = variant.value {
+                next_discriminant = discriminant + 1;
+                (discriminant, variant)
+            } else {
+                let discriminant = next_discriminant;
+                next_discriminant += 1;
+                (discriminant, variant)
+            }
+        })
     }
 
     /// Get an iterator over the variants, but with an extra counter to get the specified discriminant for each.
     ///
-    /// *Note:* The validity of this is checked in the [passes::enum_values_checked] pass. If this function is run
+    /// *Note:* The validity of this is checked in the [`passes::enum_values_checked`] pass. If this function is run
     /// before that pass, there might be weird results.
     pub fn iter_variants_with_discriminant_mut(
         &mut self,
     ) -> impl Iterator<Item = (i128, &mut EnumVariant)> {
         let mut next_discriminant = 0;
-        self.variants
-            .iter_mut()
-            .map(move |variant| match variant.value {
-                EnumValue::Specified(discriminant) => {
-                    next_discriminant = discriminant + 1;
-                    (discriminant, variant)
-                }
-                _ => {
-                    let discriminant = next_discriminant;
-                    next_discriminant += 1;
-                    (discriminant, variant)
-                }
-            })
+        self.variants.iter_mut().map(move |variant| {
+            if let EnumValue::Specified(discriminant) = variant.value {
+                next_discriminant = discriminant + 1;
+                (discriminant, variant)
+            } else {
+                let discriminant = next_discriminant;
+                next_discriminant += 1;
+                (discriminant, variant)
+            }
+        })
     }
 }
 
@@ -978,6 +979,7 @@ pub enum ResetValue {
 }
 
 impl ResetValue {
+    #[must_use]
     pub fn as_array(&self) -> Option<&Vec<u8>> {
         if let Self::Array(v) = self {
             Some(v)
@@ -1009,6 +1011,7 @@ pub enum UniqueId {
 }
 
 impl UniqueId {
+    #[must_use]
     pub fn span(&self) -> SourceSpan {
         match self {
             UniqueId::Object { object_name } => object_name.span,
@@ -1028,11 +1031,11 @@ impl UniqueId {
 impl Display for UniqueId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            UniqueId::Object { object_name } => write!(f, "{}", object_name),
+            UniqueId::Object { object_name } => write!(f, "{object_name}"),
             UniqueId::Field {
                 parent_id,
                 field_name,
-            } => write!(f, "{} {{ {} }}", parent_id, field_name),
+            } => write!(f, "{parent_id} {{ {field_name} }}"),
         }
     }
 }
@@ -1126,7 +1129,7 @@ impl Unique for Object {
         }
     }
 
-    fn id_with(&self, _: Self::Metadata) -> UniqueId {
+    fn id_with(&self, (): Self::Metadata) -> UniqueId {
         self.id()
     }
 

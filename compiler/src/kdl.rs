@@ -87,7 +87,7 @@ fn transform_manifest(manifest_document: &KdlDocument, diagnostics: &mut Diagnos
                         manifest.root_objects.push(Object::Extern(extern_value));
                     }
                 }
-            };
+            }
         } else {
             diagnostics.add(errors::UnexpectedNode {
                 node_name: node.name().span(),
@@ -339,7 +339,7 @@ fn transform_register(
                 }
 
                 reset_value = parse_reset_value_entries(child, diagnostics)
-                    .map(|val| (val, child.name().span()))
+                    .map(|val| (val, child.name().span()));
             }
             Ok(RegisterField::Repeat) => {
                 if let Some((_, span)) = repeat {
@@ -727,7 +727,7 @@ fn transform_field_set(
     let mut allow_bit_overlap: Option<&kdl::KdlEntry> = None;
 
     for (i, entry) in node.entries().iter().enumerate() {
-        match entry.name().map(|n| n.value()) {
+        match entry.name().map(kdl::KdlIdentifier::value) {
             Some("size-bits") => {
                 if let Some(size_bits) = size_bits {
                     diagnostics.add(errors::DuplicateEntry {
@@ -822,7 +822,7 @@ fn transform_field_set(
 
     if let Some(size_bits) = size_bits {
         match size_bits.value() {
-            KdlValue::Integer(sb) if (0..=u32::MAX as i128).contains(sb) => {
+            KdlValue::Integer(sb) if (0..=i128::from(u32::MAX)).contains(sb) => {
                 field_set.size_bits = (*sb as u32).with_span(size_bits.span());
             }
             KdlValue::Integer(_) => {
@@ -943,9 +943,9 @@ fn transform_field(node: &KdlNode, diagnostics: &mut Diagnostics) -> (Option<Fie
     let repeat = parse_repeat_entries(node, diagnostics, false);
 
     for entry in node.entries() {
-        match entry.name().map(|id| id.value()) {
+        match entry.name().map(kdl::KdlIdentifier::value) {
             // Ignore the repeat fields. they're parsed separately
-            Some("count") | Some("with") | Some("stride") => continue,
+            Some("count" | "with" | "stride") => continue,
             Some(_) => {
                 unexpected_entries.not_anonymous_entries.push(entry.span());
                 continue;
@@ -954,7 +954,7 @@ fn transform_field(node: &KdlNode, diagnostics: &mut Diagnostics) -> (Option<Fie
         }
 
         match entry.value() {
-            KdlValue::String(s) if s.starts_with("@") => {
+            KdlValue::String(s) if s.starts_with('@') => {
                 if let Some((_, span)) = address {
                     diagnostics.add(errors::DuplicateEntry {
                         duplicate: entry.span(),
@@ -963,9 +963,9 @@ fn transform_field(node: &KdlNode, diagnostics: &mut Diagnostics) -> (Option<Fie
                     continue;
                 }
 
-                let trimmed_string = s.trim_start_matches("@");
+                let trimmed_string = s.trim_start_matches('@');
 
-                if let Some((end, start)) = trimmed_string.split_once(":") {
+                if let Some((end, start)) = trimmed_string.split_once(':') {
                     if let Ok(end) = end.parse::<u32>()
                         && let Ok(start) = start.parse::<u32>()
                     {
@@ -1055,7 +1055,7 @@ fn transform_field(node: &KdlNode, diagnostics: &mut Diagnostics) -> (Option<Fie
         } else {
             diagnostics.add(errors::InlineEnumDefinitionWithoutName {
                 field_name: node.name().span(),
-                existing_ty: node.ty().map(|ty| ty.span()),
+                existing_ty: node.ty().map(kdl::KdlIdentifier::span),
             });
         }
     }
@@ -1113,7 +1113,7 @@ fn transform_enum(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Enum>
     let mut size_bits: Option<&kdl::KdlEntry> = None;
 
     for (i, entry) in node.entries().iter().enumerate() {
-        match entry.name().map(|n| n.value()) {
+        match entry.name().map(kdl::KdlIdentifier::value) {
             Some("size-bits") => {
                 if let Some(size_bits) = size_bits {
                     diagnostics.add(errors::DuplicateEntry {
@@ -1167,7 +1167,7 @@ fn transform_enum(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Enum>
 
     if let Some(size_bits) = size_bits {
         match size_bits.value() {
-            KdlValue::Integer(sb) if (0..=u32::MAX as i128).contains(sb) => {
+            KdlValue::Integer(sb) if (0..=i128::from(u32::MAX)).contains(sb) => {
                 enum_value.size_bits = Some(*sb as u32);
             }
             KdlValue::Integer(_) => {
@@ -1211,7 +1211,7 @@ fn transform_enum_variants(nodes: &KdlDocument, diagnostics: &mut Diagnostics) -
                             .map(|superfluous_entries| {
                                 superfluous_entries
                                     .iter()
-                                    .map(|entry| entry.span())
+                                    .map(kdl::KdlEntry::span)
                                     .collect()
                             })
                             .unwrap_or_default(),
@@ -1287,7 +1287,7 @@ fn transform_extern(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Ext
     let mut infallible: Option<&kdl::KdlEntry> = None;
 
     for (i, entry) in node.entries().iter().enumerate() {
-        match entry.name().map(|n| n.value()) {
+        match entry.name().map(kdl::KdlIdentifier::value) {
             Some(_) => {
                 unexpected_entries
                     .unexpected_name_entries
@@ -1359,7 +1359,7 @@ fn parse_type(
     let mut field_conversion = None;
     let base_type_str;
 
-    if let Some((base_type, conversion)) = ty_str.split_once(":") {
+    if let Some((base_type, conversion)) = ty_str.split_once(':') {
         base_type_str = base_type;
 
         field_conversion = Some(FieldConversion {
@@ -1368,7 +1368,7 @@ fn parse_type(
                 .to_owned()
                 .with_span(ty.span()),
             use_try: conversion.ends_with('?'),
-        })
+        });
     } else {
         base_type_str = ty_str;
     }
@@ -1399,7 +1399,7 @@ fn parse_type(
 fn ensure_zero_entries(node: &KdlNode, diagnostics: &mut Diagnostics) {
     if !node.entries().is_empty() {
         diagnostics.add(errors::UnexpectedEntries {
-            superfluous_entries: node.entries().iter().map(|entry| entry.span()).collect(),
+            superfluous_entries: node.entries().iter().map(kdl::KdlEntry::span).collect(),
             unexpected_name_entries: Vec::new(),
             not_anonymous_entries: Vec::new(),
             unexpected_anonymous_entries: Vec::new(),
@@ -1428,11 +1428,11 @@ fn parse_repeat_entries(
     let mut with = None;
 
     for entry in node.entries() {
-        match (entry.name().map(|id| id.value()), entry.value()) {
+        match (entry.name().map(kdl::KdlIdentifier::value), entry.value()) {
             (Some("count"), KdlValue::Integer(val)) => count = Some((*val, entry.span())),
             (Some("stride"), KdlValue::Integer(val)) => stride = Some((*val, entry.span())),
             (Some("with"), KdlValue::String(val)) => with = Some((val.clone(), entry.span())),
-            (Some("count") | Some("stride"), _) => diagnostics.add(errors::UnexpectedType {
+            (Some("count" | "stride"), _) => diagnostics.add(errors::UnexpectedType {
                 value_name: entry.span(),
                 expected_type: "integer",
             }),
@@ -1489,7 +1489,7 @@ fn parse_repeat_entries(
     }
 
     if let Some((count, span)) = count
-        && !(0..=u64::MAX as i128).contains(&count)
+        && !(0..=i128::from(u64::MAX)).contains(&count)
     {
         error = true;
         diagnostics.add(errors::ValueOutOfRange {
@@ -1532,15 +1532,14 @@ fn parse_reset_value_entries(node: &KdlNode, diagnostics: &mut Diagnostics) -> O
     let mut array = Vec::new();
 
     for entry in node.entries() {
-        match entry.value() {
-            KdlValue::Integer(val) => array.push((*val, entry.span())),
-            _ => {
-                error = true;
-                diagnostics.add(errors::UnexpectedType {
-                    value_name: entry.span(),
-                    expected_type: "integer",
-                });
-            }
+        if let KdlValue::Integer(val) = entry.value() {
+            array.push((*val, entry.span()));
+        } else {
+            error = true;
+            diagnostics.add(errors::UnexpectedType {
+                value_name: entry.span(),
+                expected_type: "integer",
+            });
         }
     }
 
@@ -1563,7 +1562,7 @@ fn parse_reset_value_entries(node: &KdlNode, diagnostics: &mut Diagnostics) -> O
         }
     } else {
         let mut error = false;
-        for (byte, span) in array.iter() {
+        for (byte, span) in &array {
             if !(0..=255).contains(byte) {
                 error = true;
                 diagnostics.add(errors::ValueOutOfRange {
@@ -1595,7 +1594,7 @@ fn parse_single_integer_entry(
             .entries()
             .iter()
             .skip(1)
-            .map(|entry| entry.span())
+            .map(kdl::KdlEntry::span)
             .collect(),
         unexpected_name_entries: Vec::new(),
         not_anonymous_entries: node
@@ -1611,16 +1610,17 @@ fn parse_single_integer_entry(
     }
 
     match node.entries().first() {
-        Some(entry) if entry.name().is_none() => match entry.value() {
-            KdlValue::Integer(val) => (Some(*val), Some(entry.span())),
-            _ => {
+        Some(entry) if entry.name().is_none() => {
+            if let KdlValue::Integer(val) = entry.value() {
+                (Some(*val), Some(entry.span()))
+            } else {
                 diagnostics.add(errors::UnexpectedType {
                     value_name: entry.span(),
                     expected_type: "integer",
                 });
                 (None, Some(entry.span()))
             }
-        },
+        }
         _ => {
             diagnostics.add(errors::MissingEntry {
                 node_name: node.name().span(),
@@ -1642,7 +1642,7 @@ fn parse_single_string_entry(
             .entries()
             .iter()
             .skip(1)
-            .map(|entry| entry.span())
+            .map(kdl::KdlEntry::span)
             .collect(),
         unexpected_name_entries: Vec::new(),
         not_anonymous_entries: node
@@ -1658,37 +1658,37 @@ fn parse_single_string_entry(
     }
 
     match node.entries().first() {
-        Some(entry) if entry.name().is_none() => match entry.value() {
-            KdlValue::String(val) => (Some(val.clone()), Some(entry.span())),
-            _ => {
-                if !is_name {
-                    diagnostics.add(errors::UnexpectedType {
-                        value_name: entry.span(),
-                        expected_type: "string",
-                    });
-                } else {
+        Some(entry) if entry.name().is_none() => {
+            if let KdlValue::String(val) = entry.value() {
+                (Some(val.clone()), Some(entry.span()))
+            } else {
+                if is_name {
                     diagnostics.add(errors::MissingObjectName {
                         object_keyword: node.name().span(),
                         object_type: node.name().value().into(),
                         found_instead: Some(entry.span()),
                     });
+                } else {
+                    diagnostics.add(errors::UnexpectedType {
+                        value_name: entry.span(),
+                        expected_type: "string",
+                    });
                 }
                 (None, Some(entry.span()))
             }
-        },
+        }
         _ => {
-            if !is_name {
-                diagnostics.add(errors::MissingEntry {
-                    node_name: node.name().span(),
-                    expected_entries: expected_entries
-                        .map(|ee| ee.to_vec())
-                        .unwrap_or_else(|| vec!["string"]),
-                });
-            } else {
+            if is_name {
                 diagnostics.add(errors::MissingObjectName {
                     object_keyword: node.name().span(),
                     object_type: node.name().value().into(),
                     found_instead: None,
+                });
+            } else {
+                diagnostics.add(errors::MissingEntry {
+                    node_name: node.name().span(),
+                    expected_entries: expected_entries
+                        .map_or_else(|| vec!["string"], <[&str]>::to_vec),
                 });
             }
             (None, None)

@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use clap::Command;
 
 fn main() {
@@ -22,15 +20,14 @@ fn accept() {
     for test_case in test_cases {
         let test_case = test_case.unwrap();
 
-        if test_case.file_name().to_string_lossy().ends_with("_") {
+        if test_case.file_name().to_string_lossy().ends_with('_') {
             println!(
                 "{} (ignored because case names ends with `_`)",
                 test_case.path().display()
             );
             continue;
-        } else {
-            println!("{}", test_case.path().display());
         }
+        println!("{}", test_case.path().display());
 
         let input_paths: Vec<_> = std::fs::read_dir(test_case.path())
             .unwrap()
@@ -49,7 +46,7 @@ fn accept() {
             let input = std::fs::read_to_string(&input_path).unwrap();
 
             let input_extension = input_path.extension().unwrap().display().to_string();
-            let (transformed, diagnostics) = match input_extension.deref() {
+            let (transformed, diagnostics) = match &*input_extension {
                 "kdl" => {
                     let (transformed, diagnostics) =
                         device_driver_compiler::transform_kdl(&input, None, &input_path);
@@ -75,14 +72,14 @@ fn accept() {
 
             let stderr = device_driver_tests::compile_output(&output_path);
             let stderr_path = test_case.path().join("stderr.rs.txt");
-            if !stderr.is_empty() {
+            if stderr.is_empty() {
+                let _ = std::fs::remove_file(stderr_path);
+            } else {
                 std::fs::write(
                     stderr_path,
                     device_driver_tests::normalize_test_string(&stderr),
                 )
                 .unwrap();
-            } else {
-                let _ = std::fs::remove_file(stderr_path);
             }
         }
     }

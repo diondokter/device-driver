@@ -87,7 +87,7 @@ fn find_object_addresses<'m>(
 
             match repeat.source {
                 RepeatSource::Count(count) => {
-                    for index in 0..count as i128 {
+                    for index in 0..i128::from(count) {
                         let repeat_offset = index * repeat.stride;
                         let address = total_address_offsets + address.value + repeat_offset;
 

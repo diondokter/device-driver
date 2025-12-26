@@ -1,7 +1,7 @@
 use askama::Template;
 use itertools::Itertools;
 
-use super::*;
+use super::{BlockMethodType, Driver, Field, FieldConversionMethod, Repeat};
 use crate::mir::Access;
 
 #[derive(Template)]

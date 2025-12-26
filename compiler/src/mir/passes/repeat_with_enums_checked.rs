@@ -26,7 +26,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
         }
 
         if let Object::FieldSet(fs) = object {
-            for field in fs.fields.iter() {
+            for field in &fs.fields {
                 if let Some(repeat) = field.repeat.as_ref()
                     && !repeat_is_ok(repeat, manifest, diagnostics)
                 {
@@ -49,7 +49,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
 
         if let Object::FieldSet(fs) = object {
             let fs_id = fs.id();
-            for field in fs.fields.iter_mut() {
+            for field in &mut fs.fields {
                 let field_id = field.id_with(fs_id.clone());
                 if let Some(repeat) = field.repeat.as_mut()
                     && bad_field_repeat.contains(&(id.clone(), field_id))
@@ -66,25 +66,22 @@ fn repeat_is_ok(repeat: &Repeat, manifest: &Manifest, diagnostics: &mut Diagnost
         return true;
     };
 
-    match search_object(manifest, repeat_enum) {
-        Some(Object::Enum(enum_value)) => {
-            if let Some(catch_all) = enum_catch_all(enum_value) {
-                diagnostics.add(RepeatEnumWithCatchAll {
-                    repeat_enum: repeat_enum.span,
-                    enum_name: enum_value.name.span,
-                    catch_all,
-                });
-                false
-            } else {
-                true
-            }
-        }
-        _ => {
-            diagnostics.add(ReferencedObjectDoesNotExist {
-                object_reference: repeat_enum.span,
+    if let Some(Object::Enum(enum_value)) = search_object(manifest, repeat_enum) {
+        if let Some(catch_all) = enum_catch_all(enum_value) {
+            diagnostics.add(RepeatEnumWithCatchAll {
+                repeat_enum: repeat_enum.span,
+                enum_name: enum_value.name.span,
+                catch_all,
             });
             false
+        } else {
+            true
         }
+    } else {
+        diagnostics.add(ReferencedObjectDoesNotExist {
+            object_reference: repeat_enum.span,
+        });
+        false
     }
 }
 

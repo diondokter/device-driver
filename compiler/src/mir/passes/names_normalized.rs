@@ -4,8 +4,8 @@ use crate::mir::{LendingIterator, Manifest, Object, Repeat, RepeatSource};
 
 /// Changes all names of all objects, enums, enum variants and fieldsets to either Pascal case or snake case
 ///
-/// - PascalCase: Object names, enum names, enum variant names
-/// - snake_case: Field names
+/// - `PascalCase`: Object names, enum names, enum variant names
+/// - `snake_case`: Field names
 pub fn run_pass(manifest: &mut Manifest) {
     let mut iter = manifest.iter_objects_with_config_mut();
     while let Some((object, config)) = iter.next() {
@@ -33,7 +33,7 @@ pub fn run_pass(manifest: &mut Manifest) {
         }
 
         if let Object::FieldSet(field_set) = object {
-            for field in field_set.fields.iter_mut() {
+            for field in &mut field_set.fields {
                 field.name.value = snake_converter.convert(&field.name.value);
 
                 if let Some(conversion) = field.field_conversion.as_mut() {
@@ -52,7 +52,7 @@ pub fn run_pass(manifest: &mut Manifest) {
         }
 
         if let Object::Enum(enum_value) = object {
-            for variant in enum_value.variants.iter_mut() {
+            for variant in &mut enum_value.variants {
                 variant.name.value = pascal_converter.convert(&variant.name.value);
             }
         }

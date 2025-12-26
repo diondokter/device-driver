@@ -30,7 +30,7 @@ pub trait FieldSet: Default {
     fn get_inner_buffer_mut(&mut self) -> &mut [u8];
 }
 
-/// The error returned by the generated [TryFrom]s.
+/// The error returned by the generated [`TryFrom`]s.
 /// It contains the base type of the enum.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]

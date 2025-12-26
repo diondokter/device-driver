@@ -50,6 +50,7 @@ pub struct UnexpectedEntries {
 }
 
 impl UnexpectedEntries {
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.superfluous_entries.is_empty()
             && self.unexpected_name_entries.is_empty()
@@ -709,10 +710,10 @@ pub struct AddressOutOfRange {
 )]
 pub struct AddressOverlap {
     pub address: i128,
-    #[label("Object overlaps with other object{}", if let Some(repeat_offset) = repeat_offset_1 { format!(" at repeat offset {repeat_offset}") } else { "".into() })]
+    #[label("Object overlaps with other object{}", if let Some(repeat_offset) = repeat_offset_1 { format!(" at repeat offset {repeat_offset}") } else { String::new() })]
     pub object_1: SourceSpan,
     pub repeat_offset_1: Option<i128>,
-    #[label("Object overlaps with other object{}", if let Some(repeat_offset) = repeat_offset_2 { format!(" at repeat offset {repeat_offset}") } else { "".into() })]
+    #[label("Object overlaps with other object{}", if let Some(repeat_offset) = repeat_offset_2 { format!(" at repeat offset {repeat_offset}") } else { String::new() })]
     pub object_2: SourceSpan,
     pub repeat_offset_2: Option<i128>,
 }

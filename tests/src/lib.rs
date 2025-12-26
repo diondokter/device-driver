@@ -1,4 +1,4 @@
-use std::{ops::Deref, path::Path, sync::LazyLock};
+use std::{path::Path, sync::LazyLock};
 
 use regex::Regex;
 
@@ -15,7 +15,7 @@ pub fn run_test(input_paths: &[&Path], output_path: &Path) {
         let input = std::fs::read_to_string(input_path).unwrap();
 
         let input_extension = input_path.extension().unwrap().display().to_string();
-        let (transformed, diagnostics) = match input_extension.deref() {
+        let (transformed, diagnostics) = match &*input_extension {
             "kdl" => {
                 let (transformed, diagnostics) = device_driver_compiler::transform_kdl(
                     &input,
@@ -72,6 +72,7 @@ pub fn run_test(input_paths: &[&Path], output_path: &Path) {
     }
 }
 
+#[must_use]
 pub fn compile_output(output_path: &Path) -> String {
     let mut cmd = std::process::Command::new("cargo");
 
@@ -89,6 +90,7 @@ pub fn compile_output(output_path: &Path) -> String {
 static DIAGNOSTICS_PATH_SEPARATOR_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new("\\[cases.*:.*:.*\\]").unwrap());
 
+#[must_use]
 pub fn normalize_test_string(val: &str) -> String {
     let val = normalize_paths(val);
     normalize_line_endings(&val)
@@ -96,7 +98,7 @@ pub fn normalize_test_string(val: &str) -> String {
 
 fn normalize_paths(val: &str) -> String {
     DIAGNOSTICS_PATH_SEPARATOR_REGEX
-        .replace_all(val, |caps: &regex::Captures| caps[0].replace("\\", "/"))
+        .replace_all(val, |caps: &regex::Captures| caps[0].replace('\\', "/"))
         .to_string()
 }
 
