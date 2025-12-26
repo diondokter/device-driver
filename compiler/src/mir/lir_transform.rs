@@ -101,10 +101,10 @@ fn get_method(
     manifest: &Manifest,
 ) -> Option<lir::BlockMethod> {
     use convert_case::Casing;
-    let default_word_boundary = Boundary::defaults();
-    let word_boundary = match &global_config.name_word_boundaries {
+    let default_word_boundaries = Boundary::defaults();
+    let word_boundaries = match &global_config.name_word_boundaries {
         Some(name_word_boundaries) => name_word_boundaries.as_slice(),
-        None => default_word_boundary.as_slice(),
+        None => default_word_boundaries.as_slice(),
     };
 
     match object {
@@ -128,7 +128,7 @@ fn get_method(
             Some(lir::BlockMethod {
                 description: description.clone(),
                 name: name
-                    .with_boundaries(word_boundary)
+                    .set_boundaries(word_boundaries)
                     .to_case(convert_case::Case::Snake),
                 address: address_offset.value,
                 allow_address_overlap: false,
@@ -150,7 +150,7 @@ fn get_method(
         }) => Some(lir::BlockMethod {
             description: description.clone(),
             name: name
-                .with_boundaries(word_boundary)
+                .set_boundaries(word_boundaries)
                 .to_case(convert_case::Case::Snake),
             address: address.value,
             allow_address_overlap: *allow_address_overlap,
@@ -183,7 +183,7 @@ fn get_method(
         }) => Some(lir::BlockMethod {
             description: description.clone(),
             name: name
-                .with_boundaries(word_boundary)
+                .set_boundaries(word_boundaries)
                 .to_case(convert_case::Case::Snake),
             address: address.value,
             allow_address_overlap: *allow_address_overlap,
@@ -205,7 +205,7 @@ fn get_method(
         }) => Some(lir::BlockMethod {
             description: description.clone(),
             name: name
-                .with_boundaries(word_boundary)
+                .set_boundaries(word_boundaries)
                 .to_case(convert_case::Case::Snake),
             address: address.value,
             allow_address_overlap: false,

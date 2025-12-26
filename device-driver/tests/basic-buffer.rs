@@ -5,17 +5,8 @@ pub struct DeviceInterface {
     last_val: Vec<u8>,
 }
 
-#[derive(Debug)]
-pub enum Error {}
-
-impl embedded_io::Error for Error {
-    fn kind(&self) -> embedded_io::ErrorKind {
-        todo!()
-    }
-}
-
 impl BufferInterfaceError for DeviceInterface {
-    type Error = Error;
+    type Error = core::convert::Infallible;
 }
 
 impl BufferInterface for DeviceInterface {

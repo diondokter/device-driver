@@ -2,7 +2,7 @@
 
 use std::{
     fs::File,
-    io::{Read, stdout},
+    io::{Read, stderr},
     path::{Path, PathBuf},
 };
 
@@ -60,7 +60,7 @@ pub fn create_device(item: TokenStream) -> TokenStream {
                 Path::new(&kdl_input.span().file()),
             );
 
-            diagnostics.print_to(stdout().lock()).unwrap();
+            diagnostics.print_to(stderr().lock()).unwrap();
 
             output.parse().unwrap()
         }
@@ -89,7 +89,7 @@ pub fn create_device(item: TokenStream) -> TokenStream {
                 let (output, diagnostics) =
                     device_driver_compiler::transform_kdl(&file_contents, None, &path);
 
-                diagnostics.print_to(stdout().lock()).unwrap();
+                diagnostics.print_to(stderr().lock()).unwrap();
 
                 Ok(output)
             })();
