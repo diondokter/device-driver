@@ -33,6 +33,8 @@ use syn::LitStr;
 /// ```
 #[proc_macro]
 pub fn create_device(item: TokenStream) -> TokenStream {
+    device_driver_compiler::reporting::set_miette_hook(true);
+
     let input = match syn::parse::<Input>(item) {
         Ok(i) => i,
         Err(e) => return e.into_compile_error().into(),
