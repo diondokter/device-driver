@@ -1,18 +1,21 @@
-use std::{fmt::Display, rc::Rc};
+use std::{fmt::Display, sync::Arc};
 
 use convert_case::{Boundary, Case};
 use itertools::Itertools;
+
+#[cfg(test)]
+use crate::mir::Spanned;
 
 /// A strucure that holds the name data of objects
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Identifier {
     original: String,
-    words: Rc<[String]>,
+    words: Arc<[String]>,
 }
 
 impl Identifier {
     /// Try parse a string as an identifier
-    pub fn try_parse(value: &str, boundaries: Option<&[Boundary]>) -> Result<Self, Error> {
+    pub fn try_parse(value: &str, boundaries: &[Boundary]) -> Result<Self, Error> {
         if value.is_empty() {
             return Err(Error::Empty);
         }
@@ -28,8 +31,6 @@ impl Identifier {
             }
         }
 
-        let default_boundaries = Boundary::defaults();
-        let boundaries = boundaries.unwrap_or(&default_boundaries);
         let mut words = convert_case::split(&value, boundaries);
         words.retain(|word| !word.is_empty());
         let mut words = words.into_iter().map(String::from).collect_vec();
@@ -71,6 +72,22 @@ impl Identifier {
     }
 }
 
+#[cfg(test)]
+impl From<&str> for Identifier {
+    fn from(value: &str) -> Self {
+        Identifier::try_parse(value, &[]).unwrap()
+    }
+}
+
+#[cfg(test)]
+impl From<&str> for Spanned<Identifier> {
+    fn from(value: &str) -> Self {
+        use crate::mir::Span;
+
+        Identifier::from(value).with_dummy_span()
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {
     Empty,
@@ -98,61 +115,61 @@ mod tests {
 
     #[test]
     fn simple_cases() {
-        assert_eq!(Identifier::try_parse("", None), Err(Error::Empty));
+        assert_eq!(Identifier::try_parse("", &[]), Err(Error::Empty));
         assert_eq!(
-            Identifier::try_parse("1", None),
+            Identifier::try_parse("1", &[]),
             Err(Error::InvalidCharacter(0, '1'))
         );
         assert_eq!(
-            Identifier::try_parse("_1", Some(&[Boundary::Underscore]))
+            Identifier::try_parse("_1", &[Boundary::Underscore])
                 .unwrap()
                 .to_case(Case::Kebab),
             "_1"
         );
         assert_eq!(
-            Identifier::try_parse("a1", Some(&[Boundary::Underscore]))
+            Identifier::try_parse("a1", &[Boundary::Underscore])
                 .unwrap()
                 .to_case(Case::Kebab),
             "a1"
         );
         assert_eq!(
-            Identifier::try_parse("a_1", Some(&[Boundary::Underscore]))
+            Identifier::try_parse("a_1", &[Boundary::Underscore])
                 .unwrap()
                 .to_case(Case::Kebab),
             "a-1"
         );
         assert_eq!(
-            Identifier::try_parse("😈", None),
+            Identifier::try_parse("😈", &[]),
             Err(Error::InvalidCharacter(0, '😈'))
         );
         assert_eq!(
-            Identifier::try_parse("abc😈", None),
+            Identifier::try_parse("abc😈", &[]),
             Err(Error::InvalidCharacter(3, '😈'))
         );
         assert_eq!(
-            Identifier::try_parse("_", Some(&[Boundary::Space]))
+            Identifier::try_parse("_", &[Boundary::Space])
                 .unwrap()
                 .to_case(Case::Kebab),
             "_"
         );
         assert_eq!(
-            Identifier::try_parse("_", Some(&[Boundary::Underscore]))
+            Identifier::try_parse("_", &[Boundary::Underscore])
                 .unwrap()
                 .to_case(Case::Kebab),
             "_"
         );
         assert_eq!(
-            Identifier::try_parse("abc def", None),
+            Identifier::try_parse("abc def", &[]),
             Err(Error::InvalidCharacter(3, ' '))
         );
         assert_eq!(
-            Identifier::try_parse("abc_def", Some(&[Boundary::Underscore]))
+            Identifier::try_parse("abc_def", &[Boundary::Underscore])
                 .unwrap()
                 .to_case(Case::Kebab),
             "abc-def"
         );
         assert_eq!(
-            Identifier::try_parse("_abc_def", Some(&[Boundary::Underscore]))
+            Identifier::try_parse("_abc_def", &[Boundary::Underscore])
                 .unwrap()
                 .to_case(Case::Kebab),
             "_abc-def"
@@ -161,8 +178,8 @@ mod tests {
 
     #[test]
     fn concat() {
-        let id1 = Identifier::try_parse("abc_def", Some(&[Boundary::Underscore])).unwrap();
-        let id2 = Identifier::try_parse("ghi_jkl", Some(&[Boundary::Underscore])).unwrap();
+        let id1 = Identifier::try_parse("abc_def", &[Boundary::Underscore]).unwrap();
+        let id2 = Identifier::try_parse("ghi_jkl", &[Boundary::Underscore]).unwrap();
 
         let id3 = id1.concat(id2);
         assert_eq!(id3.to_case(Case::Kebab), "abc-def-ghi-jkl");

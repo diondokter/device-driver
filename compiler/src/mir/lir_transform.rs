@@ -1,8 +1,9 @@
 use std::ops::Add;
 
-use convert_case::Boundary;
+use convert_case::Case;
 
 use crate::{
+    identifier::Identifier,
     lir,
     mir::{self, Manifest, Object},
 };
@@ -35,7 +36,7 @@ fn transform_devices(manifest: &mir::Manifest) -> Vec<lir::Device> {
                         } else {
                             format!("{}\n\n", device.description)
                         },
-                        device.name,
+                        device.name.to_case(Case::Pascal),
                     ),
                     name: &device.name,
                     address_offset: &0,
@@ -100,13 +101,6 @@ fn get_method(
     global_config: &mir::DeviceConfig,
     manifest: &Manifest,
 ) -> Option<lir::BlockMethod> {
-    use convert_case::Casing;
-    let default_word_boundaries = Boundary::defaults();
-    let word_boundaries = match &global_config.name_word_boundaries {
-        Some(name_word_boundaries) => name_word_boundaries.as_slice(),
-        None => default_word_boundaries.as_slice(),
-    };
-
     match object {
         mir::Object::Device(_) => None,
         mir::Object::Block(
@@ -127,33 +121,27 @@ fn get_method(
 
             Some(lir::BlockMethod {
                 description: description.clone(),
-                name: name
-                    .set_boundaries(word_boundaries)
-                    .to_case(convert_case::Case::Snake),
+                name: name.value.clone(),
                 address: address_offset.value,
-                allow_address_overlap: false,
                 repeat: repeat_to_method_kind(repeat, manifest),
                 method_type: lir::BlockMethodType::Block {
-                    name: name.to_string(),
+                    name: name.value.clone(),
                 },
             })
         }
         mir::Object::Register(mir::Register {
             description,
             name,
-            allow_address_overlap,
             address,
             access,
             repeat,
             field_set_ref: field_set,
             reset_value,
+            ..
         }) => Some(lir::BlockMethod {
             description: description.clone(),
-            name: name
-                .set_boundaries(word_boundaries)
-                .to_case(convert_case::Case::Snake),
+            name: name.value.clone(),
             address: address.value,
-            allow_address_overlap: *allow_address_overlap,
             repeat: repeat_to_method_kind(repeat, manifest),
             method_type: lir::BlockMethodType::Register {
                 field_set_name: field_set.0.clone(),
@@ -174,7 +162,6 @@ fn get_method(
         mir::Object::Command(mir::Command {
             description,
             name,
-            allow_address_overlap,
             address,
             repeat,
             field_set_ref_in: field_set_in,
@@ -182,11 +169,8 @@ fn get_method(
             ..
         }) => Some(lir::BlockMethod {
             description: description.clone(),
-            name: name
-                .set_boundaries(word_boundaries)
-                .to_case(convert_case::Case::Snake),
+            name: name.value.clone(),
             address: address.value,
-            allow_address_overlap: *allow_address_overlap,
             repeat: repeat_to_method_kind(repeat, manifest),
             method_type: lir::BlockMethodType::Command {
                 field_set_name_in: field_set_in.as_ref().map(|fs_in| fs_in.0.clone()),
@@ -204,11 +188,8 @@ fn get_method(
             address,
         }) => Some(lir::BlockMethod {
             description: description.clone(),
-            name: name
-                .set_boundaries(word_boundaries)
-                .to_case(convert_case::Case::Snake),
+            name: name.value.clone(),
             address: address.value,
-            allow_address_overlap: false,
             repeat: lir::Repeat::None, // Buffers can't be repeated (for now?)
             method_type: lir::BlockMethodType::Buffer {
                 access: *access,
@@ -371,7 +352,7 @@ fn transform_enums(manifest: &mir::Manifest) -> Vec<lir::Enum> {
 
                 lir::EnumVariant {
                     description: description.clone(),
-                    name: name.to_string(),
+                    name: name.value.clone(),
                     discriminant,
                     default: matches!(value, mir::EnumValue::Default),
                     catch_all: matches!(value, mir::EnumValue::CatchAll),
@@ -381,7 +362,7 @@ fn transform_enums(manifest: &mir::Manifest) -> Vec<lir::Enum> {
 
         lir::Enum {
             description: description.clone(),
-            name: name.to_string(),
+            name: name.value.clone(),
             base_type,
             variants,
             defmt_feature: config.defmt_feature.clone(),
@@ -420,7 +401,7 @@ fn repeat_to_method_kind(repeat: &Option<mir::Repeat>, manifest: &Manifest) -> l
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BorrowedBlock<'o> {
     pub description: &'o String,
-    pub name: &'o String,
+    pub name: &'o Identifier,
     pub address_offset: &'o i128,
     pub repeat: &'o Option<mir::Repeat>,
     pub objects: &'o [mir::Object],

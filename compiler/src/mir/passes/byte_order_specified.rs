@@ -34,16 +34,16 @@ mod tests {
     fn well_enough_specified() {
         let mut input = Device {
             description: String::new(),
-            name: "Device".to_owned().with_dummy_span(),
+            name: "Device".into(),
             device_config: Default::default(),
             objects: vec![
                 Object::FieldSet(FieldSet {
-                    name: "MyRegister".to_owned().with_dummy_span(),
+                    name: "MyRegister".into(),
                     size_bits: 8.with_dummy_span(),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
-                    name: "MyRegister2".to_owned().with_dummy_span(),
+                    name: "MyRegister2".into(),
                     size_bits: 9.with_dummy_span(),
                     byte_order: Some(ByteOrder::LE),
                     ..Default::default()
@@ -61,10 +61,10 @@ mod tests {
     fn not_enough_specified() {
         let mut input = Device {
             description: String::new(),
-            name: "Device".to_owned().with_dummy_span(),
+            name: "Device".into(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
-                name: "MyRegister".to_owned().with_dummy_span(),
+                name: "MyRegister".into(),
                 size_bits: 9.with_dummy_span(),
                 ..Default::default()
             })],
@@ -85,10 +85,10 @@ mod tests {
 
         let mut input = Device {
             description: String::new(),
-            name: "Device".to_owned().with_dummy_span(),
+            name: "Device".into(),
             device_config: global_config,
             objects: vec![Object::FieldSet(FieldSet {
-                name: "MyRegister".to_owned().with_dummy_span(),
+                name: "MyRegister".into(),
                 size_bits: 9.with_dummy_span(),
                 ..Default::default()
             })],

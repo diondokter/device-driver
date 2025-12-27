@@ -1,8 +1,9 @@
 use askama::Template;
+use convert_case::Case;
 use itertools::Itertools;
 
 use super::{BlockMethodType, Driver, Field, FieldConversionMethod, Repeat};
-use crate::mir::Access;
+use crate::{identifier::Identifier, mir::Access};
 
 #[derive(Template)]
 #[template(path = "rust/device.rs.j2", escape = "none", whitespace = "minimize")]
@@ -33,7 +34,11 @@ fn get_defmt_fmt_string(field: &Field) -> String {
         _ => String::new(),
     };
 
-    format!("{}: {{{}}}, ", field.name, defmt_type_hint)
+    format!(
+        "{}: {{{}}}, ",
+        field.name.to_case(Case::Snake),
+        defmt_type_hint
+    )
 }
 
 fn get_command_fieldset_name(fieldset: &Option<String>) -> String {
@@ -43,11 +48,11 @@ fn get_command_fieldset_name(fieldset: &Option<String>) -> String {
     }
 }
 
-fn get_enum_base_type<'d>(driver: &'d Driver, enum_name: &str) -> &'d str {
+fn get_enum_base_type<'d>(driver: &'d Driver, enum_name: &Identifier) -> &'d str {
     &driver
         .enums
         .iter()
-        .find(|e| e.name == enum_name)
+        .find(|e| e.name == *enum_name)
         .expect("This enum reference is checked in a mir pass")
         .base_type
 }

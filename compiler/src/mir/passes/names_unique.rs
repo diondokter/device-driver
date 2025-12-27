@@ -89,15 +89,15 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".to_owned().with_dummy_span(),
+            name: "Device".into(),
             device_config: global_config,
             objects: vec![
                 Object::Buffer(Buffer {
-                    name: "MyBuffer".to_owned().with_dummy_span(),
+                    name: "MyBuffer".into(),
                     ..Default::default()
                 }),
                 Object::Buffer(Buffer {
-                    name: "MyBuffer".to_owned().with_dummy_span(),
+                    name: "MyBuffer".into(),
                     ..Default::default()
                 }),
             ],
@@ -118,17 +118,17 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".to_owned().with_dummy_span(),
+            name: "Device".into(),
             device_config: global_config,
             objects: vec![Object::FieldSet(FieldSet {
-                name: "Reg".to_owned().with_dummy_span(),
+                name: "Reg".into(),
                 fields: vec![
                     Field {
-                        name: "field".to_owned().with_dummy_span(),
+                        name: "field".into(),
                         ..Default::default()
                     },
                     Field {
-                        name: "field".to_owned().with_dummy_span(),
+                        name: "field".into(),
                         ..Default::default()
                     },
                 ],
@@ -151,17 +151,17 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".to_owned().with_dummy_span(),
+            name: "Device".into(),
             device_config: global_config,
             objects: vec![Object::Enum(Enum {
-                name: "Enum".to_owned().with_dummy_span(),
+                name: "Enum".into(),
                 variants: vec![
                     EnumVariant {
-                        name: "Variant".to_owned().with_dummy_span(),
+                        name: "Variant".into(),
                         ..Default::default()
                     },
                     EnumVariant {
-                        name: "Variant".to_owned().with_dummy_span(),
+                        name: "Variant".into(),
                         ..Default::default()
                     },
                 ],

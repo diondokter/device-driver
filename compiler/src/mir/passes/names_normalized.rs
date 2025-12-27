@@ -79,29 +79,29 @@ mod tests {
 
         let mut start_mir: Manifest = Device {
             description: String::new(),
-            name: "Device".to_owned().with_dummy_span(),
+            name: "Device".into(),
             device_config: global_config.clone(),
             objects: vec![
                 Object::Register(Register {
-                    name: "my-reGister".to_owned().with_dummy_span(),
+                    name: "my-reGister".into(),
                     field_set_ref: crate::mir::FieldSetRef("my-fieldseT".into()),
                     ..Default::default()
                 }),
                 Object::Buffer(Buffer {
-                    name: "my-buffer".to_owned().with_dummy_span(),
+                    name: "my-buffer".into(),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
-                    name: "my-fieldseT".to_owned().with_dummy_span(),
+                    name: "my-fieldseT".into(),
                     fields: vec![
                         Field {
-                            name: "my-fielD".to_owned().with_dummy_span(),
+                            name: "my-fielD".into(),
                             ..Default::default()
                         },
                         Field {
-                            name: "my-fielD2".to_owned().with_dummy_span(),
+                            name: "my-fielD2".into(),
                             field_conversion: Some(FieldConversion {
-                                type_name: "mY-enum".to_owned().with_dummy_span(),
+                                type_name: "mY-enum".into(),
                                 use_try: false,
                             }),
                             ..Default::default()
@@ -110,9 +110,9 @@ mod tests {
                     ..Default::default()
                 }),
                 Object::Enum(Enum {
-                    name: "mY-enum".to_owned().with_dummy_span(),
+                    name: "mY-enum".into(),
                     variants: vec![EnumVariant {
-                        name: "eNum-Variant".to_owned().with_dummy_span(),
+                        name: "eNum-Variant".into(),
                         ..Default::default()
                     }],
                     ..Default::default()
@@ -123,29 +123,29 @@ mod tests {
 
         let end_mir: Manifest = Device {
             description: String::new(),
-            name: "Device".to_owned().with_dummy_span(),
+            name: "Device".into(),
             device_config: global_config,
             objects: vec![
                 Object::Register(Register {
-                    name: "MyRegister".to_owned().with_dummy_span(),
+                    name: "MyRegister".into(),
                     field_set_ref: crate::mir::FieldSetRef("MyFieldset".into()),
                     ..Default::default()
                 }),
                 Object::Buffer(Buffer {
-                    name: "MyBuffer".to_owned().with_dummy_span(),
+                    name: "MyBuffer".into(),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
-                    name: "MyFieldset".to_owned().with_dummy_span(),
+                    name: "MyFieldset".into(),
                     fields: vec![
                         Field {
-                            name: "my_field".to_owned().with_dummy_span(),
+                            name: "my_field".into(),
                             ..Default::default()
                         },
                         Field {
-                            name: "my_field2".to_owned().with_dummy_span(),
+                            name: "my_field2".into(),
                             field_conversion: Some(FieldConversion {
-                                type_name: "MyEnum".to_owned().with_dummy_span(),
+                                type_name: "MyEnum".into(),
                                 use_try: false,
                             }),
                             ..Default::default()
@@ -154,9 +154,9 @@ mod tests {
                     ..Default::default()
                 }),
                 Object::Enum(Enum {
-                    name: "MyEnum".to_owned().with_dummy_span(),
+                    name: "MyEnum".into(),
                     variants: vec![EnumVariant {
-                        name: "EnumVariant".to_owned().with_dummy_span(),
+                        name: "EnumVariant".into(),
                         ..Default::default()
                     }],
                     ..Default::default()
