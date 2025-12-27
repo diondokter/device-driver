@@ -1,6 +1,9 @@
 use std::ops::Range;
 
-use crate::mir::{self, Access, BitOrder, ByteOrder, Integer};
+use crate::{
+    identifier::Identifier,
+    mir::{self, Access, BitOrder, ByteOrder, Integer},
+};
 
 pub mod code_transform;
 
@@ -20,16 +23,14 @@ pub struct Block {
     pub description: String,
     /// True for the root (top-level) block
     pub root: bool,
-    pub name: String,
+    pub name: Identifier,
     pub methods: Vec<BlockMethod>,
 }
 
 pub struct BlockMethod {
     pub description: String,
-    pub name: String,
+    pub name: Identifier,
     pub address: i128,
-    // Only used for LIR passes, not codegen
-    pub allow_address_overlap: bool,
     pub repeat: Repeat,
     pub method_type: BlockMethodType,
 }
@@ -41,25 +42,25 @@ pub enum Repeat {
         stride: i128,
     },
     Enum {
-        enum_name: String,
-        enum_variants: Vec<String>,
+        enum_name: Identifier,
+        enum_variants: Vec<Identifier>,
         stride: i128,
     },
 }
 
 pub enum BlockMethodType {
     Block {
-        name: String,
+        name: Identifier,
     },
     Register {
-        field_set_name: String,
+        field_set_name: Identifier,
         access: Access,
         address_type: Integer,
         reset_value: Option<Vec<u8>>,
     },
     Command {
-        field_set_name_in: Option<String>,
-        field_set_name_out: Option<String>,
+        field_set_name_in: Option<Identifier>,
+        field_set_name_out: Option<Identifier>,
         address_type: Integer,
     },
     Buffer {
@@ -71,7 +72,7 @@ pub enum BlockMethodType {
 /// A set of fields, like a register or command in/out
 pub struct FieldSet {
     pub description: String,
-    pub name: String,
+    pub name: Identifier,
     pub byte_order: ByteOrder,
     pub bit_order: BitOrder,
     pub size_bits: u32,
@@ -87,7 +88,7 @@ impl FieldSet {
 
 pub struct Field {
     pub description: String,
-    pub name: String,
+    pub name: Identifier,
     pub address: Range<u32>,
     pub base_type: String,
     pub conversion_method: FieldConversionMethod,
@@ -97,14 +98,14 @@ pub struct Field {
 
 pub enum FieldConversionMethod {
     None,
-    Into(String),
-    UnsafeInto(String),
-    TryInto(String),
+    Into(Identifier),
+    UnsafeInto(Identifier),
+    TryInto(Identifier),
     Bool,
 }
 
 impl FieldConversionMethod {
-    pub fn conversion_type(&self) -> Option<&String> {
+    pub fn conversion_type(&self) -> Option<&Identifier> {
         match self {
             FieldConversionMethod::None => None,
             FieldConversionMethod::Into(type_path) => Some(type_path),
@@ -117,7 +118,7 @@ impl FieldConversionMethod {
 
 pub struct Enum {
     pub description: String,
-    pub name: String,
+    pub name: Identifier,
     pub base_type: String,
     pub variants: Vec<EnumVariant>,
     pub defmt_feature: Option<String>,
@@ -135,7 +136,7 @@ impl Enum {
 
 pub struct EnumVariant {
     pub description: String,
-    pub name: String,
+    pub name: Identifier,
     pub discriminant: i128,
     pub default: bool,
     pub catch_all: bool,

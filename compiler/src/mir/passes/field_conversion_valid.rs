@@ -68,21 +68,22 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
 
                                         if field_bits > enum_bits {
                                             diagnostics.add(InvalidInfallibleConversion {
-                                            conversion: conversion.type_name.span,
-                                            context: vec![
-                                                    LabeledSpan::new_with_span(
-                                                        Some(format!(
-                                                            "The field has a size of {field_bits} bits"
-                                                        )),
-                                                        field.field_address.span,
-                                                    ),
-                                                    LabeledSpan::new_with_span(
-                                                        Some(format!(
-                                                            "Target enum only has a size of {enum_bits} bits. This means not all possible field values can be converted to an enum"
-                                                        )),
-                                                        target_enum.name.span,
-                                                    ),
-                                                ],existing_type_specifier_content: field.get_type_specifier_string()
+                                                conversion: conversion.type_name.span,
+                                                context: vec![
+                                                        LabeledSpan::new_with_span(
+                                                            Some(format!(
+                                                                "The field has a size of {field_bits} bits"
+                                                            )),
+                                                            field.field_address.span,
+                                                        ),
+                                                        LabeledSpan::new_with_span(
+                                                            Some(format!(
+                                                                "Target enum only has a size of {enum_bits} bits. This means not all possible field values can be converted to an enum"
+                                                            )),
+                                                            target_enum.name.span,
+                                                        ),
+                                                    ],
+                                                existing_type_specifier_content: field.get_type_specifier_string()
                                             });
                                             removals.insert(field.id_with(field_set.id()));
                                             continue;

@@ -1,11 +1,13 @@
 use std::{collections::HashMap, str::FromStr};
 
+use convert_case::Boundary;
 use itertools::Itertools;
 use kdl::{KdlDocument, KdlIdentifier, KdlNode, KdlValue};
 use miette::SourceSpan;
 use strum::VariantNames;
 
 use crate::{
+    identifier::Identifier,
     mir::{
         Access, BaseType, BitOrder, Block, Buffer, ByteOrder, Command, Device, DeviceConfig, Enum,
         EnumValue, EnumVariant, Extern, Field, FieldConversion, FieldSet, FieldSetRef, Integer,
@@ -102,6 +104,13 @@ fn transform_manifest(manifest_document: &KdlDocument, diagnostics: &mut Diagnos
 fn transform_device(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Device> {
     let (device_name, device_name_span) = parse_single_string_entry(node, diagnostics, None, true);
     let (device_name, device_name_span) = (device_name?, device_name_span?);
+
+    let device_name = match Identifier::try_parse(&device_name) {
+        Ok(id) => id,
+        Err(e) => {
+            todo!("Emit diagnostic for: {e}");
+        }
+    };
 
     let mut device = Device {
         description: parse_description(node),
@@ -214,6 +223,13 @@ fn transform_block(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Bloc
         return None;
     };
 
+    let name = match Identifier::try_parse(&name) {
+        Ok(id) => id,
+        Err(e) => {
+            todo!("Emit diagnostic for: {e}");
+        }
+    };
+
     let mut block_objects = Vec::new();
     let mut offset = None;
     let mut repeat = None;
@@ -279,6 +295,13 @@ fn transform_register(
     let (Some(name), Some(name_span)) = parse_single_string_entry(node, diagnostics, None, true)
     else {
         return (None, None, Vec::new());
+    };
+
+    let name = match Identifier::try_parse(&name) {
+        Ok(id) => id,
+        Err(e) => {
+            todo!("Emit diagnostic for: {e}");
+        }
     };
 
     let mut inline_enums = Vec::new();
@@ -362,8 +385,17 @@ fn transform_register(
                     continue;
                 }
 
-                let (fs, mut enums) =
-                    transform_field_set(child, diagnostics, Some(format!("{name}FieldSet")));
+                let (fs, mut enums) = transform_field_set(
+                    child,
+                    diagnostics,
+                    Some(
+                        name.clone().concat(
+                            Identifier::try_parse("field_set")
+                                .unwrap()
+                                .apply_boundaries(&[Boundary::Underscore]),
+                        ),
+                    ),
+                );
 
                 field_set = fs.map(|val| (val, child.name().span()));
                 inline_enums.append(&mut enums);
@@ -430,6 +462,13 @@ fn transform_command(
         return (None, Vec::new(), Vec::new());
     };
 
+    let name = match Identifier::try_parse(&name) {
+        Ok(id) => id,
+        Err(e) => {
+            todo!("Emit diagnostic for: {e}");
+        }
+    };
+
     let mut inline_enums = Vec::new();
 
     let mut allow_address_overlap = None;
@@ -486,8 +525,17 @@ fn transform_command(
                     continue;
                 }
 
-                let (fs, mut enums) =
-                    transform_field_set(child, diagnostics, Some(format!("{name}FieldSetIn")));
+                let (fs, mut enums) = transform_field_set(
+                    child,
+                    diagnostics,
+                    Some(
+                        name.clone().concat(
+                            Identifier::try_parse("field_set_in")
+                                .unwrap()
+                                .apply_boundaries(&[Boundary::Underscore]),
+                        ),
+                    ),
+                );
 
                 field_set_in = fs.map(|val| (val, child.name().span()));
                 inline_enums.append(&mut enums);
@@ -501,8 +549,17 @@ fn transform_command(
                     continue;
                 }
 
-                let (fs, mut enums) =
-                    transform_field_set(child, diagnostics, Some(format!("{name}FieldSetOut")));
+                let (fs, mut enums) = transform_field_set(
+                    child,
+                    diagnostics,
+                    Some(
+                        name.clone().concat(
+                            Identifier::try_parse("field_set_out")
+                                .unwrap()
+                                .apply_boundaries(&[Boundary::Underscore]),
+                        ),
+                    ),
+                );
 
                 field_set_out = fs.map(|val| (val, child.name().span()));
                 inline_enums.append(&mut enums);
@@ -570,6 +627,13 @@ fn transform_buffer(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Buf
     let (Some(name), Some(name_span)) = parse_single_string_entry(node, diagnostics, None, true)
     else {
         return None;
+    };
+
+    let name = match Identifier::try_parse(&name) {
+        Ok(id) => id,
+        Err(e) => {
+            todo!("Emit diagnostic for: {e}");
+        }
     };
 
     let mut access = None;
@@ -704,7 +768,7 @@ fn transform_device_config_node(
 fn transform_field_set(
     node: &KdlNode,
     diagnostics: &mut Diagnostics,
-    default_name: Option<String>,
+    default_name: Option<Identifier>,
 ) -> (Option<FieldSet>, Vec<Enum>) {
     let mut inline_enums = Vec::new();
 
@@ -801,6 +865,13 @@ fn transform_field_set(
     if let Some(name) = name {
         match name.value() {
             KdlValue::String(name_value) => {
+                let name_value = match Identifier::try_parse(&name_value) {
+                    Ok(id) => id,
+                    Err(e) => {
+                        todo!("Emit diagnostic for: {e}");
+                    }
+                };
+
                 field_set.name = name_value.clone().with_span(name.span());
             }
             _ => {
@@ -1068,10 +1139,17 @@ fn transform_field(node: &KdlNode, diagnostics: &mut Diagnostics) -> (Option<Fie
         return (None, inline_enum);
     }
 
+    let name = match Identifier::try_parse(&node.name().value()) {
+        Ok(id) => id,
+        Err(e) => {
+            todo!("Emit diagnostic for: {e}");
+        }
+    };
+
     (
         Some(Field {
             description: parse_description(node),
-            name: (node.name().value().to_owned(), node.name().span()).into(),
+            name: (name, node.name().span()).into(),
             access: access.map(|(a, _)| a).unwrap_or_default(),
             base_type,
             field_conversion,
@@ -1101,7 +1179,7 @@ fn transform_enum(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Enum>
 
     let mut enum_value = Enum::new(
         parse_description(node),
-        String::new().with_dummy_span(),
+        Identifier::default().with_dummy_span(),
         node.children()
             .map(|children| transform_enum_variants(children, diagnostics))
             .unwrap_or_default(),
@@ -1148,6 +1226,13 @@ fn transform_enum(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Enum>
     if let Some(name) = name {
         match name.value() {
             KdlValue::String(name_value) => {
+                let name_value = match Identifier::try_parse(&name_value) {
+                    Ok(id) => id,
+                    Err(e) => {
+                        todo!("Emit diagnostic for: {e}");
+                    }
+                };
+
                 enum_value.name = name_value.clone().with_span(name.span());
             }
             _ => {
@@ -1244,12 +1329,16 @@ fn transform_enum_variants(nodes: &KdlDocument, diagnostics: &mut Diagnostics) -
                 None => EnumValue::Unspecified,
             };
 
+            let name = match Identifier::try_parse(&variant_name.value()) {
+                Ok(id) => id,
+                Err(e) => {
+                    todo!("Emit diagnostic for: {e}");
+                }
+            };
+
             Some(EnumVariant {
                 description: parse_description(node),
-                name: variant_name
-                    .value()
-                    .to_string()
-                    .with_span(variant_name.span()),
+                name: name.with_span(variant_name.span()),
                 value: variant_value,
             })
         })
@@ -1321,6 +1410,13 @@ fn transform_extern(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Ext
     if let Some(name) = name {
         match name.value() {
             KdlValue::String(name_value) => {
+                let name_value = match Identifier::try_parse(&name_value) {
+                    Ok(id) => id,
+                    Err(e) => {
+                        todo!("Emit diagnostic for: {e}");
+                    }
+                };
+
                 extern_value.name = name_value.clone().with_span(name.span());
             }
             _ => {
@@ -1362,12 +1458,17 @@ fn parse_type(
     if let Some((base_type, conversion)) = ty_str.split_once(':') {
         base_type_str = base_type;
 
+        let use_try = conversion.ends_with('?');
+        let conversion = match Identifier::try_parse(&conversion.trim_end_matches('?')) {
+            Ok(id) => id,
+            Err(e) => {
+                todo!("Emit diagnostic for: {e}");
+            }
+        };
+
         field_conversion = Some(FieldConversion {
-            type_name: conversion
-                .trim_end_matches('?')
-                .to_owned()
-                .with_span(ty.span()),
-            use_try: conversion.ends_with('?'),
+            type_name: conversion.with_span(ty.span()),
+            use_try,
         });
     } else {
         base_type_str = ty_str;
@@ -1431,7 +1532,16 @@ fn parse_repeat_entries(
         match (entry.name().map(kdl::KdlIdentifier::value), entry.value()) {
             (Some("count"), KdlValue::Integer(val)) => count = Some((*val, entry.span())),
             (Some("stride"), KdlValue::Integer(val)) => stride = Some((*val, entry.span())),
-            (Some("with"), KdlValue::String(val)) => with = Some((val.clone(), entry.span())),
+            (Some("with"), KdlValue::String(val)) => {
+                let val = match Identifier::try_parse(&val) {
+                    Ok(id) => id,
+                    Err(e) => {
+                        todo!("Emit diagnostic for: {e}");
+                    }
+                };
+
+                with = Some((val, entry.span()))
+            }
             (Some("count" | "stride"), _) => diagnostics.add(errors::UnexpectedType {
                 value_name: entry.span(),
                 expected_type: "integer",

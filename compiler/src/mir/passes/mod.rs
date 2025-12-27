@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
+    identifier::Identifier,
     mir::{Device, LendingIterator, Manifest, RepeatSource, Unique, UniqueId},
     reporting::Diagnostics,
 };
@@ -51,7 +52,7 @@ pub fn run_passes(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> mie
     Ok(())
 }
 
-pub(crate) fn search_object<'o>(manifest: &'o Manifest, name: &str) -> Option<&'o Object> {
+pub(crate) fn search_object<'o>(manifest: &'o Manifest, name: &Identifier) -> Option<&'o Object> {
     manifest.iter_objects().find(|o| o.name() == name)
 }
 

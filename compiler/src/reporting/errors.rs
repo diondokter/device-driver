@@ -235,7 +235,7 @@ impl OnlyBaseTypeAllowed {
     fn conversion_text(&self) -> String {
         format!(
             "{}{}",
-            self.field_conversion.type_name,
+            self.field_conversion.type_name.original(),
             if self.field_conversion.use_try {
                 "?"
             } else {
