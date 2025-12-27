@@ -1,11 +1,6 @@
-use convert_case::Case;
-
 use crate::mir::{LendingIterator, Manifest, Object, Repeat, RepeatSource};
 
-/// Changes all names of all objects, enums, enum variants and fieldsets to either Pascal case or snake case
-///
-/// - `PascalCase`: Object names, enum names, enum variant names
-/// - `snake_case`: Field names
+/// Applies the boundaries to all identifiers
 pub fn run_pass(manifest: &mut Manifest) {
     let mut iter = manifest.iter_objects_with_config_mut();
     while let Some((object, config)) = iter.next() {
@@ -19,26 +14,18 @@ pub fn run_pass(manifest: &mut Manifest) {
             .as_deref()
             .unwrap_or(&const { convert_case::Boundary::defaults() });
 
-        let pascal_converter = convert_case::Converter::new()
-            .set_boundaries(boundaries)
-            .to_case(Case::Pascal);
-        let snake_converter = convert_case::Converter::new()
-            .set_boundaries(boundaries)
-            .to_case(Case::Snake);
-
-        *object.name_mut() = pascal_converter.convert(object.name_mut());
+        object.name_mut().apply_boundaries(boundaries);
 
         for fs_name in object.field_set_refs_mut() {
-            fs_name.0 = pascal_converter.convert(fs_name.0.clone());
+            fs_name.0.apply_boundaries(boundaries);
         }
 
         if let Object::FieldSet(field_set) = object {
             for field in &mut field_set.fields {
-                field.name.value = snake_converter.convert(&field.name.value);
+                field.name.apply_boundaries(boundaries);
 
                 if let Some(conversion) = field.field_conversion.as_mut() {
-                    conversion.type_name.value =
-                        pascal_converter.convert(&conversion.type_name.value);
+                    conversion.type_name.apply_boundaries(boundaries);
                 }
 
                 if let Some(Repeat {
@@ -46,14 +33,14 @@ pub fn run_pass(manifest: &mut Manifest) {
                     ..
                 }) = field.repeat.as_mut()
                 {
-                    name.value = pascal_converter.convert(&name.value);
+                    name.apply_boundaries(boundaries);
                 }
             }
         }
 
         if let Object::Enum(enum_value) = object {
             for variant in &mut enum_value.variants {
-                variant.name.value = pascal_converter.convert(&variant.name.value);
+                variant.name.apply_boundaries(boundaries);
             }
         }
     }
@@ -65,7 +52,7 @@ mod tests {
 
     use crate::mir::{
         Buffer, Device, DeviceConfig, Enum, EnumVariant, Field, FieldConversion, FieldSet, Object,
-        Register, Span,
+        Register,
     };
 
     use super::*;

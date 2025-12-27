@@ -3,7 +3,10 @@ use std::{
     hash::{DefaultHasher, Hash, Hasher},
 };
 
+use convert_case::Boundary;
+
 use crate::{
+    identifier::Identifier,
     mir::{Enum, LendingIterator, Manifest, Object, Unique},
     reporting::{Diagnostics, errors::DuplicateName},
 };
@@ -24,7 +27,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
 
             // Duplicate name found. Let's add to the name to make it unique again so it can contribute to later passes
             let extension = get_extension(object, object_index);
-            object.name_mut().push_str(&extension);
+            *object.name_mut() = object.name_mut().clone().concat(&extension);
         }
 
         if let Object::FieldSet(field_set) = object {
@@ -39,7 +42,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
 
                     // Duplicate name found. Let's add to the name to make it unique again so it can contribute to later passes
                     let extension = get_extension(field, field_index);
-                    field.name.push_str(&extension);
+                    field.name.value = field.name.value.clone().concat(&extension);
                 }
             }
         }
@@ -56,7 +59,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
 
                     // Duplicate name found. Let's add to the name to make it unique again so it can contribute to later passes
                     let extension = get_extension(variant, variant_index);
-                    variant.name.push_str(&extension);
+                    variant.name.value = variant.name.value.clone().concat(&extension);
                 }
             }
         }
@@ -65,18 +68,20 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
     }
 }
 
-fn get_extension(val: &impl Hash, index: usize) -> String {
+fn get_extension(val: &impl Hash, index: usize) -> Identifier {
     let mut hasher = DefaultHasher::new();
     val.hash(&mut hasher);
     index.hash(&mut hasher);
-    format!("_dup_{:016x}", hasher.finish())
+    let mut id = Identifier::try_parse(&format!("dup_{:016x}", hasher.finish())).unwrap();
+    id.apply_boundaries(&[Boundary::Underscore]);
+    id
 }
 
 #[cfg(test)]
 mod tests {
     use convert_case::Boundary;
 
-    use crate::mir::{Buffer, Device, DeviceConfig, EnumVariant, Field, FieldSet, Object, Span};
+    use crate::mir::{Buffer, Device, DeviceConfig, EnumVariant, Field, FieldSet, Object};
 
     use super::*;
 
