@@ -140,7 +140,7 @@ fn get_method(
             ..
         }) => {
             let field_set =
-                search_object(manifest, field_set_ref).expect("Existance checked in MIR pass");
+                search_object(manifest, field_set_ref).expect("Existence checked in MIR pass");
 
             Some(lir::BlockMethod {
                 description: description.clone(),
@@ -174,10 +174,10 @@ fn get_method(
             ..
         }) => {
             let field_set_in = field_set_ref_in.as_ref().map(|id_ref| {
-                search_object(manifest, id_ref).expect("Existance checked in MIR pass")
+                search_object(manifest, id_ref).expect("Existence checked in MIR pass")
             });
             let field_set_out = field_set_ref_out.as_ref().map(|id_ref| {
-                search_object(manifest, id_ref).expect("Existance checked in MIR pass")
+                search_object(manifest, id_ref).expect("Existence checked in MIR pass")
             });
 
             Some(lir::BlockMethod {
@@ -306,7 +306,7 @@ fn transform_field_set(
                             stride: repeat.stride,
                         },
                         mir::RepeatSource::Enum(enum_name) => {
-                            let target_enum = search_object(manifest, &enum_name)
+                            let target_enum = search_object(manifest, enum_name)
                                 .expect("Existence checked in MIR pass")
                                 .as_enum()
                                 .expect("checked in MIR pass");
@@ -400,7 +400,7 @@ fn repeat_to_method_kind(repeat: &Option<mir::Repeat>, manifest: &Manifest) -> l
             source: mir::RepeatSource::Enum(enum_name),
             stride,
         }) => {
-            let target_enum = search_object(manifest, &enum_name)
+            let target_enum = search_object(manifest, enum_name)
                 .expect("Existence checked in MIR pass")
                 .as_enum()
                 .expect("checked in MIR pass");

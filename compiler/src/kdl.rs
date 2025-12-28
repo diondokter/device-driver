@@ -861,7 +861,7 @@ fn transform_field_set(
     if let Some(name) = name {
         match name.value() {
             KdlValue::String(name_value) => {
-                let name_value = match Identifier::try_parse(&name_value) {
+                let name_value = match Identifier::try_parse(name_value) {
                     Ok(id) => id,
                     Err(e) => {
                         todo!("Emit diagnostic for: {e}");
@@ -1135,7 +1135,7 @@ fn transform_field(node: &KdlNode, diagnostics: &mut Diagnostics) -> (Option<Fie
         return (None, inline_enum);
     }
 
-    let name = match Identifier::try_parse(&node.name().value()) {
+    let name = match Identifier::try_parse(node.name().value()) {
         Ok(id) => id,
         Err(e) => {
             todo!("Emit diagnostic for: {e}");
@@ -1222,7 +1222,7 @@ fn transform_enum(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Enum>
     if let Some(name) = name {
         match name.value() {
             KdlValue::String(name_value) => {
-                let name_value = match Identifier::try_parse(&name_value) {
+                let name_value = match Identifier::try_parse(name_value) {
                     Ok(id) => id,
                     Err(e) => {
                         todo!("Emit diagnostic for: {e}");
@@ -1325,7 +1325,7 @@ fn transform_enum_variants(nodes: &KdlDocument, diagnostics: &mut Diagnostics) -
                 None => EnumValue::Unspecified,
             };
 
-            let name = match Identifier::try_parse(&variant_name.value()) {
+            let name = match Identifier::try_parse(variant_name.value()) {
                 Ok(id) => id,
                 Err(e) => {
                     todo!("Emit diagnostic for: {e}");
@@ -1406,7 +1406,7 @@ fn transform_extern(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Ext
     if let Some(name) = name {
         match name.value() {
             KdlValue::String(name_value) => {
-                let name_value = match Identifier::try_parse(&name_value) {
+                let name_value = match Identifier::try_parse(name_value) {
                     Ok(id) => id,
                     Err(e) => {
                         todo!("Emit diagnostic for: {e}");
@@ -1455,7 +1455,7 @@ fn parse_type(
         base_type_str = base_type;
 
         let use_try = conversion.ends_with('?');
-        let conversion = match Identifier::try_parse(&conversion.trim_end_matches('?')) {
+        let conversion = match Identifier::try_parse(conversion.trim_end_matches('?')) {
             Ok(id) => id,
             Err(e) => {
                 todo!("Emit diagnostic for: {e}");
@@ -1529,7 +1529,7 @@ fn parse_repeat_entries(
             (Some("count"), KdlValue::Integer(val)) => count = Some((*val, entry.span())),
             (Some("stride"), KdlValue::Integer(val)) => stride = Some((*val, entry.span())),
             (Some("with"), KdlValue::String(val)) => {
-                let val = match Identifier::try_parse(&val) {
+                let val = match Identifier::try_parse(val) {
                     Ok(id) => id,
                     Err(e) => {
                         todo!("Emit diagnostic for: {e}");

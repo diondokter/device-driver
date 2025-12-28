@@ -66,7 +66,7 @@ fn repeat_is_ok(repeat: &Repeat, manifest: &Manifest, diagnostics: &mut Diagnost
         return true;
     };
 
-    if let Some(Object::Enum(enum_value)) = search_object(manifest, &repeat_enum) {
+    if let Some(Object::Enum(enum_value)) = search_object(manifest, repeat_enum) {
         if let Some(catch_all) = enum_catch_all(enum_value) {
             diagnostics.add(RepeatEnumWithCatchAll {
                 repeat_enum: repeat_enum.span,

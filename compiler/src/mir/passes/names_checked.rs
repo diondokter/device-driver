@@ -28,14 +28,13 @@ pub fn run_pass(manifest: &mut Manifest) {
                     todo!("Emit diagnostic for {e:?}");
                 }
 
-                if let Some(conversion) = field.field_conversion.as_mut() {
-                    if let Err(e) = conversion
+                if let Some(conversion) = field.field_conversion.as_mut()
+                    && let Err(e) = conversion
                         .type_name
                         .apply_boundaries(boundaries)
                         .check_validity()
-                    {
-                        todo!("Emit diagnostic for {e:?}");
-                    }
+                {
+                    todo!("Emit diagnostic for {e:?}");
                 }
             }
         }

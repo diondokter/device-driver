@@ -55,7 +55,6 @@ impl Identifier {
         self
     }
 
-    #[must_use]
     pub fn check_validity(&self) -> Result<(), Error> {
         for (word_index, word) in self.words.iter().enumerate() {
             for (char_index, char) in word.chars().enumerate() {
@@ -67,7 +66,7 @@ impl Identifier {
                 if !tfn(char) {
                     // This is an option because I'm only 99% sure we can always find the word in the original
                     let offset = self.original().find(word).map(|word_offset| {
-                        word_offset + word.char_indices().skip(char_index).next().unwrap().0
+                        word_offset + word.char_indices().nth(char_index).unwrap().0
                     });
                     return Err(Error::InvalidCharacter(offset, char));
                 }
