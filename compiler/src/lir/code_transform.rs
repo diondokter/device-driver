@@ -41,9 +41,9 @@ fn get_defmt_fmt_string(field: &Field) -> String {
     )
 }
 
-fn get_command_fieldset_name(fieldset: &Option<String>) -> String {
+fn get_command_fieldset_name(fieldset: &Option<Identifier>) -> String {
     match fieldset {
-        Some(fs) => fs.clone(),
+        Some(fs) => fs.to_case(Case::Pascal),
         None => "()".into(),
     }
 }

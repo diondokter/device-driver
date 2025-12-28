@@ -124,7 +124,7 @@ fn get_repeat_iter(manifest: &Manifest, field: &crate::mir::Field) -> (Vec<i128>
                 true,
             ),
             RepeatSource::Enum(enum_name) => (
-                super::search_object(manifest, enum_name)
+                super::search_object(manifest, &enum_name)
                     .expect("Checked in earlier pass")
                     .as_enum()
                     .expect("Checked in earlier pass")

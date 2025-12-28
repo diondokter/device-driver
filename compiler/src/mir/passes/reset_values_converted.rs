@@ -63,7 +63,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
 }
 
 fn get_target_field_set<'m>(reg: &Register, manifest: &'m Manifest) -> &'m FieldSet {
-    search_object(manifest, &reg.field_set_ref.0)
+    search_object(manifest, &reg.field_set_ref)
         .expect("All fieldset refs should already be checked and valid here")
         .as_field_set()
         .expect("All fieldset refs should already be checked and valid here")
@@ -166,7 +166,10 @@ fn convert_reset_value(
 
 #[cfg(test)]
 mod tests {
-    use crate::mir::{Device, DeviceConfig, FieldSet, Register, Span};
+    use crate::{
+        identifier::IdentifierRef,
+        mir::{Device, DeviceConfig, FieldSet, Register, Span},
+    };
 
     use super::*;
 
@@ -180,7 +183,7 @@ mod tests {
                 Object::Register(Register {
                     name: "Reg".into(),
                     reset_value: Some(ResetValue::Integer(0x1F).with_dummy_span()),
-                    field_set_ref: "fs".into(),
+                    field_set_ref: IdentifierRef::new("fs".into()),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
@@ -206,7 +209,7 @@ mod tests {
                 Object::Register(Register {
                     name: "Reg".into(),
                     reset_value: Some(ResetValue::Array(vec![0x1F]).with_dummy_span()),
-                    field_set_ref: "fs".into(),
+                    field_set_ref: IdentifierRef::new("fs".into()),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
@@ -230,7 +233,7 @@ mod tests {
                 Object::Register(Register {
                     name: "Reg".into(),
                     reset_value: Some(ResetValue::Array(vec![0x1F]).with_dummy_span()),
-                    field_set_ref: "fs".into(),
+                    field_set_ref: IdentifierRef::new("fs".into()),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
@@ -256,7 +259,7 @@ mod tests {
                 Object::Register(Register {
                     name: "Reg".into(),
                     reset_value: Some(ResetValue::Array(vec![0x1F]).with_dummy_span()),
-                    field_set_ref: "fs".into(),
+                    field_set_ref: IdentifierRef::new("fs".into()),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
@@ -283,7 +286,7 @@ mod tests {
                 Object::Register(Register {
                     name: "Reg".into(),
                     reset_value: Some(ResetValue::Integer(0x423).with_dummy_span()),
-                    field_set_ref: "fs".into(),
+                    field_set_ref: IdentifierRef::new("fs".into()),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
@@ -312,7 +315,7 @@ mod tests {
                 Object::Register(Register {
                     name: "Reg".into(),
                     reset_value: Some(ResetValue::Array(vec![0x23, 0x04]).with_dummy_span()),
-                    field_set_ref: "fs".into(),
+                    field_set_ref: IdentifierRef::new("fs".into()),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
@@ -336,7 +339,7 @@ mod tests {
                 Object::Register(Register {
                     name: "Reg".into(),
                     reset_value: Some(ResetValue::Array(vec![0x04, 0x23]).with_dummy_span()),
-                    field_set_ref: "fs".into(),
+                    field_set_ref: IdentifierRef::new("fs".into()),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
@@ -362,7 +365,7 @@ mod tests {
                 Object::Register(Register {
                     name: "Reg".into(),
                     reset_value: Some(ResetValue::Array(vec![0x04, 0x23]).with_dummy_span()),
-                    field_set_ref: "fs".into(),
+                    field_set_ref: IdentifierRef::new("fs".into()),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
@@ -386,7 +389,7 @@ mod tests {
                 Object::Register(Register {
                     name: "Reg".into(),
                     reset_value: Some(ResetValue::Array(vec![0x20, 0xC4]).with_dummy_span()),
-                    field_set_ref: "fs".into(),
+                    field_set_ref: IdentifierRef::new("fs".into()),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
@@ -412,7 +415,7 @@ mod tests {
                 Object::Register(Register {
                     name: "Reg".into(),
                     reset_value: Some(ResetValue::Array(vec![0x20, 0xC4]).with_dummy_span()),
-                    field_set_ref: "fs".into(),
+                    field_set_ref: IdentifierRef::new("fs".into()),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
@@ -442,7 +445,7 @@ mod tests {
                 Object::Register(Register {
                     name: "Reg".into(),
                     reset_value: Some(ResetValue::Integer(0x423).with_dummy_span()),
-                    field_set_ref: "fs".into(),
+                    field_set_ref: IdentifierRef::new("fs".into()),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
@@ -468,7 +471,7 @@ mod tests {
                 Object::Register(Register {
                     name: "Reg".into(),
                     reset_value: Some(ResetValue::Array(vec![0x04, 0x23]).with_dummy_span()),
-                    field_set_ref: "fs".into(),
+                    field_set_ref: IdentifierRef::new("fs".into()),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
@@ -494,7 +497,7 @@ mod tests {
                 Object::Register(Register {
                     name: "Reg".into(),
                     reset_value: Some(ResetValue::Array(vec![0x20, 0xC4]).with_dummy_span()),
-                    field_set_ref: "fs".into(),
+                    field_set_ref: IdentifierRef::new("fs".into()),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
@@ -523,7 +526,7 @@ mod tests {
                 Object::Register(Register {
                     name: "Reg".into(),
                     reset_value: Some(ResetValue::Array(vec![0, 0, 0]).with_dummy_span()),
-                    field_set_ref: "fs".into(),
+                    field_set_ref: IdentifierRef::new("fs".into()),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
@@ -552,7 +555,7 @@ mod tests {
                 Object::Register(Register {
                     name: "Reg".into(),
                     reset_value: Some(ResetValue::Integer(0xF8).with_dummy_span()),
-                    field_set_ref: "fs".into(),
+                    field_set_ref: IdentifierRef::new("fs".into()),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
@@ -578,7 +581,7 @@ mod tests {
                 Object::Register(Register {
                     name: "Reg".into(),
                     reset_value: Some(ResetValue::Array(vec![0xF8]).with_dummy_span()),
-                    field_set_ref: "fs".into(),
+                    field_set_ref: IdentifierRef::new("fs".into()),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {

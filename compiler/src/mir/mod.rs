@@ -6,7 +6,7 @@ use std::{fmt::Display, ops::Range, rc::Rc};
 use convert_case::Boundary;
 use miette::SourceSpan;
 
-use crate::identifier::Identifier;
+use crate::identifier::{Identifier, IdentifierRef};
 
 pub mod lir_transform;
 pub mod passes;
@@ -542,30 +542,6 @@ impl Object {
         }
     }
 
-    pub(self) fn field_set_refs_mut(&mut self) -> Vec<&mut FieldSetRef> {
-        match self {
-            Object::Device(_) => Vec::new(),
-            Object::Block(_) => Vec::new(),
-            Object::Register(register) => vec![&mut register.field_set_ref],
-            Object::Command(command) => {
-                let mut buffer = Vec::new();
-
-                if let Some(fs_in) = command.field_set_ref_in.as_mut() {
-                    buffer.push(fs_in);
-                }
-                if let Some(fs_out) = command.field_set_ref_out.as_mut() {
-                    buffer.push(fs_out);
-                }
-
-                buffer
-            }
-            Object::Buffer(_) => Vec::new(),
-            Object::FieldSet(_) => Vec::new(),
-            Object::Enum(_) => Vec::new(),
-            Object::Extern(_) => Vec::new(),
-        }
-    }
-
     /// Return the address if it is specified.
     fn address(&self) -> Option<Spanned<i128>> {
         match self {
@@ -686,7 +662,7 @@ pub struct Repeat {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RepeatSource {
     Count(u64),
-    Enum(Spanned<Identifier>),
+    Enum(Spanned<IdentifierRef>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
@@ -698,23 +674,7 @@ pub struct Register {
     pub address: Spanned<i128>,
     pub reset_value: Option<Spanned<ResetValue>>,
     pub repeat: Option<Repeat>,
-    pub field_set_ref: FieldSetRef,
-}
-
-/// An externally defined fieldset. This is the name of that fieldset
-#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
-pub struct FieldSetRef(pub Identifier);
-
-impl From<Identifier> for FieldSetRef {
-    fn from(value: Identifier) -> Self {
-        Self(value)
-    }
-}
-#[cfg(test)]
-impl From<&str> for FieldSetRef {
-    fn from(value: &str) -> Self {
-        Self(value.into())
-    }
+    pub field_set_ref: IdentifierRef,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
@@ -962,8 +922,8 @@ pub struct Command {
     pub allow_address_overlap: bool,
     pub repeat: Option<Repeat>,
 
-    pub field_set_ref_in: Option<FieldSetRef>,
-    pub field_set_ref_out: Option<FieldSetRef>,
+    pub field_set_ref_in: Option<IdentifierRef>,
+    pub field_set_ref_out: Option<IdentifierRef>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]

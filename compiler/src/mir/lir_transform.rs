@@ -5,7 +5,7 @@ use convert_case::Case;
 use crate::{
     identifier::Identifier,
     lir,
-    mir::{self, Manifest, Object},
+    mir::{self, Manifest, Object, passes::search_object},
 };
 
 use super::{Integer, passes::find_min_max_addresses};
@@ -135,52 +135,66 @@ fn get_method(
             address,
             access,
             repeat,
-            field_set_ref: field_set,
+            field_set_ref,
             reset_value,
             ..
-        }) => Some(lir::BlockMethod {
-            description: description.clone(),
-            name: name.value.clone(),
-            address: address.value,
-            repeat: repeat_to_method_kind(repeat, manifest),
-            method_type: lir::BlockMethodType::Register {
-                field_set_name: field_set.0.clone(),
-                access: *access,
-                address_type: global_config
-                    .register_address_type
-                    .expect("The presence of the address type is already checked in a mir pass")
-                    .value,
-                reset_value: reset_value.clone().map(|rv| {
-                    rv.as_array()
+        }) => {
+            let field_set =
+                search_object(manifest, field_set_ref).expect("Existance checked in MIR pass");
+
+            Some(lir::BlockMethod {
+                description: description.clone(),
+                name: name.value.clone(),
+                address: address.value,
+                repeat: repeat_to_method_kind(repeat, manifest),
+                method_type: lir::BlockMethodType::Register {
+                    field_set_name: field_set.name().clone(),
+                    access: *access,
+                    address_type: global_config
+                        .register_address_type
+                        .expect("The presence of the address type is already checked in a mir pass")
+                        .value,
+                    reset_value: reset_value.clone().map(|rv| {
+                        rv.as_array()
                         .expect(
                             "Reset value should already be converted to array here in a mir pass",
                         )
                         .clone()
-                }),
-            },
-        }),
+                    }),
+                },
+            })
+        }
         mir::Object::Command(mir::Command {
             description,
             name,
             address,
             repeat,
-            field_set_ref_in: field_set_in,
-            field_set_ref_out: field_set_out,
+            field_set_ref_in,
+            field_set_ref_out,
             ..
-        }) => Some(lir::BlockMethod {
-            description: description.clone(),
-            name: name.value.clone(),
-            address: address.value,
-            repeat: repeat_to_method_kind(repeat, manifest),
-            method_type: lir::BlockMethodType::Command {
-                field_set_name_in: field_set_in.as_ref().map(|fs_in| fs_in.0.clone()),
-                field_set_name_out: field_set_out.as_ref().map(|fs_out| fs_out.0.clone()),
-                address_type: global_config
-                    .command_address_type
-                    .expect("The presence of the address type is already checked in a mir pass")
-                    .value,
-            },
-        }),
+        }) => {
+            let field_set_in = field_set_ref_in.as_ref().map(|id_ref| {
+                search_object(manifest, id_ref).expect("Existance checked in MIR pass")
+            });
+            let field_set_out = field_set_ref_out.as_ref().map(|id_ref| {
+                search_object(manifest, id_ref).expect("Existance checked in MIR pass")
+            });
+
+            Some(lir::BlockMethod {
+                description: description.clone(),
+                name: name.value.clone(),
+                address: address.value,
+                repeat: repeat_to_method_kind(repeat, manifest),
+                method_type: lir::BlockMethodType::Command {
+                    field_set_name_in: field_set_in.map(|fs_in| fs_in.name().clone()),
+                    field_set_name_out: field_set_out.map(|fs_out| fs_out.name().clone()),
+                    address_type: global_config
+                        .command_address_type
+                        .expect("The presence of the address type is already checked in a mir pass")
+                        .value,
+                },
+            })
+        }
         mir::Object::Buffer(mir::Buffer {
             description,
             name,
@@ -291,18 +305,21 @@ fn transform_field_set(
                             count: *c,
                             stride: repeat.stride,
                         },
-                        mir::RepeatSource::Enum(enum_name) => lir::Repeat::Enum {
-                            enum_name: enum_name.value.clone(),
-                            enum_variants: manifest
-                                .iter_enums()
-                                .find(|e| e.name.value == enum_name.value)
-                                .expect("Checked in MIR pass")
-                                .variants
-                                .iter()
-                                .map(|variant| variant.name.value.clone())
-                                .collect(),
-                            stride: repeat.stride,
-                        },
+                        mir::RepeatSource::Enum(enum_name) => {
+                            let target_enum = search_object(manifest, &enum_name)
+                                .expect("Existence checked in MIR pass")
+                                .as_enum()
+                                .expect("checked in MIR pass");
+                            lir::Repeat::Enum {
+                                enum_name: target_enum.name.value.clone(),
+                                enum_variants: target_enum
+                                    .variants
+                                    .iter()
+                                    .map(|variant| variant.name.value.clone())
+                                    .collect(),
+                                stride: repeat.stride,
+                            }
+                        }
                     }),
             }
         })
@@ -382,18 +399,21 @@ fn repeat_to_method_kind(repeat: &Option<mir::Repeat>, manifest: &Manifest) -> l
         Some(mir::Repeat {
             source: mir::RepeatSource::Enum(enum_name),
             stride,
-        }) => lir::Repeat::Enum {
-            enum_name: enum_name.value.clone(),
-            enum_variants: manifest
-                .iter_enums()
-                .find(|object| object.name == enum_name.value)
-                .expect("Checked in a MIR pass")
-                .variants
-                .iter()
-                .map(|variant| variant.name.value.clone())
-                .collect(),
-            stride: *stride,
-        },
+        }) => {
+            let target_enum = search_object(manifest, &enum_name)
+                .expect("Existence checked in MIR pass")
+                .as_enum()
+                .expect("checked in MIR pass");
+            lir::Repeat::Enum {
+                enum_name: target_enum.name.value.clone(),
+                enum_variants: target_enum
+                    .variants
+                    .iter()
+                    .map(|variant| variant.name.value.clone())
+                    .collect(),
+                stride: *stride,
+            }
+        }
         None => lir::Repeat::None,
     }
 }

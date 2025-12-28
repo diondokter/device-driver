@@ -7,7 +7,7 @@ use itertools::Itertools;
 use crate::mir::Spanned;
 
 /// A structure that holds the name data of objects
-#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+#[derive(Debug, Clone, Eq, Default)]
 pub struct Identifier {
     boundaries_applied: bool,
     /// The original string that was parsed without concats
@@ -21,17 +21,6 @@ impl Identifier {
     pub fn try_parse(value: &str) -> Result<Self, Error> {
         if value.is_empty() {
             return Err(Error::Empty);
-        }
-
-        for (i, char) in value.chars().enumerate() {
-            let tfn = match i {
-                0 => |c| unicode_ident::is_xid_start(c) || c == '_',
-                _ => |c| unicode_ident::is_xid_continue(c),
-            };
-
-            if !tfn(char) {
-                return Err(Error::InvalidCharacter(i, char));
-            }
         }
 
         Ok(Self {
@@ -66,9 +55,35 @@ impl Identifier {
         self
     }
 
+    #[must_use]
+    pub fn check_validity(&self) -> Result<(), Error> {
+        for (word_index, word) in self.words.iter().enumerate() {
+            for (char_index, char) in word.chars().enumerate() {
+                let tfn = match (word_index, char_index) {
+                    (0, 0) => |c| unicode_ident::is_xid_start(c) || c == '_',
+                    _ => |c| unicode_ident::is_xid_continue(c),
+                };
+
+                if !tfn(char) {
+                    // This is an option because I'm only 99% sure we can always find the word in the original
+                    let offset = self.original().find(word).map(|word_offset| {
+                        word_offset + word.char_indices().skip(char_index).next().unwrap().0
+                    });
+                    return Err(Error::InvalidCharacter(offset, char));
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     /// Convert the identifier to a string in the given case
     pub fn to_case(&self, case: Case) -> String {
-        assert!(self.boundaries_applied);
+        assert!(
+            self.boundaries_applied,
+            "Boundaries not applied for `{}`",
+            self.original()
+        );
 
         let words = case.mutate(&self.words.iter().map(|w| w.as_str()).collect_vec());
         case.join(&words)
@@ -81,8 +96,8 @@ impl Identifier {
         let mut rest_words = rest.words.to_vec();
         self_words.append(&mut rest_words);
         Self {
-            boundaries_applied: true,
-            original: self.original,
+            boundaries_applied: self.boundaries_applied && rest.boundaries_applied,
+            original: Arc::new(self.original().to_owned() + rest.original()),
             words: self_words.into(),
         }
     }
@@ -95,6 +110,12 @@ impl Identifier {
 
     pub fn is_empty(&self) -> bool {
         self.words.iter().all(|w| w.is_empty())
+    }
+
+    pub fn take_ref(&self) -> IdentifierRef {
+        IdentifierRef {
+            original: self.original.clone(),
+        }
     }
 }
 
@@ -114,10 +135,40 @@ impl From<&str> for Spanned<Identifier> {
     }
 }
 
+impl std::hash::Hash for Identifier {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.original.hash(state);
+        self.words.hash(state);
+    }
+}
+
+impl PartialEq for Identifier {
+    fn eq(&self, other: &Self) -> bool {
+        self.original == other.original
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+pub struct IdentifierRef {
+    original: Arc<String>,
+}
+
+impl IdentifierRef {
+    pub fn new(identifier_original: String) -> Self {
+        Self {
+            original: Arc::new(identifier_original),
+        }
+    }
+
+    pub fn original(&self) -> &str {
+        &self.original
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {
     Empty,
-    InvalidCharacter(usize, char),
+    InvalidCharacter(Option<usize>, char),
 }
 
 impl std::error::Error for Error {}
@@ -125,10 +176,13 @@ impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Error::Empty => write!(f, "Identifier is empty"),
-            Error::InvalidCharacter(i, c) => {
+            Error::InvalidCharacter(None, c) => {
+                write!(f, "Identifier contains an invalid character: '{c:?}'")
+            }
+            Error::InvalidCharacter(Some(i), c) => {
                 write!(
                     f,
-                    "Identifier contains an invalid character at index {i}: '{c:?}'"
+                    "Identifier contains an invalid character at byte index {i}: '{c:?}'"
                 )
             }
         }
@@ -143,8 +197,8 @@ mod tests {
     fn simple_cases() {
         assert_eq!(Identifier::try_parse(""), Err(Error::Empty));
         assert_eq!(
-            Identifier::try_parse("1"),
-            Err(Error::InvalidCharacter(0, '1'))
+            Identifier::try_parse("1").unwrap().check_validity(),
+            Err(Error::InvalidCharacter(Some(0), '1'))
         );
         assert_eq!(
             Identifier::try_parse("_1")
@@ -168,12 +222,12 @@ mod tests {
             "a-1"
         );
         assert_eq!(
-            Identifier::try_parse("😈"),
-            Err(Error::InvalidCharacter(0, '😈'))
+            Identifier::try_parse("😈").unwrap().check_validity(),
+            Err(Error::InvalidCharacter(Some(0), '😈'))
         );
         assert_eq!(
-            Identifier::try_parse("abc😈"),
-            Err(Error::InvalidCharacter(3, '😈'))
+            Identifier::try_parse("abc😈").unwrap().check_validity(),
+            Err(Error::InvalidCharacter(Some(3), '😈'))
         );
         assert_eq!(
             Identifier::try_parse("_")
@@ -190,9 +244,14 @@ mod tests {
             "_"
         );
         assert_eq!(
-            Identifier::try_parse("abc def"),
-            Err(Error::InvalidCharacter(3, ' '))
+            Identifier::try_parse("abc def").unwrap().check_validity(),
+            Err(Error::InvalidCharacter(Some(3), ' '))
         );
+        Identifier::try_parse("abc def")
+            .unwrap()
+            .apply_boundaries(&[Boundary::Space])
+            .check_validity()
+            .unwrap();
         assert_eq!(
             Identifier::try_parse("abc_def")
                 .unwrap()

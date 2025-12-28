@@ -4,10 +4,10 @@
 {% if let Some(defmt_feature) = enum_value.defmt_feature %}
 #[cfg_attr(feature = "{{defmt_feature}}", derive(defmt::Format))]
 {% endif %}
-pub enum {{enum_value.name}} {
+pub enum {{enum_value.name.to_case(Case::Pascal)}} {
     {% for variant in enum_value.variants %}
         {{self::description_to_docstring(variant.description)}}
-        {{variant.name}} {% if variant.catch_all %} ({{enum_value.base_type}}) {% endif %} = {{variant.discriminant}},
+        {{variant.name.to_case(Case::Pascal)}} {% if variant.catch_all %} ({{enum_value.base_type}}) {% endif %} = {{variant.discriminant}},
     {% endfor %}
 }
 
@@ -15,9 +15,9 @@ pub enum {{enum_value.name}} {
 {% let catch_all_variant = enum_value.catch_all_variant() %}
 
 {% if let Some(default_variant) = default_variant %}
-impl Default for {{enum_value.name}} {
+impl Default for {{enum_value.name.to_case(Case::Pascal)}} {
     fn default() -> Self {
-        Self::{{default_variant.name}}
+        Self::{{default_variant.name.to_case(Case::Pascal)}}
         {% if default_variant.catch_all %}
             ({{default_variant.discriminant}})
         {% endif %}
@@ -26,16 +26,16 @@ impl Default for {{enum_value.name}} {
 {%endif%}
 
 {% if catch_all_variant.is_some() || default_variant.is_some() %}
-impl From<{{enum_value.base_type}}> for {{enum_value.name}} {
+impl From<{{enum_value.base_type}}> for {{enum_value.name.to_case(Case::Pascal)}} {
     fn from(val: {{enum_value.base_type}}) -> Self {
         match val {
             {% for variant in enum_value.variants %}
                 {% if !(variant.default || variant.catch_all) %}
-                    {{variant.discriminant}} => Self::{{variant.name}},
+                    {{variant.discriminant}} => Self::{{variant.name.to_case(Case::Pascal)}},
                 {% endif %}
             {% endfor %}
             {% if let Some(catch_all_variant) = catch_all_variant %}
-                val => Self::{{catch_all_variant.name}}(val),
+                val => Self::{{catch_all_variant.name.to_case(Case::Pascal)}}(val),
             {% else if let Some(_) = default_variant %}
                 _ => Self::default(),
             {% endif %}
@@ -43,27 +43,27 @@ impl From<{{enum_value.base_type}}> for {{enum_value.name}} {
     }
 }
 {% else %}
-impl core::convert::TryFrom<{{enum_value.base_type}}> for {{enum_value.name}} {
+impl core::convert::TryFrom<{{enum_value.base_type}}> for {{enum_value.name.to_case(Case::Pascal)}} {
     type Error = ::device_driver::ConversionError<{{enum_value.base_type}}>;
     fn try_from(val: {{enum_value.base_type}}) -> Result<Self, Self::Error> {
         match val {
             {% for variant in enum_value.variants %}
-                {{variant.discriminant}} => Ok(Self::{{variant.name}}),
+                {{variant.discriminant}} => Ok(Self::{{variant.name.to_case(Case::Pascal)}}),
             {% endfor %}
-            val => Err(::device_driver::ConversionError { source: val, target: "{{enum_value.name}}" })
+            val => Err(::device_driver::ConversionError { source: val, target: "{{enum_value.name.to_case(Case::Pascal)}}" })
         }
     }
 }
 {%endif%}
 
-impl From<{{enum_value.name}}> for {{enum_value.base_type}} {
-    fn from(val: {{enum_value.name}}) -> Self {
+impl From<{{enum_value.name.to_case(Case::Pascal)}}> for {{enum_value.base_type}} {
+    fn from(val: {{enum_value.name.to_case(Case::Pascal)}}) -> Self {
         match val {
             {% for variant in enum_value.variants %}
                 {% if variant.catch_all %}
-                    {{enum_value.name}}::{{variant.name}}(num) => num,
+                    {{enum_value.name.to_case(Case::Pascal)}}::{{variant.name.to_case(Case::Pascal)}}(num) => num,
                 {% else %}
-                    {{enum_value.name}}::{{variant.name}} => {{variant.discriminant}},
+                    {{enum_value.name.to_case(Case::Pascal)}}::{{variant.name.to_case(Case::Pascal)}} => {{variant.discriminant}},
                 {% endif %}
             {% endfor %}
         }

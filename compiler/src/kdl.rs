@@ -10,8 +10,8 @@ use crate::{
     identifier::Identifier,
     mir::{
         Access, BaseType, BitOrder, Block, Buffer, ByteOrder, Command, Device, DeviceConfig, Enum,
-        EnumValue, EnumVariant, Extern, Field, FieldConversion, FieldSet, FieldSetRef, Integer,
-        Manifest, Object, Register, Repeat, ResetValue, Span, Spanned, Unique,
+        EnumValue, EnumVariant, Extern, Field, FieldConversion, FieldSet, Integer, Manifest,
+        Object, Register, Repeat, ResetValue, Span, Spanned, Unique,
     },
     reporting::{
         self, Diagnostics,
@@ -438,7 +438,7 @@ fn transform_register(
             address: address.unwrap().into(),
             reset_value: reset_value.map(Into::into),
             repeat: repeat.map(|(r, _)| r),
-            field_set_ref: FieldSetRef(field_set.as_ref().unwrap().0.name.value.clone()),
+            field_set_ref: field_set.as_ref().unwrap().0.name.take_ref(),
             ..Default::default()
         };
 
@@ -599,12 +599,8 @@ fn transform_command(
             name: (name, name_span).into(),
             address: address.unwrap().into(),
             repeat: repeat.map(|(r, _)| r),
-            field_set_ref_in: field_set_in
-                .as_ref()
-                .map(|(f, _)| FieldSetRef(f.name.value.clone())),
-            field_set_ref_out: field_set_out
-                .as_ref()
-                .map(|(f, _)| FieldSetRef(f.name.value.clone())),
+            field_set_ref_in: field_set_in.as_ref().map(|(f, _)| f.name.take_ref()),
+            field_set_ref_out: field_set_out.as_ref().map(|(f, _)| f.name.take_ref()),
             ..Default::default()
         };
 
@@ -1624,7 +1620,7 @@ fn parse_repeat_entries(
     } else {
         match (count, with, stride) {
             (None, Some((with, with_span)), Some((stride, _))) => Some(Repeat {
-                source: crate::mir::RepeatSource::Enum(with.with_span(with_span)),
+                source: crate::mir::RepeatSource::Enum(with.take_ref().with_span(with_span)),
                 stride,
             }),
             (Some((count, _)), None, Some((stride, _))) => Some(Repeat {
