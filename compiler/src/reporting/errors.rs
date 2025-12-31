@@ -8,7 +8,10 @@ use itertools::Itertools;
 use miette::{Diagnostic, LabeledSpan, SourceSpan};
 use thiserror::Error;
 
-use crate::mir::{BaseType, FieldConversion, Integer};
+use crate::{
+    identifier::Identifier,
+    mir::{BaseType, FieldConversion, Integer},
+};
 
 #[derive(Error, Debug, Diagnostic)]
 #[error("Missing object name")]
@@ -313,10 +316,12 @@ pub struct DeviceNameNotPascal {
     )
 )]
 pub struct DuplicateName {
-    #[label("The original")]
+    #[label("The original verbatim: {:?}, split: {:?}", original_value.original(), original_value.words().join("·"))]
     pub original: SourceSpan,
-    #[label(primary, "The duplicate")]
+    pub original_value: Identifier,
+    #[label(primary, "The duplicate verbatim: {:?}, split: {:?}", duplicate_value.original(), duplicate_value.words().join("·"))]
     pub duplicate: SourceSpan,
+    pub duplicate_value: Identifier,
 }
 
 #[derive(Error, Debug, Diagnostic)]

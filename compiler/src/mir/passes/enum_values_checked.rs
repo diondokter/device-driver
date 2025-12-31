@@ -37,13 +37,14 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
         }
 
         // Record all variant values
+        let e_id = enum_value.id();
         let seen_values = enum_value
             .iter_variants_with_discriminant_mut()
             .map(|(discriminant, variant)| {
                 if variant.value.is_unspecified() {
                     variant.value = EnumValue::Specified(discriminant);
                 }
-                (discriminant, variant.id())
+                (discriminant, variant.id_with(e_id.clone()))
             })
             .collect_vec();
 

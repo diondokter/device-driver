@@ -970,6 +970,10 @@ pub enum UniqueId {
         parent_id: Box<UniqueId>,
         field_name: Spanned<Identifier>,
     },
+    Variant {
+        parent_id: Box<UniqueId>,
+        variant_name: Spanned<Identifier>,
+    },
 }
 
 impl UniqueId {
@@ -978,6 +982,15 @@ impl UniqueId {
         match self {
             UniqueId::Object { object_name } => object_name.span,
             UniqueId::Field { field_name, .. } => field_name.span,
+            UniqueId::Variant { variant_name, .. } => variant_name.span,
+        }
+    }
+
+    pub fn identifier(&self) -> &Identifier {
+        match self {
+            UniqueId::Object { object_name } => object_name,
+            UniqueId::Field { field_name, .. } => field_name,
+            UniqueId::Variant { variant_name, .. } => variant_name,
         }
     }
 
@@ -998,6 +1011,10 @@ impl Display for UniqueId {
                 parent_id,
                 field_name,
             } => write!(f, "{parent_id} {{ {} }}", field_name.original()),
+            UniqueId::Variant {
+                parent_id,
+                variant_name,
+            } => write!(f, "{parent_id} {{ {} }}", variant_name.original()),
         }
     }
 }
@@ -1052,7 +1069,6 @@ impl_unique_object!(Command);
 impl_unique_object!(Buffer);
 impl_unique_object!(Block);
 impl_unique_object!(Enum);
-impl_unique_object!(EnumVariant);
 impl_unique_object!(FieldSet);
 impl_unique_object!(Extern);
 
@@ -1067,6 +1083,25 @@ impl Unique for Field {
         UniqueId::Field {
             parent_id: Box::new(parent),
             field_name: self.name.clone(),
+        }
+    }
+
+    fn has_id(&self, _id: &UniqueId) -> bool {
+        unreachable!()
+    }
+}
+
+impl Unique for EnumVariant {
+    type Metadata = UniqueId;
+
+    fn id(&self) -> UniqueId {
+        unreachable!()
+    }
+
+    fn id_with(&self, parent: Self::Metadata) -> UniqueId {
+        UniqueId::Variant {
+            parent_id: Box::new(parent),
+            variant_name: self.name.clone(),
         }
     }
 

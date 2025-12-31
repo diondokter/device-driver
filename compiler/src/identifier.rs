@@ -1,6 +1,6 @@
 use std::{fmt::Display, sync::Arc};
 
-use convert_case::{Boundary, Case};
+use convert_case::{Boundary, Case, Pattern};
 use itertools::Itertools;
 
 #[cfg(test)]
@@ -13,6 +13,7 @@ pub struct Identifier {
     /// The original string that was parsed without concats
     original: Arc<String>,
     words: Arc<[String]>,
+    duplicate_id: Option<u32>,
 }
 
 impl Identifier {
@@ -27,6 +28,7 @@ impl Identifier {
             boundaries_applied: false,
             original: Arc::new(value.into()),
             words: [value.into()].into(),
+            duplicate_id: None,
         })
     }
 
@@ -42,7 +44,7 @@ impl Identifier {
             words.append(&mut local_words);
         }
 
-        let mut words = words.into_iter().map(String::from).collect_vec();
+        let mut words = Pattern::Lowercase.mutate(&words);
         if boundaries.contains(&Boundary::Underscore) && self.original.starts_with('_') {
             match &mut words[..] {
                 [] => words.push("_".into()),
@@ -84,7 +86,14 @@ impl Identifier {
             self.original()
         );
 
-        let words = case.mutate(&self.words.iter().map(|w| w.as_str()).collect_vec());
+        let mut words = self.words.to_vec();
+
+        if let Some(dup_id) = self.duplicate_id {
+            words.push("dup".to_string());
+            words.push(format!("{dup_id:X}"));
+        }
+
+        let words = case.mutate(&words.iter().map(|s| s.as_str()).collect_vec());
         case.join(&words)
     }
 
@@ -96,8 +105,9 @@ impl Identifier {
         self_words.append(&mut rest_words);
         Self {
             boundaries_applied: self.boundaries_applied && rest.boundaries_applied,
-            original: Arc::new(self.original().to_owned() + rest.original()),
+            original: Arc::new(self.original().to_owned() + "⧺" + rest.original()),
             words: self_words.into(),
+            duplicate_id: self.duplicate_id,
         }
     }
 
@@ -105,6 +115,10 @@ impl Identifier {
     /// Better to use [`Self::to_case`] in most circumstances.
     pub fn original(&self) -> &str {
         &self.original
+    }
+
+    pub fn words(&self) -> &[String] {
+        &self.words
     }
 
     pub fn is_empty(&self) -> bool {
@@ -115,6 +129,14 @@ impl Identifier {
         IdentifierRef {
             original: self.original.clone(),
         }
+    }
+
+    pub fn set_duplicate_id(&mut self, val: u32) {
+        self.duplicate_id = Some(val);
+    }
+
+    pub fn duplicate_id(&self) -> Option<u32> {
+        self.duplicate_id
     }
 }
 
@@ -137,13 +159,14 @@ impl From<&str> for Spanned<Identifier> {
 impl std::hash::Hash for Identifier {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.original.hash(state);
-        self.words.hash(state);
+        self.duplicate_id.hash(state);
     }
 }
 
 impl PartialEq for Identifier {
     fn eq(&self, other: &Self) -> bool {
-        self.original == other.original
+        (self.original == other.original || self.words == other.words)
+            && self.duplicate_id == other.duplicate_id
     }
 }
 
