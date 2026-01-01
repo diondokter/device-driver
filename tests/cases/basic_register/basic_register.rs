@@ -65,7 +65,7 @@ impl FooFieldSet {
     pub const fn new() -> Self {
         Self { bits: [0; 3] }
     }
-    /// Read the `value` field of the register.
+    /// `@23:0` - Read the `value` field.
     ///
     pub fn value(&self) -> u32 {
         let start = 0;
@@ -78,7 +78,7 @@ impl FooFieldSet {
         };
         raw
     }
-    /// Write the `value` field of the register.
+    /// `@23:0` - Set the `value` field.
     ///
     pub fn set_value(&mut self, value: u32) {
         let start = 0;

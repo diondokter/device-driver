@@ -752,7 +752,7 @@ impl CustomFieldSetName {
     pub const fn new() -> Self {
         Self { bits: [0; 1] }
     }
-    /// Read the `bar` field of the register.
+    /// `@3` - Read the `bar` field.
     ///
     pub fn bar(&self) -> bool {
         let start = 3;
@@ -765,7 +765,7 @@ impl CustomFieldSetName {
         };
         raw > 0
     }
-    /// Read the `baz` field of the register.
+    /// `@7:4` - Read the `baz` field.
     ///
     pub fn baz(&self) -> u8 {
         let start = 4;
@@ -778,7 +778,7 @@ impl CustomFieldSetName {
         };
         raw
     }
-    /// Write the `bar` field of the register.
+    /// `@3` - Set the `bar` field.
     ///
     pub fn set_bar(&mut self, value: bool) {
         let start = 3;
@@ -791,7 +791,7 @@ impl CustomFieldSetName {
             >(raw, start, end, &mut self.bits)
         };
     }
-    /// Write the `baz` field of the register.
+    /// `@7:4` - Set the `baz` field.
     ///
     pub fn set_baz(&mut self, value: u8) {
         let start = 4;
@@ -898,7 +898,7 @@ impl Foor9FieldSet {
     pub const fn new() -> Self {
         Self { bits: [0; 1] }
     }
-    /// Read the `bar` field of the register.
+    /// `@0` - Read the `bar` field.
     ///
     pub fn bar(&self) -> bool {
         let start = 0;
@@ -911,7 +911,7 @@ impl Foor9FieldSet {
         };
         raw > 0
     }
-    /// Read the `baz` field of the register.
+    /// `@2:1` - Read the `baz` field.
     ///
     pub fn baz(&self) -> u8 {
         let start = 1;
@@ -924,7 +924,7 @@ impl Foor9FieldSet {
         };
         raw
     }
-    /// Read the `quux` field of the register.
+    /// `@4:3` - Read the `quux` field.
     ///
     pub fn quux(&self) -> u8 {
         let start = 3;
@@ -937,7 +937,7 @@ impl Foor9FieldSet {
         };
         raw
     }
-    /// Read the `qus` field of the register.
+    /// `@6:5` - Read the `qus` field.
     ///
     pub fn qus(&self) -> Result<E3, <E3 as TryFrom<i32>>::Error> {
         let start = 5;
@@ -950,7 +950,7 @@ impl Foor9FieldSet {
         };
         raw.try_into()
     }
-    /// Write the `bar` field of the register.
+    /// `@0` - Set the `bar` field.
     ///
     pub fn set_bar(&mut self, value: bool) {
         let start = 0;
@@ -963,7 +963,7 @@ impl Foor9FieldSet {
             >(raw, start, end, &mut self.bits)
         };
     }
-    /// Write the `baz` field of the register.
+    /// `@2:1` - Set the `baz` field.
     ///
     pub fn set_baz(&mut self, value: u8) {
         let start = 1;
@@ -976,7 +976,7 @@ impl Foor9FieldSet {
             >(raw, start, end, &mut self.bits)
         };
     }
-    /// Write the `quux` field of the register.
+    /// `@4:3` - Set the `quux` field.
     ///
     pub fn set_quux(&mut self, value: u8) {
         let start = 3;
@@ -989,7 +989,7 @@ impl Foor9FieldSet {
             >(raw, start, end, &mut self.bits)
         };
     }
-    /// Write the `qus` field of the register.
+    /// `@6:5` - Set the `qus` field.
     ///
     pub fn set_qus(&mut self, value: E3) {
         let start = 5;
@@ -1098,7 +1098,7 @@ impl Foor10FieldSet {
     pub const fn new() -> Self {
         Self { bits: [0; 1] }
     }
-    /// Read the `bar` field of the register.
+    /// `@1:0` - Read the `bar` field.
     ///
     pub fn bar(&self) -> Foo10E1 {
         let start = 0;
@@ -1111,7 +1111,7 @@ impl Foor10FieldSet {
         };
         raw.into()
     }
-    /// Read the `baz` field of the register.
+    /// `@3:2` - Read the `baz` field.
     ///
     pub fn baz(&self) -> u8 {
         let start = 2;
@@ -1124,7 +1124,7 @@ impl Foor10FieldSet {
         };
         raw
     }
-    /// Read the `bam` field of the register.
+    /// `@5:4` - Read the `bam` field.
     ///
     pub fn bam(&self) -> u8 {
         let start = 4;
@@ -1137,7 +1137,7 @@ impl Foor10FieldSet {
         };
         raw
     }
-    /// Read the `bat` field of the register.
+    /// `@7:6` - Read the `bat` field.
     ///
     pub fn bat(&self) -> Result<Foo10E2, <Foo10E2 as TryFrom<u8>>::Error> {
         let start = 6;
@@ -1150,7 +1150,7 @@ impl Foor10FieldSet {
         };
         raw.try_into()
     }
-    /// Write the `bar` field of the register.
+    /// `@1:0` - Set the `bar` field.
     ///
     pub fn set_bar(&mut self, value: Foo10E1) {
         let start = 0;
@@ -1163,7 +1163,7 @@ impl Foor10FieldSet {
             >(raw, start, end, &mut self.bits)
         };
     }
-    /// Write the `baz` field of the register.
+    /// `@3:2` - Set the `baz` field.
     ///
     pub fn set_baz(&mut self, value: u8) {
         let start = 2;
@@ -1176,7 +1176,7 @@ impl Foor10FieldSet {
             >(raw, start, end, &mut self.bits)
         };
     }
-    /// Write the `bam` field of the register.
+    /// `@5:4` - Set the `bam` field.
     ///
     pub fn set_bam(&mut self, value: u8) {
         let start = 4;
@@ -1189,7 +1189,7 @@ impl Foor10FieldSet {
             >(raw, start, end, &mut self.bits)
         };
     }
-    /// Write the `bat` field of the register.
+    /// `@7:6` - Set the `bat` field.
     ///
     pub fn set_bat(&mut self, value: Foo10E2) {
         let start = 6;
@@ -1390,7 +1390,7 @@ impl Fooc1FieldSetOut {
     pub const fn new() -> Self {
         Self { bits: [0; 1] }
     }
-    /// Read the `b` field of the register.
+    /// `@0` - Read the `b` field.
     ///
     pub fn b(&self) -> bool {
         let start = 0;
@@ -1403,7 +1403,7 @@ impl Fooc1FieldSetOut {
         };
         raw > 0
     }
-    /// Write the `b` field of the register.
+    /// `@0` - Set the `b` field.
     ///
     pub fn set_b(&mut self, value: bool) {
         let start = 0;
@@ -1509,7 +1509,7 @@ impl Fs1 {
     pub const fn new() -> Self {
         Self { bits: [0; 2] }
     }
-    /// Read the `value` field of the register.
+    /// `@15:0` - Read the `value` field.
     ///
     pub fn value(&self) -> u16 {
         let start = 0;
@@ -1522,7 +1522,7 @@ impl Fs1 {
         };
         raw
     }
-    /// Write the `value` field of the register.
+    /// `@15:0` - Set the `value` field.
     ///
     pub fn set_value(&mut self, value: u16) {
         let start = 0;
@@ -1628,7 +1628,7 @@ impl Fs2 {
     pub const fn new() -> Self {
         Self { bits: [0; 4] }
     }
-    /// Read the `value` field of the register.
+    /// `@6:0` - Read the `value` field.
     ///
     pub fn value(&self) -> Etype2 {
         let start = 0;
@@ -1641,7 +1641,7 @@ impl Fs2 {
         };
         raw.into()
     }
-    /// Read the `value_2` field of the register.
+    /// `@10:7` - Read the `value_2` field.
     ///
     pub fn value_2(&self) -> Result<Etype3, <Etype3 as TryFrom<u8>>::Error> {
         let start = 7;
@@ -1654,7 +1654,7 @@ impl Fs2 {
         };
         raw.try_into()
     }
-    /// Write the `value` field of the register.
+    /// `@6:0` - Set the `value` field.
     ///
     pub fn set_value(&mut self, value: Etype2) {
         let start = 0;
@@ -1667,7 +1667,7 @@ impl Fs2 {
             >(raw, start, end, &mut self.bits)
         };
     }
-    /// Write the `value_2` field of the register.
+    /// `@10:7` - Set the `value_2` field.
     ///
     pub fn set_value_2(&mut self, value: Etype3) {
         let start = 7;
@@ -1774,7 +1774,7 @@ impl Fs3 {
     pub const fn new() -> Self {
         Self { bits: [0; 4] }
     }
-    /// Read the `val_0` field of the register.
+    /// `@1:0` - Read the `val_0` field.
     ///
     pub fn val_0(&self) -> u8 {
         let start = 0;
@@ -1787,7 +1787,7 @@ impl Fs3 {
         };
         raw
     }
-    /// Read the `val_1` field of the register.
+    /// `@3:2` - Read the `val_1` field.
     ///
     pub fn val_1(&self, index: E3) -> u8 {
         let start = 2 + i32::from(index) as usize * 2;
@@ -1800,7 +1800,7 @@ impl Fs3 {
         };
         raw
     }
-    /// Read the `val_2` field of the register.
+    /// `@7:6` - Read the `val_2` field.
     ///
     pub fn val_2(&self, index: usize) -> u8 {
         assert!(index < 4);
@@ -1814,7 +1814,7 @@ impl Fs3 {
         };
         raw
     }
-    /// Read the `val_3` field of the register.
+    /// `@15:14` - Read the `val_3` field.
     ///
     pub fn val_3(&self) -> u8 {
         let start = 14;
@@ -1827,7 +1827,7 @@ impl Fs3 {
         };
         raw
     }
-    /// Write the `val_0` field of the register.
+    /// `@1:0` - Set the `val_0` field.
     ///
     pub fn set_val_0(&mut self, value: u8) {
         let start = 0;
@@ -1840,7 +1840,7 @@ impl Fs3 {
             >(raw, start, end, &mut self.bits)
         };
     }
-    /// Write the `val_1` field of the register.
+    /// `@3:2` - Set the `val_1` field.
     ///
     pub fn set_val_1(&mut self, index: E3, value: u8) {
         let start = 2 + i32::from(index) as usize * 2;
@@ -1853,7 +1853,7 @@ impl Fs3 {
             >(raw, start, end, &mut self.bits)
         };
     }
-    /// Write the `val_2` field of the register.
+    /// `@7:6` - Set the `val_2` field.
     ///
     pub fn set_val_2(&mut self, index: usize, value: u8) {
         assert!(index < 4);
@@ -1867,7 +1867,7 @@ impl Fs3 {
             >(raw, start, end, &mut self.bits)
         };
     }
-    /// Write the `val_3` field of the register.
+    /// `@15:14` - Set the `val_3` field.
     ///
     pub fn set_val_3(&mut self, value: u8) {
         let start = 14;

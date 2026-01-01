@@ -23,7 +23,7 @@ impl {{field_set.name.to_case(Case::Pascal)}} {
 
     {% for field in field_set.fields %}
         {% if matches!(field.access, Access::RW | Access::RO) %}
-            /// Read the `{{field.name.to_case(Case::Snake)}}` field of the register.
+            /// `{{field.address_text()}}` - Read the `{{field.name.to_case(Case::Snake)}}` field.
             ///
             {{self::description_to_docstring(field.description)}}
             pub fn {{field.name.to_case(Case::Snake)}}(
@@ -74,7 +74,7 @@ impl {{field_set.name.to_case(Case::Pascal)}} {
 
     {% for field in field_set.fields %}
         {% if matches!(field.access, Access::RW | Access::WO) %}
-            /// Write the `{{field.name.to_case(Case::Snake)}}` field of the register.
+            /// `{{field.address_text()}}` - Set the `{{field.name.to_case(Case::Snake)}}` field.
             ///
             {{self::description_to_docstring(field.description)}}
             pub fn set_{{field.name.to_case(Case::Snake)}}(

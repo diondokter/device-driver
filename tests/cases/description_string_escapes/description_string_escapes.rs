@@ -64,7 +64,7 @@ impl FooFieldSet {
     pub const fn new() -> Self {
         Self { bits: [0; 3] }
     }
-    /// Read the `value` field of the register.
+    /// `@23:0` - Read the `value` field.
     ///
     /// \\\"#{
     /// %@&\n
@@ -79,7 +79,7 @@ impl FooFieldSet {
         };
         raw
     }
-    /// Write the `value` field of the register.
+    /// `@23:0` - Set the `value` field.
     ///
     /// \\\"#{
     /// %@&\n
