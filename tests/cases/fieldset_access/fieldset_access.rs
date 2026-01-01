@@ -99,7 +99,7 @@ impl FooRoFieldSet {
     pub const fn new() -> Self {
         Self { bits: [0; 8] }
     }
-    /// Read the `value_ro` field of the register.
+    /// `@15:0` - Read the `value_ro` field.
     ///
     pub fn value_ro(&self) -> u16 {
         let start = 0;
@@ -112,7 +112,7 @@ impl FooRoFieldSet {
         };
         raw
     }
-    /// Read the `value_rw` field of the register.
+    /// `@31:16` - Read the `value_rw` field.
     ///
     pub fn value_rw(&self) -> i16 {
         let start = 16;
@@ -125,7 +125,7 @@ impl FooRoFieldSet {
         };
         raw
     }
-    /// Write the `value_rw` field of the register.
+    /// `@31:16` - Set the `value_rw` field.
     ///
     pub fn set_value_rw(&mut self, value: i16) {
         let start = 16;
@@ -138,7 +138,7 @@ impl FooRoFieldSet {
             >(raw, start, end, &mut self.bits)
         };
     }
-    /// Write the `value_wo` field of the register.
+    /// `@32` - Set the `value_wo` field.
     ///
     pub fn set_value_wo(&mut self, value: bool) {
         let start = 32;
@@ -245,7 +245,7 @@ impl FooRwFieldSet {
     pub const fn new() -> Self {
         Self { bits: [0; 8] }
     }
-    /// Read the `value_ro` field of the register.
+    /// `@15:0` - Read the `value_ro` field.
     ///
     pub fn value_ro(&self) -> u16 {
         let start = 0;
@@ -258,7 +258,7 @@ impl FooRwFieldSet {
         };
         raw
     }
-    /// Read the `value_rw` field of the register.
+    /// `@31:16` - Read the `value_rw` field.
     ///
     pub fn value_rw(&self) -> i16 {
         let start = 16;
@@ -271,7 +271,7 @@ impl FooRwFieldSet {
         };
         raw
     }
-    /// Write the `value_rw` field of the register.
+    /// `@31:16` - Set the `value_rw` field.
     ///
     pub fn set_value_rw(&mut self, value: i16) {
         let start = 16;
@@ -284,7 +284,7 @@ impl FooRwFieldSet {
             >(raw, start, end, &mut self.bits)
         };
     }
-    /// Write the `value_wo` field of the register.
+    /// `@32` - Set the `value_wo` field.
     ///
     pub fn set_value_wo(&mut self, value: bool) {
         let start = 32;
@@ -391,7 +391,7 @@ impl FooWoFieldSet {
     pub const fn new() -> Self {
         Self { bits: [0; 8] }
     }
-    /// Read the `value_ro` field of the register.
+    /// `@15:0` - Read the `value_ro` field.
     ///
     pub fn value_ro(&self) -> u16 {
         let start = 0;
@@ -404,7 +404,7 @@ impl FooWoFieldSet {
         };
         raw
     }
-    /// Read the `value_rw` field of the register.
+    /// `@31:16` - Read the `value_rw` field.
     ///
     pub fn value_rw(&self) -> i16 {
         let start = 16;
@@ -417,7 +417,7 @@ impl FooWoFieldSet {
         };
         raw
     }
-    /// Write the `value_rw` field of the register.
+    /// `@31:16` - Set the `value_rw` field.
     ///
     pub fn set_value_rw(&mut self, value: i16) {
         let start = 16;
@@ -430,7 +430,7 @@ impl FooWoFieldSet {
             >(raw, start, end, &mut self.bits)
         };
     }
-    /// Write the `value_wo` field of the register.
+    /// `@32` - Set the `value_wo` field.
     ///
     pub fn set_value_wo(&mut self, value: bool) {
         let start = 32;

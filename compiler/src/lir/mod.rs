@@ -96,6 +96,16 @@ pub struct Field {
     pub repeat: Repeat,
 }
 
+impl Field {
+    pub fn address_text(&self) -> String {
+        if self.address.len() <= 1 {
+            format!("@{}", self.address.start)
+        } else {
+            format!("@{}:{}", self.address.end - 1, self.address.start)
+        }
+    }
+}
+
 pub enum FieldConversionMethod {
     None,
     Into(Identifier),
