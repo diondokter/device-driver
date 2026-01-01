@@ -269,7 +269,7 @@ fn transform_field_set(
                     let field_bits = field.field_address.len() as u32;
 
                     let fc_identifier = search_object(manifest, &fc.type_name)
-                        .expect("Object existance checked in MIR pass")
+                        .expect("Object existence checked in MIR pass")
                         .name()
                         .clone();
 
