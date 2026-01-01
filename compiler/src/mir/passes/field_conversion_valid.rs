@@ -21,8 +21,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
         if let Object::FieldSet(field_set) = object {
             for field in &field_set.fields {
                 if let Some(conversion) = field.field_conversion.as_ref() {
-                    let target_object =
-                        super::search_object(manifest, &conversion.type_name.take_ref());
+                    let target_object = super::search_object(manifest, &conversion.type_name);
 
                     match target_object {
                         Some(Object::Enum(target_enum)) => {

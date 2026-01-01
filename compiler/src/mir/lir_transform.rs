@@ -268,25 +268,32 @@ fn transform_field_set(
                 (mir::BaseType::FixedSize(integer), Some(fc)) => (integer.to_string(), {
                     let field_bits = field.field_address.len() as u32;
 
+                    let fc_identifier = search_object(manifest, &fc.type_name)
+                        .expect("Object existance checked in MIR pass")
+                        .name()
+                        .clone();
+
                     // Always use try if that's specified
                     if fc.use_try {
-                        lir::FieldConversionMethod::TryInto(fc.type_name.value.clone())
+                        lir::FieldConversionMethod::TryInto(fc_identifier)
                     }
                     // Are we pointing at a potentially infallible enum and do we fulfil the requirements?
                     else if let Some(mir::Enum {
                         generation_style: Some(mir::EnumGenerationStyle::InfallibleWithinRange),
                         size_bits,
                         ..
-                    }) = manifest.iter_enums().find(|e| e.name == fc.type_name)
+                    }) = manifest
+                        .iter_enums()
+                        .find(|e| e.name.take_ref() == fc.type_name.value)
                         && field_bits <= size_bits.expect("Size_bits set in an earlier mir pass")
                     {
                         // This field is equal or smaller in bits than the infallible enum. So we can do the unsafe into
-                        lir::FieldConversionMethod::UnsafeInto(fc.type_name.value.clone())
+                        lir::FieldConversionMethod::UnsafeInto(fc_identifier)
                     } else {
                         // Fallback is to use the into trait.
                         // This is correct because in the field_conversion_valid mir pass we've already exited if we need a try and didn't specify it.
                         // The only other option is the unsafe into and we've just checked that.
-                        lir::FieldConversionMethod::Into(fc.type_name.value.clone())
+                        lir::FieldConversionMethod::Into(fc_identifier)
                     }
                 }),
             };

@@ -58,18 +58,22 @@ impl Identifier {
     }
 
     pub fn check_validity(&self) -> Result<(), Error> {
+        assert!(self.boundaries_applied);
+
         for (word_index, word) in self.words.iter().enumerate() {
-            for (char_index, char) in word.chars().enumerate() {
-                let tfn = match (word_index, char_index) {
+            for (char_offset, char) in word.char_indices() {
+                let tfn = match (word_index, char_offset) {
                     (0, 0) => |c| unicode_ident::is_xid_start(c) || c == '_',
                     _ => |c| unicode_ident::is_xid_continue(c),
                 };
 
                 if !tfn(char) {
                     // This is an option because I'm only 99% sure we can always find the word in the original
-                    let offset = self.original().find(word).map(|word_offset| {
-                        word_offset + word.char_indices().nth(char_index).unwrap().0
-                    });
+                    let offset = self
+                        .original()
+                        .to_lowercase()
+                        .find(word)
+                        .map(|word_offset| word_offset + char_offset);
                     return Err(Error::InvalidCharacter(offset, char));
                 }
             }
@@ -219,7 +223,10 @@ mod tests {
     fn simple_cases() {
         assert_eq!(Identifier::try_parse(""), Err(Error::Empty));
         assert_eq!(
-            Identifier::try_parse("1").unwrap().check_validity(),
+            Identifier::try_parse("1")
+                .unwrap()
+                .apply_boundaries(&[Boundary::Underscore])
+                .check_validity(),
             Err(Error::InvalidCharacter(Some(0), '1'))
         );
         assert_eq!(
@@ -244,11 +251,17 @@ mod tests {
             "a-1"
         );
         assert_eq!(
-            Identifier::try_parse("😈").unwrap().check_validity(),
+            Identifier::try_parse("😈")
+                .unwrap()
+                .apply_boundaries(&[Boundary::Underscore])
+                .check_validity(),
             Err(Error::InvalidCharacter(Some(0), '😈'))
         );
         assert_eq!(
-            Identifier::try_parse("abc😈").unwrap().check_validity(),
+            Identifier::try_parse("abc😈")
+                .unwrap()
+                .apply_boundaries(&[Boundary::Underscore])
+                .check_validity(),
             Err(Error::InvalidCharacter(Some(3), '😈'))
         );
         assert_eq!(
@@ -266,7 +279,10 @@ mod tests {
             "_"
         );
         assert_eq!(
-            Identifier::try_parse("abc def").unwrap().check_validity(),
+            Identifier::try_parse("abc def")
+                .unwrap()
+                .apply_boundaries(&[Boundary::Underscore])
+                .check_validity(),
             Err(Error::InvalidCharacter(Some(3), ' '))
         );
         Identifier::try_parse("abc def")
@@ -288,6 +304,13 @@ mod tests {
                 .to_case(Case::Kebab),
             "_abc-def"
         );
+        assert_eq!(
+            Identifier::try_parse("Bar🚩bar")
+                .unwrap()
+                .apply_boundaries(&[Boundary::Underscore])
+                .check_validity(),
+            Err(Error::InvalidCharacter(Some(3), '🚩'))
+        );
     }
 
     #[test]
@@ -299,5 +322,10 @@ mod tests {
 
         let id3 = id1.concat(&id2);
         assert_eq!(id3.to_case(Case::Kebab), "abc-def-ghi-jkl");
+    }
+
+    #[test]
+    fn default_is_empty() {
+        assert!(Identifier::default().is_empty());
     }
 }

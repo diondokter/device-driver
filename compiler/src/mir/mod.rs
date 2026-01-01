@@ -759,7 +759,7 @@ impl Display for BaseType {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FieldConversion {
     /// The name of the type we're converting to
-    pub type_name: Spanned<Identifier>,
+    pub type_name: Spanned<IdentifierRef>,
     /// True when we want to use the fallible interface (like a Result<type, error>)
     pub use_try: bool,
 }
