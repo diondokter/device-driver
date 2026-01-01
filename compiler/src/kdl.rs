@@ -1,19 +1,21 @@
 use std::{collections::HashMap, str::FromStr};
 
+use convert_case::Boundary;
 use itertools::Itertools;
 use kdl::{KdlDocument, KdlIdentifier, KdlNode, KdlValue};
 use miette::SourceSpan;
 use strum::VariantNames;
 
 use crate::{
+    identifier::{Identifier, IdentifierRef},
     mir::{
         Access, BaseType, BitOrder, Block, Buffer, ByteOrder, Command, Device, DeviceConfig, Enum,
-        EnumValue, EnumVariant, Extern, Field, FieldConversion, FieldSet, FieldSetRef, Integer,
-        Manifest, Object, Register, Repeat, ResetValue, Span, Spanned, Unique,
+        EnumValue, EnumVariant, Extern, Field, FieldConversion, FieldSet, Integer, Manifest,
+        Object, Register, Repeat, ResetValue, Span, Spanned, Unique,
     },
     reporting::{
         self, Diagnostics,
-        errors::{self, UnexpectedEntries},
+        errors::{self, InvalidIdentifier, UnexpectedEntries},
     },
 };
 
@@ -102,6 +104,14 @@ fn transform_manifest(manifest_document: &KdlDocument, diagnostics: &mut Diagnos
 fn transform_device(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Device> {
     let (device_name, device_name_span) = parse_single_string_entry(node, diagnostics, None, true);
     let (device_name, device_name_span) = (device_name?, device_name_span?);
+
+    let device_name = match Identifier::try_parse(&device_name) {
+        Ok(id) => id,
+        Err(e) => {
+            diagnostics.add(InvalidIdentifier::new(e, device_name_span));
+            return None;
+        }
+    };
 
     let mut device = Device {
         description: parse_description(node),
@@ -214,6 +224,14 @@ fn transform_block(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Bloc
         return None;
     };
 
+    let name = match Identifier::try_parse(&name) {
+        Ok(id) => id,
+        Err(e) => {
+            diagnostics.add(InvalidIdentifier::new(e, name_span));
+            return None;
+        }
+    };
+
     let mut block_objects = Vec::new();
     let mut offset = None;
     let mut repeat = None;
@@ -279,6 +297,14 @@ fn transform_register(
     let (Some(name), Some(name_span)) = parse_single_string_entry(node, diagnostics, None, true)
     else {
         return (None, None, Vec::new());
+    };
+
+    let name = match Identifier::try_parse(&name) {
+        Ok(id) => id,
+        Err(e) => {
+            diagnostics.add(InvalidIdentifier::new(e, name_span));
+            return (None, None, Vec::new());
+        }
     };
 
     let mut inline_enums = Vec::new();
@@ -362,8 +388,17 @@ fn transform_register(
                     continue;
                 }
 
-                let (fs, mut enums) =
-                    transform_field_set(child, diagnostics, Some(format!("{name}FieldSet")));
+                let (fs, mut enums) = transform_field_set(
+                    child,
+                    diagnostics,
+                    Some(
+                        name.clone().concat(
+                            Identifier::try_parse("field_set")
+                                .unwrap()
+                                .apply_boundaries(&[Boundary::Underscore]),
+                        ),
+                    ),
+                );
 
                 field_set = fs.map(|val| (val, child.name().span()));
                 inline_enums.append(&mut enums);
@@ -406,7 +441,7 @@ fn transform_register(
             address: address.unwrap().into(),
             reset_value: reset_value.map(Into::into),
             repeat: repeat.map(|(r, _)| r),
-            field_set_ref: FieldSetRef(field_set.as_ref().unwrap().0.name.value.clone()),
+            field_set_ref: field_set.as_ref().unwrap().0.name.take_ref(),
             ..Default::default()
         };
 
@@ -428,6 +463,14 @@ fn transform_command(
     let (Some(name), Some(name_span)) = parse_single_string_entry(node, diagnostics, None, true)
     else {
         return (None, Vec::new(), Vec::new());
+    };
+
+    let name = match Identifier::try_parse(&name) {
+        Ok(id) => id,
+        Err(e) => {
+            diagnostics.add(InvalidIdentifier::new(e, name_span));
+            return (None, Vec::new(), Vec::new());
+        }
     };
 
     let mut inline_enums = Vec::new();
@@ -486,8 +529,17 @@ fn transform_command(
                     continue;
                 }
 
-                let (fs, mut enums) =
-                    transform_field_set(child, diagnostics, Some(format!("{name}FieldSetIn")));
+                let (fs, mut enums) = transform_field_set(
+                    child,
+                    diagnostics,
+                    Some(
+                        name.clone().concat(
+                            Identifier::try_parse("field_set_in")
+                                .unwrap()
+                                .apply_boundaries(&[Boundary::Underscore]),
+                        ),
+                    ),
+                );
 
                 field_set_in = fs.map(|val| (val, child.name().span()));
                 inline_enums.append(&mut enums);
@@ -501,8 +553,17 @@ fn transform_command(
                     continue;
                 }
 
-                let (fs, mut enums) =
-                    transform_field_set(child, diagnostics, Some(format!("{name}FieldSetOut")));
+                let (fs, mut enums) = transform_field_set(
+                    child,
+                    diagnostics,
+                    Some(
+                        name.clone().concat(
+                            Identifier::try_parse("field_set_out")
+                                .unwrap()
+                                .apply_boundaries(&[Boundary::Underscore]),
+                        ),
+                    ),
+                );
 
                 field_set_out = fs.map(|val| (val, child.name().span()));
                 inline_enums.append(&mut enums);
@@ -542,12 +603,8 @@ fn transform_command(
             name: (name, name_span).into(),
             address: address.unwrap().into(),
             repeat: repeat.map(|(r, _)| r),
-            field_set_ref_in: field_set_in
-                .as_ref()
-                .map(|(f, _)| FieldSetRef(f.name.value.clone())),
-            field_set_ref_out: field_set_out
-                .as_ref()
-                .map(|(f, _)| FieldSetRef(f.name.value.clone())),
+            field_set_ref_in: field_set_in.as_ref().map(|(f, _)| f.name.take_ref()),
+            field_set_ref_out: field_set_out.as_ref().map(|(f, _)| f.name.take_ref()),
             ..Default::default()
         };
 
@@ -570,6 +627,14 @@ fn transform_buffer(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Buf
     let (Some(name), Some(name_span)) = parse_single_string_entry(node, diagnostics, None, true)
     else {
         return None;
+    };
+
+    let name = match Identifier::try_parse(&name) {
+        Ok(id) => id,
+        Err(e) => {
+            diagnostics.add(InvalidIdentifier::new(e, name_span));
+            return None;
+        }
     };
 
     let mut access = None;
@@ -704,7 +769,7 @@ fn transform_device_config_node(
 fn transform_field_set(
     node: &KdlNode,
     diagnostics: &mut Diagnostics,
-    default_name: Option<String>,
+    default_name: Option<Identifier>,
 ) -> (Option<FieldSet>, Vec<Enum>) {
     let mut inline_enums = Vec::new();
 
@@ -801,7 +866,14 @@ fn transform_field_set(
     if let Some(name) = name {
         match name.value() {
             KdlValue::String(name_value) => {
-                field_set.name = name_value.clone().with_span(name.span());
+                match Identifier::try_parse(name_value) {
+                    Ok(id) => {
+                        field_set.name = id.with_span(name.span());
+                    }
+                    Err(e) => {
+                        diagnostics.add(InvalidIdentifier::new(e, name.span()));
+                    }
+                };
             }
             _ => {
                 diagnostics.add(errors::UnexpectedType {
@@ -811,7 +883,7 @@ fn transform_field_set(
             }
         }
     } else if let Some(default_name) = default_name {
-        field_set.name = default_name.with_span(node.span());
+        field_set.name = default_name.with_span((node.span().offset(), 0));
     } else {
         diagnostics.add(errors::MissingObjectName {
             object_keyword: node.name().span(),
@@ -1044,14 +1116,21 @@ fn transform_field(node: &KdlNode, diagnostics: &mut Diagnostics) -> (Option<Fie
             // This is an enum, change the field conversion with that info
             let variants = transform_enum_variants(variants, diagnostics);
 
-            inline_enum = Some(Enum::new(
-                // Take the description of the field
-                parse_description(node),
-                field_conversion.type_name.clone(),
-                variants,
-                base_type,
-                address.as_ref().map(|(address, _)| address.len() as u32),
-            ));
+            match Identifier::try_parse(field_conversion.type_name.original()) {
+                Ok(enum_name) => {
+                    inline_enum = Some(Enum::new(
+                        // Take the description of the field
+                        parse_description(node),
+                        enum_name.with_span(field_conversion.type_name.span),
+                        variants,
+                        base_type,
+                        address.as_ref().map(|(address, _)| address.len() as u32),
+                    ));
+                }
+                Err(e) => {
+                    diagnostics.add(InvalidIdentifier::new(e, field_conversion.type_name.span));
+                }
+            }
         } else {
             diagnostics.add(errors::InlineEnumDefinitionWithoutName {
                 field_name: node.name().span(),
@@ -1068,10 +1147,18 @@ fn transform_field(node: &KdlNode, diagnostics: &mut Diagnostics) -> (Option<Fie
         return (None, inline_enum);
     }
 
+    let name = match Identifier::try_parse(node.name().value()) {
+        Ok(id) => id,
+        Err(e) => {
+            diagnostics.add(InvalidIdentifier::new(e, node.name().span()));
+            return (None, inline_enum);
+        }
+    };
+
     (
         Some(Field {
             description: parse_description(node),
-            name: (node.name().value().to_owned(), node.name().span()).into(),
+            name: (name, node.name().span()).into(),
             access: access.map(|(a, _)| a).unwrap_or_default(),
             base_type,
             field_conversion,
@@ -1101,7 +1188,7 @@ fn transform_enum(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Enum>
 
     let mut enum_value = Enum::new(
         parse_description(node),
-        String::new().with_dummy_span(),
+        Identifier::default().with_dummy_span(),
         node.children()
             .map(|children| transform_enum_variants(children, diagnostics))
             .unwrap_or_default(),
@@ -1147,9 +1234,14 @@ fn transform_enum(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Enum>
 
     if let Some(name) = name {
         match name.value() {
-            KdlValue::String(name_value) => {
-                enum_value.name = name_value.clone().with_span(name.span());
-            }
+            KdlValue::String(name_value) => match Identifier::try_parse(name_value) {
+                Ok(id) => {
+                    enum_value.name = id.with_span(name.span());
+                }
+                Err(e) => {
+                    diagnostics.add(InvalidIdentifier::new(e, name.span()));
+                }
+            },
             _ => {
                 diagnostics.add(errors::UnexpectedType {
                     value_name: name.span(),
@@ -1186,7 +1278,7 @@ fn transform_enum(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Enum>
         }
     }
 
-    if name.is_some() {
+    if !enum_value.name.is_empty() {
         Some(enum_value)
     } else {
         None
@@ -1244,12 +1336,17 @@ fn transform_enum_variants(nodes: &KdlDocument, diagnostics: &mut Diagnostics) -
                 None => EnumValue::Unspecified,
             };
 
+            let name = match Identifier::try_parse(variant_name.value()) {
+                Ok(id) => id,
+                Err(e) => {
+                    diagnostics.add(InvalidIdentifier::new(e, variant_name.span()));
+                    return None;
+                }
+            };
+
             Some(EnumVariant {
                 description: parse_description(node),
-                name: variant_name
-                    .value()
-                    .to_string()
-                    .with_span(variant_name.span()),
+                name: name.with_span(variant_name.span()),
                 value: variant_value,
             })
         })
@@ -1320,9 +1417,14 @@ fn transform_extern(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Ext
 
     if let Some(name) = name {
         match name.value() {
-            KdlValue::String(name_value) => {
-                extern_value.name = name_value.clone().with_span(name.span());
-            }
+            KdlValue::String(name_value) => match Identifier::try_parse(name_value) {
+                Ok(id) => {
+                    extern_value.name = id.with_span(name.span());
+                }
+                Err(e) => {
+                    diagnostics.add(InvalidIdentifier::new(e, name.span()));
+                }
+            },
             _ => {
                 diagnostics.add(errors::UnexpectedType {
                     value_name: name.span(),
@@ -1340,7 +1442,7 @@ fn transform_extern(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Ext
 
     extern_value.supports_infallible = infallible.is_some();
 
-    if name.is_some() {
+    if !extern_value.name.is_empty() {
         Some(extern_value)
     } else {
         None
@@ -1362,12 +1464,12 @@ fn parse_type(
     if let Some((base_type, conversion)) = ty_str.split_once(':') {
         base_type_str = base_type;
 
+        let use_try = conversion.ends_with('?');
+        let conversion = IdentifierRef::new(conversion.trim_end_matches('?').into());
+
         field_conversion = Some(FieldConversion {
-            type_name: conversion
-                .trim_end_matches('?')
-                .to_owned()
-                .with_span(ty.span()),
-            use_try: conversion.ends_with('?'),
+            type_name: conversion.with_span(ty.span()),
+            use_try,
         });
     } else {
         base_type_str = ty_str;
@@ -1431,7 +1533,9 @@ fn parse_repeat_entries(
         match (entry.name().map(kdl::KdlIdentifier::value), entry.value()) {
             (Some("count"), KdlValue::Integer(val)) => count = Some((*val, entry.span())),
             (Some("stride"), KdlValue::Integer(val)) => stride = Some((*val, entry.span())),
-            (Some("with"), KdlValue::String(val)) => with = Some((val.clone(), entry.span())),
+            (Some("with"), KdlValue::String(val)) => {
+                with = Some((IdentifierRef::new(val.clone()), entry.span()))
+            }
             (Some("count" | "stride"), _) => diagnostics.add(errors::UnexpectedType {
                 value_name: entry.span(),
                 expected_type: "integer",

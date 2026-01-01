@@ -1,10 +1,11 @@
 use std::ops::Add;
 
-use convert_case::Boundary;
+use convert_case::Case;
 
 use crate::{
+    identifier::Identifier,
     lir,
-    mir::{self, Manifest, Object},
+    mir::{self, Manifest, Object, passes::search_object},
 };
 
 use super::{Integer, passes::find_min_max_addresses};
@@ -35,7 +36,7 @@ fn transform_devices(manifest: &mir::Manifest) -> Vec<lir::Device> {
                         } else {
                             format!("{}\n\n", device.description)
                         },
-                        device.name,
+                        device.name.to_case(Case::Pascal),
                     ),
                     name: &device.name,
                     address_offset: &0,
@@ -100,13 +101,6 @@ fn get_method(
     global_config: &mir::DeviceConfig,
     manifest: &Manifest,
 ) -> Option<lir::BlockMethod> {
-    use convert_case::Casing;
-    let default_word_boundaries = Boundary::defaults();
-    let word_boundaries = match &global_config.name_word_boundaries {
-        Some(name_word_boundaries) => name_word_boundaries.as_slice(),
-        None => default_word_boundaries.as_slice(),
-    };
-
     match object {
         mir::Object::Device(_) => None,
         mir::Object::Block(
@@ -127,76 +121,80 @@ fn get_method(
 
             Some(lir::BlockMethod {
                 description: description.clone(),
-                name: name
-                    .set_boundaries(word_boundaries)
-                    .to_case(convert_case::Case::Snake),
+                name: name.value.clone(),
                 address: address_offset.value,
-                allow_address_overlap: false,
                 repeat: repeat_to_method_kind(repeat, manifest),
                 method_type: lir::BlockMethodType::Block {
-                    name: name.to_string(),
+                    name: name.value.clone(),
                 },
             })
         }
         mir::Object::Register(mir::Register {
             description,
             name,
-            allow_address_overlap,
             address,
             access,
             repeat,
-            field_set_ref: field_set,
+            field_set_ref,
             reset_value,
-        }) => Some(lir::BlockMethod {
-            description: description.clone(),
-            name: name
-                .set_boundaries(word_boundaries)
-                .to_case(convert_case::Case::Snake),
-            address: address.value,
-            allow_address_overlap: *allow_address_overlap,
-            repeat: repeat_to_method_kind(repeat, manifest),
-            method_type: lir::BlockMethodType::Register {
-                field_set_name: field_set.0.clone(),
-                access: *access,
-                address_type: global_config
-                    .register_address_type
-                    .expect("The presence of the address type is already checked in a mir pass")
-                    .value,
-                reset_value: reset_value.clone().map(|rv| {
-                    rv.as_array()
+            ..
+        }) => {
+            let field_set =
+                search_object(manifest, field_set_ref).expect("Existence checked in MIR pass");
+
+            Some(lir::BlockMethod {
+                description: description.clone(),
+                name: name.value.clone(),
+                address: address.value,
+                repeat: repeat_to_method_kind(repeat, manifest),
+                method_type: lir::BlockMethodType::Register {
+                    field_set_name: field_set.name().clone(),
+                    access: *access,
+                    address_type: global_config
+                        .register_address_type
+                        .expect("The presence of the address type is already checked in a mir pass")
+                        .value,
+                    reset_value: reset_value.clone().map(|rv| {
+                        rv.as_array()
                         .expect(
                             "Reset value should already be converted to array here in a mir pass",
                         )
                         .clone()
-                }),
-            },
-        }),
+                    }),
+                },
+            })
+        }
         mir::Object::Command(mir::Command {
             description,
             name,
-            allow_address_overlap,
             address,
             repeat,
-            field_set_ref_in: field_set_in,
-            field_set_ref_out: field_set_out,
+            field_set_ref_in,
+            field_set_ref_out,
             ..
-        }) => Some(lir::BlockMethod {
-            description: description.clone(),
-            name: name
-                .set_boundaries(word_boundaries)
-                .to_case(convert_case::Case::Snake),
-            address: address.value,
-            allow_address_overlap: *allow_address_overlap,
-            repeat: repeat_to_method_kind(repeat, manifest),
-            method_type: lir::BlockMethodType::Command {
-                field_set_name_in: field_set_in.as_ref().map(|fs_in| fs_in.0.clone()),
-                field_set_name_out: field_set_out.as_ref().map(|fs_out| fs_out.0.clone()),
-                address_type: global_config
-                    .command_address_type
-                    .expect("The presence of the address type is already checked in a mir pass")
-                    .value,
-            },
-        }),
+        }) => {
+            let field_set_in = field_set_ref_in.as_ref().map(|id_ref| {
+                search_object(manifest, id_ref).expect("Existence checked in MIR pass")
+            });
+            let field_set_out = field_set_ref_out.as_ref().map(|id_ref| {
+                search_object(manifest, id_ref).expect("Existence checked in MIR pass")
+            });
+
+            Some(lir::BlockMethod {
+                description: description.clone(),
+                name: name.value.clone(),
+                address: address.value,
+                repeat: repeat_to_method_kind(repeat, manifest),
+                method_type: lir::BlockMethodType::Command {
+                    field_set_name_in: field_set_in.map(|fs_in| fs_in.name().clone()),
+                    field_set_name_out: field_set_out.map(|fs_out| fs_out.name().clone()),
+                    address_type: global_config
+                        .command_address_type
+                        .expect("The presence of the address type is already checked in a mir pass")
+                        .value,
+                },
+            })
+        }
         mir::Object::Buffer(mir::Buffer {
             description,
             name,
@@ -204,11 +202,8 @@ fn get_method(
             address,
         }) => Some(lir::BlockMethod {
             description: description.clone(),
-            name: name
-                .set_boundaries(word_boundaries)
-                .to_case(convert_case::Case::Snake),
+            name: name.value.clone(),
             address: address.value,
-            allow_address_overlap: false,
             repeat: lir::Repeat::None, // Buffers can't be repeated (for now?)
             method_type: lir::BlockMethodType::Buffer {
                 access: *access,
@@ -273,25 +268,32 @@ fn transform_field_set(
                 (mir::BaseType::FixedSize(integer), Some(fc)) => (integer.to_string(), {
                     let field_bits = field.field_address.len() as u32;
 
+                    let fc_identifier = search_object(manifest, &fc.type_name)
+                        .expect("Object existence checked in MIR pass")
+                        .name()
+                        .clone();
+
                     // Always use try if that's specified
                     if fc.use_try {
-                        lir::FieldConversionMethod::TryInto(fc.type_name.value.clone())
+                        lir::FieldConversionMethod::TryInto(fc_identifier)
                     }
                     // Are we pointing at a potentially infallible enum and do we fulfil the requirements?
                     else if let Some(mir::Enum {
                         generation_style: Some(mir::EnumGenerationStyle::InfallibleWithinRange),
                         size_bits,
                         ..
-                    }) = manifest.iter_enums().find(|e| e.name == fc.type_name)
+                    }) = manifest
+                        .iter_enums()
+                        .find(|e| e.name.take_ref() == fc.type_name.value)
                         && field_bits <= size_bits.expect("Size_bits set in an earlier mir pass")
                     {
                         // This field is equal or smaller in bits than the infallible enum. So we can do the unsafe into
-                        lir::FieldConversionMethod::UnsafeInto(fc.type_name.value.clone())
+                        lir::FieldConversionMethod::UnsafeInto(fc_identifier)
                     } else {
                         // Fallback is to use the into trait.
                         // This is correct because in the field_conversion_valid mir pass we've already exited if we need a try and didn't specify it.
                         // The only other option is the unsafe into and we've just checked that.
-                        lir::FieldConversionMethod::Into(fc.type_name.value.clone())
+                        lir::FieldConversionMethod::Into(fc_identifier)
                     }
                 }),
             };
@@ -310,18 +312,21 @@ fn transform_field_set(
                             count: *c,
                             stride: repeat.stride,
                         },
-                        mir::RepeatSource::Enum(enum_name) => lir::Repeat::Enum {
-                            enum_name: enum_name.value.clone(),
-                            enum_variants: manifest
-                                .iter_enums()
-                                .find(|e| e.name.value == enum_name.value)
-                                .expect("Checked in MIR pass")
-                                .variants
-                                .iter()
-                                .map(|variant| variant.name.value.clone())
-                                .collect(),
-                            stride: repeat.stride,
-                        },
+                        mir::RepeatSource::Enum(enum_name) => {
+                            let target_enum = search_object(manifest, enum_name)
+                                .expect("Existence checked in MIR pass")
+                                .as_enum()
+                                .expect("checked in MIR pass");
+                            lir::Repeat::Enum {
+                                enum_name: target_enum.name.value.clone(),
+                                enum_variants: target_enum
+                                    .variants
+                                    .iter()
+                                    .map(|variant| variant.name.value.clone())
+                                    .collect(),
+                                stride: repeat.stride,
+                            }
+                        }
                     }),
             }
         })
@@ -371,7 +376,7 @@ fn transform_enums(manifest: &mir::Manifest) -> Vec<lir::Enum> {
 
                 lir::EnumVariant {
                     description: description.clone(),
-                    name: name.to_string(),
+                    name: name.value.clone(),
                     discriminant,
                     default: matches!(value, mir::EnumValue::Default),
                     catch_all: matches!(value, mir::EnumValue::CatchAll),
@@ -381,7 +386,7 @@ fn transform_enums(manifest: &mir::Manifest) -> Vec<lir::Enum> {
 
         lir::Enum {
             description: description.clone(),
-            name: name.to_string(),
+            name: name.value.clone(),
             base_type,
             variants,
             defmt_feature: config.defmt_feature.clone(),
@@ -401,18 +406,21 @@ fn repeat_to_method_kind(repeat: &Option<mir::Repeat>, manifest: &Manifest) -> l
         Some(mir::Repeat {
             source: mir::RepeatSource::Enum(enum_name),
             stride,
-        }) => lir::Repeat::Enum {
-            enum_name: enum_name.value.clone(),
-            enum_variants: manifest
-                .iter_enums()
-                .find(|object| object.name == enum_name.value)
-                .expect("Checked in a MIR pass")
-                .variants
-                .iter()
-                .map(|variant| variant.name.value.clone())
-                .collect(),
-            stride: *stride,
-        },
+        }) => {
+            let target_enum = search_object(manifest, enum_name)
+                .expect("Existence checked in MIR pass")
+                .as_enum()
+                .expect("checked in MIR pass");
+            lir::Repeat::Enum {
+                enum_name: target_enum.name.value.clone(),
+                enum_variants: target_enum
+                    .variants
+                    .iter()
+                    .map(|variant| variant.name.value.clone())
+                    .collect(),
+                stride: *stride,
+            }
+        }
         None => lir::Repeat::None,
     }
 }
@@ -420,7 +428,7 @@ fn repeat_to_method_kind(repeat: &Option<mir::Repeat>, manifest: &Manifest) -> l
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BorrowedBlock<'o> {
     pub description: &'o String,
-    pub name: &'o String,
+    pub name: &'o Identifier,
     pub address_offset: &'o i128,
     pub repeat: &'o Option<mir::Repeat>,
     pub objects: &'o [mir::Object],

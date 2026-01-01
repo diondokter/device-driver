@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
+    identifier::IdentifierRef,
     mir::{Device, LendingIterator, Manifest, RepeatSource, Unique, UniqueId},
     reporting::Diagnostics,
 };
@@ -19,7 +20,7 @@ pub mod device_name_is_pascal;
 pub mod enum_values_checked;
 pub mod extern_values_checked;
 pub mod field_conversion_valid;
-pub mod names_normalized;
+pub mod names_checked;
 pub mod names_unique;
 pub mod repeat_with_enums_checked;
 pub mod reset_values_converted;
@@ -28,7 +29,8 @@ pub fn run_passes(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> mie
     bit_order_specified::run_pass(manifest);
     base_types_specified::run_pass(manifest, diagnostics);
     device_name_is_pascal::run_pass(manifest, diagnostics);
-    names_normalized::run_pass(manifest);
+    let removals = names_checked::run_pass(manifest, diagnostics);
+    remove_objects(manifest, removals);
     names_unique::run_pass(manifest, diagnostics);
     let removals = enum_values_checked::run_pass(manifest, diagnostics);
     remove_objects(manifest, removals);
@@ -51,8 +53,13 @@ pub fn run_passes(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> mie
     Ok(())
 }
 
-pub(crate) fn search_object<'o>(manifest: &'o Manifest, name: &str) -> Option<&'o Object> {
-    manifest.iter_objects().find(|o| o.name() == name)
+pub(crate) fn search_object<'o>(
+    manifest: &'o Manifest,
+    name: &IdentifierRef,
+) -> Option<&'o Object> {
+    manifest
+        .iter_objects()
+        .find(|o| o.name().original() == name.original())
 }
 
 /// Returns None if device has no objects that pass the filter

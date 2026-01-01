@@ -6,6 +6,8 @@ use std::{fmt::Display, ops::Range, rc::Rc};
 use convert_case::Boundary;
 use miette::SourceSpan;
 
+use crate::identifier::{Identifier, IdentifierRef};
+
 pub mod lir_transform;
 pub mod passes;
 
@@ -226,7 +228,7 @@ impl From<Device> for Manifest {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Device {
     pub description: String,
-    pub name: Spanned<String>,
+    pub name: Spanned<Identifier>,
     pub device_config: DeviceConfig,
     pub objects: Vec<Object>,
 }
@@ -499,7 +501,7 @@ impl Object {
     }
 
     /// Get a mutable reference to the name of the specific object
-    pub(self) fn name_mut(&mut self) -> &mut String {
+    pub(self) fn name_mut(&mut self) -> &mut Identifier {
         match self {
             Object::Device(val) => &mut val.name,
             Object::Block(val) => &mut val.name,
@@ -513,7 +515,7 @@ impl Object {
     }
 
     /// Get a reference to the name of the specific object
-    pub(self) fn name(&self) -> &str {
+    pub(self) fn name(&self) -> &Identifier {
         match self {
             Object::Device(val) => &val.name,
             Object::Block(val) => &val.name,
@@ -537,30 +539,6 @@ impl Object {
             Object::FieldSet(val) => val.name.span,
             Object::Enum(val) => val.name.span,
             Object::Extern(val) => val.name.span,
-        }
-    }
-
-    pub(self) fn field_set_refs_mut(&mut self) -> Vec<&mut FieldSetRef> {
-        match self {
-            Object::Device(_) => Vec::new(),
-            Object::Block(_) => Vec::new(),
-            Object::Register(register) => vec![&mut register.field_set_ref],
-            Object::Command(command) => {
-                let mut buffer = Vec::new();
-
-                if let Some(fs_in) = command.field_set_ref_in.as_mut() {
-                    buffer.push(fs_in);
-                }
-                if let Some(fs_out) = command.field_set_ref_out.as_mut() {
-                    buffer.push(fs_out);
-                }
-
-                buffer
-            }
-            Object::Buffer(_) => Vec::new(),
-            Object::FieldSet(_) => Vec::new(),
-            Object::Enum(_) => Vec::new(),
-            Object::Extern(_) => Vec::new(),
         }
     }
 
@@ -669,7 +647,7 @@ impl Object {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Block {
     pub description: String,
-    pub name: Spanned<String>,
+    pub name: Spanned<Identifier>,
     pub address_offset: Spanned<i128>,
     pub repeat: Option<Repeat>,
     pub objects: Vec<Object>,
@@ -684,41 +662,25 @@ pub struct Repeat {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RepeatSource {
     Count(u64),
-    Enum(Spanned<String>),
+    Enum(Spanned<IdentifierRef>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Register {
     pub description: String,
-    pub name: Spanned<String>,
+    pub name: Spanned<Identifier>,
     pub access: Access,
     pub allow_address_overlap: bool,
     pub address: Spanned<i128>,
     pub reset_value: Option<Spanned<ResetValue>>,
     pub repeat: Option<Repeat>,
-    pub field_set_ref: FieldSetRef,
-}
-
-/// An externally defined fieldset. This is the name of that fieldset
-#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
-pub struct FieldSetRef(pub String);
-
-impl From<String> for FieldSetRef {
-    fn from(value: String) -> Self {
-        Self(value)
-    }
-}
-
-impl<'a> From<&'a str> for FieldSetRef {
-    fn from(value: &'a str) -> Self {
-        Self(value.into())
-    }
+    pub field_set_ref: IdentifierRef,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct FieldSet {
     pub description: String,
-    pub name: Spanned<String>,
+    pub name: Spanned<Identifier>,
     pub size_bits: Spanned<u32>,
     pub byte_order: Option<ByteOrder>,
     pub bit_order: Option<BitOrder>,
@@ -729,7 +691,7 @@ pub struct FieldSet {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Field {
     pub description: String,
-    pub name: Spanned<String>,
+    pub name: Spanned<Identifier>,
     pub access: Access,
     pub base_type: Spanned<BaseType>,
     pub field_conversion: Option<FieldConversion>,
@@ -745,7 +707,7 @@ impl Field {
                 format!(
                     "{}:{}{}",
                     self.base_type,
-                    fc.type_name,
+                    fc.type_name.original(),
                     if fc.use_try { "?" } else { "" }
                 )
             }
@@ -797,7 +759,7 @@ impl Display for BaseType {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FieldConversion {
     /// The name of the type we're converting to
-    pub type_name: Spanned<String>,
+    pub type_name: Spanned<IdentifierRef>,
     /// True when we want to use the fallible interface (like a Result<type, error>)
     pub use_try: bool,
 }
@@ -805,7 +767,7 @@ pub struct FieldConversion {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Enum {
     pub description: String,
-    pub name: Spanned<String>,
+    pub name: Spanned<Identifier>,
     pub variants: Vec<EnumVariant>,
     pub base_type: Spanned<BaseType>,
     pub size_bits: Option<u32>,
@@ -816,7 +778,7 @@ impl Enum {
     #[must_use]
     pub fn new(
         description: String,
-        name: Spanned<String>,
+        name: Spanned<Identifier>,
         variants: Vec<EnumVariant>,
         base_type: Spanned<BaseType>,
         size_bits: Option<u32>,
@@ -834,7 +796,7 @@ impl Enum {
     #[cfg(test)]
     pub fn new_with_style(
         description: String,
-        name: Spanned<String>,
+        name: Spanned<Identifier>,
         variants: Vec<EnumVariant>,
         base_type: Spanned<BaseType>,
         size_bits: Option<u32>,
@@ -913,7 +875,7 @@ impl EnumGenerationStyle {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct EnumVariant {
     pub description: String,
-    pub name: Spanned<String>,
+    pub name: Spanned<Identifier>,
     pub value: EnumValue,
 }
 
@@ -955,19 +917,19 @@ impl EnumValue {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Command {
     pub description: String,
-    pub name: Spanned<String>,
+    pub name: Spanned<Identifier>,
     pub address: Spanned<i128>,
     pub allow_address_overlap: bool,
     pub repeat: Option<Repeat>,
 
-    pub field_set_ref_in: Option<FieldSetRef>,
-    pub field_set_ref_out: Option<FieldSetRef>,
+    pub field_set_ref_in: Option<IdentifierRef>,
+    pub field_set_ref_out: Option<IdentifierRef>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Buffer {
     pub description: String,
-    pub name: Spanned<String>,
+    pub name: Spanned<Identifier>,
     pub access: Access,
     pub address: Spanned<i128>,
 }
@@ -992,7 +954,7 @@ impl ResetValue {
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Extern {
     pub description: String,
-    pub name: Spanned<String>,
+    pub name: Spanned<Identifier>,
     /// From/into what base type can this extern be converted?
     pub base_type: Spanned<BaseType>,
     /// If true, this extern can be converted infallibly too
@@ -1002,11 +964,15 @@ pub struct Extern {
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum UniqueId {
     Object {
-        object_name: Spanned<String>,
+        object_name: Spanned<Identifier>,
     },
     Field {
         parent_id: Box<UniqueId>,
-        field_name: Spanned<String>,
+        field_name: Spanned<Identifier>,
+    },
+    Variant {
+        parent_id: Box<UniqueId>,
+        variant_name: Spanned<Identifier>,
     },
 }
 
@@ -1016,14 +982,23 @@ impl UniqueId {
         match self {
             UniqueId::Object { object_name } => object_name.span,
             UniqueId::Field { field_name, .. } => field_name.span,
+            UniqueId::Variant { variant_name, .. } => variant_name.span,
+        }
+    }
+
+    pub fn identifier(&self) -> &Identifier {
+        match self {
+            UniqueId::Object { object_name } => object_name,
+            UniqueId::Field { field_name, .. } => field_name,
+            UniqueId::Variant { variant_name, .. } => variant_name,
         }
     }
 
     /// *Only for tests:* Create a new instance with a dummy span.
     #[cfg(test)]
-    pub fn new_test(object_name: impl Into<String>) -> Self {
+    pub fn new_test(identifier: Identifier) -> Self {
         Self::Object {
-            object_name: object_name.into().with_dummy_span(),
+            object_name: identifier.with_dummy_span(),
         }
     }
 }
@@ -1031,11 +1006,15 @@ impl UniqueId {
 impl Display for UniqueId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            UniqueId::Object { object_name } => write!(f, "{object_name}"),
+            UniqueId::Object { object_name } => write!(f, "{}", object_name.original()),
             UniqueId::Field {
                 parent_id,
                 field_name,
-            } => write!(f, "{parent_id} {{ {field_name} }}"),
+            } => write!(f, "{parent_id} {{ {} }}", field_name.original()),
+            UniqueId::Variant {
+                parent_id,
+                variant_name,
+            } => write!(f, "{parent_id} {{ {} }}", variant_name.original()),
         }
     }
 }
@@ -1090,7 +1069,6 @@ impl_unique_object!(Command);
 impl_unique_object!(Buffer);
 impl_unique_object!(Block);
 impl_unique_object!(Enum);
-impl_unique_object!(EnumVariant);
 impl_unique_object!(FieldSet);
 impl_unique_object!(Extern);
 
@@ -1105,6 +1083,25 @@ impl Unique for Field {
         UniqueId::Field {
             parent_id: Box::new(parent),
             field_name: self.name.clone(),
+        }
+    }
+
+    fn has_id(&self, _id: &UniqueId) -> bool {
+        unreachable!()
+    }
+}
+
+impl Unique for EnumVariant {
+    type Metadata = UniqueId;
+
+    fn id(&self) -> UniqueId {
+        unreachable!()
+    }
+
+    fn id_with(&self, parent: Self::Metadata) -> UniqueId {
+        UniqueId::Variant {
+            parent_id: Box::new(parent),
+            variant_name: self.name.clone(),
         }
     }
 
@@ -1250,37 +1247,40 @@ mod tests {
             root_objects: vec![
                 Object::Device(Device {
                     description: String::new(),
-                    name: "a".to_owned().with_dummy_span(),
+                    name: "a".into(),
                     device_config: DeviceConfig {
                         register_access: Some(Access::RW),
                         ..Default::default()
                     },
                     objects: vec![
                         Object::Extern(Extern {
-                            name: "b".to_owned().with_dummy_span(),
+                            name: "b".into(),
                             ..Default::default()
                         }),
                         Object::Extern(Extern {
-                            name: "c".to_owned().with_dummy_span(),
+                            name: "c".into(),
                             ..Default::default()
                         }),
                     ],
                 }),
                 Object::Extern(Extern {
-                    name: "d".to_owned().with_dummy_span(),
+                    name: "d".into(),
                     ..Default::default()
                 }),
             ],
             config: Default::default(),
         };
 
-        let names: Vec<_> = manifest.iter_objects().map(|o| o.name()).collect();
+        let names: Vec<_> = manifest
+            .iter_objects()
+            .map(|o| o.name().original())
+            .collect();
         assert_eq!(&names, NAME_ORDER);
 
         let mut names = Vec::new();
         let mut lender = manifest.iter_objects_with_config_mut();
         while let Some((object, _)) = lender.next() {
-            names.push(object.name().to_string());
+            names.push(object.name().original().to_string());
         }
         assert_eq!(&names, NAME_ORDER);
     }

@@ -8,10 +8,10 @@ use crate::reporting::{Diagnostics, NamedSourceCode};
 
 pub use miette;
 
+pub(crate) mod identifier;
 mod kdl;
 mod lir;
 pub mod mir;
-
 pub mod reporting;
 
 #[must_use]

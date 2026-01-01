@@ -8,7 +8,10 @@ use itertools::Itertools;
 use miette::{Diagnostic, LabeledSpan, SourceSpan};
 use thiserror::Error;
 
-use crate::mir::{BaseType, FieldConversion, Integer};
+use crate::{
+    identifier::{self, Identifier},
+    mir::{BaseType, FieldConversion, Integer},
+};
 
 #[derive(Error, Debug, Diagnostic)]
 #[error("Missing object name")]
@@ -235,7 +238,7 @@ impl OnlyBaseTypeAllowed {
     fn conversion_text(&self) -> String {
         format!(
             "{}{}",
-            self.field_conversion.type_name,
+            self.field_conversion.type_name.original(),
             if self.field_conversion.use_try {
                 "?"
             } else {
@@ -313,10 +316,12 @@ pub struct DeviceNameNotPascal {
     )
 )]
 pub struct DuplicateName {
-    #[label("The original")]
+    #[label("The original verbatim: {:?}, split: {:?}", original_value.original(), original_value.words().join("·"))]
     pub original: SourceSpan,
-    #[label(primary, "The duplicate")]
+    pub original_value: Identifier,
+    #[label(primary, "The duplicate verbatim: {:?}, split: {:?}", duplicate_value.original(), duplicate_value.words().join("·"))]
     pub duplicate: SourceSpan,
+    pub duplicate_value: Identifier,
 }
 
 #[derive(Error, Debug, Diagnostic)]
@@ -716,4 +721,55 @@ pub struct AddressOverlap {
     #[label("Object overlaps with other object{}", if let Some(repeat_offset) = repeat_offset_2 { format!(" at repeat offset {repeat_offset}") } else { String::new() })]
     pub object_2: SourceSpan,
     pub repeat_offset_2: Option<i128>,
+}
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("Invalid identifier used")]
+#[diagnostic(
+    severity(Error),
+    help(
+        "Identifiers are split into words using the name-word-boundaries.\n\
+After the split the first character of the first word must be a `_` or a unicode XID start character.\n\
+All other characters must be a unicode XID continue character."
+    )
+)]
+pub struct InvalidIdentifier {
+    #[label(collection)]
+    pub labels: Vec<LabeledSpan>,
+}
+
+impl InvalidIdentifier {
+    pub fn new(error: identifier::Error, identifier: SourceSpan) -> Self {
+        match error {
+            identifier::Error::Empty => Self {
+                labels: vec![LabeledSpan::new_with_span(
+                    Some("Identifier is empty".into()),
+                    identifier,
+                )],
+            },
+            identifier::Error::InvalidCharacter(Some(offset), character)
+                if !identifier.is_empty() =>
+            {
+                Self {
+                    labels: vec![LabeledSpan::new(
+                        Some(format!(
+                            "`{character}` (or `{}`) is not a valid character",
+                            character.escape_unicode()
+                        )),
+                        identifier.offset() + offset,
+                        character.len_utf8(),
+                    )],
+                }
+            }
+            identifier::Error::InvalidCharacter(_, character) => Self {
+                labels: vec![LabeledSpan::new_with_span(
+                    Some(format!(
+                        "`{character}` (or `{}`) is not a valid character",
+                        character.escape_unicode()
+                    )),
+                    identifier,
+                )],
+            },
+        }
+    }
 }
