@@ -55,21 +55,21 @@ pub trait AsyncRegisterInterface {
 }
 
 /// Object that performs actions on the device in the context of a register
-pub struct RegisterOperation<'i, Interface, AddressType: Copy, Register: FieldSet, Access> {
+pub struct RegisterOperation<'i, Interface, AddressType: Copy, FS: FieldSet, Access> {
     interface: &'i mut Interface,
     address: AddressType,
-    register_new_with_reset: fn() -> Register,
-    _phantom: PhantomData<(Register, Access)>,
+    register_new_with_reset: fn() -> FS,
+    _phantom: PhantomData<(FS, Access)>,
 }
 
-impl<'i, Interface, AddressType: Copy, Register: FieldSet, Access>
-    RegisterOperation<'i, Interface, AddressType, Register, Access>
+impl<'i, Interface, AddressType: Copy, FS: FieldSet, Access>
+    RegisterOperation<'i, Interface, AddressType, FS, Access>
 {
     #[doc(hidden)]
     pub fn new(
         interface: &'i mut Interface,
         address: AddressType,
-        register_new_with_reset: fn() -> Register,
+        register_new_with_reset: fn() -> FS,
     ) -> Self {
         Self {
             interface,
@@ -88,13 +88,75 @@ impl<'i, Interface, AddressType: Copy, Register: FieldSet, Access>
     }
 
     /// Get the register's reset value.
-    pub fn reset_value(&self) -> Register {
+    pub fn reset_value(&self) -> FS {
         (self.register_new_with_reset)()
     }
 }
 
-impl<Interface, AddressType: Copy, Register: FieldSet, Access>
-    RegisterOperation<'_, Interface, AddressType, Register, Access>
+impl<Interface, AddressType: Copy, FS: FieldSet, Access>
+    RegisterOperation<'_, Interface, AddressType, FS, Access>
+where
+    Access: WriteCapability,
+{
+    pub fn plan_write(
+        &mut self,
+        f: impl FnOnce(&mut FS),
+    ) -> Plan<AddressType, FS, crate::WO> {
+        let mut register = (self.register_new_with_reset)();
+        f(&mut register);
+
+        Plan {
+            address: self.address(),
+            value: register,
+            _phantom: PhantomData,
+        }
+    }
+
+    pub fn plan_write_with_zero(
+        &mut self,
+        f: impl FnOnce(&mut FS),
+    ) -> Plan<AddressType, FS, crate::WO> {
+        let mut register = FS::default();
+        f(&mut register);
+
+        Plan {
+            address: self.address(),
+            value: register,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<Interface, AddressType: Copy, FS: FieldSet, Access>
+    RegisterOperation<'_, Interface, AddressType, FS, Access>
+where
+    Access: ReadCapability,
+{
+    pub fn plan_read(&mut self) -> Plan<AddressType, FS, crate::RO> {
+        Plan {
+            address: self.address(),
+            value: Default::default(),
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<Interface, AddressType: Copy, FS: FieldSet, Access>
+    RegisterOperation<'_, Interface, AddressType, FS, Access>
+where
+    Access: ReadCapability + WriteCapability,
+{
+    pub fn plan_modify(&mut self) -> Plan<AddressType, FS, crate::RW> {
+        Plan {
+            address: self.address(),
+            value: Default::default(),
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<Interface, AddressType: Copy, FS: FieldSet, Access>
+    RegisterOperation<'_, Interface, AddressType, FS, Access>
 where
     Interface: RegisterInterface<AddressType = AddressType>,
     Access: WriteCapability,
@@ -103,13 +165,13 @@ where
     ///
     /// The closure is given the write object initialized to the reset value of the register.
     /// If no reset value is specified for this register, this function is the same as [`Self::write_with_zero`].
-    pub fn write<R>(&mut self, f: impl FnOnce(&mut Register) -> R) -> Result<R, Interface::Error> {
+    pub fn write<R>(&mut self, f: impl FnOnce(&mut FS) -> R) -> Result<R, Interface::Error> {
         let mut register = (self.register_new_with_reset)();
         let returned = f(&mut register);
 
         self.interface.write_register(
             self.address,
-            Register::SIZE_BITS,
+            FS::SIZE_BITS,
             register.get_inner_buffer(),
         )?;
         Ok(returned)
@@ -120,40 +182,40 @@ where
     /// The closure is given the write object initialized to all zero.
     pub fn write_with_zero<R>(
         &mut self,
-        f: impl FnOnce(&mut Register) -> R,
+        f: impl FnOnce(&mut FS) -> R,
     ) -> Result<R, Interface::Error> {
-        let mut register = Register::default();
+        let mut register = FS::default();
         let returned = f(&mut register);
         self.interface.write_register(
             self.address,
-            Register::SIZE_BITS,
+            FS::SIZE_BITS,
             register.get_inner_buffer_mut(),
         )?;
         Ok(returned)
     }
 }
 
-impl<Interface, AddressType: Copy, Register: FieldSet, Access>
-    RegisterOperation<'_, Interface, AddressType, Register, Access>
+impl<Interface, AddressType: Copy, FS: FieldSet, Access>
+    RegisterOperation<'_, Interface, AddressType, FS, Access>
 where
     Interface: RegisterInterface<AddressType = AddressType>,
     Access: ReadCapability,
 {
     /// Read the register from the device
-    pub fn read(&mut self) -> Result<Register, Interface::Error> {
-        let mut register = Register::default();
+    pub fn read(&mut self) -> Result<FS, Interface::Error> {
+        let mut register = FS::default();
 
         self.interface.read_register(
             self.address,
-            Register::SIZE_BITS,
+            FS::SIZE_BITS,
             register.get_inner_buffer_mut(),
         )?;
         Ok(register)
     }
 }
 
-impl<Interface, AddressType: Copy, Register: FieldSet, Access>
-    RegisterOperation<'_, Interface, AddressType, Register, Access>
+impl<Interface, AddressType: Copy, FS: FieldSet, Access>
+    RegisterOperation<'_, Interface, AddressType, FS, Access>
 where
     Interface: RegisterInterface<AddressType = AddressType>,
     Access: ReadCapability + WriteCapability,
@@ -162,20 +224,20 @@ where
     ///
     /// The register is read, the value is then passed to the closure for making changes.
     /// The result is then written back to the device.
-    pub fn modify<R>(&mut self, f: impl FnOnce(&mut Register) -> R) -> Result<R, Interface::Error> {
+    pub fn modify<R>(&mut self, f: impl FnOnce(&mut FS) -> R) -> Result<R, Interface::Error> {
         let mut register = self.read()?;
         let returned = f(&mut register);
         self.interface.write_register(
             self.address,
-            Register::SIZE_BITS,
+            FS::SIZE_BITS,
             register.get_inner_buffer_mut(),
         )?;
         Ok(returned)
     }
 }
 
-impl<Interface, AddressType: Copy, Register: FieldSet, Access>
-    RegisterOperation<'_, Interface, AddressType, Register, Access>
+impl<Interface, AddressType: Copy, FS: FieldSet, Access>
+    RegisterOperation<'_, Interface, AddressType, FS, Access>
 where
     Interface: AsyncRegisterInterface<AddressType = AddressType>,
     Access: WriteCapability,
@@ -186,7 +248,7 @@ where
     /// If no reset value is specified for this register, this function is the same as [`Self::write_with_zero`].
     pub async fn write_async<R>(
         &mut self,
-        f: impl FnOnce(&mut Register) -> R,
+        f: impl FnOnce(&mut FS) -> R,
     ) -> Result<R, Interface::Error> {
         let mut register = (self.register_new_with_reset)();
         let returned = f(&mut register);
@@ -194,7 +256,7 @@ where
         self.interface
             .write_register(
                 self.address,
-                Register::SIZE_BITS,
+                FS::SIZE_BITS,
                 register.get_inner_buffer(),
             )
             .await?;
@@ -206,14 +268,14 @@ where
     /// The closure is given the write object initialized to all zero.
     pub async fn write_with_zero_async<R>(
         &mut self,
-        f: impl FnOnce(&mut Register) -> R,
+        f: impl FnOnce(&mut FS) -> R,
     ) -> Result<R, Interface::Error> {
-        let mut register = Register::default();
+        let mut register = FS::default();
         let returned = f(&mut register);
         self.interface
             .write_register(
                 self.address,
-                Register::SIZE_BITS,
+                FS::SIZE_BITS,
                 register.get_inner_buffer_mut(),
             )
             .await?;
@@ -221,20 +283,20 @@ where
     }
 }
 
-impl<Interface, AddressType: Copy, Register: FieldSet, Access>
-    RegisterOperation<'_, Interface, AddressType, Register, Access>
+impl<Interface, AddressType: Copy, FS: FieldSet, Access>
+    RegisterOperation<'_, Interface, AddressType, FS, Access>
 where
     Interface: AsyncRegisterInterface<AddressType = AddressType>,
     Access: ReadCapability,
 {
     /// Read the register from the device
-    pub async fn read_async(&mut self) -> Result<Register, Interface::Error> {
-        let mut register = Register::default();
+    pub async fn read_async(&mut self) -> Result<FS, Interface::Error> {
+        let mut register = FS::default();
 
         self.interface
             .read_register(
                 self.address,
-                Register::SIZE_BITS,
+                FS::SIZE_BITS,
                 register.get_inner_buffer_mut(),
             )
             .await?;
@@ -242,8 +304,8 @@ where
     }
 }
 
-impl<Interface, AddressType: Copy, Register: FieldSet, Access>
-    RegisterOperation<'_, Interface, AddressType, Register, Access>
+impl<Interface, AddressType: Copy, FS: FieldSet, Access>
+    RegisterOperation<'_, Interface, AddressType, FS, Access>
 where
     Interface: AsyncRegisterInterface<AddressType = AddressType>,
     Access: ReadCapability + WriteCapability,
@@ -254,17 +316,23 @@ where
     /// The result is then written back to the device.
     pub async fn modify_async<R>(
         &mut self,
-        f: impl FnOnce(&mut Register) -> R,
+        f: impl FnOnce(&mut FS) -> R,
     ) -> Result<R, Interface::Error> {
         let mut register = self.read_async().await?;
         let returned = f(&mut register);
         self.interface
             .write_register(
                 self.address,
-                Register::SIZE_BITS,
+                FS::SIZE_BITS,
                 register.get_inner_buffer(),
             )
             .await?;
         Ok(returned)
     }
+}
+
+pub struct Plan<AddressType: Copy, FS: FieldSet, Access> {
+    pub address: AddressType,
+    pub value: FS,
+    _phantom: PhantomData<Access>,
 }
