@@ -12,18 +12,15 @@ fn main() {}
 /// Root block of the Device driver
 #[derive(Debug)]
 pub struct Device<I> {
-    pub(crate) interface: I,
+    #[doc(hidden)]
+    interface: I,
     #[doc(hidden)]
     base_address: u32,
 }
 impl<I> Device<I> {
-    /// Create a new instance of the block based on device interface
+    /// Create a new instance of the device, using the interface
     pub const fn new(interface: I) -> Self {
         Self { interface, base_address: 0 }
-    }
-    /// A reference to the interface used to communicate with the device
-    pub(crate) fn interface(&mut self) -> &mut I {
-        &mut self.interface
     }
     ///
     /// Valid index range: 0..100
@@ -37,6 +34,7 @@ impl<I> Device<I> {
         Foo0FieldSet,
         ::device_driver::RW,
     > {
+        use ::device_driver::Block;
         let address = {
             assert!(index < 100);
             self.base_address + 0 + index as u32 * 1000
@@ -61,6 +59,7 @@ impl<I> Device<I> {
         Foo1FieldSet,
         ::device_driver::RW,
     > {
+        use ::device_driver::Block;
         let address = {
             assert!(index < 100);
             self.base_address + 1 + index as u32 * 1000
@@ -85,6 +84,7 @@ impl<I> Device<I> {
         Foo2FieldSet,
         ::device_driver::RW,
     > {
+        use ::device_driver::Block;
         let address = {
             assert!(index < 100);
             self.base_address + 2 + index as u32 * 1000
@@ -109,6 +109,7 @@ impl<I> Device<I> {
         Foo3FieldSet,
         ::device_driver::RW,
     > {
+        use ::device_driver::Block;
         let address = {
             assert!(index < 100);
             self.base_address + 3 + index as u32 * 1000
@@ -133,6 +134,7 @@ impl<I> Device<I> {
         Foo4FieldSet,
         ::device_driver::RW,
     > {
+        use ::device_driver::Block;
         let address = {
             assert!(index < 100);
             self.base_address + 4 + index as u32 * 1000
@@ -157,6 +159,7 @@ impl<I> Device<I> {
         Foo5FieldSet,
         ::device_driver::RW,
     > {
+        use ::device_driver::Block;
         let address = {
             assert!(index < 100);
             self.base_address + 5 + index as u32 * 1000
@@ -181,6 +184,7 @@ impl<I> Device<I> {
         Foo6FieldSet,
         ::device_driver::RW,
     > {
+        use ::device_driver::Block;
         let address = {
             assert!(index < 100);
             self.base_address + 6 + index as u32 * 1000
@@ -205,6 +209,7 @@ impl<I> Device<I> {
         Foo7FieldSet,
         ::device_driver::RW,
     > {
+        use ::device_driver::Block;
         let address = {
             assert!(index < 100);
             self.base_address + 7 + index as u32 * 1000
@@ -229,6 +234,7 @@ impl<I> Device<I> {
         Foo8FieldSet,
         ::device_driver::RW,
     > {
+        use ::device_driver::Block;
         let address = {
             assert!(index < 100);
             self.base_address + 8 + index as u32 * 1000
@@ -253,6 +259,7 @@ impl<I> Device<I> {
         Foo9FieldSet,
         ::device_driver::RW,
     > {
+        use ::device_driver::Block;
         let address = {
             assert!(index < 100);
             self.base_address + 9 + index as u32 * 1000
@@ -266,12 +273,22 @@ impl<I> Device<I> {
         >::new(self.interface(), address as u32, Foo9FieldSet::new)
     }
 }
+impl<I> ::device_driver::Block for Device<I> {
+    type Interface = I;
+    type RegisterAddressType = u32;
+    type CommandAddressType = u32;
+    type BufferAddressType = u32;
+    fn interface(&mut self) -> &mut Self::Interface {
+        &mut self.interface
+    }
+}
 #[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct Foo0FieldSet {
     /// The internal bits
     bits: [u8; 0],
 }
-impl ::device_driver::FieldSet for Foo0FieldSet {
+unsafe impl ::device_driver::FieldSet for Foo0FieldSet {
     const SIZE_BITS: u32 = 0;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
@@ -359,11 +376,12 @@ impl core::ops::Not for Foo0FieldSet {
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct Foo1FieldSet {
     /// The internal bits
     bits: [u8; 0],
 }
-impl ::device_driver::FieldSet for Foo1FieldSet {
+unsafe impl ::device_driver::FieldSet for Foo1FieldSet {
     const SIZE_BITS: u32 = 0;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
@@ -451,11 +469,12 @@ impl core::ops::Not for Foo1FieldSet {
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct Foo2FieldSet {
     /// The internal bits
     bits: [u8; 0],
 }
-impl ::device_driver::FieldSet for Foo2FieldSet {
+unsafe impl ::device_driver::FieldSet for Foo2FieldSet {
     const SIZE_BITS: u32 = 0;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
@@ -543,11 +562,12 @@ impl core::ops::Not for Foo2FieldSet {
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct Foo3FieldSet {
     /// The internal bits
     bits: [u8; 0],
 }
-impl ::device_driver::FieldSet for Foo3FieldSet {
+unsafe impl ::device_driver::FieldSet for Foo3FieldSet {
     const SIZE_BITS: u32 = 0;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
@@ -635,11 +655,12 @@ impl core::ops::Not for Foo3FieldSet {
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct Foo4FieldSet {
     /// The internal bits
     bits: [u8; 0],
 }
-impl ::device_driver::FieldSet for Foo4FieldSet {
+unsafe impl ::device_driver::FieldSet for Foo4FieldSet {
     const SIZE_BITS: u32 = 0;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
@@ -727,11 +748,12 @@ impl core::ops::Not for Foo4FieldSet {
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct Foo5FieldSet {
     /// The internal bits
     bits: [u8; 0],
 }
-impl ::device_driver::FieldSet for Foo5FieldSet {
+unsafe impl ::device_driver::FieldSet for Foo5FieldSet {
     const SIZE_BITS: u32 = 0;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
@@ -819,11 +841,12 @@ impl core::ops::Not for Foo5FieldSet {
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct Foo6FieldSet {
     /// The internal bits
     bits: [u8; 0],
 }
-impl ::device_driver::FieldSet for Foo6FieldSet {
+unsafe impl ::device_driver::FieldSet for Foo6FieldSet {
     const SIZE_BITS: u32 = 0;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
@@ -911,11 +934,12 @@ impl core::ops::Not for Foo6FieldSet {
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct Foo7FieldSet {
     /// The internal bits
     bits: [u8; 0],
 }
-impl ::device_driver::FieldSet for Foo7FieldSet {
+unsafe impl ::device_driver::FieldSet for Foo7FieldSet {
     const SIZE_BITS: u32 = 0;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
@@ -1003,11 +1027,12 @@ impl core::ops::Not for Foo7FieldSet {
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct Foo8FieldSet {
     /// The internal bits
     bits: [u8; 0],
 }
-impl ::device_driver::FieldSet for Foo8FieldSet {
+unsafe impl ::device_driver::FieldSet for Foo8FieldSet {
     const SIZE_BITS: u32 = 0;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
@@ -1095,11 +1120,12 @@ impl core::ops::Not for Foo8FieldSet {
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct Foo9FieldSet {
     /// The internal bits
     bits: [u8; 0],
 }
-impl ::device_driver::FieldSet for Foo9FieldSet {
+unsafe impl ::device_driver::FieldSet for Foo9FieldSet {
     const SIZE_BITS: u32 = 0;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits

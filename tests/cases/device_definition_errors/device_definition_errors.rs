@@ -12,102 +12,138 @@ fn main() {}
 /// Root block of the FooD0 driver
 #[derive(Debug)]
 pub struct FooD0<I> {
-    pub(crate) interface: I,
+    #[doc(hidden)]
+    interface: I,
     #[doc(hidden)]
     base_address: u8,
 }
 impl<I> FooD0<I> {
-    /// Create a new instance of the block based on device interface
+    /// Create a new instance of the device, using the interface
     pub const fn new(interface: I) -> Self {
         Self { interface, base_address: 0 }
     }
-    /// A reference to the interface used to communicate with the device
-    pub(crate) fn interface(&mut self) -> &mut I {
+}
+impl<I> ::device_driver::Block for FooD0<I> {
+    type Interface = I;
+    type RegisterAddressType = u8;
+    type CommandAddressType = u8;
+    type BufferAddressType = u8;
+    fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }
 }
 /// Root block of the FooD1 driver
 #[derive(Debug)]
 pub struct FooD1<I> {
-    pub(crate) interface: I,
+    #[doc(hidden)]
+    interface: I,
     #[doc(hidden)]
     base_address: u8,
 }
 impl<I> FooD1<I> {
-    /// Create a new instance of the block based on device interface
+    /// Create a new instance of the device, using the interface
     pub const fn new(interface: I) -> Self {
         Self { interface, base_address: 0 }
     }
-    /// A reference to the interface used to communicate with the device
-    pub(crate) fn interface(&mut self) -> &mut I {
+}
+impl<I> ::device_driver::Block for FooD1<I> {
+    type Interface = I;
+    type RegisterAddressType = u8;
+    type CommandAddressType = u8;
+    type BufferAddressType = u8;
+    fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }
 }
 /// Root block of the FooD2 driver
 #[derive(Debug)]
 pub struct FooD2<I> {
-    pub(crate) interface: I,
+    #[doc(hidden)]
+    interface: I,
     #[doc(hidden)]
     base_address: u8,
 }
 impl<I> FooD2<I> {
-    /// Create a new instance of the block based on device interface
+    /// Create a new instance of the device, using the interface
     pub const fn new(interface: I) -> Self {
         Self { interface, base_address: 0 }
     }
-    /// A reference to the interface used to communicate with the device
-    pub(crate) fn interface(&mut self) -> &mut I {
+}
+impl<I> ::device_driver::Block for FooD2<I> {
+    type Interface = I;
+    type RegisterAddressType = u8;
+    type CommandAddressType = u8;
+    type BufferAddressType = u8;
+    fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }
 }
 /// Root block of the FooD3 driver
 #[derive(Debug)]
 pub struct FooD3<I> {
-    pub(crate) interface: I,
+    #[doc(hidden)]
+    interface: I,
     #[doc(hidden)]
     base_address: u8,
 }
 impl<I> FooD3<I> {
-    /// Create a new instance of the block based on device interface
+    /// Create a new instance of the device, using the interface
     pub const fn new(interface: I) -> Self {
         Self { interface, base_address: 0 }
     }
-    /// A reference to the interface used to communicate with the device
-    pub(crate) fn interface(&mut self) -> &mut I {
+}
+impl<I> ::device_driver::Block for FooD3<I> {
+    type Interface = I;
+    type RegisterAddressType = u8;
+    type CommandAddressType = u8;
+    type BufferAddressType = u8;
+    fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }
 }
 /// Root block of the FooD4 driver
 #[derive(Debug)]
 pub struct FooD4<I> {
-    pub(crate) interface: I,
+    #[doc(hidden)]
+    interface: I,
     #[doc(hidden)]
     base_address: u8,
 }
 impl<I> FooD4<I> {
-    /// Create a new instance of the block based on device interface
+    /// Create a new instance of the device, using the interface
     pub const fn new(interface: I) -> Self {
         Self { interface, base_address: 0 }
     }
-    /// A reference to the interface used to communicate with the device
-    pub(crate) fn interface(&mut self) -> &mut I {
+}
+impl<I> ::device_driver::Block for FooD4<I> {
+    type Interface = I;
+    type RegisterAddressType = u8;
+    type CommandAddressType = u8;
+    type BufferAddressType = u8;
+    fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }
 }
 /// Root block of the FooD5 driver
 #[derive(Debug)]
 pub struct FooD5<I> {
-    pub(crate) interface: I,
+    #[doc(hidden)]
+    interface: I,
     #[doc(hidden)]
     base_address: u8,
 }
 impl<I> FooD5<I> {
-    /// Create a new instance of the block based on device interface
+    /// Create a new instance of the device, using the interface
     pub const fn new(interface: I) -> Self {
         Self { interface, base_address: 0 }
     }
-    /// A reference to the interface used to communicate with the device
-    pub(crate) fn interface(&mut self) -> &mut I {
+}
+impl<I> ::device_driver::Block for FooD5<I> {
+    type Interface = I;
+    type RegisterAddressType = u8;
+    type CommandAddressType = u8;
+    type BufferAddressType = u8;
+    fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }
 }
@@ -116,18 +152,15 @@ impl<I> FooD5<I> {
 /// Root block of the FooD6 driver
 #[derive(Debug)]
 pub struct FooD6<I> {
-    pub(crate) interface: I,
+    #[doc(hidden)]
+    interface: I,
     #[doc(hidden)]
     base_address: u8,
 }
 impl<I> FooD6<I> {
-    /// Create a new instance of the block based on device interface
+    /// Create a new instance of the device, using the interface
     pub const fn new(interface: I) -> Self {
         Self { interface, base_address: 0 }
-    }
-    /// A reference to the interface used to communicate with the device
-    pub(crate) fn interface(&mut self) -> &mut I {
-        &mut self.interface
     }
     pub fn foor_4(
         &mut self,
@@ -138,6 +171,7 @@ impl<I> FooD6<I> {
         Foor4FieldSet,
         ::device_driver::RW,
     > {
+        use ::device_driver::Block;
         let address = self.base_address + 0;
         ::device_driver::RegisterOperation::<
             '_,
@@ -156,6 +190,7 @@ impl<I> FooD6<I> {
         Foor5FieldSet,
         ::device_driver::RW,
     > {
+        use ::device_driver::Block;
         let address = self.base_address + 1;
         ::device_driver::RegisterOperation::<
             '_,
@@ -174,6 +209,7 @@ impl<I> FooD6<I> {
         Foor6FieldSet,
         ::device_driver::RW,
     > {
+        use ::device_driver::Block;
         let address = self.base_address + 2;
         ::device_driver::RegisterOperation::<
             '_,
@@ -192,6 +228,7 @@ impl<I> FooD6<I> {
         Foor7FieldSet,
         ::device_driver::RW,
     > {
+        use ::device_driver::Block;
         let address = self.base_address + 3;
         ::device_driver::RegisterOperation::<
             '_,
@@ -211,6 +248,7 @@ impl<I> FooD6<I> {
         CustomFieldSetName,
         ::device_driver::RW,
     > {
+        use ::device_driver::Block;
         let address = self.base_address + 4;
         ::device_driver::RegisterOperation::<
             '_,
@@ -229,6 +267,7 @@ impl<I> FooD6<I> {
         Foor9FieldSet,
         ::device_driver::RW,
     > {
+        use ::device_driver::Block;
         let address = self.base_address + 5;
         ::device_driver::RegisterOperation::<
             '_,
@@ -248,6 +287,7 @@ impl<I> FooD6<I> {
         Foor10FieldSet,
         ::device_driver::RW,
     > {
+        use ::device_driver::Block;
         let address = self.base_address + 6 + u16::from(index) as u8 * 2;
         ::device_driver::RegisterOperation::<
             '_,
@@ -266,6 +306,7 @@ impl<I> FooD6<I> {
         Fooc1FieldSetIn,
         Fooc1FieldSetOut,
     > {
+        use ::device_driver::Block;
         let address = self.base_address + 0;
         ::device_driver::CommandOperation::<
             '_,
@@ -278,6 +319,7 @@ impl<I> FooD6<I> {
     pub fn foob_1(
         &mut self,
     ) -> ::device_driver::BufferOperation<'_, I, u8, ::device_driver::RW> {
+        use ::device_driver::Block;
         let address = self.base_address + 0;
         ::device_driver::BufferOperation::<
             '_,
@@ -289,6 +331,7 @@ impl<I> FooD6<I> {
     pub fn foob_2(
         &mut self,
     ) -> ::device_driver::BufferOperation<'_, I, u8, ::device_driver::RO> {
+        use ::device_driver::Block;
         let address = self.base_address + 2;
         ::device_driver::BufferOperation::<
             '_,
@@ -299,12 +342,14 @@ impl<I> FooD6<I> {
     }
     /// This is a block
     pub fn b_1(&mut self) -> B1<'_, I> {
+        use ::device_driver::Block;
         let address = self.base_address + 5;
         B1::<'_, I>::new(self.interface(), address)
     }
     ///
     /// Valid index range: 0..2
     pub fn b_2(&mut self, index: usize) -> B2<'_, I> {
+        use ::device_driver::Block;
         let address = {
             assert!(index < 2);
             self.base_address + 0 + index as u8 * 4
@@ -312,10 +357,20 @@ impl<I> FooD6<I> {
         B2::<'_, I>::new(self.interface(), address)
     }
 }
+impl<I> ::device_driver::Block for FooD6<I> {
+    type Interface = I;
+    type RegisterAddressType = u8;
+    type CommandAddressType = u8;
+    type BufferAddressType = u8;
+    fn interface(&mut self) -> &mut Self::Interface {
+        &mut self.interface
+    }
+}
 /// This is a block
 #[derive(Debug)]
 pub struct B1<'i, I> {
-    pub(crate) interface: &'i mut I,
+    #[doc(hidden)]
+    interface: &'i mut I,
     #[doc(hidden)]
     base_address: u8,
 }
@@ -328,14 +383,20 @@ impl<'i, I> B1<'i, I> {
             base_address: base_address,
         }
     }
-    /// A reference to the interface used to communicate with the device
-    pub(crate) fn interface(&mut self) -> &mut I {
+}
+impl<'i, I> ::device_driver::Block for B1<'i, I> {
+    type Interface = I;
+    type RegisterAddressType = u8;
+    type CommandAddressType = u8;
+    type BufferAddressType = u8;
+    fn interface(&mut self) -> &mut Self::Interface {
         self.interface
     }
 }
 #[derive(Debug)]
 pub struct B2<'i, I> {
-    pub(crate) interface: &'i mut I,
+    #[doc(hidden)]
+    interface: &'i mut I,
     #[doc(hidden)]
     base_address: u8,
 }
@@ -348,13 +409,10 @@ impl<'i, I> B2<'i, I> {
             base_address: base_address,
         }
     }
-    /// A reference to the interface used to communicate with the device
-    pub(crate) fn interface(&mut self) -> &mut I {
-        self.interface
-    }
     pub fn b_2_foo(
         &mut self,
     ) -> ::device_driver::BufferOperation<'_, I, u8, ::device_driver::RW> {
+        use ::device_driver::Block;
         let address = self.base_address + 42;
         ::device_driver::BufferOperation::<
             '_,
@@ -364,12 +422,22 @@ impl<'i, I> B2<'i, I> {
         >::new(self.interface(), address as u8)
     }
 }
+impl<'i, I> ::device_driver::Block for B2<'i, I> {
+    type Interface = I;
+    type RegisterAddressType = u8;
+    type CommandAddressType = u8;
+    type BufferAddressType = u8;
+    fn interface(&mut self) -> &mut Self::Interface {
+        self.interface
+    }
+}
 #[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct Foor4FieldSet {
     /// The internal bits
     bits: [u8; 0],
 }
-impl ::device_driver::FieldSet for Foor4FieldSet {
+unsafe impl ::device_driver::FieldSet for Foor4FieldSet {
     const SIZE_BITS: u32 = 0;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
@@ -457,11 +525,12 @@ impl core::ops::Not for Foor4FieldSet {
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct Foor5FieldSet {
     /// The internal bits
     bits: [u8; 0],
 }
-impl ::device_driver::FieldSet for Foor5FieldSet {
+unsafe impl ::device_driver::FieldSet for Foor5FieldSet {
     const SIZE_BITS: u32 = 0;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
@@ -549,11 +618,12 @@ impl core::ops::Not for Foor5FieldSet {
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct Foor6FieldSet {
     /// The internal bits
     bits: [u8; 0],
 }
-impl ::device_driver::FieldSet for Foor6FieldSet {
+unsafe impl ::device_driver::FieldSet for Foor6FieldSet {
     const SIZE_BITS: u32 = 0;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
@@ -641,11 +711,12 @@ impl core::ops::Not for Foor6FieldSet {
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct Foor7FieldSet {
     /// The internal bits
     bits: [u8; 0],
 }
-impl ::device_driver::FieldSet for Foor7FieldSet {
+unsafe impl ::device_driver::FieldSet for Foor7FieldSet {
     const SIZE_BITS: u32 = 0;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
@@ -734,11 +805,12 @@ impl core::ops::Not for Foor7FieldSet {
 }
 /// This fieldset has a custom name
 #[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct CustomFieldSetName {
     /// The internal bits
     bits: [u8; 1],
 }
-impl ::device_driver::FieldSet for CustomFieldSetName {
+unsafe impl ::device_driver::FieldSet for CustomFieldSetName {
     const SIZE_BITS: u32 = 8;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
@@ -880,11 +952,12 @@ impl core::ops::Not for CustomFieldSetName {
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct Foor9FieldSet {
     /// The internal bits
     bits: [u8; 1],
 }
-impl ::device_driver::FieldSet for Foor9FieldSet {
+unsafe impl ::device_driver::FieldSet for Foor9FieldSet {
     const SIZE_BITS: u32 = 8;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
@@ -1080,11 +1153,12 @@ impl core::ops::Not for Foor9FieldSet {
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct Foor10FieldSet {
     /// The internal bits
     bits: [u8; 1],
 }
-impl ::device_driver::FieldSet for Foor10FieldSet {
+unsafe impl ::device_driver::FieldSet for Foor10FieldSet {
     const SIZE_BITS: u32 = 8;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
@@ -1280,11 +1354,12 @@ impl core::ops::Not for Foor10FieldSet {
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct Fooc1FieldSetIn {
     /// The internal bits
     bits: [u8; 0],
 }
-impl ::device_driver::FieldSet for Fooc1FieldSetIn {
+unsafe impl ::device_driver::FieldSet for Fooc1FieldSetIn {
     const SIZE_BITS: u32 = 0;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
@@ -1372,11 +1447,12 @@ impl core::ops::Not for Fooc1FieldSetIn {
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct Fooc1FieldSetOut {
     /// The internal bits
     bits: [u8; 1],
 }
-impl ::device_driver::FieldSet for Fooc1FieldSetOut {
+unsafe impl ::device_driver::FieldSet for Fooc1FieldSetOut {
     const SIZE_BITS: u32 = 8;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
@@ -1491,11 +1567,12 @@ impl core::ops::Not for Fooc1FieldSetOut {
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct Fs1 {
     /// The internal bits
     bits: [u8; 2],
 }
-impl ::device_driver::FieldSet for Fs1 {
+unsafe impl ::device_driver::FieldSet for Fs1 {
     const SIZE_BITS: u32 = 16;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
@@ -1610,11 +1687,12 @@ impl core::ops::Not for Fs1 {
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct Fs2 {
     /// The internal bits
     bits: [u8; 4],
 }
-impl ::device_driver::FieldSet for Fs2 {
+unsafe impl ::device_driver::FieldSet for Fs2 {
     const SIZE_BITS: u32 = 32;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
@@ -1756,11 +1834,12 @@ impl core::ops::Not for Fs2 {
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct Fs3 {
     /// The internal bits
     bits: [u8; 4],
 }
-impl ::device_driver::FieldSet for Fs3 {
+unsafe impl ::device_driver::FieldSet for Fs3 {
     const SIZE_BITS: u32 = 32;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits

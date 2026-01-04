@@ -26,6 +26,8 @@ fn transform_devices(manifest: &mir::Manifest) -> Vec<lir::Device> {
     manifest
         .iter_devices_with_config()
         .map(|(device, config)| {
+            let internal_address_type = find_best_internal_address_type(manifest, device);
+
             // Create a root block and pass the device objects to it
             let blocks = collect_into_blocks(
                 BorrowedBlock {
@@ -46,10 +48,11 @@ fn transform_devices(manifest: &mir::Manifest) -> Vec<lir::Device> {
                 true,
                 &device.device_config,
                 manifest,
+                internal_address_type,
             );
 
             lir::Device {
-                internal_address_type: find_best_internal_address_type(manifest, device),
+                internal_address_type,
                 blocks,
                 defmt_feature: config.defmt_feature.clone(),
             }
@@ -62,6 +65,7 @@ fn collect_into_blocks(
     is_root: bool,
     global_config: &mir::DeviceConfig,
     manifest: &Manifest,
+    internal_address_type: Integer,
 ) -> Vec<lir::Block> {
     let mut blocks = Vec::new();
 
@@ -76,7 +80,13 @@ fn collect_into_blocks(
     let mut methods = Vec::new();
 
     for object in objects {
-        let Some(method) = get_method(object, &mut blocks, global_config, manifest) else {
+        let Some(method) = get_method(
+            object,
+            &mut blocks,
+            global_config,
+            manifest,
+            internal_address_type,
+        ) else {
             continue;
         };
 
@@ -88,6 +98,18 @@ fn collect_into_blocks(
         root: is_root,
         name: name.clone(),
         methods,
+        register_address_type: global_config
+            .register_address_type
+            .map(|ty| ty.value)
+            .unwrap_or(internal_address_type),
+        command_address_type: global_config
+            .command_address_type
+            .map(|ty| ty.value)
+            .unwrap_or(internal_address_type),
+        buffer_address_type: global_config
+            .buffer_address_type
+            .map(|ty| ty.value)
+            .unwrap_or(internal_address_type),
     };
 
     blocks.insert(0, new_block);
@@ -100,6 +122,7 @@ fn get_method(
     blocks: &mut Vec<lir::Block>,
     global_config: &mir::DeviceConfig,
     manifest: &Manifest,
+    internal_address_type: Integer,
 ) -> Option<lir::BlockMethod> {
     match object {
         mir::Object::Device(_) => None,
@@ -117,6 +140,7 @@ fn get_method(
                 false,
                 global_config,
                 manifest,
+                internal_address_type,
             ));
 
             Some(lir::BlockMethod {
@@ -150,10 +174,6 @@ fn get_method(
                 method_type: lir::BlockMethodType::Register {
                     field_set_name: field_set.name().clone(),
                     access: *access,
-                    address_type: global_config
-                        .register_address_type
-                        .expect("The presence of the address type is already checked in a mir pass")
-                        .value,
                     reset_value: reset_value.clone().map(|rv| {
                         rv.as_array()
                         .expect(
@@ -188,10 +208,6 @@ fn get_method(
                 method_type: lir::BlockMethodType::Command {
                     field_set_name_in: field_set_in.map(|fs_in| fs_in.name().clone()),
                     field_set_name_out: field_set_out.map(|fs_out| fs_out.name().clone()),
-                    address_type: global_config
-                        .command_address_type
-                        .expect("The presence of the address type is already checked in a mir pass")
-                        .value,
                 },
             })
         }
@@ -205,13 +221,7 @@ fn get_method(
             name: name.value.clone(),
             address: address.value,
             repeat: lir::Repeat::None, // Buffers can't be repeated (for now?)
-            method_type: lir::BlockMethodType::Buffer {
-                access: *access,
-                address_type: global_config
-                    .buffer_address_type
-                    .expect("The presence of the address type is already checked in a mir pass")
-                    .value,
-            },
+            method_type: lir::BlockMethodType::Buffer { access: *access },
         }),
         mir::Object::FieldSet(_) => None,
         mir::Object::Enum(_) => None,
