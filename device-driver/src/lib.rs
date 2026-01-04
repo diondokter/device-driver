@@ -4,6 +4,7 @@
 #![doc = include_str!(concat!("../", env!("CARGO_PKG_README")))]
 
 use core::fmt::{Debug, Display};
+use core::marker::PhantomData;
 
 pub use embedded_io;
 pub use embedded_io_async;
@@ -32,6 +33,79 @@ pub unsafe trait FieldSet: Default {
 
     fn get_inner_buffer(&self) -> &[u8];
     fn get_inner_buffer_mut(&mut self) -> &mut [u8];
+}
+
+/// Trait implemented on every generated block/device.
+pub trait Block {
+    /// The interface used by the block
+    type Interface;
+    /// The register address type
+    type RegisterAddressType;
+    /// The command address type
+    type CommandAddressType;
+    /// The buffer address type
+    type BufferAddressType;
+
+    /// Get a reference to the inner interface.
+    /// With it you can do out-of-band operations that aren't defined in the generated code.
+    fn interface(&mut self) -> &mut Self::Interface;
+
+    /// Start a multi-read transaction
+    ///
+    /// You can chain reads by calling [register::MultiRegisterOperation::with].
+    /// Once chained, call [register::MultiRegisterOperation::execute] to perform the read.
+    fn multi_read(
+        &mut self,
+    ) -> register::MultiRegisterOperation<'_, Self, Self::RegisterAddressType, (), RO>
+    where
+        Self: Sized,
+    {
+        register::MultiRegisterOperation {
+            device: self,
+            start_address: None,
+            field_sets: (),
+            bit_sum: 0,
+            _phantom: PhantomData,
+        }
+    }
+
+    /// Start a multi-write transaction
+    ///
+    /// You can chain writes by calling [register::MultiRegisterOperation::with].
+    /// Once chained, call [register::MultiRegisterOperation::execute] to perform the read.
+    fn multi_write(
+        &mut self,
+    ) -> register::MultiRegisterOperation<'_, Self, Self::RegisterAddressType, (), WO>
+    where
+        Self: Sized,
+    {
+        register::MultiRegisterOperation {
+            device: self,
+            start_address: None,
+            field_sets: (),
+            bit_sum: 0,
+            _phantom: PhantomData,
+        }
+    }
+
+    /// Start a multi-modify transaction
+    ///
+    /// You can chain modifies by calling [register::MultiRegisterOperation::with].
+    /// Once chained, call [register::MultiRegisterOperation::execute] to perform the read.
+    fn multi_modify(
+        &mut self,
+    ) -> register::MultiRegisterOperation<'_, Self, Self::RegisterAddressType, (), RW>
+    where
+        Self: Sized,
+    {
+        register::MultiRegisterOperation {
+            device: self,
+            start_address: None,
+            field_sets: (),
+            bit_sum: 0,
+            _phantom: PhantomData,
+        }
+    }
 }
 
 /// The error returned by the generated [`TryFrom`]s.
@@ -79,6 +153,7 @@ impl ReadCapability for RW {}
 /// # Safety
 ///
 /// May only be implemented on type that you can safely implement [FsSet::as_slice_mut] for
+#[doc(hidden)]
 pub unsafe trait FsSet: Sized {
     type Value;
     type ValueMut<'a>
@@ -109,9 +184,7 @@ unsafe impl FsSet for () {
         val
     }
 
-    fn to_value(self) -> Self::Value {
-        ()
-    }
+    fn to_value(self) -> Self::Value {}
 
     fn as_value_mut(&mut self) -> Self::ValueMut<'_> {
         self
@@ -141,8 +214,10 @@ unsafe impl<A: FieldSet> FsSet for A {
 
 macro_rules! create_fs {
     ($name:ident -> $name_next:ident, $(($tname:ident: $tnum:tt)),+) => {
+        /// Combined fieldsets
         #[derive(Debug)]
         #[repr(C)]
+        #[doc(hidden)]
         pub struct $name<$($tname: FieldSet),*>($($tname),*);
 
         unsafe impl<$($tname: FieldSet),*> FsSet for $name<$($tname),*> {
@@ -167,8 +242,10 @@ macro_rules! create_fs {
         }
     };
     ($name:ident -> !, $(($tname:ident: $tnum:tt)),+) => {
+        /// Combined fieldsets
         #[derive(Debug)]
         #[repr(C)]
+        #[doc(hidden)]
         pub struct $name<$($tname: FieldSet),*>($($tname),*);
 
         unsafe impl<$($tname: FieldSet),*> FsSet for $name<$($tname),*> {

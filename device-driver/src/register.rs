@@ -1,6 +1,6 @@
 use core::marker::PhantomData;
 
-use crate::{FieldSet, ReadCapability, WriteCapability};
+use crate::{Block, FieldSet, FsSet, RO, RW, ReadCapability, WO, WriteCapability};
 
 /// A trait to represent the interface to the device.
 ///
@@ -80,10 +80,7 @@ impl<'i, Interface, AddressType: Copy, FS: FieldSet, Access>
     }
 
     /// Get the register's address.
-    pub fn address(&self) -> AddressType
-    where
-        AddressType: Copy,
-    {
+    pub fn address(&self) -> AddressType {
         self.address
     }
 
@@ -98,30 +95,12 @@ impl<Interface, AddressType: Copy, FS: FieldSet, Access>
 where
     Access: WriteCapability,
 {
-    pub fn plan_write(
-        &mut self,
-        f: impl FnOnce(&mut FS),
-    ) -> Plan<AddressType, FS, crate::WO> {
-        let mut register = (self.register_new_with_reset)();
-        f(&mut register);
-
+    /// Get a plan with the register value set to all 0's.
+    /// It's the plan equivalent of [Self::write_with_zero].
+    pub fn plan_with_zero(self) -> Plan<AddressType, FS, WO> {
         Plan {
             address: self.address(),
-            value: register,
-            _phantom: PhantomData,
-        }
-    }
-
-    pub fn plan_write_with_zero(
-        &mut self,
-        f: impl FnOnce(&mut FS),
-    ) -> Plan<AddressType, FS, crate::WO> {
-        let mut register = FS::default();
-        f(&mut register);
-
-        Plan {
-            address: self.address(),
-            value: register,
+            value: FS::default(),
             _phantom: PhantomData,
         }
     }
@@ -129,27 +108,12 @@ where
 
 impl<Interface, AddressType: Copy, FS: FieldSet, Access>
     RegisterOperation<'_, Interface, AddressType, FS, Access>
-where
-    Access: ReadCapability,
 {
-    pub fn plan_read(&mut self) -> Plan<AddressType, FS, crate::RO> {
+    /// Get a plan with the reset value of the register
+    pub fn plan(self) -> Plan<AddressType, FS, Access> {
         Plan {
             address: self.address(),
-            value: Default::default(),
-            _phantom: PhantomData,
-        }
-    }
-}
-
-impl<Interface, AddressType: Copy, FS: FieldSet, Access>
-    RegisterOperation<'_, Interface, AddressType, FS, Access>
-where
-    Access: ReadCapability + WriteCapability,
-{
-    pub fn plan_modify(&mut self) -> Plan<AddressType, FS, crate::RW> {
-        Plan {
-            address: self.address(),
-            value: Default::default(),
+            value: self.reset_value(),
             _phantom: PhantomData,
         }
     }
@@ -169,11 +133,8 @@ where
         let mut register = (self.register_new_with_reset)();
         let returned = f(&mut register);
 
-        self.interface.write_register(
-            self.address,
-            FS::SIZE_BITS,
-            register.get_inner_buffer(),
-        )?;
+        self.interface
+            .write_register(self.address, FS::SIZE_BITS, register.get_inner_buffer())?;
         Ok(returned)
     }
 
@@ -254,11 +215,7 @@ where
         let returned = f(&mut register);
 
         self.interface
-            .write_register(
-                self.address,
-                FS::SIZE_BITS,
-                register.get_inner_buffer(),
-            )
+            .write_register(self.address, FS::SIZE_BITS, register.get_inner_buffer())
             .await?;
         Ok(returned)
     }
@@ -273,11 +230,7 @@ where
         let mut register = FS::default();
         let returned = f(&mut register);
         self.interface
-            .write_register(
-                self.address,
-                FS::SIZE_BITS,
-                register.get_inner_buffer_mut(),
-            )
+            .write_register(self.address, FS::SIZE_BITS, register.get_inner_buffer_mut())
             .await?;
         Ok(returned)
     }
@@ -294,11 +247,7 @@ where
         let mut register = FS::default();
 
         self.interface
-            .read_register(
-                self.address,
-                FS::SIZE_BITS,
-                register.get_inner_buffer_mut(),
-            )
+            .read_register(self.address, FS::SIZE_BITS, register.get_inner_buffer_mut())
             .await?;
         Ok(register)
     }
@@ -321,18 +270,244 @@ where
         let mut register = self.read_async().await?;
         let returned = f(&mut register);
         self.interface
-            .write_register(
-                self.address,
-                FS::SIZE_BITS,
-                register.get_inner_buffer(),
-            )
+            .write_register(self.address, FS::SIZE_BITS, register.get_inner_buffer())
             .await?;
         Ok(returned)
     }
 }
 
+/// A plan that is used for multi-reads and writes.
 pub struct Plan<AddressType: Copy, FS: FieldSet, Access> {
+    /// The address of the register
     pub address: AddressType,
+    /// The starting value of the register. This is either the reset value or all-0's
     pub value: FS,
     _phantom: PhantomData<Access>,
+}
+
+/// A register operation for reading or writing multiple registers in one transaction
+pub struct MultiRegisterOperation<'d, D, AddressType, FieldSets: FsSet, Access> {
+    pub(crate) device: &'d mut D,
+    pub(crate) start_address: Option<AddressType>,
+    pub(crate) field_sets: FieldSets,
+    pub(crate) bit_sum: u32,
+    pub(crate) _phantom: PhantomData<Access>,
+}
+
+impl<'d, D, AddressType, FieldSets: FsSet> MultiRegisterOperation<'d, D, AddressType, FieldSets, RO>
+where
+    D: Block,
+    AddressType: Copy,
+{
+    /// Chain an extra read onto the multi-read.
+    ///
+    /// The closure must return a plan for the register you want to read.
+    /// The plan is created by calling [RegisterOperation::plan].
+    ///
+    /// After chaining, call [Self::execute].
+    #[inline]
+    pub fn with<FS: crate::FieldSet, LocalAccess: ReadCapability>(
+        mut self,
+        f: impl FnOnce(&mut D) -> crate::Plan<AddressType, FS, LocalAccess>,
+    ) -> MultiRegisterOperation<'d, D, AddressType, FieldSets::Next<FS>, RO>
+    where
+        FieldSets::Next<FS>: FsSet,
+    {
+        let Plan { address, value, .. } = f(self.device);
+
+        if self.start_address.is_none() {
+            self.start_address = Some(address)
+        }
+        assert!(FS::SIZE_BITS.is_multiple_of(8));
+
+        // TODO: Check if legal
+
+        MultiRegisterOperation {
+            device: self.device,
+            start_address: self.start_address,
+            field_sets: self.field_sets.push(value),
+            bit_sum: self.bit_sum + FS::SIZE_BITS,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<'d, D, AddressType, FieldSets: FsSet> MultiRegisterOperation<'d, D, AddressType, FieldSets, WO>
+where
+    D: Block,
+    AddressType: Copy,
+{
+    /// Chain an extra write onto the multi-write.
+    ///
+    /// The closure must return a plan for the register you want to write.
+    /// The plan is created by calling [RegisterOperation::plan] or [RegisterOperation::plan_with_zero].
+    ///
+    /// After chaining, call [Self::execute].
+    #[inline]
+    pub fn with<FS: crate::FieldSet, LocalAccess: WriteCapability>(
+        mut self,
+        f: impl FnOnce(&mut D) -> crate::Plan<AddressType, FS, LocalAccess>,
+    ) -> MultiRegisterOperation<'d, D, AddressType, FieldSets::Next<FS>, WO>
+    where
+        FieldSets::Next<FS>: FsSet,
+    {
+        let Plan { address, value, .. } = f(self.device);
+
+        if self.start_address.is_none() {
+            self.start_address = Some(address)
+        }
+        assert!(FS::SIZE_BITS.is_multiple_of(8));
+
+        // TODO: Check if legal
+
+        MultiRegisterOperation {
+            device: self.device,
+            start_address: self.start_address,
+            field_sets: self.field_sets.push(value),
+            bit_sum: self.bit_sum + FS::SIZE_BITS,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<'d, D, AddressType, FieldSets: FsSet> MultiRegisterOperation<'d, D, AddressType, FieldSets, RW>
+where
+    D: Block,
+    AddressType: Copy,
+{
+    /// Chain an extra modify onto the multi-modify.
+    ///
+    /// The closure must return a plan for the register you want to modify.
+    /// The plan is created by calling [RegisterOperation::plan].
+    ///
+    /// After chaining, call [Self::execute].
+    #[inline]
+    pub fn with<FS: crate::FieldSet, LocalAccess: WriteCapability + ReadCapability>(
+        mut self,
+        f: impl FnOnce(&mut D) -> crate::Plan<AddressType, FS, LocalAccess>,
+    ) -> MultiRegisterOperation<'d, D, AddressType, FieldSets::Next<FS>, RW>
+    where
+        FieldSets::Next<FS>: FsSet,
+    {
+        let Plan { address, value, .. } = f(self.device);
+
+        if self.start_address.is_none() {
+            self.start_address = Some(address)
+        }
+        assert!(FS::SIZE_BITS.is_multiple_of(8));
+
+        // TODO: Check if legal
+
+        MultiRegisterOperation {
+            device: self.device,
+            start_address: self.start_address,
+            field_sets: self.field_sets.push(value),
+            bit_sum: self.bit_sum + FS::SIZE_BITS,
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<'d, D, FieldSets: FsSet>
+    MultiRegisterOperation<
+        'd,
+        D,
+        <D::Interface as crate::RegisterInterface>::AddressType,
+        FieldSets,
+        RO,
+    >
+where
+    D: Block,
+    D::Interface: crate::RegisterInterface,
+{
+    /// Execute the read.
+    ///
+    /// If ok, the fieldset values are returned as a tuple.
+    /// If the multi-read was illegal or the read failed, an error is returned.
+    #[inline]
+    pub fn execute(
+        mut self,
+    ) -> Result<FieldSets::Value, <D::Interface as crate::RegisterInterface>::Error> {
+        let data = self.field_sets.as_slice_mut();
+        self.device
+            .interface()
+            .read_register(self.start_address.unwrap(), self.bit_sum, data)?;
+        Ok(self.field_sets.to_value())
+    }
+}
+
+impl<'d, D, FieldSets: FsSet>
+    MultiRegisterOperation<
+        'd,
+        D,
+        <D::Interface as crate::RegisterInterface>::AddressType,
+        FieldSets,
+        WO,
+    >
+where
+    D: Block,
+    D::Interface: crate::RegisterInterface,
+{
+    /// Execute the write.
+    ///
+    /// Use the closure to change contents of the fieldset values that will be written.
+    /// The fieldset values are either the reset value or all-0's based on which plan was used in the chaining phase.
+    ///
+    /// If ok, the return value of the closure is returned.
+    /// If the multi-write was illegal or the read failed, an error is returned.
+    #[inline]
+    pub fn execute<R>(
+        mut self,
+        f: impl FnOnce(FieldSets::ValueMut<'_>) -> R,
+    ) -> Result<R, <D::Interface as crate::RegisterInterface>::Error> {
+        let returned = f(self.field_sets.as_value_mut());
+        self.device.interface().write_register(
+            self.start_address.unwrap(),
+            self.bit_sum,
+            self.field_sets.as_slice_mut(),
+        )?;
+        Ok(returned)
+    }
+}
+
+impl<'d, D, FieldSets: FsSet>
+    MultiRegisterOperation<
+        'd,
+        D,
+        <D::Interface as crate::RegisterInterface>::AddressType,
+        FieldSets,
+        RW,
+    >
+where
+    D: Block,
+    D::Interface: crate::RegisterInterface,
+{
+    /// Execute the modify.
+    ///
+    /// Use the closure to change contents of the fieldset values that have been read.
+    /// The modified values will be written back to the device.
+    ///
+    /// If ok, the return value of the closure is returned.
+    /// If the multi-modify was illegal or the read failed, an error is returned.
+    #[inline]
+    pub fn execute<R>(
+        mut self,
+        f: impl FnOnce(FieldSets::ValueMut<'_>) -> R,
+    ) -> Result<R, <D::Interface as crate::RegisterInterface>::Error> {
+        self.device.interface().read_register(
+            self.start_address.unwrap(),
+            self.bit_sum,
+            self.field_sets.as_slice_mut(),
+        )?;
+
+        let returned = f(self.field_sets.as_value_mut());
+
+        self.device.interface().write_register(
+            self.start_address.unwrap(),
+            self.bit_sum,
+            self.field_sets.as_slice_mut(),
+        )?;
+
+        Ok(returned)
+    }
 }

@@ -25,6 +25,9 @@ pub struct Block {
     pub root: bool,
     pub name: Identifier,
     pub methods: Vec<BlockMethod>,
+    pub register_address_type: Integer,
+    pub command_address_type: Integer,
+    pub buffer_address_type: Integer,
 }
 
 pub struct BlockMethod {
@@ -55,17 +58,14 @@ pub enum BlockMethodType {
     Register {
         field_set_name: Identifier,
         access: Access,
-        address_type: Integer,
         reset_value: Option<Vec<u8>>,
     },
     Command {
         field_set_name_in: Option<Identifier>,
         field_set_name_out: Option<Identifier>,
-        address_type: Integer,
     },
     Buffer {
         access: Access,
-        address_type: Integer,
     },
 }
 
