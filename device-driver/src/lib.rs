@@ -5,6 +5,7 @@
 
 use core::fmt::{Debug, Display};
 use core::marker::PhantomData;
+use core::ops::{Index, IndexMut};
 
 pub use embedded_io;
 pub use embedded_io_async;
@@ -27,12 +28,107 @@ pub use device_driver_macros::*;
 ///
 /// Must only be implemented on types that are align(1) (so they introduce no padding bytes).
 /// This is used to cast the fieldset to a slice
-pub unsafe trait FieldSet: Default {
+pub unsafe trait FieldSet: Default + Copy {
     /// The size of the field set in number of bits
     const SIZE_BITS: u32;
 
     fn get_inner_buffer(&self) -> &[u8];
     fn get_inner_buffer_mut(&mut self) -> &mut [u8];
+}
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct Packed;
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub struct Unpacked;
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+#[repr(transparent)]
+pub struct FieldSetArray<T: FieldSet, const N: usize, P> {
+    sets: [T; N],
+    _phantom: PhantomData<P>,
+}
+
+impl<T: FieldSet, const N: usize> FieldSetArray<T, N, Unpacked> {
+    /// Pack the bits of the array together. After doing this, the type is a valid [FieldSet].
+    pub fn pack(self) -> FieldSetArray<T, N, Packed> {
+        if T::SIZE_BITS.is_multiple_of(8) {
+            FieldSetArray {
+                sets: self.sets,
+                _phantom: PhantomData,
+            }
+        } else {
+            todo!("Support non-multiple-of-8 registers in FieldSetArray");
+        }
+    }
+}
+
+impl<T: FieldSet, const N: usize, I> Index<I> for FieldSetArray<T, N, Unpacked>
+where
+    [T]: Index<I>,
+{
+    type Output = <[T] as Index<I>>::Output;
+
+    fn index(&self, index: I) -> &Self::Output {
+        Index::index(self.sets.as_slice(), index)
+    }
+}
+
+impl<T: FieldSet, const N: usize, I> IndexMut<I> for FieldSetArray<T, N, Unpacked>
+where
+    [T]: IndexMut<I>,
+{
+    fn index_mut(&mut self, index: I) -> &mut Self::Output {
+        IndexMut::index_mut(self.sets.as_mut_slice(), index)
+    }
+}
+
+impl<T: FieldSet, const N: usize> From<FieldSetArray<T, N, Unpacked>> for [T; N] {
+    fn from(value: FieldSetArray<T, N, Unpacked>) -> Self {
+        value.sets
+    }
+}
+
+impl<T: FieldSet, const N: usize> FieldSetArray<T, N, Packed> {
+    /// Unpack the fieldsets so they all contain their own data again. After this, it's a valid `[T;N]`.
+    pub fn unpack(self) -> FieldSetArray<T, N, Unpacked> {
+        if T::SIZE_BITS.is_multiple_of(8) {
+            FieldSetArray {
+                sets: self.sets,
+                _phantom: PhantomData,
+            }
+        } else {
+            todo!("Support non-multiple-of-8 registers in FieldSetArray");
+        }
+    }
+}
+
+unsafe impl<const N: usize, T: FieldSet> FieldSet for FieldSetArray<T, N, Packed> {
+    const SIZE_BITS: u32 = T::SIZE_BITS * N as u32;
+
+    fn get_inner_buffer(&self) -> &[u8] {
+        let ptr = self.sets.as_ptr();
+        // Safety: This is safe because FieldSets are align 1 and `SIZE_BITS` is always smaller than the total allocated bits
+        unsafe {
+            core::slice::from_raw_parts(ptr.cast::<u8>(), Self::SIZE_BITS.div_ceil(8) as usize)
+        }
+    }
+
+    fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
+        let ptr = self.sets.as_mut_ptr();
+        // Safety: This is safe because FieldSets are align 1 and `SIZE_BITS` is always smaller than the total allocated bits
+        unsafe {
+            core::slice::from_raw_parts_mut(ptr.cast::<u8>(), Self::SIZE_BITS.div_ceil(8) as usize)
+        }
+    }
+}
+
+impl<const N: usize, T: FieldSet, P> Default for FieldSetArray<T, N, P> {
+    fn default() -> Self {
+        Self {
+            sets: [T::default(); N],
+            _phantom: PhantomData,
+        }
+    }
 }
 
 /// Trait implemented on every generated block/device.
