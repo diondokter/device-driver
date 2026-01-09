@@ -30,16 +30,15 @@ impl<I> Device<I> {
         u8,
         FooRoFieldSet,
         ::device_driver::RO,
+        (),
     > {
         use ::device_driver::Block;
         let address = self.base_address + 0;
-        ::device_driver::RegisterOperation::<
-            '_,
-            I,
-            u8,
-            FooRoFieldSet,
-            ::device_driver::RO,
-        >::new(self.interface(), address as u8, FooRoFieldSet::new)
+        ::device_driver::RegisterOperation::new(
+            self.interface(),
+            address as u8,
+            FooRoFieldSet::new,
+        )
     }
     pub fn foo_rw(
         &mut self,
@@ -49,16 +48,15 @@ impl<I> Device<I> {
         u8,
         FooRwFieldSet,
         ::device_driver::RW,
+        (),
     > {
         use ::device_driver::Block;
         let address = self.base_address + 1;
-        ::device_driver::RegisterOperation::<
-            '_,
-            I,
-            u8,
-            FooRwFieldSet,
-            ::device_driver::RW,
-        >::new(self.interface(), address as u8, FooRwFieldSet::new)
+        ::device_driver::RegisterOperation::new(
+            self.interface(),
+            address as u8,
+            FooRwFieldSet::new,
+        )
     }
     pub fn foo_wo(
         &mut self,
@@ -68,16 +66,15 @@ impl<I> Device<I> {
         u8,
         FooWoFieldSet,
         ::device_driver::WO,
+        (),
     > {
         use ::device_driver::Block;
         let address = self.base_address + 2;
-        ::device_driver::RegisterOperation::<
-            '_,
-            I,
-            u8,
-            FooWoFieldSet,
-            ::device_driver::WO,
-        >::new(self.interface(), address as u8, FooWoFieldSet::new)
+        ::device_driver::RegisterOperation::new(
+            self.interface(),
+            address as u8,
+            FooWoFieldSet::new,
+        )
     }
 }
 impl<I> ::device_driver::Block for Device<I> {

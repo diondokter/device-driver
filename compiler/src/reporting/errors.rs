@@ -338,7 +338,7 @@ pub struct EmptyEnum {
 pub struct DuplicateVariantValue {
     #[label(collection)]
     pub duplicates: Vec<SourceSpan>,
-    pub value: i128,
+    pub value: i32,
 }
 
 #[derive(Error, Debug, Diagnostic)]
@@ -395,7 +395,7 @@ pub struct VariantValuesTooHigh {
     pub variant_names: Vec<SourceSpan>,
     #[label("Part of this enum")]
     pub enum_name: SourceSpan,
-    pub max_value: i128,
+    pub max_value: i32,
 }
 
 #[derive(Error, Debug, Diagnostic)]
@@ -409,7 +409,7 @@ pub struct VariantValuesTooLow {
     pub variant_names: Vec<SourceSpan>,
     #[label("Part of this enum")]
     pub enum_name: SourceSpan,
-    pub min_value: i128,
+    pub min_value: i32,
 }
 
 #[derive(Error, Debug, Diagnostic)]

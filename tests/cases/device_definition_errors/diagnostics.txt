@@ -259,10 +259,10 @@
  63 │         address -1
  64 │         repeat count=18_446_744_073_709_551_616 stride=1
     ·                ────────────────┬───────────────
-    ·                                ╰── Value is out of the allowable range: 0..2^64
+    ·                                ╰── Value is out of the allowable range: 0..2^16
  65 │         allow-address-overlap #true
     ╰────
-  help: The count is encoded as a u64
+  help: The count is encoded as a u16
 
   error: Unexpected entries
     ╭─[cases/device_definition_errors/input.kdl:65:31]

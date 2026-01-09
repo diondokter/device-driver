@@ -170,16 +170,15 @@ impl<I> FooD6<I> {
         u8,
         Foor4FieldSet,
         ::device_driver::RW,
+        (),
     > {
         use ::device_driver::Block;
         let address = self.base_address + 0;
-        ::device_driver::RegisterOperation::<
-            '_,
-            I,
-            u8,
-            Foor4FieldSet,
-            ::device_driver::RW,
-        >::new(self.interface(), address as u8, Foor4FieldSet::new)
+        ::device_driver::RegisterOperation::new(
+            self.interface(),
+            address as u8,
+            Foor4FieldSet::new,
+        )
     }
     pub fn foor_5(
         &mut self,
@@ -189,16 +188,15 @@ impl<I> FooD6<I> {
         u8,
         Foor5FieldSet,
         ::device_driver::RW,
+        (),
     > {
         use ::device_driver::Block;
         let address = self.base_address + 1;
-        ::device_driver::RegisterOperation::<
-            '_,
-            I,
-            u8,
-            Foor5FieldSet,
-            ::device_driver::RW,
-        >::new(self.interface(), address as u8, Foor5FieldSet::new)
+        ::device_driver::RegisterOperation::new(
+            self.interface(),
+            address as u8,
+            Foor5FieldSet::new,
+        )
     }
     pub fn foor_6(
         &mut self,
@@ -208,16 +206,15 @@ impl<I> FooD6<I> {
         u8,
         Foor6FieldSet,
         ::device_driver::RW,
+        (),
     > {
         use ::device_driver::Block;
         let address = self.base_address + 2;
-        ::device_driver::RegisterOperation::<
-            '_,
-            I,
-            u8,
-            Foor6FieldSet,
-            ::device_driver::RW,
-        >::new(self.interface(), address as u8, Foor6FieldSet::new)
+        ::device_driver::RegisterOperation::new(
+            self.interface(),
+            address as u8,
+            Foor6FieldSet::new,
+        )
     }
     pub fn foor_7(
         &mut self,
@@ -227,16 +224,15 @@ impl<I> FooD6<I> {
         u8,
         Foor7FieldSet,
         ::device_driver::RW,
+        (),
     > {
         use ::device_driver::Block;
         let address = self.base_address + 3;
-        ::device_driver::RegisterOperation::<
-            '_,
-            I,
-            u8,
-            Foor7FieldSet,
-            ::device_driver::RW,
-        >::new(self.interface(), address as u8, Foor7FieldSet::new)
+        ::device_driver::RegisterOperation::new(
+            self.interface(),
+            address as u8,
+            Foor7FieldSet::new,
+        )
     }
     /// Hello!
     pub fn foor_8(
@@ -247,16 +243,15 @@ impl<I> FooD6<I> {
         u8,
         CustomFieldSetName,
         ::device_driver::RW,
+        (),
     > {
         use ::device_driver::Block;
         let address = self.base_address + 4;
-        ::device_driver::RegisterOperation::<
-            '_,
-            I,
-            u8,
-            CustomFieldSetName,
-            ::device_driver::RW,
-        >::new(self.interface(), address as u8, CustomFieldSetName::new)
+        ::device_driver::RegisterOperation::new(
+            self.interface(),
+            address as u8,
+            CustomFieldSetName::new,
+        )
     }
     pub fn foor_9(
         &mut self,
@@ -266,36 +261,33 @@ impl<I> FooD6<I> {
         u8,
         Foor9FieldSet,
         ::device_driver::RW,
+        (),
     > {
         use ::device_driver::Block;
         let address = self.base_address + 5;
-        ::device_driver::RegisterOperation::<
-            '_,
-            I,
-            u8,
-            Foor9FieldSet,
-            ::device_driver::RW,
-        >::new(self.interface(), address as u8, Foor9FieldSet::new)
+        ::device_driver::RegisterOperation::new(
+            self.interface(),
+            address as u8,
+            Foor9FieldSet::new,
+        )
     }
     pub fn foor_10(
         &mut self,
-        index: Foo10E1,
     ) -> ::device_driver::RegisterOperation<
         '_,
         I,
         u8,
         Foor10FieldSet,
         ::device_driver::RW,
+        ::device_driver::EnumRepeat<Foo10E1, 2>,
     > {
         use ::device_driver::Block;
-        let address = self.base_address + 6 + u16::from(index) as u8 * 2;
-        ::device_driver::RegisterOperation::<
-            '_,
-            I,
-            u8,
-            Foor10FieldSet,
-            ::device_driver::RW,
-        >::new(self.interface(), address as u8, Foor10FieldSet::new)
+        let address = self.base_address + 6;
+        ::device_driver::RegisterOperation::new(
+            self.interface(),
+            address as u8,
+            Foor10FieldSet::new,
+        )
     }
     pub fn fooc_1(
         &mut self,
@@ -305,40 +297,25 @@ impl<I> FooD6<I> {
         u8,
         Fooc1FieldSetIn,
         Fooc1FieldSetOut,
+        (),
     > {
         use ::device_driver::Block;
         let address = self.base_address + 0;
-        ::device_driver::CommandOperation::<
-            '_,
-            I,
-            u8,
-            Fooc1FieldSetIn,
-            Fooc1FieldSetOut,
-        >::new(self.interface(), address as u8)
+        ::device_driver::CommandOperation::new(self.interface(), address as u8)
     }
     pub fn foob_1(
         &mut self,
     ) -> ::device_driver::BufferOperation<'_, I, u8, ::device_driver::RW> {
         use ::device_driver::Block;
         let address = self.base_address + 0;
-        ::device_driver::BufferOperation::<
-            '_,
-            I,
-            u8,
-            ::device_driver::RW,
-        >::new(self.interface(), address as u8)
+        ::device_driver::BufferOperation::new(self.interface(), address as u8)
     }
     pub fn foob_2(
         &mut self,
     ) -> ::device_driver::BufferOperation<'_, I, u8, ::device_driver::RO> {
         use ::device_driver::Block;
         let address = self.base_address + 2;
-        ::device_driver::BufferOperation::<
-            '_,
-            I,
-            u8,
-            ::device_driver::RO,
-        >::new(self.interface(), address as u8)
+        ::device_driver::BufferOperation::new(self.interface(), address as u8)
     }
     /// This is a block
     pub fn b_1(&mut self) -> B1<'_, I> {
@@ -414,12 +391,7 @@ impl<'i, I> B2<'i, I> {
     ) -> ::device_driver::BufferOperation<'_, I, u8, ::device_driver::RW> {
         use ::device_driver::Block;
         let address = self.base_address + 42;
-        ::device_driver::BufferOperation::<
-            '_,
-            I,
-            u8,
-            ::device_driver::RW,
-        >::new(self.interface(), address as u8)
+        ::device_driver::BufferOperation::new(self.interface(), address as u8)
     }
 }
 impl<'i, I> ::device_driver::Block for B2<'i, I> {

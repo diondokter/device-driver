@@ -24,16 +24,10 @@ impl<I> Device<I> {
     }
     pub fn foo(
         &mut self,
-    ) -> ::device_driver::CommandOperation<'_, I, u8, FooFieldSetIn, ()> {
+    ) -> ::device_driver::CommandOperation<'_, I, u8, FooFieldSetIn, (), ()> {
         use ::device_driver::Block;
         let address = self.base_address + 0;
-        ::device_driver::CommandOperation::<
-            '_,
-            I,
-            u8,
-            FooFieldSetIn,
-            (),
-        >::new(self.interface(), address as u8)
+        ::device_driver::CommandOperation::new(self.interface(), address as u8)
     }
 }
 impl<I> ::device_driver::Block for Device<I> {

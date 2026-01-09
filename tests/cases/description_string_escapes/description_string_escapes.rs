@@ -31,16 +31,15 @@ impl<I> Device<I> {
         u8,
         FooFieldSet,
         ::device_driver::RW,
+        (),
     > {
         use ::device_driver::Block;
         let address = self.base_address + 0;
-        ::device_driver::RegisterOperation::<
-            '_,
-            I,
-            u8,
-            FooFieldSet,
-            ::device_driver::RW,
-        >::new(self.interface(), address as u8, FooFieldSet::new)
+        ::device_driver::RegisterOperation::new(
+            self.interface(),
+            address as u8,
+            FooFieldSet::new,
+        )
     }
 }
 impl<I> ::device_driver::Block for Device<I> {

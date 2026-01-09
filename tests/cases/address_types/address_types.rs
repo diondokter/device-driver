@@ -30,39 +30,27 @@ impl<I> Device<I> {
         u16,
         FooFieldSet,
         ::device_driver::RW,
+        (),
     > {
         use ::device_driver::Block;
         let address = self.base_address + 0;
-        ::device_driver::RegisterOperation::<
-            '_,
-            I,
-            u16,
-            FooFieldSet,
-            ::device_driver::RW,
-        >::new(self.interface(), address as u16, FooFieldSet::new)
+        ::device_driver::RegisterOperation::new(
+            self.interface(),
+            address as u16,
+            FooFieldSet::new,
+        )
     }
-    pub fn bar(&mut self) -> ::device_driver::CommandOperation<'_, I, i32, (), ()> {
+    pub fn bar(&mut self) -> ::device_driver::CommandOperation<'_, I, i32, (), (), ()> {
         use ::device_driver::Block;
         let address = self.base_address + 0;
-        ::device_driver::CommandOperation::<
-            '_,
-            I,
-            i32,
-            (),
-            (),
-        >::new(self.interface(), address as i32)
+        ::device_driver::CommandOperation::new(self.interface(), address as i32)
     }
     pub fn quux(
         &mut self,
     ) -> ::device_driver::BufferOperation<'_, I, i8, ::device_driver::RW> {
         use ::device_driver::Block;
         let address = self.base_address + 0;
-        ::device_driver::BufferOperation::<
-            '_,
-            I,
-            i8,
-            ::device_driver::RW,
-        >::new(self.interface(), address as i8)
+        ::device_driver::BufferOperation::new(self.interface(), address as i8)
     }
 }
 impl<I> ::device_driver::Block for Device<I> {

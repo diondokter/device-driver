@@ -41,13 +41,13 @@ pub struct BlockMethod {
 pub enum Repeat {
     None,
     Count {
-        count: u64,
-        stride: i128,
+        count: u16,
+        stride: i32,
     },
     Enum {
         enum_name: Identifier,
         enum_variants: Vec<Identifier>,
-        stride: i128,
+        stride: i32,
     },
 }
 
@@ -147,7 +147,7 @@ impl Enum {
 pub struct EnumVariant {
     pub description: String,
     pub name: Identifier,
-    pub discriminant: i128,
+    pub discriminant: i32,
     pub default: bool,
     pub catch_all: bool,
 }

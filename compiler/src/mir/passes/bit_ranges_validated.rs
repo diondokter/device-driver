@@ -119,7 +119,7 @@ fn get_repeat_iter(manifest: &Manifest, field: &crate::mir::Field) -> (Vec<i128>
         match &repeat.source {
             RepeatSource::Count(count) => (
                 (0..i128::from(*count))
-                    .map(move |count| count * stride)
+                    .map(move |count| count * stride as i128)
                     .collect(),
                 true,
             ),
@@ -129,7 +129,7 @@ fn get_repeat_iter(manifest: &Manifest, field: &crate::mir::Field) -> (Vec<i128>
                     .as_enum()
                     .expect("Checked in earlier pass")
                     .iter_variants_with_discriminant()
-                    .map(move |(discriminant, _)| discriminant * stride)
+                    .map(move |(discriminant, _)| (discriminant * stride) as i128)
                     .collect(),
                 true,
             ),

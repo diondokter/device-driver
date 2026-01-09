@@ -1324,7 +1324,18 @@ fn transform_enum_variants(nodes: &KdlDocument, diagnostics: &mut Diagnostics) -
                 Some(variant_value) => match variant_value.value() {
                     KdlValue::String(val) if val == "default" => EnumValue::Default,
                     KdlValue::String(val) if val == "catch-all" => EnumValue::CatchAll,
-                    KdlValue::Integer(val) => EnumValue::Specified(*val),
+                    KdlValue::Integer(val) => {
+                        if !(i128::from(i32::MIN)..=i128::from(i32::MAX)).contains(val) {
+                            diagnostics.add(errors::ValueOutOfRange {
+                                value: variant_value.span(),
+                                context: Some("The variant value is encoded as an i32"),
+                                range: "-2^31..2^31",
+                            });
+                            return None;
+                        } else {
+                            EnumValue::Specified(*val as i32)
+                        }
+                    }
                     _ => {
                         diagnostics.add(errors::UnexpectedValue {
                             value_name: variant_value.span(),
@@ -1593,13 +1604,23 @@ fn parse_repeat_entries(
     }
 
     if let Some((count, span)) = count
-        && !(0..=i128::from(u64::MAX)).contains(&count)
+        && !(0..=i128::from(u16::MAX)).contains(&count)
     {
         error = true;
         diagnostics.add(errors::ValueOutOfRange {
             value: span,
-            context: Some("The count is encoded as a u64"),
-            range: "0..2^64",
+            context: Some("The count is encoded as a u16"),
+            range: "0..2^16",
+        });
+    }
+    if let Some((stride, span)) = stride
+        && !(i128::from(i32::MIN)..=i128::from(i32::MAX)).contains(&stride)
+    {
+        error = true;
+        diagnostics.add(errors::ValueOutOfRange {
+            value: span,
+            context: Some("The stride is encoded as an i32"),
+            range: "-2^31..2^31",
         });
     }
     if let Some((stride, span)) = stride
@@ -1619,11 +1640,11 @@ fn parse_repeat_entries(
         match (count, with, stride) {
             (None, Some((with, with_span)), Some((stride, _))) => Some(Repeat {
                 source: crate::mir::RepeatSource::Enum(with.with_span(with_span)),
-                stride,
+                stride: stride as i32,
             }),
             (Some((count, _)), None, Some((stride, _))) => Some(Repeat {
-                source: crate::mir::RepeatSource::Count(count as u64),
-                stride,
+                source: crate::mir::RepeatSource::Count(count as u16),
+                stride: stride as i32,
             }),
             (None, None, None) => None,
             _ => unreachable!(),

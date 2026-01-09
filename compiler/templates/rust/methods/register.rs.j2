@@ -1,0 +1,36 @@
+{{ self::description_to_docstring(method.description) }}
+{% match method.repeat %}
+    {% when Repeat::None %}
+    {% when Repeat::Count { count, .. } %}
+    ///
+    /// Valid index range: 0..{{count}}
+    {% when Repeat::Enum { .. } %}
+    {% endwhen %}
+{% endmatch %}
+pub fn {{ method.name.to_case(Case::Snake) }}(&mut self) -> 
+    ::device_driver::RegisterOperation<
+        '_,
+        I,
+        {{block.register_address_type}},
+        {{field_set_name.to_case(Case::Pascal)}},
+        ::device_driver::{{access}},
+        {% match method.repeat %}
+            {% when Repeat::None %} ()
+            {% when Repeat::Count { count, stride } %} ::device_driver::ArrayRepeat<{{count}}, {{stride}}>
+            {% when Repeat::Enum { enum_name, stride, .. } %} ::device_driver::EnumRepeat<{{enum_name.to_case(Case::Pascal)}}, {{stride}}>
+        {% endmatch %}
+    >
+{
+    use ::device_driver::Block;
+    let address = self.base_address + {{method.address}};
+
+    ::device_driver::RegisterOperation::new(
+        self.interface(),
+        address as {{block.register_address_type}},
+        {% if let Some(rv) = reset_value %}
+            || {{field_set_name.to_case(Case::Pascal)}}::from([{{rv | join(", ")}}]),
+        {% else %}
+            {{field_set_name.to_case(Case::Pascal)}}::new,
+        {% endif %}
+        )
+}

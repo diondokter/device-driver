@@ -1,0 +1,33 @@
+{{ self::description_to_docstring(method.description) }}
+{% match method.repeat %}
+    {% when Repeat::None %}
+    {% when Repeat::Count { count, .. } %}
+    ///
+    /// Valid index range: 0..{{count}}
+    {% when Repeat::Enum { .. } %}
+    {% endwhen %}
+{% endmatch %}
+pub fn {{ method.name.to_case(Case::Snake) }}(
+    &mut self,
+    {% match method.repeat %}
+        {% when Repeat::None %}
+        {% when Repeat::Count { .. } %} index: usize
+        {% when Repeat::Enum { enum_name, .. } %} index: {{enum_name.to_case(Case::Pascal)}}
+    {% endmatch %}
+) -> {{name.to_case(Case::Pascal)}}<'_, I>
+{
+    use ::device_driver::Block;
+
+    {% match method.repeat %}
+        {% when Repeat::None %} let address = self.base_address + {{method.address}};
+        {% when Repeat::Count { count, stride } %}
+            let address = {
+                assert!(index < {{count}});
+                self.base_address + {{method.address}} + index as {{device.internal_address_type}} * {{stride}}
+            };
+        {% when Repeat::Enum { enum_name, stride, .. } %}
+            let address = self.base_address + {{method.address}} + {{self::get_enum_base_type(driver, &enum_name)}}::from(index) as {{device.internal_address_type}} * {{stride}};
+    {% endmatch %}
+
+    {{name.to_case(Case::Pascal)}}::<'_, I>::new(self.interface(), address)
+}

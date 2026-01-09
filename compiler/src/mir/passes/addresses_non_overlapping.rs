@@ -88,7 +88,7 @@ fn find_object_addresses<'m>(
             match repeat.source {
                 RepeatSource::Count(count) => {
                     for index in 0..i128::from(count) {
-                        let repeat_offset = index * repeat.stride;
+                        let repeat_offset = index * repeat.stride as i128;
                         let address = total_address_offsets + address.value + repeat_offset;
 
                         object_addresses.push(ObjectAddress {
@@ -106,7 +106,7 @@ fn find_object_addresses<'m>(
                         .expect("A mir pass checked this is an enum");
 
                     for (discriminant, _) in enum_value.iter_variants_with_discriminant() {
-                        let repeat_offset = discriminant * repeat.stride;
+                        let repeat_offset = (discriminant * repeat.stride) as i128;
                         let address = total_address_offsets + address.value + repeat_offset;
 
                         object_addresses.push(ObjectAddress {

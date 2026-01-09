@@ -36,11 +36,16 @@ pub unsafe trait FieldSet: Default + Copy {
     fn get_inner_buffer_mut(&mut self) -> &mut [u8];
 }
 
+/// Type state value for a packed [FieldSetArray]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Packed;
+/// Type state value for an unpacked [FieldSetArray]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Unpacked;
 
+/// An array of field sets.
+///
+/// Can be packed and unpacked
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct FieldSetArray<T: FieldSet, const N: usize, P> {
@@ -49,6 +54,14 @@ pub struct FieldSetArray<T: FieldSet, const N: usize, P> {
 }
 
 impl<T: FieldSet, const N: usize> FieldSetArray<T, N, Unpacked> {
+    /// Create a new array from the given initial value. All elements of the array will contain the value
+    pub const fn new_from(val: T) -> Self {
+        Self {
+            sets: [val; N],
+            _phantom: PhantomData,
+        }
+    }
+
     /// Pack the bits of the array together. After doing this, the type is a valid [FieldSet].
     pub fn pack(self) -> FieldSetArray<T, N, Packed> {
         if T::SIZE_BITS.is_multiple_of(8) {
@@ -392,3 +405,86 @@ create_fs!(Fs23 -> Fs24, (A: 0), (B: 1), (C: 2), (D: 3), (E: 4), (F: 5), (G: 6),
 create_fs!(Fs24 -> Fs25, (A: 0), (B: 1), (C: 2), (D: 3), (E: 4), (F: 5), (G: 6), (H: 7), (I: 8), (J: 9), (K: 10), (L: 11), (M: 12), (N: 13), (O: 14), (P: 15), (Q: 16), (R: 17), (S: 18), (T: 19), (U: 20), (V: 21), (W: 22), (X: 23));
 create_fs!(Fs25 -> Fs26, (A: 0), (B: 1), (C: 2), (D: 3), (E: 4), (F: 5), (G: 6), (H: 7), (I: 8), (J: 9), (K: 10), (L: 11), (M: 12), (N: 13), (O: 14), (P: 15), (Q: 16), (R: 17), (S: 18), (T: 19), (U: 20), (V: 21), (W: 22), (X: 23), (Y: 24));
 create_fs!(Fs26 ->    !, (A: 0), (B: 1), (C: 2), (D: 3), (E: 4), (F: 5), (G: 6), (H: 7), (I: 8), (J: 9), (K: 10), (L: 11), (M: 12), (N: 13), (O: 14), (P: 15), (Q: 16), (R: 17), (S: 18), (T: 19), (U: 20), (V: 21), (W: 22), (X: 23), (Y: 24), (Z: 25));
+
+#[doc(hidden)]
+pub trait Repeating {
+    type Index: Clone;
+
+    /// Calculate an address with the index
+    #[allow(private_bounds)]
+    fn calc_address<AddressType: Address>(start: AddressType, index: Self::Index) -> AddressType;
+}
+#[doc(hidden)]
+pub trait NotRepeating {}
+impl NotRepeating for () {}
+
+#[doc(hidden)]
+pub struct ArrayRepeat<const COUNT: u16, const STRIDE: i32>;
+impl<const COUNT: u16, const STRIDE: i32> Repeating for ArrayRepeat<COUNT, STRIDE> {
+    type Index = usize;
+
+    #[allow(private_bounds)]
+    fn calc_address<AddressType: Address>(start: AddressType, index: Self::Index) -> AddressType {
+        assert!(index < COUNT as usize, "Index out of range");
+        let offset = index as i32 * STRIDE;
+        start.add(offset)
+    }
+}
+
+#[doc(hidden)]
+pub struct EnumRepeat<T, const STRIDE: i32>(PhantomData<T>);
+impl<T: Clone + Into<i32>, const STRIDE: i32> Repeating for EnumRepeat<T, STRIDE> {
+    type Index = T;
+
+    #[allow(private_bounds)]
+    fn calc_address<AddressType: Address>(start: AddressType, index: Self::Index) -> AddressType {
+        let offset = index.into() * STRIDE;
+        start.add(offset)
+    }
+}
+
+#[doc(hidden)]
+pub trait Address: Copy {
+    fn add(self, val: i32) -> Self;
+}
+
+impl Address for u8 {
+    fn add(self, val: i32) -> Self {
+        (self as i32 + val).try_into().unwrap()
+    }
+}
+impl Address for u16 {
+    fn add(self, val: i32) -> Self {
+        (self as i32 + val).try_into().unwrap()
+    }
+}
+impl Address for u32 {
+    fn add(self, val: i32) -> Self {
+        self.checked_add_signed(val).unwrap()
+    }
+}
+impl Address for u64 {
+    fn add(self, val: i32) -> Self {
+        self.checked_add_signed(val as i64).unwrap()
+    }
+}
+impl Address for i8 {
+    fn add(self, val: i32) -> Self {
+        (self as i32 + val).try_into().unwrap()
+    }
+}
+impl Address for i16 {
+    fn add(self, val: i32) -> Self {
+        (self as i32 + val).try_into().unwrap()
+    }
+}
+impl Address for i32 {
+    fn add(self, val: i32) -> Self {
+        self + val
+    }
+}
+impl Address for i64 {
+    fn add(self, val: i32) -> Self {
+        self + val as i64
+    }
+}

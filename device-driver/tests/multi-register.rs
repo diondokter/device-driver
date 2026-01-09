@@ -78,7 +78,7 @@ fn multi_test() {
 
     device
         .multi_write()
-        .with(|d| d.bar(0).plan_with_zero())
+        .with(|d| d.bar().plan_with_zero_at(0))
         .with(|d| d.foo().plan())
         .execute(|(bar, _foo)| {
             bar.set_value(42);
@@ -90,7 +90,7 @@ fn multi_test() {
         // TODO: Allow reading multiple. This would return a [Bar;N] that can also impl FieldSet.
         // Maybe N is a const generic on foo_repeated with default 1?
         // We'll also need a check whether it's allowed by the device rules. That's probably an assert.
-        .with(|d| d.bar(0).plan())
+        .with(|d| d.bar().plan_at(0))
         .with(|d| d.foo().plan())
         .execute()
         .unwrap();
@@ -105,7 +105,7 @@ fn multi_test() {
 
     device
         .multi_modify()
-        .with(|d| d.bar(0).plan())
+        .with(|d| d.bar().plan_at(0))
         .with(|d| d.foo().plan())
         .execute(|(bar, foo)| {
             bar.set_value(-5);
@@ -115,7 +115,7 @@ fn multi_test() {
 
     let multi = device
         .multi_read()
-        .with(|d| d.bar(0).plan())
+        .with(|d| d.bar().plan_at(0))
         .with(|d| d.foo().plan())
         .execute()
         .unwrap();

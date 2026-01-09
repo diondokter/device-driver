@@ -1,0 +1,27 @@
+{{ self::description_to_docstring(method.description) }}
+{% match method.repeat %}
+    {% when Repeat::None %}
+    {% when Repeat::Count { count, .. } %}
+    ///
+    /// Valid index range: 0..{{count}}
+    {% when Repeat::Enum { .. } %}
+    {% endwhen %}
+{% endmatch %}
+pub fn {{ method.name.to_case(Case::Snake) }}(&mut self) -> 
+    ::device_driver::CommandOperation<
+        '_,
+        I,
+        {{block.command_address_type}},
+        {{self::get_command_fieldset_name(field_set_name_in)}},
+        {{self::get_command_fieldset_name(field_set_name_out)}},
+        {% match method.repeat %}
+            {% when Repeat::None %} ()
+            {% when Repeat::Count { count, stride } %} ::device_driver::ArrayRepeat<{{count}}, {{stride}}>
+            {% when Repeat::Enum { enum_name, stride, .. } %} ::device_driver::EnumRepeat<{{enum_name.to_case(Case::Pascal)}}, {{stride}}>
+        {% endmatch %}
+    >
+{
+    use ::device_driver::Block;
+    let address = self.base_address + {{method.address}};
+    ::device_driver::CommandOperation::new(self.interface(), address as {{block.command_address_type}})
+}

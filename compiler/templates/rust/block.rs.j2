@@ -34,83 +34,16 @@ impl{{block_generics}} {{ block.name.to_case(Case::Pascal) }}{{block_generics}} 
     {% endif %}
 
     {% for method in block.methods %}
-        {{ self::description_to_docstring(method.description) }}
-        {% match method.repeat %}
-            {% when Repeat::None %}
-            {% when Repeat::Count { count, .. } %}
-            ///
-            /// Valid index range: 0..{{count}}
-            {% when Repeat::Enum { .. } %}
-            {% endwhen %}
-        {% endmatch %}
-        pub fn {{ method.name.to_case(Case::Snake) }}(
-            &mut self,
-            {% match method.repeat %}
-                {% when Repeat::None %}
-                {% when Repeat::Count { .. } %} index: usize
-                {% when Repeat::Enum { enum_name, .. } %} index: {{enum_name.to_case(Case::Pascal)}}
-            {% endmatch %}
-        ) -> 
         {% match method.method_type %}
-            {% when BlockMethodType::Block { name } %} {{name.to_case(Case::Pascal)}}<'_, I>
-            {% when BlockMethodType::Register { field_set_name, access, .. } %} ::device_driver::RegisterOperation<'_, I, {{block.register_address_type}}, {{field_set_name.to_case(Case::Pascal)}}, ::device_driver::{{access}}>
-            {% when BlockMethodType::Command { field_set_name_in, field_set_name_out } %} ::device_driver::CommandOperation<'_, I, {{block.command_address_type}}, {{self::get_command_fieldset_name(field_set_name_in)}}, {{self::get_command_fieldset_name(field_set_name_out)}}>
-            {% when BlockMethodType::Buffer { access } %} ::device_driver::BufferOperation<'_, I, {{block.buffer_address_type}}, ::device_driver::{{access}}>
+            {% when BlockMethodType::Block { name } %}
+                {% include "methods/block.rs.j2" %}
+            {% when BlockMethodType::Register { field_set_name, access, reset_value } %}
+                {% include "methods/register.rs.j2" %}
+            {% when BlockMethodType::Command { field_set_name_in, field_set_name_out } %}
+                {% include "methods/command.rs.j2" %}
+            {% when BlockMethodType::Buffer { access } %}
+                {% include "methods/buffer.rs.j2" %}
         {% endmatch %}
-        {
-            use ::device_driver::Block;
-
-            {% match method.repeat %}
-                {% when Repeat::None %} let address = self.base_address + {{method.address}};
-                {% when Repeat::Count { count, stride } %}
-                    let address = {
-                        assert!(index < {{count}});
-                        self.base_address + {{method.address}} + index as {{device.internal_address_type}} * {{stride}}
-                    };
-                {% when Repeat::Enum { enum_name, stride, .. } %}
-                    let address = self.base_address + {{method.address}} + {{self::get_enum_base_type(driver, &enum_name)}}::from(index) as {{device.internal_address_type}} * {{stride}};
-            {% endmatch %}
-
-            {% match method.method_type %}
-                {% when BlockMethodType::Block { name } %}
-                    {{name.to_case(Case::Pascal)}}::<'_, I>::new(self.interface(), address)
-                {% endwhen %}
-                {% when BlockMethodType::Register { field_set_name, access, reset_value } %}
-                    ::device_driver::RegisterOperation::<
-                        '_,
-                        I,
-                        {{block.register_address_type}},
-                        {{field_set_name.to_case(Case::Pascal)}},
-                        ::device_driver::{{access}},
-                    >::new(
-                        self.interface(),
-                        address as {{block.register_address_type}},
-                        {% if let Some(rv) = reset_value %}
-                            || {{field_set_name.to_case(Case::Pascal)}}::from([{{rv | join(", ")}}]),
-                        {% else %}
-                            {{field_set_name.to_case(Case::Pascal)}}::new,
-                        {% endif %}
-                        )
-                {% endwhen %}
-                {% when BlockMethodType::Command { field_set_name_in, field_set_name_out } %}
-                    ::device_driver::CommandOperation::<
-                        '_,
-                        I,
-                        {{block.command_address_type}},
-                        {{self::get_command_fieldset_name(field_set_name_in)}},
-                        {{self::get_command_fieldset_name(field_set_name_out)}},
-                    >::new(self.interface(), address as {{block.command_address_type}})
-                {% endwhen %}
-                {% when BlockMethodType::Buffer { access } %}
-                    ::device_driver::BufferOperation::<
-                        '_,
-                        I,
-                        {{block.buffer_address_type}},
-                        ::device_driver::{{access}},
-                    >::new(self.interface(), address as {{block.buffer_address_type}})
-                {% endwhen %}
-            {% endmatch %}
-        }
     {% endfor %}
 }
 
