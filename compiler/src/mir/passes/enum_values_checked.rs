@@ -48,7 +48,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
             })
             .collect_vec();
 
-        let mut seen_values_map = HashMap::<i128, Vec<&UniqueId>>::new();
+        let mut seen_values_map = HashMap::<i32, Vec<&UniqueId>>::new();
         for (variant_value, variant_id) in &seen_values {
             seen_values_map
                 .entry(*variant_value)
@@ -79,8 +79,8 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
 
         let base_type_integer = match enum_value.base_type.value {
             BaseType::Unspecified => Integer::find_smallest(
-                *seen_min,
-                *seen_max,
+                *seen_min as i128,
+                *seen_max as i128,
                 enum_value.size_bits.unwrap_or_default(),
             ),
             BaseType::Bool => {
@@ -95,8 +95,8 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
             }
             BaseType::Uint => {
                 let integer = Integer::find_smallest(
-                    *seen_min,
-                    *seen_max,
+                    *seen_min as i128,
+                    *seen_max as i128,
                     enum_value.size_bits.unwrap_or_default(),
                 );
 
@@ -114,8 +114,8 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                 integer
             }
             BaseType::Int => Integer::find_smallest(
-                (*seen_min).min(-1),
-                *seen_max,
+                (*seen_min as i128).min(-1),
+                *seen_max as i128,
                 enum_value.size_bits.unwrap_or_default(),
             ),
             BaseType::FixedSize(integer) => {
@@ -153,7 +153,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
         };
 
         let size_bits = match enum_value.size_bits {
-            None => base_type_integer.bits_required(*seen_min, *seen_max),
+            None => base_type_integer.bits_required(*seen_min as i128, *seen_max as i128),
             Some(size_bits) => size_bits,
         };
 

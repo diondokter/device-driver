@@ -14,18 +14,15 @@ fn main() {}
 /// Root block of the Device driver
 #[derive(Debug)]
 pub struct Device<I> {
-    pub(crate) interface: I,
+    #[doc(hidden)]
+    interface: I,
     #[doc(hidden)]
     base_address: u8,
 }
 impl<I> Device<I> {
-    /// Create a new instance of the block based on device interface
+    /// Create a new instance of the device, using the interface
     pub const fn new(interface: I) -> Self {
         Self { interface, base_address: 0 }
-    }
-    /// A reference to the interface used to communicate with the device
-    pub(crate) fn interface(&mut self) -> &mut I {
-        &mut self.interface
     }
     pub fn foo(
         &mut self,
@@ -35,29 +32,49 @@ impl<I> Device<I> {
         u8,
         FooFieldSet,
         ::device_driver::RW,
+        (),
     > {
+        use ::device_driver::Block;
         let address = self.base_address + 0;
-        ::device_driver::RegisterOperation::<
-            '_,
-            I,
-            u8,
-            FooFieldSet,
-            ::device_driver::RW,
-        >::new(self.interface(), address as u8, FooFieldSet::new)
+        ::device_driver::RegisterOperation::new(
+            self.interface(),
+            address as u8,
+            FooFieldSet::new,
+        )
+    }
+}
+impl<I> ::device_driver::Block for Device<I> {
+    type Interface = I;
+    type RegisterAddressType = u8;
+    type CommandAddressType = u8;
+    type BufferAddressType = u8;
+    fn interface(&mut self) -> &mut Self::Interface {
+        &mut self.interface
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct FooFieldSet {
     /// The internal bits
     bits: [u8; 3],
 }
-impl ::device_driver::FieldSet for FooFieldSet {
+unsafe impl ::device_driver::FieldSet for FooFieldSet {
+    type Unpacked = Self;
     const SIZE_BITS: u32 = 24;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
     fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
         &mut self.bits
+    }
+    fn unpack(self) -> Self::Unpacked {
+        self
+    }
+}
+impl ::device_driver::UnpackedFieldSet for FooFieldSet {
+    type Packed = Self;
+    fn pack(self) -> Self::Packed {
+        self
     }
 }
 impl FooFieldSet {

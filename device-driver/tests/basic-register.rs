@@ -111,15 +111,15 @@ fn test_basic_read_modify_write() {
 #[should_panic]
 fn test_repeated_too_large_index() {
     let mut device = MyTestDevice::new(DeviceInterface::new());
-    device.foo_repeated(4);
+    device.foo_repeated().plan_at(4);
 }
 
 #[test]
 fn test_repeated_read_modify_write() {
     let mut device = MyTestDevice::new(DeviceInterface::new());
     device
-        .foo_repeated(2)
-        .modify(|reg| {
+        .foo_repeated()
+        .modify_at(2, |reg| {
             reg.set_value_0(true);
             reg.set_value_1(12345);
             reg.set_value_2(-1);

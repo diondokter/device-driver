@@ -25,6 +25,9 @@ pub struct Block {
     pub root: bool,
     pub name: Identifier,
     pub methods: Vec<BlockMethod>,
+    pub register_address_type: Integer,
+    pub command_address_type: Integer,
+    pub buffer_address_type: Integer,
 }
 
 pub struct BlockMethod {
@@ -38,13 +41,13 @@ pub struct BlockMethod {
 pub enum Repeat {
     None,
     Count {
-        count: u64,
-        stride: i128,
+        count: u16,
+        stride: i32,
     },
     Enum {
         enum_name: Identifier,
         enum_variants: Vec<Identifier>,
-        stride: i128,
+        stride: i32,
     },
 }
 
@@ -55,17 +58,14 @@ pub enum BlockMethodType {
     Register {
         field_set_name: Identifier,
         access: Access,
-        address_type: Integer,
         reset_value: Option<Vec<u8>>,
     },
     Command {
         field_set_name_in: Option<Identifier>,
         field_set_name_out: Option<Identifier>,
-        address_type: Integer,
     },
     Buffer {
         access: Access,
-        address_type: Integer,
     },
 }
 
@@ -147,7 +147,7 @@ impl Enum {
 pub struct EnumVariant {
     pub description: String,
     pub name: Identifier,
-    pub discriminant: i128,
+    pub discriminant: i32,
     pub default: bool,
     pub catch_all: bool,
 }

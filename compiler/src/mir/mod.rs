@@ -656,12 +656,12 @@ pub struct Block {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Repeat {
     pub source: RepeatSource,
-    pub stride: i128,
+    pub stride: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RepeatSource {
-    Count(u64),
+    Count(u16),
     Enum(Spanned<IdentifierRef>),
 }
 
@@ -816,7 +816,7 @@ impl Enum {
     ///
     /// *Note:* The validity of this is checked in the [`passes::enum_values_checked`] pass. If this function is run
     /// before that pass, there might be weird results.
-    pub fn iter_variants_with_discriminant(&self) -> impl Iterator<Item = (i128, &EnumVariant)> {
+    pub fn iter_variants_with_discriminant(&self) -> impl Iterator<Item = (i32, &EnumVariant)> {
         let mut next_discriminant = 0;
         self.variants.iter().map(move |variant| {
             if let EnumValue::Specified(discriminant) = variant.value {
@@ -836,7 +836,7 @@ impl Enum {
     /// before that pass, there might be weird results.
     pub fn iter_variants_with_discriminant_mut(
         &mut self,
-    ) -> impl Iterator<Item = (i128, &mut EnumVariant)> {
+    ) -> impl Iterator<Item = (i32, &mut EnumVariant)> {
         let mut next_discriminant = 0;
         self.variants.iter_mut().map(move |variant| {
             if let EnumValue::Specified(discriminant) = variant.value {
@@ -883,7 +883,7 @@ pub struct EnumVariant {
 pub enum EnumValue {
     #[default]
     Unspecified,
-    Specified(i128),
+    Specified(i32),
     Default,
     CatchAll,
 }
