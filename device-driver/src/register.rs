@@ -1,7 +1,8 @@
 use core::marker::PhantomData;
 
 use crate::{
-    Address, Block, FieldSet, FsSet, NotRepeating, RO, RW, ReadCapability, Repeating, WO, WriteCapability
+    Address, Block, FieldSet, FsSet, NotRepeating, RO, RW, ReadCapability, Repeating, WO,
+    WriteCapability,
 };
 
 /// A trait to represent the interface to the device.
