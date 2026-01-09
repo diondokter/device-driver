@@ -29,11 +29,22 @@ pub use device_driver_macros::*;
 /// Must only be implemented on types that are align(1) (so they introduce no padding bytes).
 /// This is used to cast the fieldset to a slice
 pub unsafe trait FieldSet: Default + Copy {
+    type Unpacked: UnpackedFieldSet<Packed = Self>;
+
     /// The size of the field set in number of bits
     const SIZE_BITS: u32;
 
     fn get_inner_buffer(&self) -> &[u8];
     fn get_inner_buffer_mut(&mut self) -> &mut [u8];
+
+    fn unpack(self) -> Self::Unpacked;
+}
+
+#[doc(hidden)]
+pub trait UnpackedFieldSet {
+    type Packed: FieldSet<Unpacked = Self>;
+
+    fn pack(self) -> Self::Packed;
 }
 
 /// Type state value for a packed [FieldSetArray]
@@ -55,7 +66,7 @@ pub struct FieldSetArray<T: FieldSet, const N: usize, P> {
 
 impl<T: FieldSet, const N: usize> FieldSetArray<T, N, Unpacked> {
     /// Create a new array from the given initial value. All elements of the array will contain the value
-    pub const fn new_from(val: T) -> Self {
+    pub const fn new_with(val: T) -> Self {
         Self {
             sets: [val; N],
             _phantom: PhantomData,
@@ -101,6 +112,15 @@ impl<T: FieldSet, const N: usize> From<FieldSetArray<T, N, Unpacked>> for [T; N]
     }
 }
 
+impl<T: FieldSet, const N: usize> From<[T; N]> for FieldSetArray<T, N, Unpacked> {
+    fn from(value: [T; N]) -> Self {
+        Self {
+            sets: value,
+            _phantom: PhantomData,
+        }
+    }
+}
+
 impl<T: FieldSet, const N: usize> FieldSetArray<T, N, Packed> {
     /// Unpack the fieldsets so they all contain their own data again. After this, it's a valid `[T;N]`.
     pub fn unpack(self) -> FieldSetArray<T, N, Unpacked> {
@@ -115,7 +135,17 @@ impl<T: FieldSet, const N: usize> FieldSetArray<T, N, Packed> {
     }
 }
 
+impl<const N: usize, T: FieldSet> UnpackedFieldSet for FieldSetArray<T, N, Unpacked> {
+    type Packed = FieldSetArray<T, N, Packed>;
+
+    fn pack(self) -> Self::Packed {
+        self.pack()
+    }
+}
+
 unsafe impl<const N: usize, T: FieldSet> FieldSet for FieldSetArray<T, N, Packed> {
+    type Unpacked = FieldSetArray<T, N, Unpacked>;
+
     const SIZE_BITS: u32 = T::SIZE_BITS * N as u32;
 
     fn get_inner_buffer(&self) -> &[u8] {
@@ -133,6 +163,10 @@ unsafe impl<const N: usize, T: FieldSet> FieldSet for FieldSetArray<T, N, Packed
             core::slice::from_raw_parts_mut(ptr.cast::<u8>(), Self::SIZE_BITS.div_ceil(8) as usize)
         }
     }
+
+    fn unpack(self) -> Self::Unpacked {
+        self.unpack()
+    }
 }
 
 impl<const N: usize, T: FieldSet, P> Default for FieldSetArray<T, N, P> {
@@ -141,6 +175,29 @@ impl<const N: usize, T: FieldSet, P> Default for FieldSetArray<T, N, P> {
             sets: [T::default(); N],
             _phantom: PhantomData,
         }
+    }
+}
+
+impl<const N: usize, T: FieldSet + Debug> Debug for FieldSetArray<T, N, Unpacked> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_list().entries(self.sets.iter()).finish()
+    }
+}
+
+#[cfg(feature = "defmt")]
+impl<const N: usize, T: FieldSet + defmt::Format> defmt::Format for FieldSetArray<T, N, Unpacked> {
+    fn format(&self, fmt: defmt::Formatter) {
+        defmt::write!(fmt, "[");
+
+        for (i, fs) in self.sets.iter().enumerate() {
+            if i == 0 {
+                defmt::write!(fmt, "{}", fs);
+            } else {
+                defmt::write!(fmt, ", {}", fs);
+            }
+        }
+
+        defmt::write!(fmt, "]");
     }
 }
 
@@ -259,20 +316,28 @@ impl ReadCapability for RO {}
 impl WriteCapability for RW {}
 impl ReadCapability for RW {}
 
-/// # Safety
-///
-/// May only be implemented on type that you can safely implement [FsSet::as_slice_mut] for
 #[doc(hidden)]
-pub unsafe trait FsSet: Sized {
+pub trait UnpackedFsSet: Sized {
     type Value;
     type ValueMut<'a>
     where
         Self: 'a;
-    type Next<T: FieldSet>;
+    type Next<T: UnpackedFieldSet>;
+    type Packed: PackedFsSet<Unpacked = Self>;
 
-    fn push<T: FieldSet>(self, val: T) -> Self::Next<T>;
+    fn push<T: UnpackedFieldSet>(self, val: T) -> Self::Next<T>;
     fn to_value(self) -> Self::Value;
     fn as_value_mut(&mut self) -> Self::ValueMut<'_>;
+
+    fn pack(self) -> Self::Packed;
+}
+
+/// # Safety
+///
+/// May only be implemented on type that you can safely implement [UnpackedFsSet::as_slice_mut] for
+#[doc(hidden)]
+pub unsafe trait PackedFsSet: Sized {
+    type Unpacked: UnpackedFsSet<Packed = Self>;
 
     fn as_slice_mut(&mut self) -> &mut [u8] {
         // Safety: Trait is only implemented on types that can do this.
@@ -282,14 +347,17 @@ pub unsafe trait FsSet: Sized {
             core::slice::from_raw_parts_mut(ptr.cast(), len)
         }
     }
+
+    fn unpack(self) -> Self::Unpacked;
 }
 
-unsafe impl FsSet for () {
+impl UnpackedFsSet for () {
     type Value = ();
     type ValueMut<'a> = &'a mut ();
-    type Next<T: FieldSet> = T;
+    type Next<T: UnpackedFieldSet> = T;
+    type Packed = ();
 
-    fn push<T: FieldSet>(self, val: T) -> Self::Next<T> {
+    fn push<T: UnpackedFieldSet>(self, val: T) -> Self::Next<T> {
         val
     }
 
@@ -298,17 +366,26 @@ unsafe impl FsSet for () {
     fn as_value_mut(&mut self) -> Self::ValueMut<'_> {
         self
     }
+
+    fn pack(self) -> Self::Packed {}
 }
 
-unsafe impl<A: FieldSet> FsSet for A {
+unsafe impl PackedFsSet for () {
+    type Unpacked = ();
+
+    fn unpack(self) -> Self::Unpacked {}
+}
+
+impl<A: UnpackedFieldSet> UnpackedFsSet for A {
     type Value = A;
     type ValueMut<'a>
         = &'a mut A
     where
         A: 'a;
-    type Next<T: FieldSet> = Fs2<A, T>;
+    type Next<T: UnpackedFieldSet> = Fs2<A, T>;
+    type Packed = A::Packed;
 
-    fn push<T: FieldSet>(self, val: T) -> Self::Next<T> {
+    fn push<T: UnpackedFieldSet>(self, val: T) -> Self::Next<T> {
         Fs2(self, val)
     }
 
@@ -319,6 +396,18 @@ unsafe impl<A: FieldSet> FsSet for A {
     fn as_value_mut(&mut self) -> Self::ValueMut<'_> {
         self
     }
+
+    fn pack(self) -> Self::Packed {
+        <A as UnpackedFieldSet>::pack(self)
+    }
+}
+
+unsafe impl<A: FieldSet> PackedFsSet for A {
+    type Unpacked = A::Unpacked;
+
+    fn unpack(self) -> Self::Unpacked {
+        <A as FieldSet>::unpack(self)
+    }
 }
 
 macro_rules! create_fs {
@@ -327,17 +416,18 @@ macro_rules! create_fs {
         #[derive(Debug)]
         #[repr(C)]
         #[doc(hidden)]
-        pub struct $name<$($tname: FieldSet),*>($($tname),*);
+        pub struct $name<$($tname),*>($($tname),*);
 
-        unsafe impl<$($tname: FieldSet),*> FsSet for $name<$($tname),*> {
+        impl<$($tname: UnpackedFieldSet),*> UnpackedFsSet for $name<$($tname),*> {
             type Value = ($($tname),*);
             type ValueMut<'a>
                 = ($(&'a mut $tname),*)
             where
                 $($tname: 'a),*;
-            type Next<Next: FieldSet> = $name_next<$($tname),*, Next>;
+            type Next<Next: UnpackedFieldSet> = $name_next<$($tname),*, Next>;
+            type Packed = $name<$($tname::Packed),*>;
 
-            fn push<Next: FieldSet>(self, val: Next) -> Self::Next<Next> {
+            fn push<Next: UnpackedFieldSet>(self, val: Next) -> Self::Next<Next> {
                 $name_next($(self.$tnum),*, val)
             }
 
@@ -348,6 +438,18 @@ macro_rules! create_fs {
             fn as_value_mut(&mut self) -> Self::ValueMut<'_> {
                 ($(&mut self.$tnum),*)
             }
+
+            fn pack(self) -> Self::Packed {
+                $name($(self.$tnum.pack()),*)
+            }
+        }
+
+        unsafe impl<$($tname: FieldSet),*> PackedFsSet for $name<$($tname),*> {
+            type Unpacked = $name<$($tname::Unpacked),*>;
+
+            fn unpack(self) -> Self::Unpacked {
+                $name($(self.$tnum.unpack()),*)
+            }
         }
     };
     ($name:ident -> !, $(($tname:ident: $tnum:tt)),+) => {
@@ -355,17 +457,18 @@ macro_rules! create_fs {
         #[derive(Debug)]
         #[repr(C)]
         #[doc(hidden)]
-        pub struct $name<$($tname: FieldSet),*>($($tname),*);
+        pub struct $name<$($tname),*>($($tname),*);
 
-        unsafe impl<$($tname: FieldSet),*> FsSet for $name<$($tname),*> {
+        impl<$($tname: UnpackedFieldSet),*> UnpackedFsSet for $name<$($tname),*> {
             type Value = ($($tname),*);
             type ValueMut<'a>
                 = ($(&'a mut $tname),*)
             where
                 $($tname: 'a),*;
-            type Next<Next: FieldSet> = core::convert::Infallible;
+            type Next<Next: UnpackedFieldSet> = core::convert::Infallible;
+            type Packed = $name<$($tname::Packed),*>;
 
-            fn push<Next: FieldSet>(self, _val: Next) -> Self::Next<Next> {
+            fn push<Next: UnpackedFieldSet>(self, _val: Next) -> Self::Next<Next> {
                 panic!()
             }
 
@@ -375,6 +478,18 @@ macro_rules! create_fs {
 
             fn as_value_mut(&mut self) -> Self::ValueMut<'_> {
                 ($(&mut self.$tnum),*)
+            }
+
+            fn pack(self) -> Self::Packed {
+                $name($(self.$tnum.pack()),*)
+            }
+        }
+
+        unsafe impl<$($tname: FieldSet),*> PackedFsSet for $name<$($tname),*> {
+            type Unpacked = $name<$($tname::Unpacked),*>;
+
+            fn unpack(self) -> Self::Unpacked {
+                $name($(self.$tnum.unpack()),*)
             }
         }
     };
@@ -417,17 +532,46 @@ pub trait Repeating {
 #[doc(hidden)]
 pub trait NotRepeating {}
 impl NotRepeating for () {}
+#[doc(hidden)]
+pub trait LinearRepeating: Repeating {
+    const COUNT: u16;
+    const STRIDE: i32;
+
+    fn assert_len_and_index(len: usize, index: Self::Index);
+}
 
 #[doc(hidden)]
 pub struct ArrayRepeat<const COUNT: u16, const STRIDE: i32>;
 impl<const COUNT: u16, const STRIDE: i32> Repeating for ArrayRepeat<COUNT, STRIDE> {
     type Index = usize;
 
-    #[allow(private_bounds)]
+    #[track_caller]
+    #[inline(always)]
     fn calc_address<AddressType: Address>(start: AddressType, index: Self::Index) -> AddressType {
-        assert!(index < COUNT as usize, "Index out of range");
+        assert!(
+            index < COUNT as usize,
+            "Index out of range: {index} (array len: {COUNT})"
+        );
         let offset = index as i32 * STRIDE;
         start.add(offset)
+    }
+}
+impl<const COUNT: u16, const STRIDE: i32> LinearRepeating for ArrayRepeat<COUNT, STRIDE> {
+    const COUNT: u16 = COUNT;
+    const STRIDE: i32 = STRIDE;
+
+    #[track_caller]
+    #[inline(always)]
+    fn assert_len_and_index(len: usize, index: Self::Index) {
+        assert!(
+            index < COUNT as usize,
+            "Index out of range: {index} (array len: {COUNT})"
+        );
+        assert!(
+            len + index <= COUNT as usize,
+            "Array too long. At index {index}, the max len is {}",
+            COUNT as usize - index,
+        );
     }
 }
 
@@ -436,7 +580,7 @@ pub struct EnumRepeat<T, const STRIDE: i32>(PhantomData<T>);
 impl<T: Clone + Into<i32>, const STRIDE: i32> Repeating for EnumRepeat<T, STRIDE> {
     type Index = T;
 
-    #[allow(private_bounds)]
+    #[inline(always)]
     fn calc_address<AddressType: Address>(start: AddressType, index: Self::Index) -> AddressType {
         let offset = index.into() * STRIDE;
         start.add(offset)

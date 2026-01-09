@@ -46,12 +46,22 @@ pub struct FooFieldSetIn {
     bits: [u8; 3],
 }
 unsafe impl ::device_driver::FieldSet for FooFieldSetIn {
+    type Unpacked = Self;
     const SIZE_BITS: u32 = 24;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
     fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
         &mut self.bits
+    }
+    fn unpack(self) -> Self::Unpacked {
+        self
+    }
+}
+impl ::device_driver::UnpackedFieldSet for FooFieldSetIn {
+    type Packed = Self;
+    fn pack(self) -> Self::Packed {
+        self
     }
 }
 impl FooFieldSetIn {

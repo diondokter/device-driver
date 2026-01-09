@@ -239,12 +239,22 @@ pub struct Foo0FieldSet {
     bits: [u8; 0],
 }
 unsafe impl ::device_driver::FieldSet for Foo0FieldSet {
+    type Unpacked = Self;
     const SIZE_BITS: u32 = 0;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
     fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
         &mut self.bits
+    }
+    fn unpack(self) -> Self::Unpacked {
+        self
+    }
+}
+impl ::device_driver::UnpackedFieldSet for Foo0FieldSet {
+    type Packed = Self;
+    fn pack(self) -> Self::Packed {
+        self
     }
 }
 impl Foo0FieldSet {
@@ -332,12 +342,22 @@ pub struct Foo1FieldSet {
     bits: [u8; 0],
 }
 unsafe impl ::device_driver::FieldSet for Foo1FieldSet {
+    type Unpacked = Self;
     const SIZE_BITS: u32 = 0;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
     fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
         &mut self.bits
+    }
+    fn unpack(self) -> Self::Unpacked {
+        self
+    }
+}
+impl ::device_driver::UnpackedFieldSet for Foo1FieldSet {
+    type Packed = Self;
+    fn pack(self) -> Self::Packed {
+        self
     }
 }
 impl Foo1FieldSet {
@@ -425,12 +445,22 @@ pub struct Foo2FieldSet {
     bits: [u8; 0],
 }
 unsafe impl ::device_driver::FieldSet for Foo2FieldSet {
+    type Unpacked = Self;
     const SIZE_BITS: u32 = 0;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
     fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
         &mut self.bits
+    }
+    fn unpack(self) -> Self::Unpacked {
+        self
+    }
+}
+impl ::device_driver::UnpackedFieldSet for Foo2FieldSet {
+    type Packed = Self;
+    fn pack(self) -> Self::Packed {
+        self
     }
 }
 impl Foo2FieldSet {
@@ -518,12 +548,22 @@ pub struct Foo3FieldSet {
     bits: [u8; 0],
 }
 unsafe impl ::device_driver::FieldSet for Foo3FieldSet {
+    type Unpacked = Self;
     const SIZE_BITS: u32 = 0;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
     fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
         &mut self.bits
+    }
+    fn unpack(self) -> Self::Unpacked {
+        self
+    }
+}
+impl ::device_driver::UnpackedFieldSet for Foo3FieldSet {
+    type Packed = Self;
+    fn pack(self) -> Self::Packed {
+        self
     }
 }
 impl Foo3FieldSet {
@@ -611,12 +651,22 @@ pub struct Foo4FieldSet {
     bits: [u8; 0],
 }
 unsafe impl ::device_driver::FieldSet for Foo4FieldSet {
+    type Unpacked = Self;
     const SIZE_BITS: u32 = 0;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
     fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
         &mut self.bits
+    }
+    fn unpack(self) -> Self::Unpacked {
+        self
+    }
+}
+impl ::device_driver::UnpackedFieldSet for Foo4FieldSet {
+    type Packed = Self;
+    fn pack(self) -> Self::Packed {
+        self
     }
 }
 impl Foo4FieldSet {
@@ -704,12 +754,22 @@ pub struct Foo5FieldSet {
     bits: [u8; 0],
 }
 unsafe impl ::device_driver::FieldSet for Foo5FieldSet {
+    type Unpacked = Self;
     const SIZE_BITS: u32 = 0;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
     fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
         &mut self.bits
+    }
+    fn unpack(self) -> Self::Unpacked {
+        self
+    }
+}
+impl ::device_driver::UnpackedFieldSet for Foo5FieldSet {
+    type Packed = Self;
+    fn pack(self) -> Self::Packed {
+        self
     }
 }
 impl Foo5FieldSet {
@@ -797,12 +857,22 @@ pub struct Foo6FieldSet {
     bits: [u8; 0],
 }
 unsafe impl ::device_driver::FieldSet for Foo6FieldSet {
+    type Unpacked = Self;
     const SIZE_BITS: u32 = 0;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
     fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
         &mut self.bits
+    }
+    fn unpack(self) -> Self::Unpacked {
+        self
+    }
+}
+impl ::device_driver::UnpackedFieldSet for Foo6FieldSet {
+    type Packed = Self;
+    fn pack(self) -> Self::Packed {
+        self
     }
 }
 impl Foo6FieldSet {
@@ -890,12 +960,22 @@ pub struct Foo7FieldSet {
     bits: [u8; 0],
 }
 unsafe impl ::device_driver::FieldSet for Foo7FieldSet {
+    type Unpacked = Self;
     const SIZE_BITS: u32 = 0;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
     fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
         &mut self.bits
+    }
+    fn unpack(self) -> Self::Unpacked {
+        self
+    }
+}
+impl ::device_driver::UnpackedFieldSet for Foo7FieldSet {
+    type Packed = Self;
+    fn pack(self) -> Self::Packed {
+        self
     }
 }
 impl Foo7FieldSet {
@@ -983,12 +1063,22 @@ pub struct Foo8FieldSet {
     bits: [u8; 0],
 }
 unsafe impl ::device_driver::FieldSet for Foo8FieldSet {
+    type Unpacked = Self;
     const SIZE_BITS: u32 = 0;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
     fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
         &mut self.bits
+    }
+    fn unpack(self) -> Self::Unpacked {
+        self
+    }
+}
+impl ::device_driver::UnpackedFieldSet for Foo8FieldSet {
+    type Packed = Self;
+    fn pack(self) -> Self::Packed {
+        self
     }
 }
 impl Foo8FieldSet {
@@ -1076,12 +1166,22 @@ pub struct Foo9FieldSet {
     bits: [u8; 0],
 }
 unsafe impl ::device_driver::FieldSet for Foo9FieldSet {
+    type Unpacked = Self;
     const SIZE_BITS: u32 = 0;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
     fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
         &mut self.bits
+    }
+    fn unpack(self) -> Self::Unpacked {
+        self
+    }
+}
+impl ::device_driver::UnpackedFieldSet for Foo9FieldSet {
+    type Packed = Self;
+    fn pack(self) -> Self::Packed {
+        self
     }
 }
 impl Foo9FieldSet {

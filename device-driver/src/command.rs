@@ -88,6 +88,7 @@ where
     }
 
     /// Dispatch the command to the device
+    #[track_caller]
     pub fn dispatch_at(self, index: Form::Index) -> Result<(), Interface::Error>
     where
         Interface: CommandInterface<AddressType = AddressType>,
@@ -146,6 +147,7 @@ where
     }
 
     /// Dispatch the command to the device
+    #[track_caller]
     pub fn dispatch_at(
         self,
         index: Form::Index,
@@ -242,6 +244,7 @@ where
     }
 
     /// Dispatch the command to the device
+    #[track_caller]
     pub fn dispatch_at(self, index: Form::Index) -> Result<OutFieldSet, Interface::Error>
     where
         Interface: CommandInterface<AddressType = AddressType>,
@@ -337,6 +340,7 @@ where
     }
 
     /// Dispatch the command to the device
+    #[track_caller]
     pub fn dispatch_at(
         self,
         index: Form::Index,

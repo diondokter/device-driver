@@ -1,47 +1,47 @@
 error: The device driver input has errors that need to be solved!
-    --> device_definition_errors.rs:2161:1
+    --> device_definition_errors.rs:2281:1
      |
-2161 | compile_error!("The device driver input has errors that need to be solved!");
+2281 | compile_error!("The device driver input has errors that need to be solved!");
      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0425]: cannot find type `Etype2` in this scope
-    --> device_definition_errors.rs:1683:28
+    --> device_definition_errors.rs:1793:28
      |
-1683 |     pub fn value(&self) -> Etype2 {
+1793 |     pub fn value(&self) -> Etype2 {
      |                            ^^^^^^ not found in this scope
 
 error[E0425]: cannot find type `Etype3` in this scope
-    --> device_definition_errors.rs:1696:37
+    --> device_definition_errors.rs:1806:37
      |
-1696 |     pub fn value_2(&self) -> Result<Etype3, <Etype3 as TryFrom<u8>>::Error> {
+1806 |     pub fn value_2(&self) -> Result<Etype3, <Etype3 as TryFrom<u8>>::Error> {
      |                                     ^^^^^^ not found in this scope
      |
 help: you might be missing a type parameter
      |
-1676 | impl<Etype3> Fs2 {
+1786 | impl<Etype3> Fs2 {
      |     ++++++++
 
 error[E0425]: cannot find type `Etype3` in this scope
-    --> device_definition_errors.rs:1696:46
+    --> device_definition_errors.rs:1806:46
      |
-1696 |     pub fn value_2(&self) -> Result<Etype3, <Etype3 as TryFrom<u8>>::Error> {
+1806 |     pub fn value_2(&self) -> Result<Etype3, <Etype3 as TryFrom<u8>>::Error> {
      |                                              ^^^^^^ not found in this scope
      |
 help: you might be missing a type parameter
      |
-1676 | impl<Etype3> Fs2 {
+1786 | impl<Etype3> Fs2 {
      |     ++++++++
 
 error[E0425]: cannot find type `Etype2` in this scope
-    --> device_definition_errors.rs:1709:40
+    --> device_definition_errors.rs:1819:40
      |
-1709 |     pub fn set_value(&mut self, value: Etype2) {
+1819 |     pub fn set_value(&mut self, value: Etype2) {
      |                                        ^^^^^^ not found in this scope
 
 error[E0425]: cannot find type `Etype3` in this scope
-    --> device_definition_errors.rs:1722:42
+    --> device_definition_errors.rs:1832:42
      |
-1722 |     pub fn set_value_2(&mut self, value: Etype3) {
+1832 |     pub fn set_value_2(&mut self, value: Etype3) {
      |                                          ^^^^^^ not found in this scope
 
 For more information about this error, try `rustc --explain E0425`.

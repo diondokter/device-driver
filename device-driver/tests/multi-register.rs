@@ -78,19 +78,16 @@ fn multi_test() {
 
     device
         .multi_write()
-        .with(|d| d.bar().plan_with_zero_at(0))
+        .with(|d| d.bar().plan_with_zero_array_at::<2>(0))
         .with(|d| d.foo().plan())
         .execute(|(bar, _foo)| {
-            bar.set_value(42);
+            bar[0].set_value(42);
         })
         .unwrap();
 
     let multi = device
         .multi_read()
-        // TODO: Allow reading multiple. This would return a [Bar;N] that can also impl FieldSet.
-        // Maybe N is a const generic on foo_repeated with default 1?
-        // We'll also need a check whether it's allowed by the device rules. That's probably an assert.
-        .with(|d| d.bar().plan_at(0))
+        .with(|d| d.bar().plan_array_at::<2>(0))
         .with(|d| d.foo().plan())
         .execute()
         .unwrap();
@@ -98,7 +95,7 @@ fn multi_test() {
     assert_eq!(
         multi,
         (
-            BarFieldSet::from([42]),
+            [BarFieldSet::from([42]), BarFieldSet::from([0])].into(),
             FooFieldSet::from([0xFF, 0xFF, 0xFF])
         )
     );
@@ -106,8 +103,9 @@ fn multi_test() {
     device
         .multi_modify()
         .with(|d| d.bar().plan_at(0))
+        .with(|d| d.bar().plan_at(1))
         .with(|d| d.foo().plan())
-        .execute(|(bar, foo)| {
+        .execute(|(bar, _bar2, foo)| {
             bar.set_value(-5);
             foo.set_value_0(false);
         })
@@ -116,6 +114,7 @@ fn multi_test() {
     let multi = device
         .multi_read()
         .with(|d| d.bar().plan_at(0))
+        .with(|d| d.bar().plan_at(1))
         .with(|d| d.foo().plan())
         .execute()
         .unwrap();
@@ -124,6 +123,7 @@ fn multi_test() {
         multi,
         (
             BarFieldSet::from([-5i8 as u8]),
+            BarFieldSet::from([0]),
             FooFieldSet::from([0xFE, 0xFF, 0xFF])
         )
     );

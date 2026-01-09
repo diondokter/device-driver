@@ -7,12 +7,26 @@ pub struct {{field_set.name.to_case(Case::Pascal)}} {
 }
 
 unsafe impl ::device_driver::FieldSet for {{field_set.name.to_case(Case::Pascal)}} {
+    type Unpacked = Self;
+
     const SIZE_BITS: u32 = {{field_set.size_bits}};
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
     fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
         &mut self.bits
+    }
+
+    fn unpack(self) -> Self::Unpacked {
+        self
+    }
+}
+
+impl ::device_driver::UnpackedFieldSet for {{field_set.name.to_case(Case::Pascal)}} {
+    type Packed = Self;
+
+    fn pack(self) -> Self::Packed {
+        self
     }
 }
 
