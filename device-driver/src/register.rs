@@ -912,10 +912,46 @@ where
     ) -> Result<FieldSets::Value, <D::Interface as crate::RegisterInterface>::Error> {
         let mut field_sets = self.field_sets.pack();
 
-        let data = field_sets.as_slice_mut();
+        self.device.interface().read_register(
+            self.start_address.unwrap(),
+            self.bit_sum,
+            field_sets.as_slice_mut(),
+        )?;
+
+        Ok(field_sets.unpack().to_value())
+    }
+}
+
+impl<'d, D, FieldSets: UnpackedFsSet>
+    MultiRegisterOperation<
+        'd,
+        D,
+        <D::Interface as crate::AsyncRegisterInterface>::AddressType,
+        FieldSets,
+        RO,
+    >
+where
+    D: Block,
+    D::Interface: crate::AsyncRegisterInterface,
+{
+    /// Execute the read.
+    ///
+    /// If ok, the fieldset values are returned as a tuple.
+    /// If the multi-read was illegal or the read failed, an error is returned.
+    #[inline]
+    pub async fn execute_async(
+        self,
+    ) -> Result<FieldSets::Value, <D::Interface as crate::AsyncRegisterInterface>::Error> {
+        let mut field_sets = self.field_sets.pack();
+
         self.device
             .interface()
-            .read_register(self.start_address.unwrap(), self.bit_sum, data)?;
+            .read_register(
+                self.start_address.unwrap(),
+                self.bit_sum,
+                field_sets.as_slice_mut(),
+            )
+            .await?;
 
         Ok(field_sets.unpack().to_value())
     }
@@ -951,6 +987,43 @@ where
             self.bit_sum,
             self.field_sets.pack().as_slice_mut(),
         )?;
+        Ok(returned)
+    }
+}
+
+impl<'d, D, FieldSets: UnpackedFsSet>
+    MultiRegisterOperation<
+        'd,
+        D,
+        <D::Interface as crate::AsyncRegisterInterface>::AddressType,
+        FieldSets,
+        WO,
+    >
+where
+    D: Block,
+    D::Interface: crate::AsyncRegisterInterface,
+{
+    /// Execute the write.
+    ///
+    /// Use the closure to change contents of the fieldset values that will be written.
+    /// The fieldset values are either the reset value or all-0's based on which plan was used in the chaining phase.
+    ///
+    /// If ok, the return value of the closure is returned.
+    /// If the multi-write was illegal or the read failed, an error is returned.
+    #[inline]
+    pub async fn execute_async<R>(
+        mut self,
+        f: impl FnOnce(FieldSets::ValueMut<'_>) -> R,
+    ) -> Result<R, <D::Interface as crate::AsyncRegisterInterface>::Error> {
+        let returned = f(self.field_sets.as_value_mut());
+        self.device
+            .interface()
+            .write_register(
+                self.start_address.unwrap(),
+                self.bit_sum,
+                self.field_sets.pack().as_slice_mut(),
+            )
+            .await?;
         Ok(returned)
     }
 }
@@ -996,6 +1069,58 @@ where
             self.bit_sum,
             field_sets.as_slice_mut(),
         )?;
+
+        Ok(returned)
+    }
+}
+
+impl<'d, D, FieldSets: UnpackedFsSet>
+    MultiRegisterOperation<
+        'd,
+        D,
+        <D::Interface as crate::AsyncRegisterInterface>::AddressType,
+        FieldSets,
+        RW,
+    >
+where
+    D: Block,
+    D::Interface: crate::AsyncRegisterInterface,
+{
+    /// Execute the modify.
+    ///
+    /// Use the closure to change contents of the fieldset values that have been read.
+    /// The modified values will be written back to the device.
+    ///
+    /// If ok, the return value of the closure is returned.
+    /// If the multi-modify was illegal or the read failed, an error is returned.
+    #[inline]
+    pub async fn execute_async<R>(
+        self,
+        f: impl FnOnce(FieldSets::ValueMut<'_>) -> R,
+    ) -> Result<R, <D::Interface as crate::AsyncRegisterInterface>::Error> {
+        let mut field_sets = self.field_sets.pack();
+
+        self.device
+            .interface()
+            .read_register(
+                self.start_address.unwrap(),
+                self.bit_sum,
+                field_sets.as_slice_mut(),
+            )
+            .await?;
+
+        let mut field_sets = field_sets.unpack();
+        let returned = f(field_sets.as_value_mut());
+        let mut field_sets = field_sets.pack();
+
+        self.device
+            .interface()
+            .write_register(
+                self.start_address.unwrap(),
+                self.bit_sum,
+                field_sets.as_slice_mut(),
+            )
+            .await?;
 
         Ok(returned)
     }
