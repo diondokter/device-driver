@@ -743,7 +743,7 @@ fn transform_field((field_name, field_value): (&str, &impl Value)) -> anyhow::Re
                     .context("Parsing error for `start`")?;
 
                 if !field_map.contains_key("end") {
-                    field.field_address.end = field.field_address.start;
+                    field.field_address.end = field.field_address.start + 1;
                 }
             }
             "end" => {
