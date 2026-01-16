@@ -68,7 +68,7 @@ pub fn create_device(item: TokenStream) -> TokenStream {
             output.parse().unwrap()
         }
         GenerationType::Manifest(path) => {
-            let result: Result<String, syn::Error> = (|| {
+            let result: Result<TokenStream, syn::Error> = (|| {
                 let mut path = PathBuf::from(path.value());
                 if path.is_relative() {
                     let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
@@ -91,6 +91,14 @@ pub fn create_device(item: TokenStream) -> TokenStream {
 
                 let (output, diagnostics) =
                     device_driver_compiler::transform_kdl(&file_contents, None, &path);
+                let mut output: TokenStream = output.parse().unwrap();
+
+                // Add a dependency on the manifest file, tracked by the compiler itself.
+                // The unwrap can't fail: `manifest_dir` is created from a String (`std::env::var()` returns a String), and the input path comes from a string literal.
+                let path = path.to_str().unwrap();
+                output.extend(TokenStream::from(quote::quote! {
+                    const _: &[u8] = ::core::include_bytes!(#path);
+                }));
 
                 diagnostics.print_to(stderr().lock()).unwrap();
 
@@ -98,7 +106,7 @@ pub fn create_device(item: TokenStream) -> TokenStream {
             })();
 
             match result {
-                Ok(tokens) => tokens.parse().unwrap(),
+                Ok(tokens) => tokens,
                 Err(e) => e.into_compile_error().into(),
             }
         }
