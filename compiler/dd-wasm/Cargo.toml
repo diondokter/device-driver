@@ -1,0 +1,13 @@
+[package]
+name = "device-driver-wasm"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+device-driver-core.workspace = true
+
+wasm-bindgen = "0.2.101"

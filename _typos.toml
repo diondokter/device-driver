@@ -1,7 +1,7 @@
 [files]
 extend-exclude = [
-    "tests/cases",
-    "compiler/src/mir/passes/names_normalized.rs"
+    "tests/ui/cases",
+    "compiler/dd-core/src/mir/passes/names_normalized.rs"
 ]
 
 [default.extend-words]

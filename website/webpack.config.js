@@ -25,10 +25,12 @@ module.exports = {
             chunks: ["playground"],
         }),
         new WasmPackPlugin({
-            crateDirectory: __dirname + "/compiler-wasm",
+            crateDirectory: path.resolve(__dirname, "../compiler/dd-wasm"),
             watchDirectories: [
-                path.resolve(__dirname, "../compiler")
-            ]
+                path.resolve(__dirname, "../compiler/dd-core")
+            ],
+            outDir: path.resolve(__dirname, "pkg"),
+            outName: "device_driver_wasm"
         }),
         new CopyWebpackPlugin({
             patterns: [
@@ -53,7 +55,7 @@ module.exports = {
         ]
     },
     mode: 'development',
-    devtool : 'inline-source-map',
+    devtool: 'inline-source-map',
     experiments: {
         asyncWebAssembly: true
     }
