@@ -1,8 +1,8 @@
-import * as wasm from '../../compiler-wasm/pkg';
+import * as device_driver_wasm from '../../pkg';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import * as KDLMonarch from './kdl.monarch'
 
-await wasm;
+await device_driver_wasm;
 await monaco;
 
 monaco.languages.register({ id: 'kdl' })
@@ -40,7 +40,7 @@ const diagnostics = document.getElementById('diagnostics');
  * @param {monaco.editor.IStandaloneCodeEditor} output_editor
  * */
 function run_compile(text, output_editor) {
-    var output = wasm.compile(text, diagnostics_chars_per_line());
+    var output = device_driver_wasm.compile(text, diagnostics_chars_per_line());
 
     output_editor.getModel().setValue(output.code);
     diagnostics.innerHTML = replace_paths_with_links(escapeHtml(output.diagnostics));

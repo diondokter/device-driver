@@ -1,0 +1,107 @@
+use std::{path::Path, sync::LazyLock};
+
+use regex::Regex;
+
+pub const OUTPUT_HEADER: &str = include_str!("output_header.txt");
+
+include!(concat!(env!("OUT_DIR"), "/test_cases.rs"));
+
+pub fn run_test(input_paths: &[&Path], output_path: &Path) {
+    device_driver_core::reporting::set_miette_hook(false);
+
+    let expected_output = std::fs::read_to_string(output_path).unwrap();
+
+    for input_path in input_paths {
+        let input = std::fs::read_to_string(input_path).unwrap();
+
+        let input_extension = input_path.extension().unwrap().display().to_string();
+        let (transformed, diagnostics) = match &*input_extension {
+            "kdl" => {
+                let (transformed, diagnostics) = device_driver_core::transform_kdl(
+                    &input,
+                    None,
+                    input_path
+                        .strip_prefix(std::env::current_dir().unwrap())
+                        .unwrap(),
+                );
+                (transformed, diagnostics.to_string())
+            }
+            e => panic!("Unrecognized extension: {e:?}"),
+        };
+
+        let output = OUTPUT_HEADER.to_string() + &transformed;
+
+        let diagnostics_path = input_path
+            .with_file_name("diagnostics")
+            .with_extension("txt");
+        let expected_diagnostics = std::fs::read_to_string(&diagnostics_path).unwrap();
+
+        println!("Expected: {}", expected_diagnostics.contains("\r\n"));
+        println!("generated: {}", diagnostics.contains("\r\n"));
+
+        pretty_assertions::assert_str_eq!(
+            normalize_test_string(&expected_diagnostics),
+            normalize_test_string(&diagnostics),
+            "Diagnostics are not equal: {}",
+            diagnostics_path.display()
+        );
+
+        pretty_assertions::assert_str_eq!(
+            normalize_test_string(&expected_output),
+            normalize_test_string(&output),
+            "Failed output file: {}",
+            output_path.display()
+        );
+    }
+
+    let output_extension = output_path.extension().unwrap().to_str().unwrap();
+    match output_extension {
+        "rs" => {
+            let stderr = compile_output(output_path);
+            let expected_stderr =
+                std::fs::read_to_string(output_path.with_file_name("stderr.rs.txt"))
+                    .unwrap_or_default();
+
+            pretty_assertions::assert_str_eq!(
+                normalize_test_string(&expected_stderr),
+                normalize_test_string(&stderr),
+                "Different stderr"
+            );
+        }
+        _ => unimplemented!(),
+    }
+}
+
+#[must_use]
+pub fn compile_output(output_path: &Path) -> String {
+    let mut cmd = std::process::Command::new("cargo");
+
+    cmd.arg("+nightly");
+    cmd.arg("-Zscript");
+    cmd.arg(output_path);
+    cmd.env("CARGO_TARGET_DIR", "../../target");
+    cmd.env("CARGO_TERM_COLOR", "never");
+
+    let output = cmd.output().unwrap();
+
+    String::from_utf8_lossy(&output.stderr).to_string()
+}
+
+static DIAGNOSTICS_PATH_SEPARATOR_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new("\\[cases.*:.*:.*\\]").unwrap());
+
+#[must_use]
+pub fn normalize_test_string(val: &str) -> String {
+    let val = normalize_paths(val);
+    normalize_line_endings(&val)
+}
+
+fn normalize_paths(val: &str) -> String {
+    DIAGNOSTICS_PATH_SEPARATOR_REGEX
+        .replace_all(val, |caps: &regex::Captures| caps[0].replace('\\', "/"))
+        .to_string()
+}
+
+fn normalize_line_endings(val: &str) -> String {
+    val.replace("\r\n", "\n")
+}

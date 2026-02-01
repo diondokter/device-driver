@@ -2,20 +2,30 @@
 resolver = "2"
 members = [
     "device-driver",
-    "compiler",
-    "macros",
-    "cli",
-    "tests",
+    "compiler/dd-cli",
+    "compiler/dd-core",
+    "compiler/dd-macros",
+    "compiler/dd-wasm",
+    "tests/ui",
 ]
 
-exclude = [
-    "website",
-]
+exclude = ["website"]
 
 package.version = "1.0.7"
-package.authors = ["Dion Dokter <diondokter@gmail.com>"]
+package.authors = ["Dion Dokter <dev@diondokter.nl>"]
 package.license = "MIT OR Apache-2.0"
-package.homepage = "https://github.com/diondokter/device-driver"
+package.homepage = "https://device-driver.com"
 package.repository = "https://github.com/diondokter/device-driver"
 package.edition = "2024"
 package.rust-version = "1.88"
+
+[workspace.dependencies]
+device-driver-core = { path = "compiler/dd-core", version = "=1.0.7" }
+device-driver-macros = { path = "compiler/dd-macros", version = "=1.0.7" }
+
+[patch.crates-io]
+# https://github.com/zkat/miette/pull/448
+miette = { git = "https://github.com/zkat/miette.git", rev = "6759d59f42797cbbf102690aaeb6c49f661d223b" }
+
+[profile.release]
+lto = true
