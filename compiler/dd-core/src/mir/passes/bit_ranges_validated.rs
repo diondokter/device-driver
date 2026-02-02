@@ -1,7 +1,9 @@
 use std::{collections::HashSet, ops::Range};
 
+use device_driver_common::specifiers::RepeatSource;
+
 use crate::{
-    mir::{FieldSet, Manifest, RepeatSource, Unique, UniqueId},
+    mir::{FieldSet, Manifest, Unique, UniqueId},
     reporting::{
         Diagnostics,
         errors::{

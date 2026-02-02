@@ -4,7 +4,10 @@ use convert_case::Boundary;
 use device_driver_common::{
     identifier::{Identifier, IdentifierRef},
     span::{SpanExt, Spanned},
-    specifiers::{Access, BaseType, BitOrder, ByteOrder, Integer, TypeConversion, VariantNames},
+    specifiers::{
+        Access, BaseType, BitOrder, ByteOrder, Integer, Repeat, RepeatSource, ResetValue,
+        TypeConversion, VariantNames,
+    },
 };
 use itertools::Itertools;
 use kdl::{KdlDocument, KdlIdentifier, KdlNode, KdlValue};
@@ -13,7 +16,7 @@ use miette::SourceSpan;
 use crate::{
     mir::{
         Block, Buffer, Command, Device, DeviceConfig, Enum, EnumValue, EnumVariant, Extern, Field,
-        FieldSet, Manifest, Object, Register, Repeat, ResetValue, Unique,
+        FieldSet, Manifest, Object, Register, Unique,
     },
     reporting::{
         self, Diagnostics,
@@ -1632,11 +1635,11 @@ fn parse_repeat_entries(
     } else {
         match (count, with, stride) {
             (None, Some((with, with_span)), Some((stride, _))) => Some(Repeat {
-                source: crate::mir::RepeatSource::Enum(with.with_span(with_span)),
+                source: RepeatSource::Enum(with.with_span(with_span)),
                 stride,
             }),
             (Some((count, _)), None, Some((stride, _))) => Some(Repeat {
-                source: crate::mir::RepeatSource::Count(count as u64),
+                source: RepeatSource::Count(count as u64),
                 stride,
             }),
             (None, None, None) => None,

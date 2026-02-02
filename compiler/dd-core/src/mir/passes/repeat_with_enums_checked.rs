@@ -1,12 +1,12 @@
 use std::collections::HashSet;
 
-use device_driver_common::span::Span;
+use device_driver_common::{
+    span::Span,
+    specifiers::{Repeat, RepeatSource},
+};
 
 use crate::{
-    mir::{
-        Enum, LendingIterator, Manifest, Object, Repeat, RepeatSource, Unique,
-        passes::search_object,
-    },
+    mir::{Enum, LendingIterator, Manifest, Object, Unique, passes::search_object},
     reporting::{
         Diagnostics,
         errors::{ReferencedObjectDoesNotExist, RepeatEnumWithCatchAll},

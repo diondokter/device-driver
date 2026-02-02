@@ -292,3 +292,32 @@ pub struct TypeConversion {
     /// True when we want to use the fallible interface (like a Result<type, error>)
     pub fallible: bool,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Repeat {
+    pub source: RepeatSource,
+    pub stride: i128,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum RepeatSource {
+    Count(u64),
+    Enum(Spanned<IdentifierRef>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ResetValue {
+    Integer(u128),
+    Array(Vec<u8>),
+}
+
+impl ResetValue {
+    #[must_use]
+    pub fn as_array(&self) -> Option<&Vec<u8>> {
+        if let Self::Array(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+}

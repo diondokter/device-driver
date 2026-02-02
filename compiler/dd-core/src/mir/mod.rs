@@ -7,7 +7,9 @@ use convert_case::Boundary;
 use device_driver_common::{
     identifier::{Identifier, IdentifierRef},
     span::{Span, Spanned},
-    specifiers::{Access, BaseType, BitOrder, ByteOrder, Integer, TypeConversion},
+    specifiers::{
+        Access, BaseType, BitOrder, ByteOrder, Integer, Repeat, ResetValue, TypeConversion,
+    },
 };
 
 pub mod lir_transform;
@@ -486,18 +488,6 @@ pub struct Block {
     pub objects: Vec<Object>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Repeat {
-    pub source: RepeatSource,
-    pub stride: i128,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum RepeatSource {
-    Count(u64),
-    Enum(Spanned<IdentifierRef>),
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct Register {
     pub description: String,
@@ -717,23 +707,6 @@ pub struct Buffer {
     pub name: Spanned<Identifier>,
     pub access: Access,
     pub address: Spanned<i128>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ResetValue {
-    Integer(u128),
-    Array(Vec<u8>),
-}
-
-impl ResetValue {
-    #[must_use]
-    pub fn as_array(&self) -> Option<&Vec<u8>> {
-        if let Self::Array(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
