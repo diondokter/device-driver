@@ -1,9 +1,9 @@
 use std::collections::HashSet;
 
 use convert_case::Casing;
+use device_driver_common::identifier::Identifier;
 
 use crate::{
-    identifier::Identifier,
     mir::{LendingIterator, Manifest, Object, Unique, UniqueId},
     reporting::{
         Diagnostics,

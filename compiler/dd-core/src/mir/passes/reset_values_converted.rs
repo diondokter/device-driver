@@ -167,10 +167,9 @@ fn convert_reset_value(
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        identifier::IdentifierRef,
-        mir::{Device, DeviceConfig, FieldSet, Register},
-    };
+    use device_driver_common::identifier::IdentifierRef;
+
+    use crate::mir::{Device, DeviceConfig, FieldSet, Register};
 
     use super::*;
 

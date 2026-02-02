@@ -1,9 +1,9 @@
 use std::ops::Add;
 
 use convert_case::Case;
+use device_driver_common::identifier::Identifier;
 
 use crate::{
-    identifier::Identifier,
     lir,
     mir::{self, Manifest, Object, passes::search_object},
 };

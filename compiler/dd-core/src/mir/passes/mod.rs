@@ -1,7 +1,8 @@
 use std::collections::HashSet;
 
+use device_driver_common::identifier::IdentifierRef;
+
 use crate::{
-    identifier::IdentifierRef,
     mir::{Device, LendingIterator, Manifest, RepeatSource, Unique, UniqueId},
     reporting::Diagnostics,
 };

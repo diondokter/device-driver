@@ -1,7 +1,6 @@
 use std::{fmt::Display, sync::Arc};
 
 use convert_case::{Boundary, Case, Pattern};
-use itertools::Itertools;
 
 /// A structure that holds the name data of objects
 #[derive(Debug, Clone, Eq, Default)]
@@ -94,7 +93,7 @@ impl Identifier {
             words.push(format!("{dup_id:X}"));
         }
 
-        let words = case.mutate(&words.iter().map(|s| s.as_str()).collect_vec());
+        let words = case.mutate(&words.iter().map(|s| s.as_str()).collect::<Vec<_>>());
         case.join(&words)
     }
 
@@ -141,7 +140,6 @@ impl Identifier {
     }
 }
 
-#[cfg(test)]
 impl From<&str> for Identifier {
     fn from(value: &str) -> Self {
         Identifier::try_parse(value).unwrap()

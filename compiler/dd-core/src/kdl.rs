@@ -1,18 +1,21 @@
 use std::{collections::HashMap, str::FromStr};
 
 use convert_case::Boundary;
-use device_driver_common::span::{SpanExt, Spanned};
+use device_driver_common::{
+    identifier::{Identifier, IdentifierRef},
+    span::{SpanExt, Spanned},
+    specifiers::{Access, BitOrder, ByteOrder, Integer},
+};
 use itertools::Itertools;
 use kdl::{KdlDocument, KdlIdentifier, KdlNode, KdlValue};
 use miette::SourceSpan;
 use strum::VariantNames;
 
 use crate::{
-    identifier::{Identifier, IdentifierRef},
     mir::{
-        Access, BaseType, BitOrder, Block, Buffer, ByteOrder, Command, Device, DeviceConfig, Enum,
-        EnumValue, EnumVariant, Extern, Field, FieldConversion, FieldSet, Integer, Manifest,
-        Object, Register, Repeat, ResetValue, Unique,
+        BaseType, Block, Buffer, Command, Device, DeviceConfig, Enum, EnumValue, EnumVariant,
+        Extern, Field, FieldConversion, FieldSet, Manifest, Object, Register, Repeat, ResetValue,
+        Unique,
     },
     reporting::{
         self, Diagnostics,

@@ -4,15 +4,12 @@
 )]
 
 use convert_case::{Case, Casing};
-use device_driver_common::span::Span;
+use device_driver_common::{identifier::{self, Identifier}, span::Span, specifiers::Integer};
 use itertools::Itertools;
 use miette::{Diagnostic, LabeledSpan};
 use thiserror::Error;
 
-use crate::{
-    identifier::{self, Identifier},
-    mir::{BaseType, FieldConversion, Integer},
-};
+use crate::mir::{BaseType, FieldConversion};
 
 #[derive(Error, Debug, Diagnostic)]
 #[error("Missing object name")]
