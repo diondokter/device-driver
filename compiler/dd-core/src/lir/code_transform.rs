@@ -1,9 +1,9 @@
 use askama::Template;
 use convert_case::Case;
+use device_driver_common::{identifier::Identifier, specifiers::Access};
 use itertools::Itertools;
 
 use super::{BlockMethodType, Driver, Field, FieldConversionMethod, Repeat};
-use crate::{identifier::Identifier, mir::Access};
 
 #[derive(Template)]
 #[template(path = "rust/device.rs.j2", escape = "none", whitespace = "minimize")]

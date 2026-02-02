@@ -1,12 +1,12 @@
 use std::collections::HashSet;
 
-use miette::SourceSpan;
+use device_driver_common::{
+    span::Span,
+    specifiers::{Repeat, RepeatSource},
+};
 
 use crate::{
-    mir::{
-        Enum, LendingIterator, Manifest, Object, Repeat, RepeatSource, Unique,
-        passes::search_object,
-    },
+    mir::{Enum, LendingIterator, Manifest, Object, Unique, passes::search_object},
     reporting::{
         Diagnostics,
         errors::{ReferencedObjectDoesNotExist, RepeatEnumWithCatchAll},
@@ -85,7 +85,7 @@ fn repeat_is_ok(repeat: &Repeat, manifest: &Manifest, diagnostics: &mut Diagnost
     }
 }
 
-fn enum_catch_all(enum_value: &Enum) -> Option<SourceSpan> {
+fn enum_catch_all(enum_value: &Enum) -> Option<Span> {
     enum_value
         .variants
         .iter()

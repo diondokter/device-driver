@@ -4,6 +4,7 @@ members = [
     "device-driver",
     "compiler/dd-cli",
     "compiler/dd-core",
+    "compiler/dd-common",
     "compiler/dd-macros",
     "compiler/dd-wasm",
     "tests/ui",
@@ -22,6 +23,7 @@ package.rust-version = "1.88"
 [workspace.dependencies]
 device-driver-core = { path = "compiler/dd-core", version = "=1.0.7" }
 device-driver-macros = { path = "compiler/dd-macros", version = "=1.0.7" }
+device-driver-common = { path = "compiler/dd-common", version = "=1.0.7" }
 
 [patch.crates-io]
 # https://github.com/zkat/miette/pull/448

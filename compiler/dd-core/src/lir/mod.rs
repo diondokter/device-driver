@@ -1,8 +1,8 @@
 use std::ops::Range;
 
-use crate::{
+use device_driver_common::{
     identifier::Identifier,
-    mir::{self, Access, BitOrder, ByteOrder, Integer},
+    specifiers::{Access, BitOrder, ByteOrder, Integer},
 };
 
 pub mod code_transform;
@@ -92,7 +92,7 @@ pub struct Field {
     pub address: Range<u32>,
     pub base_type: String,
     pub conversion_method: FieldConversionMethod,
-    pub access: mir::Access,
+    pub access: Access,
     pub repeat: Repeat,
 }
 

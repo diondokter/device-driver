@@ -1,7 +1,7 @@
+use device_driver_common::specifiers::{Repeat, RepeatSource};
+
 use crate::{
-    mir::{
-        Device, Manifest, Object, Repeat, RepeatSource, Unique, UniqueId, passes::search_object,
-    },
+    mir::{Device, Manifest, Object, Unique, UniqueId, passes::search_object},
     reporting::{Diagnostics, errors::AddressOverlap},
 };
 

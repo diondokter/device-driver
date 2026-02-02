@@ -13,6 +13,8 @@ description = "Compiler library for the `device-driver` crate"
 readme = "README.md"
 
 [dependencies]
+device-driver-common.workspace = true
+
 convert_case = "0.10.0"
 itertools = "0.14.0"
 quote = "1.0.33"
@@ -21,11 +23,9 @@ askama = { version = "0.15.0", default-features = false, features = ["derive", "
 kdl = "6.5.0"
 miette = { version = "7.6.0", features = ["fancy"] }
 thiserror = "2.0.12"
-strum = { version = "0.27.1", features = ["derive"] }
 
 prettyplease = { version = "0.2.37", optional = true }
 syn = { version = "2.0", features = ["extra-traits"], optional = true }
-unicode-ident = "1.0.22"
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"

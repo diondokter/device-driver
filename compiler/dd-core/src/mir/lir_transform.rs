@@ -1,9 +1,9 @@
 use std::ops::Add;
 
 use convert_case::Case;
+use device_driver_common::{identifier::Identifier, specifiers::RepeatSource};
 
 use crate::{
-    identifier::Identifier,
     lir,
     mir::{self, Manifest, Object, passes::search_object},
 };
@@ -274,7 +274,7 @@ fn transform_field_set(
                         .clone();
 
                     // Always use try if that's specified
-                    if fc.use_try {
+                    if fc.fallible {
                         lir::FieldConversionMethod::TryInto(fc_identifier)
                     }
                     // Are we pointing at a potentially infallible enum and do we fulfil the requirements?
@@ -308,11 +308,11 @@ fn transform_field_set(
                 repeat: repeat
                     .as_ref()
                     .map_or(lir::Repeat::None, |repeat| match &repeat.source {
-                        mir::RepeatSource::Count(c) => lir::Repeat::Count {
+                        RepeatSource::Count(c) => lir::Repeat::Count {
                             count: *c,
                             stride: repeat.stride,
                         },
-                        mir::RepeatSource::Enum(enum_name) => {
+                        RepeatSource::Enum(enum_name) => {
                             let target_enum = search_object(manifest, enum_name)
                                 .expect("Existence checked in MIR pass")
                                 .as_enum()
@@ -397,14 +397,14 @@ fn transform_enums(manifest: &mir::Manifest) -> Vec<lir::Enum> {
 fn repeat_to_method_kind(repeat: &Option<mir::Repeat>, manifest: &Manifest) -> lir::Repeat {
     match repeat {
         Some(mir::Repeat {
-            source: mir::RepeatSource::Count(count),
+            source: RepeatSource::Count(count),
             stride,
         }) => lir::Repeat::Count {
             count: *count,
             stride: *stride,
         },
         Some(mir::Repeat {
-            source: mir::RepeatSource::Enum(enum_name),
+            source: RepeatSource::Enum(enum_name),
             stride,
         }) => {
             let target_enum = search_object(manifest, enum_name)

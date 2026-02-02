@@ -26,7 +26,9 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
 
 #[cfg(test)]
 mod tests {
-    use crate::mir::{ByteOrder, Device, DeviceConfig, FieldSet, Object, Span};
+    use device_driver_common::span::SpanExt;
+
+    use crate::mir::{ByteOrder, Device, DeviceConfig, FieldSet, Object};
 
     use super::*;
 
@@ -34,16 +36,16 @@ mod tests {
     fn well_enough_specified() {
         let mut input = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".into_with_dummy_span(),
             device_config: Default::default(),
             objects: vec![
                 Object::FieldSet(FieldSet {
-                    name: "MyRegister".into(),
+                    name: "MyRegister".into_with_dummy_span(),
                     size_bits: 8.with_dummy_span(),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
-                    name: "MyRegister2".into(),
+                    name: "MyRegister2".into_with_dummy_span(),
                     size_bits: 9.with_dummy_span(),
                     byte_order: Some(ByteOrder::LE),
                     ..Default::default()
@@ -61,10 +63,10 @@ mod tests {
     fn not_enough_specified() {
         let mut input = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".into_with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
-                name: "MyRegister".into(),
+                name: "MyRegister".into_with_dummy_span(),
                 size_bits: 9.with_dummy_span(),
                 ..Default::default()
             })],
@@ -85,10 +87,10 @@ mod tests {
 
         let mut input = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".into_with_dummy_span(),
             device_config: global_config,
             objects: vec![Object::FieldSet(FieldSet {
-                name: "MyRegister".into(),
+                name: "MyRegister".into_with_dummy_span(),
                 size_bits: 9.with_dummy_span(),
                 ..Default::default()
             })],
