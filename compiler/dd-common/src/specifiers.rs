@@ -1,7 +1,14 @@
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, strum::VariantNames, strum::Display, strum::EnumString, Hash,
-)]
-#[strum(serialize_all = "lowercase")]
+use std::{fmt::Display, str::FromStr};
+
+use crate::{identifier::IdentifierRef, span::Spanned};
+
+/// TODO: Remove when KDL is removed
+pub trait VariantNames {
+    /// Names of the variants of this enum
+    const VARIANTS: &'static [&'static str];
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Integer {
     U8,
     U16,
@@ -11,6 +18,34 @@ pub enum Integer {
     I16,
     I32,
     I64,
+}
+
+impl VariantNames for Integer {
+    const VARIANTS: &[&'static str] = &["u8", "u16", "u32", "u64", "i8", "i16", "i32", "i64"];
+}
+
+impl Display for Integer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", Self::VARIANTS[*self as usize])
+    }
+}
+
+impl FromStr for Integer {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "u8" => Ok(Self::U8),
+            "u16" => Ok(Self::U16),
+            "u32" => Ok(Self::U32),
+            "u64" => Ok(Self::U64),
+            "i8" => Ok(Self::I8),
+            "i16" => Ok(Self::I16),
+            "i32" => Ok(Self::I32),
+            "i64" => Ok(Self::I64),
+            _ => Err(()),
+        }
+    }
 }
 
 impl Integer {
@@ -111,18 +146,7 @@ impl Integer {
     }
 }
 
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    Default,
-    strum::VariantNames,
-    strum::Display,
-    strum::EnumString,
-    Hash,
-)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
 pub enum Access {
     #[default]
     RW,
@@ -141,28 +165,130 @@ impl Access {
     }
 }
 
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, strum::VariantNames, strum::Display, strum::EnumString, Hash,
-)]
+impl VariantNames for Access {
+    const VARIANTS: &[&'static str] = &["RW", "RO", "WO"];
+}
+
+impl Display for Access {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", Self::VARIANTS[*self as usize])
+    }
+}
+
+impl FromStr for Access {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "RW" => Ok(Self::RW),
+            "RO" => Ok(Self::RO),
+            "WO" => Ok(Self::WO),
+            _ => Err(()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ByteOrder {
     LE,
     BE,
 }
 
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    Default,
-    strum::VariantNames,
-    strum::Display,
-    strum::EnumString,
-    Hash,
-)]
+impl VariantNames for ByteOrder {
+    const VARIANTS: &[&'static str] = &["LE", "BE"];
+}
+
+impl Display for ByteOrder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", Self::VARIANTS[*self as usize])
+    }
+}
+
+impl FromStr for ByteOrder {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "LE" => Ok(Self::LE),
+            "BE" => Ok(Self::BE),
+            _ => Err(()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
 pub enum BitOrder {
     #[default]
     LSB0,
     MSB0,
+}
+
+impl VariantNames for BitOrder {
+    const VARIANTS: &[&'static str] = &["LSB0", "MSB0"];
+}
+
+impl Display for BitOrder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", Self::VARIANTS[*self as usize])
+    }
+}
+
+impl FromStr for BitOrder {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "LSB0" => Ok(Self::LSB0),
+            "MSB0" => Ok(Self::MSB0),
+            _ => Err(()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
+pub enum BaseType {
+    Unspecified,
+    Bool,
+    #[default]
+    Uint,
+    Int,
+    FixedSize(Integer),
+}
+
+impl BaseType {
+    /// Returns `true` if the base type is [`Unspecified`].
+    ///
+    /// [`Unspecified`]: BaseType::Unspecified
+    #[must_use]
+    pub fn is_unspecified(&self) -> bool {
+        matches!(self, Self::Unspecified)
+    }
+
+    /// Returns `true` if the base type is [`FixedSize`].
+    ///
+    /// [`FixedSize`]: BaseType::FixedSize
+    #[must_use]
+    pub fn is_fixed_size(&self) -> bool {
+        matches!(self, Self::FixedSize(..))
+    }
+}
+
+impl Display for BaseType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BaseType::Unspecified => write!(f, "unspecified"),
+            BaseType::Bool => write!(f, "bool"),
+            BaseType::Uint => write!(f, "uint"),
+            BaseType::Int => write!(f, "int"),
+            BaseType::FixedSize(integer) => write!(f, "{integer}"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TypeConversion {
+    /// The name of the type we're converting to
+    pub type_name: Spanned<IdentifierRef>,
+    /// True when we want to use the fallible interface (like a Result<type, error>)
+    pub fallible: bool,
 }

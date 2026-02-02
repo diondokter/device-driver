@@ -274,7 +274,7 @@ fn transform_field_set(
                         .clone();
 
                     // Always use try if that's specified
-                    if fc.use_try {
+                    if fc.fallible {
                         lir::FieldConversionMethod::TryInto(fc_identifier)
                     }
                     // Are we pointing at a potentially infallible enum and do we fulfil the requirements?

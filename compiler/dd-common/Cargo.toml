@@ -10,6 +10,5 @@ rust-version.workspace = true
 
 [dependencies]
 miette = "7.6.0"
-strum = { version = "0.27.1", features = ["derive"] }
 convert_case = "0.10.0"
 unicode-ident = "1.0.22"

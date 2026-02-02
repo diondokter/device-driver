@@ -5,7 +5,9 @@ use std::{fmt::Display, ops::Range, rc::Rc};
 
 use convert_case::Boundary;
 use device_driver_common::{
-    identifier::{Identifier, IdentifierRef}, span::{Span, Spanned}, specifiers::{Access, BitOrder, ByteOrder, Integer}
+    identifier::{Identifier, IdentifierRef},
+    span::{Span, Spanned},
+    specifiers::{Access, BaseType, BitOrder, ByteOrder, Integer, TypeConversion},
 };
 
 pub mod lir_transform;
@@ -525,7 +527,7 @@ pub struct Field {
     pub name: Spanned<Identifier>,
     pub access: Access,
     pub base_type: Spanned<BaseType>,
-    pub field_conversion: Option<FieldConversion>,
+    pub field_conversion: Option<TypeConversion>,
     pub field_address: Spanned<Range<u32>>,
     pub repeat: Option<Repeat>,
 }
@@ -539,60 +541,12 @@ impl Field {
                     "{}:{}{}",
                     self.base_type,
                     fc.type_name.original(),
-                    if fc.use_try { "?" } else { "" }
+                    if fc.fallible { "?" } else { "" }
                 )
             }
             None => self.base_type.to_string(),
         }
     }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
-pub enum BaseType {
-    Unspecified,
-    Bool,
-    #[default]
-    Uint,
-    Int,
-    FixedSize(Integer),
-}
-
-impl BaseType {
-    /// Returns `true` if the base type is [`Unspecified`].
-    ///
-    /// [`Unspecified`]: BaseType::Unspecified
-    #[must_use]
-    pub fn is_unspecified(&self) -> bool {
-        matches!(self, Self::Unspecified)
-    }
-
-    /// Returns `true` if the base type is [`FixedSize`].
-    ///
-    /// [`FixedSize`]: BaseType::FixedSize
-    #[must_use]
-    pub fn is_fixed_size(&self) -> bool {
-        matches!(self, Self::FixedSize(..))
-    }
-}
-
-impl Display for BaseType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            BaseType::Unspecified => write!(f, "unspecified"),
-            BaseType::Bool => write!(f, "bool"),
-            BaseType::Uint => write!(f, "uint"),
-            BaseType::Int => write!(f, "int"),
-            BaseType::FixedSize(integer) => write!(f, "{integer}"),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FieldConversion {
-    /// The name of the type we're converting to
-    pub type_name: Spanned<IdentifierRef>,
-    /// True when we want to use the fallible interface (like a Result<type, error>)
-    pub use_try: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]

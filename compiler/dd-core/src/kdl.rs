@@ -4,18 +4,16 @@ use convert_case::Boundary;
 use device_driver_common::{
     identifier::{Identifier, IdentifierRef},
     span::{SpanExt, Spanned},
-    specifiers::{Access, BitOrder, ByteOrder, Integer},
+    specifiers::{Access, BaseType, BitOrder, ByteOrder, Integer, TypeConversion, VariantNames},
 };
 use itertools::Itertools;
 use kdl::{KdlDocument, KdlIdentifier, KdlNode, KdlValue};
 use miette::SourceSpan;
-use strum::VariantNames;
 
 use crate::{
     mir::{
-        BaseType, Block, Buffer, Command, Device, DeviceConfig, Enum, EnumValue, EnumVariant,
-        Extern, Field, FieldConversion, FieldSet, Manifest, Object, Register, Repeat, ResetValue,
-        Unique,
+        Block, Buffer, Command, Device, DeviceConfig, Enum, EnumValue, EnumVariant, Extern, Field,
+        FieldSet, Manifest, Object, Register, Repeat, ResetValue, Unique,
     },
     reporting::{
         self, Diagnostics,
@@ -1462,7 +1460,7 @@ fn transform_extern(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Ext
 fn parse_type(
     ty: Option<&KdlIdentifier>,
     diagnostics: &mut Diagnostics,
-) -> (Spanned<BaseType>, Option<FieldConversion>) {
+) -> (Spanned<BaseType>, Option<TypeConversion>) {
     let Some(ty) = ty else {
         return (BaseType::Unspecified.with_dummy_span(), None);
     };
@@ -1477,9 +1475,9 @@ fn parse_type(
         let use_try = conversion.ends_with('?');
         let conversion = IdentifierRef::new(conversion.trim_end_matches('?').into());
 
-        field_conversion = Some(FieldConversion {
+        field_conversion = Some(TypeConversion {
             type_name: conversion.with_span(ty.span()),
-            use_try,
+            fallible: use_try,
         });
     } else {
         base_type_str = ty_str;
@@ -1816,7 +1814,7 @@ fn parse_single_string_entry(
     }
 }
 
-fn parse_single_string_value<T: strum::VariantNames + FromStr>(
+fn parse_single_string_value<T: VariantNames + FromStr>(
     node: &KdlNode,
     diagnostics: &mut Diagnostics,
 ) -> Option<Spanned<T>> {

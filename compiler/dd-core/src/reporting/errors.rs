@@ -4,12 +4,14 @@
 )]
 
 use convert_case::{Case, Casing};
-use device_driver_common::{identifier::{self, Identifier}, span::Span, specifiers::Integer};
+use device_driver_common::{
+    identifier::{self, Identifier},
+    span::Span,
+    specifiers::{BaseType, Integer, TypeConversion},
+};
 use itertools::Itertools;
 use miette::{Diagnostic, LabeledSpan};
 use thiserror::Error;
-
-use crate::mir::{BaseType, FieldConversion};
 
 #[derive(Error, Debug, Diagnostic)]
 #[error("Missing object name")]
@@ -229,7 +231,7 @@ pub struct InlineEnumDefinitionWithoutName {
 pub struct OnlyBaseTypeAllowed {
     #[label("Type specifier contains conversion")]
     pub existing_ty: Span,
-    pub field_conversion: FieldConversion,
+    pub field_conversion: TypeConversion,
 }
 
 impl OnlyBaseTypeAllowed {
@@ -237,7 +239,7 @@ impl OnlyBaseTypeAllowed {
         format!(
             "{}{}",
             self.field_conversion.type_name.original(),
-            if self.field_conversion.use_try {
+            if self.field_conversion.fallible {
                 "?"
             } else {
                 ""

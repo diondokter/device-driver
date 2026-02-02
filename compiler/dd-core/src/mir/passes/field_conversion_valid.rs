@@ -37,7 +37,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                                 continue;
                             }
 
-                            if !conversion.use_try {
+                            if !conversion.fallible {
                                 // Check if we know the value we're converting to and if we can support non-try conversion
                                 match target_enum
                                     .generation_style
@@ -108,7 +108,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                                 continue;
                             }
 
-                            if !conversion.use_try && !target_extern.supports_infallible {
+                            if !conversion.fallible && !target_extern.supports_infallible {
                                 diagnostics.add(InvalidInfallibleConversion {
                                     conversion: conversion.type_name.span,
                                     context: vec![LabeledSpan::new_with_span(
