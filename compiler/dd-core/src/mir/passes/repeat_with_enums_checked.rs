@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use miette::SourceSpan;
+use device_driver_common::span::Span;
 
 use crate::{
     mir::{
@@ -85,7 +85,7 @@ fn repeat_is_ok(repeat: &Repeat, manifest: &Manifest, diagnostics: &mut Diagnost
     }
 }
 
-fn enum_catch_all(enum_value: &Enum) -> Option<SourceSpan> {
+fn enum_catch_all(enum_value: &Enum) -> Option<Span> {
     enum_value
         .variants
         .iter()

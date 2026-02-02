@@ -4,7 +4,7 @@
 use std::{fmt::Display, ops::Range, rc::Rc};
 
 use convert_case::Boundary;
-use miette::SourceSpan;
+use device_driver_common::span::{Span, Spanned};
 
 use crate::identifier::{Identifier, IdentifierRef};
 
@@ -529,7 +529,7 @@ impl Object {
     }
 
     /// Get the span of the name of the object
-    pub(self) fn name_span(&self) -> SourceSpan {
+    pub(self) fn name_span(&self) -> Span {
         match self {
             Object::Device(val) => val.name.span,
             Object::Block(val) => val.name.span,
@@ -978,7 +978,7 @@ pub enum UniqueId {
 
 impl UniqueId {
     #[must_use]
-    pub fn span(&self) -> SourceSpan {
+    pub fn span(&self) -> Span {
         match self {
             UniqueId::Object { object_name } => object_name.span,
             UniqueId::Field { field_name, .. } => field_name.span,
@@ -997,6 +997,8 @@ impl UniqueId {
     /// *Only for tests:* Create a new instance with a dummy span.
     #[cfg(test)]
     pub fn new_test(identifier: Identifier) -> Self {
+        use device_driver_common::span::SpanExt;
+
         Self::Object {
             object_name: identifier.with_dummy_span(),
         }
@@ -1144,99 +1146,10 @@ impl Unique for Object {
     }
 }
 
-#[derive(Debug, Clone, Eq, Copy)]
-pub struct Spanned<T> {
-    pub span: SourceSpan,
-    pub value: T,
-}
-
-impl<T: PartialEq> PartialEq for Spanned<T> {
-    fn eq(&self, other: &Self) -> bool {
-        // Only compare value. The span is transparent
-        self.value == other.value
-    }
-}
-
-impl<T: PartialEq> PartialEq<T> for Spanned<T> {
-    fn eq(&self, other: &T) -> bool {
-        // Only compare value. The span is transparent
-        &self.value == other
-    }
-}
-
-impl<T: std::hash::Hash> std::hash::Hash for Spanned<T> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.value.hash(state);
-        // Only hash value. The span is transparent
-    }
-}
-
-impl<T: Default> Default for Spanned<T> {
-    fn default() -> Self {
-        Self {
-            span: (0, 0).into(),
-            value: Default::default(),
-        }
-    }
-}
-
-impl<T: Display> Display for Spanned<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.value.fmt(f)
-    }
-}
-
-impl<T> std::ops::Deref for Spanned<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.value
-    }
-}
-
-impl<T> std::ops::DerefMut for Spanned<T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.value
-    }
-}
-
-impl<T> Spanned<T> {
-    pub fn new(span: SourceSpan, value: T) -> Self {
-        Self { span, value }
-    }
-}
-
-impl<T> From<(T, SourceSpan)> for Spanned<T> {
-    fn from((value, span): (T, SourceSpan)) -> Self {
-        Self { span, value }
-    }
-}
-
-impl<T: PartialOrd> PartialOrd<T> for Spanned<T> {
-    fn partial_cmp(&self, other: &T) -> Option<std::cmp::Ordering> {
-        self.value.partial_cmp(other)
-    }
-}
-
-pub trait Span {
-    fn with_span(self, span: impl Into<SourceSpan>) -> Spanned<Self>
-    where
-        Self: Sized,
-    {
-        Spanned::new(span.into(), self)
-    }
-
-    fn with_dummy_span(self) -> Spanned<Self>
-    where
-        Self: Sized,
-    {
-        self.with_span((0, 0))
-    }
-}
-impl<T> Span for T {}
-
 #[cfg(test)]
 mod tests {
+    use device_driver_common::span::SpanExt;
+
     use super::*;
 
     #[test]
@@ -1247,24 +1160,24 @@ mod tests {
             root_objects: vec![
                 Object::Device(Device {
                     description: String::new(),
-                    name: "a".into(),
+                    name: "a".into_with_dummy_span(),
                     device_config: DeviceConfig {
                         register_access: Some(Access::RW),
                         ..Default::default()
                     },
                     objects: vec![
                         Object::Extern(Extern {
-                            name: "b".into(),
+                            name: "b".into_with_dummy_span(),
                             ..Default::default()
                         }),
                         Object::Extern(Extern {
-                            name: "c".into(),
+                            name: "c".into_with_dummy_span(),
                             ..Default::default()
                         }),
                     ],
                 }),
                 Object::Extern(Extern {
-                    name: "d".into(),
+                    name: "d".into_with_dummy_span(),
                     ..Default::default()
                 }),
             ],

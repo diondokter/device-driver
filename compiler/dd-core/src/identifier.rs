@@ -3,9 +3,6 @@ use std::{fmt::Display, sync::Arc};
 use convert_case::{Boundary, Case, Pattern};
 use itertools::Itertools;
 
-#[cfg(test)]
-use crate::mir::Spanned;
-
 /// A structure that holds the name data of objects
 #[derive(Debug, Clone, Eq, Default)]
 pub struct Identifier {
@@ -148,15 +145,6 @@ impl Identifier {
 impl From<&str> for Identifier {
     fn from(value: &str) -> Self {
         Identifier::try_parse(value).unwrap()
-    }
-}
-
-#[cfg(test)]
-impl From<&str> for Spanned<Identifier> {
-    fn from(value: &str) -> Self {
-        use crate::mir::Span;
-
-        Identifier::from(value).with_dummy_span()
     }
 }
 

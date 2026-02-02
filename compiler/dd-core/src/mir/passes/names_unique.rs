@@ -108,6 +108,7 @@ impl<T: Eq> EqSet<T> {
 #[cfg(test)]
 mod tests {
     use convert_case::Boundary;
+    use device_driver_common::span::SpanExt;
 
     use crate::mir::{Buffer, Device, DeviceConfig, Enum, EnumVariant, Field, FieldSet, Object};
 
@@ -122,15 +123,15 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".into_with_dummy_span(),
             device_config: global_config,
             objects: vec![
                 Object::Buffer(Buffer {
-                    name: "MyBuffer".into(),
+                    name: "MyBuffer".into_with_dummy_span(),
                     ..Default::default()
                 }),
                 Object::Buffer(Buffer {
-                    name: "MyBuffer".into(),
+                    name: "MyBuffer".into_with_dummy_span(),
                     ..Default::default()
                 }),
             ],
@@ -151,17 +152,17 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".into_with_dummy_span(),
             device_config: global_config,
             objects: vec![Object::FieldSet(FieldSet {
-                name: "Reg".into(),
+                name: "Reg".into_with_dummy_span(),
                 fields: vec![
                     Field {
-                        name: "field".into(),
+                        name: "field".into_with_dummy_span(),
                         ..Default::default()
                     },
                     Field {
-                        name: "field".into(),
+                        name: "field".into_with_dummy_span(),
                         ..Default::default()
                     },
                 ],
@@ -184,17 +185,17 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into(),
+            name: "Device".into_with_dummy_span(),
             device_config: global_config,
             objects: vec![Object::Enum(Enum {
-                name: "Enum".into(),
+                name: "Enum".into_with_dummy_span(),
                 variants: vec![
                     EnumVariant {
-                        name: "Variant".into(),
+                        name: "Variant".into_with_dummy_span(),
                         ..Default::default()
                     },
                     EnumVariant {
-                        name: "Variant".into(),
+                        name: "Variant".into_with_dummy_span(),
                         ..Default::default()
                     },
                 ],

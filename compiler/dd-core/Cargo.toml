@@ -13,6 +13,8 @@ description = "Compiler library for the `device-driver` crate"
 readme = "README.md"
 
 [dependencies]
+device-driver-common.workspace = true
+
 convert_case = "0.10.0"
 itertools = "0.14.0"
 quote = "1.0.33"

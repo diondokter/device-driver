@@ -4,8 +4,9 @@
 )]
 
 use convert_case::{Case, Casing};
+use device_driver_common::span::Span;
 use itertools::Itertools;
-use miette::{Diagnostic, LabeledSpan, SourceSpan};
+use miette::{Diagnostic, LabeledSpan};
 use thiserror::Error;
 
 use crate::{
@@ -23,9 +24,9 @@ use crate::{
 )]
 pub struct MissingObjectName {
     #[label("For this object")]
-    pub object_keyword: SourceSpan,
+    pub object_keyword: Span,
     #[label("Found this entry instead which is not a valid name")]
-    pub found_instead: Option<SourceSpan>,
+    pub found_instead: Option<Span>,
     pub object_type: String,
 }
 
@@ -40,16 +41,16 @@ These entries may also just be superfluous. Try removing them or check other err
 )]
 pub struct UnexpectedEntries {
     #[label(collection, "This entry is unexpected")]
-    pub superfluous_entries: Vec<SourceSpan>,
+    pub superfluous_entries: Vec<Span>,
     #[label(collection, "This entry has a name that's unexpected")]
-    pub unexpected_name_entries: Vec<SourceSpan>,
+    pub unexpected_name_entries: Vec<Span>,
     #[label(collection, "This entry was expected to be anonymous")]
-    pub not_anonymous_entries: Vec<SourceSpan>,
+    pub not_anonymous_entries: Vec<Span>,
     #[label(
         collection,
         "This entry was expected to have a name (and not be anonymous)"
     )]
-    pub unexpected_anonymous_entries: Vec<SourceSpan>,
+    pub unexpected_anonymous_entries: Vec<Span>,
 }
 
 impl UnexpectedEntries {
@@ -70,7 +71,7 @@ impl UnexpectedEntries {
 )]
 pub struct UnexpectedNode {
     #[label("The unexpected node")]
-    pub node_name: SourceSpan,
+    pub node_name: Span,
 
     pub expected_names: Vec<&'static str>,
 }
@@ -89,7 +90,7 @@ impl UnexpectedNode {
 #[diagnostic(severity(Error))]
 pub struct UnexpectedType {
     #[label("Unexpected type: expected a {}", self.expected_type)]
-    pub value_name: SourceSpan,
+    pub value_name: Span,
 
     pub expected_type: &'static str,
 }
@@ -99,7 +100,7 @@ pub struct UnexpectedType {
 #[diagnostic(severity(Error))]
 pub struct UnexpectedValue {
     #[label("Expected one of these values: {}", self.print_expected_values())]
-    pub value_name: SourceSpan,
+    pub value_name: Span,
 
     pub expected_values: Vec<&'static str>,
 }
@@ -121,7 +122,7 @@ impl UnexpectedValue {
 )]
 pub struct BadValueFormat {
     #[label("Value could not be parsed correctly. Use the following format: `{}`", self.expected_format)]
-    pub span: SourceSpan,
+    pub span: Span,
 
     pub expected_format: &'static str,
     pub example: &'static str,
@@ -132,7 +133,7 @@ pub struct BadValueFormat {
 #[diagnostic(severity(Error))]
 pub struct ValueOutOfRange {
     #[label("Value is out of the allowable range: {}", self.range)]
-    pub value: SourceSpan,
+    pub value: Span,
     #[help]
     pub context: Option<&'static str>,
     pub range: &'static str,
@@ -143,7 +144,7 @@ pub struct ValueOutOfRange {
 #[diagnostic(help("Check the book for all the requirements"), severity(Error))]
 pub struct MissingEntry {
     #[label("This node should have one or more of these entries: {}", self.print_expected_entries())]
-    pub node_name: SourceSpan,
+    pub node_name: Span,
 
     pub expected_entries: Vec<&'static str>,
 }
@@ -164,9 +165,9 @@ impl MissingEntry {
 )]
 pub struct DuplicateNode {
     #[label(primary, "The duplicate node")]
-    pub duplicate: SourceSpan,
+    pub duplicate: Span,
     #[label("The original node")]
-    pub original: SourceSpan,
+    pub original: Span,
 }
 
 #[derive(Error, Debug, Diagnostic)]
@@ -177,9 +178,9 @@ pub struct DuplicateNode {
 )]
 pub struct DuplicateEntry {
     #[label(primary, "The duplicate entry")]
-    pub duplicate: SourceSpan,
+    pub duplicate: Span,
     #[label("The original entry")]
-    pub original: SourceSpan,
+    pub original: Span,
 }
 
 #[derive(Error, Debug, Diagnostic)]
@@ -190,7 +191,7 @@ pub struct DuplicateEntry {
 )]
 pub struct EmptyNode {
     #[label("The empty node")]
-    pub node: SourceSpan,
+    pub node: Span,
 }
 
 #[derive(Error, Debug, Diagnostic)]
@@ -198,7 +199,7 @@ pub struct EmptyNode {
 #[diagnostic(help("Check the book to see all required nodes"), severity(Error))]
 pub struct MissingChildNode {
     #[label("This {} is missing the required `{}` node", self.node_type.unwrap_or("node"), self.missing_node_type)]
-    pub node: SourceSpan,
+    pub node: Span,
 
     pub node_type: Option<&'static str>,
     pub missing_node_type: &'static str,
@@ -214,9 +215,9 @@ pub struct MissingChildNode {
 )]
 pub struct InlineEnumDefinitionWithoutName {
     #[label("Add conversion type specification to this field")]
-    pub field_name: SourceSpan,
+    pub field_name: Span,
     #[label("A type specifier already exists, but misses the conversion")]
-    pub existing_ty: Option<SourceSpan>,
+    pub existing_ty: Option<Span>,
 }
 
 #[derive(Error, Debug, Diagnostic)]
@@ -230,7 +231,7 @@ pub struct InlineEnumDefinitionWithoutName {
 )]
 pub struct OnlyBaseTypeAllowed {
     #[label("Type specifier contains conversion")]
-    pub existing_ty: SourceSpan,
+    pub existing_ty: Span,
     pub field_conversion: FieldConversion,
 }
 
@@ -256,7 +257,7 @@ impl OnlyBaseTypeAllowed {
 )]
 pub struct AddressWrongOrder {
     #[label("Wrong order, try to change to `@{}:{}`", self.start, self.end)]
-    pub address_entry: SourceSpan,
+    pub address_entry: Span,
     pub end: u32,
     pub start: u32,
 }
@@ -266,7 +267,7 @@ pub struct AddressWrongOrder {
 #[diagnostic(severity(Error))]
 pub struct NoChildrenExpected {
     #[label("Try removing these child nodes")]
-    pub children: SourceSpan,
+    pub children: Span,
 }
 
 #[derive(Error, Debug, Diagnostic)]
@@ -279,9 +280,9 @@ pub struct NoChildrenExpected {
 )]
 pub struct RepeatOverSpecified {
     #[label("This repeat has a count")]
-    pub count: SourceSpan,
+    pub count: Span,
     #[label("This repeat also has a with")]
-    pub with: SourceSpan,
+    pub with: Span,
 }
 
 #[derive(Error, Debug, Diagnostic)]
@@ -289,7 +290,7 @@ pub struct RepeatOverSpecified {
 #[diagnostic(severity(Error), help("A field can be at most 64 bits"))]
 pub struct FieldSizeTooBig {
     #[label("{} bits is too big for any of the supported integers", self.size_bits)]
-    pub field_address: SourceSpan,
+    pub field_address: Span,
     pub size_bits: u32,
 }
 
@@ -303,7 +304,7 @@ pub struct FieldSizeTooBig {
 )]
 pub struct DeviceNameNotPascal {
     #[label("This is not Pascal cased. `{}` would be accepted", self.suggestion)]
-    pub device_name: SourceSpan,
+    pub device_name: Span,
     pub suggestion: String,
 }
 
@@ -317,10 +318,10 @@ pub struct DeviceNameNotPascal {
 )]
 pub struct DuplicateName {
     #[label("The original verbatim: {:?}, split: {:?}", original_value.original(), original_value.words().join("·"))]
-    pub original: SourceSpan,
+    pub original: Span,
     pub original_value: Identifier,
     #[label(primary, "The duplicate verbatim: {:?}, split: {:?}", duplicate_value.original(), duplicate_value.words().join("·"))]
-    pub duplicate: SourceSpan,
+    pub duplicate: Span,
     pub duplicate_value: Identifier,
 }
 
@@ -329,7 +330,7 @@ pub struct DuplicateName {
 #[diagnostic(severity(Error), help("All enums must have at least one variant"))]
 pub struct EmptyEnum {
     #[label("Empty enum")]
-    pub enum_name: SourceSpan,
+    pub enum_name: Span,
 }
 
 #[derive(Error, Debug, Diagnostic)]
@@ -337,7 +338,7 @@ pub struct EmptyEnum {
 #[diagnostic(severity(Error), help("All enum variants must have a unique value"))]
 pub struct DuplicateVariantValue {
     #[label(collection)]
-    pub duplicates: Vec<SourceSpan>,
+    pub duplicates: Vec<Span>,
     pub value: i128,
 }
 
@@ -346,9 +347,9 @@ pub struct DuplicateVariantValue {
 #[diagnostic(severity(Error))]
 pub struct EnumBadBasetype {
     #[label("Enum with invalid base type")]
-    pub enum_name: SourceSpan,
+    pub enum_name: Span,
     #[label("Base type being used")]
-    pub base_type: SourceSpan,
+    pub base_type: Span,
     #[help]
     pub help: &'static str,
     #[label(collection, "Context")]
@@ -365,9 +366,9 @@ pub struct EnumBadBasetype {
 )]
 pub struct EnumSizeBitsBiggerThanBaseType {
     #[label("Enum with too large size-bits or too small base type")]
-    pub enum_name: SourceSpan,
+    pub enum_name: Span,
     #[label("Base type being used")]
-    pub base_type: SourceSpan,
+    pub base_type: Span,
     pub size_bits: u32,
 }
 
@@ -381,7 +382,7 @@ pub struct EnumSizeBitsBiggerThanBaseType {
 )]
 pub struct EnumNoAutoBaseTypeSelected {
     #[label("Enum with no valid base type")]
-    pub enum_name: SourceSpan,
+    pub enum_name: Span,
 }
 
 #[derive(Error, Debug, Diagnostic)]
@@ -392,9 +393,9 @@ pub struct EnumNoAutoBaseTypeSelected {
 )]
 pub struct VariantValuesTooHigh {
     #[label(collection, "Value too high")]
-    pub variant_names: Vec<SourceSpan>,
+    pub variant_names: Vec<Span>,
     #[label("Part of this enum")]
-    pub enum_name: SourceSpan,
+    pub enum_name: Span,
     pub max_value: i128,
 }
 
@@ -406,9 +407,9 @@ pub struct VariantValuesTooHigh {
 )]
 pub struct VariantValuesTooLow {
     #[label(collection, "Value too low")]
-    pub variant_names: Vec<SourceSpan>,
+    pub variant_names: Vec<Span>,
     #[label("Part of this enum")]
-    pub enum_name: SourceSpan,
+    pub enum_name: Span,
     pub min_value: i128,
 }
 
@@ -417,9 +418,9 @@ pub struct VariantValuesTooLow {
 #[diagnostic(severity(Error), help("An enum can have at most 1 default variant"))]
 pub struct EnumMultipleDefaults {
     #[label("Multiple defaults on this enum")]
-    pub enum_name: SourceSpan,
+    pub enum_name: Span,
     #[label(collection, "Variant defined as default")]
-    pub variant_names: Vec<SourceSpan>,
+    pub variant_names: Vec<Span>,
 }
 
 #[derive(Error, Debug, Diagnostic)]
@@ -427,9 +428,9 @@ pub struct EnumMultipleDefaults {
 #[diagnostic(severity(Error), help("An enum can have at most 1 catch-all variant"))]
 pub struct EnumMultipleCatchalls {
     #[label("Multiple catch-alls on this enum")]
-    pub enum_name: SourceSpan,
+    pub enum_name: Span,
     #[label(collection, "Variant defined as catch-all")]
-    pub variant_names: Vec<SourceSpan>,
+    pub variant_names: Vec<Span>,
 }
 
 #[derive(Error, Debug, Diagnostic)]
@@ -442,7 +443,7 @@ pub struct EnumMultipleCatchalls {
 )]
 pub struct ReferencedObjectDoesNotExist {
     #[label("This object cannot be found")]
-    pub object_reference: SourceSpan,
+    pub object_reference: Span,
 }
 
 #[derive(Error, Debug, Diagnostic)]
@@ -450,9 +451,9 @@ pub struct ReferencedObjectDoesNotExist {
 #[diagnostic(severity(Error))]
 pub struct ReferencedObjectInvalid {
     #[label(primary, "Object referenced here has the wrong type")]
-    pub object_reference: SourceSpan,
+    pub object_reference: Span,
     #[label("The referenced object")]
-    pub referenced_object: SourceSpan,
+    pub referenced_object: Span,
     #[help]
     pub help: String,
 }
@@ -465,11 +466,11 @@ pub struct ReferencedObjectInvalid {
 )]
 pub struct RepeatEnumWithCatchAll {
     #[label(primary, "Repeat references enum")]
-    pub repeat_enum: SourceSpan,
+    pub repeat_enum: Span,
     #[label("Referenced enum")]
-    pub enum_name: SourceSpan,
+    pub enum_name: Span,
     #[label("The offending catch-all")]
-    pub catch_all: SourceSpan,
+    pub catch_all: Span,
 }
 
 #[derive(Error, Debug, Diagnostic)]
@@ -482,9 +483,9 @@ pub struct RepeatEnumWithCatchAll {
 )]
 pub struct ExternInvalidBaseType {
     #[label(primary, "Extern has invalid base type")]
-    pub extern_name: SourceSpan,
+    pub extern_name: Span,
     #[label("The invalid base type")]
-    pub base_type: Option<SourceSpan>,
+    pub base_type: Option<Span>,
 }
 
 #[derive(Error, Debug, Diagnostic)]
@@ -495,12 +496,12 @@ pub struct ExternInvalidBaseType {
 )]
 pub struct DifferentBaseTypes {
     #[label(primary, "This field uses base type: {field_base_type}")]
-    pub field: SourceSpan,
+    pub field: Span,
     pub field_base_type: BaseType,
     #[label("It has specified a conversion")]
-    pub conversion: SourceSpan,
+    pub conversion: Span,
     #[label("The conversion type uses base type: {conversion_base_type}")]
-    pub conversion_object: SourceSpan,
+    pub conversion_object: Span,
     pub conversion_base_type: BaseType,
 }
 
@@ -515,7 +516,7 @@ pub struct DifferentBaseTypes {
 )]
 pub struct InvalidInfallibleConversion {
     #[label(primary, "Conversion specified here")]
-    pub conversion: SourceSpan,
+    pub conversion: Span,
     #[label(collection)]
     pub context: Vec<LabeledSpan>,
     pub existing_type_specifier_content: String,
@@ -531,7 +532,7 @@ pub struct InvalidInfallibleConversion {
 )]
 pub struct UnspecifiedByteOrder {
     #[label("No byte order specified. Try adding `byte-order=LE` or `byte-order=BE`")]
-    pub fieldset_name: SourceSpan,
+    pub fieldset_name: Span,
 }
 
 #[derive(Error, Debug, Diagnostic)]
@@ -546,7 +547,7 @@ pub struct ResetValueTooBig {
     #[label(
         "The reset value is specified with {reset_value_size_bits} bits, but the register only has {register_size_bits}"
     )]
-    pub reset_value: SourceSpan,
+    pub reset_value: Span,
     pub reset_value_size_bits: u32,
     pub register_size_bits: u32,
 }
@@ -561,7 +562,7 @@ pub struct ResetValueArrayWrongSize {
     #[label(
         "The reset value is specified with {reset_value_size_bytes} bytes and the register has {register_size_bytes}"
     )]
-    pub reset_value: SourceSpan,
+    pub reset_value: Span,
     pub reset_value_size_bytes: u32,
     pub register_size_bytes: u32,
 }
@@ -574,9 +575,9 @@ pub struct ResetValueArrayWrongSize {
 )]
 pub struct BoolFieldTooLarge {
     #[label("Field set to `bool` here")]
-    pub base_type: Option<SourceSpan>,
+    pub base_type: Option<Span>,
     #[label("Address is {address_bits} bits")]
-    pub address: SourceSpan,
+    pub address: Span,
     pub address_bits: u32,
 }
 
@@ -588,7 +589,7 @@ pub struct BoolFieldTooLarge {
 )]
 pub struct ZeroSizeField {
     #[label("Address is {address_bits} bits")]
-    pub address: SourceSpan,
+    pub address: Span,
     pub address_bits: u32,
 }
 
@@ -600,11 +601,11 @@ pub struct ZeroSizeField {
 )]
 pub struct FieldAddressExceedsFieldsetSize {
     #[label("Address goes up to {max_field_end}{}", self.get_repeat_message())]
-    pub address: SourceSpan,
+    pub address: Span,
     pub max_field_end: i128,
     pub repeat_offset: Option<i128>,
     #[label("The fieldset is only {fieldset_size} bits")]
-    pub fieldset_size_bits: SourceSpan,
+    pub fieldset_size_bits: Span,
     pub fieldset_size: u32,
 }
 
@@ -625,7 +626,7 @@ impl FieldAddressExceedsFieldsetSize {
 )]
 pub struct FieldAddressNegative {
     #[label("Address goes down to {min_field_start}{}", self.get_repeat_message())]
-    pub address: SourceSpan,
+    pub address: Span,
     pub min_field_start: i128,
     pub repeat_offset: Option<i128>,
 }
@@ -649,12 +650,12 @@ impl FieldAddressNegative {
 )]
 pub struct OverlappingFields {
     #[label("Field sits at address range @{field_address_end_1}:{field_address_start_1}{}", self.get_repeat_message_1())]
-    pub field_address_1: SourceSpan,
+    pub field_address_1: Span,
     pub repeat_offset_1: Option<i128>,
     pub field_address_start_1: i128,
     pub field_address_end_1: i128,
     #[label("Field sits at address range @{field_address_end_2}:{field_address_start_2}{}", self.get_repeat_message_2())]
-    pub field_address_2: SourceSpan,
+    pub field_address_2: Span,
     pub repeat_offset_2: Option<i128>,
     pub field_address_start_2: i128,
     pub field_address_end_2: i128,
@@ -683,9 +684,9 @@ impl OverlappingFields {
 )]
 pub struct AddressTypeUndefined {
     #[label("{} defined here", object_type.to_case(Case::Pascal))]
-    pub object: SourceSpan,
+    pub object: Span,
     #[label("This device doesn't define a {}-address-type", object_type.to_case(Case::Lower))]
-    pub config_device: SourceSpan,
+    pub config_device: Span,
     pub object_type: &'static str,
 }
 
@@ -697,11 +698,11 @@ pub struct AddressTypeUndefined {
 )]
 pub struct AddressOutOfRange {
     #[label("Address goes up/down to {address_value}{}", if *has_repeat {" (including repeats)" } else { "" })]
-    pub address: SourceSpan,
+    pub address: Span,
     pub address_value: i128,
     pub has_repeat: bool,
     #[label("Address type supports a range of {} to {}", address_type.min_value(), address_type.max_value())]
-    pub address_type_config: SourceSpan,
+    pub address_type_config: Span,
     pub address_type: Integer,
 }
 
@@ -716,10 +717,10 @@ pub struct AddressOutOfRange {
 pub struct AddressOverlap {
     pub address: i128,
     #[label("Object overlaps with other object{}", if let Some(repeat_offset) = repeat_offset_1 { format!(" at repeat offset {repeat_offset}") } else { String::new() })]
-    pub object_1: SourceSpan,
+    pub object_1: Span,
     pub repeat_offset_1: Option<i128>,
     #[label("Object overlaps with other object{}", if let Some(repeat_offset) = repeat_offset_2 { format!(" at repeat offset {repeat_offset}") } else { String::new() })]
-    pub object_2: SourceSpan,
+    pub object_2: Span,
     pub repeat_offset_2: Option<i128>,
 }
 
@@ -739,7 +740,8 @@ pub struct InvalidIdentifier {
 }
 
 impl InvalidIdentifier {
-    pub fn new(error: identifier::Error, identifier: SourceSpan) -> Self {
+    pub fn new(error: identifier::Error, identifier: impl Into<Span>) -> Self {
+        let identifier = identifier.into();
         match error {
             identifier::Error::Empty => Self {
                 labels: vec![LabeledSpan::new_with_span(
@@ -756,7 +758,7 @@ impl InvalidIdentifier {
                             "`{character}` (or `{}`) is not a valid character",
                             character.escape_unicode()
                         )),
-                        identifier.offset() + offset,
+                        identifier.start + offset,
                         character.len_utf8(),
                     )],
                 }
