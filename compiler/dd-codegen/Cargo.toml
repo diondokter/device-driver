@@ -1,0 +1,18 @@
+[package]
+name = "device-driver-codegen"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+device-driver-common.workspace = true
+device-driver-lir.workspace = true
+
+itertools.workspace = true
+convert_case.workspace = true
+
+askama = { version = "0.15.4", default-features = false, features = ["derive", "alloc"] }

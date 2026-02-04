@@ -9,5 +9,6 @@ crate-type = ["cdylib"]
 
 [dependencies]
 device-driver-core.workspace = true
+device-driver-diagnostics.workspace = true
 
 wasm-bindgen = "0.2.101"

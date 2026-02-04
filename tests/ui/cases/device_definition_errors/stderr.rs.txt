@@ -1,7 +1,7 @@
 error: The device driver input has errors that need to be solved!
-    --> device_definition_errors.rs:2110:1
+    --> device_definition_errors.rs:2109:1
      |
-2110 | compile_error!("The device driver input has errors that need to be solved!");
+2109 | compile_error!("The device driver input has errors that need to be solved!");
      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: could not compile `device_definition_errors` (bin "device_definition_errors") due to 1 previous error

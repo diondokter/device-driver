@@ -2,67 +2,37 @@
 
 use std::path::Path;
 
+use device_driver_diagnostics::{Diagnostics, NamedSourceCode};
 use itertools::Itertools;
 
-use crate::reporting::{Diagnostics, NamedSourceCode};
-
-pub use miette;
-
-mod kdl;
-mod lir;
-pub mod mir;
-pub mod reporting;
-
-#[must_use]
-pub fn transform_kdl(
-    file_contents: &str,
+pub fn compile(
+    source: &str,
     source_span: Option<miette::SourceSpan>,
     file_path: &Path,
 ) -> (String, Diagnostics) {
     let mut diagnostics = Diagnostics::new();
-    let source_code = NamedSourceCode::new(file_path.display().to_string(), file_contents.into());
+    let source_code = NamedSourceCode::new(file_path.display().to_string(), source.into());
 
-    let mir_manifest = crate::kdl::transform(file_contents, source_span, &mut diagnostics);
-
-    let mut output = String::new();
-
-    match transform_mir(mir_manifest, &mut diagnostics) {
-        Ok(device_output) => output += &device_output,
-        Err(e) => diagnostics.add_msg(e.to_string()),
-    }
+    let mir = device_driver_mir::lower_kdl_source(source, source_span, &mut diagnostics);
+    let lir = device_driver_lir::lower_mir(mir);
+    let mut code = device_driver_codegen::codegen(device_driver_codegen::Target::Rust, lir);
 
     diagnostics = diagnostics.with_source_code(&source_code);
 
     if diagnostics.has_error() {
-        output +=
+        code +=
             "\ncompile_error!(\"The device driver input has errors that need to be solved!\");\n";
     }
 
-    (output, diagnostics)
-}
-
-fn transform_mir(
-    mut mir: mir::Manifest,
-    diagnostics: &mut Diagnostics,
-) -> Result<String, miette::Report> {
-    // Run the MIR passes
-    mir::passes::run_passes(&mut mir, diagnostics)?;
-
-    // Transform into LIR
-    let lir = mir::lir_transform::transform(mir)?;
-
-    // Transform into Rust source token output
-    let output = lir::code_transform::DeviceTemplateRust::new(&lir).to_string();
-
-    let formatted_output = match format_code(&output) {
-        Ok(formatted_output) => formatted_output,
+    let formatted_code = match format_code(&code) {
+        Ok(formatted_code) => formatted_code,
         Err(e) => format!(
-            "{}\n\n{output}",
+            "{}\n\n{code}",
             e.to_string().lines().map(|e| format!("// {e}")).join("\n")
         ),
     };
 
-    Ok(formatted_output)
+    (formatted_code, diagnostics)
 }
 
 #[cfg(not(feature = "prettyplease"))]

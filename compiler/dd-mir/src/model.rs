@@ -1,0 +1,966 @@
+use std::{fmt::Display, ops::Range, rc::Rc};
+
+use convert_case::Boundary;
+use device_driver_common::{
+    identifier::{Identifier, IdentifierRef},
+    span::{Span, Spanned},
+    specifiers::{
+        Access, BaseType, BitOrder, ByteOrder, Integer, Repeat, ResetValue, TypeConversion,
+    },
+};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Manifest {
+    pub root_objects: Vec<Object>,
+    pub config: DeviceConfig,
+}
+
+impl Manifest {
+    pub fn iter_objects_with_config_mut(&mut self) -> ObjectIterMut<'_> {
+        ObjectIterMut {
+            children: &mut self.root_objects,
+            parent: None,
+            collection_object_returned: false,
+            current_device_config: Rc::new(self.config.clone()),
+        }
+    }
+
+    pub fn iter_objects(&self) -> impl Iterator<Item = &Object> {
+        ObjectIter {
+            children: &self.root_objects,
+            parent: None,
+            collection_object_returned: false,
+            current_device_config: Rc::new(self.config.clone()),
+        }
+        .map(|(object, _)| object)
+    }
+
+    #[must_use]
+    pub fn iter_objects_with_config(&self) -> ObjectIter<'_> {
+        ObjectIter {
+            children: &self.root_objects,
+            parent: None,
+            collection_object_returned: false,
+            current_device_config: Rc::new(self.config.clone()),
+        }
+    }
+
+    pub fn iter_enums(&self) -> impl Iterator<Item = &'_ Enum> {
+        self.iter_objects_with_config().filter_map(|(o, _)| {
+            if let Object::Enum(e) = o {
+                Some(e)
+            } else {
+                None
+            }
+        })
+    }
+
+    pub fn iter_enums_with_config(&self) -> impl Iterator<Item = (&'_ Enum, Rc<DeviceConfig>)> {
+        self.iter_objects_with_config().filter_map(|(o, config)| {
+            if let Object::Enum(e) = o {
+                Some((e, config))
+            } else {
+                None
+            }
+        })
+    }
+
+    pub fn iter_devices_with_config(&self) -> impl Iterator<Item = (&'_ Device, Rc<DeviceConfig>)> {
+        self.iter_objects_with_config().filter_map(|(o, config)| {
+            if let Object::Device(d) = o {
+                Some((d, config))
+            } else {
+                None
+            }
+        })
+    }
+}
+
+#[derive(Default)]
+pub struct ObjectIterMut<'a> {
+    children: &'a mut [Object],
+    parent: Option<Box<ObjectIterMut<'a>>>,
+    collection_object_returned: bool,
+    current_device_config: Rc<DeviceConfig>,
+}
+
+/// A GAT based lending iterator.
+/// Can't do anything fancy with it yet though.
+pub trait LendingIterator {
+    type Item<'a>
+    where
+        Self: 'a;
+
+    fn next(&mut self) -> Option<Self::Item<'_>>;
+}
+
+impl LendingIterator for ObjectIterMut<'_> {
+    type Item<'b>
+        = (&'b mut Object, Rc<DeviceConfig>)
+    where
+        Self: 'b;
+
+    fn next(&mut self) -> Option<Self::Item<'_>> {
+        if self.children.is_empty() {
+            match self.parent.take() {
+                Some(parent) => {
+                    // continue with the parent node
+                    *self = *parent;
+                    self.next()
+                }
+                None => None,
+            }
+        } else if self.children[0].child_objects_mut().is_empty() {
+            let (first, rest) = std::mem::take(&mut self.children)
+                .split_first_mut()
+                .expect("Already checked not empty");
+            self.children = rest;
+            Some((first, self.current_device_config.clone()))
+        } else if !self.collection_object_returned {
+            self.collection_object_returned = true;
+
+            let next_device_config = if let Some(new_config) = self.children[0].device_config() {
+                Rc::new(self.current_device_config.override_with(new_config))
+            } else {
+                self.current_device_config.clone()
+            };
+
+            Some((&mut self.children[0], next_device_config))
+        } else {
+            self.collection_object_returned = false;
+
+            let next_device_config = if let Some(new_config) = self.children[0].device_config() {
+                Rc::new(self.current_device_config.override_with(new_config))
+            } else {
+                self.current_device_config.clone()
+            };
+
+            let (first, rest) = std::mem::take(&mut self.children)
+                .split_first_mut()
+                .expect("Already checked not empty");
+            self.children = rest;
+
+            *self = ObjectIterMut {
+                children: first.child_objects_mut(),
+                parent: Some(Box::new(std::mem::take(self))),
+                collection_object_returned: false,
+                current_device_config: next_device_config,
+            };
+            self.next()
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct ObjectIter<'a> {
+    children: &'a [Object],
+    parent: Option<Box<ObjectIter<'a>>>,
+    collection_object_returned: bool,
+    current_device_config: Rc<DeviceConfig>,
+}
+
+impl<'a> Iterator for ObjectIter<'a> {
+    type Item = (&'a Object, Rc<DeviceConfig>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let children = std::mem::take(&mut self.children);
+
+        match children.split_first() {
+            None => match self.parent.take() {
+                Some(parent) => {
+                    // continue with the parent node
+                    *self = *parent;
+                    self.next()
+                }
+                None => None,
+            },
+            Some((first, rest)) => {
+                self.children = rest;
+
+                if first.child_objects().is_empty() {
+                    Some((first, self.current_device_config.clone()))
+                } else if !self.collection_object_returned {
+                    self.collection_object_returned = true;
+
+                    let next_device_config = if let Some(new_config) = first.device_config() {
+                        Rc::new(self.current_device_config.override_with(new_config))
+                    } else {
+                        self.current_device_config.clone()
+                    };
+
+                    self.children = children;
+
+                    Some((&children[0], next_device_config))
+                } else {
+                    self.collection_object_returned = false;
+
+                    let next_device_config = if let Some(new_config) = first.device_config() {
+                        Rc::new(self.current_device_config.override_with(new_config))
+                    } else {
+                        self.current_device_config.clone()
+                    };
+
+                    *self = ObjectIter {
+                        children: first.child_objects(),
+                        parent: Some(Box::new(std::mem::take(self))),
+                        collection_object_returned: false,
+                        current_device_config: next_device_config,
+                    };
+                    self.next()
+                }
+            }
+        }
+    }
+}
+
+/// Implementation meant for testing to easily create a manifest with just one device
+impl From<Device> for Manifest {
+    fn from(value: Device) -> Self {
+        Self {
+            root_objects: vec![Object::Device(value)],
+            config: DeviceConfig::default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+pub struct Device {
+    pub description: String,
+    pub name: Spanned<Identifier>,
+    pub device_config: DeviceConfig,
+    pub objects: Vec<Object>,
+}
+
+impl Device {
+    pub fn iter_objects(&self) -> impl Iterator<Item = &Object> {
+        ObjectIter {
+            children: &self.objects,
+            parent: None,
+            collection_object_returned: false,
+            current_device_config: Rc::new(DeviceConfig::default()),
+        }
+        .map(|(object, _)| object)
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+pub struct DeviceConfig {
+    /// The id of the device that owns this config. If None, then this is a global config
+    pub owner: Option<UniqueId>,
+    pub register_access: Option<Access>,
+    pub field_access: Option<Access>,
+    pub buffer_access: Option<Access>,
+    pub byte_order: Option<ByteOrder>,
+    pub bit_order: Option<BitOrder>,
+    pub register_address_type: Option<Spanned<Integer>>,
+    pub command_address_type: Option<Spanned<Integer>>,
+    pub buffer_address_type: Option<Spanned<Integer>>,
+    pub name_word_boundaries: Option<Vec<Boundary>>,
+    pub defmt_feature: Option<String>,
+}
+
+impl DeviceConfig {
+    #[must_use]
+    pub fn override_with(&self, other: &Self) -> DeviceConfig {
+        Self {
+            owner: other.owner.clone().or(self.owner.clone()),
+            register_access: other.register_access.or(self.register_access),
+            field_access: other.field_access.or(self.field_access),
+            buffer_access: other.buffer_access.or(self.buffer_access),
+            byte_order: other.byte_order.or(self.byte_order),
+            bit_order: other.bit_order.or(self.bit_order),
+            register_address_type: other.register_address_type.or(self.register_address_type),
+            command_address_type: other.command_address_type.or(self.command_address_type),
+            buffer_address_type: other.buffer_address_type.or(self.buffer_address_type),
+            name_word_boundaries: other
+                .name_word_boundaries
+                .as_ref()
+                .or(self.name_word_boundaries.as_ref())
+                .cloned(),
+            defmt_feature: other
+                .defmt_feature
+                .as_ref()
+                .or(self.defmt_feature.as_ref())
+                .cloned(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Object {
+    Device(Device),
+    Block(Block),
+    Register(Register),
+    Command(Command),
+    Buffer(Buffer),
+    FieldSet(FieldSet),
+    Enum(Enum),
+    Extern(Extern),
+}
+
+impl Object {
+    pub(crate) fn device_config(&self) -> Option<&DeviceConfig> {
+        match self {
+            Object::Device(device) => Some(&device.device_config),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn child_objects_mut(&mut self) -> &mut [Object] {
+        match self {
+            Object::Device(device) => &mut device.objects,
+            Object::Block(block) => &mut block.objects,
+            _ => &mut [],
+        }
+    }
+
+    pub(crate) fn child_objects_vec(&mut self) -> Option<&mut Vec<Object>> {
+        match self {
+            Object::Device(device) => Some(&mut device.objects),
+            Object::Block(block) => Some(&mut block.objects),
+            _ => None,
+        }
+    }
+
+    pub(crate) fn child_objects(&self) -> &[Object] {
+        match self {
+            Object::Device(device) => &device.objects,
+            Object::Block(block) => &block.objects,
+            _ => &[],
+        }
+    }
+
+    /// Get a mutable reference to the name of the specific object
+    pub(crate) fn name_mut(&mut self) -> &mut Identifier {
+        match self {
+            Object::Device(val) => &mut val.name,
+            Object::Block(val) => &mut val.name,
+            Object::Register(val) => &mut val.name,
+            Object::Command(val) => &mut val.name,
+            Object::Buffer(val) => &mut val.name,
+            Object::FieldSet(val) => &mut val.name,
+            Object::Enum(val) => &mut val.name,
+            Object::Extern(val) => &mut val.name,
+        }
+    }
+
+    /// Get a reference to the name of the specific object
+    pub fn name(&self) -> &Identifier {
+        match self {
+            Object::Device(val) => &val.name,
+            Object::Block(val) => &val.name,
+            Object::Register(val) => &val.name,
+            Object::Command(val) => &val.name,
+            Object::Buffer(val) => &val.name,
+            Object::FieldSet(val) => &val.name,
+            Object::Enum(val) => &val.name,
+            Object::Extern(val) => &val.name,
+        }
+    }
+
+    /// Get the span of the name of the object
+    pub(crate) fn name_span(&self) -> Span {
+        match self {
+            Object::Device(val) => val.name.span,
+            Object::Block(val) => val.name.span,
+            Object::Register(val) => val.name.span,
+            Object::Command(val) => val.name.span,
+            Object::Buffer(val) => val.name.span,
+            Object::FieldSet(val) => val.name.span,
+            Object::Enum(val) => val.name.span,
+            Object::Extern(val) => val.name.span,
+        }
+    }
+
+    /// Return the address if it is specified.
+    pub(crate) fn address(&self) -> Option<Spanned<i128>> {
+        match self {
+            Object::Device(_) => None,
+            Object::Block(block) => Some(block.address_offset),
+            Object::Register(register) => Some(register.address),
+            Object::Command(command) => Some(command.address),
+            Object::Buffer(buffer) => Some(buffer.address),
+            Object::FieldSet(_) => None,
+            Object::Enum(_) => None,
+            Object::Extern(_) => None,
+        }
+    }
+
+    /// Return the repeat value if it exists
+    pub(crate) fn repeat(&self) -> Option<&Repeat> {
+        match self {
+            Object::Device(_) => None,
+            Object::Block(block) => block.repeat.as_ref(),
+            Object::Register(register) => register.repeat.as_ref(),
+            Object::Command(command) => command.repeat.as_ref(),
+            Object::Buffer(_) => None,
+            Object::FieldSet(_) => None,
+            Object::Enum(_) => None,
+            Object::Extern(_) => None,
+        }
+    }
+
+    /// Return the repeat value if it exists
+    pub(crate) fn repeat_mut(&mut self) -> Option<&mut Repeat> {
+        match self {
+            Object::Device(_) => None,
+            Object::Block(block) => block.repeat.as_mut(),
+            Object::Register(register) => register.repeat.as_mut(),
+            Object::Command(command) => command.repeat.as_mut(),
+            Object::Buffer(_) => None,
+            Object::FieldSet(_) => None,
+            Object::Enum(_) => None,
+            Object::Extern(_) => None,
+        }
+    }
+
+    pub(crate) fn as_field_set(&self) -> Option<&FieldSet> {
+        if let Self::FieldSet(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    pub(crate) fn as_field_set_mut(&mut self) -> Option<&mut FieldSet> {
+        if let Self::FieldSet(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_enum(&self) -> Option<&Enum> {
+        if let Self::Enum(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    pub(crate) fn object_type_name(&self) -> &'static str {
+        match self {
+            Object::Device(_) => "device",
+            Object::Block(_) => "block",
+            Object::Register(_) => "register",
+            Object::Command(_) => "command",
+            Object::Buffer(_) => "buffer",
+            Object::FieldSet(_) => "fieldset",
+            Object::Enum(_) => "enum",
+            Object::Extern(_) => "extern",
+        }
+    }
+
+    pub(crate) fn allow_address_overlap(&self) -> bool {
+        match self {
+            Object::Device(_) => false,
+            Object::Block(_) => false,
+            Object::Register(register) => register.allow_address_overlap,
+            Object::Command(command) => command.allow_address_overlap,
+            Object::Buffer(_) => false,
+            Object::FieldSet(_) => false,
+            Object::Enum(_) => false,
+            Object::Extern(_) => false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+pub struct Block {
+    pub description: String,
+    pub name: Spanned<Identifier>,
+    pub address_offset: Spanned<i128>,
+    pub repeat: Option<Repeat>,
+    pub objects: Vec<Object>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+pub struct Register {
+    pub description: String,
+    pub name: Spanned<Identifier>,
+    pub access: Access,
+    pub allow_address_overlap: bool,
+    pub address: Spanned<i128>,
+    pub reset_value: Option<Spanned<ResetValue>>,
+    pub repeat: Option<Repeat>,
+    pub field_set_ref: IdentifierRef,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+pub struct FieldSet {
+    pub description: String,
+    pub name: Spanned<Identifier>,
+    pub size_bits: Spanned<u32>,
+    pub byte_order: Option<ByteOrder>,
+    pub bit_order: Option<BitOrder>,
+    pub allow_bit_overlap: bool,
+    pub fields: Vec<Field>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+pub struct Field {
+    pub description: String,
+    pub name: Spanned<Identifier>,
+    pub access: Access,
+    pub base_type: Spanned<BaseType>,
+    pub field_conversion: Option<TypeConversion>,
+    pub field_address: Spanned<Range<u32>>,
+    pub repeat: Option<Repeat>,
+}
+
+impl Field {
+    #[must_use]
+    pub fn get_type_specifier_string(&self) -> String {
+        match &self.field_conversion {
+            Some(fc) => {
+                format!(
+                    "{}:{}{}",
+                    self.base_type,
+                    fc.type_name.original(),
+                    if fc.fallible { "?" } else { "" }
+                )
+            }
+            None => self.base_type.to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+pub struct Enum {
+    pub description: String,
+    pub name: Spanned<Identifier>,
+    pub variants: Vec<EnumVariant>,
+    pub base_type: Spanned<BaseType>,
+    pub size_bits: Option<u32>,
+    pub generation_style: Option<EnumGenerationStyle>,
+}
+
+impl Enum {
+    #[must_use]
+    pub fn new(
+        description: String,
+        name: Spanned<Identifier>,
+        variants: Vec<EnumVariant>,
+        base_type: Spanned<BaseType>,
+        size_bits: Option<u32>,
+    ) -> Self {
+        Self {
+            description,
+            name,
+            variants,
+            base_type,
+            size_bits,
+            generation_style: None,
+        }
+    }
+
+    #[cfg(test)]
+    pub fn new_with_style(
+        description: String,
+        name: Spanned<Identifier>,
+        variants: Vec<EnumVariant>,
+        base_type: Spanned<BaseType>,
+        size_bits: Option<u32>,
+        generation_style: EnumGenerationStyle,
+    ) -> Self {
+        Self {
+            description,
+            name,
+            variants,
+            base_type,
+            size_bits,
+            generation_style: Some(generation_style),
+        }
+    }
+
+    /// Get an iterator over the variants, but with an extra counter to get the specified discriminant for each.
+    ///
+    /// *Note:* The validity of this is checked in the [`passes::enum_values_checked`] pass. If this function is run
+    /// before that pass, there might be weird results.
+    pub fn iter_variants_with_discriminant(&self) -> impl Iterator<Item = (i128, &EnumVariant)> {
+        let mut next_discriminant = 0;
+        self.variants.iter().map(move |variant| {
+            if let EnumValue::Specified(discriminant) = variant.value {
+                next_discriminant = discriminant + 1;
+                (discriminant, variant)
+            } else {
+                let discriminant = next_discriminant;
+                next_discriminant += 1;
+                (discriminant, variant)
+            }
+        })
+    }
+
+    /// Get an iterator over the variants, but with an extra counter to get the specified discriminant for each.
+    ///
+    /// *Note:* The validity of this is checked in the [`passes::enum_values_checked`] pass. If this function is run
+    /// before that pass, there might be weird results.
+    pub fn iter_variants_with_discriminant_mut(
+        &mut self,
+    ) -> impl Iterator<Item = (i128, &mut EnumVariant)> {
+        let mut next_discriminant = 0;
+        self.variants.iter_mut().map(move |variant| {
+            if let EnumValue::Specified(discriminant) = variant.value {
+                next_discriminant = discriminant + 1;
+                (discriminant, variant)
+            } else {
+                let discriminant = next_discriminant;
+                next_discriminant += 1;
+                (discriminant, variant)
+            }
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum EnumGenerationStyle {
+    /// Not all basetype values can be converted to a variant
+    Fallible,
+    /// All bitpatterns within bits 0..size-bits are covered.
+    /// The general interface is fallible, but this special knowledge can be used for safety guarantees
+    InfallibleWithinRange,
+    /// There's a fallback, so it's always safe
+    Fallback,
+}
+
+impl EnumGenerationStyle {
+    /// Returns `true` if the enum generation style is [`Fallible`].
+    ///
+    /// [`Fallible`]: EnumGenerationStyle::Fallible
+    #[must_use]
+    pub fn is_fallible(&self) -> bool {
+        matches!(self, Self::Fallible)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+pub struct EnumVariant {
+    pub description: String,
+    pub name: Spanned<Identifier>,
+    pub value: EnumValue,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+pub enum EnumValue {
+    #[default]
+    Unspecified,
+    Specified(i128),
+    Default,
+    CatchAll,
+}
+
+impl EnumValue {
+    /// Returns `true` if the enum value is [`Default`].
+    ///
+    /// [`Default`]: EnumValue::Default
+    #[must_use]
+    pub fn is_default(&self) -> bool {
+        matches!(self, Self::Default)
+    }
+
+    /// Returns `true` if the enum value is [`CatchAll`].
+    ///
+    /// [`CatchAll`]: EnumValue::CatchAll
+    #[must_use]
+    pub fn is_catch_all(&self) -> bool {
+        matches!(self, Self::CatchAll)
+    }
+
+    /// Returns `true` if the enum value is [`Unspecified`].
+    ///
+    /// [`Unspecified`]: EnumValue::Unspecified
+    #[must_use]
+    pub fn is_unspecified(&self) -> bool {
+        matches!(self, Self::Unspecified)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+pub struct Command {
+    pub description: String,
+    pub name: Spanned<Identifier>,
+    pub address: Spanned<i128>,
+    pub allow_address_overlap: bool,
+    pub repeat: Option<Repeat>,
+
+    pub field_set_ref_in: Option<IdentifierRef>,
+    pub field_set_ref_out: Option<IdentifierRef>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+pub struct Buffer {
+    pub description: String,
+    pub name: Spanned<Identifier>,
+    pub access: Access,
+    pub address: Spanned<i128>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+pub struct Extern {
+    pub description: String,
+    pub name: Spanned<Identifier>,
+    /// From/into what base type can this extern be converted?
+    pub base_type: Spanned<BaseType>,
+    /// If true, this extern can be converted infallibly too
+    pub supports_infallible: bool,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+pub enum UniqueId {
+    Object {
+        object_name: Spanned<Identifier>,
+    },
+    Field {
+        parent_id: Box<UniqueId>,
+        field_name: Spanned<Identifier>,
+    },
+    Variant {
+        parent_id: Box<UniqueId>,
+        variant_name: Spanned<Identifier>,
+    },
+}
+
+impl UniqueId {
+    #[must_use]
+    pub fn span(&self) -> Span {
+        match self {
+            UniqueId::Object { object_name } => object_name.span,
+            UniqueId::Field { field_name, .. } => field_name.span,
+            UniqueId::Variant { variant_name, .. } => variant_name.span,
+        }
+    }
+
+    pub fn identifier(&self) -> &Identifier {
+        match self {
+            UniqueId::Object { object_name } => object_name,
+            UniqueId::Field { field_name, .. } => field_name,
+            UniqueId::Variant { variant_name, .. } => variant_name,
+        }
+    }
+
+    /// *Only for tests:* Create a new instance with a dummy span.
+    #[cfg(test)]
+    pub fn new_test(identifier: Identifier) -> Self {
+        use device_driver_common::span::SpanExt;
+
+        Self::Object {
+            object_name: identifier.with_dummy_span(),
+        }
+    }
+}
+
+impl Display for UniqueId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UniqueId::Object { object_name } => write!(f, "{}", object_name.original()),
+            UniqueId::Field {
+                parent_id,
+                field_name,
+            } => write!(f, "{parent_id} {{ {} }}", field_name.original()),
+            UniqueId::Variant {
+                parent_id,
+                variant_name,
+            } => write!(f, "{parent_id} {{ {} }}", variant_name.original()),
+        }
+    }
+}
+
+pub trait Unique {
+    type Metadata;
+
+    fn id(&self) -> UniqueId
+    where
+        Self::Metadata: Empty;
+    fn id_with(&self, meta: Self::Metadata) -> UniqueId;
+
+    fn has_id(&self, id: &UniqueId) -> bool
+    where
+        Self::Metadata: Empty;
+    fn has_id_with(&self, meta: Self::Metadata, id: &UniqueId) -> bool {
+        self.id_with(meta) == *id
+    }
+}
+
+pub trait Empty {}
+impl Empty for () {}
+
+macro_rules! impl_unique_object {
+    ($t:ty) => {
+        impl Unique for $t {
+            type Metadata = ();
+
+            fn id(&self) -> UniqueId {
+                UniqueId::Object {
+                    object_name: self.name.clone(),
+                }
+            }
+
+            fn id_with(&self, _: Self::Metadata) -> UniqueId {
+                self.id()
+            }
+
+            fn has_id(&self, id: &UniqueId) -> bool {
+                match id {
+                    UniqueId::Object { object_name } => &self.name == object_name,
+                    _ => false,
+                }
+            }
+        }
+    };
+}
+
+impl_unique_object!(Device);
+impl_unique_object!(Register);
+impl_unique_object!(Command);
+impl_unique_object!(Buffer);
+impl_unique_object!(Block);
+impl_unique_object!(Enum);
+impl_unique_object!(FieldSet);
+impl_unique_object!(Extern);
+
+impl Unique for Field {
+    type Metadata = UniqueId;
+
+    fn id(&self) -> UniqueId {
+        unreachable!()
+    }
+
+    fn id_with(&self, parent: Self::Metadata) -> UniqueId {
+        UniqueId::Field {
+            parent_id: Box::new(parent),
+            field_name: self.name.clone(),
+        }
+    }
+
+    fn has_id(&self, _id: &UniqueId) -> bool {
+        unreachable!()
+    }
+}
+
+impl Unique for EnumVariant {
+    type Metadata = UniqueId;
+
+    fn id(&self) -> UniqueId {
+        unreachable!()
+    }
+
+    fn id_with(&self, parent: Self::Metadata) -> UniqueId {
+        UniqueId::Variant {
+            parent_id: Box::new(parent),
+            variant_name: self.name.clone(),
+        }
+    }
+
+    fn has_id(&self, _id: &UniqueId) -> bool {
+        unreachable!()
+    }
+}
+
+impl Unique for Object {
+    type Metadata = ();
+
+    fn id(&self) -> UniqueId {
+        match self {
+            Object::Device(val) => val.id(),
+            Object::Block(val) => val.id(),
+            Object::Register(val) => val.id(),
+            Object::Command(val) => val.id(),
+            Object::Buffer(val) => val.id(),
+            Object::FieldSet(val) => val.id(),
+            Object::Enum(val) => val.id(),
+            Object::Extern(val) => val.id(),
+        }
+    }
+
+    fn id_with(&self, (): Self::Metadata) -> UniqueId {
+        self.id()
+    }
+
+    fn has_id(&self, id: &UniqueId) -> bool {
+        match self {
+            Object::Device(val) => val.has_id(id),
+            Object::Block(val) => val.has_id(id),
+            Object::Register(val) => val.has_id(id),
+            Object::Command(val) => val.has_id(id),
+            Object::Buffer(val) => val.has_id(id),
+            Object::FieldSet(val) => val.has_id(id),
+            Object::Enum(val) => val.has_id(id),
+            Object::Extern(val) => val.has_id(id),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use device_driver_common::span::SpanExt;
+
+    use super::*;
+
+    #[test]
+    fn iter_works() {
+        const NAME_ORDER: &[&str] = &["a", "b", "c", "d"];
+
+        let mut manifest = Manifest {
+            root_objects: vec![
+                Object::Device(Device {
+                    description: String::new(),
+                    name: "a".into_with_dummy_span(),
+                    device_config: DeviceConfig {
+                        register_access: Some(Access::RW),
+                        ..Default::default()
+                    },
+                    objects: vec![
+                        Object::Extern(Extern {
+                            name: "b".into_with_dummy_span(),
+                            ..Default::default()
+                        }),
+                        Object::Extern(Extern {
+                            name: "c".into_with_dummy_span(),
+                            ..Default::default()
+                        }),
+                    ],
+                }),
+                Object::Extern(Extern {
+                    name: "d".into_with_dummy_span(),
+                    ..Default::default()
+                }),
+            ],
+            config: Default::default(),
+        };
+
+        let names: Vec<_> = manifest
+            .iter_objects()
+            .map(|o| o.name().original())
+            .collect();
+        assert_eq!(&names, NAME_ORDER);
+
+        let mut names = Vec::new();
+        let mut lender = manifest.iter_objects_with_config_mut();
+        while let Some((object, _)) = lender.next() {
+            names.push(object.name().original().to_string());
+        }
+        assert_eq!(&names, NAME_ORDER);
+    }
+
+    #[test]
+    fn correct_integer_size_bits() {
+        assert_eq!(Integer::U8.bits_required(0, 0), 0);
+        assert_eq!(Integer::U8.bits_required(0, 1), 1);
+        assert_eq!(Integer::U8.bits_required(0, 2), 2);
+        assert_eq!(Integer::U8.bits_required(0, 3), 2);
+        assert_eq!(Integer::U8.bits_required(0, 4), 3);
+
+        assert_eq!(Integer::I8.bits_required(0, 0), 0);
+        assert_eq!(Integer::I8.bits_required(-1, 0), 1);
+        assert_eq!(Integer::I8.bits_required(-1, 1), 2);
+        assert_eq!(Integer::I8.bits_required(0, 1), 2);
+        assert_eq!(Integer::I8.bits_required(-2, 1), 2);
+        assert_eq!(Integer::I8.bits_required(0, 2), 3);
+        assert_eq!(Integer::I8.bits_required(-128, 0), 8);
+        assert_eq!(Integer::I8.bits_required(-129, 0), 9);
+        assert_eq!(Integer::I8.bits_required(0, 127), 8);
+        assert_eq!(Integer::I8.bits_required(0, 128), 9);
+        assert_eq!(Integer::I8.bits_required(-16, 15), 5);
+        assert_eq!(Integer::I8.bits_required(-16, 16), 6);
+        assert_eq!(Integer::I8.bits_required(-17, 15), 6);
+    }
+}

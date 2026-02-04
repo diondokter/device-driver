@@ -2106,5 +2106,4 @@ impl From<E3> for i32 {
         }
     }
 }
-
 compile_error!("The device driver input has errors that need to be solved!");

@@ -14,15 +14,17 @@ readme = "README.md"
 
 [dependencies]
 device-driver-common.workspace = true
+device-driver-diagnostics.workspace = true
+device-driver-mir.workspace = true
+device-driver-lir.workspace = true
+device-driver-codegen.workspace = true
 
-convert_case = "0.10.0"
-itertools = "0.14.0"
+convert_case.workspace = true
+itertools.workspace = true
+miette.workspace = true
+thiserror.workspace = true
+
 quote = "1.0.33"
-bitvec = "1.0.1"
-askama = { version = "0.15.0", default-features = false, features = ["derive", "alloc"] }
-kdl = "6.5.0"
-miette = { version = "7.6.0", features = ["fancy"] }
-thiserror = "2.0.12"
 
 prettyplease = { version = "0.2.37", optional = true }
 syn = { version = "2.0", features = ["extra-traits"], optional = true }
