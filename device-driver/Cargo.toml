@@ -20,7 +20,7 @@ embedded-io-async = "0.7.0"
 defmt = { version = "1.0.1", optional = true }
 
 [dev-dependencies]
-bitvec = { version = "1.0.1", default-features = false }
+bitvec.workspace = true
 rand = "0.9"
 
 [features]

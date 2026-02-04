@@ -21,8 +21,8 @@ device-driver-core.workspace = true
 device-driver-diagnostics.workspace = true
 
 miette.workspace = true
+syn.workspace = true
 
-syn = { version = "2.0" }
 proc-macro2 = { version = "1.0.101", features = ["span-locations"] }
 rustversion = "1.0"
 

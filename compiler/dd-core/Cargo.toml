@@ -27,7 +27,7 @@ thiserror.workspace = true
 quote = "1.0.33"
 
 prettyplease = { version = "0.2.37", optional = true }
-syn = { version = "2.0", features = ["extra-traits"], optional = true }
+syn = { workspace = true, optional = true }
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"

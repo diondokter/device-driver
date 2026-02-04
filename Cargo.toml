@@ -37,6 +37,9 @@ itertools = "0.14.0"
 miette = { version = "7.6.0", features = ["fancy"] }
 convert_case = "0.10.0"
 thiserror = "2.0.18"
+clap = { version = "4.5", features = ["derive"] }
+bitvec = { version = "1.0.1", default-features = false }
+syn = "2"
 
 [patch.crates-io]
 # https://github.com/zkat/miette/pull/448

@@ -9,6 +9,7 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-miette = "7.6.0"
-convert_case = "0.10.0"
+miette.workspace = true
+convert_case.workspace = true
+
 unicode-ident = "1.0.22"
