@@ -1,5 +1,5 @@
 use clap::Parser;
-use device_driver_core::reporting::Diagnostics;
+use device_driver_diagnostics::Diagnostics;
 use miette::{Context, IntoDiagnostic};
 use std::{
     io::Write,
@@ -33,7 +33,7 @@ fn main() -> ExitCode {
 fn run() -> miette::Result<ExitCode> {
     let args = Args::parse();
 
-    device_driver_core::reporting::set_miette_hook(true);
+    device_driver_diagnostics::set_miette_hook(true);
 
     let input_contents = std::fs::read_to_string(&args.input_path)
         .into_diagnostic()
@@ -90,7 +90,7 @@ impl Target {
     #[must_use]
     pub fn generate(&self, input_contents: &str, input_path: &Path) -> (String, Diagnostics) {
         match self {
-            Target::Rust => device_driver_core::transform_kdl(input_contents, None, input_path),
+            Target::Rust => device_driver_core::compile(input_contents, None, input_path),
         }
     }
 }

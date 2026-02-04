@@ -3,9 +3,13 @@ resolver = "2"
 members = [
     "device-driver",
     "compiler/dd-cli",
-    "compiler/dd-core",
+    "compiler/dd-codegen",
     "compiler/dd-common",
+    "compiler/dd-core",
+    "compiler/dd-diagnostics",
+    "compiler/dd-lir",
     "compiler/dd-macros",
+    "compiler/dd-mir",
     "compiler/dd-wasm",
     "tests/ui",
 ]
@@ -21,9 +25,18 @@ package.edition = "2024"
 package.rust-version = "1.88"
 
 [workspace.dependencies]
-device-driver-core = { path = "compiler/dd-core", version = "=1.0.7" }
-device-driver-macros = { path = "compiler/dd-macros", version = "=1.0.7" }
+device-driver-codegen = { path = "compiler/dd-codegen", version = "=1.0.7" }
 device-driver-common = { path = "compiler/dd-common", version = "=1.0.7" }
+device-driver-core = { path = "compiler/dd-core", version = "=1.0.7" }
+device-driver-diagnostics = { path = "compiler/dd-diagnostics", version = "=1.0.7" }
+device-driver-lir = { path = "compiler/dd-lir", version = "=1.0.7" }
+device-driver-macros = { path = "compiler/dd-macros", version = "=1.0.7" }
+device-driver-mir = { path = "compiler/dd-mir", version = "=1.0.7" }
+
+itertools = "0.14.0"
+miette = { version = "7.6.0", features = ["fancy"] }
+convert_case = "0.10.0"
+thiserror = "2.0.18"
 
 [patch.crates-io]
 # https://github.com/zkat/miette/pull/448

@@ -6,10 +6,10 @@ extern crate wasm_bindgen;
 
 #[wasm_bindgen]
 pub fn compile(input: &str, chars_per_line: usize) -> Output {
-    device_driver_core::reporting::set_miette_hook(false);
+    device_driver_diagnostics::set_miette_hook(false);
 
     let (output, diagnostics) =
-        device_driver_core::transform_kdl(input, None, &PathBuf::from("input.kdl"));
+        device_driver_core::compile(input, None, &PathBuf::from("input.kdl"));
 
     let mut diagnostics_string = String::new();
     diagnostics

@@ -33,7 +33,7 @@ use syn::LitStr;
 /// ```
 #[proc_macro]
 pub fn create_device(item: TokenStream) -> TokenStream {
-    device_driver_core::reporting::set_miette_hook(true);
+    device_driver_diagnostics::set_miette_hook(true);
 
     let input = match syn::parse::<Input>(item) {
         Ok(i) => i,
@@ -57,9 +57,9 @@ pub fn create_device(item: TokenStream) -> TokenStream {
                 (kdl_input.value(), None)
             };
 
-            let (output, diagnostics) = device_driver_core::transform_kdl(
+            let (output, diagnostics) = device_driver_core::compile(
                 &file_contents,
-                span.map(device_driver_core::miette::SourceSpan::from),
+                span.map(miette::SourceSpan::from),
                 Path::new(&kdl_input.span().file()),
             );
 
@@ -90,7 +90,7 @@ pub fn create_device(item: TokenStream) -> TokenStream {
                     .unwrap();
 
                 let (output, diagnostics) =
-                    device_driver_core::transform_kdl(&file_contents, None, &path);
+                    device_driver_core::compile(&file_contents, None, &path);
 
                 diagnostics.print_to(stderr().lock()).unwrap();
 

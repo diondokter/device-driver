@@ -19,6 +19,8 @@ path = "src/main.rs"
 
 [dependencies]
 device-driver-core.workspace = true
+device-driver-diagnostics.workspace = true
+
+miette.workspace = true
 
 clap = { version = "4.5.20", features = ["derive"] }
-miette = "7.6.0"
