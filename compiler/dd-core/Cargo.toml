@@ -19,19 +19,14 @@ device-driver-mir.workspace = true
 device-driver-lir.workspace = true
 device-driver-codegen.workspace = true
 
-convert_case.workspace = true
 itertools.workspace = true
 miette.workspace = true
-thiserror.workspace = true
-
-quote = "1.0.33"
 
 prettyplease = { version = "0.2.37", optional = true }
 syn = { workspace = true, optional = true }
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"
-indoc = "2.0.5"
 
 [features]
 default = ["prettyplease"]
