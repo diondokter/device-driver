@@ -130,6 +130,14 @@ pub trait SpanExt {
         Spanned::new(span.into(), self)
     }
 
+    /// Same as [Self::with_span], but can avoid name collisions
+    fn spanned(self, span: impl Into<Span>) -> Spanned<Self>
+    where
+        Self: Sized,
+    {
+        self.with_span(span)
+    }
+
     fn with_dummy_span(self) -> Spanned<Self>
     where
         Self: Sized,
