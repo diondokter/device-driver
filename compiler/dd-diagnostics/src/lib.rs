@@ -40,6 +40,10 @@ impl Diagnostics {
         self.miette_reports.push(MietteReport::new(diagnostic));
     }
 
+    pub fn add(&mut self, diagnostic: impl Diagnostic + 'static) {
+        self.diagnostics.push(Box::new(diagnostic));
+    }
+
     #[must_use]
     pub fn has_error(&self) -> bool {
         let miette_has_error = self
@@ -182,7 +186,7 @@ pub fn set_miette_hook(user_facing: bool) {
 
 pub trait Diagnostic {
     fn is_error(&self) -> bool;
-    fn as_report<'a>(&'a self, source: &'a str, file_path: &'a str) -> Vec<Group<'a>>;
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>>;
 }
 
 impl<E: Error> Diagnostic for E {

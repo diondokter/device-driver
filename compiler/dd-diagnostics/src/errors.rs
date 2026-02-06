@@ -3,6 +3,7 @@
     reason = "Something going on with the diagnostics derive"
 )]
 
+use annotate_snippets::{AnnotationKind, Group, Level, Patch, Snippet};
 use convert_case::{Case, Casing};
 use device_driver_common::{
     identifier::{self, Identifier},
@@ -10,10 +11,12 @@ use device_driver_common::{
     specifiers::{BaseType, Integer, TypeConversion},
 };
 use itertools::Itertools;
-use miette::{Diagnostic, LabeledSpan};
+use miette::{Diagnostic as MietteDiagnostic, LabeledSpan};
 use thiserror::Error;
 
-#[derive(Error, Debug, Diagnostic)]
+use crate::Diagnostic;
+
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Missing object name")]
 #[diagnostic(
     help(
@@ -29,7 +32,7 @@ pub struct MissingObjectName {
     pub object_type: String,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Unexpected entries")]
 #[diagnostic(
     help(
@@ -62,7 +65,7 @@ impl UnexpectedEntries {
     }
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Unexpected node")]
 #[diagnostic(
     help("Expected a node with one of these names: {}", self.print_expected_names()),
@@ -84,7 +87,7 @@ impl UnexpectedNode {
     }
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Unexpected type")]
 #[diagnostic(severity(Error))]
 pub struct UnexpectedType {
@@ -94,7 +97,7 @@ pub struct UnexpectedType {
     pub expected_type: &'static str,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Unexpected value")]
 #[diagnostic(severity(Error))]
 pub struct UnexpectedValue {
@@ -113,7 +116,7 @@ impl UnexpectedValue {
     }
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Bad format")]
 #[diagnostic(
     help("An example: `{}`", self.example),
@@ -127,7 +130,7 @@ pub struct BadValueFormat {
     pub example: &'static str,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Value out of range")]
 #[diagnostic(severity(Error))]
 pub struct ValueOutOfRange {
@@ -138,7 +141,7 @@ pub struct ValueOutOfRange {
     pub range: &'static str,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Missing entry")]
 #[diagnostic(help("Check the book for all the requirements"), severity(Error))]
 pub struct MissingEntry {
@@ -156,7 +159,7 @@ impl MissingEntry {
     }
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Duplicate node")]
 #[diagnostic(
     help("This type of node can only appear once. Try removing one of the nodes"),
@@ -169,7 +172,7 @@ pub struct DuplicateNode {
     pub original: Span,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Duplicate entry")]
 #[diagnostic(
     help("This type of entry can only appear once. Try removing one of the entries"),
@@ -182,7 +185,7 @@ pub struct DuplicateEntry {
     pub original: Span,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Empty node")]
 #[diagnostic(
     help("This type of node should have children to specify what it contains"),
@@ -193,7 +196,7 @@ pub struct EmptyNode {
     pub node: Span,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Missing child node")]
 #[diagnostic(help("Check the book to see all required nodes"), severity(Error))]
 pub struct MissingChildNode {
@@ -204,7 +207,7 @@ pub struct MissingChildNode {
     pub missing_node_type: &'static str,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Inline enum definition without name")]
 #[diagnostic(
     help(
@@ -219,7 +222,7 @@ pub struct InlineEnumDefinitionWithoutName {
     pub existing_ty: Option<Span>,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Only base type allowed")]
 #[diagnostic(
     help(
@@ -248,7 +251,7 @@ impl OnlyBaseTypeAllowed {
     }
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Address specified in wrong order")]
 #[diagnostic(
     help("Addresses are specified with the high bit first and the low bit last"),
@@ -261,7 +264,7 @@ pub struct AddressWrongOrder {
     pub start: u32,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("No children were expected for this node")]
 #[diagnostic(severity(Error))]
 pub struct NoChildrenExpected {
@@ -269,7 +272,7 @@ pub struct NoChildrenExpected {
     pub children: Span,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Repeat is overspecified")]
 #[diagnostic(
     help(
@@ -284,7 +287,7 @@ pub struct RepeatOverSpecified {
     pub with: Span,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Field size is too big")]
 #[diagnostic(severity(Error), help("A field can be at most 64 bits"))]
 pub struct FieldSizeTooBig {
@@ -293,7 +296,7 @@ pub struct FieldSizeTooBig {
     pub size_bits: u32,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Device name is not Pascal cased")]
 #[diagnostic(
     severity(Error),
@@ -307,7 +310,7 @@ pub struct DeviceNameNotPascal {
     pub suggestion: String,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Duplicate name found")]
 #[diagnostic(
     severity(Error),
@@ -324,7 +327,7 @@ pub struct DuplicateName {
     pub duplicate_value: Identifier,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Enum has no variants")]
 #[diagnostic(severity(Error), help("All enums must have at least one variant"))]
 pub struct EmptyEnum {
@@ -332,7 +335,7 @@ pub struct EmptyEnum {
     pub enum_name: Span,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Two or more enum variants have the same value: {} ({:#X})", self.value, self.value)]
 #[diagnostic(severity(Error), help("All enum variants must have a unique value"))]
 pub struct DuplicateVariantValue {
@@ -341,7 +344,7 @@ pub struct DuplicateVariantValue {
     pub value: i128,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Enum uses an invalid base type")]
 #[diagnostic(severity(Error))]
 pub struct EnumBadBasetype {
@@ -355,7 +358,7 @@ pub struct EnumBadBasetype {
     pub context: Vec<LabeledSpan>,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Enum size-bits is bigger than its base type")]
 #[diagnostic(
     severity(Error),
@@ -371,7 +374,7 @@ pub struct EnumSizeBitsBiggerThanBaseType {
     pub size_bits: u32,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("No valid base type could be selected")]
 #[diagnostic(
     severity(Error),
@@ -384,7 +387,7 @@ pub struct EnumNoAutoBaseTypeSelected {
     pub enum_name: Span,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("One or more variant values are too high")]
 #[diagnostic(
     severity(Error),
@@ -398,7 +401,7 @@ pub struct VariantValuesTooHigh {
     pub max_value: i128,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("One or more variant values are too low")]
 #[diagnostic(
     severity(Error),
@@ -412,7 +415,7 @@ pub struct VariantValuesTooLow {
     pub min_value: i128,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("More than one default defined on enum")]
 #[diagnostic(severity(Error), help("An enum can have at most 1 default variant"))]
 pub struct EnumMultipleDefaults {
@@ -422,7 +425,7 @@ pub struct EnumMultipleDefaults {
     pub variant_names: Vec<Span>,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("More than one catch-all defined on enum")]
 #[diagnostic(severity(Error), help("An enum can have at most 1 catch-all variant"))]
 pub struct EnumMultipleCatchalls {
@@ -432,7 +435,7 @@ pub struct EnumMultipleCatchalls {
     pub variant_names: Vec<Span>,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("The referenced object does not exist")]
 #[diagnostic(
     severity(Error),
@@ -445,7 +448,7 @@ pub struct ReferencedObjectDoesNotExist {
     pub object_reference: Span,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("The referenced object is invalid")]
 #[diagnostic(severity(Error))]
 pub struct ReferencedObjectInvalid {
@@ -457,7 +460,7 @@ pub struct ReferencedObjectInvalid {
     pub help: String,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("The repeat uses an enum that has defined a catch-all")]
 #[diagnostic(
     severity(Error),
@@ -472,7 +475,7 @@ pub struct RepeatEnumWithCatchAll {
     pub catch_all: Span,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Extern object uses invalid base type")]
 #[diagnostic(
     severity(Error),
@@ -487,7 +490,7 @@ pub struct ExternInvalidBaseType {
     pub base_type: Option<Span>,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Field uses a conversion with a different base type")]
 #[diagnostic(
     severity(Error),
@@ -504,7 +507,7 @@ pub struct DifferentBaseTypes {
     pub conversion_base_type: BaseType,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Invalid infallible conversion")]
 #[diagnostic(
     severity(Error),
@@ -521,7 +524,7 @@ pub struct InvalidInfallibleConversion {
     pub existing_type_specifier_content: String,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Unspecied byte order")]
 #[diagnostic(
     severity(Error),
@@ -534,7 +537,7 @@ pub struct UnspecifiedByteOrder {
     pub fieldset_name: Span,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Reset value is too big")]
 #[diagnostic(
     severity(Error),
@@ -551,7 +554,7 @@ pub struct ResetValueTooBig {
     pub register_size_bits: u32,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Reset value is too big")]
 #[diagnostic(
     severity(Error),
@@ -566,7 +569,7 @@ pub struct ResetValueArrayWrongSize {
     pub register_size_bytes: u32,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Bool field too large")]
 #[diagnostic(
     severity(Error),
@@ -580,7 +583,7 @@ pub struct BoolFieldTooLarge {
     pub address_bits: u32,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Field has a size of 0")]
 #[diagnostic(
     severity(Warning),
@@ -592,7 +595,7 @@ pub struct ZeroSizeField {
     pub address_bits: u32,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Field address exceeds fieldset size")]
 #[diagnostic(
     severity(Error),
@@ -617,7 +620,7 @@ impl FieldAddressExceedsFieldsetSize {
     }
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Field address is negative")]
 #[diagnostic(
     severity(Error),
@@ -639,7 +642,7 @@ impl FieldAddressNegative {
     }
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Overlapping fields")]
 #[diagnostic(
     severity(Error),
@@ -675,7 +678,7 @@ impl OverlappingFields {
     }
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("{} address type not defined", object_type.to_case(Case::Pascal))]
 #[diagnostic(
     severity(Error),
@@ -689,23 +692,70 @@ pub struct AddressTypeUndefined {
     pub object_type: &'static str,
 }
 
-#[derive(Error, Debug, Diagnostic)]
-#[error("Address out of range")]
-#[diagnostic(
-    severity(Error),
-    help("Use an address type that fits the whole range being used")
-)]
 pub struct AddressOutOfRange {
-    #[label("Address goes up/down to {address_value}{}", if *has_repeat {" (including repeats)" } else { "" })]
+    pub object: Span,
     pub address: Span,
-    pub address_value: i128,
-    pub has_repeat: bool,
-    #[label("Address type supports a range of {} to {}", address_type.min_value(), address_type.max_value())]
+    pub address_value_min: i128,
+    pub address_value_max: i128,
     pub address_type_config: Span,
     pub address_type: Integer,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+impl Diagnostic for AddressOutOfRange {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        vec![
+            Level::ERROR
+                .primary_title("address out of range")
+                .element(
+                    Snippet::source(source)
+                        .path(path)
+                        .annotation(AnnotationKind::Primary.span(self.address.into()).label(
+                            if self.address_value_min == self.address_value_max {
+                                format!("address has value: {}", self.address_value_max,)
+                            } else {
+                                format!(
+                                    "address ranges from {} to {}",
+                                    self.address_value_min, self.address_value_max,
+                                )
+                            },
+                        ))
+                        .annotation(AnnotationKind::Visible.span(self.object.into())),
+                )
+                .element(
+                    Snippet::source(source).path(path).annotation(
+                        AnnotationKind::Context
+                            .span(self.address_type_config.into())
+                            .label(format!(
+                                "address type supports a range of {} to {}",
+                                self.address_type.min_value(),
+                                self.address_type.max_value()
+                            )),
+                    ),
+                ),
+            if let Some(fitting_integer) =
+                Integer::find_smallest(self.address_value_min, self.address_value_max, 0)
+            {
+                Level::HELP
+                    .secondary_title("use an address type that fits the whole range being used")
+                    .element(Snippet::source(source).path(path).patch(Patch::new(
+                        self.address_type_config.into(),
+                        fitting_integer.to_string(),
+                    )))
+            } else {
+                Group::with_title(
+                    Level::HELP
+                        .secondary_title("address is too big to fit any possible address type"),
+                )
+            },
+        ]
+    }
+}
+
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Address overlap at {address} ({address:#X})")]
 #[diagnostic(
     severity(Error),
@@ -723,7 +773,7 @@ pub struct AddressOverlap {
     pub repeat_offset_2: Option<i128>,
 }
 
-#[derive(Error, Debug, Diagnostic)]
+#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Invalid identifier used")]
 #[diagnostic(
     severity(Error),

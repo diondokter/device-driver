@@ -58,33 +58,21 @@ fn check_device(
         return;
     };
 
-    let Some(((min_address, min_obj), (max_address, max_obj))) =
+    let Some(((min_address, min_obj), (max_address, _))) =
         find_min_max_addresses(manifest, device, filter)
     else {
         return;
     };
 
-    if min_address < address_type.min_value() {
-        diagnostics.add_miette(AddressOutOfRange {
+    if min_address < address_type.min_value() || max_address > address_type.max_value() {
+        diagnostics.add(AddressOutOfRange {
+            object: min_obj.name_span(),
             address: min_obj
                 .address()
                 .expect("All objects here should have addresses")
                 .span,
-            address_value: min_address,
-            has_repeat: min_obj.repeat().is_some(),
-            address_type_config: address_type.span,
-            address_type: address_type.value,
-        });
-        removals.insert(device.id());
-    }
-    if max_address > address_type.max_value() {
-        diagnostics.add_miette(AddressOutOfRange {
-            address: max_obj
-                .address()
-                .expect("All objects here should have addresses")
-                .span,
-            address_value: max_address,
-            has_repeat: max_obj.repeat().is_some(),
+            address_value_min: min_address,
+            address_value_max: max_address,
             address_type_config: address_type.span,
             address_type: address_type.value,
         });
