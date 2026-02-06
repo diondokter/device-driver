@@ -103,8 +103,11 @@ function diagnostics_chars_per_line() {
  * @returns {String}
  * */
 function replace_paths_with_links(diagnostics) {
-    return diagnostics.replace(/\[.+.kdl:\d+:\d+]/gm, (path_block) => {
+    return diagnostics.replace(/\[.+.kdl:\d+:\d+]/gm, (path_block) => { // For miette reports
         var splits = path_block.replace("]", "").split(":");
+        return `<a href="javascript:Website.then((w) => w.scroll_to(${Number.parseInt(splits[1])}, ${Number.parseInt(splits[2])}))">${path_block}</a>`;
+    }).replace(/\w+.kdl:\d+:\d+/gm, (path_block) => { // For annotate-snippets reports
+        var splits = path_block.split(":");
         return `<a href="javascript:Website.then((w) => w.scroll_to(${Number.parseInt(splits[1])}, ${Number.parseInt(splits[2])}))">${path_block}</a>`;
     });
 }

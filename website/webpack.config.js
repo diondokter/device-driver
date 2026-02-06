@@ -27,7 +27,7 @@ module.exports = {
         new WasmPackPlugin({
             crateDirectory: path.resolve(__dirname, "../compiler/dd-wasm"),
             watchDirectories: [
-                path.resolve(__dirname, "../compiler/dd-core")
+                path.resolve(__dirname, "../compiler")
             ],
             outDir: path.resolve(__dirname, "pkg"),
             outName: "device_driver_wasm"
