@@ -1,4 +1,5 @@
 use clap::Command;
+use device_driver_diagnostics::Metadata;
 
 fn main() {
     let matches = Command::new("Tests")
@@ -29,7 +30,7 @@ fn accept() {
         }
         println!("{}", test_case.path().display());
 
-        let input_paths: Vec<_> = std::fs::read_dir(test_case.path())
+        let source_paths: Vec<_> = std::fs::read_dir(test_case.path())
             .unwrap()
             .filter(|entry| {
                 entry
@@ -42,20 +43,38 @@ fn accept() {
             .map(|entry| entry.unwrap().path())
             .collect();
 
-        for input_path in input_paths {
-            let input = std::fs::read_to_string(&input_path).unwrap();
+        for source_path in source_paths {
+            let source = std::fs::read_to_string(&source_path).unwrap();
 
-            let input_extension = input_path.extension().unwrap().display().to_string();
-            let (transformed, diagnostics) = match &*input_extension {
+            let source_extension = source_path.extension().unwrap().display().to_string();
+            let (transformed, diagnostics) = match &*source_extension {
                 "kdl" => {
-                    let (transformed, diagnostics) =
-                        device_driver_core::compile(&input, None, &input_path);
-                    (transformed, diagnostics.to_string())
+                    let (transformed, diagnostics) = device_driver_core::compile(&source, None);
+                    let mut diagnostics_output = String::new();
+
+                    diagnostics
+                        .print_to_fmt(
+                            &mut diagnostics_output,
+                            Metadata {
+                                source: &source,
+                                source_path: &source_path
+                                    .strip_prefix(std::env::current_dir().unwrap())
+                                    .unwrap()
+                                    .display()
+                                    .to_string(),
+                                term_width: None,
+                                use_color: false,
+                                unicode: false,
+                                anonymized_line_numbers: true,
+                            },
+                        )
+                        .unwrap();
+                    (transformed, diagnostics_output)
                 }
                 e => panic!("Unrecognized extension: {e:?}"),
             };
 
-            let diagnostics_path = input_path
+            let diagnostics_path = source_path
                 .with_file_name("diagnostics")
                 .with_extension("txt");
             std::fs::write(

@@ -27,7 +27,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                     match target_object {
                         Some(Object::Enum(target_enum)) => {
                             if field.base_type != target_enum.base_type {
-                                diagnostics.add(DifferentBaseTypes {
+                                diagnostics.add_miette(DifferentBaseTypes {
                                     field: field.name.span,
                                     field_base_type: field.base_type.value,
                                     conversion: conversion.type_name.span,
@@ -46,7 +46,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                                     .expect("Generation style has been set here in an earlier pass")
                                 {
                                     EnumGenerationStyle::Fallible => {
-                                        diagnostics.add(InvalidInfallibleConversion {
+                                        diagnostics.add_miette(InvalidInfallibleConversion {
                                             conversion: conversion.type_name.span,
                                             context: vec![LabeledSpan::new_with_span(
                                                 Some(
@@ -68,7 +68,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                                         );
 
                                         if field_bits > enum_bits {
-                                            diagnostics.add(InvalidInfallibleConversion {
+                                            diagnostics.add_miette(InvalidInfallibleConversion {
                                                 conversion: conversion.type_name.span,
                                                 context: vec![
                                                         LabeledSpan::new_with_span(
@@ -98,7 +98,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                         }
                         Some(Object::Extern(target_extern)) => {
                             if field.base_type != target_extern.base_type {
-                                diagnostics.add(DifferentBaseTypes {
+                                diagnostics.add_miette(DifferentBaseTypes {
                                     field: field.name.span,
                                     field_base_type: field.base_type.value,
                                     conversion: conversion.type_name.span,
@@ -110,7 +110,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                             }
 
                             if !conversion.fallible && !target_extern.supports_infallible {
-                                diagnostics.add(InvalidInfallibleConversion {
+                                diagnostics.add_miette(InvalidInfallibleConversion {
                                     conversion: conversion.type_name.span,
                                     context: vec![LabeledSpan::new_with_span(
                                         Some("Target only supports fallible conversion".into()),
@@ -124,7 +124,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                             }
                         }
                         Some(invalid_object) => {
-                            diagnostics.add(ReferencedObjectInvalid {
+                            diagnostics.add_miette(ReferencedObjectInvalid {
                                 object_reference: conversion.type_name.span,
                                 referenced_object: invalid_object.name_span(),
                                 help: format!("The referenced object is of type `{}`. But conversions can only reference `enum` and `external` objects.", invalid_object.object_type_name())
@@ -133,7 +133,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                             continue;
                         }
                         None => {
-                            diagnostics.add(ReferencedObjectDoesNotExist {
+                            diagnostics.add_miette(ReferencedObjectDoesNotExist {
                                 object_reference: conversion.type_name.span,
                             });
                             removals.insert(field.id_with(field_set.id()));

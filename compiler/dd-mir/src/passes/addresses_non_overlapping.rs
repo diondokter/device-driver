@@ -30,7 +30,7 @@ fn check_for_overlap(addresses: &[ObjectAddress], diagnostics: &mut Diagnostics)
             if address.address == check_address.address
                 && (!address.allow_overlap || !check_address.allow_overlap)
             {
-                diagnostics.add(AddressOverlap {
+                diagnostics.add_miette(AddressOverlap {
                     address: address.address,
                     object_1: address.id.span(),
                     repeat_offset_1: address.repeat_offset,

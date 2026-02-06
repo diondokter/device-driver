@@ -92,7 +92,7 @@ fn convert_reset_value(
 
             // Check if the value is not too big
             if array_view[size_bits as usize..].any() {
-                diagnostics.add(ResetValueTooBig {
+                diagnostics.add_miette(ResetValueTooBig {
                     reset_value: reset_value.span,
                     reset_value_size_bits: (array_view.len() - array_view.trailing_zeros()) as u32,
                     register_size_bits: size_bits,
@@ -116,7 +116,7 @@ fn convert_reset_value(
         }
         ResetValue::Array(mut array) => {
             if array.len() != target_byte_size {
-                diagnostics.add(ResetValueArrayWrongSize {
+                diagnostics.add_miette(ResetValueArrayWrongSize {
                     reset_value: reset_value.span,
                     reset_value_size_bytes: array.len() as u32,
                     register_size_bytes: target_byte_size as u32,
@@ -132,7 +132,7 @@ fn convert_reset_value(
             match bit_order {
                 BitOrder::LSB0 => {
                     if array.view_bits::<Lsb0>()[size_bits as usize..].any() {
-                        diagnostics.add(ResetValueTooBig {
+                        diagnostics.add_miette(ResetValueTooBig {
                             reset_value: reset_value.span,
                             reset_value_size_bits: (array.view_bits::<Lsb0>().len()
                                 - array.view_bits::<Lsb0>().trailing_zeros())
@@ -144,7 +144,7 @@ fn convert_reset_value(
                 }
                 BitOrder::MSB0 => {
                     if array.view_bits::<Msb0>()[size_bits as usize..].any() {
-                        diagnostics.add(ResetValueTooBig {
+                        diagnostics.add_miette(ResetValueTooBig {
                             reset_value: reset_value.span,
                             reset_value_size_bits: (array.view_bits::<Msb0>().len()
                                 - array.view_bits::<Msb0>().trailing_zeros())

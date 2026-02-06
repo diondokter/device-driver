@@ -69,7 +69,7 @@ fn repeat_is_ok(repeat: &Repeat, manifest: &Manifest, diagnostics: &mut Diagnost
 
     if let Some(Object::Enum(enum_value)) = search_object(manifest, repeat_enum) {
         if let Some(catch_all) = enum_catch_all(enum_value) {
-            diagnostics.add(RepeatEnumWithCatchAll {
+            diagnostics.add_miette(RepeatEnumWithCatchAll {
                 repeat_enum: repeat_enum.span,
                 enum_name: enum_value.name.span,
                 catch_all,
@@ -79,7 +79,7 @@ fn repeat_is_ok(repeat: &Repeat, manifest: &Manifest, diagnostics: &mut Diagnost
             true
         }
     } else {
-        diagnostics.add(ReferencedObjectDoesNotExist {
+        diagnostics.add_miette(ReferencedObjectDoesNotExist {
             object_reference: repeat_enum.span,
         });
         false

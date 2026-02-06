@@ -65,7 +65,7 @@ fn check_device(
     };
 
     if min_address < address_type.min_value() {
-        diagnostics.add(AddressOutOfRange {
+        diagnostics.add_miette(AddressOutOfRange {
             address: min_obj
                 .address()
                 .expect("All objects here should have addresses")
@@ -78,7 +78,7 @@ fn check_device(
         removals.insert(device.id());
     }
     if max_address > address_type.max_value() {
-        diagnostics.add(AddressOutOfRange {
+        diagnostics.add_miette(AddressOutOfRange {
             address: max_obj
                 .address()
                 .expect("All objects here should have addresses")

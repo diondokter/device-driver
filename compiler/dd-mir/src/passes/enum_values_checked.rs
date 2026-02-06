@@ -27,7 +27,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
         };
 
         if enum_value.variants.is_empty() {
-            diagnostics.add(EmptyEnum {
+            diagnostics.add_miette(EmptyEnum {
                 enum_name: enum_value.name.span,
             });
             removals.insert(enum_value.id());
@@ -58,7 +58,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
             .sorted_unstable_by_key(|(value, _)| *value)
         {
             if variants.len() > 1 {
-                diagnostics.add(DuplicateVariantValue {
+                diagnostics.add_miette(DuplicateVariantValue {
                     duplicates: variants.iter().map(|id| id.span()).collect(),
                     value,
                 });
@@ -82,7 +82,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                 enum_value.size_bits.unwrap_or_default(),
             ),
             BaseType::Bool => {
-                diagnostics.add(EnumBadBasetype {
+                diagnostics.add_miette(EnumBadBasetype {
                     enum_name: enum_value.name.span,
                     base_type: enum_value.base_type.span,
                     help: "All enums must have an integer as base type",
@@ -99,7 +99,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                 );
 
                 if integer.is_some_and(|i| i.is_signed()) {
-                    diagnostics.add(EnumBadBasetype {
+                    diagnostics.add_miette(EnumBadBasetype {
                         enum_name: enum_value.name.span,
                         base_type: enum_value.base_type.span,
                         help: "All enums must use a signed integer if it contains a variant with a negative value",
@@ -118,7 +118,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
             ),
             BaseType::FixedSize(integer) => {
                 if enum_value.size_bits.unwrap_or_default() > integer.size_bits() {
-                    diagnostics.add(EnumSizeBitsBiggerThanBaseType {
+                    diagnostics.add_miette(EnumSizeBitsBiggerThanBaseType {
                         enum_name: enum_value.name.span,
                         base_type: enum_value.base_type.span,
                         size_bits: enum_value.size_bits.unwrap_or_default(),
@@ -128,7 +128,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                 }
 
                 if !integer.is_signed() && seen_min.is_negative() {
-                    diagnostics.add(EnumBadBasetype {
+                    diagnostics.add_miette(EnumBadBasetype {
                         enum_name: enum_value.name.span,
                         base_type: enum_value.base_type.span,
                         help: "All enums must use a signed integer if it contains a variant with a negative value",
@@ -143,7 +143,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
         };
 
         let Some(base_type_integer) = base_type_integer else {
-            diagnostics.add(EnumNoAutoBaseTypeSelected {
+            diagnostics.add_miette(EnumNoAutoBaseTypeSelected {
                 enum_name: enum_value.name.span,
             });
             removals.insert(enum_value.id());
@@ -193,7 +193,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
             .collect::<Vec<_>>();
 
         if !too_high_values.is_empty() {
-            diagnostics.add(VariantValuesTooHigh {
+            diagnostics.add_miette(VariantValuesTooHigh {
                 variant_names: too_high_values,
                 enum_name: enum_value.name.span,
                 max_value: *all_values.end(),
@@ -202,7 +202,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
             continue;
         }
         if !too_low_values.is_empty() {
-            diagnostics.add(VariantValuesTooLow {
+            diagnostics.add_miette(VariantValuesTooLow {
                 variant_names: too_low_values,
                 enum_name: enum_value.name.span,
                 min_value: *all_values.start(),
@@ -220,7 +220,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
             .collect::<Vec<_>>();
 
         if default_variants.len() > 1 {
-            diagnostics.add(EnumMultipleDefaults {
+            diagnostics.add_miette(EnumMultipleDefaults {
                 variant_names: default_variants,
                 enum_name: enum_value.name.span,
             });
@@ -246,7 +246,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
             .collect::<Vec<_>>();
 
         if catch_all_variants.len() > 1 {
-            diagnostics.add(EnumMultipleCatchalls {
+            diagnostics.add_miette(EnumMultipleCatchalls {
                 variant_names: catch_all_variants,
                 enum_name: enum_value.name.span,
             });

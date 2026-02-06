@@ -18,7 +18,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
                 }
 
                 if field.field_address.value.clone().count() != 1 {
-                    diagnostics.add(BoolFieldTooLarge {
+                    diagnostics.add_miette(BoolFieldTooLarge {
                         base_type: if field.base_type.span.is_empty() {
                             None
                         } else {

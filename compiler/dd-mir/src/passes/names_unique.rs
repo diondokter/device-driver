@@ -18,7 +18,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
     while let Some((object, _)) = iter.next() {
         if !seen_ids.insert(object.id()) {
             let original = seen_ids.get(&object.id()).unwrap();
-            diagnostics.add(DuplicateName {
+            diagnostics.add_miette(DuplicateName {
                 original: original.span(),
                 original_value: original.identifier().clone(),
                 duplicate: object.id().span(),
@@ -35,7 +35,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
                 let field_id = field.id_with(fs_id.clone());
                 if !seen_ids.insert(field_id.clone()) {
                     let original = seen_ids.get(&field_id).unwrap();
-                    diagnostics.add(DuplicateName {
+                    diagnostics.add_miette(DuplicateName {
                         original: original.span(),
                         original_value: original.identifier().clone(),
                         duplicate: field_id.span(),
@@ -54,7 +54,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
                 let variant_id = variant.id_with(e_id.clone());
                 if !seen_ids.insert(variant_id.clone()) {
                     let original = seen_ids.get(&e_id).unwrap();
-                    diagnostics.add(DuplicateName {
+                    diagnostics.add_miette(DuplicateName {
                         original: original.span(),
                         original_value: original.identifier().clone(),
                         duplicate: variant_id.span(),

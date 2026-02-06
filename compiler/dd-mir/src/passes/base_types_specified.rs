@@ -21,7 +21,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
                             if let Some(integer) = Integer::find_smallest(0, 0, size_bits) {
                                 BaseType::FixedSize(integer)
                             } else {
-                                diagnostics.add(FieldSizeTooBig {
+                                diagnostics.add_miette(FieldSizeTooBig {
                                     field_address: field.field_address.span,
                                     size_bits,
                                 });
@@ -34,7 +34,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
                             if let Some(integer) = Integer::find_smallest(-1, 0, size_bits) {
                                 BaseType::FixedSize(integer)
                             } else {
-                                diagnostics.add(FieldSizeTooBig {
+                                diagnostics.add_miette(FieldSizeTooBig {
                                     field_address: field.field_address.span,
                                     size_bits,
                                 });

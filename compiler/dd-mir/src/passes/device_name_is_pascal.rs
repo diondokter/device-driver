@@ -31,7 +31,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
             .apply_boundaries(&lenient_pascal_boundaries)
             .check_validity()
         {
-            diagnostics.add(InvalidIdentifier::new(e, device.name.span));
+            diagnostics.add_miette(InvalidIdentifier::new(e, device.name.span));
             removals.insert(device.id());
             continue;
         }
@@ -39,7 +39,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
         let converted_driver_name = &device.name.original().to_case(lenient_pascal_case);
 
         if device.name.value.original() != converted_driver_name {
-            diagnostics.add(DeviceNameNotPascal {
+            diagnostics.add_miette(DeviceNameNotPascal {
                 device_name: device.name.span,
                 suggestion: converted_driver_name.clone(),
             });

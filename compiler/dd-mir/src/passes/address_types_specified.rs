@@ -20,7 +20,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                     continue;
                 }
 
-                diagnostics.add(AddressTypeUndefined {
+                diagnostics.add_miette(AddressTypeUndefined {
                     object: object.name_span(),
                     config_device: device.span(),
                     object_type: "register",
@@ -35,7 +35,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                     continue;
                 }
 
-                diagnostics.add(AddressTypeUndefined {
+                diagnostics.add_miette(AddressTypeUndefined {
                     object: object.name_span(),
                     config_device: device.span(),
                     object_type: "command",
@@ -51,7 +51,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                     continue;
                 }
 
-                diagnostics.add(AddressTypeUndefined {
+                diagnostics.add_miette(AddressTypeUndefined {
                     object: object.name_span(),
                     config_device: device.span(),
                     object_type: "buffer",

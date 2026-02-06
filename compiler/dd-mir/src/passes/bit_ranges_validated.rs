@@ -39,7 +39,7 @@ fn validate_len(
         let field_len = field.field_address.value.clone().count();
 
         if field_len == 0 {
-            diagnostics.add(ZeroSizeField {
+            diagnostics.add_miette(ZeroSizeField {
                 address: field.field_address.span,
                 address_bits: field_len as u32,
             });
@@ -54,7 +54,7 @@ fn validate_len(
         let min_field_start = i128::from(field.field_address.start) + min_repeat_offset;
 
         if max_field_end > i128::from(field_set.size_bits.value) {
-            diagnostics.add(FieldAddressExceedsFieldsetSize {
+            diagnostics.add_miette(FieldAddressExceedsFieldsetSize {
                 address: field.field_address.span,
                 max_field_end: max_field_end - 1,
                 repeat_offset: repeated.then_some(*max_repeat_offset),
@@ -65,7 +65,7 @@ fn validate_len(
         }
 
         if min_field_start < 0 {
-            diagnostics.add(FieldAddressNegative {
+            diagnostics.add_miette(FieldAddressNegative {
                 address: field.field_address.span,
                 min_field_start,
                 repeat_offset: repeated.then_some(*min_repeat_offset),
@@ -90,7 +90,7 @@ fn validate_overlap(field_set: &FieldSet, manifest: &Manifest, diagnostics: &mut
                         &second_field.field_address,
                         *second_offset,
                     ) {
-                        diagnostics.add(OverlappingFields {
+                        diagnostics.add_miette(OverlappingFields {
                             field_address_1: field.field_address.span,
                             repeat_offset_1: repeated.then_some(*offset),
                             field_address_start_1: i128::from(field.field_address.start) + offset,
