@@ -554,7 +554,7 @@ pub struct ResetValueTooBig {
 }
 
 #[derive(Error, Debug, MietteDiagnostic)]
-#[error("Reset value is too big")]
+#[error("Reset value wrong size")]
 #[diagnostic(
     severity(Error),
     help("Reset values must have the same size as their associated register")

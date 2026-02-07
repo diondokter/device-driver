@@ -1,9 +1,5 @@
 use std::collections::HashMap;
 
-use bitvec::{
-    order::{Lsb0, Msb0},
-    view::BitView,
-};
 use device_driver_common::{
     span::{SpanExt, Spanned},
     specifiers::{BitOrder, ByteOrder, ResetValue},
@@ -82,39 +78,31 @@ fn convert_reset_value(
 
     match reset_value.value {
         ResetValue::Integer(int) => {
-            // Convert the integer to LE and LSB0
-            let mut array = int.to_le_bytes();
-            if bit_order == BitOrder::MSB0 {
-                array.iter_mut().for_each(|b| *b = b.reverse_bits());
-            }
+            // Assert int is a u128. The rest of the calculations bank on that
+            let _: u128 = int;
 
-            let array_view = array.view_bits_mut::<Lsb0>();
+            let mut array = vec![0; target_byte_size];
+            match (target_byte_order, bit_order) {
+                (ByteOrder::LE, BitOrder::LSB0) | (ByteOrder::BE, BitOrder::MSB0) => {
+                    let num_bytes_used = target_byte_size.min(8);
+                    array[..num_bytes_used].copy_from_slice(&int.to_le_bytes()[..num_bytes_used]);
+                }
+                (ByteOrder::BE, BitOrder::LSB0) | (ByteOrder::LE, BitOrder::MSB0) => {
+                    let tmp = int.to_be_bytes();
+                    let tmp_slice = &tmp[tmp.len() - target_byte_size.min(8)..];
+                    array[target_byte_size - tmp_slice.len()..].copy_from_slice(tmp_slice);
+                }
+            };
 
-            // Check if the value is not too big
-            if array_view[size_bits as usize..].any() {
-                diagnostics.add_miette(ResetValueTooBig {
-                    reset_value: reset_value.span,
-                    reset_value_size_bits: (array_view.len() - array_view.trailing_zeros()) as u32,
-                    register_size_bits: size_bits,
-                });
-                return None;
-            }
-
-            let mut final_array = array[..target_byte_size].to_vec();
-
-            // Flip the bitorder back to the target, but crucially keep the byte order little endian!
-            if bit_order == BitOrder::MSB0 {
-                final_array.iter_mut().for_each(|b| *b = b.reverse_bits());
-            }
-
-            // Convert to big endian if required. Bitvec's output is always little endian
-            if target_byte_order == ByteOrder::BE {
-                final_array.reverse();
-            }
-
-            Some(ResetValue::Array(final_array).with_span(reset_value.span))
+            convert_reset_value(
+                ResetValue::Array(array).with_span(reset_value.span),
+                bit_order,
+                size_bits,
+                target_byte_order,
+                diagnostics,
+            )
         }
-        ResetValue::Array(mut array) => {
+        ResetValue::Array(array) => {
             if array.len() != target_byte_size {
                 diagnostics.add_miette(ResetValueArrayWrongSize {
                     reset_value: reset_value.span,
@@ -124,41 +112,36 @@ fn convert_reset_value(
                 return None;
             }
 
-            // Convert to little endian to do the check since that's what bitvec needs
-            if target_byte_order == ByteOrder::BE {
-                array.reverse();
+            if array.is_empty() {
+                return Some(ResetValue::Array(array).with_span(reset_value.span));
             }
 
-            match bit_order {
-                BitOrder::LSB0 => {
-                    if array.view_bits::<Lsb0>()[size_bits as usize..].any() {
-                        diagnostics.add_miette(ResetValueTooBig {
-                            reset_value: reset_value.span,
-                            reset_value_size_bits: (array.view_bits::<Lsb0>().len()
-                                - array.view_bits::<Lsb0>().trailing_zeros())
-                                as u32,
-                            register_size_bits: size_bits,
-                        });
-                        return None;
-                    }
-                }
-                BitOrder::MSB0 => {
-                    if array.view_bits::<Msb0>()[size_bits as usize..].any() {
-                        diagnostics.add_miette(ResetValueTooBig {
-                            reset_value: reset_value.span,
-                            reset_value_size_bits: (array.view_bits::<Msb0>().len()
-                                - array.view_bits::<Msb0>().trailing_zeros())
-                                as u32,
-                            register_size_bits: size_bits,
-                        });
-                        return None;
-                    }
-                }
-            }
+            let biggest_byte = match target_byte_order {
+                ByteOrder::LE => array.last().unwrap(),
+                ByteOrder::BE => array.first().unwrap(),
+            };
 
-            // Convert back to big endian
-            if target_byte_order == ByteOrder::BE {
-                array.reverse();
+            // We process with LSB0, so convert
+            let lsb0_biggest_byte = if bit_order == BitOrder::MSB0 {
+                biggest_byte.reverse_bits()
+            } else {
+                *biggest_byte
+            };
+
+            let used_bits = lsb0_biggest_byte
+                .checked_ilog2()
+                .map(|log| log + 1)
+                .unwrap_or(0)
+                + (target_byte_size as u32 - 1) * 8;
+
+            // Check if the value is not too big
+            if used_bits > size_bits {
+                diagnostics.add_miette(ResetValueTooBig {
+                    reset_value: reset_value.span,
+                    reset_value_size_bits: used_bits,
+                    register_size_bits: size_bits,
+                });
+                return None;
             }
 
             Some(ResetValue::Array(array).with_span(reset_value.span))
@@ -569,13 +552,13 @@ mod tests {
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".into_with_dummy_span(),
-                    reset_value: Some(ResetValue::Integer(0xF8).with_dummy_span()),
+                    reset_value: Some(ResetValue::Integer(0xFF80).with_dummy_span()),
                     field_set_ref: IdentifierRef::new("fs".into()),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
                     name: "fs".into_with_dummy_span(),
-                    size_bits: 5.with_dummy_span(),
+                    size_bits: 9.with_dummy_span(),
                     bit_order: Some(BitOrder::MSB0),
                     byte_order: Some(ByteOrder::LE),
                     ..Default::default()
@@ -596,13 +579,13 @@ mod tests {
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".into_with_dummy_span(),
-                    reset_value: Some(ResetValue::Array(vec![0xF8]).with_dummy_span()),
+                    reset_value: Some(ResetValue::Array(vec![0xFF, 0x80]).with_dummy_span()),
                     field_set_ref: IdentifierRef::new("fs".into()),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
                     name: "fs".into_with_dummy_span(),
-                    size_bits: 5.with_dummy_span(),
+                    size_bits: 9.with_dummy_span(),
                     bit_order: Some(BitOrder::MSB0),
                     byte_order: Some(ByteOrder::LE),
                     ..Default::default()
