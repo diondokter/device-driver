@@ -1,12 +1,8 @@
 use std::collections::HashMap;
 
-use bitvec::{
-    order::{Lsb0, Msb0},
-    view::BitView,
-};
 use device_driver_common::{
     span::{SpanExt, Spanned},
-    specifiers::{BitOrder, ByteOrder, ResetValue},
+    specifiers::{ByteOrder, ResetValue},
 };
 
 use crate::{
@@ -36,9 +32,6 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
             if let Some(reset_value) = reg.reset_value.as_ref() {
                 let new_reset_value = convert_reset_value(
                     reset_value.clone(),
-                    target_field_set
-                        .bit_order
-                        .expect("Bitorder should be set at this point"),
                     target_field_set.size_bits.value,
                     target_field_set.byte_order.unwrap(),
                     diagnostics,
@@ -73,7 +66,6 @@ fn get_target_field_set<'m>(reg: &Register, manifest: &'m Manifest) -> &'m Field
 
 fn convert_reset_value(
     reset_value: Spanned<ResetValue>,
-    bit_order: BitOrder,
     size_bits: u32,
     target_byte_order: ByteOrder,
     diagnostics: &mut Diagnostics,
@@ -82,39 +74,29 @@ fn convert_reset_value(
 
     match reset_value.value {
         ResetValue::Integer(int) => {
-            // Convert the integer to LE and LSB0
-            let mut array = int.to_le_bytes();
-            if bit_order == BitOrder::MSB0 {
-                array.iter_mut().for_each(|b| *b = b.reverse_bits());
-            }
-
-            let array_view = array.view_bits_mut::<Lsb0>();
+            let used_bits = int.checked_ilog2().map(|log| log + 1).unwrap_or(0);
 
             // Check if the value is not too big
-            if array_view[size_bits as usize..].any() {
+            if used_bits > size_bits {
                 diagnostics.add(ResetValueTooBig {
                     reset_value: reset_value.span,
-                    reset_value_size_bits: (array_view.len() - array_view.trailing_zeros()) as u32,
+                    reset_value_size_bits: used_bits,
                     register_size_bits: size_bits,
                 });
                 return None;
             }
 
-            let mut final_array = array[..target_byte_size].to_vec();
+            let array = match target_byte_order {
+                ByteOrder::LE => int.to_le_bytes()[..target_byte_size].to_vec(),
+                ByteOrder::BE => {
+                    let array = int.to_be_bytes();
+                    array[array.len() - target_byte_size..].to_vec()
+                }
+            };
 
-            // Flip the bitorder back to the target, but crucially keep the byte order little endian!
-            if bit_order == BitOrder::MSB0 {
-                final_array.iter_mut().for_each(|b| *b = b.reverse_bits());
-            }
-
-            // Convert to big endian if required. Bitvec's output is always little endian
-            if target_byte_order == ByteOrder::BE {
-                final_array.reverse();
-            }
-
-            Some(ResetValue::Array(final_array).with_span(reset_value.span))
+            Some(ResetValue::Array(array).with_span(reset_value.span))
         }
-        ResetValue::Array(mut array) => {
+        ResetValue::Array(array) => {
             if array.len() != target_byte_size {
                 diagnostics.add(ResetValueArrayWrongSize {
                     reset_value: reset_value.span,
@@ -124,41 +106,26 @@ fn convert_reset_value(
                 return None;
             }
 
-            // Convert to little endian to do the check since that's what bitvec needs
-            if target_byte_order == ByteOrder::BE {
-                array.reverse();
+            if array.is_empty() {
+                return Some(ResetValue::Array(array).with_span(reset_value.span));
             }
 
-            match bit_order {
-                BitOrder::LSB0 => {
-                    if array.view_bits::<Lsb0>()[size_bits as usize..].any() {
-                        diagnostics.add(ResetValueTooBig {
-                            reset_value: reset_value.span,
-                            reset_value_size_bits: (array.view_bits::<Lsb0>().len()
-                                - array.view_bits::<Lsb0>().trailing_zeros())
-                                as u32,
-                            register_size_bits: size_bits,
-                        });
-                        return None;
-                    }
-                }
-                BitOrder::MSB0 => {
-                    if array.view_bits::<Msb0>()[size_bits as usize..].any() {
-                        diagnostics.add(ResetValueTooBig {
-                            reset_value: reset_value.span,
-                            reset_value_size_bits: (array.view_bits::<Msb0>().len()
-                                - array.view_bits::<Msb0>().trailing_zeros())
-                                as u32,
-                            register_size_bits: size_bits,
-                        });
-                        return None;
-                    }
-                }
-            }
+            let biggest_byte = match target_byte_order {
+                ByteOrder::LE => array.last().unwrap(),
+                ByteOrder::BE => array.first().unwrap(),
+            };
 
-            // Convert back to big endian
-            if target_byte_order == ByteOrder::BE {
-                array.reverse();
+            let used_bits = biggest_byte.checked_ilog2().map(|log| log + 1).unwrap_or(0)
+                + (target_byte_size as u32 - 1) * 8;
+
+            // Check if the value is not too big
+            if used_bits > size_bits {
+                diagnostics.add(ResetValueTooBig {
+                    reset_value: reset_value.span,
+                    reset_value_size_bits: used_bits,
+                    register_size_bits: size_bits,
+                });
+                return None;
             }
 
             Some(ResetValue::Array(array).with_span(reset_value.span))
@@ -389,7 +356,7 @@ mod tests {
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".into_with_dummy_span(),
-                    reset_value: Some(ResetValue::Array(vec![0x20, 0xC4]).with_dummy_span()),
+                    reset_value: Some(ResetValue::Array(vec![0x04, 0x23]).with_dummy_span()),
                     field_set_ref: IdentifierRef::new("fs".into()),
                     ..Default::default()
                 }),
@@ -415,7 +382,7 @@ mod tests {
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".into_with_dummy_span(),
-                    reset_value: Some(ResetValue::Array(vec![0x20, 0xC4]).with_dummy_span()),
+                    reset_value: Some(ResetValue::Array(vec![0x04, 0x23]).with_dummy_span()),
                     field_set_ref: IdentifierRef::new("fs".into()),
                     ..Default::default()
                 }),
@@ -497,7 +464,7 @@ mod tests {
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".into_with_dummy_span(),
-                    reset_value: Some(ResetValue::Array(vec![0x20, 0xC4]).with_dummy_span()),
+                    reset_value: Some(ResetValue::Array(vec![0x23, 0x04]).with_dummy_span()),
                     field_set_ref: IdentifierRef::new("fs".into()),
                     ..Default::default()
                 }),
@@ -544,58 +511,5 @@ mod tests {
         let mut diagnostics = Diagnostics::new();
         run_pass(&mut start_mir, &mut diagnostics);
         assert!(diagnostics.has_error());
-    }
-
-    #[test]
-    fn int_msb0_parsed_correct() {
-        let mut start_mir = Device {
-            description: String::new(),
-            name: "Device".into_with_dummy_span(),
-            device_config: Default::default(),
-            objects: vec![
-                Object::Register(Register {
-                    name: "Reg".into_with_dummy_span(),
-                    reset_value: Some(ResetValue::Integer(0xF8).with_dummy_span()),
-                    field_set_ref: IdentifierRef::new("fs".into()),
-                    ..Default::default()
-                }),
-                Object::FieldSet(FieldSet {
-                    name: "fs".into_with_dummy_span(),
-                    size_bits: 5.with_dummy_span(),
-                    bit_order: Some(BitOrder::MSB0),
-                    byte_order: Some(ByteOrder::LE),
-                    ..Default::default()
-                }),
-            ],
-        }
-        .into();
-
-        let mut diagnostics = Diagnostics::new();
-        run_pass(&mut start_mir, &mut diagnostics);
-        assert!(!diagnostics.has_error());
-
-        let end_mir = Device {
-            description: String::new(),
-            name: "Device".into_with_dummy_span(),
-            device_config: Default::default(),
-            objects: vec![
-                Object::Register(Register {
-                    name: "Reg".into_with_dummy_span(),
-                    reset_value: Some(ResetValue::Array(vec![0xF8]).with_dummy_span()),
-                    field_set_ref: IdentifierRef::new("fs".into()),
-                    ..Default::default()
-                }),
-                Object::FieldSet(FieldSet {
-                    name: "fs".into_with_dummy_span(),
-                    size_bits: 5.with_dummy_span(),
-                    bit_order: Some(BitOrder::MSB0),
-                    byte_order: Some(ByteOrder::LE),
-                    ..Default::default()
-                }),
-            ],
-        }
-        .into();
-
-        assert_eq!(start_mir, end_mir);
     }
 }
