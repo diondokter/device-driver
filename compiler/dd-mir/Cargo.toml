@@ -16,6 +16,5 @@ convert_case.workspace = true
 itertools.workspace = true
 miette.workspace = true
 thiserror.workspace = true
-bitvec.workspace = true
 
 kdl = "6.5.0"
