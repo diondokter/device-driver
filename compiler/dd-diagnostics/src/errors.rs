@@ -4,7 +4,6 @@
 )]
 
 use annotate_snippets::{AnnotationKind, Group, Level, Patch, Snippet};
-use convert_case::{Case, Casing};
 use device_driver_common::{
     identifier::{self, Identifier},
     span::Span,
@@ -678,18 +677,51 @@ impl OverlappingFields {
     }
 }
 
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("{} address type not defined", object_type.to_case(Case::Pascal))]
-#[diagnostic(
-    severity(Error),
-    help("Add the address type to the config, e.g.:\n> {}-address-type u16", object_type.to_case(Case::Lower))
-)]
 pub struct AddressTypeUndefined {
-    #[label("{} defined here", object_type.to_case(Case::Pascal))]
-    pub object: Span,
-    #[label("This device doesn't define a {}-address-type", object_type.to_case(Case::Lower))]
-    pub config_device: Span,
+    pub object_name: Span,
+    pub device: Span,
+    pub device_config_area: Span,
     pub object_type: &'static str,
+}
+
+impl Diagnostic for AddressTypeUndefined {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        vec![
+            Level::ERROR
+            .primary_title(format!("{} address type not defined", self.object_type))
+            .element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(
+                        AnnotationKind::Primary
+                            .span(self.device.into())
+                            .label(format!(
+                                "this device doesn't define a {}-address-type",
+                                self.object_type
+                            )),
+                    )
+                    .annotation(
+                        AnnotationKind::Context
+                            .span(self.object_name.into())
+                            .label(format!("{} object defined here", self.object_type)),
+                    ),
+            ),
+            Level::HELP.secondary_title(
+                "add the address type as a global default or as config on the device the object is defined in"
+            ).element(
+                Snippet::source(source).path(path).patch(
+                    Patch::new(self.device_config_area.start..self.device_config_area.start, format!("{}-address-type u16\n", self.object_type))
+                )
+            ),
+            Group::with_title(
+                Level::INFO.secondary_title("device-driver is agnostic to the address types being used. As such, it must be manually specified")
+            ),
+        ]
+    }
 }
 
 pub struct AddressOutOfRange {

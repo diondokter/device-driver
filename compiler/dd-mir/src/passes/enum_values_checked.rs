@@ -269,7 +269,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
 
 #[cfg(test)]
 mod tests {
-    use device_driver_common::span::SpanExt;
+    use device_driver_common::span::{Span, SpanExt};
 
     use crate::model::{Device, Enum, EnumVariant, Object};
 
@@ -308,7 +308,9 @@ mod tests {
                 ],
                 BaseType::Unspecified.with_dummy_span(),
                 Some(2),
+                Span::default(),
             ))],
+            span: Span::default(),
         }
         .into();
 
@@ -344,7 +346,9 @@ mod tests {
                 BaseType::FixedSize(Integer::U8).with_dummy_span(),
                 Some(2),
                 EnumGenerationStyle::InfallibleWithinRange,
+                Span::default(),
             ))],
+            span: Span::default(),
         }
         .into();
 
@@ -378,7 +382,9 @@ mod tests {
                 ],
                 BaseType::Unspecified.with_dummy_span(),
                 Some(8),
+                Span::default(),
             ))],
+            span: Span::default(),
         }
         .into();
 
@@ -404,7 +410,9 @@ mod tests {
                 BaseType::FixedSize(Integer::U8).with_dummy_span(),
                 Some(8),
                 EnumGenerationStyle::Fallback,
+                Span::default(),
             ))],
+            span: Span::default(),
         }
         .into();
 
@@ -431,7 +439,9 @@ mod tests {
                 }],
                 BaseType::Unspecified.with_dummy_span(),
                 Some(16),
+                Span::default(),
             ))],
+            span: Span::default(),
         }
         .into();
 
@@ -450,7 +460,9 @@ mod tests {
                 BaseType::FixedSize(Integer::U16).with_dummy_span(),
                 Some(16),
                 EnumGenerationStyle::Fallible,
+                Span::default(),
             ))],
+            span: Span::default(),
         }
         .into();
 
@@ -489,7 +501,9 @@ mod tests {
                 ],
                 BaseType::Unspecified.with_dummy_span(),
                 Some(1),
+                Span::default(),
             ))],
+            span: Span::default(),
         }
         .into();
 
@@ -523,7 +537,9 @@ mod tests {
                 ],
                 BaseType::Unspecified.with_dummy_span(),
                 Some(8),
+                Span::default(),
             ))],
+            span: Span::default(),
         }
         .into();
 

@@ -144,7 +144,10 @@ fn get_repeat_iter(manifest: &Manifest, field: &Field) -> (Vec<i128>, bool) {
 
 #[cfg(test)]
 mod tests {
-    use device_driver_common::{span::SpanExt, specifiers::Repeat};
+    use device_driver_common::{
+        span::{Span, SpanExt},
+        specifiers::Repeat,
+    };
 
     use crate::model::{Device, Field, Object};
 
@@ -166,6 +169,7 @@ mod tests {
                 }],
                 ..Default::default()
             })],
+            span: Span::default(),
         }
         .into();
 
@@ -187,6 +191,7 @@ mod tests {
                 }],
                 ..Default::default()
             })],
+            span: Span::default(),
         }
         .into();
 
@@ -208,6 +213,7 @@ mod tests {
                 }],
                 ..Default::default()
             })],
+            span: Span::default(),
         }
         .into();
 
@@ -229,6 +235,7 @@ mod tests {
                 }],
                 ..Default::default()
             })],
+            span: Span::default(),
         }
         .into();
 
@@ -250,6 +257,7 @@ mod tests {
                 }],
                 ..Default::default()
             })],
+            span: Span::default(),
         }
         .into();
 
@@ -271,6 +279,7 @@ mod tests {
                 }],
                 ..Default::default()
             })],
+            span: Span::default(),
         }
         .into();
 
@@ -296,6 +305,7 @@ mod tests {
                 }],
                 ..Default::default()
             })],
+            span: Span::default(),
         }
         .into();
 
@@ -327,6 +337,7 @@ mod tests {
                 ],
                 ..Default::default()
             })],
+            span: Span::default(),
         }
         .into();
 
@@ -356,6 +367,7 @@ mod tests {
                 ],
                 ..Default::default()
             })],
+            span: Span::default(),
         }
         .into();
 
@@ -384,6 +396,7 @@ mod tests {
                 ],
                 ..Default::default()
             })],
+            span: Span::default(),
         }
         .into();
 
@@ -416,6 +429,7 @@ mod tests {
                 ],
                 ..Default::default()
             })],
+            span: Span::default(),
         }
         .into();
 

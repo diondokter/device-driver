@@ -168,7 +168,7 @@ fn convert_reset_value(
 
 #[cfg(test)]
 mod tests {
-    use device_driver_common::identifier::IdentifierRef;
+    use device_driver_common::{identifier::IdentifierRef, span::Span};
 
     use crate::model::{Device, DeviceConfig, FieldSet, Register};
 
@@ -195,6 +195,7 @@ mod tests {
                     ..Default::default()
                 }),
             ],
+            span: Span::default(),
         }
         .into();
 
@@ -221,6 +222,7 @@ mod tests {
                     ..Default::default()
                 }),
             ],
+            span: Span::default(),
         }
         .into();
 
@@ -245,6 +247,7 @@ mod tests {
                     ..Default::default()
                 }),
             ],
+            span: Span::default(),
         }
         .into();
 
@@ -271,6 +274,7 @@ mod tests {
                     ..Default::default()
                 }),
             ],
+            span: Span::default(),
         }
         .into();
 
@@ -298,6 +302,7 @@ mod tests {
                     ..Default::default()
                 }),
             ],
+            span: Span::default(),
         }
         .into();
 
@@ -327,6 +332,7 @@ mod tests {
                     ..Default::default()
                 }),
             ],
+            span: Span::default(),
         }
         .into();
 
@@ -351,6 +357,7 @@ mod tests {
                     ..Default::default()
                 }),
             ],
+            span: Span::default(),
         }
         .into();
 
@@ -377,6 +384,7 @@ mod tests {
                     ..Default::default()
                 }),
             ],
+            span: Span::default(),
         }
         .into();
 
@@ -401,6 +409,7 @@ mod tests {
                     ..Default::default()
                 }),
             ],
+            span: Span::default(),
         }
         .into();
 
@@ -427,6 +436,7 @@ mod tests {
                     ..Default::default()
                 }),
             ],
+            span: Span::default(),
         }
         .into();
 
@@ -457,6 +467,7 @@ mod tests {
                     ..Default::default()
                 }),
             ],
+            span: Span::default(),
         }
         .into();
 
@@ -483,6 +494,7 @@ mod tests {
                     ..Default::default()
                 }),
             ],
+            span: Span::default(),
         }
         .into();
 
@@ -509,6 +521,7 @@ mod tests {
                     ..Default::default()
                 }),
             ],
+            span: Span::default(),
         }
         .into();
 
@@ -538,6 +551,7 @@ mod tests {
                     ..Default::default()
                 }),
             ],
+            span: Span::default(),
         }
         .into();
 
@@ -567,6 +581,7 @@ mod tests {
                     ..Default::default()
                 }),
             ],
+            span: Span::default(),
         }
         .into();
 
@@ -593,6 +608,7 @@ mod tests {
                     ..Default::default()
                 }),
             ],
+            span: Span::default(),
         }
         .into();
 

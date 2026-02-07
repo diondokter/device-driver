@@ -124,6 +124,7 @@ fn transform_device(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Dev
         name: device_name.with_span(device_name_span),
         device_config: DeviceConfig::default(),
         objects: Vec::new(),
+        span: node.span().into(),
     };
 
     device.device_config.owner = Some(device.id());
@@ -295,6 +296,7 @@ fn transform_block(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Bloc
         address_offset: offset.unwrap_or((0, name_span.into())).into(),
         repeat: repeat.map(|(r, _)| r),
         objects: block_objects,
+        span: node.span().into(),
     })
 }
 
@@ -450,7 +452,9 @@ fn transform_register(
             reset_value: reset_value.map(Into::into),
             repeat: repeat.map(|(r, _)| r),
             field_set_ref: field_set.as_ref().unwrap().0.name.take_ref(),
-            ..Default::default()
+            access: Default::default(),
+            allow_address_overlap: Default::default(),
+            span: node.span().into(),
         };
 
         if let Some((access, _)) = access {
@@ -610,10 +614,11 @@ fn transform_command(
             description: parse_description(node),
             name: (name, name_span).into(),
             address: address.unwrap().into(),
+            allow_address_overlap: Default::default(),
             repeat: repeat.map(|(r, _)| r),
             field_set_ref_in: field_set_in.as_ref().map(|(f, _)| f.name.take_ref()),
             field_set_ref_out: field_set_out.as_ref().map(|(f, _)| f.name.take_ref()),
-            ..Default::default()
+            span: node.span().into(),
         };
 
         if let Some((allow_address_overlap, _)) = allow_address_overlap {
@@ -701,8 +706,9 @@ fn transform_buffer(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Buf
         let mut buffer = Buffer {
             description: parse_description(node),
             name: (name, name_span).into(),
+            access: Default::default(),
             address: address.unwrap().into(),
-            ..Default::default()
+            span: node.span().into(),
         };
 
         if let Some((access, _)) = access {
@@ -783,7 +789,13 @@ fn transform_field_set(
 
     let mut field_set = FieldSet {
         description: parse_description(node),
-        ..Default::default()
+        name: Default::default(),
+        size_bits: Default::default(),
+        byte_order: Default::default(),
+        bit_order: Default::default(),
+        allow_bit_overlap: Default::default(),
+        fields: Default::default(),
+        span: node.span().into(),
     };
 
     let mut unexpected_entries = errors::UnexpectedEntries {
@@ -1135,6 +1147,7 @@ fn transform_field(node: &KdlNode, diagnostics: &mut Diagnostics) -> (Option<Fie
                         variants,
                         base_type,
                         address.as_ref().map(|(address, _)| address.len() as u32),
+                        node.span().into(),
                     ));
                 }
                 Err(e) => {
@@ -1175,6 +1188,7 @@ fn transform_field(node: &KdlNode, diagnostics: &mut Diagnostics) -> (Option<Fie
             field_conversion,
             field_address: address.unwrap().into(),
             repeat,
+            span: node.span().into(),
         }),
         inline_enum,
     )
@@ -1205,6 +1219,7 @@ fn transform_enum(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Enum>
             .unwrap_or_default(),
         base_type,
         None,
+        node.span().into(),
     );
 
     let mut name: Option<&kdl::KdlEntry> = None;
@@ -1361,13 +1376,20 @@ fn transform_enum_variants(nodes: &KdlDocument, diagnostics: &mut Diagnostics) -
                 description: parse_description(node),
                 name: name.with_span(variant_name.span()),
                 value: variant_value,
+                span: node.span().into(),
             })
         })
         .collect()
 }
 
 fn transform_extern(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Extern> {
-    let mut extern_value = Extern::default();
+    let mut extern_value = Extern {
+        description: Default::default(),
+        name: Default::default(),
+        base_type: Default::default(),
+        supports_infallible: Default::default(),
+        span: node.span().into(),
+    };
 
     let mut unexpected_entries = errors::UnexpectedEntries {
         superfluous_entries: Vec::new(),

@@ -82,7 +82,10 @@ fn check_device(
 
 #[cfg(test)]
 mod tests {
-    use device_driver_common::{span::SpanExt, specifiers::Integer};
+    use device_driver_common::{
+        span::{Span, SpanExt},
+        specifiers::Integer,
+    };
 
     use crate::model::{Command, Device, DeviceConfig, Register};
 
@@ -102,6 +105,7 @@ mod tests {
                 address: (-300).with_dummy_span(),
                 ..Default::default()
             })],
+            span: Span::default(),
         }
         .into();
 
@@ -124,6 +128,7 @@ mod tests {
                 address: 128000.with_dummy_span(),
                 ..Default::default()
             })],
+            span: Span::default(),
         }
         .into();
 
