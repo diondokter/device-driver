@@ -841,7 +841,7 @@ impl Diagnostic for AddressOverlap {
                             AnnotationKind::Context
                                 .span(self.object_1_address.into())
                                 .label("addres set here"),
-                        ),
+                        ), // TODO: Add context annotation for where the repeat is defined
                 )
                 .element(
                     Snippet::source(source)
@@ -855,7 +855,7 @@ impl Diagnostic for AddressOverlap {
                             AnnotationKind::Context
                                 .span(self.object_2_address.into())
                                 .label("addres set here"),
-                        ),
+                        ), // TODO: Add context annotation for where the repeat is defined
                 ),
             // TODO: Add patch
             Group::with_title(Level::HELP.secondary_title(HELP_TEXT)),
