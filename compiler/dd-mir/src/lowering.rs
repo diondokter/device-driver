@@ -903,7 +903,7 @@ fn transform_field_set(
             }
         }
     } else if let Some(default_name) = default_name {
-        field_set.name = default_name.with_span((node.span().offset(), 0));
+        field_set.name = default_name.with_span((node.span().offset(), node.span().offset()));
     } else {
         diagnostics.add_miette(errors::MissingObjectName {
             object_keyword: node.name().span().into(),
