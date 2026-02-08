@@ -18,7 +18,7 @@ pub fn compile(source: &str, chars_per_line: usize) -> Output {
                 source_path: "input.kdl",
                 term_width: Some(chars_per_line),
                 use_color: true,
-                unicode: false,
+                unicode: true,
                 anonymized_line_numbers: false,
             },
         )

@@ -787,22 +787,82 @@ impl Diagnostic for AddressOutOfRange {
     }
 }
 
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Address overlap at {address} ({address:#X})")]
-#[diagnostic(
-    severity(Error),
-    help(
-        "If this is intended, the error can be suppressed by allowing overlap on both objects:\n> allow-address-overlap"
-    )
-)]
 pub struct AddressOverlap {
     pub address: i128,
-    #[label("Object overlaps with other object{}", if let Some(repeat_offset) = repeat_offset_1 { format!(" at repeat offset {repeat_offset}") } else { String::new() })]
     pub object_1: Span,
+    pub object_1_address: Span,
     pub repeat_offset_1: Option<i128>,
-    #[label("Object overlaps with other object{}", if let Some(repeat_offset) = repeat_offset_2 { format!(" at repeat offset {repeat_offset}") } else { String::new() })]
     pub object_2: Span,
+    pub object_2_address: Span,
     pub repeat_offset_2: Option<i128>,
+}
+
+impl Diagnostic for AddressOverlap {
+    fn is_error(&self) -> bool {
+        false
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        let object_1_message = format!(
+            "object overlaps with other object{}",
+            if let Some(repeat_offset) = self.repeat_offset_1 {
+                format!(" at repeat offset {repeat_offset}")
+            } else {
+                String::new()
+            }
+        );
+        let object_2_message = format!(
+            "object overlaps with other object{}",
+            if let Some(repeat_offset) = self.repeat_offset_2 {
+                format!(" at repeat offset {repeat_offset}")
+            } else {
+                String::new()
+            }
+        );
+
+        const HELP_TEXT: &str = "if overlap is intended, the warning can be suppressed by allowing overlap on both objects";
+        const INFO_TEXT: &str = "overlapping objects are usually the result of a copy paste mistake. This warning exists to alert to that possibility";
+
+        [
+            Level::WARNING
+                .primary_title(format!(
+                    "address overlap at {} ({:#X})",
+                    self.address, self.address
+                ))
+                .element(
+                    Snippet::source(source)
+                        .path(path)
+                        .annotation(
+                            AnnotationKind::Primary
+                                .span(self.object_1.into())
+                                .label(object_1_message),
+                        )
+                        .annotation(
+                            AnnotationKind::Context
+                                .span(self.object_1_address.into())
+                                .label("addres set here"),
+                        ),
+                )
+                .element(
+                    Snippet::source(source)
+                        .path(path)
+                        .annotation(
+                            AnnotationKind::Primary
+                                .span(self.object_2.into())
+                                .label(object_2_message),
+                        )
+                        .annotation(
+                            AnnotationKind::Context
+                                .span(self.object_2_address.into())
+                                .label("addres set here"),
+                        ),
+                ),
+            // TODO: Add patch
+            Group::with_title(Level::HELP.secondary_title(HELP_TEXT)),
+            Group::with_title(Level::NOTE.secondary_title(INFO_TEXT)),
+        ]
+        .to_vec()
+    }
 }
 
 #[derive(Error, Debug, MietteDiagnostic)]
