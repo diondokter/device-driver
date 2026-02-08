@@ -286,13 +286,45 @@ pub struct RepeatOverSpecified {
     pub with: Span,
 }
 
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Field size is too big")]
-#[diagnostic(severity(Error), help("A field can be at most 64 bits"))]
-pub struct FieldSizeTooBig {
-    #[label("{} bits is too big for any of the supported integers", self.size_bits)]
+pub struct IntegerFieldSizeTooBig {
     pub field_address: Span,
+    pub base_type: Span,
+    pub field_set: Span,
     pub size_bits: u32,
+}
+
+impl Diagnostic for IntegerFieldSizeTooBig {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        let field_message = format!("field has a size of {} bits", self.size_bits);
+
+        [
+            Level::ERROR
+                .primary_title("field size exceeds 64-bit size limit")
+                .element(
+                    Snippet::source(source)
+                        .path(path)
+                        .annotation(
+                            AnnotationKind::Primary
+                                .span(self.field_address.into())
+                                .label(field_message),
+                        )
+                        .annotation(
+                            AnnotationKind::Context
+                                .span(self.base_type.into())
+                                .label("field uses an integer as base type"),
+                        )
+                        .annotation(AnnotationKind::Visible.span(self.field_set.into())),
+                ),
+            Group::with_title(
+                Level::NOTE.secondary_title("only integers up to 64-bit are supported"),
+            ),
+        ]
+        .to_vec()
+    }
 }
 
 #[derive(Error, Debug, MietteDiagnostic)]

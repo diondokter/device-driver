@@ -10,6 +10,11 @@ impl Span {
     pub fn is_empty(&self) -> bool {
         self.start == self.end
     }
+
+    /// Return self if not empty, or the other span if self is empty
+    pub fn or(&self, other: Self) -> Self {
+        if self.is_empty() { other } else { *self }
+    }
 }
 
 impl From<(usize, usize)> for Span {
