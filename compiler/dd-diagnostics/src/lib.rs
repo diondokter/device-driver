@@ -75,11 +75,14 @@ impl Diagnostics {
         let renderer = metadata.get_renderer();
 
         for diagnostic in &self.diagnostics {
-            writeln!(
-                writer,
-                "{}",
-                renderer.render(&diagnostic.as_report(metadata.source, metadata.source_path))
-            )?;
+            let mut rendered =
+                renderer.render(&diagnostic.as_report(metadata.source, metadata.source_path));
+
+            if !metadata.ansi {
+                rendered = strip_ansi_urls(&rendered);
+            }
+
+            writeln!(writer, "{rendered}\n",)?;
         }
 
         Ok(())
@@ -101,11 +104,14 @@ impl Diagnostics {
         let renderer = metadata.get_renderer();
 
         for diagnostic in &self.diagnostics {
-            writeln!(
-                writer,
-                "{}",
-                renderer.render(&diagnostic.as_report(metadata.source, metadata.source_path))
-            )?;
+            let mut rendered =
+                renderer.render(&diagnostic.as_report(metadata.source, metadata.source_path));
+
+            if !metadata.ansi {
+                rendered = strip_ansi_urls(&rendered);
+            }
+
+            writeln!(writer, "{rendered}\n",)?;
         }
 
         Ok(())
@@ -119,8 +125,8 @@ pub struct Metadata<'s> {
     pub source_path: &'s str,
     /// When Some, the specified width is used as the terminal width. If None, a reasonable default value is used.
     pub term_width: Option<usize>,
-    /// When true, ansi escape codes are used to add color
-    pub use_color: bool,
+    /// When true, ansi escape codes are used to add color and OSC8 url links
+    pub ansi: bool,
     /// When true, unicode styling is used. When false everything is plain ascii
     pub unicode: bool,
     /// When true, the line numbers will not be shown. This can be great for UI tests
@@ -129,7 +135,7 @@ pub struct Metadata<'s> {
 
 impl Metadata<'_> {
     fn get_renderer(&self) -> Renderer {
-        if self.use_color {
+        if self.ansi {
             Renderer::styled()
         } else {
             Renderer::plain()
@@ -182,6 +188,52 @@ pub fn set_miette_hook(user_facing: bool) {
         }))
         .unwrap();
     }
+}
+
+/// Encode links using OSC8: https://github.com/Alhadis/OSC8-Adoption
+pub fn encode_ansi_url(link: &str, name: &str) -> String {
+    format!("\x1b]8;;{link}\x1b\\{name}\x1b]8;;\x1b\\")
+}
+
+/// Probably not fully compliant, but will work for links generated from [encode_ansi_url]
+fn strip_ansi_urls(text: &str) -> String {
+    let mut output = String::new();
+
+    enum UrlStage {
+        None,
+        Start,
+        End,
+    }
+
+    let mut url_stage = UrlStage::None;
+
+    for split in text.split("\x1b]8;;") {
+        match url_stage {
+            UrlStage::None => {
+                output += split;
+                url_stage = UrlStage::Start;
+            }
+            UrlStage::Start => {
+                // Split contains <link>\x1b\\<name>
+                if let Some((link, name)) = split.split_once("\x1b\\") {
+                    output += name;
+                    output += &format!(" ({link})");
+                    url_stage = UrlStage::End;
+                } else {
+                    // Something is unexpected!
+                    // TODO: Trace a warning
+                    return text.into();
+                }
+            }
+            UrlStage::End => {
+                // Same as None, but we have a \x1b\\ left
+                output += split.trim_start_matches("\x1b\\");
+                url_stage = UrlStage::Start;
+            }
+        }
+    }
+
+    output
 }
 
 pub trait Diagnostic {

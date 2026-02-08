@@ -63,7 +63,7 @@ fn accept() {
                                     .display()
                                     .to_string(),
                                 term_width: None,
-                                use_color: false,
+                                ansi: false,
                                 unicode: false,
                                 anonymized_line_numbers: true,
                             },

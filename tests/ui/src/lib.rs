@@ -33,7 +33,7 @@ pub fn run_test(source_paths: &[&Path], output_path: &Path) {
                                 .display()
                                 .to_string(),
                             term_width: None,
-                            use_color: false,
+                            ansi: false,
                             unicode: false,
                             anonymized_line_numbers: true,
                         },

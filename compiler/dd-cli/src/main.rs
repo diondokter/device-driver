@@ -51,7 +51,7 @@ fn run() -> miette::Result<ExitCode> {
                 source: &source,
                 source_path: &args.source_path.display().to_string(),
                 term_width: None,
-                use_color: true,
+                ansi: true,
                 unicode: true,
                 anonymized_line_numbers: false,
             },

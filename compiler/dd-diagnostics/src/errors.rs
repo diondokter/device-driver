@@ -13,7 +13,7 @@ use itertools::Itertools;
 use miette::{Diagnostic as MietteDiagnostic, LabeledSpan};
 use thiserror::Error;
 
-use crate::Diagnostic;
+use crate::{Diagnostic, encode_ansi_url};
 
 #[derive(Error, Debug, MietteDiagnostic)]
 #[error("Missing object name")]
@@ -320,8 +320,15 @@ impl Diagnostic for IntegerFieldSizeTooBig {
                         .annotation(AnnotationKind::Visible.span(self.field_set.into())),
                 ),
             Group::with_title(
-                Level::NOTE.secondary_title("only integers up to 64-bit are supported"),
+                Level::NOTE.secondary_title("integer base types are available up to 64-bit"),
             ),
+            Group::with_title(Level::INFO.secondary_title(format!(
+                "if you need an array or string base type, please comment here: {}",
+                encode_ansi_url(
+                    "https://github.com/diondokter/device-driver/issues/131",
+                    "issue 131"
+                )
+            ))),
         ]
         .to_vec()
     }
