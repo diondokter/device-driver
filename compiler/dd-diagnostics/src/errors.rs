@@ -879,7 +879,7 @@ impl Diagnostic for AddressOverlap {
                         .annotation(
                             AnnotationKind::Context
                                 .span(self.object_1_address.into())
-                                .label("addres set here"),
+                                .label("address set here"),
                         ), // TODO: Add context annotation for where the repeat is defined
                 )
                 .element(
@@ -893,7 +893,7 @@ impl Diagnostic for AddressOverlap {
                         .annotation(
                             AnnotationKind::Context
                                 .span(self.object_2_address.into())
-                                .label("addres set here"),
+                                .label("address set here"),
                         ), // TODO: Add context annotation for where the repeat is defined
                 ),
             // TODO: Add patch
