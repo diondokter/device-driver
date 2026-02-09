@@ -8,9 +8,7 @@ use crate::{
 };
 use device_driver_diagnostics::{
     Diagnostics,
-    errors::{
-        FieldAddressExceedsFieldsetSize, FieldAddressNegative, OverlappingFields, ZeroSizeField,
-    },
+    errors::{FieldAddressExceedsFieldsetSize, FieldAddressNegative, OverlappingFields},
 };
 
 /// Validate that the bit ranges of fields fall within the max size and don't have overlap if they're not allowed
@@ -39,10 +37,7 @@ fn validate_len(
         let field_len = field.field_address.value.clone().count();
 
         if field_len == 0 {
-            diagnostics.add_miette(ZeroSizeField {
-                address: field.field_address.span,
-                address_bits: field_len as u32,
-            });
+            panic!("A zero-sized field can't be specified");
         }
 
         let (offset_iter, repeated) = get_repeat_iter(manifest, field);

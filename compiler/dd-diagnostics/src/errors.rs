@@ -622,18 +622,6 @@ pub struct BoolFieldTooLarge {
 }
 
 #[derive(Error, Debug, MietteDiagnostic)]
-#[error("Field has a size of 0")]
-#[diagnostic(
-    severity(Warning),
-    help("The field has no information, so this is likely a mistake")
-)]
-pub struct ZeroSizeField {
-    #[label("Address is {address_bits} bits")]
-    pub address: Span,
-    pub address_bits: u32,
-}
-
-#[derive(Error, Debug, MietteDiagnostic)]
 #[error("Field address exceeds fieldset size")]
 #[diagnostic(
     severity(Error),
