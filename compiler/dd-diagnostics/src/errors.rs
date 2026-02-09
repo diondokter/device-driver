@@ -621,18 +621,10 @@ pub struct BoolFieldTooLarge {
     pub address_bits: u32,
 }
 
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Field address exceeds fieldset size")]
-#[diagnostic(
-    severity(Error),
-    help("Fields, including all repeats, must be fully contained in a fieldset")
-)]
 pub struct FieldAddressExceedsFieldsetSize {
-    #[label("Address goes up to {max_field_end}{}", self.get_repeat_message())]
     pub address: Span,
     pub max_field_end: i128,
     pub repeat_offset: Option<i128>,
-    #[label("The fieldset is only {fieldset_size} bits")]
     pub fieldset_size_bits: Span,
     pub fieldset_size: u32,
 }
@@ -643,6 +635,39 @@ impl FieldAddressExceedsFieldsetSize {
             Some(repeat_offset) => format!(" with a repeat offset of {repeat_offset}"),
             None => String::new(),
         }
+    }
+}
+
+impl Diagnostic for FieldAddressExceedsFieldsetSize {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [
+            Level::ERROR
+                .primary_title("field address exceeds fieldset size")
+                .element(
+                    Snippet::source(source)
+                        .path(path)
+                        .annotation(AnnotationKind::Primary.span(self.address.into()).label(
+                            format!(
+                                "address goes up to {}{}",
+                                self.max_field_end,
+                                self.get_repeat_message()
+                            ),
+                        ))
+                        .annotation(
+                            AnnotationKind::Context
+                                .span(self.fieldset_size_bits.into())
+                                .label(format!("The fieldset is only {} bits", self.fieldset_size)),
+                        ),
+                ),
+            Group::with_title(Level::INFO.secondary_title(
+                "fields, including all repeats, must be fully contained in a fieldset",
+            )),
+        ]
+        .to_vec()
     }
 }
 

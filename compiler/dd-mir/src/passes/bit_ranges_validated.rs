@@ -49,7 +49,7 @@ fn validate_len(
         let min_field_start = i128::from(field.field_address.start) + min_repeat_offset;
 
         if max_field_end > i128::from(field_set.size_bits.value) {
-            diagnostics.add_miette(FieldAddressExceedsFieldsetSize {
+            diagnostics.add(FieldAddressExceedsFieldsetSize {
                 address: field.field_address.span,
                 max_field_end: max_field_end - 1,
                 repeat_offset: repeated.then_some(*max_repeat_offset),
