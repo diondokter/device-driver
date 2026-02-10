@@ -609,18 +609,49 @@ pub struct ResetValueArrayWrongSize {
     pub register_size_bytes: u32,
 }
 
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Bool field too large")]
-#[diagnostic(
-    severity(Error),
-    help("A field can only use `bool` as its base type when its size is 1 bit")
-)]
 pub struct BoolFieldTooLarge {
-    #[label("Field set to `bool` here")]
     pub base_type: Option<Span>,
-    #[label("Address is {address_bits} bits")]
     pub address: Span,
     pub address_bits: u32,
+    pub address_start: u32,
+    pub field_set_context: Span,
+}
+
+impl Diagnostic for BoolFieldTooLarge {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [
+            Level::ERROR.primary_title("bool field too large").element(
+                Snippet::source(source).path(path).annotations(
+                    [
+                        Some(
+                            AnnotationKind::Primary
+                                .span(self.address.into())
+                                .label(format!("address is {} bits", self.address_bits)),
+                        ),
+                        self.base_type.map(|base_type| {
+                            AnnotationKind::Context
+                                .span(base_type.into())
+                                .label("bool base type set here")
+                        }),
+                        Some(AnnotationKind::Visible.span(self.field_set_context.into())),
+                    ]
+                    .into_iter()
+                    .flatten(),
+                ),
+            ),
+            Level::HELP
+                .secondary_title("a field with a `bool` base type can only be 1 bit large")
+                .element(Snippet::source(source).path(path).patch(Patch::new(
+                    self.address.into(),
+                    format!("@{}", self.address_start),
+                ))),
+        ]
+        .to_vec()
+    }
 }
 
 pub struct FieldAddressExceedsFieldsetSize {
