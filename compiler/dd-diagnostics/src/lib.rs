@@ -59,6 +59,11 @@ impl Diagnostics {
         miette_has_error || has_error
     }
 
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.diagnostics.is_empty() && self.miette_reports.is_empty()
+    }
+
     pub fn print_to<W: std::io::Write>(
         self,
         mut writer: W,

@@ -400,7 +400,8 @@ mod tests {
 
         let mut diagnostics = Diagnostics::new();
         run_pass(&mut start_mir, &mut diagnostics);
-        assert!(diagnostics.has_error());
+        assert!(!diagnostics.has_error());
+        assert!(!diagnostics.is_empty());
 
         let mut start_mir = Device {
             description: String::new(),
@@ -433,6 +434,7 @@ mod tests {
 
         let mut diagnostics = Diagnostics::new();
         run_pass(&mut start_mir, &mut diagnostics);
-        assert!(diagnostics.has_error());
+        assert!(!diagnostics.has_error());
+        assert!(!diagnostics.is_empty());
     }
 }
