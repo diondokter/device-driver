@@ -3,6 +3,8 @@
     reason = "Something going on with the diagnostics derive"
 )]
 
+use std::borrow::Cow;
+
 use annotate_snippets::{AnnotationKind, Group, Level, Patch, Snippet};
 use device_driver_common::{
     identifier::{self, Identifier},
@@ -671,25 +673,48 @@ impl Diagnostic for FieldAddressExceedsFieldsetSize {
     }
 }
 
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Field address is negative")]
-#[diagnostic(
-    severity(Error),
-    help("Fields, including all repeats, must be fully contained in a fieldset")
-)]
 pub struct FieldAddressNegative {
-    #[label("Address goes down to {min_field_start}{}", self.get_repeat_message())]
     pub address: Span,
     pub min_field_start: i128,
     pub repeat_offset: Option<i128>,
+    pub field_set_context: Span,
 }
 
 impl FieldAddressNegative {
-    fn get_repeat_message(&self) -> String {
+    fn get_repeat_message(&self) -> Cow<'static, str> {
         match self.repeat_offset {
-            Some(repeat_offset) => format!(" with a repeat offset of {repeat_offset}"),
-            None => String::new(),
+            Some(repeat_offset) => format!(" with a repeat offset of {repeat_offset}").into(),
+            None => "".into(),
         }
+    }
+}
+
+impl Diagnostic for FieldAddressNegative {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [
+            Level::ERROR
+                .primary_title("field address is negative")
+                .element(
+                    Snippet::source(source)
+                        .path(path)
+                        .annotation(AnnotationKind::Primary.span(self.address.into()).label(
+                            format!(
+                                "address goes down to {}{}",
+                                self.min_field_start,
+                                self.get_repeat_message()
+                            ),
+                        ))
+                        .annotation(AnnotationKind::Visible.span(self.field_set_context.into())),
+                ),
+            Group::with_title(Level::INFO.secondary_title(
+                "fields, including all repeats, must be fully contained in a fieldset",
+            )),
+        ]
+        .to_vec()
     }
 }
 

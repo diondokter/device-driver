@@ -60,10 +60,11 @@ fn validate_len(
         }
 
         if min_field_start < 0 {
-            diagnostics.add_miette(FieldAddressNegative {
+            diagnostics.add(FieldAddressNegative {
                 address: field.field_address.span,
                 min_field_start,
                 repeat_offset: repeated.then_some(*min_repeat_offset),
+                field_set_context: field_set.name.span,
             });
             removals.insert(field.id_with(field_set.id()));
         }
