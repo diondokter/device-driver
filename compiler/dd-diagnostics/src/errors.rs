@@ -718,39 +718,75 @@ impl Diagnostic for FieldAddressNegative {
     }
 }
 
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Overlapping fields")]
-#[diagnostic(
-    severity(Error),
-    help(
-        "If this was intended, the error can be suppressed by allowing overlap on the fieldset:\n> fieldset Foo allow-bit-overlap {{ }}"
-    )
-)]
 pub struct OverlappingFields {
-    #[label("Field sits at address range @{field_address_end_1}:{field_address_start_1}{}", self.get_repeat_message_1())]
     pub field_address_1: Span,
     pub repeat_offset_1: Option<i128>,
     pub field_address_start_1: i128,
     pub field_address_end_1: i128,
-    #[label("Field sits at address range @{field_address_end_2}:{field_address_start_2}{}", self.get_repeat_message_2())]
     pub field_address_2: Span,
     pub repeat_offset_2: Option<i128>,
     pub field_address_start_2: i128,
     pub field_address_end_2: i128,
+
+    pub field_set_context: Span,
 }
 
 impl OverlappingFields {
-    fn get_repeat_message_1(&self) -> String {
+    fn get_repeat_message_1(&self) -> Cow<'static, str> {
         match self.repeat_offset_1 {
-            Some(repeat_offset) => format!(" with a repeat offset of {repeat_offset}"),
-            None => String::new(),
+            Some(repeat_offset) => format!(" with a repeat offset of {repeat_offset}").into(),
+            None => "".into(),
         }
     }
-    fn get_repeat_message_2(&self) -> String {
+    fn get_repeat_message_2(&self) -> Cow<'static, str> {
         match self.repeat_offset_2 {
-            Some(repeat_offset) => format!(" with a repeat offset of {repeat_offset}"),
-            None => String::new(),
+            Some(repeat_offset) => format!(" with a repeat offset of {repeat_offset}").into(),
+            None => "".into(),
         }
+    }
+}
+
+impl Diagnostic for OverlappingFields {
+    fn is_error(&self) -> bool {
+        false
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        const HELP_TEXT: &str = "if overlap is intended, the warning can be suppressed by allowing overlap on both fields";
+        const INFO_TEXT: &str = "overlapping fields are usually the result of a copy paste mistake. This warning exists to alert to that possibility";
+
+        [
+            Level::WARNING.primary_title("overlapping fields").element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(
+                        AnnotationKind::Primary
+                            .span(self.field_address_1.into())
+                            .label(format!(
+                                "Field sits at address range @{}:{}{}",
+                                self.field_address_end_1 - 1,
+                                self.field_address_start_1,
+                                self.get_repeat_message_1()
+                            )),
+                    )
+                    .annotation(
+                        AnnotationKind::Primary
+                            .span(self.field_address_2.into())
+                            .label(format!(
+                                "Field sits at address range @{}:{}{}",
+                                self.field_address_end_2 - 1,
+                                self.field_address_start_2,
+                                self.get_repeat_message_2()
+                            )),
+                    )
+                    .annotation(AnnotationKind::Visible.span(self.field_set_context.into())),
+                // TODO: Add context annotation for where the repeats are defined
+            ),
+            // TODO: Add patch
+            Group::with_title(Level::HELP.secondary_title(HELP_TEXT)),
+            Group::with_title(Level::NOTE.secondary_title(INFO_TEXT)),
+        ]
+        .to_vec()
     }
 }
 

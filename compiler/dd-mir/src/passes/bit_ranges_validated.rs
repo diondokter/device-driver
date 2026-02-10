@@ -86,7 +86,7 @@ fn validate_overlap(field_set: &FieldSet, manifest: &Manifest, diagnostics: &mut
                         &second_field.field_address,
                         *second_offset,
                     ) {
-                        diagnostics.add_miette(OverlappingFields {
+                        diagnostics.add(OverlappingFields {
                             field_address_1: field.field_address.span,
                             repeat_offset_1: repeated.then_some(*offset),
                             field_address_start_1: i128::from(field.field_address.start) + offset,
@@ -97,6 +97,8 @@ fn validate_overlap(field_set: &FieldSet, manifest: &Manifest, diagnostics: &mut
                                 + second_offset,
                             field_address_end_2: i128::from(second_field.field_address.end)
                                 + second_offset,
+
+                            field_set_context: field_set.name.span,
                         });
 
                         continue 'second_field;
