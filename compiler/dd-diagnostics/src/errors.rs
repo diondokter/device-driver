@@ -367,12 +367,30 @@ pub struct DuplicateName {
     pub duplicate_value: Identifier,
 }
 
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Enum has no variants")]
-#[diagnostic(severity(Error), help("All enums must have at least one variant"))]
 pub struct EmptyEnum {
-    #[label("Empty enum")]
-    pub enum_name: Span,
+    pub enum_node: Span,
+}
+
+impl Diagnostic for EmptyEnum {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [
+            Level::ERROR.primary_title("enum has no variants").element(
+                Snippet::source(source).path(path).annotation(
+                    AnnotationKind::Primary
+                        .span(self.enum_node.into())
+                        .label("empty enum"),
+                ),
+            ),
+            Group::with_title(
+                Level::INFO.secondary_title("all enums must have at least one variant"),
+            ),
+        ]
+        .to_vec()
+    }
 }
 
 #[derive(Error, Debug, MietteDiagnostic)]
@@ -583,7 +601,7 @@ impl Diagnostic for UnspecifiedByteOrder {
                             .span(self.fieldset_name.into())
                             .label("fielset requires a byte order, but none is specified"),
                     ),
-                ), 
+                ),
             Group::with_title(Level::HELP.secondary_title(
                 "specify the byte order on the fieldset or add a default byte order on the device",
             )), // TODO: Add patch for adding byte order

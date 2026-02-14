@@ -27,8 +27,8 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
         };
 
         if enum_value.variants.is_empty() {
-            diagnostics.add_miette(EmptyEnum {
-                enum_name: enum_value.name.span,
+            diagnostics.add(EmptyEnum {
+                enum_node: enum_value.span,
             });
             removals.insert(enum_value.id());
             continue;
