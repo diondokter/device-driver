@@ -24,7 +24,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
             .apply_boundaries(boundaries)
             .check_validity()
         {
-            diagnostics.add_miette(InvalidIdentifier::new(e, object.name_span()));
+            diagnostics.add(InvalidIdentifier::new(e, object.name_span()));
             removals.insert(object.id());
             continue;
         }
@@ -34,7 +34,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
             let field_set_id = field_set.id();
             for field in &mut field_set.fields {
                 if let Err(e) = field.name.apply_boundaries(boundaries).check_validity() {
-                    diagnostics.add_miette(InvalidIdentifier::new(e, field.name.span));
+                    diagnostics.add(InvalidIdentifier::new(e, field.name.span));
                     field_removals.insert(field.id_with(field_set_id.clone()));
                 }
             }
@@ -49,7 +49,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
             let enum_id = enum_value.id();
             for variant in &mut enum_value.variants {
                 if let Err(e) = variant.name.apply_boundaries(boundaries).check_validity() {
-                    diagnostics.add_miette(InvalidIdentifier::new(e, enum_value.name.span));
+                    diagnostics.add(InvalidIdentifier::new(e, variant.name.span));
                     variant_removals.insert(variant.id_with(enum_id.clone()));
                 }
             }

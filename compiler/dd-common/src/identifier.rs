@@ -40,13 +40,7 @@ impl Identifier {
             words.append(&mut local_words);
         }
 
-        let mut words = Pattern::Lowercase.mutate(&words);
-        if boundaries.contains(&Boundary::Underscore) && self.original.starts_with('_') {
-            match &mut words[..] {
-                [] => words.push("_".into()),
-                [word, ..] => *word = format!("_{word}"),
-            }
-        }
+        let words = Pattern::Lowercase.mutate(&words);
 
         self.boundaries_applied = true;
         self.words = words.into_iter().collect();
@@ -59,20 +53,29 @@ impl Identifier {
         for (word_index, word) in self.words.iter().enumerate() {
             for (char_offset, char) in word.char_indices() {
                 let tfn = match (word_index, char_offset) {
-                    (0, 0) => |c| unicode_ident::is_xid_start(c) || c == '_',
+                    (0, 0) => |c| unicode_ident::is_xid_start(c),
                     _ => |c| unicode_ident::is_xid_continue(c),
                 };
 
                 if !tfn(char) {
-                    // This is an option because I'm only 99% sure we can always find the word in the original
                     let offset = self
                         .original()
                         .to_lowercase()
                         .find(word)
-                        .map(|word_offset| word_offset + char_offset);
-                    return Err(Error::InvalidCharacter(offset, char));
+                        .map(|word_offset| word_offset + char_offset)
+                        .expect("Word should be present in identifier words");
+                    return Err(Error::InvalidCharacter {
+                        byte_offset: offset,
+                        invalid_char: char,
+                    });
                 }
             }
+        }
+
+        if self.words().iter().all(|w| w.is_empty())
+        /* || self.to_case(Case::Flat).is_empty()*/
+        {
+            return Err(Error::EmptyAfterSplits);
         }
 
         Ok(())
@@ -180,7 +183,11 @@ impl IdentifierRef {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {
     Empty,
-    InvalidCharacter(Option<usize>, char),
+    EmptyAfterSplits,
+    InvalidCharacter {
+        byte_offset: usize,
+        invalid_char: char,
+    },
 }
 
 impl std::error::Error for Error {}
@@ -188,13 +195,14 @@ impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Error::Empty => write!(f, "Identifier is empty"),
-            Error::InvalidCharacter(None, c) => {
-                write!(f, "Identifier contains an invalid character: '{c:?}'")
-            }
-            Error::InvalidCharacter(Some(i), c) => {
+            Error::EmptyAfterSplits => write!(f, "Identifier is empty after word split"),
+            Error::InvalidCharacter {
+                byte_offset,
+                invalid_char,
+            } => {
                 write!(
                     f,
-                    "Identifier contains an invalid character at byte index {i}: '{c:?}'"
+                    "Identifier contains an invalid character at byte offset {byte_offset}: '{invalid_char:?}'"
                 )
             }
         }
@@ -213,7 +221,10 @@ mod tests {
                 .unwrap()
                 .apply_boundaries(&[Boundary::Underscore])
                 .check_validity(),
-            Err(Error::InvalidCharacter(Some(0), '1'))
+            Err(Error::InvalidCharacter {
+                byte_offset: 0,
+                invalid_char: '1'
+            })
         );
         assert_eq!(
             Identifier::try_parse("_1")
@@ -241,14 +252,20 @@ mod tests {
                 .unwrap()
                 .apply_boundaries(&[Boundary::Underscore])
                 .check_validity(),
-            Err(Error::InvalidCharacter(Some(0), '😈'))
+            Err(Error::InvalidCharacter {
+                byte_offset: 0,
+                invalid_char: '😈'
+            })
         );
         assert_eq!(
             Identifier::try_parse("abc😈")
                 .unwrap()
                 .apply_boundaries(&[Boundary::Underscore])
                 .check_validity(),
-            Err(Error::InvalidCharacter(Some(3), '😈'))
+            Err(Error::InvalidCharacter {
+                byte_offset: 3,
+                invalid_char: '😈'
+            })
         );
         assert_eq!(
             Identifier::try_parse("_")
@@ -269,7 +286,10 @@ mod tests {
                 .unwrap()
                 .apply_boundaries(&[Boundary::Underscore])
                 .check_validity(),
-            Err(Error::InvalidCharacter(Some(3), ' '))
+            Err(Error::InvalidCharacter {
+                byte_offset: 3,
+                invalid_char: ' '
+            })
         );
         Identifier::try_parse("abc def")
             .unwrap()
@@ -295,7 +315,10 @@ mod tests {
                 .unwrap()
                 .apply_boundaries(&[Boundary::Underscore])
                 .check_validity(),
-            Err(Error::InvalidCharacter(Some(3), '🚩'))
+            Err(Error::InvalidCharacter {
+                byte_offset: 3,
+                invalid_char: '🚩'
+            })
         );
     }
 

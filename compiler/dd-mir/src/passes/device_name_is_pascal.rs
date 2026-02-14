@@ -31,7 +31,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
             .apply_boundaries(&lenient_pascal_boundaries)
             .check_validity()
         {
-            diagnostics.add_miette(InvalidIdentifier::new(e, device.name.span));
+            diagnostics.add(InvalidIdentifier::new(e, device.name.span));
             removals.insert(device.id());
             continue;
         }

@@ -1048,54 +1048,63 @@ impl Diagnostic for AddressOverlap {
     }
 }
 
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Invalid identifier used")]
-#[diagnostic(
-    severity(Error),
-    help(
-        "Identifiers are split into words using the name-word-boundaries.\n\
-After the split the first character of the first word must be a `_` or a unicode XID start character.\n\
-All other characters must be a unicode XID continue character."
-    )
-)]
 pub struct InvalidIdentifier {
-    #[label(collection)]
-    pub labels: Vec<LabeledSpan>,
+    pub error: identifier::Error,
+    pub identifier: Span,
 }
 
 impl InvalidIdentifier {
-    pub fn new(error: identifier::Error, identifier: impl Into<Span>) -> Self {
-        let identifier = identifier.into();
-        match error {
-            identifier::Error::Empty => Self {
-                labels: vec![LabeledSpan::new_with_span(
-                    Some("Identifier is empty".into()),
-                    identifier,
-                )],
-            },
-            identifier::Error::InvalidCharacter(Some(offset), character)
-                if !identifier.is_empty() =>
-            {
-                Self {
-                    labels: vec![LabeledSpan::new(
-                        Some(format!(
-                            "`{character}` (or `{}`) is not a valid character",
-                            character.escape_unicode()
-                        )),
-                        identifier.start + offset,
-                        character.len_utf8(),
-                    )],
-                }
-            }
-            identifier::Error::InvalidCharacter(_, character) => Self {
-                labels: vec![LabeledSpan::new_with_span(
-                    Some(format!(
-                        "`{character}` (or `{}`) is not a valid character",
-                        character.escape_unicode()
-                    )),
-                    identifier,
-                )],
-            },
-        }
+    pub fn new(error: identifier::Error, identifier: Span) -> Self {
+        Self { error, identifier }
+    }
+}
+
+impl Diagnostic for InvalidIdentifier {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        const INFO_TEXT: &str = "Identifiers are split into words using the name-word-boundaries.\n\
+After the split the first character of the first word must be a unicode XID start character.\n\
+All other characters must be a unicode XID continue character.";
+
+        let annotation = match self.error {
+            identifier::Error::Empty => AnnotationKind::Primary
+                .span(self.identifier.into())
+                .label("identifier is empty"),
+            identifier::Error::EmptyAfterSplits => AnnotationKind::Primary
+                .span(self.identifier.into())
+                .label("identifier is empty after word split"),
+            identifier::Error::InvalidCharacter {
+                byte_offset: offset,
+                invalid_char: character,
+            } if !self.identifier.is_empty() => AnnotationKind::Primary
+                .span(
+                    self.identifier.start + offset
+                        ..self.identifier.start + offset + character.len_utf8(),
+                )
+                .label(format!(
+                    "`{character}` (or `{}`) is not a valid character",
+                    character.escape_unicode()
+                )),
+            identifier::Error::InvalidCharacter {
+                byte_offset: _,
+                invalid_char: character,
+            } => AnnotationKind::Primary
+                .span(self.identifier.into())
+                .label(format!(
+                    "`{character}` (or `{}`) is not a valid character",
+                    character.escape_unicode()
+                )),
+        };
+
+        [
+            Level::ERROR
+                .primary_title("invalid identifier")
+                .element(Snippet::source(source).path(path).annotation(annotation)),
+            Group::with_title(Level::INFO.secondary_title(INFO_TEXT)),
+        ]
+        .to_vec()
     }
 }

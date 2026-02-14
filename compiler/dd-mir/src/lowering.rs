@@ -114,7 +114,7 @@ fn transform_device(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Dev
     let device_name = match Identifier::try_parse(&device_name) {
         Ok(id) => id,
         Err(e) => {
-            diagnostics.add_miette(InvalidIdentifier::new(e, device_name_span));
+            diagnostics.add(InvalidIdentifier::new(e, device_name_span.into()));
             return None;
         }
     };
@@ -236,7 +236,7 @@ fn transform_block(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Bloc
     let name = match Identifier::try_parse(&name) {
         Ok(id) => id,
         Err(e) => {
-            diagnostics.add_miette(InvalidIdentifier::new(e, name_span));
+            diagnostics.add(InvalidIdentifier::new(e, name_span.into()));
             return None;
         }
     };
@@ -312,7 +312,7 @@ fn transform_register(
     let name = match Identifier::try_parse(&name) {
         Ok(id) => id,
         Err(e) => {
-            diagnostics.add_miette(InvalidIdentifier::new(e, name_span));
+            diagnostics.add(InvalidIdentifier::new(e, name_span.into()));
             return (None, None, Vec::new());
         }
     };
@@ -480,7 +480,7 @@ fn transform_command(
     let name = match Identifier::try_parse(&name) {
         Ok(id) => id,
         Err(e) => {
-            diagnostics.add_miette(InvalidIdentifier::new(e, name_span));
+            diagnostics.add(InvalidIdentifier::new(e, name_span.into()));
             return (None, Vec::new(), Vec::new());
         }
     };
@@ -645,7 +645,7 @@ fn transform_buffer(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Buf
     let name = match Identifier::try_parse(&name) {
         Ok(id) => id,
         Err(e) => {
-            diagnostics.add_miette(InvalidIdentifier::new(e, name_span));
+            diagnostics.add(InvalidIdentifier::new(e, name_span.into()));
             return None;
         }
     };
@@ -891,7 +891,7 @@ fn transform_field_set(
                         field_set.name = id.with_span(name.span());
                     }
                     Err(e) => {
-                        diagnostics.add_miette(InvalidIdentifier::new(e, name.span()));
+                        diagnostics.add(InvalidIdentifier::new(e, name.span().into()));
                     }
                 };
             }
@@ -1151,8 +1151,7 @@ fn transform_field(node: &KdlNode, diagnostics: &mut Diagnostics) -> (Option<Fie
                     ));
                 }
                 Err(e) => {
-                    diagnostics
-                        .add_miette(InvalidIdentifier::new(e, field_conversion.type_name.span));
+                    diagnostics.add(InvalidIdentifier::new(e, field_conversion.type_name.span));
                 }
             }
         } else {
@@ -1174,7 +1173,7 @@ fn transform_field(node: &KdlNode, diagnostics: &mut Diagnostics) -> (Option<Fie
     let name = match Identifier::try_parse(node.name().value()) {
         Ok(id) => id,
         Err(e) => {
-            diagnostics.add_miette(InvalidIdentifier::new(e, node.name().span()));
+            diagnostics.add(InvalidIdentifier::new(e, node.name().span().into()));
             return (None, inline_enum);
         }
     };
@@ -1265,7 +1264,7 @@ fn transform_enum(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Enum>
                     enum_value.name = id.with_span(name.span());
                 }
                 Err(e) => {
-                    diagnostics.add_miette(InvalidIdentifier::new(e, name.span()));
+                    diagnostics.add(InvalidIdentifier::new(e, name.span().into()));
                 }
             },
             _ => {
@@ -1367,7 +1366,7 @@ fn transform_enum_variants(nodes: &KdlDocument, diagnostics: &mut Diagnostics) -
             let name = match Identifier::try_parse(variant_name.value()) {
                 Ok(id) => id,
                 Err(e) => {
-                    diagnostics.add_miette(InvalidIdentifier::new(e, variant_name.span()));
+                    diagnostics.add(InvalidIdentifier::new(e, variant_name.span().into()));
                     return None;
                 }
             };
@@ -1457,7 +1456,7 @@ fn transform_extern(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Ext
                     extern_value.name = id.with_span(name.span());
                 }
                 Err(e) => {
-                    diagnostics.add_miette(InvalidIdentifier::new(e, name.span()));
+                    diagnostics.add(InvalidIdentifier::new(e, name.span().into()));
                 }
             },
             _ => {
