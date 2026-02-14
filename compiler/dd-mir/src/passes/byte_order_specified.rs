@@ -12,7 +12,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
             }
 
             if fs.size_bits > 8 && fs.byte_order.is_none() {
-                diagnostics.add_miette(UnspecifiedByteOrder {
+                diagnostics.add(UnspecifiedByteOrder {
                     fieldset_name: fs.name.span,
                 });
             }

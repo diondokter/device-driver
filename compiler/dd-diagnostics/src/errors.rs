@@ -564,17 +564,38 @@ pub struct InvalidInfallibleConversion {
     pub existing_type_specifier_content: String,
 }
 
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Unspecied byte order")]
-#[diagnostic(
-    severity(Error),
-    help(
-        "Every fieldset larger than 8 bits must specify its byte order. This can be done on each fieldset individually or in the device/global config"
-    )
-)]
 pub struct UnspecifiedByteOrder {
-    #[label("No byte order specified. Try adding `byte-order=LE` or `byte-order=BE`")]
     pub fieldset_name: Span,
+}
+
+impl Diagnostic for UnspecifiedByteOrder {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [
+            Level::ERROR
+                .primary_title("unspecified byte order")
+                .element(
+                    Snippet::source(source).path(path).annotation(
+                        AnnotationKind::Primary
+                            .span(self.fieldset_name.into())
+                            .label("fielset requires a byte order, but none is specified"),
+                    ),
+                ), 
+            Group::with_title(Level::HELP.secondary_title(
+                "specify the byte order on the fieldset or add a default byte order on the device",
+            )), // TODO: Add patch for adding byte order
+            Group::with_title(Level::NOTE.secondary_title(
+                "the fieldset has a size larger than 8 bits and will span multiple bytes",
+            )),
+            Group::with_title(Level::INFO.secondary_title(
+                "byte order is important for any multi-byte value. It has no default, so it needs to be manually specified",
+            )),
+        ]
+        .to_vec()
+    }
 }
 
 #[derive(Error, Debug, MietteDiagnostic)]
