@@ -7,7 +7,6 @@ pub mod address_types_big_enough;
 pub mod address_types_specified;
 pub mod addresses_non_overlapping;
 pub mod base_types_specified;
-pub mod bit_order_specified;
 pub mod bit_ranges_validated;
 pub mod bool_fields_checked;
 pub mod byte_order_specified;
@@ -21,7 +20,6 @@ pub mod repeat_with_enums_checked;
 pub mod reset_values_converted;
 
 pub fn run_passes(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
-    bit_order_specified::run_pass(manifest);
     base_types_specified::run_pass(manifest, diagnostics);
     let removals = device_name_is_pascal::run_pass(manifest, diagnostics);
     remove_objects(manifest, removals);

@@ -1,6 +1,6 @@
 use std::{borrow::Cow, fmt::Display, num::IntErrorKind};
 
-use device_driver_common::specifiers::{Access, BaseType, BitOrder, ByteOrder, Integer};
+use device_driver_common::specifiers::{Access, BaseType, ByteOrder, Integer};
 use logos::Logos;
 
 #[derive(Debug, Clone, Copy, PartialEq, Logos)]
@@ -53,9 +53,6 @@ pub enum Token<'src> {
     #[token("BE", |_| ByteOrder::BE)]
     #[token("LE", |_| ByteOrder::LE)]
     ByteOrder(ByteOrder),
-    #[token("LSB0", |_| BitOrder::LSB0)]
-    #[token("MSB0", |_| BitOrder::MSB0)]
-    BitOrder(BitOrder),
     #[token("uint", |_| BaseType::Uint)]
     #[token("u8", |_| BaseType::FixedSize(Integer::U8))]
     #[token("u16", |_| BaseType::FixedSize(Integer::U16))]
@@ -96,7 +93,6 @@ impl<'src> Display for Token<'src> {
             Token::Num(_) => write!(f, "number"),
             Token::Access(_) => write!(f, "access-specifier"),
             Token::ByteOrder(_) => write!(f, "byte-order"),
-            Token::BitOrder(_) => write!(f, "bit-order"),
             Token::BaseType(_) => write!(f, "base type"),
             Token::Unexpected(val) => write!(f, "{}", val.escape_debug()),
             Token::Error => write!(f, "ERROR"),
@@ -124,7 +120,6 @@ impl<'src> Token<'src> {
             Token::Num(n) => n.to_string().into(),
             Token::Access(val) => val.to_string().into(),
             Token::ByteOrder(val) => val.to_string().into(),
-            Token::BitOrder(val) => val.to_string().into(),
             Token::BaseType(val) => val.to_string().into(),
             Token::Allow => "allow".into(),
             Token::Default => "default".into(),

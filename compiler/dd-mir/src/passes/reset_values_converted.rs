@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use device_driver_common::{
     span::{Span, SpanExt, Spanned},
-    specifiers::{BitOrder, ByteOrder, ResetValue},
+    specifiers::{ByteOrder, ResetValue},
 };
 
 use crate::{
@@ -32,9 +32,6 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
             if let Some(reset_value) = reg.reset_value.as_ref() {
                 let new_reset_value = convert_reset_value(
                     reset_value.clone(),
-                    target_field_set
-                        .bit_order
-                        .expect("Bitorder should be set at this point"),
                     target_field_set.size_bits.value,
                     target_field_set.byte_order.unwrap(),
                     diagnostics,
@@ -70,7 +67,6 @@ fn get_target_field_set<'m>(reg: &Register, manifest: &'m Manifest) -> &'m Field
 
 fn convert_reset_value(
     reset_value: Spanned<ResetValue>,
-    bit_order: BitOrder,
     size_bits: u32,
     target_byte_order: ByteOrder,
     diagnostics: &mut Diagnostics,
@@ -96,12 +92,12 @@ fn convert_reset_value(
             }
 
             let mut array = vec![0; target_byte_size];
-            match (target_byte_order, bit_order) {
-                (ByteOrder::LE, BitOrder::LSB0) | (ByteOrder::BE, BitOrder::MSB0) => {
+            match target_byte_order {
+                ByteOrder::LE => {
                     let num_bytes_used = target_byte_size.min(8);
                     array[..num_bytes_used].copy_from_slice(&int.to_le_bytes()[..num_bytes_used]);
                 }
-                (ByteOrder::BE, BitOrder::LSB0) | (ByteOrder::LE, BitOrder::MSB0) => {
+                ByteOrder::BE => {
                     let tmp = int.to_be_bytes();
                     let tmp_slice = &tmp[tmp.len() - target_byte_size.min(8)..];
                     array[target_byte_size - tmp_slice.len()..].copy_from_slice(tmp_slice);
@@ -110,7 +106,6 @@ fn convert_reset_value(
 
             convert_reset_value(
                 ResetValue::Array(array).with_span(reset_value.span),
-                bit_order,
                 size_bits,
                 target_byte_order,
                 diagnostics,
@@ -137,18 +132,13 @@ fn convert_reset_value(
                 ByteOrder::BE => array.first().unwrap(),
             };
 
-            // We process with LSB0, so convert
-            let lsb0_biggest_byte = if bit_order == BitOrder::MSB0 {
-                biggest_byte.reverse_bits()
-            } else {
-                *biggest_byte
-            };
-
-            let used_bits = lsb0_biggest_byte
+            let used_bits = biggest_byte
                 .checked_ilog2()
                 .map(|log| log + 1)
                 .unwrap_or_default()
                 + (target_byte_size as u32 - 1) * 8;
+
+            // diagnostics.add(Message::new(format!("bit_order: {bit_order}, lsb0_biggest_byte: {lsb0_biggest_byte:#010b}, target_byte_size: {target_byte_size}, used bits: {used_bits}")));
 
             // Check if the value is not too big
             if used_bits > size_bits {
@@ -190,7 +180,6 @@ mod tests {
                 Object::FieldSet(FieldSet {
                     name: "fs".into_with_dummy_span(),
                     size_bits: 5.with_dummy_span(),
-                    bit_order: Some(BitOrder::LSB0),
                     byte_order: Some(ByteOrder::LE),
                     ..Default::default()
                 }),
@@ -217,7 +206,6 @@ mod tests {
                 Object::FieldSet(FieldSet {
                     name: "fs".into_with_dummy_span(),
                     size_bits: 5.with_dummy_span(),
-                    bit_order: Some(BitOrder::LSB0),
                     byte_order: Some(ByteOrder::LE),
                     ..Default::default()
                 }),
@@ -242,7 +230,6 @@ mod tests {
                 Object::FieldSet(FieldSet {
                     name: "fs".into_with_dummy_span(),
                     size_bits: 5.with_dummy_span(),
-                    bit_order: Some(BitOrder::LSB0),
                     byte_order: Some(ByteOrder::LE),
                     ..Default::default()
                 }),
@@ -269,7 +256,6 @@ mod tests {
                 Object::FieldSet(FieldSet {
                     name: "fs".into_with_dummy_span(),
                     size_bits: 5.with_dummy_span(),
-                    bit_order: Some(BitOrder::LSB0),
                     byte_order: Some(ByteOrder::LE),
                     ..Default::default()
                 }),
@@ -297,7 +283,6 @@ mod tests {
                 Object::FieldSet(FieldSet {
                     name: "fs".into_with_dummy_span(),
                     size_bits: 11.with_dummy_span(),
-                    bit_order: Some(BitOrder::LSB0),
                     byte_order: Some(ByteOrder::LE),
                     ..Default::default()
                 }),
@@ -327,7 +312,6 @@ mod tests {
                 Object::FieldSet(FieldSet {
                     name: "fs".into_with_dummy_span(),
                     size_bits: 11.with_dummy_span(),
-                    bit_order: Some(BitOrder::LSB0),
                     byte_order: Some(ByteOrder::LE),
                     ..Default::default()
                 }),
@@ -353,7 +337,6 @@ mod tests {
                     name: "fs".into_with_dummy_span(),
                     size_bits: 11.with_dummy_span(),
                     byte_order: Some(ByteOrder::BE),
-                    bit_order: Some(BitOrder::LSB0),
                     ..Default::default()
                 }),
             ],
@@ -380,7 +363,6 @@ mod tests {
                     name: "fs".into_with_dummy_span(),
                     size_bits: 11.with_dummy_span(),
                     byte_order: Some(ByteOrder::BE),
-                    bit_order: Some(BitOrder::LSB0),
                     ..Default::default()
                 }),
             ],
@@ -397,7 +379,7 @@ mod tests {
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".into_with_dummy_span(),
-                    reset_value: Some(ResetValue::Array(vec![0x20, 0xC4]).with_dummy_span()),
+                    reset_value: Some(ResetValue::Array(vec![0x04, 0x23]).with_dummy_span()),
                     field_set_ref: IdentifierRef::new("fs".into()),
                     ..Default::default()
                 }),
@@ -405,7 +387,6 @@ mod tests {
                     name: "fs".into_with_dummy_span(),
                     size_bits: 11.with_dummy_span(),
                     byte_order: Some(ByteOrder::BE),
-                    bit_order: Some(BitOrder::MSB0),
                     ..Default::default()
                 }),
             ],
@@ -424,7 +405,7 @@ mod tests {
             objects: vec![
                 Object::Register(Register {
                     name: "Reg".into_with_dummy_span(),
-                    reset_value: Some(ResetValue::Array(vec![0x20, 0xC4]).with_dummy_span()),
+                    reset_value: Some(ResetValue::Array(vec![0x04, 0x23]).with_dummy_span()),
                     field_set_ref: IdentifierRef::new("fs".into()),
                     ..Default::default()
                 }),
@@ -432,7 +413,6 @@ mod tests {
                     name: "fs".into_with_dummy_span(),
                     size_bits: 11.with_dummy_span(),
                     byte_order: Some(ByteOrder::BE),
-                    bit_order: Some(BitOrder::MSB0),
                     ..Default::default()
                 }),
             ],
@@ -462,7 +442,6 @@ mod tests {
                 Object::FieldSet(FieldSet {
                     name: "fs".into_with_dummy_span(),
                     size_bits: 10.with_dummy_span(),
-                    bit_order: Some(BitOrder::LSB0),
                     byte_order: Some(ByteOrder::LE),
                     ..Default::default()
                 }),
@@ -490,7 +469,6 @@ mod tests {
                     name: "fs".into_with_dummy_span(),
                     size_bits: 10.with_dummy_span(),
                     byte_order: Some(ByteOrder::BE),
-                    bit_order: Some(BitOrder::LSB0),
                     ..Default::default()
                 }),
             ],
@@ -517,7 +495,6 @@ mod tests {
                     name: "fs".into_with_dummy_span(),
                     size_bits: 10.with_dummy_span(),
                     byte_order: Some(ByteOrder::BE),
-                    bit_order: Some(BitOrder::MSB0),
                     ..Default::default()
                 }),
             ],
@@ -547,7 +524,6 @@ mod tests {
                     name: "fs".into_with_dummy_span(),
                     size_bits: 32.with_dummy_span(),
                     byte_order: Some(ByteOrder::LE),
-                    bit_order: Some(BitOrder::LSB0),
                     ..Default::default()
                 }),
             ],
@@ -558,60 +534,5 @@ mod tests {
         let mut diagnostics = Diagnostics::new();
         run_pass(&mut start_mir, &mut diagnostics);
         assert!(diagnostics.has_error());
-    }
-
-    #[test]
-    fn int_msb0_parsed_correct() {
-        let mut start_mir = Device {
-            description: String::new(),
-            name: "Device".into_with_dummy_span(),
-            device_config: Default::default(),
-            objects: vec![
-                Object::Register(Register {
-                    name: "Reg".into_with_dummy_span(),
-                    reset_value: Some(ResetValue::Integer(0xFF80).with_dummy_span()),
-                    field_set_ref: IdentifierRef::new("fs".into()),
-                    ..Default::default()
-                }),
-                Object::FieldSet(FieldSet {
-                    name: "fs".into_with_dummy_span(),
-                    size_bits: 9.with_dummy_span(),
-                    bit_order: Some(BitOrder::MSB0),
-                    byte_order: Some(ByteOrder::LE),
-                    ..Default::default()
-                }),
-            ],
-            span: Span::default(),
-        }
-        .into();
-
-        let mut diagnostics = Diagnostics::new();
-        run_pass(&mut start_mir, &mut diagnostics);
-        assert!(!diagnostics.has_error());
-
-        let end_mir = Device {
-            description: String::new(),
-            name: "Device".into_with_dummy_span(),
-            device_config: Default::default(),
-            objects: vec![
-                Object::Register(Register {
-                    name: "Reg".into_with_dummy_span(),
-                    reset_value: Some(ResetValue::Array(vec![0xFF, 0x80]).with_dummy_span()),
-                    field_set_ref: IdentifierRef::new("fs".into()),
-                    ..Default::default()
-                }),
-                Object::FieldSet(FieldSet {
-                    name: "fs".into_with_dummy_span(),
-                    size_bits: 9.with_dummy_span(),
-                    bit_order: Some(BitOrder::MSB0),
-                    byte_order: Some(ByteOrder::LE),
-                    ..Default::default()
-                }),
-            ],
-            span: Span::default(),
-        }
-        .into();
-
-        assert_eq!(start_mir, end_mir);
     }
 }

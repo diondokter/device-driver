@@ -217,35 +217,6 @@ impl FromStr for ByteOrder {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
-pub enum BitOrder {
-    #[default]
-    LSB0,
-    MSB0,
-}
-
-impl VariantNames for BitOrder {
-    const VARIANTS: &[&'static str] = &["LSB0", "MSB0"];
-}
-
-impl Display for BitOrder {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", Self::VARIANTS[*self as usize])
-    }
-}
-
-impl FromStr for BitOrder {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "LSB0" => Ok(Self::LSB0),
-            "MSB0" => Ok(Self::MSB0),
-            _ => Err(()),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
 pub enum BaseType {
     Unspecified,
     Bool,

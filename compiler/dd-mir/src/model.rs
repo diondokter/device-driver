@@ -4,9 +4,7 @@ use convert_case::Boundary;
 use device_driver_common::{
     identifier::{Identifier, IdentifierRef},
     span::{Span, Spanned},
-    specifiers::{
-        Access, BaseType, BitOrder, ByteOrder, Integer, Repeat, ResetValue, TypeConversion,
-    },
+    specifiers::{Access, BaseType, ByteOrder, Integer, Repeat, ResetValue, TypeConversion},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -252,7 +250,6 @@ pub struct DeviceConfig {
     pub field_access: Option<Access>,
     pub buffer_access: Option<Access>,
     pub byte_order: Option<ByteOrder>,
-    pub bit_order: Option<BitOrder>,
     pub register_address_type: Option<Spanned<Integer>>,
     pub command_address_type: Option<Spanned<Integer>>,
     pub buffer_address_type: Option<Spanned<Integer>>,
@@ -269,7 +266,6 @@ impl DeviceConfig {
             field_access: other.field_access.or(self.field_access),
             buffer_access: other.buffer_access.or(self.buffer_access),
             byte_order: other.byte_order.or(self.byte_order),
-            bit_order: other.bit_order.or(self.bit_order),
             register_address_type: other.register_address_type.or(self.register_address_type),
             command_address_type: other.command_address_type.or(self.command_address_type),
             buffer_address_type: other.buffer_address_type.or(self.buffer_address_type),
@@ -511,7 +507,6 @@ pub struct FieldSet {
     pub name: Spanned<Identifier>,
     pub size_bits: Spanned<u32>,
     pub byte_order: Option<ByteOrder>,
-    pub bit_order: Option<BitOrder>,
     pub allow_bit_overlap: bool,
     pub fields: Vec<Field>,
     /// Span of the whole object

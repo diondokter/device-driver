@@ -758,7 +758,7 @@ impl CustomFieldSetName {
         let start = 3;
         let end = 4;
         let raw = unsafe {
-            ::device_driver::ops::load_lsb0::<
+            ::device_driver::ops::load::<
                 u8,
                 ::device_driver::ops::LE,
             >(&self.bits, start, end)
@@ -771,7 +771,7 @@ impl CustomFieldSetName {
         let start = 4;
         let end = 8;
         let raw = unsafe {
-            ::device_driver::ops::load_lsb0::<
+            ::device_driver::ops::load::<
                 u8,
                 ::device_driver::ops::LE,
             >(&self.bits, start, end)
@@ -785,7 +785,7 @@ impl CustomFieldSetName {
         let end = 4;
         let raw = value as _;
         unsafe {
-            ::device_driver::ops::store_lsb0::<
+            ::device_driver::ops::store::<
                 u8,
                 ::device_driver::ops::LE,
             >(raw, start, end, &mut self.bits)
@@ -798,7 +798,7 @@ impl CustomFieldSetName {
         let end = 8;
         let raw = value;
         unsafe {
-            ::device_driver::ops::store_lsb0::<
+            ::device_driver::ops::store::<
                 u8,
                 ::device_driver::ops::LE,
             >(raw, start, end, &mut self.bits)
@@ -904,7 +904,7 @@ impl Foor9FieldSet {
         let start = 0;
         let end = 1;
         let raw = unsafe {
-            ::device_driver::ops::load_lsb0::<
+            ::device_driver::ops::load::<
                 u8,
                 ::device_driver::ops::LE,
             >(&self.bits, start, end)
@@ -917,7 +917,7 @@ impl Foor9FieldSet {
         let start = 1;
         let end = 3;
         let raw = unsafe {
-            ::device_driver::ops::load_lsb0::<
+            ::device_driver::ops::load::<
                 u8,
                 ::device_driver::ops::LE,
             >(&self.bits, start, end)
@@ -930,7 +930,7 @@ impl Foor9FieldSet {
         let start = 3;
         let end = 5;
         let raw = unsafe {
-            ::device_driver::ops::load_lsb0::<
+            ::device_driver::ops::load::<
                 u8,
                 ::device_driver::ops::LE,
             >(&self.bits, start, end)
@@ -943,7 +943,7 @@ impl Foor9FieldSet {
         let start = 5;
         let end = 7;
         let raw = unsafe {
-            ::device_driver::ops::load_lsb0::<
+            ::device_driver::ops::load::<
                 i32,
                 ::device_driver::ops::LE,
             >(&self.bits, start, end)
@@ -957,7 +957,7 @@ impl Foor9FieldSet {
         let end = 1;
         let raw = value as _;
         unsafe {
-            ::device_driver::ops::store_lsb0::<
+            ::device_driver::ops::store::<
                 u8,
                 ::device_driver::ops::LE,
             >(raw, start, end, &mut self.bits)
@@ -970,7 +970,7 @@ impl Foor9FieldSet {
         let end = 3;
         let raw = value;
         unsafe {
-            ::device_driver::ops::store_lsb0::<
+            ::device_driver::ops::store::<
                 u8,
                 ::device_driver::ops::LE,
             >(raw, start, end, &mut self.bits)
@@ -983,7 +983,7 @@ impl Foor9FieldSet {
         let end = 5;
         let raw = value;
         unsafe {
-            ::device_driver::ops::store_lsb0::<
+            ::device_driver::ops::store::<
                 u8,
                 ::device_driver::ops::LE,
             >(raw, start, end, &mut self.bits)
@@ -996,7 +996,7 @@ impl Foor9FieldSet {
         let end = 7;
         let raw = value.into();
         unsafe {
-            ::device_driver::ops::store_lsb0::<
+            ::device_driver::ops::store::<
                 i32,
                 ::device_driver::ops::LE,
             >(raw, start, end, &mut self.bits)
@@ -1104,7 +1104,7 @@ impl Foor10FieldSet {
         let start = 0;
         let end = 2;
         let raw = unsafe {
-            ::device_driver::ops::load_lsb0::<
+            ::device_driver::ops::load::<
                 u16,
                 ::device_driver::ops::LE,
             >(&self.bits, start, end)
@@ -1117,7 +1117,7 @@ impl Foor10FieldSet {
         let start = 2;
         let end = 4;
         let raw = unsafe {
-            ::device_driver::ops::load_lsb0::<
+            ::device_driver::ops::load::<
                 u8,
                 ::device_driver::ops::LE,
             >(&self.bits, start, end)
@@ -1130,7 +1130,7 @@ impl Foor10FieldSet {
         let start = 4;
         let end = 6;
         let raw = unsafe {
-            ::device_driver::ops::load_lsb0::<
+            ::device_driver::ops::load::<
                 u8,
                 ::device_driver::ops::LE,
             >(&self.bits, start, end)
@@ -1143,7 +1143,7 @@ impl Foor10FieldSet {
         let start = 6;
         let end = 8;
         let raw = unsafe {
-            ::device_driver::ops::load_lsb0::<
+            ::device_driver::ops::load::<
                 u8,
                 ::device_driver::ops::LE,
             >(&self.bits, start, end)
@@ -1157,7 +1157,7 @@ impl Foor10FieldSet {
         let end = 2;
         let raw = value.into();
         unsafe {
-            ::device_driver::ops::store_lsb0::<
+            ::device_driver::ops::store::<
                 u16,
                 ::device_driver::ops::LE,
             >(raw, start, end, &mut self.bits)
@@ -1170,7 +1170,7 @@ impl Foor10FieldSet {
         let end = 4;
         let raw = value;
         unsafe {
-            ::device_driver::ops::store_lsb0::<
+            ::device_driver::ops::store::<
                 u8,
                 ::device_driver::ops::LE,
             >(raw, start, end, &mut self.bits)
@@ -1183,7 +1183,7 @@ impl Foor10FieldSet {
         let end = 6;
         let raw = value;
         unsafe {
-            ::device_driver::ops::store_lsb0::<
+            ::device_driver::ops::store::<
                 u8,
                 ::device_driver::ops::LE,
             >(raw, start, end, &mut self.bits)
@@ -1196,7 +1196,7 @@ impl Foor10FieldSet {
         let end = 8;
         let raw = value.into();
         unsafe {
-            ::device_driver::ops::store_lsb0::<
+            ::device_driver::ops::store::<
                 u8,
                 ::device_driver::ops::LE,
             >(raw, start, end, &mut self.bits)
@@ -1396,7 +1396,7 @@ impl Fooc1FieldSetOut {
         let start = 0;
         let end = 1;
         let raw = unsafe {
-            ::device_driver::ops::load_lsb0::<
+            ::device_driver::ops::load::<
                 u8,
                 ::device_driver::ops::LE,
             >(&self.bits, start, end)
@@ -1410,7 +1410,7 @@ impl Fooc1FieldSetOut {
         let end = 1;
         let raw = value as _;
         unsafe {
-            ::device_driver::ops::store_lsb0::<
+            ::device_driver::ops::store::<
                 u8,
                 ::device_driver::ops::LE,
             >(raw, start, end, &mut self.bits)
@@ -1515,7 +1515,7 @@ impl Fs1 {
         let start = 0;
         let end = 16;
         let raw = unsafe {
-            ::device_driver::ops::load_lsb0::<
+            ::device_driver::ops::load::<
                 u16,
                 ::device_driver::ops::LE,
             >(&self.bits, start, end)
@@ -1529,7 +1529,7 @@ impl Fs1 {
         let end = 16;
         let raw = value;
         unsafe {
-            ::device_driver::ops::store_lsb0::<
+            ::device_driver::ops::store::<
                 u16,
                 ::device_driver::ops::LE,
             >(raw, start, end, &mut self.bits)
@@ -1634,7 +1634,7 @@ impl Fs2 {
         let start = 0;
         let end = 7;
         let raw = unsafe {
-            ::device_driver::ops::load_lsb0::<
+            ::device_driver::ops::load::<
                 u8,
                 ::device_driver::ops::LE,
             >(&self.bits, start, end)
@@ -1647,7 +1647,7 @@ impl Fs2 {
         let start = 7;
         let end = 11;
         let raw = unsafe {
-            ::device_driver::ops::load_lsb0::<
+            ::device_driver::ops::load::<
                 u8,
                 ::device_driver::ops::LE,
             >(&self.bits, start, end)
@@ -1661,7 +1661,7 @@ impl Fs2 {
         let end = 7;
         let raw = value.into();
         unsafe {
-            ::device_driver::ops::store_lsb0::<
+            ::device_driver::ops::store::<
                 u8,
                 ::device_driver::ops::LE,
             >(raw, start, end, &mut self.bits)
@@ -1674,7 +1674,7 @@ impl Fs2 {
         let end = 11;
         let raw = value.into();
         unsafe {
-            ::device_driver::ops::store_lsb0::<
+            ::device_driver::ops::store::<
                 u8,
                 ::device_driver::ops::LE,
             >(raw, start, end, &mut self.bits)
@@ -1780,7 +1780,7 @@ impl Fs3 {
         let start = 0;
         let end = 2;
         let raw = unsafe {
-            ::device_driver::ops::load_lsb0::<
+            ::device_driver::ops::load::<
                 u8,
                 ::device_driver::ops::LE,
             >(&self.bits, start, end)
@@ -1793,7 +1793,7 @@ impl Fs3 {
         let start = 2 + i32::from(index) as usize * 2;
         let end = start + 2;
         let raw = unsafe {
-            ::device_driver::ops::load_lsb0::<
+            ::device_driver::ops::load::<
                 u8,
                 ::device_driver::ops::LE,
             >(&self.bits, start, end)
@@ -1807,7 +1807,7 @@ impl Fs3 {
         let start = 6 + index * 2;
         let end = start + 2;
         let raw = unsafe {
-            ::device_driver::ops::load_lsb0::<
+            ::device_driver::ops::load::<
                 u8,
                 ::device_driver::ops::LE,
             >(&self.bits, start, end)
@@ -1820,7 +1820,7 @@ impl Fs3 {
         let start = 14;
         let end = 16;
         let raw = unsafe {
-            ::device_driver::ops::load_lsb0::<
+            ::device_driver::ops::load::<
                 u8,
                 ::device_driver::ops::LE,
             >(&self.bits, start, end)
@@ -1834,7 +1834,7 @@ impl Fs3 {
         let end = 2;
         let raw = value;
         unsafe {
-            ::device_driver::ops::store_lsb0::<
+            ::device_driver::ops::store::<
                 u8,
                 ::device_driver::ops::LE,
             >(raw, start, end, &mut self.bits)
@@ -1847,7 +1847,7 @@ impl Fs3 {
         let end = start + 2;
         let raw = value;
         unsafe {
-            ::device_driver::ops::store_lsb0::<
+            ::device_driver::ops::store::<
                 u8,
                 ::device_driver::ops::LE,
             >(raw, start, end, &mut self.bits)
@@ -1861,7 +1861,7 @@ impl Fs3 {
         let end = start + 2;
         let raw = value;
         unsafe {
-            ::device_driver::ops::store_lsb0::<
+            ::device_driver::ops::store::<
                 u8,
                 ::device_driver::ops::LE,
             >(raw, start, end, &mut self.bits)
@@ -1874,7 +1874,7 @@ impl Fs3 {
         let end = 16;
         let raw = value;
         unsafe {
-            ::device_driver::ops::store_lsb0::<
+            ::device_driver::ops::store::<
                 u8,
                 ::device_driver::ops::LE,
             >(raw, start, end, &mut self.bits)

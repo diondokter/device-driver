@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use device_driver_common::{
     identifier::Identifier,
-    specifiers::{Access, BitOrder, ByteOrder, Integer},
+    specifiers::{Access, ByteOrder, Integer},
 };
 
 pub struct Driver {
@@ -72,7 +72,6 @@ pub struct FieldSet {
     pub description: String,
     pub name: Identifier,
     pub byte_order: ByteOrder,
-    pub bit_order: BitOrder,
     pub size_bits: u32,
     pub fields: Vec<Field>,
     pub defmt_feature: Option<String>,

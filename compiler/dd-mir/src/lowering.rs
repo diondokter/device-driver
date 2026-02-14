@@ -7,8 +7,8 @@ use device_driver_common::{
     identifier::{Identifier, IdentifierRef},
     span::{SpanExt, Spanned},
     specifiers::{
-        Access, BaseType, BitOrder, ByteOrder, Integer, Repeat, RepeatSource, ResetValue,
-        TypeConversion, VariantNames,
+        Access, BaseType, ByteOrder, Integer, Repeat, RepeatSource, ResetValue, TypeConversion,
+        VariantNames,
     },
 };
 use itertools::Itertools;
@@ -746,11 +746,6 @@ fn transform_device_config_node(
                 device.device_config.byte_order = Some(value.value);
             }
         }
-        DeviceConfigType::BitOrder => {
-            if let Some(value) = parse_single_string_value(node, diagnostics) {
-                device.device_config.bit_order = Some(value.value);
-            }
-        }
         DeviceConfigType::RegisterAddressType => {
             if let Some(value) = parse_single_string_value(node, diagnostics) {
                 device.device_config.register_address_type = Some(value);
@@ -792,7 +787,6 @@ fn transform_field_set(
         name: Default::default(),
         size_bits: Default::default(),
         byte_order: Default::default(),
-        bit_order: Default::default(),
         allow_bit_overlap: Default::default(),
         fields: Default::default(),
         span: node.span().into(),
@@ -808,7 +802,6 @@ fn transform_field_set(
     let mut name: Option<&kdl::KdlEntry> = None;
     let mut size_bits: Option<&kdl::KdlEntry> = None;
     let mut byte_order: Option<&kdl::KdlEntry> = None;
-    let mut bit_order: Option<&kdl::KdlEntry> = None;
     let mut allow_bit_overlap: Option<&kdl::KdlEntry> = None;
 
     for (i, entry) in node.entries().iter().enumerate() {
@@ -831,16 +824,6 @@ fn transform_field_set(
                     });
                 } else {
                     byte_order = Some(entry);
-                }
-            }
-            Some("bit-order") => {
-                if let Some(bit_order) = bit_order {
-                    diagnostics.add_miette(errors::DuplicateEntry {
-                        duplicate: entry.span().into(),
-                        original: bit_order.span().into(),
-                    });
-                } else {
-                    bit_order = Some(entry);
                 }
             }
             Some("allow-bit-overlap") => {
@@ -954,28 +937,6 @@ fn transform_field_set(
             _ => {
                 diagnostics.add_miette(errors::UnexpectedType {
                     value_name: byte_order.span().into(),
-                    expected_type: "string",
-                });
-            }
-        }
-    }
-
-    if let Some(bit_order) = bit_order {
-        match bit_order.value() {
-            KdlValue::String(s) => match s.parse() {
-                Ok(bit_order) => {
-                    field_set.bit_order = Some(bit_order);
-                }
-                Err(_) => {
-                    diagnostics.add_miette(errors::UnexpectedValue {
-                        value_name: bit_order.span().into(),
-                        expected_values: BitOrder::VARIANTS.to_vec(),
-                    });
-                }
-            },
-            _ => {
-                diagnostics.add_miette(errors::UnexpectedType {
-                    value_name: bit_order.span().into(),
                     expected_type: "string",
                 });
             }
@@ -1992,7 +1953,6 @@ const DEVICE_CONFIG_TYPES: &[(&str, DeviceConfigType)] = &[
     ("field-access", DeviceConfigType::FieldAccess),
     ("buffer-access", DeviceConfigType::BufferAccess),
     ("byte-order", DeviceConfigType::ByteOrder),
-    ("bit-order", DeviceConfigType::BitOrder),
     ("register-address-type", DeviceConfigType::RegisterAddressType),
     ("command-address-type", DeviceConfigType::CommandAddressType),
     ("buffer-address-type", DeviceConfigType::BufferAddressType),
@@ -2005,7 +1965,6 @@ enum DeviceConfigType {
     FieldAccess,
     BufferAccess,
     ByteOrder,
-    BitOrder,
     RegisterAddressType,
     CommandAddressType,
     BufferAddressType,

@@ -27,11 +27,7 @@ pub fn run_test(source_paths: &[&Path], output_path: &Path) {
                         &mut diagnostics_output,
                         Metadata {
                             source: &source,
-                            source_path: &source_path
-                                .strip_prefix(std::env::current_dir().unwrap())
-                                .unwrap()
-                                .display()
-                                .to_string(),
+                            source_path: "input.kdl",
                             term_width: None,
                             ansi: false,
                             unicode: false,
