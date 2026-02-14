@@ -231,7 +231,7 @@ mod tests {
                 .unwrap()
                 .apply_boundaries(&[Boundary::Underscore])
                 .to_case(Case::Kebab),
-            "_1"
+            "1"
         );
         assert_eq!(
             Identifier::try_parse("a1")
@@ -278,8 +278,8 @@ mod tests {
             Identifier::try_parse("_")
                 .unwrap()
                 .apply_boundaries(&[Boundary::Underscore])
-                .to_case(Case::Kebab),
-            "_"
+                .check_validity(),
+            Err(Error::EmptyAfterSplits)
         );
         assert_eq!(
             Identifier::try_parse("abc def")
@@ -308,7 +308,7 @@ mod tests {
                 .unwrap()
                 .apply_boundaries(&[Boundary::Underscore])
                 .to_case(Case::Kebab),
-            "_abc-def"
+            "abc-def"
         );
         assert_eq!(
             Identifier::try_parse("Bar🚩bar")

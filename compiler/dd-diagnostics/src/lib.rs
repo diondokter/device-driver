@@ -4,7 +4,9 @@
 )]
 
 use std::{
+    borrow::Cow,
     error::Error,
+    ops::Deref,
     sync::{
         Arc,
         atomic::{AtomicBool, Ordering},
@@ -265,6 +267,31 @@ impl<E: Error> Diagnostic for E {
         }
 
         vec![Group::with_title(Level::ERROR.primary_title(self.to_string())).elements(sources)]
+    }
+}
+
+pub struct Message<'s> {
+    string: Cow<'s, str>,
+}
+
+impl<'s> Message<'s> {
+    pub fn new(string: impl Into<Cow<'s, str>>) -> Self {
+        Self {
+            string: string.into(),
+        }
+    }
+}
+
+impl<'s> Diagnostic for Message<'s> {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, _source: &'a str, _path: &'a str) -> Vec<Group<'a>> {
+        [Group::with_title(
+            Level::ERROR.primary_title(self.string.deref()),
+        )]
+        .to_vec()
     }
 }
 
