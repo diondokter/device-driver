@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use device_driver_common::{
-    span::{SpanExt, Spanned},
+    span::{Span, SpanExt, Spanned},
     specifiers::{BitOrder, ByteOrder, ResetValue},
 };
 
@@ -38,6 +38,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
                     target_field_set.size_bits.value,
                     target_field_set.byte_order.unwrap(),
                     diagnostics,
+                    reg.name.span,
                 );
                 assert_eq!(
                     new_reset_values.insert(reg.id(), new_reset_value),
@@ -73,6 +74,7 @@ fn convert_reset_value(
     size_bits: u32,
     target_byte_order: ByteOrder,
     diagnostics: &mut Diagnostics,
+    register_context: Span,
 ) -> Option<Spanned<ResetValue>> {
     let target_byte_size = size_bits.div_ceil(8) as usize;
 
@@ -80,6 +82,18 @@ fn convert_reset_value(
         ResetValue::Integer(int) => {
             // Assert int is a u128. The rest of the calculations bank on that
             let _: u128 = int;
+
+            let used_bits = int.checked_ilog2().map(|log| log + 1).unwrap_or_default();
+
+            if used_bits > size_bits {
+                diagnostics.add(ResetValueTooBig {
+                    reset_value: reset_value.span,
+                    reset_value_size_bits: used_bits,
+                    register_size_bits: size_bits,
+                    register_context,
+                });
+                return None;
+            }
 
             let mut array = vec![0; target_byte_size];
             match (target_byte_order, bit_order) {
@@ -100,14 +114,16 @@ fn convert_reset_value(
                 size_bits,
                 target_byte_order,
                 diagnostics,
+                register_context,
             )
         }
         ResetValue::Array(array) => {
             if array.len() != target_byte_size {
-                diagnostics.add_miette(ResetValueArrayWrongSize {
+                diagnostics.add(ResetValueArrayWrongSize {
                     reset_value: reset_value.span,
                     reset_value_size_bytes: array.len() as u32,
                     register_size_bytes: target_byte_size as u32,
+                    register_context,
                 });
                 return None;
             }
@@ -131,15 +147,16 @@ fn convert_reset_value(
             let used_bits = lsb0_biggest_byte
                 .checked_ilog2()
                 .map(|log| log + 1)
-                .unwrap_or(0)
+                .unwrap_or_default()
                 + (target_byte_size as u32 - 1) * 8;
 
             // Check if the value is not too big
             if used_bits > size_bits {
-                diagnostics.add_miette(ResetValueTooBig {
+                diagnostics.add(ResetValueTooBig {
                     reset_value: reset_value.span,
                     reset_value_size_bits: used_bits,
                     register_size_bits: size_bits,
+                    register_context,
                 });
                 return None;
             }

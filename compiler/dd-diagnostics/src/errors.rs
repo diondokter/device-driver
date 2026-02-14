@@ -636,36 +636,72 @@ impl Diagnostic for UnspecifiedByteOrder {
     }
 }
 
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Reset value is too big")]
-#[diagnostic(
-    severity(Error),
-    help(
-        "Reset values must have the same size as their associated register. Integer-specified values are allowed to be smaller and will be 0-padded to the required size"
-    )
-)]
 pub struct ResetValueTooBig {
-    #[label(
-        "The reset value is specified with {reset_value_size_bits} bits, but the register only has {register_size_bits}"
-    )]
+    pub register_context: Span,
     pub reset_value: Span,
     pub reset_value_size_bits: u32,
     pub register_size_bits: u32,
 }
 
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Reset value wrong size")]
-#[diagnostic(
-    severity(Error),
-    help("Reset values must have the same size as their associated register")
-)]
+impl Diagnostic for ResetValueTooBig {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        const INFO_TEXT: &str = "reset values must have the same size as their associated register. Integer-specified values are allowed to be smaller and will be 0-padded to the required size";
+
+        [
+            Level::ERROR.primary_title("reset value too big").element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(AnnotationKind::Primary.span(self.reset_value.into()).label(
+                        format!(
+                            "the reset value is specified with {} bits, but the register only has {}",
+                            self.reset_value_size_bits, self.register_size_bits
+                        ),
+                    ))
+                    .annotation(AnnotationKind::Visible.span(self.register_context.into())),
+            ),
+            Group::with_title(Level::INFO.secondary_title(INFO_TEXT)),
+        ]
+        .to_vec()
+    }
+}
+
 pub struct ResetValueArrayWrongSize {
-    #[label(
-        "The reset value is specified with {reset_value_size_bytes} bytes and the register has {register_size_bytes}"
-    )]
+    pub register_context: Span,
     pub reset_value: Span,
     pub reset_value_size_bytes: u32,
     pub register_size_bytes: u32,
+}
+
+impl Diagnostic for ResetValueArrayWrongSize {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        const INFO_TEXT: &str = "reset values must have the same size as their associated register";
+
+        [
+            Level::ERROR
+                .primary_title("reset value wrong size")
+                .element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(AnnotationKind::Primary.span(self.reset_value.into()).label(
+                        format!(
+                            "the reset value is specified with {} bytes while the register has {}",
+                            self.reset_value_size_bytes, self.register_size_bytes
+                        ),
+                    ))
+                    .annotation(AnnotationKind::Visible.span(self.register_context.into())),
+            ),
+            Group::with_title(Level::INFO.secondary_title(INFO_TEXT)),
+        ]
+        .to_vec()
+    }
 }
 
 pub struct BoolFieldTooLarge {
