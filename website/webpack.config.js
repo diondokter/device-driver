@@ -1,6 +1,5 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const webpack = require('webpack');
 const WasmPackPlugin = require("@wasm-tool/wasm-pack-plugin");
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
@@ -53,6 +52,9 @@ module.exports = {
                 type: 'asset/resource'
             }
         ]
+    },
+    watchOptions: {
+        aggregateTimeout: 500, // Delays the rebuild slightly to let WasmPack finish
     },
     mode: 'development',
     devtool: 'inline-source-map',
