@@ -39,7 +39,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
         let converted_driver_name = &device.name.original().to_case(lenient_pascal_case);
 
         if device.name.value.original() != converted_driver_name {
-            diagnostics.add_miette(DeviceNameNotPascal {
+            diagnostics.add(DeviceNameNotPascal {
                 device_name: device.name.span,
                 suggestion: converted_driver_name.clone(),
             });

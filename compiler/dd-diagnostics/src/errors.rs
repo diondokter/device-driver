@@ -336,18 +336,38 @@ impl Diagnostic for IntegerFieldSizeTooBig {
     }
 }
 
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Device name is not Pascal cased")]
-#[diagnostic(
-    severity(Error),
-    help(
-        "Device names tend to be a bit weird, so the casing is not automatically changed from the input.\nBut it is required for them to be roughly PascalCase shaped. Try changing it to `{}`", self.suggestion
-    )
-)]
 pub struct DeviceNameNotPascal {
-    #[label("This is not Pascal cased. `{}` would be accepted", self.suggestion)]
     pub device_name: Span,
     pub suggestion: String,
+}
+
+impl Diagnostic for DeviceNameNotPascal {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        const INFO_TEXT: &str = "device names tend to be a bit weird, so the casing is not automatically changed from the input. Because of that, they need to be roughly PascalCase shaped.";
+
+        [
+            Level::ERROR.primary_title("invalid device name").element(
+                Snippet::source(source).path(path).annotation(
+                    AnnotationKind::Primary
+                        .span(self.device_name.into())
+                        .label("device name is not Pascal cased"),
+                ),
+            ),
+            Level::HELP
+                .secondary_title("device names need to be pascal-shaped")
+                .element(
+                    Snippet::source(source)
+                        .path(path)
+                        .patch(Patch::new(self.device_name.into(), &self.suggestion)),
+                ),
+            Group::with_title(Level::INFO.secondary_title(INFO_TEXT)),
+        ]
+        .to_vec()
+    }
 }
 
 #[derive(Error, Debug, MietteDiagnostic)]
