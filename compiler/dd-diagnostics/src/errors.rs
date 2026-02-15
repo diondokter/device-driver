@@ -577,32 +577,78 @@ impl Diagnostic for EnumNoAutoBaseTypeSelected {
     }
 }
 
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("One or more variant values are too high")]
-#[diagnostic(
-    severity(Error),
-    help("The values must fit in the enum integer base type and size-bits. Max = {max_value}")
-)]
 pub struct VariantValuesTooHigh {
-    #[label(collection, "Value too high")]
     pub variant_names: Vec<Span>,
-    #[label("Part of this enum")]
     pub enum_name: Span,
     pub max_value: i128,
+    pub size_bits: u32,
 }
 
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("One or more variant values are too low")]
-#[diagnostic(
-    severity(Error),
-    help("The value must fit in the enum integer base type and size-bits. Min = {min_value}")
-)]
+impl Diagnostic for VariantValuesTooHigh {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [
+            Level::ERROR
+                .primary_title("enum variant value is too high")
+                .element(
+                    Snippet::source(source)
+                        .path(path)
+                        .annotation(
+                            AnnotationKind::Context
+                                .span(self.enum_name.into())
+                                .label(format!("enum is {} bits", self.size_bits)),
+                        )
+                        .annotations(self.variant_names.iter().map(|name| {
+                            AnnotationKind::Primary.span(name.into()).label(format!(
+                                "variant value exceeds the max of {} ({:#X})",
+                                self.max_value, self.max_value
+                            ))
+                        })),
+                ),
+            Group::with_title(Level::INFO.secondary_title("all variants must fit in their enum")),
+        ]
+        .to_vec()
+    }
+}
+
 pub struct VariantValuesTooLow {
-    #[label(collection, "Value too low")]
     pub variant_names: Vec<Span>,
-    #[label("Part of this enum")]
     pub enum_name: Span,
     pub min_value: i128,
+    pub size_bits: u32,
+}
+
+impl Diagnostic for VariantValuesTooLow {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [
+            Level::ERROR
+                .primary_title("enum variant value is too low")
+                .element(
+                    Snippet::source(source)
+                        .path(path)
+                        .annotation(
+                            AnnotationKind::Context
+                                .span(self.enum_name.into())
+                                .label(format!("enum is {} bits", self.size_bits)),
+                        )
+                        .annotations(self.variant_names.iter().map(|name| {
+                            AnnotationKind::Primary.span(name.into()).label(format!(
+                                "variant value exceeds the min of {}",
+                                self.min_value
+                            ))
+                        })),
+                ),
+            Group::with_title(Level::INFO.secondary_title("all variants must fit in their enum")),
+        ]
+        .to_vec()
+    }
 }
 
 #[derive(Error, Debug, MietteDiagnostic)]

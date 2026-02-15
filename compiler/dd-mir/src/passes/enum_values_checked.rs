@@ -156,7 +156,9 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
         };
 
         let size_bits = match enum_value.size_bits {
-            None => base_type_integer.bits_required(*seen_min, *seen_max),
+            None => base_type_integer
+                .bits_required(*seen_min, *seen_max)
+                .min(base_type_integer.size_bits()),
             Some(size_bits) => size_bits,
         };
 
@@ -198,19 +200,21 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
             .collect::<Vec<_>>();
 
         if !too_high_values.is_empty() {
-            diagnostics.add_miette(VariantValuesTooHigh {
+            diagnostics.add(VariantValuesTooHigh {
                 variant_names: too_high_values,
                 enum_name: enum_value.name.span,
                 max_value: *all_values.end(),
+                size_bits,
             });
             removals.insert(enum_value.id());
             continue;
         }
         if !too_low_values.is_empty() {
-            diagnostics.add_miette(VariantValuesTooLow {
+            diagnostics.add(VariantValuesTooLow {
                 variant_names: too_low_values,
                 enum_name: enum_value.name.span,
                 min_value: *all_values.start(),
+                size_bits,
             });
             removals.insert(enum_value.id());
             continue;
