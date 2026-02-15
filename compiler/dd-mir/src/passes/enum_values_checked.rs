@@ -1,8 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
-use device_driver_common::specifiers::{BaseType, Integer};
+use device_driver_common::{
+    span::SpanExt,
+    specifiers::{BaseType, Integer},
+};
 use itertools::Itertools;
-use miette::LabeledSpan;
 
 use crate::model::{
     EnumGenerationStyle, EnumValue, LendingIterator, Manifest, Object, Unique, UniqueId,
@@ -82,10 +84,10 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                 enum_value.size_bits.unwrap_or_default(),
             ),
             BaseType::Bool => {
-                diagnostics.add_miette(EnumBadBasetype {
+                diagnostics.add(EnumBadBasetype {
                     enum_name: enum_value.name.span,
                     base_type: enum_value.base_type.span,
-                    help: "All enums must have an integer as base type",
+                    info: "all enums must have an integer as base type",
                     context: vec![],
                 });
                 removals.insert(enum_value.id());
@@ -99,11 +101,12 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                 );
 
                 if integer.is_some_and(|i| i.is_signed()) {
-                    diagnostics.add_miette(EnumBadBasetype {
+                    // TODO: Make separate error type (same as below)
+                    diagnostics.add(EnumBadBasetype {
                         enum_name: enum_value.name.span,
                         base_type: enum_value.base_type.span,
-                        help: "All enums must use a signed integer if it contains a variant with a negative value",
-                        context: vec![LabeledSpan::new_with_span(Some(format!("Variant with negative value: {seen_min}")), seen_min_id.span())],
+                        info: "enums must use a signed integer when any variant has a negative value",
+                        context: vec![format!("variant with negative value: {seen_min}").with_span(seen_min_id.span())],
                     });
                     removals.insert(enum_value.id());
                     continue;
@@ -128,11 +131,12 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                 }
 
                 if !integer.is_signed() && seen_min.is_negative() {
-                    diagnostics.add_miette(EnumBadBasetype {
+                    // TODO: Make separate error type (same as above)
+                    diagnostics.add(EnumBadBasetype {
                         enum_name: enum_value.name.span,
                         base_type: enum_value.base_type.span,
-                        help: "All enums must use a signed integer if it contains a variant with a negative value",
-                        context: vec![LabeledSpan::new_with_span(Some(format!("Variant with negative value: {seen_min}")), seen_min_id.span())],
+                        info: "enums must use a signed integer when any variant has a negative value",
+                        context: vec![format!("variant with negative value: {seen_min}").with_span(seen_min_id.span())],
                     });
                     removals.insert(enum_value.id());
                     continue;

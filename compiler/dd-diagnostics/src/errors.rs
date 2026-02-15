@@ -8,7 +8,7 @@ use std::borrow::Cow;
 use annotate_snippets::{AnnotationKind, Group, Level, Patch, Snippet};
 use device_driver_common::{
     identifier::{self, Identifier},
-    span::Span,
+    span::{Span, Spanned},
     specifiers::{BaseType, Integer, TypeConversion},
 };
 use itertools::Itertools;
@@ -468,18 +468,45 @@ impl Diagnostic for DuplicateVariantValue {
     }
 }
 
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Enum uses an invalid base type")]
-#[diagnostic(severity(Error))]
 pub struct EnumBadBasetype {
-    #[label("Enum with invalid base type")]
     pub enum_name: Span,
-    #[label("Base type being used")]
     pub base_type: Span,
-    #[help]
-    pub help: &'static str,
-    #[label(collection, "Context")]
-    pub context: Vec<LabeledSpan>,
+    pub info: &'static str,
+    pub context: Vec<Spanned<String>>,
+}
+
+impl Diagnostic for EnumBadBasetype {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [
+            Level::ERROR
+                .primary_title("invalid base type for enum")
+                .element(
+                    Snippet::source(source)
+                        .path(path)
+                        .annotation(
+                            AnnotationKind::Primary
+                                .span(self.base_type.into())
+                                .label("invalid base type"),
+                        )
+                        .annotation(
+                            AnnotationKind::Context
+                                .span(self.enum_name.into())
+                                .label("enum using invalid base type"),
+                        )
+                        .annotations(
+                            self.context.iter().map(|c| {
+                                AnnotationKind::Context.span(c.span.into()).label(&c.value)
+                            }),
+                        ),
+                ),
+            Group::with_title(Level::INFO.secondary_title(self.info)),
+        ]
+        .to_vec()
+    }
 }
 
 #[derive(Error, Debug, MietteDiagnostic)]
