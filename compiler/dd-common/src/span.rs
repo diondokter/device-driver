@@ -45,6 +45,12 @@ impl From<Span> for Range<usize> {
     }
 }
 
+impl<'a> From<&'a Span> for Range<usize> {
+    fn from(value: &'a Span) -> Self {
+        value.start..value.end
+    }
+}
+
 impl From<miette::SourceSpan> for Span {
     fn from(value: miette::SourceSpan) -> Self {
         Self {

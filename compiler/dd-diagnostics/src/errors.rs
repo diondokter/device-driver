@@ -438,13 +438,34 @@ impl Diagnostic for EmptyEnum {
     }
 }
 
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Two or more enum variants have the same value: {} ({:#X})", self.value, self.value)]
-#[diagnostic(severity(Error), help("All enum variants must have a unique value"))]
 pub struct DuplicateVariantValue {
-    #[label(collection)]
     pub duplicates: Vec<Span>,
     pub value: i128,
+}
+
+impl Diagnostic for DuplicateVariantValue {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        const INFO_TEXT: &str = "all enum variants must have a unique value";
+
+        [
+            Level::ERROR
+                .primary_title("two or more enum variants share the same value")
+                .element(Snippet::source(source).path(path).annotations(
+                    self.duplicates.iter().map(|dup| {
+                        AnnotationKind::Primary.span(dup.into()).label(format!(
+                            "variant value is: {} ({:#X})",
+                            self.value, self.value
+                        ))
+                    }),
+                )),
+            Group::with_title(Level::INFO.secondary_title(INFO_TEXT)),
+        ]
+        .to_vec()
+    }
 }
 
 #[derive(Error, Debug, MietteDiagnostic)]

@@ -58,7 +58,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
             .sorted_unstable_by_key(|(value, _)| *value)
         {
             if variants.len() > 1 {
-                diagnostics.add_miette(DuplicateVariantValue {
+                diagnostics.add(DuplicateVariantValue {
                     duplicates: variants.iter().map(|id| id.span()).collect(),
                     value,
                 });
