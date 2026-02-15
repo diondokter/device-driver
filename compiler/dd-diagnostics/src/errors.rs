@@ -370,21 +370,46 @@ impl Diagnostic for DeviceNameNotPascal {
     }
 }
 
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Duplicate name found")]
-#[diagnostic(
-    severity(Error),
-    help(
-        "No two objects can have the same name. The same is true for fields in a field set and variants in an enum"
-    )
-)]
 pub struct DuplicateName {
-    #[label("The original verbatim: {:?}, split: {:?}", original_value.original(), original_value.words().join("·"))]
     pub original: Span,
     pub original_value: Identifier,
-    #[label(primary, "The duplicate verbatim: {:?}, split: {:?}", duplicate_value.original(), duplicate_value.words().join("·"))]
     pub duplicate: Span,
     pub duplicate_value: Identifier,
+}
+
+impl Diagnostic for DuplicateName {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        const INFO_TEXT: &str = "No two objects can have the same name. This is true for fields within a field set and variants within an enum";
+
+        [
+            Level::ERROR.primary_title("Duplicate name found").element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(
+                        AnnotationKind::Context
+                            .span(self.original.into())
+                            .label(format!(
+                                "The original: {:?}, after word split: {:?}",
+                                self.original_value.original(),
+                                self.original_value.words().join("·")
+                            )),
+                    )
+                    .annotation(AnnotationKind::Primary.span(self.duplicate.into()).label(
+                        format!(
+                            "The duplicate: {:?}, after word split: {:?}",
+                            self.duplicate_value.original(),
+                            self.duplicate_value.words().join("·")
+                        ),
+                    )),
+            ),
+            Group::with_title(Level::INFO.secondary_title(INFO_TEXT)),
+        ]
+        .to_vec()
+    }
 }
 
 pub struct EmptyEnum {
