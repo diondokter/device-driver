@@ -54,7 +54,7 @@ module.exports = {
         ]
     },
     watchOptions: {
-        aggregateTimeout: 500, // Delays the rebuild slightly to let WasmPack finish
+        aggregateTimeout: 1000, // Delays the rebuild slightly to let WasmPack finish
     },
     mode: 'development',
     devtool: 'inline-source-map',

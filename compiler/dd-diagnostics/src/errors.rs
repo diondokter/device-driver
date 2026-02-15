@@ -509,20 +509,43 @@ impl Diagnostic for EnumBadBasetype {
     }
 }
 
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Enum size-bits is bigger than its base type")]
-#[diagnostic(
-    severity(Error),
-    help(
-        "The enum is `{size_bits}` bits long, but uses a base type that can't fit that many bits. Use a bigger base type or take a look whether the size-bits is correct"
-    )
-)]
 pub struct EnumSizeBitsBiggerThanBaseType {
-    #[label("Enum with too large size-bits or too small base type")]
     pub enum_name: Span,
-    #[label("Base type being used")]
     pub base_type: Span,
-    pub size_bits: u32,
+    pub enum_size_bits: u32,
+    pub base_type_size_bits: u32,
+}
+
+impl Diagnostic for EnumSizeBitsBiggerThanBaseType {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [
+            Level::ERROR
+                .primary_title("enum doesn't fit its base type")
+                .element(
+                    Snippet::source(source)
+                        .path(path)
+                        .annotation(
+                            AnnotationKind::Primary
+                                .span(self.enum_name.into())
+                                .label(format!("enum is {} bits", self.enum_size_bits)),
+                        )
+                        .annotation(
+                            AnnotationKind::Primary
+                                .span(self.base_type.into())
+                                .label(format!("base type is {} bits", self.base_type_size_bits)),
+                        ),
+                ),
+            Group::with_title(
+                // TODO: Add patch for base type
+                Level::HELP.secondary_title("make the enum smaller or pick a bigger base type"),
+            ),
+        ]
+        .to_vec()
+    }
 }
 
 #[derive(Error, Debug, MietteDiagnostic)]

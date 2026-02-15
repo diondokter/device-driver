@@ -121,10 +121,11 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
             ),
             BaseType::FixedSize(integer) => {
                 if enum_value.size_bits.unwrap_or_default() > integer.size_bits() {
-                    diagnostics.add_miette(EnumSizeBitsBiggerThanBaseType {
+                    diagnostics.add(EnumSizeBitsBiggerThanBaseType {
                         enum_name: enum_value.name.span,
                         base_type: enum_value.base_type.span,
-                        size_bits: enum_value.size_bits.unwrap_or_default(),
+                        enum_size_bits: enum_value.size_bits.unwrap_or_default(),
+                        base_type_size_bits: integer.size_bits(),
                     });
                     removals.insert(enum_value.id());
                     continue;
