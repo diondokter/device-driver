@@ -11,7 +11,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
         if let Object::Extern(extern_value) = object
             && !extern_value.base_type.is_fixed_size()
         {
-            diagnostics.add_miette(ExternInvalidBaseType {
+            diagnostics.add(ExternInvalidBaseType {
                 extern_name: extern_value.name.span,
                 base_type: (!extern_value.base_type.is_unspecified())
                     .then_some(extern_value.base_type.span),

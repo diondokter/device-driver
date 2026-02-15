@@ -383,24 +383,24 @@ impl Diagnostic for DuplicateName {
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
-        const INFO_TEXT: &str = "No two objects can have the same name. This is true for fields within a field set and variants within an enum";
+        const INFO_TEXT: &str = "no two objects can have the same name. This is true for fields within a field set and variants within an enum";
 
         [
-            Level::ERROR.primary_title("Duplicate name found").element(
+            Level::ERROR.primary_title("duplicate name found").element(
                 Snippet::source(source)
                     .path(path)
                     .annotation(
                         AnnotationKind::Context
                             .span(self.original.into())
                             .label(format!(
-                                "The original: {:?}, after word split: {:?}",
+                                "the original: {:?}, after word split: {:?}",
                                 self.original_value.original(),
                                 self.original_value.words().join("·")
                             )),
                     )
                     .annotation(AnnotationKind::Primary.span(self.duplicate.into()).label(
                         format!(
-                            "The duplicate: {:?}, after word split: {:?}",
+                            "the duplicate: {:?}, after word split: {:?}",
                             self.duplicate_value.original(),
                             self.duplicate_value.words().join("·")
                         ),
@@ -578,19 +578,48 @@ pub struct RepeatEnumWithCatchAll {
     pub catch_all: Span,
 }
 
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Extern object uses invalid base type")]
-#[diagnostic(
-    severity(Error),
-    help(
-        "Externs must use a fixed size integer type as its base type. It cannot be left unspecied either"
-    )
-)]
 pub struct ExternInvalidBaseType {
-    #[label(primary, "Extern has invalid base type")]
     pub extern_name: Span,
-    #[label("The invalid base type")]
     pub base_type: Option<Span>,
+}
+
+impl Diagnostic for ExternInvalidBaseType {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        const INFO_TEXT: &str = "externs must specify a fixed size integer type as their base type";
+
+        [
+            Level::ERROR
+                .primary_title("invalid base type for extern object")
+                .element(
+                    Snippet::source(source)
+                        .path(path)
+                        .annotation(
+                            if self.base_type.is_some() {
+                                AnnotationKind::Context
+                            } else {
+                                AnnotationKind::Primary
+                            }
+                            .span(self.extern_name.into())
+                            .label(if self.base_type.is_some() {
+                                "extern has an invalid base type"
+                            } else {
+                                "extern has no base type"
+                            }),
+                        )
+                        .annotations(self.base_type.map(|base_type| {
+                            AnnotationKind::Primary
+                                .span(base_type.into())
+                                .label("invalid base type")
+                        })),
+                ),
+            Group::with_title(Level::INFO.secondary_title(INFO_TEXT)),
+        ]
+        .to_vec()
+    }
 }
 
 #[derive(Error, Debug, MietteDiagnostic)]
