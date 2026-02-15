@@ -148,7 +148,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
         };
 
         let Some(base_type_integer) = base_type_integer else {
-            diagnostics.add_miette(EnumNoAutoBaseTypeSelected {
+            diagnostics.add(EnumNoAutoBaseTypeSelected {
                 enum_name: enum_value.name.span,
             });
             removals.insert(enum_value.id());

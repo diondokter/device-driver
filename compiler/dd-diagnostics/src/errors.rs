@@ -548,17 +548,33 @@ impl Diagnostic for EnumSizeBitsBiggerThanBaseType {
     }
 }
 
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("No valid base type could be selected")]
-#[diagnostic(
-    severity(Error),
-    help(
-        "Either the specified size-bits or the variants cannot fit within any of the supported integer types"
-    )
-)]
 pub struct EnumNoAutoBaseTypeSelected {
-    #[label("Enum with no valid base type")]
     pub enum_name: Span,
+}
+
+impl Diagnostic for EnumNoAutoBaseTypeSelected {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        const NOTE_TEXT: &str =
+            "a variant or the size-bits is too big to fit in any of the base types";
+
+        [
+            Level::ERROR
+                .primary_title("no valid base type found")
+                .element(
+                    Snippet::source(source).path(path).annotation(
+                        AnnotationKind::Primary
+                            .span(self.enum_name.into())
+                            .label("could not select a valid base type for this enum"),
+                    ),
+                ),
+            Group::with_title(Level::NOTE.secondary_title(NOTE_TEXT)),
+        ]
+        .to_vec()
+    }
 }
 
 #[derive(Error, Debug, MietteDiagnostic)]
