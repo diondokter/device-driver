@@ -79,7 +79,7 @@ fn repeat_is_ok(repeat: &Repeat, manifest: &Manifest, diagnostics: &mut Diagnost
             true
         }
     } else {
-        diagnostics.add_miette(ReferencedObjectDoesNotExist {
+        diagnostics.add(ReferencedObjectDoesNotExist {
             object_reference: repeat_enum.span,
         });
         false

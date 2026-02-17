@@ -671,17 +671,32 @@ pub struct EnumMultipleCatchalls {
     pub variant_names: Vec<Span>,
 }
 
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("The referenced object does not exist")]
-#[diagnostic(
-    severity(Error),
-    help(
-        "All objects must be specified in the manifest. It's possible a previous analysis step removed it due to some error. See the previous diagnostics"
-    )
-)]
 pub struct ReferencedObjectDoesNotExist {
-    #[label("This object cannot be found")]
     pub object_reference: Span,
+}
+
+impl Diagnostic for ReferencedObjectDoesNotExist {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        const INFO_TEXT: &str = "all objects must be specified in the manifest. It's possible a previous analysis step removed it due to some error. See the previous diagnostics";
+
+        [
+            Level::ERROR
+                .primary_title("referenced object does not exist")
+                .element(
+                    Snippet::source(source).path(path).annotation(
+                        AnnotationKind::Primary
+                            .span(self.object_reference.into())
+                            .label("object cannot be found"),
+                    ),
+                ),
+            Group::with_title(Level::INFO.secondary_title(INFO_TEXT)),
+        ]
+        .to_vec()
+    }
 }
 
 #[derive(Error, Debug, MietteDiagnostic)]

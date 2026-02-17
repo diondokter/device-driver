@@ -133,7 +133,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                             continue;
                         }
                         None => {
-                            diagnostics.add_miette(ReferencedObjectDoesNotExist {
+                            diagnostics.add(ReferencedObjectDoesNotExist {
                                 object_reference: conversion.type_name.span,
                             });
                             removals.insert(field.id_with(field_set.id()));
