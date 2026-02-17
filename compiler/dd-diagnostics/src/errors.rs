@@ -770,21 +770,52 @@ impl Diagnostic for ExternInvalidBaseType {
     }
 }
 
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Field uses a conversion with a different base type")]
-#[diagnostic(
-    severity(Error),
-    help("A conversion can't change the base type. Make sure they are the same")
-)]
 pub struct DifferentBaseTypes {
-    #[label(primary, "This field uses base type: {field_base_type}")]
     pub field: Span,
     pub field_base_type: BaseType,
-    #[label("It has specified a conversion")]
     pub conversion: Span,
-    #[label("The conversion type uses base type: {conversion_base_type}")]
     pub conversion_object: Span,
     pub conversion_base_type: BaseType,
+}
+
+impl Diagnostic for DifferentBaseTypes {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        const INFO_TEXT: &str = "conversions can only happen when the same base type is shared";
+
+        [
+            Level::ERROR
+                .primary_title("field and conversion use different base types")
+                .element(
+                    Snippet::source(source)
+                        .path(path)
+                        .annotation(
+                            AnnotationKind::Context
+                                .span(self.conversion.into())
+                                .label("conversion specified here"),
+                        )
+                        .annotation(
+                            AnnotationKind::Primary
+                                .span(self.field.into())
+                                .label(format!("field uses base type: {}", self.field_base_type)),
+                        )
+                        .annotation(
+                            AnnotationKind::Primary
+                                .span(self.conversion_object.into())
+                                .label(format!(
+                                    "conversion object uses base type: {}",
+                                    self.conversion_base_type
+                                )),
+                        ),
+                ),
+            // TODO: Add help with patch
+            Group::with_title(Level::INFO.secondary_title(INFO_TEXT)),
+        ]
+        .to_vec()
+    }
 }
 
 #[derive(Error, Debug, MietteDiagnostic)]

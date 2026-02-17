@@ -27,7 +27,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                     match target_object {
                         Some(Object::Enum(target_enum)) => {
                             if field.base_type != target_enum.base_type {
-                                diagnostics.add_miette(DifferentBaseTypes {
+                                diagnostics.add(DifferentBaseTypes {
                                     field: field.name.span,
                                     field_base_type: field.base_type.value,
                                     conversion: conversion.type_name.span,
@@ -98,7 +98,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                         }
                         Some(Object::Extern(target_extern)) => {
                             if field.base_type != target_extern.base_type {
-                                diagnostics.add_miette(DifferentBaseTypes {
+                                diagnostics.add(DifferentBaseTypes {
                                     field: field.name.span,
                                     field_base_type: field.base_type.value,
                                     conversion: conversion.type_name.span,
