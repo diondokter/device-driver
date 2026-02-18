@@ -435,19 +435,6 @@ impl Object {
         }
     }
 
-    pub(crate) fn object_type_name(&self) -> &'static str {
-        match self {
-            Object::Device(_) => "device",
-            Object::Block(_) => "block",
-            Object::Register(_) => "register",
-            Object::Command(_) => "command",
-            Object::Buffer(_) => "buffer",
-            Object::FieldSet(_) => "fieldset",
-            Object::Enum(_) => "enum",
-            Object::Extern(_) => "extern",
-        }
-    }
-
     pub(crate) fn allow_address_overlap(&self) -> bool {
         match self {
             Object::Device(_) => false,

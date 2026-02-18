@@ -699,16 +699,40 @@ impl Diagnostic for ReferencedObjectDoesNotExist {
     }
 }
 
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("The referenced object is invalid")]
-#[diagnostic(severity(Error))]
-pub struct ReferencedObjectInvalid {
-    #[label(primary, "Object referenced here has the wrong type")]
+pub struct InvalidConversionType {
     pub object_reference: Span,
-    #[label("The referenced object")]
     pub referenced_object: Span,
-    #[help]
-    pub help: String,
+}
+
+impl Diagnostic for InvalidConversionType {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        const NOTE_TEXT: &str = "the referenced object has an invalid type. Only enums and externs can be used for conversions";
+
+        [
+            Level::ERROR
+                .primary_title("invalid conversion type")
+                .element(
+                    Snippet::source(source)
+                        .path(path)
+                        .annotation(
+                            AnnotationKind::Primary
+                                .span(self.object_reference.into())
+                                .label("object referenced as conversion type"),
+                        )
+                        .annotation(
+                            AnnotationKind::Context
+                                .span(self.referenced_object.into())
+                                .label("referenced object"),
+                        ),
+                ),
+            Group::with_title(Level::NOTE.secondary_title(NOTE_TEXT)),
+        ]
+        .to_vec()
+    }
 }
 
 pub struct RepeatEnumWithCatchAll {

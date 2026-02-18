@@ -9,8 +9,8 @@ use crate::{
 use device_driver_diagnostics::{
     Diagnostics,
     errors::{
-        DifferentBaseTypes, InvalidInfallibleConversion, ReferencedObjectDoesNotExist,
-        ReferencedObjectInvalid,
+        DifferentBaseTypes, InvalidConversionType, InvalidInfallibleConversion,
+        ReferencedObjectDoesNotExist,
     },
 };
 
@@ -124,10 +124,9 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                             }
                         }
                         Some(invalid_object) => {
-                            diagnostics.add_miette(ReferencedObjectInvalid {
+                            diagnostics.add(InvalidConversionType {
                                 object_reference: conversion.type_name.span,
                                 referenced_object: invalid_object.name_span(),
-                                help: format!("The referenced object is of type `{}`. But conversions can only reference `enum` and `external` objects.", invalid_object.object_type_name())
                             });
                             removals.insert(field.id_with(field_set.id()));
                             continue;
