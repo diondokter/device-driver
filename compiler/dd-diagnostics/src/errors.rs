@@ -711,19 +711,46 @@ pub struct ReferencedObjectInvalid {
     pub help: String,
 }
 
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("The repeat uses an enum that has defined a catch-all")]
-#[diagnostic(
-    severity(Error),
-    help("Repeats have to be statically known. Thus, repeats cannot use enums with a catch-all")
-)]
 pub struct RepeatEnumWithCatchAll {
-    #[label(primary, "Repeat references enum")]
     pub repeat_enum: Span,
-    #[label("Referenced enum")]
     pub enum_name: Span,
-    #[label("The offending catch-all")]
     pub catch_all: Span,
+}
+
+impl Diagnostic for RepeatEnumWithCatchAll {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        const INFO_TEXT: &str = "to be able to do all analysis passes correctly, the amount of repeats need to be statically known.
+This is not possible with an enum containing a catch-all since it can take on any value";
+
+        [
+            Level::ERROR
+                .primary_title("enum with catch-all used as repeat source")
+                .element(
+                    Snippet::source(source)
+                        .path(path)
+                        .annotation(
+                            AnnotationKind::Primary
+                                .span(self.repeat_enum.into())
+                                .label("repeat uses enum with catch-all"),
+                        )
+                        .annotation(AnnotationKind::Visible.span(self.enum_name.into()))
+                        .annotation(
+                            AnnotationKind::Context
+                                .span(self.catch_all.into())
+                                .label("catch-all specified here"),
+                        ),
+                ),
+            Group::with_title(Level::INFO.secondary_title(INFO_TEXT)),
+            Group::with_title(Level::HELP.secondary_title(
+                "remove the catch-all from the enum or don't use it as repeat source",
+            )),
+        ]
+        .to_vec()
+    }
 }
 
 pub struct ExternInvalidBaseType {
