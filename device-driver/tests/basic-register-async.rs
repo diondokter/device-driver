@@ -26,7 +26,7 @@ impl AsyncRegisterInterface for DeviceInterface {
 }
 
 device_driver::create_device!(
-    kdl: "
+    ddsl: "
         device MyTestDevice {
             register-address-type u8
 

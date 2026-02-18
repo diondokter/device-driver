@@ -7,8 +7,32 @@ use device_driver_common::{
 };
 use device_driver_lexer::{ParseIntRadix, ParseIntRadixError, ParseIntRadixErrorKind, Token};
 
+pub fn parse<'src>(tokens: &[Spanned<Token<'src>>]) -> Ast<'src> {
+    let (ast, parse_errs) = parser()
+        .map_with(|ast, e| (ast, e.span()))
+        .parse(
+            tokens.map(
+                tokens
+                    .last()
+                    .map(|t| Span::from(t.span.end..t.span.end))
+                    .unwrap_or_default(),
+                |token| (&token.value, &token.span),
+            ),
+        )
+        .into_output_errors();
+
+    for error in parse_errs {
+        todo!("Emit diagnostic: {error}");
+    }
+
+    ast.map(|(nodes, span)| Ast { nodes, span })
+        .unwrap_or_default()
+}
+
+#[derive(Default)]
 pub struct Ast<'src> {
     pub nodes: Vec<Node<'src>>,
+    pub span: Span,
 }
 
 #[derive(Debug)]

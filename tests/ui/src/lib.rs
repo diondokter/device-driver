@@ -8,8 +8,6 @@ pub const OUTPUT_HEADER: &str = include_str!("output_header.txt");
 include!(concat!(env!("OUT_DIR"), "/test_cases.rs"));
 
 pub fn run_test(source_paths: &[&Path], output_path: &Path) {
-    device_driver_diagnostics::set_miette_hook(false);
-
     let expected_output = std::fs::read_to_string(output_path).unwrap();
 
     for source_path in source_paths {
@@ -17,8 +15,8 @@ pub fn run_test(source_paths: &[&Path], output_path: &Path) {
 
         let input_extension = source_path.extension().unwrap().display().to_string();
         let (transformed, diagnostics) = match &*input_extension {
-            "kdl" => {
-                let (transformed, diagnostics) = device_driver_core::compile(&source, None);
+            "ddsl" => {
+                let (transformed, diagnostics) = device_driver_core::compile(&source);
 
                 let mut diagnostics_output = String::new();
 
@@ -27,7 +25,7 @@ pub fn run_test(source_paths: &[&Path], output_path: &Path) {
                         &mut diagnostics_output,
                         Metadata {
                             source: &source,
-                            source_path: "input.kdl",
+                            source_path: "input.ddsl",
                             term_width: None,
                             ansi: false,
                             unicode: false,

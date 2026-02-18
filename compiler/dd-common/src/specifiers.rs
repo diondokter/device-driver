@@ -2,7 +2,6 @@ use std::{fmt::Display, str::FromStr};
 
 use crate::{identifier::IdentifierRef, span::Spanned};
 
-/// TODO: Remove when KDL is removed
 pub trait VariantNames {
     /// Names of the variants of this enum
     const VARIANTS: &'static [&'static str];

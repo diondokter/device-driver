@@ -1,6 +1,5 @@
 use clap::Parser;
-use device_driver_diagnostics::{Diagnostics, Metadata};
-use miette::{Context, IntoDiagnostic};
+use device_driver_diagnostics::{Diagnostics, DynError, Metadata, ResultExt};
 use std::{io::Write, path::PathBuf, process::ExitCode};
 
 #[derive(Parser, Debug)]
@@ -20,25 +19,21 @@ fn main() -> ExitCode {
     match run() {
         Ok(exit) => exit,
         Err(error) => {
-            eprintln!("{error:?}");
+            eprintln!("{error:#}");
             ExitCode::FAILURE
         }
     }
 }
 
-fn run() -> miette::Result<ExitCode> {
+fn run() -> Result<ExitCode, DynError> {
     let args = Args::parse();
 
-    device_driver_diagnostics::set_miette_hook(true);
-
-    let source = std::fs::read_to_string(&args.source_path)
-        .into_diagnostic()
-        .wrap_err_with(|| {
-            format!(
-                "Trying to open input file at: {:?}",
-                args.source_path.display()
-            )
-        })?;
+    let source = std::fs::read_to_string(&args.source_path).with_message(|| {
+        format!(
+            "Failed to open input file at: {:?}",
+            args.source_path.display()
+        )
+    })?;
 
     let (output, diagnostics) = args.target.generate(&source);
 
@@ -56,29 +51,26 @@ fn run() -> miette::Result<ExitCode> {
                 anonymized_line_numbers: false,
             },
         )
-        .into_diagnostic()?;
+        .into_dyn_result()?;
 
     if diagnostics_has_error {
         return Ok(ExitCode::FAILURE);
     }
 
     let output_writer: &mut dyn Write = match &args.output_path {
-        Some(path) => &mut std::fs::File::create(path)
-            .into_diagnostic()
-            .wrap_err_with(|| {
-                format!(
-                    "Could not create the output file at: {:?}. Does its directory exist?",
-                    path.display()
-                )
-            })?,
+        Some(path) => &mut std::fs::File::create(path).with_message(|| {
+            format!(
+                "Could not create the output file at: {:?}. Does its directory exist?",
+                path.display()
+            )
+        })?,
         None => &mut std::io::stdout().lock(),
     };
 
     let mut output_writer = std::io::BufWriter::new(output_writer);
     output_writer
         .write_all(output.as_bytes())
-        .into_diagnostic()
-        .wrap_err_with(|| {
+        .with_message(|| {
             format!(
                 "Could not write output to {}",
                 args.output_path
@@ -98,7 +90,7 @@ impl Target {
     #[must_use]
     pub fn generate(&self, source: &str) -> (String, Diagnostics) {
         match self {
-            Target::Rust => device_driver_core::compile(source, None),
+            Target::Rust => device_driver_core::compile(source),
         }
     }
 }

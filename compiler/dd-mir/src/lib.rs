@@ -3,7 +3,7 @@ use device_driver_common::{
     specifiers::{Repeat, RepeatSource},
 };
 use device_driver_diagnostics::Diagnostics;
-use miette::SourceSpan;
+use device_driver_parser::Ast;
 
 use crate::model::{Device, Manifest, Object};
 
@@ -11,12 +11,8 @@ mod lowering;
 pub mod model;
 pub(crate) mod passes;
 
-pub fn lower_kdl_source(
-    file_contents: &str,
-    source_span: Option<SourceSpan>,
-    diagnostics: &mut Diagnostics,
-) -> model::Manifest {
-    let mut mir = lowering::transform(file_contents, source_span, diagnostics);
+pub fn lower_ast(ast: Ast, diagnostics: &mut Diagnostics) -> model::Manifest {
+    let mut mir = lowering::transform(ast, diagnostics);
 
     passes::run_passes(&mut mir, diagnostics);
 

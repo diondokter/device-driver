@@ -1,7 +1,20 @@
 use std::{borrow::Cow, fmt::Display, num::IntErrorKind};
 
-use device_driver_common::specifiers::{Access, BaseType, ByteOrder, Integer};
+use device_driver_common::{
+    span::{SpanExt, Spanned},
+    specifiers::{Access, BaseType, ByteOrder, Integer},
+};
 use logos::Logos;
+
+pub fn lex<'src>(source: &'src str) -> Vec<Spanned<Token<'src>>> {
+    Token::lexer(source)
+        .spanned()
+        .map(|(token, span)| match token {
+            Ok(token) => token.with_span(span),
+            Err(()) => Token::Error.with_span(span),
+        })
+        .collect()
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Logos)]
 #[logos(skip r"[ \t\r\n]+")] // Skip (common) whitespace

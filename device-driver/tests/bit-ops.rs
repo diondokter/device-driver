@@ -1,7 +1,7 @@
 use device_driver::RegisterInterface;
 
 device_driver::create_device!(
-    kdl: "
+    ddsl: "
         device MyTestDevice {
             byte-order LE
             register-address-type u8

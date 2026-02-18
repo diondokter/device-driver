@@ -17,6 +17,32 @@ impl Span {
     }
 }
 
+impl chumsky::span::Span for Span {
+    type Context = ();
+
+    type Offset = usize;
+
+    fn new(_context: Self::Context, range: Range<Self::Offset>) -> Self {
+        range.into()
+    }
+
+    fn context(&self) -> Self::Context {}
+
+    fn start(&self) -> Self::Offset {
+        self.start
+    }
+
+    fn end(&self) -> Self::Offset {
+        self.end
+    }
+}
+
+impl Display for Span {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}..{}", self.start, self.end)
+    }
+}
+
 impl From<(usize, usize)> for Span {
     fn from(value: (usize, usize)) -> Self {
         assert!(value.0 <= value.1);
@@ -48,21 +74,6 @@ impl From<Span> for Range<usize> {
 impl<'a> From<&'a Span> for Range<usize> {
     fn from(value: &'a Span) -> Self {
         value.start..value.end
-    }
-}
-
-impl From<miette::SourceSpan> for Span {
-    fn from(value: miette::SourceSpan) -> Self {
-        Self {
-            start: value.offset(),
-            end: value.offset() + value.len(),
-        }
-    }
-}
-
-impl From<Span> for miette::SourceSpan {
-    fn from(value: Span) -> Self {
-        Self::new(value.start.into(), value.end - value.start)
     }
 }
 

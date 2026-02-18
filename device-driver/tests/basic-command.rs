@@ -27,7 +27,7 @@ impl CommandInterface for DeviceInterface {
 }
 
 device_driver::create_device!(
-    kdl: "
+    ddsl: "
         device MyTestDevice {
             byte-order LE
             command-address-type u8
