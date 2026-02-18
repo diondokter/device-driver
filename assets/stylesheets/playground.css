@@ -1,17 +1,17 @@
 body {
-    background-color: #3c3c3c;
+    background-color: #181818;
     margin: 0px;
     color: #dcdcdc;
     font-family: Consolas, sans-serif;
     display: grid;
     height: 100%;
-    grid-template-rows: auto minmax(0, 100%) 200px;
+    grid-template-rows: auto minmax(0, 100%) 33.333%;
     overflow: hidden;
 }
 
 #editor-container {
     width: 100%;
-    background-color: #1e1e1e;
+    background-color: #1f1f1f;
     clear: both;
     display: grid;
     grid-template-columns: calc(50% - 2.5px) 5px auto;
@@ -26,29 +26,30 @@ body {
 }
 
 .separator {
-    background-color: black;
-    cursor: grab;
+    background-color: #2a2a2a;
     padding: 0px;
     margin: 0px;
-    transition: 0.1s;
+    transition-delay: 0.1s;
+    transition-duration: 0.2s;
 }
 
 .separator:hover {
-    background-color: #626262;
-}
-
-.separator:active {
-    cursor: grabbing;
+    transition-delay: 0.2s;
+    background-color: #960018;
 }
 
 
 #vertical-separator {
     grid-column: 1 / 4;
+    cursor: ns-resize;
+}
+#horizontal-separator {
+    cursor: ew-resize;
 }
 
 .diagnostics-window {
-    width: 100%;
     overflow: auto;
+    padding: 10px;
 }
 
 #diagnostics {
@@ -58,6 +59,7 @@ body {
 pre {
     width: 100%;
     white-space: pre-wrap;
+    margin: 0px;
 }
 
 code {
@@ -65,7 +67,12 @@ code {
 }
 
 .diagnostics-window a {
-    color: #960018;
+    color: inherit;
+    text-decoration: none;
+}
+
+.diagnostics-window a:hover {
+    text-decoration: underline;
 }
 
 
