@@ -651,24 +651,92 @@ impl Diagnostic for VariantValuesTooLow {
     }
 }
 
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("More than one default defined on enum")]
-#[diagnostic(severity(Error), help("An enum can have at most 1 default variant"))]
 pub struct EnumMultipleDefaults {
-    #[label("Multiple defaults on this enum")]
     pub enum_name: Span,
-    #[label(collection, "Variant defined as default")]
     pub variant_names: Vec<Span>,
 }
 
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("More than one catch-all defined on enum")]
-#[diagnostic(severity(Error), help("An enum can have at most 1 catch-all variant"))]
+impl Diagnostic for EnumMultipleDefaults {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [
+            Level::ERROR
+                .primary_title("enum defines more than one default variant")
+                .element(
+                    Snippet::source(source)
+                        .path(path)
+                        .annotation(
+                            AnnotationKind::Context
+                                .span(self.enum_name.into())
+                                .label("offending enum"),
+                        )
+                        .annotations(self.variant_names.iter().enumerate().map(
+                            |(index, variant_name)| {
+                                if index == 0 {
+                                    AnnotationKind::Context
+                                        .span(variant_name.into())
+                                        .label("first default variant")
+                                } else {
+                                    AnnotationKind::Primary
+                                        .span(variant_name.into())
+                                        .label("extra default variant")
+                                }
+                            },
+                        )),
+                ),
+            Group::with_title(
+                Level::INFO.secondary_title("enums can have at most one default variant"),
+            ),
+        ]
+        .to_vec()
+    }
+}
+
 pub struct EnumMultipleCatchalls {
-    #[label("Multiple catch-alls on this enum")]
     pub enum_name: Span,
-    #[label(collection, "Variant defined as catch-all")]
     pub variant_names: Vec<Span>,
+}
+
+impl Diagnostic for EnumMultipleCatchalls {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [
+            Level::ERROR
+                .primary_title("enum defines more than one catch-all variant")
+                .element(
+                    Snippet::source(source)
+                        .path(path)
+                        .annotation(
+                            AnnotationKind::Context
+                                .span(self.enum_name.into())
+                                .label("offending enum"),
+                        )
+                        .annotations(self.variant_names.iter().enumerate().map(
+                            |(index, variant_name)| {
+                                if index == 0 {
+                                    AnnotationKind::Context
+                                        .span(variant_name.into())
+                                        .label("first catch-all variant")
+                                } else {
+                                    AnnotationKind::Primary
+                                        .span(variant_name.into())
+                                        .label("extra catch-all variant")
+                                }
+                            },
+                        )),
+                ),
+            Group::with_title(
+                Level::INFO.secondary_title("enums can have at most one catch-all variant"),
+            ),
+        ]
+        .to_vec()
+    }
 }
 
 pub struct ReferencedObjectDoesNotExist {

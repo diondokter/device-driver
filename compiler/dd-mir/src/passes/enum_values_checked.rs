@@ -229,7 +229,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
             .collect::<Vec<_>>();
 
         if default_variants.len() > 1 {
-            diagnostics.add_miette(EnumMultipleDefaults {
+            diagnostics.add(EnumMultipleDefaults {
                 variant_names: default_variants,
                 enum_name: enum_value.name.span,
             });
@@ -255,7 +255,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
             .collect::<Vec<_>>();
 
         if catch_all_variants.len() > 1 {
-            diagnostics.add_miette(EnumMultipleCatchalls {
+            diagnostics.add(EnumMultipleCatchalls {
                 variant_names: catch_all_variants,
                 enum_name: enum_value.name.span,
             });
