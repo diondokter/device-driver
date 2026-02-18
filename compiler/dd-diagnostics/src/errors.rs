@@ -12,7 +12,7 @@ use device_driver_common::{
     specifiers::{BaseType, Integer, TypeConversion},
 };
 use itertools::Itertools;
-use miette::{Diagnostic as MietteDiagnostic, LabeledSpan};
+use miette::Diagnostic as MietteDiagnostic;
 use thiserror::Error;
 
 use crate::{Diagnostic, encode_ansi_url};
@@ -937,21 +937,45 @@ impl Diagnostic for DifferentBaseTypes {
     }
 }
 
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Invalid infallible conversion")]
-#[diagnostic(
-    severity(Error),
-    help(
-        "Try adding a `?` to mark the conversion as fallible:\n> ({existing_type_specifier_content}?)
-        "
-    )
-)]
+// TODO: Split in multiple error types
 pub struct InvalidInfallibleConversion {
-    #[label(primary, "Conversion specified here")]
     pub conversion: Span,
-    #[label(collection)]
-    pub context: Vec<LabeledSpan>,
+    pub context: Vec<Spanned<Cow<'static, str>>>,
     pub existing_type_specifier_content: String,
+}
+
+impl Diagnostic for InvalidInfallibleConversion {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [
+            Level::ERROR
+                .primary_title("invalid infallible conversion")
+                .element(
+                    Snippet::source(source)
+                        .path(path)
+                        .annotation(
+                            AnnotationKind::Primary
+                                .span(self.conversion.into())
+                                .label("conversion specified here"),
+                        )
+                        .annotations(
+                            self.context.iter().map(|c| {
+                                AnnotationKind::Context.span(c.span.into()).label(&c.value)
+                            }),
+                        ),
+                ),
+            // TODO: Add patch
+            Group::with_title(Level::HELP.secondary_title("mark the conversion fallible")),
+            Group::with_title(
+                Level::HELP
+                    .secondary_title("make the conversion type support infallible conversion"),
+            ),
+        ]
+        .to_vec()
+    }
 }
 
 pub struct UnspecifiedByteOrder {

@@ -1,6 +1,6 @@
-use std::collections::HashSet;
+use std::{borrow::Cow, collections::HashSet};
 
-use miette::LabeledSpan;
+use device_driver_common::span::SpanExt;
 
 use crate::{
     model::{EnumGenerationStyle, Manifest, Object, Unique, UniqueId},
@@ -46,15 +46,14 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                                     .expect("Generation style has been set here in an earlier pass")
                                 {
                                     EnumGenerationStyle::Fallible => {
-                                        diagnostics.add_miette(InvalidInfallibleConversion {
+                                        diagnostics.add(InvalidInfallibleConversion {
                                             conversion: conversion.type_name.span,
-                                            context: vec![LabeledSpan::new_with_span(
-                                                Some(
-                                                    "Target only supports fallible conversion"
-                                                        .into(),
-                                                ),
-                                                target_enum.name.span,
-                                            )],
+                                            context: vec![
+                                                Cow::from(
+                                                    "Target only supports fallible conversion",
+                                                )
+                                                .with_span(target_enum.name.span),
+                                            ],
                                             existing_type_specifier_content: field
                                                 .get_type_specifier_string(),
                                         });
@@ -68,19 +67,17 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                                         );
 
                                         if field_bits > enum_bits {
-                                            diagnostics.add_miette(InvalidInfallibleConversion {
+                                            diagnostics.add(InvalidInfallibleConversion {
                                                 conversion: conversion.type_name.span,
                                                 context: vec![
-                                                        LabeledSpan::new_with_span(
-                                                            Some(format!(
+                                                        Cow::from(format!(
                                                                 "The field has a size of {field_bits} bits"
-                                                            )),
+                                                            )).with_span(
                                                             field.field_address.span,
                                                         ),
-                                                        LabeledSpan::new_with_span(
-                                                            Some(format!(
+                                                        Cow::from(format!(
                                                                 "Target enum only has a size of {enum_bits} bits. This means not all possible field values can be converted to an enum"
-                                                            )),
+                                                            )).with_span(
                                                             target_enum.name.span,
                                                         ),
                                                     ],
@@ -110,12 +107,12 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                             }
 
                             if !conversion.fallible && !target_extern.supports_infallible {
-                                diagnostics.add_miette(InvalidInfallibleConversion {
+                                diagnostics.add(InvalidInfallibleConversion {
                                     conversion: conversion.type_name.span,
-                                    context: vec![LabeledSpan::new_with_span(
-                                        Some("Target only supports fallible conversion".into()),
-                                        target_extern.name.span,
-                                    )],
+                                    context: vec![
+                                        Cow::from("Target only supports fallible conversion")
+                                            .with_span(target_extern.name.span),
+                                    ],
                                     existing_type_specifier_content: field
                                         .get_type_specifier_string(),
                                 });
