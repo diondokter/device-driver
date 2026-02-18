@@ -1,6 +1,7 @@
 import * as device_driver_wasm from '../../pkg';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import * as KDLMonarch from './kdl.monarch'
+import * as AU from 'ansi_up';
 
 await device_driver_wasm;
 await monaco;
@@ -43,7 +44,9 @@ function run_compile(text, output_editor) {
     var output = device_driver_wasm.compile(text, diagnostics_chars_per_line());
 
     output_editor.getModel().setValue(output.code);
-    diagnostics.innerHTML = replace_paths_with_links(escapeHtml(output.diagnostics));
+
+    var ansi_up = new AU.AnsiUp();
+    diagnostics.innerHTML = replace_paths_with_links(ansi_up.ansi_to_html(output.diagnostics));
 
     localStorage.setItem("code-session", text);
 }
@@ -103,8 +106,11 @@ function diagnostics_chars_per_line() {
  * @returns {String}
  * */
 function replace_paths_with_links(diagnostics) {
-    return diagnostics.replace(/\[.+.kdl:\d+:\d+]/gm, (path_block) => {
+    return diagnostics.replace(/\[.+.kdl:\d+:\d+]/gm, (path_block) => { // For miette reports
         var splits = path_block.replace("]", "").split(":");
+        return `<a href="javascript:Website.then((w) => w.scroll_to(${Number.parseInt(splits[1])}, ${Number.parseInt(splits[2])}))">${path_block}</a>`;
+    }).replace(/\w+.kdl:\d+:\d+/gm, (path_block) => { // For annotate-snippets reports
+        var splits = path_block.split(":");
         return `<a href="javascript:Website.then((w) => w.scroll_to(${Number.parseInt(splits[1])}, ${Number.parseInt(splits[2])}))">${path_block}</a>`;
     });
 }
@@ -119,26 +125,6 @@ export function scroll_to(line, column) {
     code_editor.focus();
 }
 
-function escapeHtml(str) {
-    if (typeof str !== 'string') {
-        return '';
-    }
-
-    const escapeCharacter = (match) => {
-        switch (match) {
-            case '&': return '&amp;';
-            case '<': return '&lt;';
-            case '>': return '&gt;';
-            case '"': return '&quot;';
-            case '\'': return '&#039;';
-            case '`': return '&#096;';
-            default: return match;
-        }
-    };
-
-    return str.replace(/[&<>"'`]/g, escapeCharacter);
-}
-
 export function reset() {
     code_editor.setValue(DEFAULT_CODE);
 }
@@ -148,17 +134,20 @@ var horizontal_offset = 0.5;
 var horizontal_separator = document.getElementById("horizontal-separator");
 horizontal_separator.onpointerdown = (event) => {
     horizontal_dragging = true;
+    document.body.style.cursor = "ew-resize";
 };
 var vertical_dragging = false;
-var vertical_offset = 200;
+var vertical_offset = document.body.scrollHeight / 3;
 var vertical_separator = document.getElementById("vertical-separator");
 vertical_separator.onpointerdown = (event) => {
     vertical_dragging = true;
+    document.body.style.cursor = "ns-resize";
 };
 
 document.addEventListener("mouseup", (event) => {
     horizontal_dragging = false;
     vertical_dragging = false;
+    document.body.style.cursor = "initial";
 });
 
 var editor_container = document.getElementById("editor-container");

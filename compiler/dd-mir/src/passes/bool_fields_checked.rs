@@ -6,11 +6,11 @@ use device_driver_diagnostics::{Diagnostics, errors::BoolFieldTooLarge};
 pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
     let mut iter = manifest.iter_objects_with_config_mut();
     while let Some((object, _)) = iter.next() {
-        for field in object
-            .as_field_set_mut()
-            .into_iter()
-            .flat_map(|fs| &mut fs.fields)
-        {
+        let Some(field_set) = object.as_field_set_mut() else {
+            continue;
+        };
+
+        for field in field_set.fields.iter_mut() {
             if field.base_type == BaseType::Bool {
                 // When zero bits long, extend to one bit
                 if field.field_address.start == field.field_address.end {
@@ -26,6 +26,9 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
                         },
                         address: field.field_address.span,
                         address_bits: field.field_address.len() as u32,
+                        address_start: field.field_address.start,
+
+                        field_set_context: field_set.name.span,
                     });
                     // To fix for further use, set the len to just 1
                     field.field_address.end = field.field_address.start + 1;

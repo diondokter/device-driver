@@ -3,7 +3,7 @@ use std::fmt::Display;
 use chumsky::{input::ValueInput, prelude::*};
 use device_driver_common::{
     span::{Span, SpanExt, Spanned},
-    specifiers::{Access, BaseType, BitOrder, ByteOrder},
+    specifiers::{Access, BaseType, ByteOrder},
 };
 use device_driver_lexer::{ParseIntRadix, ParseIntRadixError, ParseIntRadixErrorKind, Token};
 
@@ -125,7 +125,6 @@ pub enum Expression<'src> {
     CatchAllNumber(i128),
     Access(Access),
     ByteOrder(ByteOrder),
-    BitOrder(BitOrder),
     TypeReference(Ident<'src>),
     SubNode(Box<Node<'src>>),
     Error,
@@ -152,7 +151,6 @@ impl<'src> Display for Expression<'src> {
             Expression::CatchAllNumber(num) => write!(f, "catch-all {num}"),
             Expression::Access(val) => val.fmt(f),
             Expression::ByteOrder(val) => val.fmt(f),
-            Expression::BitOrder(val) => val.fmt(f),
             Expression::TypeReference(ident) => ident.val.fmt(f),
             Expression::SubNode(val) => val.fmt(f),
             Expression::Error => write!(f, "ERROR"),
@@ -306,7 +304,6 @@ where
             just(Token::Allow).map(|_| Expression::Allow),
             select! { Token::Access(val) => val }.map(Expression::Access),
             select! { Token::ByteOrder(val) => val }.map(Expression::ByteOrder),
-            select! { Token::BitOrder(val) => val }.map(Expression::BitOrder),
             any_ident.map(Expression::TypeReference),
         ))
         .map_with(|expression, extra| expression.spanned(extra.span()))

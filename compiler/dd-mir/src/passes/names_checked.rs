@@ -49,7 +49,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
             let enum_id = enum_value.id();
             for variant in &mut enum_value.variants {
                 if let Err(e) = variant.name.apply_boundaries(boundaries).check_validity() {
-                    diagnostics.add(InvalidIdentifier::new(e, enum_value.name.span));
+                    diagnostics.add(InvalidIdentifier::new(e, variant.name.span));
                     variant_removals.insert(variant.id_with(enum_id.clone()));
                 }
             }

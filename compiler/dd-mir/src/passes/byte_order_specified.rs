@@ -25,7 +25,10 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
 
 #[cfg(test)]
 mod tests {
-    use device_driver_common::{span::SpanExt, specifiers::ByteOrder};
+    use device_driver_common::{
+        span::{Span, SpanExt},
+        specifiers::ByteOrder,
+    };
 
     use crate::model::{Device, DeviceConfig, FieldSet, Object};
 
@@ -50,6 +53,7 @@ mod tests {
                     ..Default::default()
                 }),
             ],
+            span: Span::default(),
         }
         .into();
 
@@ -69,6 +73,7 @@ mod tests {
                 size_bits: 9.with_dummy_span(),
                 ..Default::default()
             })],
+            span: Span::default(),
         }
         .into();
 
@@ -93,6 +98,7 @@ mod tests {
                 size_bits: 9.with_dummy_span(),
                 ..Default::default()
             })],
+            span: Span::default(),
         }
         .into();
 

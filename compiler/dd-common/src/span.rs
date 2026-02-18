@@ -1,6 +1,6 @@
 use std::{fmt::Display, ops::Range};
 
-#[derive(Debug, Clone, Eq, PartialEq, Copy)]
+#[derive(Debug, Clone, Eq, PartialEq, Copy, Default, Hash)]
 pub struct Span {
     pub start: usize,
     pub end: usize,
@@ -10,10 +10,17 @@ impl Span {
     pub fn is_empty(&self) -> bool {
         self.start == self.end
     }
+
+    /// Return self if not empty, or the other span if self is empty
+    pub fn or(&self, other: Self) -> Self {
+        if self.is_empty() { other } else { *self }
+    }
 }
 
 impl From<(usize, usize)> for Span {
     fn from(value: (usize, usize)) -> Self {
+        assert!(value.0 <= value.1);
+
         Self {
             start: value.0,
             end: value.1,
@@ -23,10 +30,24 @@ impl From<(usize, usize)> for Span {
 
 impl From<Range<usize>> for Span {
     fn from(value: Range<usize>) -> Self {
+        assert!(value.start <= value.end);
+
         Self {
             start: value.start,
             end: value.end,
         }
+    }
+}
+
+impl From<Span> for Range<usize> {
+    fn from(value: Span) -> Self {
+        value.start..value.end
+    }
+}
+
+impl<'a> From<&'a Span> for Range<usize> {
+    fn from(value: &'a Span) -> Self {
+        value.start..value.end
     }
 }
 

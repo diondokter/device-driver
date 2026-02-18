@@ -1,6 +1,6 @@
-use std::collections::HashSet;
+use std::{borrow::Cow, collections::HashSet};
 
-use miette::LabeledSpan;
+use device_driver_common::span::SpanExt;
 
 use crate::{
     model::{EnumGenerationStyle, Manifest, Object, Unique, UniqueId},
@@ -9,8 +9,8 @@ use crate::{
 use device_driver_diagnostics::{
     Diagnostics,
     errors::{
-        DifferentBaseTypes, InvalidInfallibleConversion, ReferencedObjectDoesNotExist,
-        ReferencedObjectInvalid,
+        DifferentBaseTypes, InvalidConversionType, InvalidInfallibleConversion,
+        ReferencedObjectDoesNotExist,
     },
 };
 
@@ -48,13 +48,12 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                                     EnumGenerationStyle::Fallible => {
                                         diagnostics.add(InvalidInfallibleConversion {
                                             conversion: conversion.type_name.span,
-                                            context: vec![LabeledSpan::new_with_span(
-                                                Some(
-                                                    "Target only supports fallible conversion"
-                                                        .into(),
-                                                ),
-                                                target_enum.name.span,
-                                            )],
+                                            context: vec![
+                                                Cow::from(
+                                                    "Target only supports fallible conversion",
+                                                )
+                                                .with_span(target_enum.name.span),
+                                            ],
                                             existing_type_specifier_content: field
                                                 .get_type_specifier_string(),
                                         });
@@ -71,16 +70,14 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                                             diagnostics.add(InvalidInfallibleConversion {
                                                 conversion: conversion.type_name.span,
                                                 context: vec![
-                                                        LabeledSpan::new_with_span(
-                                                            Some(format!(
+                                                        Cow::from(format!(
                                                                 "The field has a size of {field_bits} bits"
-                                                            )),
+                                                            )).with_span(
                                                             field.field_address.span,
                                                         ),
-                                                        LabeledSpan::new_with_span(
-                                                            Some(format!(
+                                                        Cow::from(format!(
                                                                 "Target enum only has a size of {enum_bits} bits. This means not all possible field values can be converted to an enum"
-                                                            )),
+                                                            )).with_span(
                                                             target_enum.name.span,
                                                         ),
                                                     ],
@@ -112,10 +109,10 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                             if !conversion.fallible && !target_extern.supports_infallible {
                                 diagnostics.add(InvalidInfallibleConversion {
                                     conversion: conversion.type_name.span,
-                                    context: vec![LabeledSpan::new_with_span(
-                                        Some("Target only supports fallible conversion".into()),
-                                        target_extern.name.span,
-                                    )],
+                                    context: vec![
+                                        Cow::from("Target only supports fallible conversion")
+                                            .with_span(target_extern.name.span),
+                                    ],
                                     existing_type_specifier_content: field
                                         .get_type_specifier_string(),
                                 });
@@ -124,10 +121,9 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                             }
                         }
                         Some(invalid_object) => {
-                            diagnostics.add(ReferencedObjectInvalid {
+                            diagnostics.add(InvalidConversionType {
                                 object_reference: conversion.type_name.span,
                                 referenced_object: invalid_object.name_span(),
-                                help: format!("The referenced object is of type `{}`. But conversions can only reference `enum` and `external` objects.", invalid_object.object_type_name())
                             });
                             removals.insert(field.id_with(field_set.id()));
                             continue;

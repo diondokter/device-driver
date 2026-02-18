@@ -1,23 +1,14 @@
 #![doc = include_str!(concat!("../", env!("CARGO_PKG_README")))]
 
-use std::path::Path;
-
-use device_driver_diagnostics::{Diagnostics, NamedSourceCode};
+use device_driver_diagnostics::Diagnostics;
 use itertools::Itertools;
 
-pub fn compile(
-    source: &str,
-    source_span: Option<miette::SourceSpan>,
-    file_path: &Path,
-) -> (String, Diagnostics) {
+pub fn compile(source: &str, source_span: Option<miette::SourceSpan>) -> (String, Diagnostics) {
     let mut diagnostics = Diagnostics::new();
-    let source_code = NamedSourceCode::new(file_path.display().to_string(), source.into());
 
     let mir = device_driver_mir::lower_kdl_source(source, source_span, &mut diagnostics);
     let lir = device_driver_lir::lower_mir(mir);
     let mut code = device_driver_codegen::codegen(device_driver_codegen::Target::Rust, lir);
-
-    diagnostics = diagnostics.with_source_code(&source_code);
 
     if diagnostics.has_error() {
         code +=

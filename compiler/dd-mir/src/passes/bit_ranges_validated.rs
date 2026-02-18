@@ -8,9 +8,7 @@ use crate::{
 };
 use device_driver_diagnostics::{
     Diagnostics,
-    errors::{
-        FieldAddressExceedsFieldsetSize, FieldAddressNegative, OverlappingFields, ZeroSizeField,
-    },
+    errors::{FieldAddressExceedsFieldsetSize, FieldAddressNegative, OverlappingFields},
 };
 
 /// Validate that the bit ranges of fields fall within the max size and don't have overlap if they're not allowed
@@ -39,10 +37,7 @@ fn validate_len(
         let field_len = field.field_address.value.clone().count();
 
         if field_len == 0 {
-            diagnostics.add(ZeroSizeField {
-                address: field.field_address.span,
-                address_bits: field_len as u32,
-            });
+            panic!("A zero-sized field can't be specified");
         }
 
         let (offset_iter, repeated) = get_repeat_iter(manifest, field);
@@ -69,6 +64,7 @@ fn validate_len(
                 address: field.field_address.span,
                 min_field_start,
                 repeat_offset: repeated.then_some(*min_repeat_offset),
+                field_set_context: field_set.name.span,
             });
             removals.insert(field.id_with(field_set.id()));
         }
@@ -101,6 +97,8 @@ fn validate_overlap(field_set: &FieldSet, manifest: &Manifest, diagnostics: &mut
                                 + second_offset,
                             field_address_end_2: i128::from(second_field.field_address.end)
                                 + second_offset,
+
+                            field_set_context: field_set.name.span,
                         });
 
                         continue 'second_field;
@@ -144,7 +142,10 @@ fn get_repeat_iter(manifest: &Manifest, field: &Field) -> (Vec<i128>, bool) {
 
 #[cfg(test)]
 mod tests {
-    use device_driver_common::{span::SpanExt, specifiers::Repeat};
+    use device_driver_common::{
+        span::{Span, SpanExt},
+        specifiers::Repeat,
+    };
 
     use crate::model::{Device, Field, Object};
 
@@ -166,6 +167,7 @@ mod tests {
                 }],
                 ..Default::default()
             })],
+            span: Span::default(),
         }
         .into();
 
@@ -187,6 +189,7 @@ mod tests {
                 }],
                 ..Default::default()
             })],
+            span: Span::default(),
         }
         .into();
 
@@ -208,6 +211,7 @@ mod tests {
                 }],
                 ..Default::default()
             })],
+            span: Span::default(),
         }
         .into();
 
@@ -229,6 +233,7 @@ mod tests {
                 }],
                 ..Default::default()
             })],
+            span: Span::default(),
         }
         .into();
 
@@ -250,6 +255,7 @@ mod tests {
                 }],
                 ..Default::default()
             })],
+            span: Span::default(),
         }
         .into();
 
@@ -271,6 +277,7 @@ mod tests {
                 }],
                 ..Default::default()
             })],
+            span: Span::default(),
         }
         .into();
 
@@ -296,6 +303,7 @@ mod tests {
                 }],
                 ..Default::default()
             })],
+            span: Span::default(),
         }
         .into();
 
@@ -327,6 +335,7 @@ mod tests {
                 ],
                 ..Default::default()
             })],
+            span: Span::default(),
         }
         .into();
 
@@ -356,6 +365,7 @@ mod tests {
                 ],
                 ..Default::default()
             })],
+            span: Span::default(),
         }
         .into();
 
@@ -384,12 +394,14 @@ mod tests {
                 ],
                 ..Default::default()
             })],
+            span: Span::default(),
         }
         .into();
 
         let mut diagnostics = Diagnostics::new();
         run_pass(&mut start_mir, &mut diagnostics);
-        assert!(diagnostics.has_error());
+        assert!(!diagnostics.has_error());
+        assert!(!diagnostics.is_empty());
 
         let mut start_mir = Device {
             description: String::new(),
@@ -416,11 +428,13 @@ mod tests {
                 ],
                 ..Default::default()
             })],
+            span: Span::default(),
         }
         .into();
 
         let mut diagnostics = Diagnostics::new();
         run_pass(&mut start_mir, &mut diagnostics);
-        assert!(diagnostics.has_error());
+        assert!(!diagnostics.has_error());
+        assert!(!diagnostics.is_empty());
     }
 }

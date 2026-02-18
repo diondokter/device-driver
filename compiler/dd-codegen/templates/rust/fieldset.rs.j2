@@ -55,7 +55,7 @@ impl {{field_set.name.to_case(Case::Pascal)}} {
                 {% endmatch %}
 
                 let raw = unsafe {
-                    ::device_driver::ops::load_{{field_set.bit_order | lower}}::<
+                    ::device_driver::ops::load::<
                         {{field.base_type}},
                         ::device_driver::ops::{{field_set.byte_order}},
                     >(&self.bits, start, end)
@@ -113,7 +113,7 @@ impl {{field_set.name.to_case(Case::Pascal)}} {
                 {% endmatch %}
 
                 unsafe {
-                    ::device_driver::ops::store_{{field_set.bit_order | lower}}::<
+                    ::device_driver::ops::store::<
                         {{field.base_type}},
                         ::device_driver::ops::{{field_set.byte_order}},
                     >(raw, start, end, &mut self.bits)

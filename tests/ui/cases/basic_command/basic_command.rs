@@ -63,7 +63,7 @@ impl FooFieldSetIn {
         let start = 0;
         let end = 24;
         let raw = unsafe {
-            ::device_driver::ops::load_lsb0::<
+            ::device_driver::ops::load::<
                 u32,
                 ::device_driver::ops::LE,
             >(&self.bits, start, end)
@@ -77,7 +77,7 @@ impl FooFieldSetIn {
         let end = 24;
         let raw = value;
         unsafe {
-            ::device_driver::ops::store_lsb0::<
+            ::device_driver::ops::store::<
                 u32,
                 ::device_driver::ops::LE,
             >(raw, start, end, &mut self.bits)

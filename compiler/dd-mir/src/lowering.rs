@@ -7,8 +7,8 @@ use device_driver_common::{
     identifier::{Identifier, IdentifierRef},
     span::{SpanExt, Spanned},
     specifiers::{
-        Access, BaseType, BitOrder, ByteOrder, Integer, Repeat, RepeatSource, ResetValue,
-        TypeConversion, VariantNames,
+        Access, BaseType, ByteOrder, Integer, Repeat, RepeatSource, ResetValue, TypeConversion,
+        VariantNames,
     },
 };
 use itertools::Itertools;
@@ -42,7 +42,7 @@ pub fn transform(
         Ok(document) => document,
         Err(e) => {
             for diagnostic in e.diagnostics {
-                diagnostics.add(ConvertedKdlDiagnostic::from_original_and_span(
+                diagnostics.add_miette(ConvertedKdlDiagnostic::from_original_and_span(
                     diagnostic,
                     source_span,
                 ));
@@ -97,7 +97,7 @@ fn transform_manifest(manifest_document: &KdlDocument, diagnostics: &mut Diagnos
                 }
             }
         } else {
-            diagnostics.add(errors::UnexpectedNode {
+            diagnostics.add_miette(errors::UnexpectedNode {
                 node_name: node.name().span().into(),
                 expected_names: ROOT_OBJECT_TYPES.iter().map(|v| v.0).collect(),
             });
@@ -114,7 +114,7 @@ fn transform_device(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Dev
     let device_name = match Identifier::try_parse(&device_name) {
         Ok(id) => id,
         Err(e) => {
-            diagnostics.add(InvalidIdentifier::new(e, device_name_span));
+            diagnostics.add(InvalidIdentifier::new(e, device_name_span.into()));
             return None;
         }
     };
@@ -124,6 +124,7 @@ fn transform_device(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Dev
         name: device_name.with_span(device_name_span),
         device_config: DeviceConfig::default(),
         objects: Vec::new(),
+        span: node.span().into(),
     };
 
     device.device_config.owner = Some(device.id());
@@ -133,7 +134,7 @@ fn transform_device(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Dev
     {
         transform_device_internals(&mut device, device_document, diagnostics);
     } else {
-        diagnostics.add(errors::EmptyNode {
+        diagnostics.add_miette(errors::EmptyNode {
             node: node.span().into(),
         });
     }
@@ -153,7 +154,7 @@ fn transform_device_internals(
             match seen_device_configs.insert(device_config_type, node.span()) {
                 None => transform_device_config_node(device, node, device_config_type, diagnostics),
                 Some(original_node) => {
-                    diagnostics.add(errors::DuplicateNode {
+                    diagnostics.add_miette(errors::DuplicateNode {
                         duplicate: node.span().into(),
                         original: original_node.into(),
                     });
@@ -164,7 +165,7 @@ fn transform_device_internals(
                 device.objects.push(object);
             }
         } else {
-            diagnostics.add(errors::UnexpectedNode {
+            diagnostics.add_miette(errors::UnexpectedNode {
                 node_name: node.name().span().into(),
                 expected_names: DEVICE_CONFIG_TYPES
                     .iter()
@@ -235,7 +236,7 @@ fn transform_block(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Bloc
     let name = match Identifier::try_parse(&name) {
         Ok(id) => id,
         Err(e) => {
-            diagnostics.add(InvalidIdentifier::new(e, name_span));
+            diagnostics.add(InvalidIdentifier::new(e, name_span.into()));
             return None;
         }
     };
@@ -249,7 +250,7 @@ fn transform_block(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Bloc
             match buffer_field {
                 BlockField::Offset => {
                     if let Some((_, span)) = offset {
-                        diagnostics.add(errors::DuplicateNode {
+                        diagnostics.add_miette(errors::DuplicateNode {
                             duplicate: child.name().span().into(),
                             original: span,
                         });
@@ -262,7 +263,7 @@ fn transform_block(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Bloc
                 }
                 BlockField::Repeat => {
                     if let Some((_, span)) = repeat {
-                        diagnostics.add(errors::DuplicateNode {
+                        diagnostics.add_miette(errors::DuplicateNode {
                             duplicate: child.name().span().into(),
                             original: span,
                         });
@@ -278,7 +279,7 @@ fn transform_block(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Bloc
                 block_objects.push(object);
             }
         } else {
-            diagnostics.add(errors::UnexpectedNode {
+            diagnostics.add_miette(errors::UnexpectedNode {
                 node_name: child.name().span().into(),
                 expected_names: BLOCK_FIELDS
                     .iter()
@@ -295,6 +296,7 @@ fn transform_block(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Bloc
         address_offset: offset.unwrap_or((0, name_span.into())).into(),
         repeat: repeat.map(|(r, _)| r),
         objects: block_objects,
+        span: node.span().into(),
     })
 }
 
@@ -310,7 +312,7 @@ fn transform_register(
     let name = match Identifier::try_parse(&name) {
         Ok(id) => id,
         Err(e) => {
-            diagnostics.add(InvalidIdentifier::new(e, name_span));
+            diagnostics.add(InvalidIdentifier::new(e, name_span.into()));
             return (None, None, Vec::new());
         }
     };
@@ -328,7 +330,7 @@ fn transform_register(
         match child.name().value().parse() {
             Ok(RegisterField::Access) => {
                 if let Some((_, span)) = access {
-                    diagnostics.add(errors::DuplicateNode {
+                    diagnostics.add_miette(errors::DuplicateNode {
                         duplicate: child.name().span().into(),
                         original: span,
                     });
@@ -340,7 +342,7 @@ fn transform_register(
             }
             Ok(RegisterField::AllowAddressOverlap) => {
                 if let Some((_, span)) = allow_address_overlap {
-                    diagnostics.add(errors::DuplicateNode {
+                    diagnostics.add_miette(errors::DuplicateNode {
                         duplicate: child.name().span().into(),
                         original: span,
                     });
@@ -352,7 +354,7 @@ fn transform_register(
             }
             Ok(RegisterField::Address) => {
                 if let Some((_, span)) = address {
-                    diagnostics.add(errors::DuplicateNode {
+                    diagnostics.add_miette(errors::DuplicateNode {
                         duplicate: child.name().span().into(),
                         original: span,
                     });
@@ -365,7 +367,7 @@ fn transform_register(
             }
             Ok(RegisterField::ResetValue) => {
                 if let Some((_, span)) = reset_value {
-                    diagnostics.add(errors::DuplicateNode {
+                    diagnostics.add_miette(errors::DuplicateNode {
                         duplicate: child.name().span().into(),
                         original: span,
                     });
@@ -377,7 +379,7 @@ fn transform_register(
             }
             Ok(RegisterField::Repeat) => {
                 if let Some((_, span)) = repeat {
-                    diagnostics.add(errors::DuplicateNode {
+                    diagnostics.add_miette(errors::DuplicateNode {
                         duplicate: child.name().span().into(),
                         original: span,
                     });
@@ -389,7 +391,7 @@ fn transform_register(
             }
             Ok(RegisterField::FieldSet) => {
                 if let Some((_, span)) = field_set {
-                    diagnostics.add(errors::DuplicateNode {
+                    diagnostics.add_miette(errors::DuplicateNode {
                         duplicate: child.name().span().into(),
                         original: span,
                     });
@@ -412,7 +414,7 @@ fn transform_register(
                 inline_enums.append(&mut enums);
             }
             Err(()) => {
-                diagnostics.add(errors::UnexpectedNode {
+                diagnostics.add_miette(errors::UnexpectedNode {
                     node_name: child.name().span().into(),
                     expected_names: REGISTER_FIELDS.iter().map(|v| v.0).collect(),
                 });
@@ -424,7 +426,7 @@ fn transform_register(
 
     if address.is_none() {
         error = true;
-        diagnostics.add(errors::MissingChildNode {
+        diagnostics.add_miette(errors::MissingChildNode {
             node: name_span.into(),
             node_type: Some("register"),
             missing_node_type: "address",
@@ -433,7 +435,7 @@ fn transform_register(
 
     if field_set.is_none() {
         error = true;
-        diagnostics.add(errors::MissingChildNode {
+        diagnostics.add_miette(errors::MissingChildNode {
             node: name_span.into(),
             node_type: Some("register"),
             missing_node_type: "fields",
@@ -450,7 +452,9 @@ fn transform_register(
             reset_value: reset_value.map(Into::into),
             repeat: repeat.map(|(r, _)| r),
             field_set_ref: field_set.as_ref().unwrap().0.name.take_ref(),
-            ..Default::default()
+            access: Default::default(),
+            allow_address_overlap: Default::default(),
+            span: node.span().into(),
         };
 
         if let Some((access, _)) = access {
@@ -476,7 +480,7 @@ fn transform_command(
     let name = match Identifier::try_parse(&name) {
         Ok(id) => id,
         Err(e) => {
-            diagnostics.add(InvalidIdentifier::new(e, name_span));
+            diagnostics.add(InvalidIdentifier::new(e, name_span.into()));
             return (None, Vec::new(), Vec::new());
         }
     };
@@ -493,7 +497,7 @@ fn transform_command(
         match child.name().value().parse() {
             Ok(CommandField::AllowAddressOverlap) => {
                 if let Some((_, span)) = allow_address_overlap {
-                    diagnostics.add(errors::DuplicateNode {
+                    diagnostics.add_miette(errors::DuplicateNode {
                         duplicate: child.name().span().into(),
                         original: span,
                     });
@@ -505,7 +509,7 @@ fn transform_command(
             }
             Ok(CommandField::Address) => {
                 if let Some((_, span)) = address {
-                    diagnostics.add(errors::DuplicateNode {
+                    diagnostics.add_miette(errors::DuplicateNode {
                         duplicate: child.name().span().into(),
                         original: span,
                     });
@@ -518,7 +522,7 @@ fn transform_command(
             }
             Ok(CommandField::Repeat) => {
                 if let Some((_, span)) = repeat {
-                    diagnostics.add(errors::DuplicateNode {
+                    diagnostics.add_miette(errors::DuplicateNode {
                         duplicate: child.name().span().into(),
                         original: span,
                     });
@@ -530,7 +534,7 @@ fn transform_command(
             }
             Ok(CommandField::FieldSetIn) => {
                 if let Some((_, span)) = field_set_in {
-                    diagnostics.add(errors::DuplicateNode {
+                    diagnostics.add_miette(errors::DuplicateNode {
                         duplicate: child.name().span().into(),
                         original: span,
                     });
@@ -554,7 +558,7 @@ fn transform_command(
             }
             Ok(CommandField::FieldSetOut) => {
                 if let Some((_, span)) = field_set_out {
-                    diagnostics.add(errors::DuplicateNode {
+                    diagnostics.add_miette(errors::DuplicateNode {
                         duplicate: child.name().span().into(),
                         original: span,
                     });
@@ -577,7 +581,7 @@ fn transform_command(
                 inline_enums.append(&mut enums);
             }
             Err(()) => {
-                diagnostics.add(errors::UnexpectedNode {
+                diagnostics.add_miette(errors::UnexpectedNode {
                     node_name: child.name().span().into(),
                     expected_names: COMMAND_FIELDS.iter().map(|v| v.0).collect(),
                 });
@@ -589,7 +593,7 @@ fn transform_command(
 
     if address.is_none() {
         error = true;
-        diagnostics.add(errors::MissingChildNode {
+        diagnostics.add_miette(errors::MissingChildNode {
             node: name_span.into(),
             node_type: Some("command"),
             missing_node_type: "address",
@@ -610,10 +614,11 @@ fn transform_command(
             description: parse_description(node),
             name: (name, name_span).into(),
             address: address.unwrap().into(),
+            allow_address_overlap: Default::default(),
             repeat: repeat.map(|(r, _)| r),
             field_set_ref_in: field_set_in.as_ref().map(|(f, _)| f.name.take_ref()),
             field_set_ref_out: field_set_out.as_ref().map(|(f, _)| f.name.take_ref()),
-            ..Default::default()
+            span: node.span().into(),
         };
 
         if let Some((allow_address_overlap, _)) = allow_address_overlap {
@@ -640,7 +645,7 @@ fn transform_buffer(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Buf
     let name = match Identifier::try_parse(&name) {
         Ok(id) => id,
         Err(e) => {
-            diagnostics.add(InvalidIdentifier::new(e, name_span));
+            diagnostics.add(InvalidIdentifier::new(e, name_span.into()));
             return None;
         }
     };
@@ -652,7 +657,7 @@ fn transform_buffer(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Buf
         match child.name().value().parse() {
             Ok(BufferField::Access) => {
                 if let Some((_, span)) = access {
-                    diagnostics.add(errors::DuplicateNode {
+                    diagnostics.add_miette(errors::DuplicateNode {
                         duplicate: child.name().span().into(),
                         original: span,
                     });
@@ -664,7 +669,7 @@ fn transform_buffer(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Buf
             }
             Ok(BufferField::Address) => {
                 if let Some((_, span)) = address {
-                    diagnostics.add(errors::DuplicateNode {
+                    diagnostics.add_miette(errors::DuplicateNode {
                         duplicate: child.name().span().into(),
                         original: span,
                     });
@@ -676,7 +681,7 @@ fn transform_buffer(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Buf
                     .map(|val| (val, child.name().span().into()));
             }
             Err(()) => {
-                diagnostics.add(errors::UnexpectedNode {
+                diagnostics.add_miette(errors::UnexpectedNode {
                     node_name: child.name().span().into(),
                     expected_names: BUFFER_FIELDS.iter().map(|v| v.0).collect(),
                 });
@@ -688,7 +693,7 @@ fn transform_buffer(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Buf
 
     if address.is_none() {
         error = true;
-        diagnostics.add(errors::MissingChildNode {
+        diagnostics.add_miette(errors::MissingChildNode {
             node: name_span.into(),
             node_type: Some("register"),
             missing_node_type: "address",
@@ -701,8 +706,9 @@ fn transform_buffer(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Buf
         let mut buffer = Buffer {
             description: parse_description(node),
             name: (name, name_span).into(),
+            access: Default::default(),
             address: address.unwrap().into(),
-            ..Default::default()
+            span: node.span().into(),
         };
 
         if let Some((access, _)) = access {
@@ -738,11 +744,6 @@ fn transform_device_config_node(
         DeviceConfigType::ByteOrder => {
             if let Some(value) = parse_single_string_value(node, diagnostics) {
                 device.device_config.byte_order = Some(value.value);
-            }
-        }
-        DeviceConfigType::BitOrder => {
-            if let Some(value) = parse_single_string_value(node, diagnostics) {
-                device.device_config.bit_order = Some(value.value);
             }
         }
         DeviceConfigType::RegisterAddressType => {
@@ -783,7 +784,12 @@ fn transform_field_set(
 
     let mut field_set = FieldSet {
         description: parse_description(node),
-        ..Default::default()
+        name: Default::default(),
+        size_bits: Default::default(),
+        byte_order: Default::default(),
+        allow_bit_overlap: Default::default(),
+        fields: Default::default(),
+        span: node.span().into(),
     };
 
     let mut unexpected_entries = errors::UnexpectedEntries {
@@ -796,14 +802,13 @@ fn transform_field_set(
     let mut name: Option<&kdl::KdlEntry> = None;
     let mut size_bits: Option<&kdl::KdlEntry> = None;
     let mut byte_order: Option<&kdl::KdlEntry> = None;
-    let mut bit_order: Option<&kdl::KdlEntry> = None;
     let mut allow_bit_overlap: Option<&kdl::KdlEntry> = None;
 
     for (i, entry) in node.entries().iter().enumerate() {
         match entry.name().map(kdl::KdlIdentifier::value) {
             Some("size-bits") => {
                 if let Some(size_bits) = size_bits {
-                    diagnostics.add(errors::DuplicateEntry {
+                    diagnostics.add_miette(errors::DuplicateEntry {
                         duplicate: entry.span().into(),
                         original: size_bits.span().into(),
                     });
@@ -813,7 +818,7 @@ fn transform_field_set(
             }
             Some("byte-order") => {
                 if let Some(byte_order) = byte_order {
-                    diagnostics.add(errors::DuplicateEntry {
+                    diagnostics.add_miette(errors::DuplicateEntry {
                         duplicate: entry.span().into(),
                         original: byte_order.span().into(),
                     });
@@ -821,19 +826,9 @@ fn transform_field_set(
                     byte_order = Some(entry);
                 }
             }
-            Some("bit-order") => {
-                if let Some(bit_order) = bit_order {
-                    diagnostics.add(errors::DuplicateEntry {
-                        duplicate: entry.span().into(),
-                        original: bit_order.span().into(),
-                    });
-                } else {
-                    bit_order = Some(entry);
-                }
-            }
             Some("allow-bit-overlap") => {
                 if let Some(allow_bit_overlap) = allow_bit_overlap {
-                    diagnostics.add(errors::DuplicateEntry {
+                    diagnostics.add_miette(errors::DuplicateEntry {
                         duplicate: entry.span().into(),
                         original: allow_bit_overlap.span().into(),
                     });
@@ -849,7 +844,7 @@ fn transform_field_set(
             None => {
                 if entry.value().as_string() == Some("allow-bit-overlap") {
                     if let Some(allow_bit_overlap) = allow_bit_overlap {
-                        diagnostics.add(errors::DuplicateEntry {
+                        diagnostics.add_miette(errors::DuplicateEntry {
                             duplicate: entry.span().into(),
                             original: allow_bit_overlap.span().into(),
                         });
@@ -868,7 +863,7 @@ fn transform_field_set(
     }
 
     if !unexpected_entries.is_empty() {
-        diagnostics.add(unexpected_entries);
+        diagnostics.add_miette(unexpected_entries);
     }
 
     if let Some(name) = name {
@@ -879,21 +874,21 @@ fn transform_field_set(
                         field_set.name = id.with_span(name.span());
                     }
                     Err(e) => {
-                        diagnostics.add(InvalidIdentifier::new(e, name.span()));
+                        diagnostics.add(InvalidIdentifier::new(e, name.span().into()));
                     }
                 };
             }
             _ => {
-                diagnostics.add(errors::UnexpectedType {
+                diagnostics.add_miette(errors::UnexpectedType {
                     value_name: name.span().into(),
                     expected_type: "string",
                 });
             }
         }
     } else if let Some(default_name) = default_name {
-        field_set.name = default_name.with_span((node.span().offset(), 0));
+        field_set.name = default_name.with_span((node.span().offset(), node.span().offset()));
     } else {
-        diagnostics.add(errors::MissingObjectName {
+        diagnostics.add_miette(errors::MissingObjectName {
             object_keyword: node.name().span().into(),
             found_instead: None,
             object_type: node.name().value().into(),
@@ -906,21 +901,21 @@ fn transform_field_set(
                 field_set.size_bits = (*sb as u32).with_span(size_bits.span());
             }
             KdlValue::Integer(_) => {
-                diagnostics.add(errors::ValueOutOfRange {
+                diagnostics.add_miette(errors::ValueOutOfRange {
                     value: size_bits.span().into(),
                     context: Some("size-bits is encoded as a u32"),
                     range: "0..2^32",
                 });
             }
             _ => {
-                diagnostics.add(errors::UnexpectedType {
+                diagnostics.add_miette(errors::UnexpectedType {
                     value_name: size_bits.span().into(),
                     expected_type: "integer",
                 });
             }
         }
     } else {
-        diagnostics.add(errors::MissingEntry {
+        diagnostics.add_miette(errors::MissingEntry {
             node_name: node.name().span().into(),
             expected_entries: vec!["size-bits=<integer>"],
         });
@@ -933,37 +928,15 @@ fn transform_field_set(
                     field_set.byte_order = Some(byte_order);
                 }
                 Err(_) => {
-                    diagnostics.add(errors::UnexpectedValue {
+                    diagnostics.add_miette(errors::UnexpectedValue {
                         value_name: byte_order.span().into(),
                         expected_values: ByteOrder::VARIANTS.to_vec(),
                     });
                 }
             },
             _ => {
-                diagnostics.add(errors::UnexpectedType {
+                diagnostics.add_miette(errors::UnexpectedType {
                     value_name: byte_order.span().into(),
-                    expected_type: "string",
-                });
-            }
-        }
-    }
-
-    if let Some(bit_order) = bit_order {
-        match bit_order.value() {
-            KdlValue::String(s) => match s.parse() {
-                Ok(bit_order) => {
-                    field_set.bit_order = Some(bit_order);
-                }
-                Err(_) => {
-                    diagnostics.add(errors::UnexpectedValue {
-                        value_name: bit_order.span().into(),
-                        expected_values: BitOrder::VARIANTS.to_vec(),
-                    });
-                }
-            },
-            _ => {
-                diagnostics.add(errors::UnexpectedType {
-                    value_name: bit_order.span().into(),
                     expected_type: "string",
                 });
             }
@@ -979,7 +952,7 @@ fn transform_field_set(
                 field_set.allow_bit_overlap = true;
             }
             _ => {
-                diagnostics.add(errors::UnexpectedType {
+                diagnostics.add_miette(errors::UnexpectedType {
                     value_name: allow_bit_overlap.span().into(),
                     expected_type: "bool",
                 });
@@ -1038,7 +1011,7 @@ fn transform_field(node: &KdlNode, diagnostics: &mut Diagnostics) -> (Option<Fie
         match entry.value() {
             KdlValue::String(s) if s.starts_with('@') => {
                 if let Some((_, span)) = address {
-                    diagnostics.add(errors::DuplicateEntry {
+                    diagnostics.add_miette(errors::DuplicateEntry {
                         duplicate: entry.span().into(),
                         original: span,
                     });
@@ -1054,14 +1027,14 @@ fn transform_field(node: &KdlNode, diagnostics: &mut Diagnostics) -> (Option<Fie
                         if end >= start {
                             address = Some((start..end + 1, entry.span().into()));
                         } else {
-                            diagnostics.add(errors::AddressWrongOrder {
+                            diagnostics.add_miette(errors::AddressWrongOrder {
                                 address_entry: entry.span().into(),
                                 end,
                                 start,
                             });
                         }
                     } else {
-                        diagnostics.add(errors::BadValueFormat {
+                        diagnostics.add_miette(errors::BadValueFormat {
                             span: entry.span().into(),
                             expected_format: "@<u32>:<u32>",
                             example: "@7:0",
@@ -1071,7 +1044,7 @@ fn transform_field(node: &KdlNode, diagnostics: &mut Diagnostics) -> (Option<Fie
                     if let Ok(addr) = trimmed_string.parse::<u32>() {
                         address = Some((addr..addr + 1, entry.span().into()));
                     } else {
-                        diagnostics.add(errors::BadValueFormat {
+                        diagnostics.add_miette(errors::BadValueFormat {
                             span: entry.span().into(),
                             expected_format: "@<u32>",
                             example: "@10",
@@ -1081,7 +1054,7 @@ fn transform_field(node: &KdlNode, diagnostics: &mut Diagnostics) -> (Option<Fie
             }
             KdlValue::String(s) if s.parse::<Access>().is_ok() => {
                 if let Some((_, span)) = access {
-                    diagnostics.add(errors::DuplicateEntry {
+                    diagnostics.add_miette(errors::DuplicateEntry {
                         duplicate: entry.span().into(),
                         original: span,
                     });
@@ -1091,7 +1064,7 @@ fn transform_field(node: &KdlNode, diagnostics: &mut Diagnostics) -> (Option<Fie
                 access = Some((s.parse().unwrap(), entry.span().into()));
             }
             KdlValue::String(_) => {
-                diagnostics.add(errors::UnexpectedValue {
+                diagnostics.add_miette(errors::UnexpectedValue {
                     value_name: entry.span().into(),
                     expected_values: [
                         "@<u32>",
@@ -1107,7 +1080,7 @@ fn transform_field(node: &KdlNode, diagnostics: &mut Diagnostics) -> (Option<Fie
                 });
             }
             _ => {
-                diagnostics.add(errors::UnexpectedType {
+                diagnostics.add_miette(errors::UnexpectedType {
                     value_name: entry.span().into(),
                     expected_type: "string",
                 });
@@ -1116,7 +1089,7 @@ fn transform_field(node: &KdlNode, diagnostics: &mut Diagnostics) -> (Option<Fie
     }
 
     if !unexpected_entries.is_empty() {
-        diagnostics.add(unexpected_entries);
+        diagnostics.add_miette(unexpected_entries);
     }
 
     let (base_type, field_conversion) = parse_type(node.ty(), diagnostics);
@@ -1135,6 +1108,7 @@ fn transform_field(node: &KdlNode, diagnostics: &mut Diagnostics) -> (Option<Fie
                         variants,
                         base_type,
                         address.as_ref().map(|(address, _)| address.len() as u32),
+                        node.span().into(),
                     ));
                 }
                 Err(e) => {
@@ -1142,7 +1116,7 @@ fn transform_field(node: &KdlNode, diagnostics: &mut Diagnostics) -> (Option<Fie
                 }
             }
         } else {
-            diagnostics.add(errors::InlineEnumDefinitionWithoutName {
+            diagnostics.add_miette(errors::InlineEnumDefinitionWithoutName {
                 field_name: node.name().span().into(),
                 existing_ty: node.ty().map(|ty| ty.span().into()),
             });
@@ -1150,7 +1124,7 @@ fn transform_field(node: &KdlNode, diagnostics: &mut Diagnostics) -> (Option<Fie
     }
 
     if address.is_none() {
-        diagnostics.add(errors::MissingEntry {
+        diagnostics.add_miette(errors::MissingEntry {
             node_name: node.name().span().into(),
             expected_entries: vec!["address (\"@<u32>:<u32>\")"],
         });
@@ -1160,7 +1134,7 @@ fn transform_field(node: &KdlNode, diagnostics: &mut Diagnostics) -> (Option<Fie
     let name = match Identifier::try_parse(node.name().value()) {
         Ok(id) => id,
         Err(e) => {
-            diagnostics.add(InvalidIdentifier::new(e, node.name().span()));
+            diagnostics.add(InvalidIdentifier::new(e, node.name().span().into()));
             return (None, inline_enum);
         }
     };
@@ -1174,6 +1148,7 @@ fn transform_field(node: &KdlNode, diagnostics: &mut Diagnostics) -> (Option<Fie
             field_conversion,
             field_address: address.unwrap().into(),
             repeat,
+            span: node.span().into(),
         }),
         inline_enum,
     )
@@ -1190,7 +1165,7 @@ fn transform_enum(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Enum>
     let (base_type, field_conversion) = parse_type(node.ty(), diagnostics);
 
     if let Some(field_conversion) = field_conversion {
-        diagnostics.add(errors::OnlyBaseTypeAllowed {
+        diagnostics.add_miette(errors::OnlyBaseTypeAllowed {
             existing_ty: node.ty().unwrap().span().into(),
             field_conversion,
         });
@@ -1204,6 +1179,7 @@ fn transform_enum(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Enum>
             .unwrap_or_default(),
         base_type,
         None,
+        node.span().into(),
     );
 
     let mut name: Option<&kdl::KdlEntry> = None;
@@ -1213,7 +1189,7 @@ fn transform_enum(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Enum>
         match entry.name().map(kdl::KdlIdentifier::value) {
             Some("size-bits") => {
                 if let Some(size_bits) = size_bits {
-                    diagnostics.add(errors::DuplicateEntry {
+                    diagnostics.add_miette(errors::DuplicateEntry {
                         duplicate: entry.span().into(),
                         original: size_bits.span().into(),
                     });
@@ -1239,7 +1215,7 @@ fn transform_enum(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Enum>
     }
 
     if !unexpected_entries.is_empty() {
-        diagnostics.add(unexpected_entries);
+        diagnostics.add_miette(unexpected_entries);
     }
 
     if let Some(name) = name {
@@ -1249,18 +1225,18 @@ fn transform_enum(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Enum>
                     enum_value.name = id.with_span(name.span());
                 }
                 Err(e) => {
-                    diagnostics.add(InvalidIdentifier::new(e, name.span()));
+                    diagnostics.add(InvalidIdentifier::new(e, name.span().into()));
                 }
             },
             _ => {
-                diagnostics.add(errors::UnexpectedType {
+                diagnostics.add_miette(errors::UnexpectedType {
                     value_name: name.span().into(),
                     expected_type: "string",
                 });
             }
         }
     } else {
-        diagnostics.add(errors::MissingObjectName {
+        diagnostics.add_miette(errors::MissingObjectName {
             object_keyword: node.name().span().into(),
             found_instead: None,
             object_type: node.name().value().into(),
@@ -1273,14 +1249,14 @@ fn transform_enum(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Enum>
                 enum_value.size_bits = Some(*sb as u32);
             }
             KdlValue::Integer(_) => {
-                diagnostics.add(errors::ValueOutOfRange {
+                diagnostics.add_miette(errors::ValueOutOfRange {
                     value: size_bits.span().into(),
                     context: Some("size-bits is encoded as a u32"),
                     range: "0..2^32",
                 });
             }
             _ => {
-                diagnostics.add(errors::UnexpectedType {
+                diagnostics.add_miette(errors::UnexpectedType {
                     value_name: size_bits.span().into(),
                     expected_type: "integer",
                 });
@@ -1306,7 +1282,7 @@ fn transform_enum_variants(nodes: &KdlDocument, diagnostics: &mut Diagnostics) -
                 0 => None,
                 1 if node.entries()[0].name().is_none() => Some(&node.entries()[0]),
                 _ => {
-                    diagnostics.add(errors::UnexpectedEntries {
+                    diagnostics.add_miette(errors::UnexpectedEntries {
                         superfluous_entries: node
                             .entries()
                             .get(1..)
@@ -1338,7 +1314,7 @@ fn transform_enum_variants(nodes: &KdlDocument, diagnostics: &mut Diagnostics) -
                     KdlValue::String(val) if val == "catch-all" => EnumValue::CatchAll,
                     KdlValue::Integer(val) => EnumValue::Specified(*val),
                     _ => {
-                        diagnostics.add(errors::UnexpectedValue {
+                        diagnostics.add_miette(errors::UnexpectedValue {
                             value_name: variant_value.span().into(),
                             expected_values: vec!["", "<integer>", "default", "catch-all"],
                         });
@@ -1351,7 +1327,7 @@ fn transform_enum_variants(nodes: &KdlDocument, diagnostics: &mut Diagnostics) -
             let name = match Identifier::try_parse(variant_name.value()) {
                 Ok(id) => id,
                 Err(e) => {
-                    diagnostics.add(InvalidIdentifier::new(e, variant_name.span()));
+                    diagnostics.add(InvalidIdentifier::new(e, variant_name.span().into()));
                     return None;
                 }
             };
@@ -1360,13 +1336,20 @@ fn transform_enum_variants(nodes: &KdlDocument, diagnostics: &mut Diagnostics) -
                 description: parse_description(node),
                 name: name.with_span(variant_name.span()),
                 value: variant_value,
+                span: node.span().into(),
             })
         })
         .collect()
 }
 
 fn transform_extern(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Extern> {
-    let mut extern_value = Extern::default();
+    let mut extern_value = Extern {
+        description: Default::default(),
+        name: Default::default(),
+        base_type: Default::default(),
+        supports_infallible: Default::default(),
+        span: node.span().into(),
+    };
 
     let mut unexpected_entries = errors::UnexpectedEntries {
         superfluous_entries: Vec::new(),
@@ -1380,14 +1363,14 @@ fn transform_extern(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Ext
     extern_value.base_type = base_type;
 
     if let Some(field_conversion) = field_conversion {
-        diagnostics.add(errors::OnlyBaseTypeAllowed {
+        diagnostics.add_miette(errors::OnlyBaseTypeAllowed {
             existing_ty: node.ty().unwrap().span().into(),
             field_conversion,
         });
     }
 
     if let Some(children) = node.children() {
-        diagnostics.add(errors::NoChildrenExpected {
+        diagnostics.add_miette(errors::NoChildrenExpected {
             children: children.span().into(),
         });
     }
@@ -1405,7 +1388,7 @@ fn transform_extern(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Ext
             None => {
                 if entry.value().as_string() == Some("infallible") {
                     if let Some(infallible) = infallible {
-                        diagnostics.add(errors::DuplicateEntry {
+                        diagnostics.add_miette(errors::DuplicateEntry {
                             duplicate: entry.span().into(),
                             original: infallible.span().into(),
                         });
@@ -1424,7 +1407,7 @@ fn transform_extern(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Ext
     }
 
     if !unexpected_entries.is_empty() {
-        diagnostics.add(unexpected_entries);
+        diagnostics.add_miette(unexpected_entries);
     }
 
     if let Some(name) = name {
@@ -1434,18 +1417,18 @@ fn transform_extern(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Ext
                     extern_value.name = id.with_span(name.span());
                 }
                 Err(e) => {
-                    diagnostics.add(InvalidIdentifier::new(e, name.span()));
+                    diagnostics.add(InvalidIdentifier::new(e, name.span().into()));
                 }
             },
             _ => {
-                diagnostics.add(errors::UnexpectedType {
+                diagnostics.add_miette(errors::UnexpectedType {
                     value_name: name.span().into(),
                     expected_type: "string",
                 });
             }
         }
     } else {
-        diagnostics.add(errors::MissingObjectName {
+        diagnostics.add_miette(errors::MissingObjectName {
             object_keyword: node.name().span().into(),
             found_instead: None,
             object_type: node.name().value().into(),
@@ -1494,7 +1477,7 @@ fn parse_type(
         s if s.parse::<Integer>().is_ok() => BaseType::FixedSize(s.parse().unwrap()),
         "" => BaseType::Unspecified,
         _ => {
-            diagnostics.add(errors::UnexpectedValue {
+            diagnostics.add_miette(errors::UnexpectedValue {
                 value_name: ty.span().into(),
                 expected_values: ["bool", "uint", "int"]
                     .iter()
@@ -1512,7 +1495,7 @@ fn parse_type(
 
 fn ensure_zero_entries(node: &KdlNode, diagnostics: &mut Diagnostics) {
     if !node.entries().is_empty() {
-        diagnostics.add(errors::UnexpectedEntries {
+        diagnostics.add_miette(errors::UnexpectedEntries {
             superfluous_entries: node
                 .entries()
                 .iter()
@@ -1552,11 +1535,11 @@ fn parse_repeat_entries(
             (Some("with"), KdlValue::String(val)) => {
                 with = Some((IdentifierRef::new(val.clone()), entry.span()))
             }
-            (Some("count" | "stride"), _) => diagnostics.add(errors::UnexpectedType {
+            (Some("count" | "stride"), _) => diagnostics.add_miette(errors::UnexpectedType {
                 value_name: entry.span().into(),
                 expected_type: "integer",
             }),
-            (Some("with"), _) => diagnostics.add(errors::UnexpectedType {
+            (Some("with"), _) => diagnostics.add_miette(errors::UnexpectedType {
                 value_name: entry.span().into(),
                 expected_type: "string",
             }),
@@ -1574,14 +1557,14 @@ fn parse_repeat_entries(
     }
 
     if !unexpected_entries.is_empty() && standalone_repeat {
-        diagnostics.add(unexpected_entries);
+        diagnostics.add_miette(unexpected_entries);
     }
 
     let mut error = false;
 
     if let (Some((_, count_span)), Some((_, with_span))) = (&count, &with) {
         error = true;
-        diagnostics.add(errors::RepeatOverSpecified {
+        diagnostics.add_miette(errors::RepeatOverSpecified {
             count: (*count_span).into(),
             with: (*with_span).into(),
         });
@@ -1607,14 +1590,14 @@ fn parse_repeat_entries(
     }
 
     if !missing_entry_error.expected_entries.is_empty() {
-        diagnostics.add(missing_entry_error);
+        diagnostics.add_miette(missing_entry_error);
     }
 
     if let Some((count, span)) = count
         && !(0..=i128::from(u64::MAX)).contains(&count)
     {
         error = true;
-        diagnostics.add(errors::ValueOutOfRange {
+        diagnostics.add_miette(errors::ValueOutOfRange {
             value: span.into(),
             context: Some("The count is encoded as a u64"),
             range: "0..2^64",
@@ -1624,7 +1607,7 @@ fn parse_repeat_entries(
         && stride == 0
     {
         error = true;
-        diagnostics.add(errors::ValueOutOfRange {
+        diagnostics.add_miette(errors::ValueOutOfRange {
             value: span.into(),
             context: Some("The stride must not be 0"),
             range: "any non-0 number",
@@ -1658,7 +1641,7 @@ fn parse_reset_value_entries(node: &KdlNode, diagnostics: &mut Diagnostics) -> O
             array.push((*val, entry.span()));
         } else {
             error = true;
-            diagnostics.add(errors::UnexpectedType {
+            diagnostics.add_miette(errors::UnexpectedType {
                 value_name: entry.span().into(),
                 expected_type: "integer",
             });
@@ -1673,7 +1656,7 @@ fn parse_reset_value_entries(node: &KdlNode, diagnostics: &mut Diagnostics) -> O
         let (integer, span) = array[0];
 
         if integer.is_negative() {
-            diagnostics.add(errors::ValueOutOfRange {
+            diagnostics.add_miette(errors::ValueOutOfRange {
                 value: span.into(),
                 range: "0..",
                 context: Some("Negative reset values are not allowed"),
@@ -1687,7 +1670,7 @@ fn parse_reset_value_entries(node: &KdlNode, diagnostics: &mut Diagnostics) -> O
         for (byte, span) in &array {
             if !(0..=255).contains(byte) {
                 error = true;
-                diagnostics.add(errors::ValueOutOfRange {
+                diagnostics.add_miette(errors::ValueOutOfRange {
                     value: (*span).into(),
                     range: "0..256",
                     context: Some(
@@ -1728,7 +1711,7 @@ fn parse_single_integer_entry(
         unexpected_anonymous_entries: Vec::new(),
     };
     if !unexpected_entries.is_empty() {
-        diagnostics.add(unexpected_entries);
+        diagnostics.add_miette(unexpected_entries);
     }
 
     match node.entries().first() {
@@ -1736,7 +1719,7 @@ fn parse_single_integer_entry(
             if let KdlValue::Integer(val) = entry.value() {
                 (Some(*val), Some(entry.span()))
             } else {
-                diagnostics.add(errors::UnexpectedType {
+                diagnostics.add_miette(errors::UnexpectedType {
                     value_name: entry.span().into(),
                     expected_type: "integer",
                 });
@@ -1744,7 +1727,7 @@ fn parse_single_integer_entry(
             }
         }
         _ => {
-            diagnostics.add(errors::MissingEntry {
+            diagnostics.add_miette(errors::MissingEntry {
                 node_name: node.name().span().into(),
                 expected_entries: vec!["integer"],
             });
@@ -1776,7 +1759,7 @@ fn parse_single_string_entry(
         unexpected_anonymous_entries: Vec::new(),
     };
     if !unexpected_entries.is_empty() {
-        diagnostics.add(unexpected_entries);
+        diagnostics.add_miette(unexpected_entries);
     }
 
     match node.entries().first() {
@@ -1785,13 +1768,13 @@ fn parse_single_string_entry(
                 (Some(val.clone()), Some(entry.span()))
             } else {
                 if is_name {
-                    diagnostics.add(errors::MissingObjectName {
+                    diagnostics.add_miette(errors::MissingObjectName {
                         object_keyword: node.name().span().into(),
                         object_type: node.name().value().into(),
                         found_instead: Some(entry.span().into()),
                     });
                 } else {
-                    diagnostics.add(errors::UnexpectedType {
+                    diagnostics.add_miette(errors::UnexpectedType {
                         value_name: entry.span().into(),
                         expected_type: "string",
                     });
@@ -1801,13 +1784,13 @@ fn parse_single_string_entry(
         }
         _ => {
             if is_name {
-                diagnostics.add(errors::MissingObjectName {
+                diagnostics.add_miette(errors::MissingObjectName {
                     object_keyword: node.name().span().into(),
                     object_type: node.name().value().into(),
                     found_instead: None,
                 });
             } else {
-                diagnostics.add(errors::MissingEntry {
+                diagnostics.add_miette(errors::MissingEntry {
                     node_name: node.name().span().into(),
                     expected_entries: expected_entries
                         .map_or_else(|| vec!["string"], <[&str]>::to_vec),
@@ -1827,7 +1810,7 @@ fn parse_single_string_value<T: VariantNames + FromStr>(
             T::from_str(&val).ok().map(|val| val.with_span(entry))
         }
         (Some(_), Some(entry)) => {
-            diagnostics.add(errors::UnexpectedValue {
+            diagnostics.add_miette(errors::UnexpectedValue {
                 value_name: entry.into(),
                 expected_values: T::VARIANTS.to_vec(),
             });
@@ -1970,7 +1953,6 @@ const DEVICE_CONFIG_TYPES: &[(&str, DeviceConfigType)] = &[
     ("field-access", DeviceConfigType::FieldAccess),
     ("buffer-access", DeviceConfigType::BufferAccess),
     ("byte-order", DeviceConfigType::ByteOrder),
-    ("bit-order", DeviceConfigType::BitOrder),
     ("register-address-type", DeviceConfigType::RegisterAddressType),
     ("command-address-type", DeviceConfigType::CommandAddressType),
     ("buffer-address-type", DeviceConfigType::BufferAddressType),
@@ -1983,7 +1965,6 @@ enum DeviceConfigType {
     FieldAccess,
     BufferAccess,
     ByteOrder,
-    BitOrder,
     RegisterAddressType,
     CommandAddressType,
     BufferAddressType,

@@ -9,7 +9,7 @@ device-driver-diagnostics.workspace = true
 
 clap.workspace = true
 
-pretty_assertions = "1.4.1"
+pretty_assertions.workspace = true
 regex = "1.11.1"
 
 [build-dependencies]

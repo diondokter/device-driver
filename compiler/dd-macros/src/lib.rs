@@ -6,6 +6,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use device_driver_diagnostics::Metadata;
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use syn::LitStr;
@@ -42,7 +43,7 @@ pub fn create_device(item: TokenStream) -> TokenStream {
 
     match input.generation_type {
         GenerationType::Kdl(kdl_input) => {
-            let (file_contents, span) = if cfg!(feature = "nightly") && rustversion::cfg!(nightly) {
+            let (source, span) = if cfg!(feature = "nightly") && rustversion::cfg!(nightly) {
                 std::fs::read_to_string(Path::new(&kdl_input.span().file())).map_or(
                     (kdl_input.value(), None),
                     |fc| {
@@ -57,42 +58,62 @@ pub fn create_device(item: TokenStream) -> TokenStream {
                 (kdl_input.value(), None)
             };
 
-            let (output, diagnostics) = device_driver_core::compile(
-                &file_contents,
-                span.map(miette::SourceSpan::from),
-                Path::new(&kdl_input.span().file()),
-            );
+            let (output, diagnostics) =
+                device_driver_core::compile(&source, span.map(miette::SourceSpan::from));
 
-            diagnostics.print_to(stderr().lock()).unwrap();
+            diagnostics
+                .print_to(
+                    stderr().lock(),
+                    Metadata {
+                        source: &source,
+                        source_path: &kdl_input.span().file(),
+                        term_width: None,
+                        ansi: true,
+                        unicode: true,
+                        anonymized_line_numbers: false,
+                    },
+                )
+                .unwrap();
 
             output.parse().unwrap()
         }
         GenerationType::Manifest(path) => {
             let result: Result<String, syn::Error> = (|| {
-                let mut path = PathBuf::from(path.value());
-                if path.is_relative() {
+                let mut source_path = PathBuf::from(path.value());
+                if source_path.is_relative() {
                     let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
-                    path = manifest_dir.join(path);
+                    source_path = manifest_dir.join(source_path);
                 }
 
-                let mut file_contents = String::new();
-                File::open(&path)
+                let mut source = String::new();
+                File::open(&source_path)
                     .map_err(|e| {
                         syn::Error::new(
                             Span::call_site(),
                             format!(
                                 "Could not open the manifest file at '{}': {e}",
-                                path.display()
+                                source_path.display()
                             ),
                         )
                     })?
-                    .read_to_string(&mut file_contents)
+                    .read_to_string(&mut source)
                     .unwrap();
 
-                let (output, diagnostics) =
-                    device_driver_core::compile(&file_contents, None, &path);
+                let (output, diagnostics) = device_driver_core::compile(&source, None);
 
-                diagnostics.print_to(stderr().lock()).unwrap();
+                diagnostics
+                    .print_to(
+                        stderr().lock(),
+                        Metadata {
+                            source: &source,
+                            source_path: &source_path.display().to_string(),
+                            term_width: None,
+                            ansi: true,
+                            unicode: true,
+                            anonymized_line_numbers: false,
+                        },
+                    )
+                    .unwrap();
 
                 Ok(output)
             })();

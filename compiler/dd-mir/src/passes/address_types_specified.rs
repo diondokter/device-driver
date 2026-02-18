@@ -2,7 +2,10 @@ use std::collections::HashSet;
 
 use device_driver_diagnostics::{Diagnostics, errors::AddressTypeUndefined};
 
-use crate::model::{Manifest, Object, UniqueId};
+use crate::{
+    model::{Manifest, Object, UniqueId},
+    search_object,
+};
 
 /// Checks if the various address types are specified. If not an error is given out.
 pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashSet<UniqueId> {
@@ -20,9 +23,13 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                     continue;
                 }
 
+                let device_object = search_object(manifest, &device.identifier().take_ref())
+                    .expect("This object is defined in something");
+
                 diagnostics.add(AddressTypeUndefined {
-                    object: object.name_span(),
-                    config_device: device.span(),
+                    object_name: object.name_span(),
+                    device: device_object.span(),
+                    device_config_area: device_object.child_objects().first().unwrap().span(),
                     object_type: "register",
                 });
                 register_removals.insert(device.clone());
@@ -35,9 +42,17 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                     continue;
                 }
 
+                let device_first_object = search_object(manifest, &device.identifier().take_ref())
+                    .expect("This object is defined in something")
+                    .child_objects()
+                    .first()
+                    .expect("This object must contain something")
+                    .span();
+
                 diagnostics.add(AddressTypeUndefined {
-                    object: object.name_span(),
-                    config_device: device.span(),
+                    object_name: object.name_span(),
+                    device: device.span(),
+                    device_config_area: device_first_object,
                     object_type: "command",
                 });
                 command_removals.insert(device.clone());
@@ -51,9 +66,17 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                     continue;
                 }
 
+                let device_first_object = search_object(manifest, &device.identifier().take_ref())
+                    .expect("This object is defined in something")
+                    .child_objects()
+                    .first()
+                    .expect("This object must contain something")
+                    .span();
+
                 diagnostics.add(AddressTypeUndefined {
-                    object: object.name_span(),
-                    config_device: device.span(),
+                    object_name: object.name_span(),
+                    device: device.span(),
+                    device_config_area: device_first_object,
                     object_type: "buffer",
                 });
                 buffer_removals.insert(device.clone());

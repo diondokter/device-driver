@@ -191,6 +191,7 @@ fn get_method(
             name,
             access,
             address,
+            span: _,
         }) => Some(lir::BlockMethod {
             description: description.clone(),
             name: name.value.clone(),
@@ -241,6 +242,7 @@ fn transform_field_set(
                 field_conversion,
                 field_address,
                 repeat,
+                span: _,
             } = field;
 
             let (base_type, conversion_method) = match (base_type.value, field_conversion) {
@@ -329,9 +331,6 @@ fn transform_field_set(
         byte_order: field_set
             .byte_order
             .expect("Byte order should never be none at this point after the MIR passes"),
-        bit_order: field_set
-            .bit_order
-            .expect("Bitorder should never be none at this point after the MIR passes"),
         size_bits: field_set.size_bits.value,
         fields,
         defmt_feature: config.defmt_feature.clone(),
@@ -347,6 +346,7 @@ pub fn transform_enums(manifest: &mir::Manifest) -> Vec<lir::Enum> {
             base_type,
             size_bits: _,
             generation_style: _,
+            span: _
         } = e;
 
         let base_type = match base_type.value {
@@ -363,7 +363,8 @@ pub fn transform_enums(manifest: &mir::Manifest) -> Vec<lir::Enum> {
                     description,
                     name,
                     value,
-                } = v;
+                    span: _
+               } = v;
 
                 lir::EnumVariant {
                     description: description.clone(),
@@ -433,6 +434,7 @@ impl<'o> From<&'o mir::Block> for BorrowedBlock<'o> {
             address_offset,
             repeat,
             objects,
+            span: _,
         } = value;
 
         Self {

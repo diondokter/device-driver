@@ -58,33 +58,21 @@ fn check_device(
         return;
     };
 
-    let Some(((min_address, min_obj), (max_address, max_obj))) =
+    let Some(((min_address, min_obj), (max_address, _))) =
         find_min_max_addresses(manifest, device, filter)
     else {
         return;
     };
 
-    if min_address < address_type.min_value() {
+    if min_address < address_type.min_value() || max_address > address_type.max_value() {
         diagnostics.add(AddressOutOfRange {
+            object: min_obj.name_span(),
             address: min_obj
                 .address()
                 .expect("All objects here should have addresses")
                 .span,
-            address_value: min_address,
-            has_repeat: min_obj.repeat().is_some(),
-            address_type_config: address_type.span,
-            address_type: address_type.value,
-        });
-        removals.insert(device.id());
-    }
-    if max_address > address_type.max_value() {
-        diagnostics.add(AddressOutOfRange {
-            address: max_obj
-                .address()
-                .expect("All objects here should have addresses")
-                .span,
-            address_value: max_address,
-            has_repeat: max_obj.repeat().is_some(),
+            address_value_min: min_address,
+            address_value_max: max_address,
             address_type_config: address_type.span,
             address_type: address_type.value,
         });
@@ -94,7 +82,10 @@ fn check_device(
 
 #[cfg(test)]
 mod tests {
-    use device_driver_common::{span::SpanExt, specifiers::Integer};
+    use device_driver_common::{
+        span::{Span, SpanExt},
+        specifiers::Integer,
+    };
 
     use crate::model::{Command, Device, DeviceConfig, Register};
 
@@ -114,6 +105,7 @@ mod tests {
                 address: (-300).with_dummy_span(),
                 ..Default::default()
             })],
+            span: Span::default(),
         }
         .into();
 
@@ -136,6 +128,7 @@ mod tests {
                 address: 128000.with_dummy_span(),
                 ..Default::default()
             })],
+            span: Span::default(),
         }
         .into();
 

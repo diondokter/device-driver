@@ -4,9 +4,7 @@ use convert_case::Boundary;
 use device_driver_common::{
     identifier::{Identifier, IdentifierRef},
     span::{Span, Spanned},
-    specifiers::{
-        Access, BaseType, BitOrder, ByteOrder, Integer, Repeat, ResetValue, TypeConversion,
-    },
+    specifiers::{Access, BaseType, ByteOrder, Integer, Repeat, ResetValue, TypeConversion},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -229,6 +227,8 @@ pub struct Device {
     pub name: Spanned<Identifier>,
     pub device_config: DeviceConfig,
     pub objects: Vec<Object>,
+    /// Span of the whole object
+    pub span: Span,
 }
 
 impl Device {
@@ -250,7 +250,6 @@ pub struct DeviceConfig {
     pub field_access: Option<Access>,
     pub buffer_access: Option<Access>,
     pub byte_order: Option<ByteOrder>,
-    pub bit_order: Option<BitOrder>,
     pub register_address_type: Option<Spanned<Integer>>,
     pub command_address_type: Option<Spanned<Integer>>,
     pub buffer_address_type: Option<Spanned<Integer>>,
@@ -267,7 +266,6 @@ impl DeviceConfig {
             field_access: other.field_access.or(self.field_access),
             buffer_access: other.buffer_access.or(self.buffer_access),
             byte_order: other.byte_order.or(self.byte_order),
-            bit_order: other.bit_order.or(self.bit_order),
             register_address_type: other.register_address_type.or(self.register_address_type),
             command_address_type: other.command_address_type.or(self.command_address_type),
             buffer_address_type: other.buffer_address_type.or(self.buffer_address_type),
@@ -437,19 +435,6 @@ impl Object {
         }
     }
 
-    pub(crate) fn object_type_name(&self) -> &'static str {
-        match self {
-            Object::Device(_) => "device",
-            Object::Block(_) => "block",
-            Object::Register(_) => "register",
-            Object::Command(_) => "command",
-            Object::Buffer(_) => "buffer",
-            Object::FieldSet(_) => "fieldset",
-            Object::Enum(_) => "enum",
-            Object::Extern(_) => "extern",
-        }
-    }
-
     pub(crate) fn allow_address_overlap(&self) -> bool {
         match self {
             Object::Device(_) => false,
@@ -462,6 +447,20 @@ impl Object {
             Object::Extern(_) => false,
         }
     }
+
+    /// The span of the entire object
+    pub(crate) fn span(&self) -> Span {
+        match self {
+            Object::Device(val) => val.span,
+            Object::Block(val) => val.span,
+            Object::Register(val) => val.span,
+            Object::Command(val) => val.span,
+            Object::Buffer(val) => val.span,
+            Object::FieldSet(val) => val.span,
+            Object::Enum(val) => val.span,
+            Object::Extern(val) => val.span,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
@@ -471,6 +470,8 @@ pub struct Block {
     pub address_offset: Spanned<i128>,
     pub repeat: Option<Repeat>,
     pub objects: Vec<Object>,
+    /// Span of the whole object
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
@@ -483,6 +484,8 @@ pub struct Register {
     pub reset_value: Option<Spanned<ResetValue>>,
     pub repeat: Option<Repeat>,
     pub field_set_ref: IdentifierRef,
+    /// Span of the whole object
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
@@ -491,9 +494,10 @@ pub struct FieldSet {
     pub name: Spanned<Identifier>,
     pub size_bits: Spanned<u32>,
     pub byte_order: Option<ByteOrder>,
-    pub bit_order: Option<BitOrder>,
     pub allow_bit_overlap: bool,
     pub fields: Vec<Field>,
+    /// Span of the whole object
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
@@ -505,6 +509,8 @@ pub struct Field {
     pub field_conversion: Option<TypeConversion>,
     pub field_address: Spanned<Range<u32>>,
     pub repeat: Option<Repeat>,
+    /// Span of the whole object
+    pub span: Span,
 }
 
 impl Field {
@@ -532,6 +538,8 @@ pub struct Enum {
     pub base_type: Spanned<BaseType>,
     pub size_bits: Option<u32>,
     pub generation_style: Option<EnumGenerationStyle>,
+    /// Span of the whole object
+    pub span: Span,
 }
 
 impl Enum {
@@ -542,6 +550,7 @@ impl Enum {
         variants: Vec<EnumVariant>,
         base_type: Spanned<BaseType>,
         size_bits: Option<u32>,
+        span: Span,
     ) -> Self {
         Self {
             description,
@@ -550,6 +559,7 @@ impl Enum {
             base_type,
             size_bits,
             generation_style: None,
+            span,
         }
     }
 
@@ -561,6 +571,7 @@ impl Enum {
         base_type: Spanned<BaseType>,
         size_bits: Option<u32>,
         generation_style: EnumGenerationStyle,
+        span: Span,
     ) -> Self {
         Self {
             description,
@@ -569,6 +580,7 @@ impl Enum {
             base_type,
             size_bits,
             generation_style: Some(generation_style),
+            span,
         }
     }
 
@@ -637,6 +649,8 @@ pub struct EnumVariant {
     pub description: String,
     pub name: Spanned<Identifier>,
     pub value: EnumValue,
+    /// Span of the whole object
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
@@ -684,6 +698,9 @@ pub struct Command {
 
     pub field_set_ref_in: Option<IdentifierRef>,
     pub field_set_ref_out: Option<IdentifierRef>,
+
+    /// Span of the whole object
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
@@ -692,6 +709,8 @@ pub struct Buffer {
     pub name: Spanned<Identifier>,
     pub access: Access,
     pub address: Spanned<i128>,
+    /// Span of the whole object
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
@@ -702,6 +721,8 @@ pub struct Extern {
     pub base_type: Spanned<BaseType>,
     /// If true, this extern can be converted infallibly too
     pub supports_infallible: bool,
+    /// Span of the whole object
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
@@ -918,6 +939,7 @@ mod tests {
                             ..Default::default()
                         }),
                     ],
+                    span: Span::default(),
                 }),
                 Object::Extern(Extern {
                     name: "d".into_with_dummy_span(),

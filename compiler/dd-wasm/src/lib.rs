@@ -1,19 +1,27 @@
-use std::path::PathBuf;
-
+use device_driver_diagnostics::Metadata;
 use wasm_bindgen::prelude::*;
 
 extern crate wasm_bindgen;
 
 #[wasm_bindgen]
-pub fn compile(input: &str, chars_per_line: usize) -> Output {
-    device_driver_diagnostics::set_miette_hook(false);
+pub fn compile(source: &str, chars_per_line: usize) -> Output {
+    device_driver_diagnostics::set_miette_hook(true);
 
-    let (output, diagnostics) =
-        device_driver_core::compile(input, None, &PathBuf::from("input.kdl"));
+    let (output, diagnostics) = device_driver_core::compile(source, None);
 
     let mut diagnostics_string = String::new();
     diagnostics
-        .print_to_fmt(&mut diagnostics_string, Some(chars_per_line))
+        .print_to_fmt(
+            &mut diagnostics_string,
+            Metadata {
+                source,
+                source_path: "input.kdl",
+                term_width: Some(chars_per_line),
+                ansi: true,
+                unicode: true,
+                anonymized_line_numbers: false,
+            },
+        )
         .unwrap();
 
     Output {

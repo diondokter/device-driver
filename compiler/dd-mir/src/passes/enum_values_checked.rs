@@ -1,8 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
-use device_driver_common::specifiers::{BaseType, Integer};
+use device_driver_common::{
+    span::SpanExt,
+    specifiers::{BaseType, Integer},
+};
 use itertools::Itertools;
-use miette::LabeledSpan;
 
 use crate::model::{
     EnumGenerationStyle, EnumValue, LendingIterator, Manifest, Object, Unique, UniqueId,
@@ -28,7 +30,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
 
         if enum_value.variants.is_empty() {
             diagnostics.add(EmptyEnum {
-                enum_name: enum_value.name.span,
+                enum_node: enum_value.span,
             });
             removals.insert(enum_value.id());
             continue;
@@ -85,7 +87,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                 diagnostics.add(EnumBadBasetype {
                     enum_name: enum_value.name.span,
                     base_type: enum_value.base_type.span,
-                    help: "All enums must have an integer as base type",
+                    info: "all enums must have an integer as base type",
                     context: vec![],
                 });
                 removals.insert(enum_value.id());
@@ -99,11 +101,12 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                 );
 
                 if integer.is_some_and(|i| i.is_signed()) {
+                    // TODO: Make separate error type (same as below)
                     diagnostics.add(EnumBadBasetype {
                         enum_name: enum_value.name.span,
                         base_type: enum_value.base_type.span,
-                        help: "All enums must use a signed integer if it contains a variant with a negative value",
-                        context: vec![LabeledSpan::new_with_span(Some(format!("Variant with negative value: {seen_min}")), seen_min_id.span())],
+                        info: "enums must use a signed integer when any variant has a negative value",
+                        context: vec![format!("variant with negative value: {seen_min}").with_span(seen_min_id.span())],
                     });
                     removals.insert(enum_value.id());
                     continue;
@@ -121,18 +124,20 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                     diagnostics.add(EnumSizeBitsBiggerThanBaseType {
                         enum_name: enum_value.name.span,
                         base_type: enum_value.base_type.span,
-                        size_bits: enum_value.size_bits.unwrap_or_default(),
+                        enum_size_bits: enum_value.size_bits.unwrap_or_default(),
+                        base_type_size_bits: integer.size_bits(),
                     });
                     removals.insert(enum_value.id());
                     continue;
                 }
 
                 if !integer.is_signed() && seen_min.is_negative() {
+                    // TODO: Make separate error type (same as above)
                     diagnostics.add(EnumBadBasetype {
                         enum_name: enum_value.name.span,
                         base_type: enum_value.base_type.span,
-                        help: "All enums must use a signed integer if it contains a variant with a negative value",
-                        context: vec![LabeledSpan::new_with_span(Some(format!("Variant with negative value: {seen_min}")), seen_min_id.span())],
+                        info: "enums must use a signed integer when any variant has a negative value",
+                        context: vec![format!("variant with negative value: {seen_min}").with_span(seen_min_id.span())],
                     });
                     removals.insert(enum_value.id());
                     continue;
@@ -151,7 +156,9 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
         };
 
         let size_bits = match enum_value.size_bits {
-            None => base_type_integer.bits_required(*seen_min, *seen_max),
+            None => base_type_integer
+                .bits_required(*seen_min, *seen_max)
+                .min(base_type_integer.size_bits()),
             Some(size_bits) => size_bits,
         };
 
@@ -197,6 +204,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                 variant_names: too_high_values,
                 enum_name: enum_value.name.span,
                 max_value: *all_values.end(),
+                size_bits,
             });
             removals.insert(enum_value.id());
             continue;
@@ -206,6 +214,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                 variant_names: too_low_values,
                 enum_name: enum_value.name.span,
                 min_value: *all_values.start(),
+                size_bits,
             });
             removals.insert(enum_value.id());
             continue;
@@ -269,7 +278,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
 
 #[cfg(test)]
 mod tests {
-    use device_driver_common::span::SpanExt;
+    use device_driver_common::span::{Span, SpanExt};
 
     use crate::model::{Device, Enum, EnumVariant, Object};
 
@@ -308,7 +317,9 @@ mod tests {
                 ],
                 BaseType::Unspecified.with_dummy_span(),
                 Some(2),
+                Span::default(),
             ))],
+            span: Span::default(),
         }
         .into();
 
@@ -344,7 +355,9 @@ mod tests {
                 BaseType::FixedSize(Integer::U8).with_dummy_span(),
                 Some(2),
                 EnumGenerationStyle::InfallibleWithinRange,
+                Span::default(),
             ))],
+            span: Span::default(),
         }
         .into();
 
@@ -378,7 +391,9 @@ mod tests {
                 ],
                 BaseType::Unspecified.with_dummy_span(),
                 Some(8),
+                Span::default(),
             ))],
+            span: Span::default(),
         }
         .into();
 
@@ -404,7 +419,9 @@ mod tests {
                 BaseType::FixedSize(Integer::U8).with_dummy_span(),
                 Some(8),
                 EnumGenerationStyle::Fallback,
+                Span::default(),
             ))],
+            span: Span::default(),
         }
         .into();
 
@@ -431,7 +448,9 @@ mod tests {
                 }],
                 BaseType::Unspecified.with_dummy_span(),
                 Some(16),
+                Span::default(),
             ))],
+            span: Span::default(),
         }
         .into();
 
@@ -450,7 +469,9 @@ mod tests {
                 BaseType::FixedSize(Integer::U16).with_dummy_span(),
                 Some(16),
                 EnumGenerationStyle::Fallible,
+                Span::default(),
             ))],
+            span: Span::default(),
         }
         .into();
 
@@ -489,7 +510,9 @@ mod tests {
                 ],
                 BaseType::Unspecified.with_dummy_span(),
                 Some(1),
+                Span::default(),
             ))],
+            span: Span::default(),
         }
         .into();
 
@@ -523,7 +546,9 @@ mod tests {
                 ],
                 BaseType::Unspecified.with_dummy_span(),
                 Some(8),
+                Span::default(),
             ))],
+            span: Span::default(),
         }
         .into();
 

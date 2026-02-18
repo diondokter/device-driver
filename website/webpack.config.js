@@ -1,6 +1,5 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const webpack = require('webpack');
 const WasmPackPlugin = require("@wasm-tool/wasm-pack-plugin");
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
@@ -27,7 +26,7 @@ module.exports = {
         new WasmPackPlugin({
             crateDirectory: path.resolve(__dirname, "../compiler/dd-wasm"),
             watchDirectories: [
-                path.resolve(__dirname, "../compiler/dd-core")
+                path.resolve(__dirname, "../compiler")
             ],
             outDir: path.resolve(__dirname, "pkg"),
             outName: "device_driver_wasm"
@@ -53,6 +52,9 @@ module.exports = {
                 type: 'asset/resource'
             }
         ]
+    },
+    watchOptions: {
+        aggregateTimeout: 1000, // Delays the rebuild slightly to let WasmPack finish
     },
     mode: 'development',
     devtool: 'inline-source-map',

@@ -15,3 +15,8 @@ miette.workspace = true
 convert_case.workspace = true
 itertools.workspace = true
 thiserror.workspace = true
+
+annotate-snippets = "0.12.11"
+
+[dev-dependencies]
+pretty_assertions.workspace = true

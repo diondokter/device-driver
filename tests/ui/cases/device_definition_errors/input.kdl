@@ -35,7 +35,6 @@ device FooD5 {
     register-access value=RW
     register-address-type u8
     command-address-type 16
-    bit-order msb0
     defmt-feature lol
     name-word-boundaries aA:1a
 }
@@ -79,7 +78,7 @@ device FooD6 {
     }
     register foor6 {
         address 2
-        fields size-bits=0x1_0000_0000 byte-order=BLA byte-order=BE bit-order=gkd bit-order=msb0 allow-bit-overlap allow-bit-overlap=#false {
+        fields size-bits=0x1_0000_0000 byte-order=BLA byte-order=BE bit-order=gkd allow-bit-overlap allow-bit-overlap=#false {
 
         }
     }

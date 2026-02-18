@@ -1,4 +1,7 @@
-use device_driver_common::specifiers::{Repeat, RepeatSource};
+use device_driver_common::{
+    span::{SpanExt, Spanned},
+    specifiers::{Repeat, RepeatSource},
+};
 
 use crate::{
     model::{Device, Manifest, Object, Unique, UniqueId},
@@ -31,10 +34,12 @@ fn check_for_overlap(addresses: &[ObjectAddress], diagnostics: &mut Diagnostics)
                 && (!address.allow_overlap || !check_address.allow_overlap)
             {
                 diagnostics.add(AddressOverlap {
-                    address: address.address,
+                    address: address.address.value,
                     object_1: address.id.span(),
+                    object_1_address: address.address.span,
                     repeat_offset_1: address.repeat_offset,
                     object_2: check_address.id.span(),
+                    object_2_address: check_address.address.span,
                     repeat_offset_2: check_address.repeat_offset,
                 });
             }
@@ -45,7 +50,7 @@ fn check_for_overlap(addresses: &[ObjectAddress], diagnostics: &mut Diagnostics)
 struct ObjectAddress {
     id: UniqueId,
     // Address including repeat offset
-    address: i128,
+    address: Spanned<i128>,
     repeat_offset: Option<i128>,
     allow_overlap: bool,
 }
@@ -90,11 +95,11 @@ fn find_object_addresses<'m>(
                 RepeatSource::Count(count) => {
                     for index in 0..i128::from(count) {
                         let repeat_offset = index * repeat.stride;
-                        let address = total_address_offsets + address.value + repeat_offset;
+                        let address_value = total_address_offsets + address.value + repeat_offset;
 
                         object_addresses.push(ObjectAddress {
                             id: object.id(),
-                            address,
+                            address: address_value.with_span(address.span),
                             repeat_offset: object.repeat().map(|_| repeat_offset),
                             allow_overlap: object.allow_address_overlap(),
                         });
@@ -108,11 +113,11 @@ fn find_object_addresses<'m>(
 
                     for (discriminant, _) in enum_value.iter_variants_with_discriminant() {
                         let repeat_offset = discriminant * repeat.stride;
-                        let address = total_address_offsets + address.value + repeat_offset;
+                        let address_value = total_address_offsets + address.value + repeat_offset;
 
                         object_addresses.push(ObjectAddress {
                             id: object.id(),
-                            address,
+                            address: address_value.with_span(address.span),
                             repeat_offset: Some(repeat_offset),
                             allow_overlap: object.allow_address_overlap(),
                         });

@@ -1,37 +1,48 @@
 use std::{path::Path, sync::LazyLock};
 
+use device_driver_diagnostics::Metadata;
 use regex::Regex;
 
 pub const OUTPUT_HEADER: &str = include_str!("output_header.txt");
 
 include!(concat!(env!("OUT_DIR"), "/test_cases.rs"));
 
-pub fn run_test(input_paths: &[&Path], output_path: &Path) {
+pub fn run_test(source_paths: &[&Path], output_path: &Path) {
     device_driver_diagnostics::set_miette_hook(false);
 
     let expected_output = std::fs::read_to_string(output_path).unwrap();
 
-    for input_path in input_paths {
-        let input = std::fs::read_to_string(input_path).unwrap();
+    for source_path in source_paths {
+        let source = std::fs::read_to_string(source_path).unwrap();
 
-        let input_extension = input_path.extension().unwrap().display().to_string();
+        let input_extension = source_path.extension().unwrap().display().to_string();
         let (transformed, diagnostics) = match &*input_extension {
             "kdl" => {
-                let (transformed, diagnostics) = device_driver_core::compile(
-                    &input,
-                    None,
-                    input_path
-                        .strip_prefix(std::env::current_dir().unwrap())
-                        .unwrap(),
-                );
-                (transformed, diagnostics.to_string())
+                let (transformed, diagnostics) = device_driver_core::compile(&source, None);
+
+                let mut diagnostics_output = String::new();
+
+                diagnostics
+                    .print_to_fmt(
+                        &mut diagnostics_output,
+                        Metadata {
+                            source: &source,
+                            source_path: "input.kdl",
+                            term_width: None,
+                            ansi: false,
+                            unicode: false,
+                            anonymized_line_numbers: true,
+                        },
+                    )
+                    .unwrap();
+                (transformed, diagnostics_output)
             }
             e => panic!("Unrecognized extension: {e:?}"),
         };
 
         let output = OUTPUT_HEADER.to_string() + &transformed;
 
-        let diagnostics_path = input_path
+        let diagnostics_path = source_path
             .with_file_name("diagnostics")
             .with_extension("txt");
         let expected_diagnostics = std::fs::read_to_string(&diagnostics_path).unwrap();
