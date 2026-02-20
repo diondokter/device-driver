@@ -1461,7 +1461,7 @@ impl Diagnostic for DuplicateProperty {
                 .annotation(
                     AnnotationKind::Context
                         .span(self.original.into())
-                        .label("first occurance"),
+                        .label("first occurrence"),
                 )
                 .annotation(
                     AnnotationKind::Primary
