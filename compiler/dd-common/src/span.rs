@@ -8,7 +8,7 @@ pub struct Span {
 
 impl Span {
     pub fn is_empty(&self) -> bool {
-        self.start == self.end
+        self.start >= self.end
     }
 
     /// Return self if not empty, or the other span if self is empty
@@ -45,8 +45,6 @@ impl Display for Span {
 
 impl From<(usize, usize)> for Span {
     fn from(value: (usize, usize)) -> Self {
-        assert!(value.0 <= value.1);
-
         Self {
             start: value.0,
             end: value.1,
@@ -56,8 +54,6 @@ impl From<(usize, usize)> for Span {
 
 impl From<Range<usize>> for Span {
     fn from(value: Range<usize>) -> Self {
-        assert!(value.start <= value.end);
-
         Self {
             start: value.start,
             end: value.end,

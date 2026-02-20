@@ -9,7 +9,7 @@ pub fn compile(source: &str) -> (String, Diagnostics) {
     let mut diagnostics = Diagnostics::new();
 
     let tokens = device_driver_lexer::lex(source);
-    let ast = device_driver_parser::parse(&tokens);
+    let ast = device_driver_parser::parse(&tokens, &mut diagnostics);
     let mir = device_driver_mir::lower_ast(ast, &mut diagnostics);
     let lir = device_driver_lir::lower_mir(mir);
     let mut code = device_driver_codegen::codegen(device_driver_codegen::Target::Rust, lir);

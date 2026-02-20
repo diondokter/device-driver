@@ -9,7 +9,7 @@ use annotate_snippets::{AnnotationKind, Group, Level, Patch, Snippet};
 use device_driver_common::{
     identifier::{self, Identifier},
     span::{Span, Spanned},
-    specifiers::{BaseType, Integer},
+    specifiers::{BaseType, Integer, NodeType, VariantNames},
 };
 
 use crate::{Diagnostic, encode_ansi_url};
@@ -1263,6 +1263,211 @@ All other characters must be a unicode XID continue character.";
                 .element(Snippet::source(source).path(path).annotation(annotation)),
             Group::with_title(Level::INFO.secondary_title(INFO_TEXT)),
         ]
+        .to_vec()
+    }
+}
+
+pub struct ParsingError {
+    pub reason: String,
+    pub span: Span,
+}
+
+impl Diagnostic for ParsingError {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [Level::ERROR.primary_title("parsing error").element(
+            Snippet::source(source).path(path).annotation(
+                AnnotationKind::Primary
+                    .span(self.span.into())
+                    .label(&self.reason),
+            ),
+        )]
+        .to_vec()
+    }
+}
+
+pub struct UnknownNodeType {
+    pub node_type: Span,
+}
+
+impl Diagnostic for UnknownNodeType {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [Level::ERROR.primary_title("Unknown node type").element(
+            Snippet::source(source).path(path).annotation(
+                AnnotationKind::Primary
+                    .span(self.node_type.into())
+                    .label(format!(
+                        "expected one of: {}",
+                        NodeType::VARIANTS.join(", ")
+                    )),
+            ),
+        )]
+        .to_vec()
+    }
+}
+
+pub struct DocCommentsNotSupported {
+    pub doc_comments: Vec<Span>,
+    pub node_type: Spanned<NodeType>,
+}
+
+impl Diagnostic for DocCommentsNotSupported {
+    fn is_error(&self) -> bool {
+        false
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [Level::WARNING
+            .primary_title(format!(
+                "doc comments not supported on `{}` nodes",
+                self.node_type
+            ))
+            .element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotations(
+                        self.doc_comments
+                            .iter()
+                            .map(|s| AnnotationKind::Primary.span(s.into())),
+                    )
+                    .annotation(AnnotationKind::Visible.span(self.node_type.span.into())),
+            )]
+        .to_vec()
+    }
+}
+
+pub struct NameNotSupported {
+    pub name: Span,
+    pub node_type: Spanned<NodeType>,
+}
+
+impl Diagnostic for NameNotSupported {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [Level::ERROR
+            .primary_title(format!("name not supported on `{}` nodes", self.node_type))
+            .element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(AnnotationKind::Primary.span(self.name.into()))
+                    .annotation(AnnotationKind::Visible.span(self.node_type.span.into())),
+            )]
+        .to_vec()
+    }
+}
+
+pub struct NameRequired {
+    pub node_type: Spanned<NodeType>,
+}
+
+impl Diagnostic for NameRequired {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [Level::ERROR
+            .primary_title(format!("name is required for `{}` nodes", self.node_type))
+            .element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(AnnotationKind::Primary.span(self.node_type.span.into())),
+            )]
+        .to_vec()
+    }
+}
+
+pub struct InvalidPropertyName {
+    pub property: Span,
+    pub node_type: Spanned<NodeType>,
+    pub expected_names: Vec<&'static str>,
+}
+
+impl Diagnostic for InvalidPropertyName {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [Level::ERROR
+            .primary_title(format!(
+                "invalid property name for `{}` nodes",
+                self.node_type
+            ))
+            .element(Snippet::source(source).path(path).annotation(
+                AnnotationKind::Primary.span(self.property.into()).label(
+                    if self.expected_names.is_empty() {
+                        "no named properties are expected".into()
+                    } else {
+                        format!("expected one of: {}", self.expected_names.join(", "))
+                    },
+                ),
+            ))]
+        .to_vec()
+    }
+}
+
+pub struct InvalidExpressionType {
+    pub expression: Span,
+    pub node_type: Spanned<NodeType>,
+}
+
+impl Diagnostic for InvalidExpressionType {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [Level::ERROR
+            .primary_title(format!(
+                "invalid expression type for this property in {} nodes",
+                self.node_type
+            ))
+            .element(
+                Snippet::source(source)
+                    .path(path)
+                    // TODO: Label with more info and the types that are supported
+                    .annotation(AnnotationKind::Primary.span(self.expression.into())),
+            )]
+        .to_vec()
+    }
+}
+
+pub struct DuplicateProperty {
+    pub original: Span,
+    pub duplicate: Span,
+}
+
+impl Diagnostic for DuplicateProperty {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [Level::ERROR.primary_title("duplicate property").element(
+            Snippet::source(source)
+                .path(path)
+                .annotation(
+                    AnnotationKind::Context
+                        .span(self.original.into())
+                        .label("first occurance"),
+                )
+                .annotation(
+                    AnnotationKind::Primary
+                        .span(self.duplicate.into())
+                        .label("duplicate"),
+                ),
+        )]
         .to_vec()
     }
 }

@@ -10,29 +10,7 @@ monaco.languages.register({ id: 'kdl' })
 monaco.languages.setMonarchTokensProvider('kdl', KDLMonarch.language)
 monaco.languages.setLanguageConfiguration('kdl', KDLMonarch.config)
 
-const DEFAULT_CODE =
-    `device Foo {
-    register-address-type u8
-
-    /// Doc comments get reflected in the output code!
-    register Bar {
-        address 0
-        fields size-bits=8 {
-            /// Inline enums :)
-            (i8:Xena) xena @7:4 {
-                A
-                B
-                C
-                /// D is the default!
-                D default
-            }
-            quux @3:1
-            /// One bit? Then this is a bool by default
-            bilb @0
-        }
-    }
-}
-`
+const DEFAULT_CODE =``
 
 const diagnostics = document.getElementById('diagnostics');
 

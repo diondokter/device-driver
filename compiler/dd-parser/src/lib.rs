@@ -3,11 +3,12 @@ use std::fmt::Display;
 use chumsky::{input::ValueInput, prelude::*};
 use device_driver_common::{
     span::{Span, SpanExt, Spanned},
-    specifiers::{Access, BaseType, ByteOrder},
+    specifiers::{Access, BaseType, ByteOrder, Integer},
 };
+use device_driver_diagnostics::{Diagnostics, errors::ParsingError};
 use device_driver_lexer::{ParseIntRadix, ParseIntRadixError, ParseIntRadixErrorKind, Token};
 
-pub fn parse<'src>(tokens: &[Spanned<Token<'src>>]) -> Ast<'src> {
+pub fn parse<'src>(tokens: &[Spanned<Token<'src>>], diagnostics: &mut Diagnostics) -> Ast<'src> {
     let (ast, parse_errs) = parser()
         .map_with(|ast, e| (ast, e.span()))
         .parse(
@@ -22,14 +23,17 @@ pub fn parse<'src>(tokens: &[Spanned<Token<'src>>]) -> Ast<'src> {
         .into_output_errors();
 
     for error in parse_errs {
-        todo!("Emit diagnostic: {error}");
+        diagnostics.add(ParsingError {
+            reason: error.to_string(),
+            span: *error.span(),
+        });
     }
 
     ast.map(|(nodes, span)| Ast { nodes, span })
         .unwrap_or_default()
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Ast<'src> {
     pub nodes: Vec<Node<'src>>,
     pub span: Span,
@@ -38,8 +42,8 @@ pub struct Ast<'src> {
 #[derive(Debug)]
 pub struct Node<'src> {
     pub doc_comments: Vec<Spanned<&'src str>>,
-    pub object_type: Ident<'src>,
-    pub name: Ident<'src>,
+    pub node_type: Ident<'src>,
+    pub name: Option<Ident<'src>>,
     pub type_specifier: Option<TypeSpecifier<'src>>,
     pub properties: Vec<Spanned<Property<'src>>>,
     pub sub_nodes: Vec<Node<'src>>,
@@ -54,12 +58,24 @@ impl<'src> Display for Node<'src> {
         for doc_comment in &self.doc_comments {
             writeln!(f, "{indentation}///{doc_comment}")?;
         }
-        write!(f, "{indentation}{} {}", self.object_type.val, self.name.val)?;
+        write!(
+            f,
+            "{indentation}{}{}",
+            self.node_type.val,
+            self.name
+                .as_ref()
+                .map(|ident| format!(" {}", ident.val))
+                .unwrap_or_default()
+        )?;
 
-        for expression in self.properties.iter().filter_map(|p| match &p.value {
-            Property::Full { .. } => None,
-            Property::Anonymous { expression } => Some(&expression.value),
-        }) {
+        for expression in self
+            .properties
+            .iter()
+            .filter_map(|p| match p.is_anonymous() {
+                false => None,
+                true => Some(&p.value.expression),
+            })
+        {
             write!(f, " {expression}")?;
         }
 
@@ -84,9 +100,9 @@ impl<'src> Display for Node<'src> {
         if !self.sub_nodes.is_empty() || self.properties.iter().any(|p| !p.is_anonymous()) {
             writeln!(f, " {{")?;
 
-            for (ident, expression) in self.properties.iter().filter_map(|p| match &p.value {
-                Property::Full { name, expression } => Some((name, &expression.value)),
-                Property::Anonymous { .. } => None,
+            for (ident, expression) in self.properties.iter().filter_map(|p| match &p.name {
+                Some(name) => Some((name, &p.expression.value)),
+                None => None,
             }) {
                 writeln!(f, "{indentation}    {}: {},", ident.val, expression)?;
             }
@@ -116,23 +132,14 @@ pub enum TypeConversion<'src> {
 }
 
 #[derive(Debug)]
-pub enum Property<'src> {
-    Full {
-        name: Ident<'src>,
-        expression: Spanned<Expression<'src>>,
-    },
-    Anonymous {
-        expression: Spanned<Expression<'src>>,
-    },
+pub struct Property<'src> {
+    pub name: Option<Ident<'src>>,
+    pub expression: Spanned<Expression<'src>>,
 }
 
 impl<'src> Property<'src> {
-    /// Returns `true` if the property is [`Anonymous`].
-    ///
-    /// [`Anonymous`]: Property::Anonymous
-    #[must_use]
     pub fn is_anonymous(&self) -> bool {
-        matches!(self, Self::Anonymous { .. })
+        self.name.is_none()
     }
 }
 
@@ -143,6 +150,7 @@ pub enum Expression<'src> {
     ResetNumber(u128),
     ResetArray(Vec<u8>),
     BaseType(BaseType),
+    Integer(Integer),
     Allow,
     Number(i128),
     DefaultNumber(i128),
@@ -151,7 +159,34 @@ pub enum Expression<'src> {
     ByteOrder(ByteOrder),
     TypeReference(Ident<'src>),
     SubNode(Box<Node<'src>>),
+    Auto,
     Error,
+}
+
+impl<'src> Expression<'src> {
+    pub fn as_byte_order(&self) -> Option<ByteOrder> {
+        if let Self::ByteOrder(v) = self {
+            Some(*v)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_access(&self) -> Option<Access> {
+        if let Self::Access(v) = self {
+            Some(*v)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_integer(&self) -> Option<Integer> {
+        if let Self::Integer(v) = self {
+            Some(*v)
+        } else {
+            None
+        }
+    }
 }
 
 impl<'src> Display for Expression<'src> {
@@ -169,6 +204,7 @@ impl<'src> Display for Expression<'src> {
             Expression::ResetNumber(num) => write!(f, "[{num}]"),
             Expression::ResetArray(items) => write!(f, "{items:?}"),
             Expression::BaseType(base_type) => base_type.fmt(f),
+            Expression::Integer(integer) => integer.fmt(f),
             Expression::Allow => write!(f, "allow"),
             Expression::Number(num) => num.fmt(f),
             Expression::DefaultNumber(num) => write!(f, "default {num}"),
@@ -177,6 +213,7 @@ impl<'src> Display for Expression<'src> {
             Expression::ByteOrder(val) => val.fmt(f),
             Expression::TypeReference(ident) => ident.val.fmt(f),
             Expression::SubNode(val) => val.fmt(f),
+            Expression::Auto => write!(f, "_"),
             Expression::Error => write!(f, "ERROR"),
         }
     }
@@ -263,6 +300,7 @@ where
             .map(|(end, start)| Expression::Range { end, start })
             .labelled("'range'");
         let any_base_type = select! { Token::BaseType(bt) => bt }.labelled("'base type'");
+        let any_integer = select! { Token::Integer(i) => i }.labelled("'integer type'");
         let repeat_expression = any_num
             .try_map(try_num::<u32>)
             .map(RepeatSource::Count)
@@ -311,9 +349,11 @@ where
             .labelled("'[reset]'")
             .boxed();
 
+        // Expression without type reference
         let expression = choice((
             range,
             any_base_type.map(Expression::BaseType),
+            any_integer.map(Expression::Integer),
             any_num.try_map(try_num::<i128>).map(Expression::Number),
             just(Token::Default)
                 .ignore_then(any_num.try_map(try_num::<i128>))
@@ -326,17 +366,27 @@ where
             repeat_expression,
             reset_expression,
             just(Token::Allow).map(|_| Expression::Allow),
-            select! { Token::Access(val) => val }.map(Expression::Access),
-            select! { Token::ByteOrder(val) => val }.map(Expression::ByteOrder),
-            any_ident.map(Expression::TypeReference),
+            select! { Token::Access(val) => val }.map(Expression::Access).labelled("'access'"),
+            select! { Token::ByteOrder(val) => val }.map(Expression::ByteOrder).labelled("'byte order'"),
+            just(Token::Underscore).map(|_| Expression::Auto),
         ))
         .map_with(|expression, extra| expression.spanned(extra.span()))
         .boxed();
 
         let property = any_ident
-            .then(just(Token::Colon).ignore_then(expression.clone()))
+            .then(
+                just(Token::Colon).ignore_then(
+                    expression.clone().or(any_ident
+                        .map(Expression::TypeReference)
+                        .map_with(|expression, extra| expression.spanned(extra.span()))),
+                ),
+            )
             .map_with(|(name, expression), extra| {
-                Property::Full { name, expression }.spanned(extra.span())
+                Property {
+                    name: Some(name),
+                    expression,
+                }
+                .spanned(extra.span())
             })
             .labelled("'property'")
             .boxed();
@@ -377,26 +427,30 @@ where
         any_doc_comment
             .repeated()
             .collect()
-            .then(any_ident.labelled("'object-type'"))
-            .then(any_ident.labelled("'object-name'"))
+            .then(any_ident.labelled("'node-type'"))
+            .then(any_ident.labelled("'node-name'").or_not())
             .then(expression.repeated().collect::<Vec<_>>())
             .then(type_specifier.or_not())
             .then(node_body.or_not())
             .map_with(
-                |(((((doc_comments, object_type), name), expressions), type_specifier), body),
+                |(((((doc_comments, node_type), name), expressions), type_specifier), body),
                  extra| {
                     let (properties, sub_nodes) = body.unwrap_or_default();
 
                     Node {
                         doc_comments,
-                        object_type,
+                        node_type,
                         name,
                         type_specifier,
                         properties: expressions
                             .into_iter()
                             .map(|expression| {
                                 let span = expression.span;
-                                Property::Anonymous { expression }.spanned(span)
+                                Property {
+                                    name: None,
+                                    expression,
+                                }
+                                .spanned(span)
                             })
                             .chain(properties)
                             .collect(),
@@ -407,7 +461,5 @@ where
             )
     });
 
-    node.separated_by(just(Token::Comma))
-        .allow_trailing()
-        .collect()
+    node.repeated().collect()
 }

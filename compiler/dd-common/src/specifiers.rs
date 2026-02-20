@@ -291,3 +291,31 @@ impl ResetValue {
         }
     }
 }
+
+#[derive(Debug, Clone, Copy)]
+pub enum NodeType {
+    Global,
+    Device,
+}
+
+impl FromStr for NodeType {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "global" => Ok(Self::Global),
+            "device" => Ok(Self::Device),
+            _ => Err(()),
+        }
+    }
+}
+
+impl VariantNames for NodeType {
+    const VARIANTS: &'static [&'static str] = &["global", "device"];
+}
+
+impl Display for NodeType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", Self::VARIANTS[*self as usize])
+    }
+}

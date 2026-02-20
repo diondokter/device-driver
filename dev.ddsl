@@ -1,0 +1,9 @@
+global test {
+    byte-order: LE,
+    command-address-type: u8,
+}
+
+/// Test
+device Foo {
+    byte-order: BE,
+}

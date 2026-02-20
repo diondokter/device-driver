@@ -12,7 +12,7 @@ pub mod model;
 pub(crate) mod passes;
 
 pub fn lower_ast(ast: Ast, diagnostics: &mut Diagnostics) -> model::Manifest {
-    let mut mir = lowering::transform(ast, diagnostics);
+    let mut mir = lowering::lower(ast, diagnostics);
 
     passes::run_passes(&mut mir, diagnostics);
 
