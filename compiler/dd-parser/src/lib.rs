@@ -100,10 +100,11 @@ impl<'src> Display for Node<'src> {
         if !self.sub_nodes.is_empty() || self.properties.iter().any(|p| !p.is_anonymous()) {
             writeln!(f, " {{")?;
 
-            for (ident, expression) in self.properties.iter().filter_map(|p| match &p.name {
-                Some(name) => Some((name, &p.expression.value)),
-                None => None,
-            }) {
+            for (ident, expression) in self
+                .properties
+                .iter()
+                .filter_map(|p| p.name.as_ref().map(|name| (name, &p.expression.value)))
+            {
                 writeln!(f, "{indentation}    {}: {},", ident.val, expression)?;
             }
 
@@ -366,8 +367,12 @@ where
             repeat_expression,
             reset_expression,
             just(Token::Allow).map(|_| Expression::Allow),
-            select! { Token::Access(val) => val }.map(Expression::Access).labelled("'access'"),
-            select! { Token::ByteOrder(val) => val }.map(Expression::ByteOrder).labelled("'byte order'"),
+            select! { Token::Access(val) => val }
+                .map(Expression::Access)
+                .labelled("'access'"),
+            select! { Token::ByteOrder(val) => val }
+                .map(Expression::ByteOrder)
+                .labelled("'byte order'"),
             just(Token::Underscore).map(|_| Expression::Auto),
         ))
         .map_with(|expression, extra| expression.spanned(extra.span()))

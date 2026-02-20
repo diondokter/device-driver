@@ -11,6 +11,7 @@ use device_driver_common::{
     span::{Span, Spanned},
     specifiers::{BaseType, Integer, NodeType, VariantNames},
 };
+use itertools::Itertools;
 
 use crate::{Diagnostic, encode_ansi_url};
 
@@ -1468,6 +1469,47 @@ impl Diagnostic for DuplicateProperty {
                         .label("duplicate"),
                 ),
         )]
+        .to_vec()
+    }
+}
+
+pub struct InvalidNodeType {
+    pub node_type: Span,
+    pub parent_node_type: Option<Spanned<NodeType>>,
+    pub allowed_node_types: Vec<NodeType>,
+}
+
+impl Diagnostic for InvalidNodeType {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [
+            Level::ERROR.primary_title("invalid node type").element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(AnnotationKind::Primary.span(self.node_type.into()).label(
+                        if let Some(parent_node_type) = self.parent_node_type {
+                            format!(
+                                "node type can't be used as a sub-node of a {}",
+                                parent_node_type
+                            )
+                        } else {
+                            "node type can't be used in the root of the manifest".into()
+                        },
+                    ))
+                    .annotations(self.parent_node_type.map(|pnt| {
+                        AnnotationKind::Context
+                            .span(pnt.span.into())
+                            .label("in this node")
+                    })),
+            ),
+            Group::with_title(Level::NOTE.secondary_title(format!(
+                "valid node types are: {}",
+                self.allowed_node_types.iter().join(", ")
+            ))),
+        ]
         .to_vec()
     }
 }

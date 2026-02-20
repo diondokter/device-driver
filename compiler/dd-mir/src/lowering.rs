@@ -14,7 +14,7 @@ use device_driver_diagnostics::{
     Diagnostics,
     errors::{
         DocCommentsNotSupported, DuplicateProperty, InvalidExpressionType, InvalidIdentifier,
-        InvalidPropertyName, NameNotSupported, NameRequired, UnknownNodeType,
+        InvalidNodeType, InvalidPropertyName, NameNotSupported, NameRequired, UnknownNodeType,
     },
 };
 use device_driver_parser::{Ast, Expression, Node};
@@ -22,20 +22,40 @@ use itertools::Itertools;
 
 pub fn lower(ast: Ast, diagnostics: &mut Diagnostics) -> Manifest {
     let mut manifest = Manifest {
-        root_objects: Vec::new(),
+        objects: Vec::new(),
         config: DeviceConfig::default(),
     };
 
-    println!("{ast:#?}");
+    // println!("{ast:#?}");
 
     for node in ast.nodes {
-        lower_node(&node, &mut manifest, diagnostics);
+        lower_node(
+            &node,
+            Some(&mut manifest.config),
+            &mut manifest.objects,
+            None,
+            &[
+                NodeType::Global,
+                NodeType::Device,
+                NodeType::FieldSet,
+                NodeType::Enum,
+                NodeType::Extern,
+            ],
+            diagnostics,
+        );
     }
 
     manifest
 }
 
-fn lower_node(node: &Node, manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
+fn lower_node(
+    node: &Node,
+    device_config: Option<&mut DeviceConfig>,
+    objects: &mut Vec<Object>,
+    parent_node_type: Option<Spanned<NodeType>>,
+    allowed_node_types: &[NodeType],
+    diagnostics: &mut Diagnostics,
+) {
     let Ok(node_type) = NodeType::from_str(node.node_type.val) else {
         diagnostics.add(UnknownNodeType {
             node_type: node.node_type.span,
@@ -44,19 +64,35 @@ fn lower_node(node: &Node, manifest: &mut Manifest, diagnostics: &mut Diagnostic
     };
     let node_type = node_type.with_span(node.node_type.span);
 
+    if !allowed_node_types.contains(&node_type) {
+        diagnostics.add(InvalidNodeType {
+            node_type: node_type.span,
+            parent_node_type,
+            allowed_node_types: allowed_node_types.to_vec(),
+        });
+        return;
+    }
+
     match node_type.value {
         NodeType::Global => {
             let mut global_config = DeviceConfig::default();
             if node_parser(&mut global_config, node_type, node, diagnostics).is_ok() {
-                manifest.config = global_config;
+                *device_config.unwrap() = global_config;
             }
         }
         NodeType::Device => {
             let mut device = Device::default();
             if node_parser(&mut device, node_type, node, diagnostics).is_ok() {
-                manifest.root_objects.push(Object::Device(device));
+                objects.push(Object::Device(device));
             }
         }
+        NodeType::Block => todo!(),
+        NodeType::Register => todo!(),
+        NodeType::Command => todo!(),
+        NodeType::Buffer => todo!(),
+        NodeType::FieldSet => todo!(),
+        NodeType::Enum => todo!(),
+        NodeType::Extern => todo!(),
     }
 }
 
@@ -144,7 +180,7 @@ fn node_parser(
                                 .keys()
                                 .filter_map(|k| *k)
                                 .collect(),
-                        })
+                        });
                     }
                 }
                 None => {
@@ -165,8 +201,7 @@ fn node_parser(
         let expression_supported = property_support
             .allowed_expression_types
             .iter()
-            .find(|allowed_expression_type| &current_expression_type == *allowed_expression_type)
-            .is_some();
+            .any(|allowed_expression_type| &current_expression_type == allowed_expression_type);
 
         if !expression_supported {
             diagnostics.add(InvalidExpressionType {
@@ -184,7 +219,7 @@ fn node_parser(
                 .or_else(|| possible_properties.remove(property_fallback_name));
 
             removed_possible_properties.insert(
-                property_name.clone(),
+                *property_name,
                 property
                     .name
                     .as_ref()
@@ -194,9 +229,24 @@ fn node_parser(
         }
     }
 
-    // Sub nodes: TODO
+    // Sub nodes
 
-    return Ok(());
+    if let Some((objects, allowed_node_types)) = target.child_objects() {
+        for sub_node in node.sub_nodes.iter() {
+            lower_node(
+                sub_node,
+                None,
+                objects,
+                Some(node_type),
+                &allowed_node_types,
+                diagnostics,
+            );
+        }
+    } else if !node.sub_nodes.is_empty() {
+        todo!("diagnostic: node type doesn't support sub-nodes");
+    }
+
+    Ok(())
 }
 
 trait Shape {
@@ -211,6 +261,12 @@ trait Shape {
     /// All the supported properties. An empty name string matches anything, None only matches anonymous properties
     fn supported_properties(&mut self) -> HashMap<Option<&'static str>, PropertySupport<Self>> {
         HashMap::new()
+    }
+
+    /// Returns Some if the shape support child objects. It will be populated from the sub-nodes.
+    /// The vec are the objects, the slice is the allowed node types.
+    fn child_objects(&mut self) -> Option<(&mut Vec<Object>, Vec<NodeType>)> {
+        None
     }
 }
 
@@ -319,5 +375,114 @@ impl Shape for Device {
     fn name(&mut self) -> Option<&mut Spanned<Identifier>> {
         Some(&mut self.name)
     }
-}
 
+    fn supported_properties(&mut self) -> HashMap<Option<&'static str>, PropertySupport<Self>> {
+        [
+            (
+                Some("register-access"),
+                PropertySupport {
+                    allowed_expression_types: vec![mem::discriminant(&Expression::Access(
+                        device_driver_common::specifiers::Access::RO,
+                    ))],
+                    multiple_allowed: false,
+                    setter: |dev: &mut Self, val| {
+                        dev.device_config.register_access = Some(val.as_access().unwrap())
+                    },
+                },
+            ),
+            (
+                Some("field-access"),
+                PropertySupport {
+                    allowed_expression_types: vec![mem::discriminant(&Expression::Access(
+                        device_driver_common::specifiers::Access::RO,
+                    ))],
+                    multiple_allowed: false,
+                    setter: |dev: &mut Self, val| {
+                        dev.device_config.field_access = Some(val.as_access().unwrap())
+                    },
+                },
+            ),
+            (
+                Some("buffer-access"),
+                PropertySupport {
+                    allowed_expression_types: vec![mem::discriminant(&Expression::Access(
+                        device_driver_common::specifiers::Access::RO,
+                    ))],
+                    multiple_allowed: false,
+                    setter: |dev: &mut Self, val| {
+                        dev.device_config.buffer_access = Some(val.as_access().unwrap())
+                    },
+                },
+            ),
+            (
+                Some("byte-order"),
+                PropertySupport {
+                    allowed_expression_types: vec![mem::discriminant(&Expression::ByteOrder(
+                        ByteOrder::BE,
+                    ))],
+                    multiple_allowed: false,
+                    setter: |dev: &mut Self, val| {
+                        dev.device_config.byte_order = Some(val.as_byte_order().unwrap())
+                    },
+                },
+            ),
+            (
+                Some("register-address-type"),
+                PropertySupport {
+                    allowed_expression_types: vec![mem::discriminant(&Expression::Integer(
+                        device_driver_common::specifiers::Integer::I16,
+                    ))],
+                    multiple_allowed: false,
+                    setter: |dev: &mut Self, val| {
+                        dev.device_config.register_address_type =
+                            Some(val.as_integer().unwrap().with_span(val.span))
+                    },
+                },
+            ),
+            (
+                Some("command-address-type"),
+                PropertySupport {
+                    allowed_expression_types: vec![mem::discriminant(&Expression::Integer(
+                        device_driver_common::specifiers::Integer::I16,
+                    ))],
+                    multiple_allowed: false,
+                    setter: |dev: &mut Self, val| {
+                        dev.device_config.command_address_type =
+                            Some(val.as_integer().unwrap().with_span(val.span))
+                    },
+                },
+            ),
+            (
+                Some("buffer-address-type"),
+                PropertySupport {
+                    allowed_expression_types: vec![mem::discriminant(&Expression::Integer(
+                        device_driver_common::specifiers::Integer::I16,
+                    ))],
+                    multiple_allowed: false,
+                    setter: |dev: &mut Self, val| {
+                        dev.device_config.buffer_address_type =
+                            Some(val.as_integer().unwrap().with_span(val.span))
+                    },
+                },
+            ),
+            // TODO: name-word-boundaries
+            // TODO: defmt-feature
+        ]
+        .into()
+    }
+
+    fn child_objects(&mut self) -> Option<(&mut Vec<Object>, Vec<NodeType>)> {
+        Some((
+            &mut self.objects,
+            vec![
+                NodeType::Block,
+                NodeType::Register,
+                NodeType::Command,
+                NodeType::Buffer,
+                NodeType::FieldSet,
+                NodeType::Enum,
+                NodeType::Extern,
+            ],
+        ))
+    }
+}

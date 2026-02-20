@@ -68,6 +68,7 @@ pub enum Token<'src> {
     #[token("BE", |_| ByteOrder::BE)]
     #[token("LE", |_| ByteOrder::LE)]
     ByteOrder(ByteOrder),
+    /// All the base types except fixed integers. Those are [Self::Integer].
     #[token("uint", |_| BaseType::Uint)]
     #[token("int", |_| BaseType::Int)]
     #[token("bool", |_| BaseType::Bool)]

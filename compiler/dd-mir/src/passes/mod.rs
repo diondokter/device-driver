@@ -76,7 +76,7 @@ fn remove_objects(manifest: &mut Manifest, mut removals: HashSet<UniqueId>) {
         return;
     }
 
-    try_remove_from_vec(&mut manifest.root_objects, &mut removals);
+    try_remove_from_vec(&mut manifest.objects, &mut removals);
 
     if removals.is_empty() {
         return;

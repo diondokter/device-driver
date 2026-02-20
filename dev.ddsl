@@ -1,4 +1,4 @@
-global test {
+global {
     byte-order: LE,
     command-address-type: u8,
 }

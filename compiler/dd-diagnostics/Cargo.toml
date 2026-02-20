@@ -12,6 +12,7 @@ rust-version.workspace = true
 device-driver-common.workspace = true
 
 convert_case.workspace = true
+itertools.workspace = true
 
 annotate-snippets = "0.12.11"
 

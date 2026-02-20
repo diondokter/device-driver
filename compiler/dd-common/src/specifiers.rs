@@ -292,10 +292,17 @@ impl ResetValue {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NodeType {
     Global,
     Device,
+    Block,
+    Register,
+    Command,
+    Buffer,
+    FieldSet,
+    Enum,
+    Extern,
 }
 
 impl FromStr for NodeType {
@@ -305,13 +312,22 @@ impl FromStr for NodeType {
         match s {
             "global" => Ok(Self::Global),
             "device" => Ok(Self::Device),
+            "block" => Ok(Self::Block),
+            "register" => Ok(Self::Register),
+            "command" => Ok(Self::Command),
+            "buffer" => Ok(Self::Buffer),
+            "fieldset" => Ok(Self::FieldSet),
+            "enum" => Ok(Self::Enum),
+            "extern" => Ok(Self::Extern),
             _ => Err(()),
         }
     }
 }
 
 impl VariantNames for NodeType {
-    const VARIANTS: &'static [&'static str] = &["global", "device"];
+    const VARIANTS: &'static [&'static str] = &[
+        "global", "device", "block", "register", "command", "buffer", "fieldset", "enum", "extern",
+    ];
 }
 
 impl Display for NodeType {
