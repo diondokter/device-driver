@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{borrow::Cow, fmt::Display};
 
 use chumsky::{input::ValueInput, prelude::*};
 use device_driver_common::{
@@ -146,7 +146,7 @@ impl<'src> Property<'src> {
 
 #[derive(Debug)]
 pub enum Expression<'src> {
-    Range { end: i128, start: i128 },
+    AddressRange { end: i128, start: i128 },
     Repeat(Repeat<'src>),
     ResetNumber(u128),
     ResetArray(Vec<u8>),
@@ -188,39 +188,68 @@ impl<'src> Expression<'src> {
             None
         }
     }
+
+    pub fn as_number(&self) -> Option<i128> {
+        if let Self::Number(v) = self {
+            Some(*v)
+        } else {
+            None
+        }
+    }
+
+    pub fn get_human_string(&self) -> Cow<'static, str> {
+        match self {
+            Expression::AddressRange { end, start } => format!("{end}:{start}").into(),
+            Expression::Repeat(Repeat {
+                source: RepeatSource::Count(count),
+                stride,
+            }) => format!("<{count} by {stride}>").into(),
+            Expression::Repeat(Repeat {
+                source: RepeatSource::Enum(ident),
+                stride,
+            }) => format!("<{} by {stride}>", ident.val).into(),
+            Expression::ResetNumber(num) => format!("[{num}]").into(),
+            Expression::ResetArray(items) => format!("{items:?}").into(),
+            Expression::BaseType(base_type) => base_type.to_string().into(),
+            Expression::Integer(integer) => integer.to_string().into(),
+            Expression::Allow => "allow".into(),
+            Expression::Number(num) => num.to_string().into(),
+            Expression::DefaultNumber(num) => format!("default {num}").into(),
+            Expression::CatchAllNumber(num) => format!("catch-all {num}").into(),
+            Expression::Access(val) => val.to_string().into(),
+            Expression::ByteOrder(val) => val.to_string().into(),
+            Expression::TypeReference(ident) => ident.val.to_string().into(),
+            Expression::SubNode(val) => val.to_string().into(),
+            Expression::Auto => "_".into(),
+            Expression::Error => "ERROR".into(),
+        }
+    }
 }
 
 impl<'src> Display for Expression<'src> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Expression::Range { end, start } => write!(f, "{end}:{start}"),
-            Expression::Repeat(Repeat {
-                source: RepeatSource::Count(count),
-                stride,
-            }) => write!(f, "<{count} by {stride}>"),
-            Expression::Repeat(Repeat {
-                source: RepeatSource::Enum(ident),
-                stride,
-            }) => write!(f, "<{} by {stride}>", ident.val),
-            Expression::ResetNumber(num) => write!(f, "[{num}]"),
-            Expression::ResetArray(items) => write!(f, "{items:?}"),
-            Expression::BaseType(base_type) => base_type.fmt(f),
-            Expression::Integer(integer) => integer.fmt(f),
+            Expression::AddressRange { .. } => write!(f, "address:range"),
+            Expression::Repeat(Repeat { .. }) => write!(f, "repeat"),
+            Expression::ResetNumber(_) => write!(f, "reset number"),
+            Expression::ResetArray(_) => write!(f, "reset array"),
+            Expression::BaseType(_) => write!(f, "base type"),
+            Expression::Integer(_) => write!(f, "integer type"),
             Expression::Allow => write!(f, "allow"),
-            Expression::Number(num) => num.fmt(f),
-            Expression::DefaultNumber(num) => write!(f, "default {num}"),
-            Expression::CatchAllNumber(num) => write!(f, "catch-all {num}"),
-            Expression::Access(val) => val.fmt(f),
-            Expression::ByteOrder(val) => val.fmt(f),
-            Expression::TypeReference(ident) => ident.val.fmt(f),
-            Expression::SubNode(val) => val.fmt(f),
+            Expression::Number(_) => write!(f, "number"),
+            Expression::DefaultNumber(_) => write!(f, "default number"),
+            Expression::CatchAllNumber(_) => write!(f, "catch-all number"),
+            Expression::Access(_) => write!(f, "access specifier"),
+            Expression::ByteOrder(_) => write!(f, "byte order"),
+            Expression::TypeReference(_) => write!(f, "type reference"),
+            Expression::SubNode(_) => write!(f, "sub node"),
             Expression::Auto => write!(f, "_"),
-            Expression::Error => write!(f, "ERROR"),
+            Expression::Error => write!(f, "error"),
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Repeat<'src> {
     pub source: RepeatSource<'src>,
     pub stride: i32,
@@ -230,6 +259,12 @@ pub struct Repeat<'src> {
 pub enum RepeatSource<'src> {
     Count(u32),
     Enum(Ident<'src>),
+}
+
+impl<'src> Default for RepeatSource<'src> {
+    fn default() -> Self {
+        Self::Count(1)
+    }
 }
 
 #[derive(Debug)]
@@ -298,7 +333,7 @@ where
             .try_map(try_num::<i128>)
             .then_ignore(just(Token::Colon))
             .then(any_num.try_map(try_num::<i128>))
-            .map(|(end, start)| Expression::Range { end, start })
+            .map(|(end, start)| Expression::AddressRange { end, start })
             .labelled("'range'");
         let any_base_type = select! { Token::BaseType(bt) => bt }.labelled("'base type'");
         let any_integer = select! { Token::Integer(i) => i }.labelled("'integer type'");

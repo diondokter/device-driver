@@ -1,20 +1,17 @@
-use std::{
-    collections::HashMap,
-    mem::{self, Discriminant},
-    str::FromStr,
-};
+use std::{collections::HashMap, mem, str::FromStr};
 
-use crate::model::{Device, DeviceConfig, Manifest, Object};
+use crate::model::{Block, Device, DeviceConfig, Manifest, Object};
 use device_driver_common::{
     identifier::Identifier,
     span::{SpanExt, Spanned},
-    specifiers::{ByteOrder, NodeType},
+    specifiers::NodeType,
 };
 use device_driver_diagnostics::{
     Diagnostics,
     errors::{
         DocCommentsNotSupported, DuplicateProperty, InvalidExpressionType, InvalidIdentifier,
-        InvalidNodeType, InvalidPropertyName, NameNotSupported, NameRequired, UnknownNodeType,
+        InvalidNodeType, InvalidPropertyName, MissingRequiredProperty, NameNotSupported,
+        NameRequired, UnknownNodeType,
     },
 };
 use device_driver_parser::{Ast, Expression, Node};
@@ -75,18 +72,20 @@ fn lower_node(
 
     match node_type.value {
         NodeType::Global => {
-            let mut global_config = DeviceConfig::default();
-            if node_parser(&mut global_config, node_type, node, diagnostics).is_ok() {
+            if let Ok(global_config) = node_parser(node, diagnostics) {
                 *device_config.unwrap() = global_config;
             }
         }
         NodeType::Device => {
-            let mut device = Device::default();
-            if node_parser(&mut device, node_type, node, diagnostics).is_ok() {
+            if let Ok(device) = node_parser(node, diagnostics) {
                 objects.push(Object::Device(device));
             }
         }
-        NodeType::Block => todo!(),
+        NodeType::Block => {
+            if let Ok(block) = node_parser(node, diagnostics) {
+                objects.push(Object::Block(block));
+            }
+        }
         NodeType::Register => todo!(),
         NodeType::Command => todo!(),
         NodeType::Buffer => todo!(),
@@ -96,12 +95,10 @@ fn lower_node(
     }
 }
 
-fn node_parser(
-    target: &mut impl Shape,
-    node_type: Spanned<NodeType>,
-    node: &Node,
-    diagnostics: &mut Diagnostics,
-) -> Result<(), ()> {
+fn node_parser<S: Shape>(node: &Node, diagnostics: &mut Diagnostics) -> Result<S, ()> {
+    let mut target = S::default();
+    let mut error = false;
+
     // Doc comments
 
     match target.doc_comments() {
@@ -112,7 +109,7 @@ fn node_parser(
             if !node.doc_comments.is_empty() {
                 diagnostics.add(DocCommentsNotSupported {
                     doc_comments: node.doc_comments.iter().map(|c| c.span).collect(),
-                    node_type,
+                    node_type: S::NODE_TYPE.with_span(node.node_type.span),
                 });
             }
         }
@@ -126,18 +123,20 @@ fn node_parser(
             Err(e) => {
                 diagnostics.add(InvalidIdentifier::new(e, node_name.span));
                 // Can't continue with this node when there's no name
-                return Err(());
+                error = true;
             }
         },
         (Some(_), None) => {
-            diagnostics.add(NameRequired { node_type });
+            diagnostics.add(NameRequired {
+                node_type: S::NODE_TYPE.with_span(node.node_type.span),
+            });
             // Can't continue with this node when there's no name
-            return Err(());
+            error = true;
         }
         (None, Some(node_name)) => {
             diagnostics.add(NameNotSupported {
                 name: node_name.span,
-                node_type,
+                node_type: S::NODE_TYPE.with_span(node.node_type.span),
             });
         }
         (None, None) => {}
@@ -174,7 +173,7 @@ fn node_parser(
                     } else {
                         diagnostics.add(InvalidPropertyName {
                             property: name.span,
-                            node_type,
+                            node_type: S::NODE_TYPE.with_span(node.node_type.span),
                             expected_names: target
                                 .supported_properties()
                                 .keys()
@@ -191,27 +190,38 @@ fn node_parser(
             continue;
         };
 
-        // Get the current expression and transmute it to the static lifetime.
-        // This is explicitly allowed in the std docs: https://doc.rust-lang.org/std/mem/fn.discriminant.html
-        let current_expression_type = unsafe {
-            mem::transmute::<Discriminant<Expression<'_>>, Discriminant<Expression<'static>>>(
-                mem::discriminant(&property.expression.value),
-            )
-        };
-        let expression_supported = property_support
-            .allowed_expression_types
-            .iter()
-            .any(|allowed_expression_type| &current_expression_type == allowed_expression_type);
+        let current_expression_type = mem::discriminant(&property.expression.value);
+
+        let expression_supported =
+            property_support
+                .allowed_expression_types
+                .iter()
+                .any(|allowed_expression_type| {
+                    current_expression_type == mem::discriminant(allowed_expression_type)
+                });
 
         if !expression_supported {
             diagnostics.add(InvalidExpressionType {
-                expression: property.expression.span,
-                node_type,
+                expression: property
+                    .expression
+                    .to_string()
+                    .with_span(property.expression.span),
+                node_type: S::NODE_TYPE.with_span(node.node_type.span),
+                valid_expression_types: property_support
+                    .allowed_expression_types
+                    .iter()
+                    .map(|e| e.to_string())
+                    .collect(),
+                valid_expression_values: property_support
+                    .allowed_expression_types
+                    .iter()
+                    .map(|e| e.get_human_string())
+                    .collect(),
             });
             continue;
         }
 
-        (property_support.setter)(target, &property.expression);
+        (property_support.setter)(&mut target, &property.expression);
 
         if !property_support.multiple_allowed {
             possible_properties
@@ -229,6 +239,27 @@ fn node_parser(
         }
     }
 
+    // Required properties that haven't been seen
+    let missing_properties = possible_properties
+        .iter()
+        .filter(|(_, info)| info.required)
+        .collect::<Vec<_>>();
+
+    if !missing_properties.is_empty() {
+        for (missing_name, missing_info) in missing_properties {
+            diagnostics.add(MissingRequiredProperty {
+                node_type: S::NODE_TYPE.with_span(node.node_type.span),
+                required_property_name: missing_name.map(|s| s.to_string()),
+                allowed_property_types: missing_info
+                    .allowed_expression_types
+                    .iter()
+                    .map(|e| e.to_string())
+                    .collect(),
+            });
+        }
+        error = true;
+    }
+
     // Sub nodes
 
     if let Some((objects, allowed_node_types)) = target.child_objects() {
@@ -237,7 +268,7 @@ fn node_parser(
                 sub_node,
                 None,
                 objects,
-                Some(node_type),
+                Some(S::NODE_TYPE.with_span(node.node_type.span)),
                 &allowed_node_types,
                 diagnostics,
             );
@@ -246,10 +277,12 @@ fn node_parser(
         todo!("diagnostic: node type doesn't support sub-nodes");
     }
 
-    Ok(())
+    if !error { Ok(target) } else { Err(()) }
 }
 
-trait Shape {
+trait Shape: Default {
+    const NODE_TYPE: NodeType;
+
     fn doc_comments(&mut self) -> Option<&mut String> {
         None
     }
@@ -259,7 +292,7 @@ trait Shape {
     }
 
     /// All the supported properties. An empty name string matches anything, None only matches anonymous properties
-    fn supported_properties(&mut self) -> HashMap<Option<&'static str>, PropertySupport<Self>> {
+    fn supported_properties(&mut self) -> HashMap<Option<&'static str>, PropertyInfo<Self>> {
         HashMap::new()
     }
 
@@ -270,23 +303,30 @@ trait Shape {
     }
 }
 
-struct PropertySupport<T: ?Sized> {
-    allowed_expression_types: Vec<Discriminant<Expression<'static>>>,
+struct PropertyInfo<T: ?Sized> {
+    /// The types of expressions that are supported.
+    /// Comparison is done using discriminants only.
+    /// The values of the expressions are used for suggestions in diagnostics.
+    allowed_expression_types: Vec<Expression<'static>>,
     /// If true, multiple of these properties are allowed
     multiple_allowed: bool,
+    /// If true, the property must be set by the user.
+    /// Doesn't work well with [Self::multiple_allowed] set at the same time.
+    required: bool,
     setter: fn(&mut T, &Spanned<Expression<'_>>),
 }
 
 impl Shape for DeviceConfig {
-    fn supported_properties(&mut self) -> HashMap<Option<&'static str>, PropertySupport<Self>> {
+    const NODE_TYPE: NodeType = NodeType::Global;
+
+    fn supported_properties(&mut self) -> HashMap<Option<&'static str>, PropertyInfo<Self>> {
         [
             (
                 Some("register-access"),
-                PropertySupport {
-                    allowed_expression_types: vec![mem::discriminant(&Expression::Access(
-                        device_driver_common::specifiers::Access::RO,
-                    ))],
+                PropertyInfo {
+                    allowed_expression_types: vec![Expression::Access(Default::default())],
                     multiple_allowed: false,
+                    required: false,
                     setter: |dc: &mut Self, val| {
                         dc.register_access = Some(val.as_access().unwrap())
                     },
@@ -294,41 +334,37 @@ impl Shape for DeviceConfig {
             ),
             (
                 Some("field-access"),
-                PropertySupport {
-                    allowed_expression_types: vec![mem::discriminant(&Expression::Access(
-                        device_driver_common::specifiers::Access::RO,
-                    ))],
+                PropertyInfo {
+                    allowed_expression_types: vec![Expression::Access(Default::default())],
                     multiple_allowed: false,
+                    required: false,
                     setter: |dc: &mut Self, val| dc.field_access = Some(val.as_access().unwrap()),
                 },
             ),
             (
                 Some("buffer-access"),
-                PropertySupport {
-                    allowed_expression_types: vec![mem::discriminant(&Expression::Access(
-                        device_driver_common::specifiers::Access::RO,
-                    ))],
+                PropertyInfo {
+                    allowed_expression_types: vec![Expression::Access(Default::default())],
                     multiple_allowed: false,
+                    required: false,
                     setter: |dc: &mut Self, val| dc.buffer_access = Some(val.as_access().unwrap()),
                 },
             ),
             (
                 Some("byte-order"),
-                PropertySupport {
-                    allowed_expression_types: vec![mem::discriminant(&Expression::ByteOrder(
-                        ByteOrder::BE,
-                    ))],
+                PropertyInfo {
+                    allowed_expression_types: vec![Expression::ByteOrder(Default::default())],
                     multiple_allowed: false,
+                    required: false,
                     setter: |dc: &mut Self, val| dc.byte_order = Some(val.as_byte_order().unwrap()),
                 },
             ),
             (
                 Some("register-address-type"),
-                PropertySupport {
-                    allowed_expression_types: vec![mem::discriminant(&Expression::Integer(
-                        device_driver_common::specifiers::Integer::I16,
-                    ))],
+                PropertyInfo {
+                    allowed_expression_types: vec![Expression::Integer(Default::default())],
                     multiple_allowed: false,
+                    required: false,
                     setter: |dc: &mut Self, val| {
                         dc.register_address_type =
                             Some(val.as_integer().unwrap().with_span(val.span))
@@ -337,11 +373,10 @@ impl Shape for DeviceConfig {
             ),
             (
                 Some("command-address-type"),
-                PropertySupport {
-                    allowed_expression_types: vec![mem::discriminant(&Expression::Integer(
-                        device_driver_common::specifiers::Integer::I16,
-                    ))],
+                PropertyInfo {
+                    allowed_expression_types: vec![Expression::Integer(Default::default())],
                     multiple_allowed: false,
+                    required: false,
                     setter: |dc: &mut Self, val| {
                         dc.command_address_type =
                             Some(val.as_integer().unwrap().with_span(val.span))
@@ -350,11 +385,10 @@ impl Shape for DeviceConfig {
             ),
             (
                 Some("buffer-address-type"),
-                PropertySupport {
-                    allowed_expression_types: vec![mem::discriminant(&Expression::Integer(
-                        device_driver_common::specifiers::Integer::I16,
-                    ))],
+                PropertyInfo {
+                    allowed_expression_types: vec![Expression::Integer(Default::default())],
                     multiple_allowed: false,
+                    required: false,
                     setter: |dc: &mut Self, val| {
                         dc.buffer_address_type = Some(val.as_integer().unwrap().with_span(val.span))
                     },
@@ -368,6 +402,8 @@ impl Shape for DeviceConfig {
 }
 
 impl Shape for Device {
+    const NODE_TYPE: NodeType = NodeType::Device;
+
     fn doc_comments(&mut self) -> Option<&mut String> {
         Some(&mut self.description)
     }
@@ -376,15 +412,14 @@ impl Shape for Device {
         Some(&mut self.name)
     }
 
-    fn supported_properties(&mut self) -> HashMap<Option<&'static str>, PropertySupport<Self>> {
+    fn supported_properties(&mut self) -> HashMap<Option<&'static str>, PropertyInfo<Self>> {
         [
             (
                 Some("register-access"),
-                PropertySupport {
-                    allowed_expression_types: vec![mem::discriminant(&Expression::Access(
-                        device_driver_common::specifiers::Access::RO,
-                    ))],
+                PropertyInfo {
+                    allowed_expression_types: vec![Expression::Access(Default::default())],
                     multiple_allowed: false,
+                    required: false,
                     setter: |dev: &mut Self, val| {
                         dev.device_config.register_access = Some(val.as_access().unwrap())
                     },
@@ -392,11 +427,10 @@ impl Shape for Device {
             ),
             (
                 Some("field-access"),
-                PropertySupport {
-                    allowed_expression_types: vec![mem::discriminant(&Expression::Access(
-                        device_driver_common::specifiers::Access::RO,
-                    ))],
+                PropertyInfo {
+                    allowed_expression_types: vec![Expression::Access(Default::default())],
                     multiple_allowed: false,
+                    required: false,
                     setter: |dev: &mut Self, val| {
                         dev.device_config.field_access = Some(val.as_access().unwrap())
                     },
@@ -404,11 +438,10 @@ impl Shape for Device {
             ),
             (
                 Some("buffer-access"),
-                PropertySupport {
-                    allowed_expression_types: vec![mem::discriminant(&Expression::Access(
-                        device_driver_common::specifiers::Access::RO,
-                    ))],
+                PropertyInfo {
+                    allowed_expression_types: vec![Expression::Access(Default::default())],
                     multiple_allowed: false,
+                    required: false,
                     setter: |dev: &mut Self, val| {
                         dev.device_config.buffer_access = Some(val.as_access().unwrap())
                     },
@@ -416,11 +449,10 @@ impl Shape for Device {
             ),
             (
                 Some("byte-order"),
-                PropertySupport {
-                    allowed_expression_types: vec![mem::discriminant(&Expression::ByteOrder(
-                        ByteOrder::BE,
-                    ))],
+                PropertyInfo {
+                    allowed_expression_types: vec![Expression::ByteOrder(Default::default())],
                     multiple_allowed: false,
+                    required: false,
                     setter: |dev: &mut Self, val| {
                         dev.device_config.byte_order = Some(val.as_byte_order().unwrap())
                     },
@@ -428,11 +460,10 @@ impl Shape for Device {
             ),
             (
                 Some("register-address-type"),
-                PropertySupport {
-                    allowed_expression_types: vec![mem::discriminant(&Expression::Integer(
-                        device_driver_common::specifiers::Integer::I16,
-                    ))],
+                PropertyInfo {
+                    allowed_expression_types: vec![Expression::Integer(Default::default())],
                     multiple_allowed: false,
+                    required: false,
                     setter: |dev: &mut Self, val| {
                         dev.device_config.register_address_type =
                             Some(val.as_integer().unwrap().with_span(val.span))
@@ -441,11 +472,10 @@ impl Shape for Device {
             ),
             (
                 Some("command-address-type"),
-                PropertySupport {
-                    allowed_expression_types: vec![mem::discriminant(&Expression::Integer(
-                        device_driver_common::specifiers::Integer::I16,
-                    ))],
+                PropertyInfo {
+                    allowed_expression_types: vec![Expression::Integer(Default::default())],
                     multiple_allowed: false,
+                    required: false,
                     setter: |dev: &mut Self, val| {
                         dev.device_config.command_address_type =
                             Some(val.as_integer().unwrap().with_span(val.span))
@@ -454,11 +484,10 @@ impl Shape for Device {
             ),
             (
                 Some("buffer-address-type"),
-                PropertySupport {
-                    allowed_expression_types: vec![mem::discriminant(&Expression::Integer(
-                        device_driver_common::specifiers::Integer::I16,
-                    ))],
+                PropertyInfo {
+                    allowed_expression_types: vec![Expression::Integer(Default::default())],
                     multiple_allowed: false,
+                    required: false,
                     setter: |dev: &mut Self, val| {
                         dev.device_config.buffer_address_type =
                             Some(val.as_integer().unwrap().with_span(val.span))
@@ -484,5 +513,47 @@ impl Shape for Device {
                 NodeType::Extern,
             ],
         ))
+    }
+}
+
+impl Shape for Block {
+    const NODE_TYPE: NodeType = NodeType::Block;
+
+    fn doc_comments(&mut self) -> Option<&mut String> {
+        Some(&mut self.description)
+    }
+
+    fn name(&mut self) -> Option<&mut Spanned<Identifier>> {
+        Some(&mut self.name)
+    }
+
+    fn supported_properties(&mut self) -> HashMap<Option<&'static str>, PropertyInfo<Self>> {
+        [
+            (
+                Some("address-offset"),
+                PropertyInfo {
+                    allowed_expression_types: vec![Expression::Number(Default::default())],
+                    multiple_allowed: false,
+                    required: true,
+                    setter: |block: &mut Self, expression| {
+                        block.address_offset =
+                            expression.as_number().unwrap().with_span(expression.span)
+                    },
+                },
+            ),
+            (
+                Some("repeat"),
+                PropertyInfo {
+                    allowed_expression_types: vec![Expression::Repeat(Default::default())],
+                    multiple_allowed: false,
+                    required: false,
+                    setter: |block: &mut Self, expression| {
+                        block.address_offset =
+                            expression.as_number().unwrap().with_span(expression.span)
+                    },
+                },
+            ),
+        ]
+        .into()
     }
 }

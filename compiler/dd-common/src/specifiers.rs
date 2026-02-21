@@ -7,7 +7,7 @@ pub trait VariantNames {
     const VARIANTS: &'static [&'static str];
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum Integer {
     U8,
     U16,
@@ -15,6 +15,7 @@ pub enum Integer {
     U64,
     I8,
     I16,
+    #[default]
     I32,
     I64,
 }
@@ -187,8 +188,9 @@ impl FromStr for Access {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum ByteOrder {
+    #[default]
     LE,
     BE,
 }

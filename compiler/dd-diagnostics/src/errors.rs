@@ -3,7 +3,7 @@
     reason = "Something going on with the diagnostics derive"
 )]
 
-use std::borrow::Cow;
+use std::{borrow::Cow, ops::Deref};
 
 use annotate_snippets::{AnnotationKind, Group, Level, Patch, Snippet};
 use device_driver_common::{
@@ -1419,8 +1419,10 @@ impl Diagnostic for InvalidPropertyName {
 }
 
 pub struct InvalidExpressionType {
-    pub expression: Span,
+    pub expression: Spanned<String>,
     pub node_type: Spanned<NodeType>,
+    pub valid_expression_types: Vec<String>,
+    pub valid_expression_values: Vec<Cow<'static, str>>,
 }
 
 impl Diagnostic for InvalidExpressionType {
@@ -1429,18 +1431,41 @@ impl Diagnostic for InvalidExpressionType {
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
-        [Level::ERROR
+        let mut report = [Level::ERROR
             .primary_title(format!(
                 "invalid expression type for this property in {} nodes",
                 self.node_type
             ))
             .element(
-                Snippet::source(source)
-                    .path(path)
-                    // TODO: Label with more info and the types that are supported
-                    .annotation(AnnotationKind::Primary.span(self.expression.into())),
+                Snippet::source(source).path(path).annotation(
+                    AnnotationKind::Primary
+                        .span(self.expression.span.into())
+                        .label(format!(
+                            "got {}, expected one of: {}",
+                            self.expression,
+                            self.valid_expression_types.join(", ")
+                        )),
+                ),
             )]
-        .to_vec()
+        .to_vec();
+
+        for (name, value) in self
+            .valid_expression_types
+            .iter()
+            .zip(&self.valid_expression_values)
+        {
+            report.push(
+                Level::HELP
+                    .secondary_title(format!("change to a {name} expression"))
+                    .element(
+                        Snippet::source(source)
+                            .path(path)
+                            .patch(Patch::new(self.expression.span.into(), value.deref())),
+                    ),
+            )
+        }
+
+        report
     }
 }
 
@@ -1509,6 +1534,46 @@ impl Diagnostic for InvalidNodeType {
                 "valid node types are: {}",
                 self.allowed_node_types.iter().join(", ")
             ))),
+        ]
+        .to_vec()
+    }
+}
+
+pub struct MissingRequiredProperty {
+    pub node_type: Spanned<NodeType>,
+    pub required_property_name: Option<String>,
+    pub allowed_property_types: Vec<String>,
+}
+
+impl Diagnostic for MissingRequiredProperty {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [
+            Level::ERROR
+                .primary_title(format!(
+                    "{} node is missing a required property",
+                    self.node_type
+                ))
+                .element(
+                    Snippet::source(source).path(path).annotation(
+                        AnnotationKind::Primary
+                            .span(self.node_type.span.into())
+                            .label(match &self.required_property_name {
+                                Some(required_property_name) => format!(
+                                    "missing property `{}`, with one of these expression types: {}",
+                                    required_property_name,
+                                    self.allowed_property_types.join(", ")
+                                ),
+                                None => format!(
+                                    "missing short property with one of these expression types: {}",
+                                    self.allowed_property_types.join(", ")
+                                ),
+                            }),
+                    ),
+                ), // TODO: Add patches to show user adding the properties
         ]
         .to_vec()
     }

@@ -6,4 +6,8 @@ global {
 /// Test
 device Foo {
     byte-order: BE,
+
+    block Bar {
+        
+    }
 }
