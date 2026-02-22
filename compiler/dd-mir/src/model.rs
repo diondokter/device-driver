@@ -7,16 +7,18 @@ use device_driver_common::{
     specifiers::{Access, BaseType, ByteOrder, Integer, Repeat, ResetValue, TypeConversion},
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Manifest {
-    pub root_objects: Vec<Object>,
+    pub description: String,
+    pub name: Spanned<Identifier>,
     pub config: DeviceConfig,
+    pub objects: Vec<Object>,
 }
 
 impl Manifest {
     pub fn iter_objects_with_config_mut(&mut self) -> ObjectIterMut<'_> {
         ObjectIterMut {
-            children: &mut self.root_objects,
+            children: &mut self.objects,
             parent: None,
             collection_object_returned: false,
             current_device_config: Rc::new(self.config.clone()),
@@ -25,7 +27,7 @@ impl Manifest {
 
     pub fn iter_objects(&self) -> impl Iterator<Item = &Object> {
         ObjectIter {
-            children: &self.root_objects,
+            children: &self.objects,
             parent: None,
             collection_object_returned: false,
             current_device_config: Rc::new(self.config.clone()),
@@ -36,7 +38,7 @@ impl Manifest {
     #[must_use]
     pub fn iter_objects_with_config(&self) -> ObjectIter<'_> {
         ObjectIter {
-            children: &self.root_objects,
+            children: &self.objects,
             parent: None,
             collection_object_returned: false,
             current_device_config: Rc::new(self.config.clone()),
@@ -215,7 +217,9 @@ impl<'a> Iterator for ObjectIter<'a> {
 impl From<Device> for Manifest {
     fn from(value: Device) -> Self {
         Self {
-            root_objects: vec![Object::Device(value)],
+            description: String::new(),
+            name: value.name.clone(),
+            objects: vec![Object::Device(value)],
             config: DeviceConfig::default(),
         }
     }
@@ -921,7 +925,9 @@ mod tests {
         const NAME_ORDER: &[&str] = &["a", "b", "c", "d"];
 
         let mut manifest = Manifest {
-            root_objects: vec![
+            description: Default::default(),
+            name: Default::default(),
+            objects: vec![
                 Object::Device(Device {
                     description: String::new(),
                     name: "a".into_with_dummy_span(),

@@ -2,13 +2,12 @@ use std::{fmt::Display, str::FromStr};
 
 use crate::{identifier::IdentifierRef, span::Spanned};
 
-/// TODO: Remove when KDL is removed
 pub trait VariantNames {
     /// Names of the variants of this enum
     const VARIANTS: &'static [&'static str];
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum Integer {
     U8,
     U16,
@@ -16,6 +15,7 @@ pub enum Integer {
     U64,
     I8,
     I16,
+    #[default]
     I32,
     I64,
 }
@@ -188,8 +188,9 @@ impl FromStr for Access {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum ByteOrder {
+    #[default]
     LE,
     BE,
 }
@@ -290,5 +291,50 @@ impl ResetValue {
         } else {
             None
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NodeType {
+    Manifest,
+    Device,
+    Block,
+    Register,
+    Command,
+    Buffer,
+    FieldSet,
+    Enum,
+    Extern,
+}
+
+impl FromStr for NodeType {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "manifest" => Ok(Self::Manifest),
+            "device" => Ok(Self::Device),
+            "block" => Ok(Self::Block),
+            "register" => Ok(Self::Register),
+            "command" => Ok(Self::Command),
+            "buffer" => Ok(Self::Buffer),
+            "fieldset" => Ok(Self::FieldSet),
+            "enum" => Ok(Self::Enum),
+            "extern" => Ok(Self::Extern),
+            _ => Err(()),
+        }
+    }
+}
+
+impl VariantNames for NodeType {
+    const VARIANTS: &'static [&'static str] = &[
+        "manifest", "device", "block", "register", "command", "buffer", "fieldset", "enum",
+        "extern",
+    ];
+}
+
+impl Display for NodeType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", Self::VARIANTS[*self as usize])
     }
 }

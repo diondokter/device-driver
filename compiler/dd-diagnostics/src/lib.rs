@@ -3,23 +3,13 @@
     reason = "Something going on with the diagnostics derive"
 )]
 
-use std::{
-    borrow::Cow,
-    error::Error,
-    ops::Deref,
-    sync::{
-        Arc,
-        atomic::{AtomicBool, Ordering},
-    },
-};
+use std::{borrow::Cow, error::Error, fmt::Display, ops::Deref};
 
 use annotate_snippets::{Group, Level, Renderer, renderer::DecorStyle};
-use miette::{Diagnostic as MietteDiagnostic, NamedSource, Report as MietteReport};
 
 pub mod errors;
 
 pub struct Diagnostics {
-    miette_reports: Vec<MietteReport>,
     diagnostics: Vec<Box<dyn Diagnostic>>,
 }
 
@@ -33,13 +23,8 @@ impl Diagnostics {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            miette_reports: Vec::new(),
             diagnostics: Vec::new(),
         }
-    }
-
-    pub fn add_miette(&mut self, diagnostic: impl MietteDiagnostic + Send + Sync + 'static) {
-        self.miette_reports.push(MietteReport::new(diagnostic));
     }
 
     pub fn add(&mut self, diagnostic: impl Diagnostic + 'static) {
@@ -48,22 +33,14 @@ impl Diagnostics {
 
     #[must_use]
     pub fn has_error(&self) -> bool {
-        let miette_has_error = self
-            .miette_reports
+        self.diagnostics
             .iter()
-            .any(|r| r.severity() == Some(miette::Severity::Error) || r.severity().is_none());
-
-        let has_error = self
-            .diagnostics
-            .iter()
-            .any(|diagnostic| diagnostic.is_error());
-
-        miette_has_error || has_error
+            .any(|diagnostic| diagnostic.is_error())
     }
 
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.diagnostics.is_empty() && self.miette_reports.is_empty()
+        self.diagnostics.is_empty()
     }
 
     pub fn print_to<W: std::io::Write>(
@@ -71,14 +48,6 @@ impl Diagnostics {
         mut writer: W,
         metadata: Metadata<'_>,
     ) -> std::io::Result<()> {
-        let arc_source: Arc<str> = metadata.source.into();
-
-        for report in self.miette_reports {
-            let report =
-                report.with_source_code(NamedSource::new(metadata.source_path, arc_source.clone()));
-            writeln!(writer, "{report:?}")?;
-        }
-
         let renderer = metadata.get_renderer();
 
         for diagnostic in &self.diagnostics {
@@ -100,14 +69,6 @@ impl Diagnostics {
         mut writer: W,
         metadata: Metadata<'_>,
     ) -> std::fmt::Result {
-        let arc_source: Arc<str> = metadata.source.into();
-
-        for report in self.miette_reports {
-            let report =
-                report.with_source_code(NamedSource::new(metadata.source_path, arc_source.clone()));
-            writeln!(writer, "{report:?}")?;
-        }
-
         let renderer = metadata.get_renderer();
 
         for diagnostic in &self.diagnostics {
@@ -157,43 +118,6 @@ impl Metadata<'_> {
             DecorStyle::Ascii
         })
         .anonymized_line_numbers(self.anonymized_line_numbers)
-    }
-}
-
-pub fn set_miette_hook(user_facing: bool) {
-    static INITIALIZED: AtomicBool = AtomicBool::new(false);
-
-    if INITIALIZED
-        .compare_exchange(false, true, Ordering::Relaxed, Ordering::Relaxed)
-        .is_ok()
-    {
-        miette::set_hook(Box::new(move |_| {
-            Box::new({
-                let mut opts =
-                    miette::MietteHandlerOpts::new().graphical_theme(miette::GraphicalTheme {
-                        characters: {
-                            let mut unicode = miette::ThemeCharacters::unicode();
-                            unicode.error = "error:".into();
-                            unicode.warning = "warning:".into();
-                            unicode.advice = "advice:".into();
-                            unicode
-                        },
-                        styles: if user_facing {
-                            miette::ThemeStyles::rgb()
-                        } else {
-                            miette::ThemeStyles::none()
-                        },
-                    });
-
-                if !user_facing {
-                    opts = opts.terminal_links(false);
-                    opts = opts.width(120);
-                }
-
-                opts.build()
-            })
-        }))
-        .unwrap();
     }
 }
 
@@ -257,16 +181,91 @@ impl<E: Error> Diagnostic for E {
         let mut sources = Vec::new();
         let mut source = self.source();
 
-        if source.is_some() {
-            sources.push(Level::NOTE.no_name().message("Context:"));
-        }
-
         while let Some(current_source) = source {
-            sources.push(Level::ERROR.message(current_source.to_string()));
+            sources.push(Level::NOTE.message(current_source.to_string()));
             source = current_source.source();
         }
 
         vec![Group::with_title(Level::ERROR.primary_title(self.to_string())).elements(sources)]
+    }
+}
+
+#[derive(Debug)]
+pub struct DynError {
+    source: Option<Box<dyn Error + Send + 'static>>,
+    message: String,
+}
+
+impl DynError {
+    pub fn new(message: impl Display) -> Self {
+        Self {
+            source: None,
+            message: message.to_string(),
+        }
+    }
+}
+
+impl Display for DynError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if f.alternate() {
+            let report = self.as_report("", "");
+            let output = annotate_snippets::Renderer::styled().render(&report);
+            write!(f, "{output}")
+        } else if self.message.is_empty()
+            && let Some(source) = self.source.as_ref()
+        {
+            write!(f, "{source}")
+        } else {
+            write!(f, "{}", self.message)
+        }
+    }
+}
+
+impl Error for DynError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        if self.message.is_empty() {
+            // If message is empty, then the error *is* the source, so we don't have a deeper source
+            None
+        } else {
+            self.source.as_ref().map(|e| {
+                let x: &(dyn Error + Send) = Box::as_ref(e);
+                let y: &dyn Error = x;
+                y
+            })
+        }
+    }
+}
+
+pub trait ErrorExt: Error + Sized + Send + 'static {
+    fn with_message(self, message: impl Display) -> DynError {
+        DynError {
+            source: Some(Box::new(self)),
+            message: message.to_string(),
+        }
+    }
+
+    fn into_dyn_error(self) -> DynError {
+        DynError {
+            source: Some(Box::new(self)),
+            message: String::new(),
+        }
+    }
+}
+
+impl<E: Error + Send + Sized + 'static> ErrorExt for E {}
+
+pub trait ResultExt<T, E: ErrorExt> {
+    fn with_message<D: Display>(self, f: impl FnOnce() -> D) -> Result<T, DynError>;
+    fn into_dyn_result(self) -> Result<T, DynError>;
+}
+
+impl<T, E: ErrorExt> ResultExt<T, E> for Result<T, E> {
+    fn with_message<D: Display>(self, f: impl FnOnce() -> D) -> Result<T, DynError> {
+        self.map_err(|e| e.with_message(f()))
+    }
+
+    fn into_dyn_result(self) -> Result<T, DynError> {
+        self.map_err(|e| e.into_dyn_error())
     }
 }
 
@@ -342,13 +341,25 @@ mod tests {
         pretty_assertions::assert_str_eq!(
             "error: @level 5 - Something deep down went wrong!
   |
-  = Context:
-  = error: @level 4 - Something deep down went wrong!
-  = error: @level 3 - Something deep down went wrong!
-  = error: @level 2 - Something deep down went wrong!
-  = error: @level 1 - Something deep down went wrong!
-  = error: @level 0 - Something deep down went wrong!
-  = error: Something went wrong!",
+  = note: @level 4 - Something deep down went wrong!
+  = note: @level 3 - Something deep down went wrong!
+  = note: @level 2 - Something deep down went wrong!
+  = note: @level 1 - Something deep down went wrong!
+  = note: @level 0 - Something deep down went wrong!
+  = note: Something went wrong!",
+            output
+        );
+    }
+
+    #[test]
+    fn dyn_error_context() {
+        let error = DummyError.with_message("Here's some context!");
+        let report = error.as_report("", "");
+        let output = annotate_snippets::Renderer::plain().render(&report);
+        pretty_assertions::assert_str_eq!(
+            "error: Here's some context!
+  |
+  = note: Something went wrong!",
             output
         );
     }

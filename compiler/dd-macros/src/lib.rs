@@ -3,7 +3,7 @@
 use std::{
     fs::File,
     io::{Read, stderr},
-    path::{Path, PathBuf},
+    path::PathBuf,
 };
 
 use device_driver_diagnostics::Metadata;
@@ -19,8 +19,8 @@ use syn::LitStr;
 /// ```rust,ignore
 /// # use device_driver_macros::create_device;
 /// create_device!(
-///     kdl: "
-///         // KDL input
+///     ddsl: "
+///         // DDSL input
 ///     "
 /// );
 /// ```
@@ -29,44 +29,28 @@ use syn::LitStr;
 /// ```rust,ignore
 /// # use device_driver_macros::create_device;
 /// create_device!(
-///     manifest: "path/to/manifest/file.kdl"
+///     manifest: "path/to/manifest/file.ddsl"
 /// );
 /// ```
 #[proc_macro]
 pub fn create_device(item: TokenStream) -> TokenStream {
-    device_driver_diagnostics::set_miette_hook(true);
-
     let input = match syn::parse::<Input>(item) {
         Ok(i) => i,
         Err(e) => return e.into_compile_error().into(),
     };
 
     match input.generation_type {
-        GenerationType::Kdl(kdl_input) => {
-            let (source, span) = if cfg!(feature = "nightly") && rustversion::cfg!(nightly) {
-                std::fs::read_to_string(Path::new(&kdl_input.span().file())).map_or(
-                    (kdl_input.value(), None),
-                    |fc| {
-                        (
-                            // Bug in Rust? The byte range is only correct when we remove the \r from newlines
-                            fc.replace("\r\n", "\n"),
-                            Some(kdl_input.span().byte_range()),
-                        )
-                    },
-                )
-            } else {
-                (kdl_input.value(), None)
-            };
+        GenerationType::Ddsl(source_lit) => {
+            let source = source_lit.value();
 
-            let (output, diagnostics) =
-                device_driver_core::compile(&source, span.map(miette::SourceSpan::from));
+            let (output, diagnostics) = device_driver_core::compile(&source);
 
             diagnostics
                 .print_to(
                     stderr().lock(),
                     Metadata {
                         source: &source,
-                        source_path: &kdl_input.span().file(),
+                        source_path: &source_lit.span().file(),
                         term_width: None,
                         ansi: true,
                         unicode: true,
@@ -99,7 +83,7 @@ pub fn create_device(item: TokenStream) -> TokenStream {
                     .read_to_string(&mut source)
                     .unwrap();
 
-                let (output, diagnostics) = device_driver_core::compile(&source, None);
+                let (output, diagnostics) = device_driver_core::compile(&source);
 
                 diagnostics
                     .print_to(
@@ -131,7 +115,7 @@ struct Input {
 }
 
 enum GenerationType {
-    Kdl(syn::LitStr),
+    Ddsl(syn::LitStr),
     Manifest(LitStr),
 }
 
@@ -139,14 +123,14 @@ impl syn::parse::Parse for Input {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let look = input.lookahead1();
 
-        if look.peek(kw::kdl) {
-            input.parse::<kw::kdl>()?;
+        if look.peek(kw::ddsl) {
+            input.parse::<kw::ddsl>()?;
             input.parse::<syn::Token![:]>()?;
 
             let tokens = input.parse()?;
 
             Ok(Self {
-                generation_type: GenerationType::Kdl(tokens),
+                generation_type: GenerationType::Ddsl(tokens),
             })
         } else if look.peek(kw::manifest) {
             input.parse::<kw::manifest>()?;
@@ -164,6 +148,6 @@ impl syn::parse::Parse for Input {
 }
 
 mod kw {
-    syn::custom_keyword!(kdl);
+    syn::custom_keyword!(ddsl);
     syn::custom_keyword!(manifest);
 }

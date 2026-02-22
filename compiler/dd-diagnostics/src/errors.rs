@@ -3,290 +3,17 @@
     reason = "Something going on with the diagnostics derive"
 )]
 
-use std::borrow::Cow;
+use std::{borrow::Cow, ops::Deref};
 
 use annotate_snippets::{AnnotationKind, Group, Level, Patch, Snippet};
 use device_driver_common::{
     identifier::{self, Identifier},
     span::{Span, Spanned},
-    specifiers::{BaseType, Integer, TypeConversion},
+    specifiers::{BaseType, Integer, NodeType},
 };
 use itertools::Itertools;
-use miette::Diagnostic as MietteDiagnostic;
-use thiserror::Error;
 
 use crate::{Diagnostic, encode_ansi_url};
-
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Missing object name")]
-#[diagnostic(
-    help(
-        "The name is specified by the first entry of the node. It must be an anonymous string, e.g. `{object_type} Foo {{ }}`"
-    ),
-    severity(Error)
-)]
-pub struct MissingObjectName {
-    #[label("For this object")]
-    pub object_keyword: Span,
-    #[label("Found this entry instead which is not a valid name")]
-    pub found_instead: Option<Span>,
-    pub object_type: String,
-}
-
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Unexpected entries")]
-#[diagnostic(
-    help(
-        "Some entries require a name, require to be anonymous or are expected to be of a certain type. Check the book to see the specification
-These entries may also just be superfluous. Try removing them or check other errors to see what's expected"
-    ),
-    severity(Error)
-)]
-pub struct UnexpectedEntries {
-    #[label(collection, "This entry is unexpected")]
-    pub superfluous_entries: Vec<Span>,
-    #[label(collection, "This entry has a name that's unexpected")]
-    pub unexpected_name_entries: Vec<Span>,
-    #[label(collection, "This entry was expected to be anonymous")]
-    pub not_anonymous_entries: Vec<Span>,
-    #[label(
-        collection,
-        "This entry was expected to have a name (and not be anonymous)"
-    )]
-    pub unexpected_anonymous_entries: Vec<Span>,
-}
-
-impl UnexpectedEntries {
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.superfluous_entries.is_empty()
-            && self.unexpected_name_entries.is_empty()
-            && self.not_anonymous_entries.is_empty()
-            && self.unexpected_anonymous_entries.is_empty()
-    }
-}
-
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Unexpected node")]
-#[diagnostic(
-    help("Expected a node with one of these names: {}", self.print_expected_names()),
-    severity(Error)
-)]
-pub struct UnexpectedNode {
-    #[label("The unexpected node")]
-    pub node_name: Span,
-
-    pub expected_names: Vec<&'static str>,
-}
-
-impl UnexpectedNode {
-    fn print_expected_names(&self) -> String {
-        self.expected_names
-            .iter()
-            .map(|name| format!("`{name}`"))
-            .join(", ")
-    }
-}
-
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Unexpected type")]
-#[diagnostic(severity(Error))]
-pub struct UnexpectedType {
-    #[label("Unexpected type: expected a {}", self.expected_type)]
-    pub value_name: Span,
-
-    pub expected_type: &'static str,
-}
-
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Unexpected value")]
-#[diagnostic(severity(Error))]
-pub struct UnexpectedValue {
-    #[label("Expected one of these values: {}", self.print_expected_values())]
-    pub value_name: Span,
-
-    pub expected_values: Vec<&'static str>,
-}
-
-impl UnexpectedValue {
-    fn print_expected_values(&self) -> String {
-        self.expected_values
-            .iter()
-            .map(|name| format!("`{name}`"))
-            .join(", ")
-    }
-}
-
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Bad format")]
-#[diagnostic(
-    help("An example: `{}`", self.example),
-    severity(Error)
-)]
-pub struct BadValueFormat {
-    #[label("Value could not be parsed correctly. Use the following format: `{}`", self.expected_format)]
-    pub span: Span,
-
-    pub expected_format: &'static str,
-    pub example: &'static str,
-}
-
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Value out of range")]
-#[diagnostic(severity(Error))]
-pub struct ValueOutOfRange {
-    #[label("Value is out of the allowable range: {}", self.range)]
-    pub value: Span,
-    #[help]
-    pub context: Option<&'static str>,
-    pub range: &'static str,
-}
-
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Missing entry")]
-#[diagnostic(help("Check the book for all the requirements"), severity(Error))]
-pub struct MissingEntry {
-    #[label("This node should have one or more of these entries: {}", self.print_expected_entries())]
-    pub node_name: Span,
-
-    pub expected_entries: Vec<&'static str>,
-}
-impl MissingEntry {
-    fn print_expected_entries(&self) -> String {
-        self.expected_entries
-            .iter()
-            .map(|name| format!("`{name}`"))
-            .join(", ")
-    }
-}
-
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Duplicate node")]
-#[diagnostic(
-    help("This type of node can only appear once. Try removing one of the nodes"),
-    severity(Error)
-)]
-pub struct DuplicateNode {
-    #[label(primary, "The duplicate node")]
-    pub duplicate: Span,
-    #[label("The original node")]
-    pub original: Span,
-}
-
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Duplicate entry")]
-#[diagnostic(
-    help("This type of entry can only appear once. Try removing one of the entries"),
-    severity(Error)
-)]
-pub struct DuplicateEntry {
-    #[label(primary, "The duplicate entry")]
-    pub duplicate: Span,
-    #[label("The original entry")]
-    pub original: Span,
-}
-
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Empty node")]
-#[diagnostic(
-    help("This type of node should have children to specify what it contains"),
-    severity(Warning)
-)]
-pub struct EmptyNode {
-    #[label("The empty node")]
-    pub node: Span,
-}
-
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Missing child node")]
-#[diagnostic(help("Check the book to see all required nodes"), severity(Error))]
-pub struct MissingChildNode {
-    #[label("This {} is missing the required `{}` node", self.node_type.unwrap_or("node"), self.missing_node_type)]
-    pub node: Span,
-
-    pub node_type: Option<&'static str>,
-    pub missing_node_type: &'static str,
-}
-
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Inline enum definition without name")]
-#[diagnostic(
-    help(
-        "An inline enum definition is only possible when a conversion is specified, for example: `(uint:EnumName)`"
-    ),
-    severity(Error)
-)]
-pub struct InlineEnumDefinitionWithoutName {
-    #[label("Add conversion type specification to this field")]
-    pub field_name: Span,
-    #[label("A type specifier already exists, but misses the conversion")]
-    pub existing_ty: Option<Span>,
-}
-
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Only base type allowed")]
-#[diagnostic(
-    help(
-        "This object doesn't support the conversion syntax. Just specify the base type and remove the `:{}`",
-        self.conversion_text()
-    ),
-    severity(Error)
-)]
-pub struct OnlyBaseTypeAllowed {
-    #[label("Type specifier contains conversion")]
-    pub existing_ty: Span,
-    pub field_conversion: TypeConversion,
-}
-
-impl OnlyBaseTypeAllowed {
-    fn conversion_text(&self) -> String {
-        format!(
-            "{}{}",
-            self.field_conversion.type_name.original(),
-            if self.field_conversion.fallible {
-                "?"
-            } else {
-                ""
-            }
-        )
-    }
-}
-
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Address specified in wrong order")]
-#[diagnostic(
-    help("Addresses are specified with the high bit first and the low bit last"),
-    severity(Error)
-)]
-pub struct AddressWrongOrder {
-    #[label("Wrong order, try to change to `@{}:{}`", self.start, self.end)]
-    pub address_entry: Span,
-    pub end: u32,
-    pub start: u32,
-}
-
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("No children were expected for this node")]
-#[diagnostic(severity(Error))]
-pub struct NoChildrenExpected {
-    #[label("Try removing these child nodes")]
-    pub children: Span,
-}
-
-#[derive(Error, Debug, MietteDiagnostic)]
-#[error("Repeat is overspecified")]
-#[diagnostic(
-    help(
-        "A repeat can either use the `count` or the `with` specifier, but not both. Remove one of them."
-    ),
-    severity(Error)
-)]
-pub struct RepeatOverSpecified {
-    #[label("This repeat has a count")]
-    pub count: Span,
-    #[label("This repeat also has a with")]
-    pub with: Span,
-}
 
 pub struct IntegerFieldSizeTooBig {
     pub field_address: Span,
@@ -1536,6 +1263,244 @@ All other characters must be a unicode XID continue character.";
                 .primary_title("invalid identifier")
                 .element(Snippet::source(source).path(path).annotation(annotation)),
             Group::with_title(Level::INFO.secondary_title(INFO_TEXT)),
+        ]
+        .to_vec()
+    }
+}
+
+pub struct ParsingError {
+    pub reason: String,
+    pub span: Span,
+}
+
+impl Diagnostic for ParsingError {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [Level::ERROR.primary_title("parsing error").element(
+            Snippet::source(source).path(path).annotation(
+                AnnotationKind::Primary
+                    .span(self.span.into())
+                    .label(&self.reason),
+            ),
+        )]
+        .to_vec()
+    }
+}
+
+pub struct UnknownNodeType {
+    pub node_type: Span,
+    pub allowed_node_types: Vec<NodeType>,
+}
+
+impl Diagnostic for UnknownNodeType {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [Level::ERROR.primary_title("Unknown node type").element(
+            Snippet::source(source).path(path).annotation(
+                AnnotationKind::Primary
+                    .span(self.node_type.into())
+                    .label(format!(
+                        "expected one of: {}",
+                        self.allowed_node_types.iter().join(", ")
+                    )),
+            ),
+        )]
+        .to_vec()
+    }
+}
+
+pub struct InvalidPropertyName {
+    pub property: Span,
+    pub node_type: Spanned<NodeType>,
+    pub expected_names: Vec<&'static str>,
+}
+
+impl Diagnostic for InvalidPropertyName {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [Level::ERROR
+            .primary_title(format!(
+                "invalid property name for `{}` nodes",
+                self.node_type
+            ))
+            .element(Snippet::source(source).path(path).annotation(
+                AnnotationKind::Primary.span(self.property.into()).label(
+                    if self.expected_names.is_empty() {
+                        "no named properties are expected".into()
+                    } else {
+                        format!("expected one of: {}", self.expected_names.join(", "))
+                    },
+                ),
+            ))]
+        .to_vec()
+    }
+}
+
+pub struct InvalidExpressionType {
+    pub expression: Spanned<String>,
+    pub node_type: Spanned<NodeType>,
+    pub valid_expression_types: Vec<String>,
+    pub valid_expression_values: Vec<Cow<'static, str>>,
+}
+
+impl Diagnostic for InvalidExpressionType {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        let mut report = [Level::ERROR
+            .primary_title(format!(
+                "invalid expression type for this property in {} nodes",
+                self.node_type
+            ))
+            .element(
+                Snippet::source(source).path(path).annotation(
+                    AnnotationKind::Primary
+                        .span(self.expression.span.into())
+                        .label(format!(
+                            "got {}, expected one of: {}",
+                            self.expression,
+                            self.valid_expression_types.join(", ")
+                        )),
+                ),
+            )]
+        .to_vec();
+
+        for (name, value) in self
+            .valid_expression_types
+            .iter()
+            .zip(&self.valid_expression_values)
+        {
+            report.push(
+                Level::HELP
+                    .secondary_title(format!("change to a {name} expression"))
+                    .element(
+                        Snippet::source(source)
+                            .path(path)
+                            .patch(Patch::new(self.expression.span.into(), value.deref())),
+                    ),
+            )
+        }
+
+        report
+    }
+}
+
+pub struct DuplicateProperty {
+    pub original: Span,
+    pub duplicate: Span,
+}
+
+impl Diagnostic for DuplicateProperty {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [Level::ERROR.primary_title("duplicate property").element(
+            Snippet::source(source)
+                .path(path)
+                .annotation(
+                    AnnotationKind::Context
+                        .span(self.original.into())
+                        .label("first occurrence"),
+                )
+                .annotation(
+                    AnnotationKind::Primary
+                        .span(self.duplicate.into())
+                        .label("duplicate"),
+                ),
+        )]
+        .to_vec()
+    }
+}
+
+pub struct InvalidNodeType {
+    pub node_type: Span,
+    pub parent_node_type: Option<Spanned<NodeType>>,
+    pub allowed_node_types: Vec<NodeType>,
+}
+
+impl Diagnostic for InvalidNodeType {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [
+            Level::ERROR.primary_title("invalid node type").element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(AnnotationKind::Primary.span(self.node_type.into()).label(
+                        if let Some(parent_node_type) = self.parent_node_type {
+                            format!(
+                                "node type can't be used as a sub-node of a {}",
+                                parent_node_type
+                            )
+                        } else {
+                            "node type can't be used as the root".into()
+                        },
+                    ))
+                    .annotations(self.parent_node_type.map(|pnt| {
+                        AnnotationKind::Context
+                            .span(pnt.span.into())
+                            .label("in this node")
+                    })),
+            ),
+            Group::with_title(Level::NOTE.secondary_title(format!(
+                "valid node types are: {}",
+                self.allowed_node_types.iter().join(", ")
+            ))),
+        ]
+        .to_vec()
+    }
+}
+
+pub struct MissingRequiredProperty {
+    pub node_type: Spanned<NodeType>,
+    pub required_property_name: Option<String>,
+    pub allowed_property_types: Vec<String>,
+}
+
+impl Diagnostic for MissingRequiredProperty {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [
+            Level::ERROR
+                .primary_title(format!(
+                    "{} node is missing a required property",
+                    self.node_type
+                ))
+                .element(
+                    Snippet::source(source).path(path).annotation(
+                        AnnotationKind::Primary
+                            .span(self.node_type.span.into())
+                            .label(match &self.required_property_name {
+                                Some(required_property_name) => format!(
+                                    "missing property `{}`, with one of these expression types: {}",
+                                    required_property_name,
+                                    self.allowed_property_types.join(", ")
+                                ),
+                                None => format!(
+                                    "missing short property with one of these expression types: {}",
+                                    self.allowed_property_types.join(", ")
+                                ),
+                            }),
+                    ),
+                ), // TODO: Add patches to show user adding the properties
         ]
         .to_vec()
     }

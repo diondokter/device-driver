@@ -6,8 +6,6 @@ fn main() {
         .subcommand(Command::new("accept").about("Accept all changes and update the output files"))
         .get_matches();
 
-    device_driver_diagnostics::set_miette_hook(false);
-
     match matches.subcommand_name() {
         Some("accept") => accept(),
         None => println!("Choose an action to do..."),
@@ -48,8 +46,8 @@ fn accept() {
 
             let source_extension = source_path.extension().unwrap().display().to_string();
             let (transformed, diagnostics) = match &*source_extension {
-                "kdl" => {
-                    let (transformed, diagnostics) = device_driver_core::compile(&source, None);
+                "ddsl" => {
+                    let (transformed, diagnostics) = device_driver_core::compile(&source);
                     let mut diagnostics_output = String::new();
 
                     diagnostics
@@ -57,7 +55,7 @@ fn accept() {
                             &mut diagnostics_output,
                             Metadata {
                                 source: &source,
-                                source_path: "input.kdl",
+                                source_path: "input.ddsl",
                                 term_width: None,
                                 ansi: false,
                                 unicode: false,

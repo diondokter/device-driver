@@ -1,7 +1,20 @@
 use std::{borrow::Cow, fmt::Display, num::IntErrorKind};
 
-use device_driver_common::specifiers::{Access, BaseType, ByteOrder, Integer};
+use device_driver_common::{
+    span::{SpanExt, Spanned},
+    specifiers::{Access, BaseType, ByteOrder, Integer},
+};
 use logos::Logos;
+
+pub fn lex<'src>(source: &'src str) -> Vec<Spanned<Token<'src>>> {
+    Token::lexer(source)
+        .spanned()
+        .map(|(token, span)| match token {
+            Ok(token) => token.with_span(span),
+            Err(()) => Token::Error.with_span(span),
+        })
+        .collect()
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Logos)]
 #[logos(skip r"[ \t\r\n]+")] // Skip (common) whitespace
@@ -9,7 +22,7 @@ use logos::Logos;
 pub enum Token<'src> {
     #[regex(r"///[^\n]*", allow_greedy = true, callback = |lex| lex.slice().trim_start_matches("///"))]
     DocCommentLine(&'src str),
-    #[regex(r"[_\p{XID_Start}][\p{XID_Continue}-]*")]
+    #[regex(r"\p{XID_Start}[\p{XID_Continue}-]*")]
     Ident(&'src str),
     #[token("{")]
     CurlyOpen,
@@ -27,6 +40,8 @@ pub enum Token<'src> {
     Comma,
     #[token(":")]
     Colon,
+    #[token("_")]
+    Underscore,
     #[token("->")]
     Arrow,
     #[token("by")]
@@ -53,18 +68,20 @@ pub enum Token<'src> {
     #[token("BE", |_| ByteOrder::BE)]
     #[token("LE", |_| ByteOrder::LE)]
     ByteOrder(ByteOrder),
+    /// All the base types except fixed integers. Those are [Self::Integer].
     #[token("uint", |_| BaseType::Uint)]
-    #[token("u8", |_| BaseType::FixedSize(Integer::U8))]
-    #[token("u16", |_| BaseType::FixedSize(Integer::U16))]
-    #[token("u32", |_| BaseType::FixedSize(Integer::U32))]
-    #[token("u64", |_| BaseType::FixedSize(Integer::U64))]
     #[token("int", |_| BaseType::Int)]
-    #[token("i8", |_| BaseType::FixedSize(Integer::I8))]
-    #[token("i16", |_| BaseType::FixedSize(Integer::I16))]
-    #[token("i32", |_| BaseType::FixedSize(Integer::I32))]
-    #[token("i64", |_| BaseType::FixedSize(Integer::I64))]
     #[token("bool", |_| BaseType::Bool)]
     BaseType(BaseType),
+    #[token("u8", |_| Integer::U8)]
+    #[token("u16", |_| Integer::U16)]
+    #[token("u32", |_| Integer::U32)]
+    #[token("u64", |_| Integer::U64)]
+    #[token("i8", |_| Integer::I8)]
+    #[token("i16", |_| Integer::I16)]
+    #[token("i32", |_| Integer::I32)]
+    #[token("i64", |_| Integer::I64)]
+    Integer(Integer),
     #[regex(r"\S", priority = 0)] // Any non-whitespace character
     Unexpected(&'src str),
     Error, // Catch-all for errors
@@ -82,6 +99,7 @@ impl<'src> Display for Token<'src> {
             Token::AngleOpen => write!(f, "<"),
             Token::AngleClose => write!(f, ">"),
             Token::Colon => write!(f, ":"),
+            Token::Underscore => write!(f, "_"),
             Token::Comma => write!(f, ","),
             Token::Arrow => write!(f, "->"),
             Token::By => write!(f, "by"),
@@ -94,6 +112,7 @@ impl<'src> Display for Token<'src> {
             Token::Access(_) => write!(f, "access-specifier"),
             Token::ByteOrder(_) => write!(f, "byte-order"),
             Token::BaseType(_) => write!(f, "base type"),
+            Token::Integer(_) => write!(f, "integer type"),
             Token::Unexpected(val) => write!(f, "{}", val.escape_debug()),
             Token::Error => write!(f, "ERROR"),
         }
@@ -112,6 +131,7 @@ impl<'src> Token<'src> {
             Token::AngleOpen => "<".into(),
             Token::AngleClose => ">".into(),
             Token::Colon => ":".into(),
+            Token::Underscore => "_".into(),
             Token::Comma => ",".into(),
             Token::Arrow => "->".into(),
             Token::Try => "try".into(),
@@ -121,6 +141,7 @@ impl<'src> Token<'src> {
             Token::Access(val) => val.to_string().into(),
             Token::ByteOrder(val) => val.to_string().into(),
             Token::BaseType(val) => val.to_string().into(),
+            Token::Integer(val) => val.to_string().into(),
             Token::Allow => "allow".into(),
             Token::Default => "default".into(),
             Token::CatchAll => "catch-all".into(),

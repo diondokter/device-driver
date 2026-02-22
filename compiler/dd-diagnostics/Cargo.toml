@@ -11,12 +11,10 @@ rust-version.workspace = true
 [dependencies]
 device-driver-common.workspace = true
 
-miette.workspace = true
 convert_case.workspace = true
 itertools.workspace = true
-thiserror.workspace = true
 
-annotate-snippets = "0.12.11"
+annotate-snippets = "0.12.12"
 
 [dev-dependencies]
 pretty_assertions.workspace = true

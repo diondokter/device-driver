@@ -1,0 +1,15 @@
+/// Hello!
+manifest dev {
+    byte-order: LE,
+    command-address-type: u8,
+
+    /// Test
+    device Foo {
+        byte-order: BE,
+
+        register Bar {
+            address: 0,
+            fields: fieldset a,
+        }
+    }
+}
