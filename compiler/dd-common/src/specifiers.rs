@@ -296,7 +296,7 @@ impl ResetValue {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NodeType {
-    Global,
+    Manifest,
     Device,
     Block,
     Register,
@@ -312,7 +312,7 @@ impl FromStr for NodeType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "global" => Ok(Self::Global),
+            "manifest" => Ok(Self::Manifest),
             "device" => Ok(Self::Device),
             "block" => Ok(Self::Block),
             "register" => Ok(Self::Register),
@@ -328,7 +328,8 @@ impl FromStr for NodeType {
 
 impl VariantNames for NodeType {
     const VARIANTS: &'static [&'static str] = &[
-        "global", "device", "block", "register", "command", "buffer", "fieldset", "enum", "extern",
+        "manifest", "device", "block", "register", "command", "buffer", "fieldset", "enum",
+        "extern",
     ];
 }
 

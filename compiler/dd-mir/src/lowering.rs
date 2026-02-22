@@ -1,63 +1,70 @@
 use std::{collections::HashMap, mem, str::FromStr};
 
-use crate::model::{Block, Device, DeviceConfig, Manifest, Object};
+use crate::model::{Block, Device, Manifest, Object, Register};
 use device_driver_common::{
-    identifier::Identifier,
-    span::{SpanExt, Spanned},
-    specifiers::NodeType,
+    identifier::{Identifier, IdentifierRef},
+    span::{Span, SpanExt, Spanned},
+    specifiers::{NodeType, Repeat, RepeatSource, ResetValue},
 };
 use device_driver_diagnostics::{
     Diagnostics,
     errors::{
-        DocCommentsNotSupported, DuplicateProperty, InvalidExpressionType, InvalidIdentifier,
-        InvalidNodeType, InvalidPropertyName, MissingRequiredProperty, NameNotSupported,
-        NameRequired, UnknownNodeType,
+        DuplicateProperty, InvalidExpressionType, InvalidIdentifier, InvalidNodeType,
+        InvalidPropertyName, MissingRequiredProperty, UnknownNodeType,
     },
 };
 use device_driver_parser::{Ast, Expression, Node};
 use itertools::Itertools;
 
 pub fn lower(ast: Ast, diagnostics: &mut Diagnostics) -> Manifest {
-    let mut manifest = Manifest {
-        objects: Vec::new(),
-        config: DeviceConfig::default(),
+    println!("{ast:#?}");
+
+    let Some(root_node) = ast.root_node else {
+        return Default::default();
     };
 
-    // println!("{ast:#?}");
+    let result = lower_node(
+        &root_node,
+        None,
+        &[NodeType::Manifest, NodeType::Device],
+        diagnostics,
+    );
 
-    for node in ast.nodes {
-        lower_node(
-            &node,
-            Some(&mut manifest.config),
-            &mut manifest.objects,
-            None,
-            &[
-                NodeType::Global,
-                NodeType::Device,
-                NodeType::FieldSet,
-                NodeType::Enum,
-                NodeType::Extern,
-            ],
-            diagnostics,
-        );
+    match result {
+        Some(LowerResult::Manifest(m)) => m,
+        Some(LowerResult::Object(Object::Device(d))) => d.into(),
+        Some(_) => unreachable!(),
+        None => Default::default(),
     }
+}
 
-    manifest
+enum LowerResult {
+    Manifest(Manifest),
+    Object(Object),
+}
+
+impl LowerResult {
+    fn into_object(self) -> Option<Object> {
+        if let Self::Object(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
 }
 
 fn lower_node(
     node: &Node,
-    device_config: Option<&mut DeviceConfig>,
-    objects: &mut Vec<Object>,
     parent_node_type: Option<Spanned<NodeType>>,
     allowed_node_types: &[NodeType],
     diagnostics: &mut Diagnostics,
-) {
+) -> Option<LowerResult> {
     let Ok(node_type) = NodeType::from_str(node.node_type.val) else {
         diagnostics.add(UnknownNodeType {
             node_type: node.node_type.span,
+            allowed_node_types: allowed_node_types.to_vec(),
         });
-        return;
+        return None;
     };
     let node_type = node_type.with_span(node.node_type.span);
 
@@ -67,32 +74,38 @@ fn lower_node(
             parent_node_type,
             allowed_node_types: allowed_node_types.to_vec(),
         });
-        return;
+        return None;
     }
 
     match node_type.value {
-        NodeType::Global => {
-            if let Ok(global_config) = node_parser(node, diagnostics) {
-                *device_config.unwrap() = global_config;
+        NodeType::Manifest => {
+            if let Ok(manifest) = node_parser(node, diagnostics) {
+                return Some(LowerResult::Manifest(manifest));
             }
         }
         NodeType::Device => {
             if let Ok(device) = node_parser(node, diagnostics) {
-                objects.push(Object::Device(device));
+                return Some(LowerResult::Object(Object::Device(device)));
             }
         }
         NodeType::Block => {
             if let Ok(block) = node_parser(node, diagnostics) {
-                objects.push(Object::Block(block));
+                return Some(LowerResult::Object(Object::Block(block)));
             }
         }
-        NodeType::Register => todo!(),
+        NodeType::Register => {
+            if let Ok(register) = node_parser(node, diagnostics) {
+                return Some(LowerResult::Object(Object::Register(register)));
+            }
+        }
         NodeType::Command => todo!(),
         NodeType::Buffer => todo!(),
         NodeType::FieldSet => todo!(),
         NodeType::Enum => todo!(),
         NodeType::Extern => todo!(),
     }
+
+    None
 }
 
 fn node_parser<S: Shape>(node: &Node, diagnostics: &mut Diagnostics) -> Result<S, ()> {
@@ -101,45 +114,17 @@ fn node_parser<S: Shape>(node: &Node, diagnostics: &mut Diagnostics) -> Result<S
 
     // Doc comments
 
-    match target.doc_comments() {
-        Some(doc_comments) => {
-            *doc_comments = node.doc_comments.iter().map(|c| c.value).join("\n");
-        }
-        None => {
-            if !node.doc_comments.is_empty() {
-                diagnostics.add(DocCommentsNotSupported {
-                    doc_comments: node.doc_comments.iter().map(|c| c.span).collect(),
-                    node_type: S::NODE_TYPE.with_span(node.node_type.span),
-                });
-            }
-        }
-    }
+    *target.doc_comments() = node.doc_comments.iter().map(|c| c.value).join("\n");
 
     // Object name
 
-    match (target.name(), &node.name) {
-        (Some(target_name), Some(node_name)) => match Identifier::try_parse(node_name.val) {
-            Ok(ident) => *target_name = ident.with_span(node_name.span),
-            Err(e) => {
-                diagnostics.add(InvalidIdentifier::new(e, node_name.span));
-                // Can't continue with this node when there's no name
-                error = true;
-            }
-        },
-        (Some(_), None) => {
-            diagnostics.add(NameRequired {
-                node_type: S::NODE_TYPE.with_span(node.node_type.span),
-            });
+    match Identifier::try_parse(node.name.val) {
+        Ok(ident) => *target.name() = ident.with_span(node.name.span),
+        Err(e) => {
+            diagnostics.add(InvalidIdentifier::new(e, node.name.span));
             // Can't continue with this node when there's no name
             error = true;
         }
-        (None, Some(node_name)) => {
-            diagnostics.add(NameNotSupported {
-                name: node_name.span,
-                node_type: S::NODE_TYPE.with_span(node.node_type.span),
-            });
-        }
-        (None, None) => {}
     }
 
     // Base type: TODO
@@ -264,14 +249,18 @@ fn node_parser<S: Shape>(node: &Node, diagnostics: &mut Diagnostics) -> Result<S
 
     if let Some((objects, allowed_node_types)) = target.child_objects() {
         for sub_node in node.sub_nodes.iter() {
-            lower_node(
+            if let Some(result) = lower_node(
                 sub_node,
-                None,
-                objects,
                 Some(S::NODE_TYPE.with_span(node.node_type.span)),
                 &allowed_node_types,
                 diagnostics,
-            );
+            ) {
+                objects.push(
+                    result
+                        .into_object()
+                        .expect("Always yields an object this deep down in parsing"),
+                );
+            }
         }
     } else if !node.sub_nodes.is_empty() {
         todo!("diagnostic: node type doesn't support sub-nodes");
@@ -283,13 +272,8 @@ fn node_parser<S: Shape>(node: &Node, diagnostics: &mut Diagnostics) -> Result<S
 trait Shape: Default {
     const NODE_TYPE: NodeType;
 
-    fn doc_comments(&mut self) -> Option<&mut String> {
-        None
-    }
-
-    fn name(&mut self) -> Option<&mut Spanned<Identifier>> {
-        None
-    }
+    fn doc_comments(&mut self) -> &mut String;
+    fn name(&mut self) -> &mut Spanned<Identifier>;
 
     /// All the supported properties. An empty name string matches anything, None only matches anonymous properties
     fn supported_properties(&mut self) -> HashMap<Option<&'static str>, PropertyInfo<Self>> {
@@ -316,8 +300,16 @@ struct PropertyInfo<T: ?Sized> {
     setter: fn(&mut T, &Spanned<Expression<'_>>),
 }
 
-impl Shape for DeviceConfig {
-    const NODE_TYPE: NodeType = NodeType::Global;
+impl Shape for Manifest {
+    const NODE_TYPE: NodeType = NodeType::Manifest;
+
+    fn doc_comments(&mut self) -> &mut String {
+        &mut self.description
+    }
+
+    fn name(&mut self) -> &mut Spanned<Identifier> {
+        &mut self.name
+    }
 
     fn supported_properties(&mut self) -> HashMap<Option<&'static str>, PropertyInfo<Self>> {
         [
@@ -327,8 +319,8 @@ impl Shape for DeviceConfig {
                     allowed_expression_types: vec![Expression::Access(Default::default())],
                     multiple_allowed: false,
                     required: false,
-                    setter: |dc: &mut Self, val| {
-                        dc.register_access = Some(val.as_access().unwrap())
+                    setter: |manifest: &mut Self, val| {
+                        manifest.config.register_access = Some(val.as_access().unwrap())
                     },
                 },
             ),
@@ -338,7 +330,9 @@ impl Shape for DeviceConfig {
                     allowed_expression_types: vec![Expression::Access(Default::default())],
                     multiple_allowed: false,
                     required: false,
-                    setter: |dc: &mut Self, val| dc.field_access = Some(val.as_access().unwrap()),
+                    setter: |manifest: &mut Self, val| {
+                        manifest.config.field_access = Some(val.as_access().unwrap())
+                    },
                 },
             ),
             (
@@ -347,7 +341,9 @@ impl Shape for DeviceConfig {
                     allowed_expression_types: vec![Expression::Access(Default::default())],
                     multiple_allowed: false,
                     required: false,
-                    setter: |dc: &mut Self, val| dc.buffer_access = Some(val.as_access().unwrap()),
+                    setter: |manifest: &mut Self, val| {
+                        manifest.config.buffer_access = Some(val.as_access().unwrap())
+                    },
                 },
             ),
             (
@@ -356,7 +352,9 @@ impl Shape for DeviceConfig {
                     allowed_expression_types: vec![Expression::ByteOrder(Default::default())],
                     multiple_allowed: false,
                     required: false,
-                    setter: |dc: &mut Self, val| dc.byte_order = Some(val.as_byte_order().unwrap()),
+                    setter: |manifest: &mut Self, val| {
+                        manifest.config.byte_order = Some(val.as_byte_order().unwrap())
+                    },
                 },
             ),
             (
@@ -365,8 +363,8 @@ impl Shape for DeviceConfig {
                     allowed_expression_types: vec![Expression::Integer(Default::default())],
                     multiple_allowed: false,
                     required: false,
-                    setter: |dc: &mut Self, val| {
-                        dc.register_address_type =
+                    setter: |manifest: &mut Self, val| {
+                        manifest.config.register_address_type =
                             Some(val.as_integer().unwrap().with_span(val.span))
                     },
                 },
@@ -377,8 +375,8 @@ impl Shape for DeviceConfig {
                     allowed_expression_types: vec![Expression::Integer(Default::default())],
                     multiple_allowed: false,
                     required: false,
-                    setter: |dc: &mut Self, val| {
-                        dc.command_address_type =
+                    setter: |manifest: &mut Self, val| {
+                        manifest.config.command_address_type =
                             Some(val.as_integer().unwrap().with_span(val.span))
                     },
                 },
@@ -389,8 +387,9 @@ impl Shape for DeviceConfig {
                     allowed_expression_types: vec![Expression::Integer(Default::default())],
                     multiple_allowed: false,
                     required: false,
-                    setter: |dc: &mut Self, val| {
-                        dc.buffer_address_type = Some(val.as_integer().unwrap().with_span(val.span))
+                    setter: |manifest: &mut Self, val| {
+                        manifest.config.buffer_address_type =
+                            Some(val.as_integer().unwrap().with_span(val.span))
                     },
                 },
             ),
@@ -399,17 +398,29 @@ impl Shape for DeviceConfig {
         ]
         .into()
     }
+
+    fn child_objects(&mut self) -> Option<(&mut Vec<Object>, Vec<NodeType>)> {
+        Some((
+            &mut self.objects,
+            vec![
+                NodeType::Device,
+                NodeType::FieldSet,
+                NodeType::Enum,
+                NodeType::Extern,
+            ],
+        ))
+    }
 }
 
 impl Shape for Device {
     const NODE_TYPE: NodeType = NodeType::Device;
 
-    fn doc_comments(&mut self) -> Option<&mut String> {
-        Some(&mut self.description)
+    fn doc_comments(&mut self) -> &mut String {
+        &mut self.description
     }
 
-    fn name(&mut self) -> Option<&mut Spanned<Identifier>> {
-        Some(&mut self.name)
+    fn name(&mut self) -> &mut Spanned<Identifier> {
+        &mut self.name
     }
 
     fn supported_properties(&mut self) -> HashMap<Option<&'static str>, PropertyInfo<Self>> {
@@ -519,12 +530,12 @@ impl Shape for Device {
 impl Shape for Block {
     const NODE_TYPE: NodeType = NodeType::Block;
 
-    fn doc_comments(&mut self) -> Option<&mut String> {
-        Some(&mut self.description)
+    fn doc_comments(&mut self) -> &mut String {
+        &mut self.description
     }
 
-    fn name(&mut self) -> Option<&mut Spanned<Identifier>> {
-        Some(&mut self.name)
+    fn name(&mut self) -> &mut Spanned<Identifier> {
+        &mut self.name
     }
 
     fn supported_properties(&mut self) -> HashMap<Option<&'static str>, PropertyInfo<Self>> {
@@ -550,6 +561,145 @@ impl Shape for Block {
                     setter: |block: &mut Self, expression| {
                         block.address_offset =
                             expression.as_number().unwrap().with_span(expression.span)
+                    },
+                },
+            ),
+        ]
+        .into()
+    }
+
+    fn child_objects(&mut self) -> Option<(&mut Vec<Object>, Vec<NodeType>)> {
+        Some((
+            &mut self.objects,
+            vec![
+                NodeType::Block,
+                NodeType::Register,
+                NodeType::Command,
+                NodeType::Buffer,
+                NodeType::FieldSet,
+                NodeType::Enum,
+                NodeType::Extern,
+            ],
+        ))
+    }
+}
+
+impl Shape for Register {
+    const NODE_TYPE: NodeType = NodeType::Register;
+
+    fn doc_comments(&mut self) -> &mut String {
+        &mut self.description
+    }
+
+    fn name(&mut self) -> &mut Spanned<Identifier> {
+        &mut self.name
+    }
+
+    fn supported_properties(&mut self) -> HashMap<Option<&'static str>, PropertyInfo<Self>> {
+        [
+            (
+                Some("address"),
+                PropertyInfo {
+                    allowed_expression_types: vec![Expression::Number(Default::default())],
+                    multiple_allowed: false,
+                    required: true,
+                    setter: |r: &mut Self, e| r.address = e.as_number().unwrap().with_span(e.span),
+                },
+            ),
+            (
+                Some("access"),
+                PropertyInfo {
+                    allowed_expression_types: vec![Expression::Access(Default::default())],
+                    multiple_allowed: false,
+                    required: false,
+                    setter: |r: &mut Self, e| r.access = e.as_access().unwrap(),
+                },
+            ),
+            (
+                Some("address-overlap"),
+                PropertyInfo {
+                    allowed_expression_types: vec![Expression::Allow],
+                    multiple_allowed: false,
+                    required: false,
+                    setter: |r: &mut Self, _| r.allow_address_overlap = true,
+                },
+            ),
+            (
+                Some("reset"),
+                PropertyInfo {
+                    allowed_expression_types: vec![
+                        Expression::ResetArray(vec![12, 34]),
+                        Expression::ResetNumber(1234),
+                    ],
+                    multiple_allowed: false,
+                    required: false,
+                    setter: |r: &mut Self, e| match &e.value {
+                        Expression::ResetNumber(num) => {
+                            r.reset_value = Some(ResetValue::Integer(*num).with_span(e.span))
+                        }
+                        Expression::ResetArray(bytes) => {
+                            r.reset_value = Some(ResetValue::Array(bytes.clone()).with_span(e.span))
+                        }
+                        _ => unreachable!(),
+                    },
+                },
+            ),
+            (
+                Some("repeat"),
+                PropertyInfo {
+                    allowed_expression_types: vec![Expression::Repeat(Default::default())],
+                    multiple_allowed: false,
+                    required: false,
+                    setter: |r: &mut Self, e| {
+                        let repeat = e.as_repeat().unwrap();
+                        r.repeat = Some(Repeat {
+                            source: match repeat.source {
+                                device_driver_parser::RepeatSource::Count(count) => {
+                                    RepeatSource::Count(count as u64)
+                                }
+                                device_driver_parser::RepeatSource::Enum(ident) => {
+                                    RepeatSource::Enum(
+                                        IdentifierRef::new(ident.val.into()).with_span(ident.span),
+                                    )
+                                }
+                            },
+                            stride: repeat.stride as i128,
+                        });
+                    },
+                },
+            ),
+            (
+                Some("fields"),
+                PropertyInfo {
+                    allowed_expression_types: vec![
+                        Expression::TypeReference(device_driver_parser::Ident {
+                            val: "MyFieldset",
+                            span: Span::default(),
+                        }),
+                        Expression::SubNode(Box::new(Node {
+                            doc_comments: vec![],
+                            node_type: device_driver_parser::Ident {
+                                val: "fieldset",
+                                span: Default::default(),
+                            },
+                            name: device_driver_parser::Ident {
+                                val: "MyFieldSet",
+                                span: Default::default(),
+                            },
+                            type_specifier: None,
+                            properties: vec![],
+                            sub_nodes: vec![],
+                            span: Default::default(),
+                        })),
+                    ],
+                    multiple_allowed: false,
+                    required: true,
+                    setter: |r: &mut Self, e| match &e.value {
+                        Expression::TypeReference(ident) => {
+                            r.field_set_ref = IdentifierRef::new(ident.val.into())
+                        }
+                        Expression::SubNode(node) => todo!("Need more infra to reject nodes"),
+                        _ => unreachable!(),
                     },
                 },
             ),

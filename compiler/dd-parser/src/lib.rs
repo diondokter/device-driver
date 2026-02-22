@@ -29,21 +29,24 @@ pub fn parse<'src>(tokens: &[Spanned<Token<'src>>], diagnostics: &mut Diagnostic
         });
     }
 
-    ast.map(|(nodes, span)| Ast { nodes, span })
-        .unwrap_or_default()
+    ast.map(|(root_node, span)| Ast {
+        root_node: Some(root_node),
+        span,
+    })
+    .unwrap_or_default()
 }
 
-#[derive(Default, Debug)]
+#[derive(Debug, Default)]
 pub struct Ast<'src> {
-    pub nodes: Vec<Node<'src>>,
+    pub root_node: Option<Node<'src>>,
     pub span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Node<'src> {
     pub doc_comments: Vec<Spanned<&'src str>>,
     pub node_type: Ident<'src>,
-    pub name: Option<Ident<'src>>,
+    pub name: Ident<'src>,
     pub type_specifier: Option<TypeSpecifier<'src>>,
     pub properties: Vec<Spanned<Property<'src>>>,
     pub sub_nodes: Vec<Node<'src>>,
@@ -58,15 +61,7 @@ impl<'src> Display for Node<'src> {
         for doc_comment in &self.doc_comments {
             writeln!(f, "{indentation}///{doc_comment}")?;
         }
-        write!(
-            f,
-            "{indentation}{}{}",
-            self.node_type.val,
-            self.name
-                .as_ref()
-                .map(|ident| format!(" {}", ident.val))
-                .unwrap_or_default()
-        )?;
+        write!(f, "{indentation}{} {}", self.node_type.val, self.name.val,)?;
 
         for expression in self
             .properties
@@ -119,20 +114,20 @@ impl<'src> Display for Node<'src> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TypeSpecifier<'src> {
     pub base_type: BaseType,
     pub use_try: bool,
     pub conversion: Option<TypeConversion<'src>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TypeConversion<'src> {
     Reference(Ident<'src>),
     Subnode(Box<Node<'src>>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Property<'src> {
     pub name: Option<Ident<'src>>,
     pub expression: Spanned<Expression<'src>>,
@@ -144,7 +139,7 @@ impl<'src> Property<'src> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expression<'src> {
     AddressRange { end: i128, start: i128 },
     Repeat(Repeat<'src>),
@@ -224,12 +219,20 @@ impl<'src> Expression<'src> {
             Expression::Error => "ERROR".into(),
         }
     }
+
+    pub fn as_repeat(&self) -> Option<Repeat<'src>> {
+        if let Self::Repeat(v) = self {
+            Some(*v)
+        } else {
+            None
+        }
+    }
 }
 
 impl<'src> Display for Expression<'src> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Expression::AddressRange { .. } => write!(f, "address:range"),
+            Expression::AddressRange { .. } => write!(f, "address range"),
             Expression::Repeat(Repeat { .. }) => write!(f, "repeat"),
             Expression::ResetNumber(_) => write!(f, "reset number"),
             Expression::ResetArray(_) => write!(f, "reset array"),
@@ -249,13 +252,13 @@ impl<'src> Display for Expression<'src> {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Repeat<'src> {
     pub source: RepeatSource<'src>,
     pub stride: i32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum RepeatSource<'src> {
     Count(u32),
     Enum(Ident<'src>),
@@ -267,7 +270,7 @@ impl<'src> Default for RepeatSource<'src> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Ident<'src> {
     pub val: &'src str,
     pub span: Span,
@@ -308,11 +311,11 @@ fn try_num<'tokens, 'src: 'tokens, I: ParseIntRadix>(
 }
 
 pub fn parser<'tokens, 'src: 'tokens, I>()
--> impl Parser<'tokens, I, Vec<Node<'src>>, extra::Err<Rich<'tokens, Token<'src>, Span>>> + Clone
+-> impl Parser<'tokens, I, Node<'src>, extra::Err<Rich<'tokens, Token<'src>, Span>>> + Clone
 where
     I: ValueInput<'tokens, Token = Token<'src>, Span = Span>,
 {
-    let node = recursive(|node| {
+    recursive(|node| {
         let any_ident = select! {
             Token::Ident(val) = e => Ident { val, span: e.span() }
         }
@@ -386,7 +389,7 @@ where
             .boxed();
 
         // Expression without type reference
-        let expression = choice((
+        let simple_expression = choice((
             range,
             any_base_type.map(Expression::BaseType),
             any_integer.map(Expression::Integer),
@@ -415,11 +418,15 @@ where
 
         let property = any_ident
             .then(
-                just(Token::Colon).ignore_then(
-                    expression.clone().or(any_ident
+                just(Token::Colon).ignore_then(choice((
+                    simple_expression.clone(),
+                    node.clone().map_with(|node, extra| {
+                        Expression::SubNode(Box::new(node)).spanned(extra.span())
+                    }),
+                    any_ident
                         .map(Expression::TypeReference)
-                        .map_with(|expression, extra| expression.spanned(extra.span()))),
-                ),
+                        .map_with(|expression, extra| expression.spanned(extra.span())),
+                ))),
             )
             .map_with(|(name, expression), extra| {
                 Property {
@@ -449,27 +456,30 @@ where
             })
             .boxed();
 
-        let node_body = just(Token::CurlyOpen)
-            .ignore_then(
-                property
-                    .separated_by(just(Token::Comma))
-                    .allow_trailing()
-                    .collect::<Vec<_>>(),
-            )
-            .then(
-                node.separated_by(just(Token::Comma))
-                    .allow_trailing()
-                    .collect::<Vec<_>>(),
-            )
-            .then_ignore(just(Token::CurlyClose))
-            .labelled("'node body'");
+        let properties = property
+            .separated_by(just(Token::Comma))
+            .at_least(1)
+            .collect::<Vec<_>>();
+        let nodes = node
+            .separated_by(just(Token::Comma))
+            .allow_trailing()
+            .collect::<Vec<_>>();
+        // Body with comma forced between properties and nodes
+        let node_body = choice((
+            properties
+                .then_ignore(just(Token::Comma))
+                .then(nodes.clone()),
+            empty().to(Vec::<Spanned<Property<'_>>>::new()).then(nodes),
+        ))
+        .delimited_by(just(Token::CurlyOpen), just(Token::CurlyClose))
+        .labelled("'node body'");
 
         any_doc_comment
             .repeated()
             .collect()
             .then(any_ident.labelled("'node-type'"))
-            .then(any_ident.labelled("'node-name'").or_not())
-            .then(expression.repeated().collect::<Vec<_>>())
+            .then(any_ident.labelled("'node-name'"))
+            .then(simple_expression.repeated().collect::<Vec<_>>())
             .then(type_specifier.or_not())
             .then(node_body.or_not())
             .map_with(
@@ -499,7 +509,5 @@ where
                     }
                 },
             )
-    });
-
-    node.repeated().collect()
+    })
 }

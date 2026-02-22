@@ -9,7 +9,7 @@ use annotate_snippets::{AnnotationKind, Group, Level, Patch, Snippet};
 use device_driver_common::{
     identifier::{self, Identifier},
     span::{Span, Spanned},
-    specifiers::{BaseType, Integer, NodeType, VariantNames},
+    specifiers::{BaseType, Integer, NodeType},
 };
 use itertools::Itertools;
 
@@ -1292,6 +1292,7 @@ impl Diagnostic for ParsingError {
 
 pub struct UnknownNodeType {
     pub node_type: Span,
+    pub allowed_node_types: Vec<NodeType>,
 }
 
 impl Diagnostic for UnknownNodeType {
@@ -1306,84 +1307,10 @@ impl Diagnostic for UnknownNodeType {
                     .span(self.node_type.into())
                     .label(format!(
                         "expected one of: {}",
-                        NodeType::VARIANTS.join(", ")
+                        self.allowed_node_types.iter().join(", ")
                     )),
             ),
         )]
-        .to_vec()
-    }
-}
-
-pub struct DocCommentsNotSupported {
-    pub doc_comments: Vec<Span>,
-    pub node_type: Spanned<NodeType>,
-}
-
-impl Diagnostic for DocCommentsNotSupported {
-    fn is_error(&self) -> bool {
-        false
-    }
-
-    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
-        [Level::WARNING
-            .primary_title(format!(
-                "doc comments not supported on `{}` nodes",
-                self.node_type
-            ))
-            .element(
-                Snippet::source(source)
-                    .path(path)
-                    .annotations(
-                        self.doc_comments
-                            .iter()
-                            .map(|s| AnnotationKind::Primary.span(s.into())),
-                    )
-                    .annotation(AnnotationKind::Visible.span(self.node_type.span.into())),
-            )]
-        .to_vec()
-    }
-}
-
-pub struct NameNotSupported {
-    pub name: Span,
-    pub node_type: Spanned<NodeType>,
-}
-
-impl Diagnostic for NameNotSupported {
-    fn is_error(&self) -> bool {
-        true
-    }
-
-    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
-        [Level::ERROR
-            .primary_title(format!("name not supported on `{}` nodes", self.node_type))
-            .element(
-                Snippet::source(source)
-                    .path(path)
-                    .annotation(AnnotationKind::Primary.span(self.name.into()))
-                    .annotation(AnnotationKind::Visible.span(self.node_type.span.into())),
-            )]
-        .to_vec()
-    }
-}
-
-pub struct NameRequired {
-    pub node_type: Spanned<NodeType>,
-}
-
-impl Diagnostic for NameRequired {
-    fn is_error(&self) -> bool {
-        true
-    }
-
-    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
-        [Level::ERROR
-            .primary_title(format!("name is required for `{}` nodes", self.node_type))
-            .element(
-                Snippet::source(source)
-                    .path(path)
-                    .annotation(AnnotationKind::Primary.span(self.node_type.span.into())),
-            )]
         .to_vec()
     }
 }
@@ -1521,7 +1448,7 @@ impl Diagnostic for InvalidNodeType {
                                 parent_node_type
                             )
                         } else {
-                            "node type can't be used in the root of the manifest".into()
+                            "node type can't be used as the root".into()
                         },
                     ))
                     .annotations(self.parent_node_type.map(|pnt| {

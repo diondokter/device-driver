@@ -7,10 +7,12 @@ use device_driver_common::{
     specifiers::{Access, BaseType, ByteOrder, Integer, Repeat, ResetValue, TypeConversion},
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Manifest {
-    pub objects: Vec<Object>,
+    pub description: String,
+    pub name: Spanned<Identifier>,
     pub config: DeviceConfig,
+    pub objects: Vec<Object>,
 }
 
 impl Manifest {
@@ -215,6 +217,8 @@ impl<'a> Iterator for ObjectIter<'a> {
 impl From<Device> for Manifest {
     fn from(value: Device) -> Self {
         Self {
+            description: String::new(),
+            name: value.name.clone(),
             objects: vec![Object::Device(value)],
             config: DeviceConfig::default(),
         }
@@ -921,6 +925,8 @@ mod tests {
         const NAME_ORDER: &[&str] = &["a", "b", "c", "d"];
 
         let mut manifest = Manifest {
+            description: Default::default(),
+            name: Default::default(),
             objects: vec![
                 Object::Device(Device {
                     description: String::new(),

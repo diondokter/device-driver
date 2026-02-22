@@ -1,13 +1,15 @@
-global {
+/// Hello!
+manifest dev {
     byte-order: LE,
     command-address-type: u8,
-}
 
-/// Test
-device Foo {
-    byte-order: BE,
+    /// Test
+    device Foo {
+        byte-order: BE,
 
-    block Bar {
-        
+        register Bar {
+            address: 0,
+            fields: fieldset a,
+        }
     }
 }
