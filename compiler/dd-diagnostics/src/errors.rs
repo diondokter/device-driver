@@ -1505,3 +1505,32 @@ impl Diagnostic for MissingRequiredProperty {
         .to_vec()
     }
 }
+
+pub struct InvalidSubnode {
+    pub node_type: Spanned<NodeType>,
+    pub subnode: Span,
+}
+
+impl Diagnostic for InvalidSubnode {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [Level::ERROR.primary_title("invalid subnode").element(
+            Snippet::source(source)
+                .path(path)
+                .annotation(
+                    AnnotationKind::Primary
+                        .span(self.subnode.into())
+                        .label("subnode not supported in this location"),
+                )
+                .annotation(
+                    AnnotationKind::Context
+                        .span(self.node_type.span.into())
+                        .label(format!("{} nodes don't support subnodes", self.node_type)),
+                ),
+        )]
+        .to_vec()
+    }
+}
