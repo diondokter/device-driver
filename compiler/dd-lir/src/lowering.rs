@@ -17,7 +17,7 @@ use device_driver_mir::{
 pub fn transform_devices(manifest: &mir::Manifest) -> Result<Vec<lir::Device>, DynError> {
     manifest
         .iter_devices_with_config()
-        .map(|(device, config)| {
+        .map(|(device, device_config)| {
             // Create a root block and pass the device objects to it
             let blocks = collect_into_blocks(
                 BorrowedBlock {
@@ -36,7 +36,7 @@ pub fn transform_devices(manifest: &mir::Manifest) -> Result<Vec<lir::Device>, D
                     objects: &device.objects,
                 },
                 true,
-                &device.device_config,
+                &device_config,
                 manifest,
             )
             .with_message(|| "could not collect into blocks")?;
@@ -44,7 +44,7 @@ pub fn transform_devices(manifest: &mir::Manifest) -> Result<Vec<lir::Device>, D
             Ok(lir::Device {
                 internal_address_type: find_best_internal_address_type(manifest, device),
                 blocks,
-                defmt_feature: config.defmt_feature.clone(),
+                defmt_feature: device_config.defmt_feature.clone(),
             })
         })
         .collect()
@@ -53,7 +53,7 @@ pub fn transform_devices(manifest: &mir::Manifest) -> Result<Vec<lir::Device>, D
 fn collect_into_blocks(
     block: BorrowedBlock,
     is_root: bool,
-    global_config: &mir::DeviceConfig,
+    device_config: &mir::DeviceConfig,
     manifest: &mir::Manifest,
 ) -> Result<Vec<lir::Block>, DynError> {
     let mut blocks = Vec::new();
@@ -70,7 +70,7 @@ fn collect_into_blocks(
 
     for object in objects {
         let Some(method) =
-            get_method(object, &mut blocks, global_config, manifest).with_message(|| {
+            get_method(object, &mut blocks, device_config, manifest).with_message(|| {
                 format!(
                     "could not get method for object {}",
                     object.name().original()
@@ -98,7 +98,7 @@ fn collect_into_blocks(
 fn get_method(
     object: &mir::Object,
     blocks: &mut Vec<lir::Block>,
-    global_config: &mir::DeviceConfig,
+    device_config: &mir::DeviceConfig,
     manifest: &mir::Manifest,
 ) -> Result<Option<lir::BlockMethod>, DynError> {
     let method = match object {
@@ -115,7 +115,7 @@ fn get_method(
             blocks.extend(collect_into_blocks(
                 b.into(),
                 false,
-                global_config,
+                device_config,
                 manifest,
             )?);
 
@@ -151,7 +151,7 @@ fn get_method(
                 method_type: lir::BlockMethodType::Register {
                     field_set_name: field_set.name().clone(),
                     access: *access,
-                    address_type: global_config
+                    address_type: device_config
                         .register_address_type
                         .ok_or(DynError::new(
                             format!(
@@ -161,10 +161,11 @@ fn get_method(
                         ))?
                         .value,
                     reset_value: reset_value.as_ref().map(|rv| {
-                        rv.as_array().cloned()
-                    }).ok_or(
-                        DynError::new("reset value is not an array while it should have been converted to array a mir pass"),
-                    )?,
+                        rv.as_array().cloned().ok_or(
+                            DynError::new("reset value is not an array while it should have been converted to array a mir pass"),
+                        )
+                    })
+                    .transpose()?,
                 },
             })
         }
@@ -204,7 +205,7 @@ fn get_method(
                 method_type: lir::BlockMethodType::Command {
                     field_set_name_in: field_set_in.map(|fs_in| fs_in.name().clone()),
                     field_set_name_out: field_set_out.map(|fs_out| fs_out.name().clone()),
-                    address_type: global_config
+                    address_type: device_config
                         .command_address_type
                         .ok_or(DynError::new(
                             format!(
@@ -229,7 +230,7 @@ fn get_method(
             repeat: lir::Repeat::None, // Buffers can't be repeated (for now?)
             method_type: lir::BlockMethodType::Buffer {
                 access: *access,
-                address_type: global_config
+                address_type: device_config
                     .buffer_address_type
                     .ok_or(DynError::new(
                         format!(
