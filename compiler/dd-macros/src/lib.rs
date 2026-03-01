@@ -6,7 +6,7 @@ use std::{
     path::PathBuf,
 };
 
-use device_driver_diagnostics::Metadata;
+use device_driver_diagnostics::{DynError, Metadata, ResultExt};
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use syn::LitStr;
@@ -34,80 +34,61 @@ use syn::LitStr;
 /// ```
 #[proc_macro]
 pub fn create_device(item: TokenStream) -> TokenStream {
+    match try_create_device(item) {
+        Ok(tokens) => tokens,
+        Err(e) => syn::Error::new(Span::call_site(), e.to_string())
+            .into_compile_error()
+            .into(),
+    }
+}
+
+fn try_create_device(item: TokenStream) -> Result<TokenStream, DynError> {
     let input = match syn::parse::<Input>(item) {
         Ok(i) => i,
-        Err(e) => return e.into_compile_error().into(),
+        Err(e) => return Ok(e.into_compile_error().into()),
     };
 
-    match input.generation_type {
-        GenerationType::Ddsl(source_lit) => {
-            let source = source_lit.value();
-
-            let (output, diagnostics) = device_driver_core::compile(&source);
-
-            diagnostics
-                .print_to(
-                    stderr().lock(),
-                    Metadata {
-                        source: &source,
-                        source_path: &source_lit.span().file(),
-                        term_width: None,
-                        ansi: true,
-                        unicode: true,
-                        anonymized_line_numbers: false,
-                    },
-                )
-                .unwrap();
-
-            output.parse().unwrap()
-        }
+    let (source, source_path) = match input.generation_type {
+        GenerationType::Ddsl(source_lit) => (source_lit.value(), source_lit.span().file()),
         GenerationType::Manifest(path) => {
-            let result: Result<String, syn::Error> = (|| {
-                let mut source_path = PathBuf::from(path.value());
-                if source_path.is_relative() {
-                    let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
-                    source_path = manifest_dir.join(source_path);
-                }
-
-                let mut source = String::new();
-                File::open(&source_path)
-                    .map_err(|e| {
-                        syn::Error::new(
-                            Span::call_site(),
-                            format!(
-                                "Could not open the manifest file at '{}': {e}",
-                                source_path.display()
-                            ),
-                        )
-                    })?
-                    .read_to_string(&mut source)
-                    .unwrap();
-
-                let (output, diagnostics) = device_driver_core::compile(&source);
-
-                diagnostics
-                    .print_to(
-                        stderr().lock(),
-                        Metadata {
-                            source: &source,
-                            source_path: &source_path.display().to_string(),
-                            term_width: None,
-                            ansi: true,
-                            unicode: true,
-                            anonymized_line_numbers: false,
-                        },
-                    )
-                    .unwrap();
-
-                Ok(output)
-            })();
-
-            match result {
-                Ok(tokens) => tokens.parse().unwrap(),
-                Err(e) => e.into_compile_error().into(),
+            let mut source_path = PathBuf::from(path.value());
+            if source_path.is_relative() {
+                let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
+                source_path = manifest_dir.join(source_path);
             }
+
+            let mut source = String::new();
+            let mut file = File::open(&source_path).map_err(|e| {
+                DynError::new(format!(
+                    "could not open the manifest file at '{}': {e}",
+                    source_path.display()
+                ))
+            })?;
+            file.read_to_string(&mut source)
+                .with_message(|| "could not read manifest file")?;
+            (source, source_path.display().to_string())
         }
-    }
+    };
+
+    let (output, diagnostics) = device_driver_core::compile(&source)?;
+
+    diagnostics
+        .print_to(
+            stderr().lock(),
+            Metadata {
+                source: &source,
+                source_path: &source_path,
+                term_width: None,
+                ansi: true,
+                unicode: true,
+                anonymized_line_numbers: false,
+            },
+        )
+        .unwrap();
+    output
+        .parse()
+        .map_err(|e: proc_macro::LexError| DynError::new(e.to_string()))
+        .with_message(|| "could not parse the output")
 }
 
 struct Input {

@@ -35,7 +35,10 @@ fn run() -> Result<ExitCode, DynError> {
         )
     })?;
 
-    let (output, diagnostics) = args.target.generate(&source);
+    let (output, diagnostics) = args
+        .target
+        .generate(&source)
+        .with_message(|| "internal compilation error")?;
 
     let diagnostics_has_error = diagnostics.has_error();
 
@@ -60,7 +63,7 @@ fn run() -> Result<ExitCode, DynError> {
     let output_writer: &mut dyn Write = match &args.output_path {
         Some(path) => &mut std::fs::File::create(path).with_message(|| {
             format!(
-                "Could not create the output file at: {:?}. Does its directory exist?",
+                "could not create the output file at: {:?}. Does its directory exist?",
                 path.display()
             )
         })?,
@@ -72,7 +75,7 @@ fn run() -> Result<ExitCode, DynError> {
         .write_all(output.as_bytes())
         .with_message(|| {
             format!(
-                "Could not write output to {}",
+                "could not write output to {}",
                 args.output_path
                     .map_or_else(|| "stdout".into(), |path| format!("{:?}", path.display()))
             )
@@ -88,7 +91,7 @@ pub enum Target {
 
 impl Target {
     #[must_use]
-    pub fn generate(&self, source: &str) -> (String, Diagnostics) {
+    pub fn generate(&self, source: &str) -> Result<(String, Diagnostics), DynError> {
         match self {
             Target::Rust => device_driver_core::compile(source),
         }

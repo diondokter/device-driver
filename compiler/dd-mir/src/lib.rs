@@ -2,7 +2,7 @@ use device_driver_common::{
     identifier::IdentifierRef,
     specifiers::{Repeat, RepeatSource},
 };
-use device_driver_diagnostics::Diagnostics;
+use device_driver_diagnostics::{Diagnostics, DynError};
 use device_driver_parser::Ast;
 
 use crate::model::{Device, Manifest, Object};
@@ -11,12 +11,12 @@ mod lowering;
 pub mod model;
 pub(crate) mod passes;
 
-pub fn lower_ast(ast: Ast, diagnostics: &mut Diagnostics) -> model::Manifest {
+pub fn lower_ast(ast: Ast, diagnostics: &mut Diagnostics) -> Result<model::Manifest, DynError> {
     let mut mir = lowering::lower(ast, diagnostics);
 
-    passes::run_passes(&mut mir, diagnostics);
+    passes::run_passes(&mut mir, diagnostics)?;
 
-    mir
+    Ok(mir)
 }
 
 pub fn search_object<'o>(manifest: &'o Manifest, name: &IdentifierRef) -> Option<&'o Object> {

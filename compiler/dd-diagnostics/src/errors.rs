@@ -1056,7 +1056,7 @@ impl Diagnostic for AddressTypeUndefined {
                 "add the address type as a global default or as config on the device the object is defined in"
             ).element(
                 Snippet::source(source).path(path).patch(
-                    Patch::new(self.device_config_area.start..self.device_config_area.start, format!("{}-address-type u16\n", self.object_type))
+                    Patch::new(self.device_config_area.start..self.device_config_area.start, format!("{}-address-type: u16\n", self.object_type))
                 )
             ),
             Group::with_title(

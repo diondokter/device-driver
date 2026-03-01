@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::model::{LendingIterator, Manifest, Object, Unique, UniqueId};
-use device_driver_diagnostics::Diagnostics;
+use device_driver_diagnostics::{Diagnostics, DynError, ResultExt};
 
 pub mod address_types_big_enough;
 pub mod address_types_specified;
@@ -19,7 +19,7 @@ pub mod names_unique;
 pub mod repeat_with_enums_checked;
 pub mod reset_values_converted;
 
-pub fn run_passes(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
+pub fn run_passes(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> Result<(), DynError> {
     base_types_specified::run_pass(manifest, diagnostics);
     let removals = device_name_is_pascal::run_pass(manifest, diagnostics);
     remove_objects(manifest, removals);
@@ -38,11 +38,14 @@ pub fn run_passes(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
     bool_fields_checked::run_pass(manifest, diagnostics);
     let removals = bit_ranges_validated::run_pass(manifest, diagnostics);
     remove_objects(manifest, removals);
-    let removals = address_types_specified::run_pass(manifest, diagnostics);
+    let removals = address_types_specified::run_pass(manifest, diagnostics)
+        .with_message(|| "could not finish address_types_specified MIR pass")?;
     remove_objects(manifest, removals);
     let removals = address_types_big_enough::run_pass(manifest, diagnostics);
     remove_objects(manifest, removals);
     addresses_non_overlapping::run_pass(manifest, diagnostics);
+
+    Ok(())
 }
 
 fn remove_objects(manifest: &mut Manifest, mut removals: HashSet<UniqueId>) {

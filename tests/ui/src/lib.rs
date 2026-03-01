@@ -16,7 +16,7 @@ pub fn run_test(source_paths: &[&Path], output_path: &Path) {
         let input_extension = source_path.extension().unwrap().display().to_string();
         let (transformed, diagnostics) = match &*input_extension {
             "ddsl" => {
-                let (transformed, diagnostics) = device_driver_core::compile(&source);
+                let (transformed, diagnostics) = device_driver_core::compile(&source).unwrap();
 
                 let mut diagnostics_output = String::new();
 

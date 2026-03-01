@@ -1,16 +1,17 @@
 #![doc = include_str!(concat!("../", env!("CARGO_PKG_README")))]
 
-use device_driver_diagnostics::Diagnostics;
 #[cfg(not(feature = "prettyplease"))]
 use device_driver_diagnostics::DynError;
+use device_driver_diagnostics::{Diagnostics, DynError, ResultExt};
 use itertools::Itertools;
 
-pub fn compile(source: &str) -> (String, Diagnostics) {
+pub fn compile(source: &str) -> Result<(String, Diagnostics), DynError> {
     let mut diagnostics = Diagnostics::new();
 
     let tokens = device_driver_lexer::lex(source);
     let ast = device_driver_parser::parse(&tokens, &mut diagnostics);
-    let mir = device_driver_mir::lower_ast(ast, &mut diagnostics);
+    let mir = device_driver_mir::lower_ast(ast, &mut diagnostics)
+        .with_message(|| "could not lower AST to MIR")?;
     let lir = device_driver_lir::lower_mir(mir);
     let mut code = device_driver_codegen::codegen(device_driver_codegen::Target::Rust, lir);
 
@@ -27,7 +28,7 @@ pub fn compile(source: &str) -> (String, Diagnostics) {
         ),
     };
 
-    (formatted_code, diagnostics)
+    Ok((formatted_code, diagnostics))
 }
 
 #[cfg(not(feature = "prettyplease"))]
