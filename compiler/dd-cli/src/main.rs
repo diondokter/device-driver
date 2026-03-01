@@ -90,7 +90,6 @@ pub enum Target {
 }
 
 impl Target {
-    #[must_use]
     pub fn generate(&self, source: &str) -> Result<(String, Diagnostics), DynError> {
         match self {
             Target::Rust => device_driver_core::compile(source),

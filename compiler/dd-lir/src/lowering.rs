@@ -5,6 +5,7 @@ use device_driver_common::{
     identifier::Identifier,
     specifiers::{BaseType, Integer, Repeat, RepeatSource},
 };
+use device_driver_diagnostics::{DynError, ResultExt};
 
 use crate::model as lir;
 use device_driver_mir::{
@@ -13,7 +14,7 @@ use device_driver_mir::{
     search_object,
 };
 
-pub fn transform_devices(manifest: &mir::Manifest) -> Vec<lir::Device> {
+pub fn transform_devices(manifest: &mir::Manifest) -> Result<Vec<lir::Device>, DynError> {
     manifest
         .iter_devices_with_config()
         .map(|(device, config)| {
@@ -37,13 +38,14 @@ pub fn transform_devices(manifest: &mir::Manifest) -> Vec<lir::Device> {
                 true,
                 &device.device_config,
                 manifest,
-            );
+            )
+            .with_message(|| "could not collect into blocks")?;
 
-            lir::Device {
+            Ok(lir::Device {
                 internal_address_type: find_best_internal_address_type(manifest, device),
                 blocks,
                 defmt_feature: config.defmt_feature.clone(),
-            }
+            })
         })
         .collect()
 }
@@ -53,7 +55,7 @@ fn collect_into_blocks(
     is_root: bool,
     global_config: &mir::DeviceConfig,
     manifest: &mir::Manifest,
-) -> Vec<lir::Block> {
+) -> Result<Vec<lir::Block>, DynError> {
     let mut blocks = Vec::new();
 
     let BorrowedBlock {
@@ -67,7 +69,14 @@ fn collect_into_blocks(
     let mut methods = Vec::new();
 
     for object in objects {
-        let Some(method) = get_method(object, &mut blocks, global_config, manifest) else {
+        let Some(method) =
+            get_method(object, &mut blocks, global_config, manifest).with_message(|| {
+                format!(
+                    "could not get method for object {}",
+                    object.name().original()
+                )
+            })?
+        else {
             continue;
         };
 
@@ -83,7 +92,7 @@ fn collect_into_blocks(
 
     blocks.insert(0, new_block);
 
-    blocks
+    Ok(blocks)
 }
 
 fn get_method(
@@ -91,8 +100,8 @@ fn get_method(
     blocks: &mut Vec<lir::Block>,
     global_config: &mir::DeviceConfig,
     manifest: &mir::Manifest,
-) -> Option<lir::BlockMethod> {
-    match object {
+) -> Result<Option<lir::BlockMethod>, DynError> {
+    let method = match object {
         mir::Object::Device(_) => None,
         mir::Object::Block(
             b @ mir::Block {
@@ -108,7 +117,7 @@ fn get_method(
                 false,
                 global_config,
                 manifest,
-            ));
+            )?);
 
             Some(lir::BlockMethod {
                 description: description.clone(),
@@ -130,8 +139,9 @@ fn get_method(
             reset_value,
             ..
         }) => {
-            let field_set =
-                search_object(manifest, field_set_ref).expect("Existence checked in MIR pass");
+            let field_set = search_object(manifest, field_set_ref).ok_or(DynError::new(
+                format!("fieldset {} could not be found", field_set_ref.original()),
+            ))?;
 
             Some(lir::BlockMethod {
                 description: description.clone(),
@@ -143,15 +153,18 @@ fn get_method(
                     access: *access,
                     address_type: global_config
                         .register_address_type
-                        .expect("The presence of the address type is already checked in a mir pass")
+                        .ok_or(DynError::new(
+                            format!(
+                                "no register_address_type configured for register {}. This was supposedly already checked in a MIR pass",
+                                name.original()
+                            ),
+                        ))?
                         .value,
-                    reset_value: reset_value.clone().map(|rv| {
-                        rv.as_array()
-                        .expect(
-                            "Reset value should already be converted to array here in a mir pass",
-                        )
-                        .clone()
-                    }),
+                    reset_value: reset_value.as_ref().map(|rv| {
+                        rv.as_array().cloned()
+                    }).ok_or(
+                        DynError::new("reset value is not an array while it should have been converted to array a mir pass"),
+                    )?,
                 },
             })
         }
@@ -164,12 +177,24 @@ fn get_method(
             field_set_ref_out,
             ..
         }) => {
-            let field_set_in = field_set_ref_in.as_ref().map(|id_ref| {
-                search_object(manifest, id_ref).expect("Existence checked in MIR pass")
-            });
-            let field_set_out = field_set_ref_out.as_ref().map(|id_ref| {
-                search_object(manifest, id_ref).expect("Existence checked in MIR pass")
-            });
+            let field_set_in = field_set_ref_in
+                .as_ref()
+                .map(|id_ref| {
+                    search_object(manifest, id_ref).ok_or(DynError::new(format!(
+                        "fieldset {} could not be found",
+                        id_ref.original()
+                    )))
+                })
+                .transpose()?;
+            let field_set_out = field_set_ref_out
+                .as_ref()
+                .map(|id_ref| {
+                    search_object(manifest, id_ref).ok_or(DynError::new(format!(
+                        "fieldset {} could not be found",
+                        id_ref.original()
+                    )))
+                })
+                .transpose()?;
 
             Some(lir::BlockMethod {
                 description: description.clone(),
@@ -181,7 +206,12 @@ fn get_method(
                     field_set_name_out: field_set_out.map(|fs_out| fs_out.name().clone()),
                     address_type: global_config
                         .command_address_type
-                        .expect("The presence of the address type is already checked in a mir pass")
+                        .ok_or(DynError::new(
+                            format!(
+                                "no command_address_type configured for command {}. This was supposedly already checked in a MIR pass",
+                                name.original()
+                            ),
+                        ))?
                         .value,
                 },
             })
@@ -201,14 +231,21 @@ fn get_method(
                 access: *access,
                 address_type: global_config
                     .buffer_address_type
-                    .expect("The presence of the address type is already checked in a mir pass")
+                    .ok_or(DynError::new(
+                        format!(
+                            "no buffer_address_type configured for buffer {}. This was supposedly already checked in a MIR pass",
+                            name.original()
+                        ),
+                    ))?
                     .value,
             },
         }),
         mir::Object::FieldSet(_) => None,
         mir::Object::Enum(_) => None,
         mir::Object::Extern(_) => None,
-    }
+    };
+
+    Ok(method)
 }
 
 pub fn transform_field_sets(manifest: &mir::Manifest) -> Vec<lir::FieldSet> {

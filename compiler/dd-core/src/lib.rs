@@ -12,7 +12,7 @@ pub fn compile(source: &str) -> Result<(String, Diagnostics), DynError> {
     let ast = device_driver_parser::parse(&tokens, &mut diagnostics);
     let mir = device_driver_mir::lower_ast(ast, &mut diagnostics)
         .with_message(|| "could not lower AST to MIR")?;
-    let lir = device_driver_lir::lower_mir(mir);
+    let lir = device_driver_lir::lower_mir(mir).with_message(|| "could not lower MIR to LIR")?;
     let mut code = device_driver_codegen::codegen(device_driver_codegen::Target::Rust, lir);
 
     if diagnostics.has_error() {

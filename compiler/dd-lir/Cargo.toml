@@ -11,5 +11,6 @@ rust-version.workspace = true
 [dependencies]
 device-driver-common.workspace = true
 device-driver-mir.workspace = true
+device-driver-diagnostics.workspace = true
 
 convert_case.workspace = true
