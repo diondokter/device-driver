@@ -1534,3 +1534,39 @@ impl Diagnostic for InvalidSubnode {
         .to_vec()
     }
 }
+
+pub struct SizeBitsTooLarge {
+    pub value: Span,
+    pub field_set: Span,
+}
+
+impl Diagnostic for SizeBitsTooLarge {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [
+            Level::ERROR.primary_title("size-bits too large").element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(AnnotationKind::Context.span(self.field_set.into()))
+                    .annotation(
+                        AnnotationKind::Primary
+                            .span(self.value.into())
+                            .label("value too large"),
+                    ),
+            ),
+            Level::HELP
+                .secondary_title(
+                    "the maximum value of size-bits is 2^32-1. Keep the value below the limit",
+                )
+                .element(
+                    Snippet::source(source)
+                        .path(path)
+                        .patch(Patch::new(self.value.into(), "0xFFFF_FFFF")),
+                ),
+        ]
+        .to_vec()
+    }
+}

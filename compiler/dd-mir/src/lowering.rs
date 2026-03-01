@@ -10,7 +10,8 @@ use device_driver_diagnostics::{
     Diagnostics,
     errors::{
         DuplicateProperty, InvalidExpressionType, InvalidIdentifier, InvalidNodeType,
-        InvalidPropertyName, InvalidSubnode, MissingRequiredProperty, UnknownNodeType,
+        InvalidPropertyName, InvalidSubnode, MissingRequiredProperty, SizeBitsTooLarge,
+        UnknownNodeType,
     },
 };
 use device_driver_parser::{Ast, Expression, Node};
@@ -808,6 +809,33 @@ impl Shape for FieldSet {
 
     fn name(&mut self) -> &mut Spanned<Identifier> {
         &mut self.name
+    }
+
+    fn supported_properties(&mut self) -> HashMap<Option<&'static str>, PropertyInfo<Self>> {
+        [(
+            Some("size-bits"),
+            PropertyInfo {
+                allowed_expression_types: vec![Expression::Number(8)],
+                multiple_allowed: false,
+                required: true,
+                setter: |fs: &mut Self, e, fs_node, diagnostics, _| match u32::try_from(
+                    e.as_number().unwrap(),
+                ) {
+                    Ok(size_bits) => {
+                        fs.size_bits = size_bits.with_span(e.span);
+                        false
+                    }
+                    Err(_) => {
+                        diagnostics.add(SizeBitsTooLarge {
+                            value: e.span,
+                            field_set: fs_node.span,
+                        });
+                        true
+                    }
+                },
+            },
+        )]
+        .into()
     }
 
     // TODO: Fill in rest of properties and subnodes
