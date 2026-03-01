@@ -1,7 +1,7 @@
 /// Hello!
 manifest dev {
     byte-order: LE,
-    command-address-type: u8,
+    register-address-type: u8,
 
     /// Test
     device Foo {

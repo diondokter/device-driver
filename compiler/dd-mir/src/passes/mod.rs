@@ -10,6 +10,7 @@ pub mod base_types_specified;
 pub mod bit_ranges_validated;
 pub mod bool_fields_checked;
 pub mod byte_order_specified;
+pub mod device_configs_owned;
 pub mod device_name_is_pascal;
 pub mod enum_values_checked;
 pub mod extern_values_checked;
@@ -20,6 +21,7 @@ pub mod repeat_with_enums_checked;
 pub mod reset_values_converted;
 
 pub fn run_passes(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> Result<(), DynError> {
+    device_configs_owned::run_pass(manifest);
     base_types_specified::run_pass(manifest, diagnostics);
     let removals = device_name_is_pascal::run_pass(manifest, diagnostics);
     remove_objects(manifest, removals);

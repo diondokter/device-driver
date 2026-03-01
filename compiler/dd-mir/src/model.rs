@@ -248,7 +248,7 @@ impl Device {
 }
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct DeviceConfig {
-    /// The id of the device that owns this config. If None, then this is a global config
+    /// The id of the device that owns this config. If None, then this is a manifest config
     pub owner: Option<UniqueId>,
     pub register_access: Option<Access>,
     pub field_access: Option<Access>,
