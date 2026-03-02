@@ -10,7 +10,8 @@ manifest dev {
         register Bar {
             address: 0,
             fields: fieldset a {
-                size-bits: 16
+                size-bits: 16,
+                byte-order: LE
             },
         }
     }

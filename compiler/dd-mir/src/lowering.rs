@@ -4,7 +4,7 @@ use crate::model::{Block, Device, FieldSet, Manifest, Object, Register};
 use device_driver_common::{
     identifier::{Identifier, IdentifierRef},
     span::{Span, SpanExt, Spanned},
-    specifiers::{NodeType, Repeat, RepeatSource, ResetValue},
+    specifiers::{ByteOrder, NodeType, Repeat, RepeatSource, ResetValue},
 };
 use device_driver_diagnostics::{
     Diagnostics,
@@ -812,29 +812,43 @@ impl Shape for FieldSet {
     }
 
     fn supported_properties(&mut self) -> HashMap<Option<&'static str>, PropertyInfo<Self>> {
-        [(
-            Some("size-bits"),
-            PropertyInfo {
-                allowed_expression_types: vec![Expression::Number(8)],
-                multiple_allowed: false,
-                required: true,
-                setter: |fs: &mut Self, e, fs_node, diagnostics, _| match u32::try_from(
-                    e.as_number().unwrap(),
-                ) {
-                    Ok(size_bits) => {
-                        fs.size_bits = size_bits.with_span(e.span);
-                        false
-                    }
-                    Err(_) => {
-                        diagnostics.add(SizeBitsTooLarge {
-                            value: e.span,
-                            field_set: fs_node.span,
-                        });
-                        true
-                    }
+        [
+            (
+                Some("size-bits"),
+                PropertyInfo {
+                    allowed_expression_types: vec![Expression::Number(8)],
+                    multiple_allowed: false,
+                    required: true,
+                    setter: |fs: &mut Self, e, fs_node, diagnostics, _| match u32::try_from(
+                        e.as_number().unwrap(),
+                    ) {
+                        Ok(size_bits) => {
+                            fs.size_bits = size_bits.with_span(e.span);
+                            false
+                        }
+                        Err(_) => {
+                            diagnostics.add(SizeBitsTooLarge {
+                                value: e.span,
+                                field_set: fs_node.span,
+                            });
+                            true
+                        }
+                    },
                 },
-            },
-        )]
+            ),
+            (
+                Some("byte-order"),
+                PropertyInfo {
+                    allowed_expression_types: vec![Expression::ByteOrder(ByteOrder::LE)],
+                    multiple_allowed: false,
+                    required: false,
+                    setter: |fs: &mut Self, e, _, _, _| {
+                        fs.byte_order = Some(e.as_byte_order().unwrap());
+                        false
+                    },
+                },
+            ),
+        ]
         .into()
     }
 
