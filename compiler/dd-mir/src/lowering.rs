@@ -1,4 +1,4 @@
-use std::{collections::HashMap, mem, str::FromStr};
+use std::{collections::HashMap, mem, str::FromStr, sync::OnceLock};
 
 use crate::model::{Block, Device, FieldSet, Manifest, Object, Register};
 use device_driver_common::{
@@ -149,7 +149,7 @@ fn parse_node_to_shape<S: Shape>(
 
     // Properties
 
-    let mut possible_properties = target.supported_properties();
+    let mut possible_properties = (*S::supported_properties()).clone();
     let mut removed_possible_properties = HashMap::new();
     for property in &node.properties {
         let property_name = &property.name.as_ref().map(|n| n.val);
@@ -175,8 +175,7 @@ fn parse_node_to_shape<S: Shape>(
                         diagnostics.add(InvalidPropertyName {
                             property: name.span,
                             node_type: S::NODE_TYPE.with_span(node.node_type.span),
-                            expected_names: target
-                                .supported_properties()
+                            expected_names: S::supported_properties()
                                 .keys()
                                 .filter_map(|k| *k)
                                 .collect(),
@@ -303,16 +302,16 @@ fn parse_node_to_shape<S: Shape>(
     }
 }
 
-trait Shape: Default {
+type Properties<S> = HashMap<Option<&'static str>, PropertyInfo<S>>;
+
+trait Shape: Default + 'static {
     const NODE_TYPE: NodeType;
 
     fn doc_comments(&mut self) -> &mut String;
     fn name(&mut self) -> &mut Spanned<Identifier>;
 
     /// All the supported properties. An empty name string matches anything, None only matches anonymous properties
-    fn supported_properties(&mut self) -> HashMap<Option<&'static str>, PropertyInfo<Self>> {
-        HashMap::new()
-    }
+    fn supported_properties() -> &'static Properties<Self>;
 
     /// Returns Some if the shape support child objects. It will be populated from the sub-nodes.
     /// The vec are the objects, the slice is the allowed node types.
@@ -341,6 +340,17 @@ struct PropertyInfo<T: ?Sized> {
     ) -> bool,
 }
 
+impl<T: ?Sized> Clone for PropertyInfo<T> {
+    fn clone(&self) -> Self {
+        Self {
+            allowed_expression_types: self.allowed_expression_types.clone(),
+            multiple_allowed: self.multiple_allowed,
+            required: self.required,
+            setter: self.setter,
+        }
+    }
+}
+
 impl Shape for Manifest {
     const NODE_TYPE: NodeType = NodeType::Manifest;
 
@@ -352,99 +362,102 @@ impl Shape for Manifest {
         &mut self.name
     }
 
-    fn supported_properties(&mut self) -> HashMap<Option<&'static str>, PropertyInfo<Self>> {
-        [
-            (
-                Some("register-access"),
-                PropertyInfo {
-                    allowed_expression_types: vec![Expression::Access(Default::default())],
-                    multiple_allowed: false,
-                    required: false,
-                    setter: |manifest: &mut Self, val, _, _, _| {
-                        manifest.config.register_access = Some(val.as_access().unwrap());
-                        false
+    fn supported_properties() -> &'static Properties<Self> {
+        static MAP: OnceLock<Properties<Manifest>> = OnceLock::new();
+        MAP.get_or_init(|| {
+            [
+                (
+                    Some("register-access"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![Expression::Access(Default::default())],
+                        multiple_allowed: false,
+                        required: false,
+                        setter: |manifest: &mut Self, val, _, _, _| {
+                            manifest.config.register_access = Some(val.as_access().unwrap());
+                            false
+                        },
                     },
-                },
-            ),
-            (
-                Some("field-access"),
-                PropertyInfo {
-                    allowed_expression_types: vec![Expression::Access(Default::default())],
-                    multiple_allowed: false,
-                    required: false,
-                    setter: |manifest: &mut Self, val, _, _, _| {
-                        manifest.config.field_access = Some(val.as_access().unwrap());
-                        false
+                ),
+                (
+                    Some("field-access"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![Expression::Access(Default::default())],
+                        multiple_allowed: false,
+                        required: false,
+                        setter: |manifest: &mut Self, val, _, _, _| {
+                            manifest.config.field_access = Some(val.as_access().unwrap());
+                            false
+                        },
                     },
-                },
-            ),
-            (
-                Some("buffer-access"),
-                PropertyInfo {
-                    allowed_expression_types: vec![Expression::Access(Default::default())],
-                    multiple_allowed: false,
-                    required: false,
-                    setter: |manifest: &mut Self, val, _, _, _| {
-                        manifest.config.buffer_access = Some(val.as_access().unwrap());
-                        false
+                ),
+                (
+                    Some("buffer-access"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![Expression::Access(Default::default())],
+                        multiple_allowed: false,
+                        required: false,
+                        setter: |manifest: &mut Self, val, _, _, _| {
+                            manifest.config.buffer_access = Some(val.as_access().unwrap());
+                            false
+                        },
                     },
-                },
-            ),
-            (
-                Some("byte-order"),
-                PropertyInfo {
-                    allowed_expression_types: vec![Expression::ByteOrder(Default::default())],
-                    multiple_allowed: false,
-                    required: false,
-                    setter: |manifest: &mut Self, val, _, _, _| {
-                        manifest.config.byte_order = Some(val.as_byte_order().unwrap());
-                        false
+                ),
+                (
+                    Some("byte-order"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![Expression::ByteOrder(Default::default())],
+                        multiple_allowed: false,
+                        required: false,
+                        setter: |manifest: &mut Self, val, _, _, _| {
+                            manifest.config.byte_order = Some(val.as_byte_order().unwrap());
+                            false
+                        },
                     },
-                },
-            ),
-            (
-                Some("register-address-type"),
-                PropertyInfo {
-                    allowed_expression_types: vec![Expression::Integer(Default::default())],
-                    multiple_allowed: false,
-                    required: false,
-                    setter: |manifest: &mut Self, val, _, _, _| {
-                        manifest.config.register_address_type =
-                            Some(val.as_integer().unwrap().with_span(val.span));
-                        false
+                ),
+                (
+                    Some("register-address-type"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![Expression::Integer(Default::default())],
+                        multiple_allowed: false,
+                        required: false,
+                        setter: |manifest: &mut Self, val, _, _, _| {
+                            manifest.config.register_address_type =
+                                Some(val.as_integer().unwrap().with_span(val.span));
+                            false
+                        },
                     },
-                },
-            ),
-            (
-                Some("command-address-type"),
-                PropertyInfo {
-                    allowed_expression_types: vec![Expression::Integer(Default::default())],
-                    multiple_allowed: false,
-                    required: false,
-                    setter: |manifest: &mut Self, val, _, _, _| {
-                        manifest.config.command_address_type =
-                            Some(val.as_integer().unwrap().with_span(val.span));
-                        false
+                ),
+                (
+                    Some("command-address-type"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![Expression::Integer(Default::default())],
+                        multiple_allowed: false,
+                        required: false,
+                        setter: |manifest: &mut Self, val, _, _, _| {
+                            manifest.config.command_address_type =
+                                Some(val.as_integer().unwrap().with_span(val.span));
+                            false
+                        },
                     },
-                },
-            ),
-            (
-                Some("buffer-address-type"),
-                PropertyInfo {
-                    allowed_expression_types: vec![Expression::Integer(Default::default())],
-                    multiple_allowed: false,
-                    required: false,
-                    setter: |manifest: &mut Self, val, _, _, _| {
-                        manifest.config.buffer_address_type =
-                            Some(val.as_integer().unwrap().with_span(val.span));
-                        false
+                ),
+                (
+                    Some("buffer-address-type"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![Expression::Integer(Default::default())],
+                        multiple_allowed: false,
+                        required: false,
+                        setter: |manifest: &mut Self, val, _, _, _| {
+                            manifest.config.buffer_address_type =
+                                Some(val.as_integer().unwrap().with_span(val.span));
+                            false
+                        },
                     },
-                },
-            ),
-            // TODO: name-word-boundaries
-            // TODO: defmt-feature
-        ]
-        .into()
+                ),
+                // TODO: name-word-boundaries
+                // TODO: defmt-feature
+            ]
+            .into()
+        })
     }
 
     fn child_objects(&mut self) -> Option<(&mut Vec<Object>, Vec<NodeType>)> {
@@ -471,99 +484,102 @@ impl Shape for Device {
         &mut self.name
     }
 
-    fn supported_properties(&mut self) -> HashMap<Option<&'static str>, PropertyInfo<Self>> {
-        [
-            (
-                Some("register-access"),
-                PropertyInfo {
-                    allowed_expression_types: vec![Expression::Access(Default::default())],
-                    multiple_allowed: false,
-                    required: false,
-                    setter: |dev: &mut Self, val, _, _, _| {
-                        dev.device_config.register_access = Some(val.as_access().unwrap());
-                        false
+    fn supported_properties() -> &'static Properties<Self> {
+        static MAP: OnceLock<Properties<Device>> = OnceLock::new();
+        MAP.get_or_init(|| {
+            [
+                (
+                    Some("register-access"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![Expression::Access(Default::default())],
+                        multiple_allowed: false,
+                        required: false,
+                        setter: |dev: &mut Self, val, _, _, _| {
+                            dev.device_config.register_access = Some(val.as_access().unwrap());
+                            false
+                        },
                     },
-                },
-            ),
-            (
-                Some("field-access"),
-                PropertyInfo {
-                    allowed_expression_types: vec![Expression::Access(Default::default())],
-                    multiple_allowed: false,
-                    required: false,
-                    setter: |dev: &mut Self, val, _, _, _| {
-                        dev.device_config.field_access = Some(val.as_access().unwrap());
-                        false
+                ),
+                (
+                    Some("field-access"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![Expression::Access(Default::default())],
+                        multiple_allowed: false,
+                        required: false,
+                        setter: |dev: &mut Self, val, _, _, _| {
+                            dev.device_config.field_access = Some(val.as_access().unwrap());
+                            false
+                        },
                     },
-                },
-            ),
-            (
-                Some("buffer-access"),
-                PropertyInfo {
-                    allowed_expression_types: vec![Expression::Access(Default::default())],
-                    multiple_allowed: false,
-                    required: false,
-                    setter: |dev: &mut Self, val, _, _, _| {
-                        dev.device_config.buffer_access = Some(val.as_access().unwrap());
-                        false
+                ),
+                (
+                    Some("buffer-access"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![Expression::Access(Default::default())],
+                        multiple_allowed: false,
+                        required: false,
+                        setter: |dev: &mut Self, val, _, _, _| {
+                            dev.device_config.buffer_access = Some(val.as_access().unwrap());
+                            false
+                        },
                     },
-                },
-            ),
-            (
-                Some("byte-order"),
-                PropertyInfo {
-                    allowed_expression_types: vec![Expression::ByteOrder(Default::default())],
-                    multiple_allowed: false,
-                    required: false,
-                    setter: |dev: &mut Self, val, _, _, _| {
-                        dev.device_config.byte_order = Some(val.as_byte_order().unwrap());
-                        false
+                ),
+                (
+                    Some("byte-order"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![Expression::ByteOrder(Default::default())],
+                        multiple_allowed: false,
+                        required: false,
+                        setter: |dev: &mut Self, val, _, _, _| {
+                            dev.device_config.byte_order = Some(val.as_byte_order().unwrap());
+                            false
+                        },
                     },
-                },
-            ),
-            (
-                Some("register-address-type"),
-                PropertyInfo {
-                    allowed_expression_types: vec![Expression::Integer(Default::default())],
-                    multiple_allowed: false,
-                    required: false,
-                    setter: |dev: &mut Self, val, _, _, _| {
-                        dev.device_config.register_address_type =
-                            Some(val.as_integer().unwrap().with_span(val.span));
-                        false
+                ),
+                (
+                    Some("register-address-type"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![Expression::Integer(Default::default())],
+                        multiple_allowed: false,
+                        required: false,
+                        setter: |dev: &mut Self, val, _, _, _| {
+                            dev.device_config.register_address_type =
+                                Some(val.as_integer().unwrap().with_span(val.span));
+                            false
+                        },
                     },
-                },
-            ),
-            (
-                Some("command-address-type"),
-                PropertyInfo {
-                    allowed_expression_types: vec![Expression::Integer(Default::default())],
-                    multiple_allowed: false,
-                    required: false,
-                    setter: |dev: &mut Self, val, _, _, _| {
-                        dev.device_config.command_address_type =
-                            Some(val.as_integer().unwrap().with_span(val.span));
-                        false
+                ),
+                (
+                    Some("command-address-type"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![Expression::Integer(Default::default())],
+                        multiple_allowed: false,
+                        required: false,
+                        setter: |dev: &mut Self, val, _, _, _| {
+                            dev.device_config.command_address_type =
+                                Some(val.as_integer().unwrap().with_span(val.span));
+                            false
+                        },
                     },
-                },
-            ),
-            (
-                Some("buffer-address-type"),
-                PropertyInfo {
-                    allowed_expression_types: vec![Expression::Integer(Default::default())],
-                    multiple_allowed: false,
-                    required: false,
-                    setter: |dev: &mut Self, val, _, _, _| {
-                        dev.device_config.buffer_address_type =
-                            Some(val.as_integer().unwrap().with_span(val.span));
-                        false
+                ),
+                (
+                    Some("buffer-address-type"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![Expression::Integer(Default::default())],
+                        multiple_allowed: false,
+                        required: false,
+                        setter: |dev: &mut Self, val, _, _, _| {
+                            dev.device_config.buffer_address_type =
+                                Some(val.as_integer().unwrap().with_span(val.span));
+                            false
+                        },
                     },
-                },
-            ),
-            // TODO: name-word-boundaries
-            // TODO: defmt-feature
-        ]
-        .into()
+                ),
+                // TODO: name-word-boundaries
+                // TODO: defmt-feature
+            ]
+            .into()
+        })
     }
 
     fn child_objects(&mut self) -> Option<(&mut Vec<Object>, Vec<NodeType>)> {
@@ -593,36 +609,39 @@ impl Shape for Block {
         &mut self.name
     }
 
-    fn supported_properties(&mut self) -> HashMap<Option<&'static str>, PropertyInfo<Self>> {
-        [
-            (
-                Some("address-offset"),
-                PropertyInfo {
-                    allowed_expression_types: vec![Expression::Number(Default::default())],
-                    multiple_allowed: false,
-                    required: true,
-                    setter: |block: &mut Self, expression, _, _, _| {
-                        block.address_offset =
-                            expression.as_number().unwrap().with_span(expression.span);
-                        false
+    fn supported_properties() -> &'static Properties<Self> {
+        static MAP: OnceLock<Properties<Block>> = OnceLock::new();
+        MAP.get_or_init(|| {
+            [
+                (
+                    Some("address-offset"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![Expression::Number(Default::default())],
+                        multiple_allowed: false,
+                        required: true,
+                        setter: |block: &mut Self, expression, _, _, _| {
+                            block.address_offset =
+                                expression.as_number().unwrap().with_span(expression.span);
+                            false
+                        },
                     },
-                },
-            ),
-            (
-                Some("repeat"),
-                PropertyInfo {
-                    allowed_expression_types: vec![Expression::Repeat(Default::default())],
-                    multiple_allowed: false,
-                    required: false,
-                    setter: |block: &mut Self, expression, _, _, _| {
-                        block.address_offset =
-                            expression.as_number().unwrap().with_span(expression.span);
-                        false
+                ),
+                (
+                    Some("repeat"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![Expression::Repeat(Default::default())],
+                        multiple_allowed: false,
+                        required: false,
+                        setter: |block: &mut Self, expression, _, _, _| {
+                            block.address_offset =
+                                expression.as_number().unwrap().with_span(expression.span);
+                            false
+                        },
                     },
-                },
-            ),
-        ]
-        .into()
+                ),
+            ]
+            .into()
+        })
     }
 
     fn child_objects(&mut self) -> Option<(&mut Vec<Object>, Vec<NodeType>)> {
@@ -652,151 +671,156 @@ impl Shape for Register {
         &mut self.name
     }
 
-    fn supported_properties(&mut self) -> HashMap<Option<&'static str>, PropertyInfo<Self>> {
-        [
-            (
-                Some("address"),
-                PropertyInfo {
-                    allowed_expression_types: vec![Expression::Number(Default::default())],
-                    multiple_allowed: false,
-                    required: true,
-                    setter: |r: &mut Self, e, _, _, _| {
-                        r.address = e.as_number().unwrap().with_span(e.span);
-                        false
-                    },
-                },
-            ),
-            (
-                Some("access"),
-                PropertyInfo {
-                    allowed_expression_types: vec![Expression::Access(Default::default())],
-                    multiple_allowed: false,
-                    required: false,
-                    setter: |r: &mut Self, e, _, _, _| {
-                        r.access = e.as_access().unwrap();
-                        false
-                    },
-                },
-            ),
-            (
-                Some("address-overlap"),
-                PropertyInfo {
-                    allowed_expression_types: vec![Expression::Allow],
-                    multiple_allowed: false,
-                    required: false,
-                    setter: |r: &mut Self, _, _, _, _| {
-                        r.allow_address_overlap = true;
-                        false
-                    },
-                },
-            ),
-            (
-                Some("reset"),
-                PropertyInfo {
-                    allowed_expression_types: vec![
-                        Expression::ResetArray(vec![12, 34]),
-                        Expression::ResetNumber(1234),
-                    ],
-                    multiple_allowed: false,
-                    required: false,
-                    setter: |r: &mut Self, e, _, _, _| match &e.value {
-                        Expression::ResetNumber(num) => {
-                            r.reset_value = Some(ResetValue::Integer(*num).with_span(e.span));
+    fn supported_properties() -> &'static Properties<Self> {
+        static MAP: OnceLock<Properties<Register>> = OnceLock::new();
+        MAP.get_or_init(|| {
+            [
+                (
+                    Some("address"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![Expression::Number(Default::default())],
+                        multiple_allowed: false,
+                        required: true,
+                        setter: |r: &mut Self, e, _, _, _| {
+                            r.address = e.as_number().unwrap().with_span(e.span);
                             false
-                        }
-                        Expression::ResetArray(bytes) => {
-                            r.reset_value =
-                                Some(ResetValue::Array(bytes.clone()).with_span(e.span));
-                            false
-                        }
-                        _ => unreachable!(),
+                        },
                     },
-                },
-            ),
-            (
-                Some("repeat"),
-                PropertyInfo {
-                    allowed_expression_types: vec![Expression::Repeat(Default::default())],
-                    multiple_allowed: false,
-                    required: false,
-                    setter: |r: &mut Self, e, _, _, _| {
-                        let repeat = e.as_repeat().unwrap();
-                        r.repeat = Some(Repeat {
-                            source: match repeat.source {
-                                device_driver_parser::RepeatSource::Count(count) => {
-                                    RepeatSource::Count(count as u64)
-                                }
-                                device_driver_parser::RepeatSource::Enum(ident) => {
-                                    RepeatSource::Enum(
-                                        IdentifierRef::new(ident.val.into()).with_span(ident.span),
-                                    )
-                                }
-                            },
-                            stride: repeat.stride as i128,
-                        });
-                        false
-                    },
-                },
-            ),
-            (
-                Some("fields"),
-                PropertyInfo {
-                    allowed_expression_types: vec![
-                        Expression::TypeReference(device_driver_parser::Ident {
-                            val: "MyFieldset",
-                            span: Span::default(),
-                        }),
-                        Expression::SubNode(Box::new(Node {
-                            doc_comments: vec![],
-                            node_type: device_driver_parser::Ident {
-                                val: "fieldset",
-                                span: Default::default(),
-                            },
-                            name: device_driver_parser::Ident {
-                                val: "MyFieldSet",
-                                span: Default::default(),
-                            },
-                            type_specifier: None,
-                            properties: vec![],
-                            sub_nodes: vec![],
-                            span: Default::default(),
-                        })),
-                    ],
-                    multiple_allowed: false,
-                    required: true,
-                    setter: |r: &mut Self, e, node, diagnostics, sibling_objects| match &e.value {
-                        Expression::TypeReference(ident) => {
-                            r.field_set_ref = IdentifierRef::new(ident.val.into());
+                ),
+                (
+                    Some("access"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![Expression::Access(Default::default())],
+                        multiple_allowed: false,
+                        required: false,
+                        setter: |r: &mut Self, e, _, _, _| {
+                            r.access = e.as_access().unwrap();
                             false
-                        }
-                        Expression::SubNode(sub_node) => {
-                            let result = lower_node(
-                                sub_node,
-                                Some(NodeType::Register.with_span(node.node_type.span)),
-                                &[NodeType::FieldSet],
-                                diagnostics,
-                            );
-
-                            match result {
-                                LowerResult::Objects(fs, fs_siblings) => {
-                                    r.field_set_ref = fs.name().take_ref();
-                                    sibling_objects.push(fs);
-                                    sibling_objects.extend(fs_siblings);
-                                    false
-                                }
-                                LowerResult::Error(fs_siblings) => {
-                                    sibling_objects.extend(fs_siblings);
-                                    true
-                                }
-                                LowerResult::Manifest(_) => unreachable!(),
+                        },
+                    },
+                ),
+                (
+                    Some("address-overlap"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![Expression::Allow],
+                        multiple_allowed: false,
+                        required: false,
+                        setter: |r: &mut Self, _, _, _, _| {
+                            r.allow_address_overlap = true;
+                            false
+                        },
+                    },
+                ),
+                (
+                    Some("reset"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![
+                            Expression::ResetArray(vec![12, 34]),
+                            Expression::ResetNumber(1234),
+                        ],
+                        multiple_allowed: false,
+                        required: false,
+                        setter: |r: &mut Self, e, _, _, _| match &e.value {
+                            Expression::ResetNumber(num) => {
+                                r.reset_value = Some(ResetValue::Integer(*num).with_span(e.span));
+                                false
                             }
-                        }
-                        _ => unreachable!(),
+                            Expression::ResetArray(bytes) => {
+                                r.reset_value =
+                                    Some(ResetValue::Array(bytes.clone()).with_span(e.span));
+                                false
+                            }
+                            _ => unreachable!(),
+                        },
                     },
-                },
-            ),
-        ]
-        .into()
+                ),
+                (
+                    Some("repeat"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![Expression::Repeat(Default::default())],
+                        multiple_allowed: false,
+                        required: false,
+                        setter: |r: &mut Self, e, _, _, _| {
+                            let repeat = e.as_repeat().unwrap();
+                            r.repeat = Some(Repeat {
+                                source: match repeat.source {
+                                    device_driver_parser::RepeatSource::Count(count) => {
+                                        RepeatSource::Count(count as u64)
+                                    }
+                                    device_driver_parser::RepeatSource::Enum(ident) => {
+                                        RepeatSource::Enum(
+                                            IdentifierRef::new(ident.val.into())
+                                                .with_span(ident.span),
+                                        )
+                                    }
+                                },
+                                stride: repeat.stride as i128,
+                            });
+                            false
+                        },
+                    },
+                ),
+                (
+                    Some("fields"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![
+                            Expression::TypeReference(device_driver_parser::Ident {
+                                val: "MyFieldset",
+                                span: Span::default(),
+                            }),
+                            Expression::SubNode(Box::new(Node {
+                                doc_comments: vec![],
+                                node_type: device_driver_parser::Ident {
+                                    val: "fieldset",
+                                    span: Default::default(),
+                                },
+                                name: device_driver_parser::Ident {
+                                    val: "MyFieldSet",
+                                    span: Default::default(),
+                                },
+                                type_specifier: None,
+                                properties: vec![],
+                                sub_nodes: vec![],
+                                span: Default::default(),
+                            })),
+                        ],
+                        multiple_allowed: false,
+                        required: true,
+                        setter: |r: &mut Self, e, node, diagnostics, sibling_objects| match &e.value
+                        {
+                            Expression::TypeReference(ident) => {
+                                r.field_set_ref = IdentifierRef::new(ident.val.into());
+                                false
+                            }
+                            Expression::SubNode(sub_node) => {
+                                let result = lower_node(
+                                    sub_node,
+                                    Some(NodeType::Register.with_span(node.node_type.span)),
+                                    &[NodeType::FieldSet],
+                                    diagnostics,
+                                );
+
+                                match result {
+                                    LowerResult::Objects(fs, fs_siblings) => {
+                                        r.field_set_ref = fs.name().take_ref();
+                                        sibling_objects.push(fs);
+                                        sibling_objects.extend(fs_siblings);
+                                        false
+                                    }
+                                    LowerResult::Error(fs_siblings) => {
+                                        sibling_objects.extend(fs_siblings);
+                                        true
+                                    }
+                                    LowerResult::Manifest(_) => unreachable!(),
+                                }
+                            }
+                            _ => unreachable!(),
+                        },
+                    },
+                ),
+            ]
+            .into()
+        })
     }
 }
 
@@ -811,45 +835,48 @@ impl Shape for FieldSet {
         &mut self.name
     }
 
-    fn supported_properties(&mut self) -> HashMap<Option<&'static str>, PropertyInfo<Self>> {
-        [
-            (
-                Some("size-bits"),
-                PropertyInfo {
-                    allowed_expression_types: vec![Expression::Number(8)],
-                    multiple_allowed: false,
-                    required: true,
-                    setter: |fs: &mut Self, e, fs_node, diagnostics, _| match u32::try_from(
-                        e.as_number().unwrap(),
-                    ) {
-                        Ok(size_bits) => {
-                            fs.size_bits = size_bits.with_span(e.span);
+    fn supported_properties() -> &'static Properties<Self> {
+        static MAP: OnceLock<Properties<FieldSet>> = OnceLock::new();
+        MAP.get_or_init(|| {
+            [
+                (
+                    Some("size-bits"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![Expression::Number(8)],
+                        multiple_allowed: false,
+                        required: true,
+                        setter: |fs: &mut Self, e, fs_node, diagnostics, _| match u32::try_from(
+                            e.as_number().unwrap(),
+                        ) {
+                            Ok(size_bits) => {
+                                fs.size_bits = size_bits.with_span(e.span);
+                                false
+                            }
+                            Err(_) => {
+                                diagnostics.add(SizeBitsTooLarge {
+                                    value: e.span,
+                                    field_set: fs_node.span,
+                                });
+                                true
+                            }
+                        },
+                    },
+                ),
+                (
+                    Some("byte-order"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![Expression::ByteOrder(ByteOrder::LE)],
+                        multiple_allowed: false,
+                        required: false,
+                        setter: |fs: &mut Self, e, _, _, _| {
+                            fs.byte_order = Some(e.as_byte_order().unwrap());
                             false
-                        }
-                        Err(_) => {
-                            diagnostics.add(SizeBitsTooLarge {
-                                value: e.span,
-                                field_set: fs_node.span,
-                            });
-                            true
-                        }
+                        },
                     },
-                },
-            ),
-            (
-                Some("byte-order"),
-                PropertyInfo {
-                    allowed_expression_types: vec![Expression::ByteOrder(ByteOrder::LE)],
-                    multiple_allowed: false,
-                    required: false,
-                    setter: |fs: &mut Self, e, _, _, _| {
-                        fs.byte_order = Some(e.as_byte_order().unwrap());
-                        false
-                    },
-                },
-            ),
-        ]
-        .into()
+                ),
+            ]
+            .into()
+        })
     }
 
     // TODO: Fill in rest of properties and subnodes
