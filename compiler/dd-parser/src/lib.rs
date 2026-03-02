@@ -466,9 +466,14 @@ where
             .collect::<Vec<_>>();
         // Body with comma forced between properties and nodes
         let node_body = choice((
+            // Properties + comma + nodes
             properties
+                .clone()
                 .then_ignore(just(Token::Comma))
                 .then(nodes.clone()),
+            // Properties + no comma + no nodes
+            properties.clone().then(empty().to(Vec::new())),
+            // No properties + no comma + nodes
             empty().to(Vec::<Spanned<Property<'_>>>::new()).then(nodes),
         ))
         .delimited_by(just(Token::CurlyOpen), just(Token::CurlyClose))
