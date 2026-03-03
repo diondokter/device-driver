@@ -11,7 +11,8 @@ manifest dev {
             address: 0,
             fields: fieldset a {
                 size-bits: 16,
-                byte-order: LE
+                byte-order: LE,
+                bit-overlap: allow,
             },
         }
     }

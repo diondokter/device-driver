@@ -178,6 +178,7 @@ fn parse_node_to_shape<S: Shape>(
                             expected_names: S::supported_properties()
                                 .keys()
                                 .filter_map(|k| *k)
+                                .sorted()
                                 .collect(),
                         });
                     }
@@ -870,6 +871,18 @@ impl Shape for FieldSet {
                         required: false,
                         setter: |fs: &mut Self, e, _, _, _| {
                             fs.byte_order = Some(e.as_byte_order().unwrap());
+                            false
+                        },
+                    },
+                ),
+                (
+                    Some("bit-overlap"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![Expression::Allow],
+                        multiple_allowed: false,
+                        required: false,
+                        setter: |fs: &mut Self, _, _, _, _| {
+                            fs.allow_bit_overlap = true;
                             false
                         },
                     },
