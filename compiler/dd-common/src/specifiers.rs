@@ -305,6 +305,7 @@ pub enum NodeType {
     FieldSet,
     Enum,
     Extern,
+    Field,
 }
 
 impl FromStr for NodeType {
@@ -321,6 +322,7 @@ impl FromStr for NodeType {
             "fieldset" => Ok(Self::FieldSet),
             "enum" => Ok(Self::Enum),
             "extern" => Ok(Self::Extern),
+            "field" => Ok(Self::Field),
             _ => Err(()),
         }
     }
@@ -329,7 +331,7 @@ impl FromStr for NodeType {
 impl VariantNames for NodeType {
     const VARIANTS: &'static [&'static str] = &[
         "manifest", "device", "block", "register", "command", "buffer", "fieldset", "enum",
-        "extern",
+        "extern", "field",
     ];
 }
 

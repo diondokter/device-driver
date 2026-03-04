@@ -117,6 +117,7 @@ fn lower_node(
         },
         NodeType::Enum => todo!(),
         NodeType::Extern => todo!(),
+        NodeType::Field => todo!(),
     }
 }
 
@@ -269,23 +270,27 @@ fn parse_node_to_shape<S: Shape>(
 
     // Sub nodes
 
-    if let Some((objects, allowed_node_types)) = target.child_objects() {
+    if let Some(supported_subnodes) = S::supported_subnodes() {
         for sub_node in node.sub_nodes.iter() {
             let sub_node_result = lower_node(
                 sub_node,
                 Some(S::NODE_TYPE.with_span(node.node_type.span)),
-                &allowed_node_types,
+                &supported_subnodes,
                 diagnostics,
             );
 
             match sub_node_result {
                 LowerResult::Manifest(_) => unreachable!(),
                 LowerResult::Objects(object, siblings) => {
-                    objects.push(object);
-                    objects.extend(siblings);
+                    target.push_subnode(object);
+                    for sibling in siblings {
+                        target.push_subnode(sibling);
+                    }
                 }
                 LowerResult::Error(siblings) => {
-                    objects.extend(siblings);
+                    for sibling in siblings {
+                        target.push_subnode(sibling);
+                    }
                 }
             }
         }
@@ -314,10 +319,12 @@ trait Shape: Default + 'static {
     /// All the supported properties. An empty name string matches anything, None only matches anonymous properties
     fn supported_properties() -> &'static Properties<Self>;
 
-    /// Returns Some if the shape support child objects. It will be populated from the sub-nodes.
-    /// The vec are the objects, the slice is the allowed node types.
-    fn child_objects(&mut self) -> Option<(&mut Vec<Object>, Vec<NodeType>)> {
+    fn supported_subnodes() -> Option<&'static [NodeType]> {
         None
+    }
+
+    fn push_subnode(&mut self, _: Object) {
+        unimplemented!()
     }
 }
 
@@ -461,16 +468,17 @@ impl Shape for Manifest {
         })
     }
 
-    fn child_objects(&mut self) -> Option<(&mut Vec<Object>, Vec<NodeType>)> {
-        Some((
-            &mut self.objects,
-            vec![
-                NodeType::Device,
-                NodeType::FieldSet,
-                NodeType::Enum,
-                NodeType::Extern,
-            ],
-        ))
+    fn supported_subnodes() -> Option<&'static [NodeType]> {
+        Some(&[
+            NodeType::Device,
+            NodeType::FieldSet,
+            NodeType::Enum,
+            NodeType::Extern,
+        ])
+    }
+
+    fn push_subnode(&mut self, object: Object) {
+        self.objects.push(object);
     }
 }
 
@@ -583,19 +591,20 @@ impl Shape for Device {
         })
     }
 
-    fn child_objects(&mut self) -> Option<(&mut Vec<Object>, Vec<NodeType>)> {
-        Some((
-            &mut self.objects,
-            vec![
-                NodeType::Block,
-                NodeType::Register,
-                NodeType::Command,
-                NodeType::Buffer,
-                NodeType::FieldSet,
-                NodeType::Enum,
-                NodeType::Extern,
-            ],
-        ))
+    fn supported_subnodes() -> Option<&'static [NodeType]> {
+        Some(&[
+            NodeType::Block,
+            NodeType::Register,
+            NodeType::Command,
+            NodeType::Buffer,
+            NodeType::FieldSet,
+            NodeType::Enum,
+            NodeType::Extern,
+        ])
+    }
+
+    fn push_subnode(&mut self, object: Object) {
+        self.objects.push(object);
     }
 }
 
@@ -645,19 +654,20 @@ impl Shape for Block {
         })
     }
 
-    fn child_objects(&mut self) -> Option<(&mut Vec<Object>, Vec<NodeType>)> {
-        Some((
-            &mut self.objects,
-            vec![
-                NodeType::Block,
-                NodeType::Register,
-                NodeType::Command,
-                NodeType::Buffer,
-                NodeType::FieldSet,
-                NodeType::Enum,
-                NodeType::Extern,
-            ],
-        ))
+    fn supported_subnodes() -> Option<&'static [NodeType]> {
+        Some(&[
+            NodeType::Block,
+            NodeType::Register,
+            NodeType::Command,
+            NodeType::Buffer,
+            NodeType::FieldSet,
+            NodeType::Enum,
+            NodeType::Extern,
+        ])
+    }
+
+    fn push_subnode(&mut self, object: Object) {
+        self.objects.push(object);
     }
 }
 
@@ -892,5 +902,14 @@ impl Shape for FieldSet {
         })
     }
 
-    // TODO: Fill in rest of properties and subnodes
+    fn supported_subnodes() -> Option<&'static [NodeType]> {
+        Some(&[NodeType::Field])
+    }
+
+    fn push_subnode(&mut self, object: Object) {
+        let Object::Field(field) = object else {
+            unreachable!()
+        };
+        self.fields.push(field);
+    }
 }

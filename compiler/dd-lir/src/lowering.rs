@@ -244,6 +244,7 @@ fn get_method(
         mir::Object::FieldSet(_) => None,
         mir::Object::Enum(_) => None,
         mir::Object::Extern(_) => None,
+        mir::Object::Field(_) => None,
     };
 
     Ok(method)

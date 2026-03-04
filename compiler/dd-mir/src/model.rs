@@ -297,6 +297,7 @@ pub enum Object {
     FieldSet(FieldSet),
     Enum(Enum),
     Extern(Extern),
+    Field(Field),
 }
 
 impl Object {
@@ -342,6 +343,7 @@ impl Object {
             Object::FieldSet(val) => &mut val.name,
             Object::Enum(val) => &mut val.name,
             Object::Extern(val) => &mut val.name,
+            Object::Field(val) => &mut val.name,
         }
     }
 
@@ -356,6 +358,7 @@ impl Object {
             Object::FieldSet(val) => &val.name,
             Object::Enum(val) => &val.name,
             Object::Extern(val) => &val.name,
+            Object::Field(val) => &val.name,
         }
     }
 
@@ -370,6 +373,7 @@ impl Object {
             Object::FieldSet(val) => val.name.span,
             Object::Enum(val) => val.name.span,
             Object::Extern(val) => val.name.span,
+            Object::Field(val) => val.name.span,
         }
     }
 
@@ -384,6 +388,7 @@ impl Object {
             Object::FieldSet(_) => None,
             Object::Enum(_) => None,
             Object::Extern(_) => None,
+            Object::Field(_) => None,
         }
     }
 
@@ -398,6 +403,7 @@ impl Object {
             Object::FieldSet(_) => None,
             Object::Enum(_) => None,
             Object::Extern(_) => None,
+            Object::Field(field) => field.repeat.as_ref(),
         }
     }
 
@@ -412,6 +418,7 @@ impl Object {
             Object::FieldSet(_) => None,
             Object::Enum(_) => None,
             Object::Extern(_) => None,
+            Object::Field(field) => field.repeat.as_mut(),
         }
     }
 
@@ -449,6 +456,7 @@ impl Object {
             Object::FieldSet(_) => false,
             Object::Enum(_) => false,
             Object::Extern(_) => false,
+            Object::Field(_) => false,
         }
     }
 
@@ -463,6 +471,7 @@ impl Object {
             Object::FieldSet(val) => val.span,
             Object::Enum(val) => val.span,
             Object::Extern(val) => val.span,
+            Object::Field(val) => val.span,
         }
     }
 }
@@ -893,6 +902,8 @@ impl Unique for Object {
             Object::FieldSet(val) => val.id(),
             Object::Enum(val) => val.id(),
             Object::Extern(val) => val.id(),
+            // Special
+            Object::Field(_) => unimplemented!(),
         }
     }
 
@@ -910,6 +921,8 @@ impl Unique for Object {
             Object::FieldSet(val) => val.has_id(id),
             Object::Enum(val) => val.has_id(id),
             Object::Extern(val) => val.has_id(id),
+            // Special
+            Object::Field(_) => unimplemented!(),
         }
     }
 }
