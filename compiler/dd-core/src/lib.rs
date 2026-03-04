@@ -1,7 +1,5 @@
 #![doc = include_str!(concat!("../", env!("CARGO_PKG_README")))]
 
-#[cfg(not(feature = "prettyplease"))]
-use device_driver_diagnostics::DynError;
 use device_driver_diagnostics::{Diagnostics, DynError, ResultExt};
 use itertools::Itertools;
 
@@ -47,7 +45,9 @@ fn format_code(input: &str) -> Result<String, DynError> {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
-    let mut child = cmd.spawn().into_dyn_result()?;
+    let mut child = cmd
+        .spawn()
+        .with_message(|| "error while spawning rustfmt")?;
     let mut child_stdin = child.stdin.take().unwrap();
     let mut child_stdout = child.stdout.take().unwrap();
 
@@ -56,9 +56,14 @@ fn format_code(input: &str) -> Result<String, DynError> {
     // might block us from writing to its stdin.
     let output = std::thread::scope(|s| {
         s.spawn(|| {
-            child_stdin.write_all(input.as_bytes()).unwrap();
-            child_stdin.flush().unwrap();
+            child_stdin
+                .write_all(input.as_bytes())
+                .with_message(|| "couldn't write input to rustfmt")?;
+            child_stdin
+                .flush()
+                .with_message(|| "couldn't flush input to rustfmt")?;
             drop(child_stdin);
+            Result::<(), DynError>::Ok(())
         });
         let handle: std::thread::ScopedJoinHandle<'_, Result<Vec<u8>, DynError>> = s.spawn(|| {
             let mut output = Vec::new();

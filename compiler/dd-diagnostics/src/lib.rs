@@ -211,12 +211,13 @@ impl Display for DynError {
             let report = self.as_report("", "");
             let output = annotate_snippets::Renderer::styled().render(&report);
             write!(f, "{output}")
-        } else if self.message.is_empty()
-            && let Some(source) = self.source.as_ref()
-        {
-            write!(f, "{source}")
         } else {
-            write!(f, "{}", self.message)
+            match (self.message.as_str(), self.source()) {
+                ("", Some(source)) => write!(f, "{}", source),
+                ("", None) => unreachable!(),
+                (message, Some(source)) => write!(f, "{}: {}", message, source),
+                (message, None) => write!(f, "{}", message),
+            }
         }
     }
 }
