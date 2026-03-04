@@ -1,10 +1,10 @@
 use std::{collections::HashMap, mem, str::FromStr, sync::OnceLock};
 
-use crate::model::{Block, Device, FieldSet, Manifest, Object, Register};
+use crate::model::{Block, Device, Extern, FieldSet, Manifest, Object, Register};
 use device_driver_common::{
     identifier::{Identifier, IdentifierRef},
     span::{Span, SpanExt, Spanned},
-    specifiers::{ByteOrder, NodeType, Repeat, RepeatSource, ResetValue},
+    specifiers::{BaseType, ByteOrder, NodeType, Repeat, RepeatSource, ResetValue},
 };
 use device_driver_diagnostics::{
     Diagnostics,
@@ -116,7 +116,10 @@ fn lower_node(
             Err(siblings) => LowerResult::Error(siblings),
         },
         NodeType::Enum => todo!(),
-        NodeType::Extern => todo!(),
+        NodeType::Extern => match parse_node_to_shape(node, diagnostics) {
+            Ok((field_set, siblings)) => LowerResult::Objects(Object::Extern(field_set), siblings),
+            Err(siblings) => LowerResult::Error(siblings),
+        },
         NodeType::Field => todo!(),
     }
 }
@@ -144,7 +147,18 @@ fn parse_node_to_shape<S: Shape>(
         }
     }
 
-    // Base type: TODO
+    // Base type
+
+    match (target.base_type(), node.type_specifier.as_ref()) {
+        (None, None) => {}
+        (None, Some(_)) => {
+            todo!("Emit diagnostic: Type specifier found for node type that doesn't support it")
+        }
+        (Some(_), None) => todo!("Emit diagnostic: Missing base type specifier"),
+        (Some(base_type), Some(type_specifier)) => {
+            *base_type = type_specifier.base_type;
+        }
+    }
 
     // Conversion: TODO
 
@@ -275,7 +289,7 @@ fn parse_node_to_shape<S: Shape>(
             let sub_node_result = lower_node(
                 sub_node,
                 Some(S::NODE_TYPE.with_span(node.node_type.span)),
-                &supported_subnodes,
+                supported_subnodes,
                 diagnostics,
             );
 
@@ -325,6 +339,11 @@ trait Shape: Default + 'static {
 
     fn push_subnode(&mut self, _: Object) {
         unimplemented!()
+    }
+
+    /// If the shape requires a base type, Some is returned
+    fn base_type(&mut self) -> Option<&mut Spanned<BaseType>> {
+        None
     }
 }
 
@@ -911,5 +930,40 @@ impl Shape for FieldSet {
             unreachable!()
         };
         self.fields.push(field);
+    }
+}
+
+impl Shape for Extern {
+    const NODE_TYPE: NodeType = NodeType::Extern;
+
+    fn doc_comments(&mut self) -> &mut String {
+        &mut self.description
+    }
+
+    fn name(&mut self) -> &mut Spanned<Identifier> {
+        &mut self.name
+    }
+
+    fn supported_properties() -> &'static Properties<Self> {
+        static MAP: OnceLock<Properties<Extern>> = OnceLock::new();
+        MAP.get_or_init(|| {
+            [(
+                Some("infallible"),
+                PropertyInfo {
+                    allowed_expression_types: vec![Expression::Allow],
+                    multiple_allowed: false,
+                    required: false,
+                    setter: |ext: &mut Self, _, _, _, _| {
+                        ext.supports_infallible = true;
+                        false
+                    },
+                },
+            )]
+            .into()
+        })
+    }
+
+    fn base_type(&mut self) -> Option<&mut Spanned<BaseType>> {
+        Some(&mut self.base_type)
     }
 }

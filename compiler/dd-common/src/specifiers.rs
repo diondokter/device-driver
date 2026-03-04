@@ -219,9 +219,9 @@ impl FromStr for ByteOrder {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
 pub enum BaseType {
+    #[default]
     Unspecified,
     Bool,
-    #[default]
     Uint,
     Int,
     FixedSize(Integer),

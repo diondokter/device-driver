@@ -116,7 +116,7 @@ impl<'src> Display for Node<'src> {
 
 #[derive(Debug, Clone)]
 pub struct TypeSpecifier<'src> {
-    pub base_type: BaseType,
+    pub base_type: Spanned<BaseType>,
     pub use_try: bool,
     pub conversion: Option<TypeConversion<'src>>,
 }
@@ -444,7 +444,11 @@ where
                 .or(any_ident.map(TypeConversion::Reference)),
         );
         let type_specifier = just(Token::Arrow)
-            .ignore_then(any_base_type)
+            .ignore_then(
+                any_base_type
+                    .or(any_integer.map(BaseType::FixedSize))
+                    .map_with(|b, e| b.spanned(e.span())),
+            )
             .then(type_conversion.or_not())
             .map(|(base_type, conversion)| TypeSpecifier {
                 base_type,
@@ -482,8 +486,8 @@ where
         any_doc_comment
             .repeated()
             .collect()
-            .then(any_ident.labelled("'node-type'"))
-            .then(any_ident.labelled("'node-name'"))
+            .then(any_ident.labelled("'node type'"))
+            .then(any_ident.labelled("'node name'"))
             .then(simple_expression.repeated().collect::<Vec<_>>())
             .then(type_specifier.or_not())
             .then(node_body.or_not())
