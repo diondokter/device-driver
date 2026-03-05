@@ -129,6 +129,7 @@ pub enum TypeConversion<'src> {
 
 #[derive(Debug, Clone)]
 pub struct Property<'src> {
+    pub doc_comments: Vec<Spanned<&'src str>>,
     pub name: Option<Ident<'src>>,
     pub expression: Spanned<Expression<'src>>,
 }
@@ -416,24 +417,34 @@ where
         .map_with(|expression, extra| expression.spanned(extra.span()))
         .boxed();
 
-        let property = any_ident
+        let property = any_doc_comment
+            .repeated()
+            .collect()
             .then(
-                just(Token::Colon).ignore_then(choice((
-                    simple_expression.clone(),
-                    node.clone().map_with(|node, extra| {
-                        Expression::SubNode(Box::new(node)).spanned(extra.span())
+                any_ident
+                    .then(
+                        just(Token::Colon).ignore_then(choice((
+                            simple_expression.clone(),
+                            node.clone().map_with(|node, extra| {
+                                Expression::SubNode(Box::new(node)).spanned(extra.span())
+                            }),
+                            any_ident
+                                .map(Expression::TypeReference)
+                                .map_with(|expression, extra| expression.spanned(extra.span())),
+                        ))),
+                    )
+                    .map_with(|(name, expression), extra| {
+                        Property {
+                            doc_comments: Vec::new(),
+                            name: Some(name),
+                            expression,
+                        }
+                        .spanned(extra.span())
                     }),
-                    any_ident
-                        .map(Expression::TypeReference)
-                        .map_with(|expression, extra| expression.spanned(extra.span())),
-                ))),
             )
-            .map_with(|(name, expression), extra| {
-                Property {
-                    name: Some(name),
-                    expression,
-                }
-                .spanned(extra.span())
+            .map(|(docs, mut prop)| {
+                prop.doc_comments = docs;
+                prop
             })
             .labelled("'property'")
             .boxed();
@@ -506,6 +517,7 @@ where
                             .map(|expression| {
                                 let span = expression.span;
                                 Property {
+                                    doc_comments: Vec::new(),
                                     name: None,
                                     expression,
                                 }
@@ -514,7 +526,7 @@ where
                             .chain(properties)
                             .collect(),
                         sub_nodes,
-                        span: extra.span(),
+                        span: extra.span(), // TODO: Span should not include doc comments
                     }
                 },
             )

@@ -1,6 +1,9 @@
 use std::{collections::HashMap, mem, str::FromStr, sync::OnceLock};
 
-use crate::model::{Block, Buffer, Device, Extern, FieldSet, Manifest, Object, Register};
+use crate::model::{
+    Block, Buffer, Device, Enum, EnumValue, EnumVariant, Extern, FieldSet, Manifest, Object,
+    Register,
+};
 use device_driver_common::{
     identifier::{Identifier, IdentifierRef},
     span::{Span, SpanExt, Spanned},
@@ -14,7 +17,7 @@ use device_driver_diagnostics::{
         UnknownNodeType,
     },
 };
-use device_driver_parser::{Ast, Expression, Node};
+use device_driver_parser::{Ast, Expression, Node, Property};
 use itertools::Itertools;
 
 pub fn lower(ast: Ast, diagnostics: &mut Diagnostics) -> Manifest {
@@ -118,7 +121,10 @@ fn lower_node(
             }
             Err(siblings) => LowerResult::Error(siblings),
         },
-        NodeType::Enum => todo!(),
+        NodeType::Enum => match parse_node_to_shape(node, diagnostics) {
+            Ok((enum_value, siblings)) => LowerResult::Objects(Object::Enum(enum_value), siblings),
+            Err(siblings) => LowerResult::Error(siblings),
+        },
         NodeType::Extern => match parse_node_to_shape(node, diagnostics) {
             Ok((field_set, siblings)) => LowerResult::Objects(Object::Extern(field_set), siblings),
             Err(siblings) => LowerResult::Error(siblings),
@@ -157,7 +163,7 @@ fn parse_node_to_shape<S: Shape>(
         (None, Some(_)) => {
             todo!("Emit diagnostic: Type specifier found for node type that doesn't support it")
         }
-        (Some(_), None) => todo!("Emit diagnostic: Missing base type specifier"),
+        (Some(base_type), None) => *base_type = BaseType::Unspecified.with_dummy_span(),
         (Some(base_type), Some(type_specifier)) => {
             *base_type = type_specifier.base_type;
         }
@@ -242,7 +248,7 @@ fn parse_node_to_shape<S: Shape>(
 
         error |= (property_support.setter)(
             &mut target,
-            &property.expression,
+            property,
             node,
             diagnostics,
             &mut sibling_objects,
@@ -360,11 +366,14 @@ struct PropertyInfo<T: ?Sized> {
     /// If true, the property must be set by the user.
     /// Doesn't work well with [Self::multiple_allowed] set at the same time.
     required: bool,
+    /// If false, a warning is emitted when the property has doc comments
+    supports_doc_comments: bool,
     /// If setter returns true, there's an error
+    // TODO: Make params into a struct, this is total chaos
     setter: fn(
-        &mut T,
-        &Spanned<Expression<'_>>,
-        node: &Node,
+        &mut T, // self param
+        property: &Spanned<Property<'_>>,
+        node: &Node, // The node that's being parsed
         diagnostics: &mut Diagnostics,
         sibling_objects: &mut Vec<Object>,
     ) -> bool,
@@ -376,6 +385,7 @@ impl<T: ?Sized> Clone for PropertyInfo<T> {
             allowed_expression_types: self.allowed_expression_types.clone(),
             multiple_allowed: self.multiple_allowed,
             required: self.required,
+            supports_doc_comments: self.supports_doc_comments,
             setter: self.setter,
         }
     }
@@ -402,8 +412,10 @@ impl Shape for Manifest {
                         allowed_expression_types: vec![Expression::ByteOrder(Default::default())],
                         multiple_allowed: false,
                         required: false,
-                        setter: |manifest: &mut Self, val, _, _, _| {
-                            manifest.config.byte_order = Some(val.as_byte_order().unwrap());
+                        supports_doc_comments: false,
+                        setter: |manifest: &mut Self, property, _, _, _| {
+                            manifest.config.byte_order =
+                                Some(property.expression.as_byte_order().unwrap());
                             false
                         },
                     },
@@ -414,9 +426,15 @@ impl Shape for Manifest {
                         allowed_expression_types: vec![Expression::Integer(Default::default())],
                         multiple_allowed: false,
                         required: false,
-                        setter: |manifest: &mut Self, val, _, _, _| {
-                            manifest.config.register_address_type =
-                                Some(val.as_integer().unwrap().with_span(val.span));
+                        supports_doc_comments: false,
+                        setter: |manifest: &mut Self, property, _, _, _| {
+                            manifest.config.register_address_type = Some(
+                                property
+                                    .expression
+                                    .as_integer()
+                                    .unwrap()
+                                    .with_span(property.expression.span),
+                            );
                             false
                         },
                     },
@@ -427,9 +445,15 @@ impl Shape for Manifest {
                         allowed_expression_types: vec![Expression::Integer(Default::default())],
                         multiple_allowed: false,
                         required: false,
-                        setter: |manifest: &mut Self, val, _, _, _| {
-                            manifest.config.command_address_type =
-                                Some(val.as_integer().unwrap().with_span(val.span));
+                        supports_doc_comments: false,
+                        setter: |manifest: &mut Self, property, _, _, _| {
+                            manifest.config.command_address_type = Some(
+                                property
+                                    .expression
+                                    .as_integer()
+                                    .unwrap()
+                                    .with_span(property.expression.span),
+                            );
                             false
                         },
                     },
@@ -440,9 +464,15 @@ impl Shape for Manifest {
                         allowed_expression_types: vec![Expression::Integer(Default::default())],
                         multiple_allowed: false,
                         required: false,
-                        setter: |manifest: &mut Self, val, _, _, _| {
-                            manifest.config.buffer_address_type =
-                                Some(val.as_integer().unwrap().with_span(val.span));
+                        supports_doc_comments: false,
+                        setter: |manifest: &mut Self, property, _, _, _| {
+                            manifest.config.buffer_address_type = Some(
+                                property
+                                    .expression
+                                    .as_integer()
+                                    .unwrap()
+                                    .with_span(property.expression.span),
+                            );
                             false
                         },
                     },
@@ -489,8 +519,10 @@ impl Shape for Device {
                         allowed_expression_types: vec![Expression::ByteOrder(Default::default())],
                         multiple_allowed: false,
                         required: false,
-                        setter: |dev: &mut Self, val, _, _, _| {
-                            dev.device_config.byte_order = Some(val.as_byte_order().unwrap());
+                        supports_doc_comments: false,
+                        setter: |dev: &mut Self, property, _, _, _| {
+                            dev.device_config.byte_order =
+                                Some(property.expression.as_byte_order().unwrap());
                             false
                         },
                     },
@@ -501,9 +533,15 @@ impl Shape for Device {
                         allowed_expression_types: vec![Expression::Integer(Default::default())],
                         multiple_allowed: false,
                         required: false,
-                        setter: |dev: &mut Self, val, _, _, _| {
-                            dev.device_config.register_address_type =
-                                Some(val.as_integer().unwrap().with_span(val.span));
+                        supports_doc_comments: false,
+                        setter: |dev: &mut Self, property, _, _, _| {
+                            dev.device_config.register_address_type = Some(
+                                property
+                                    .expression
+                                    .as_integer()
+                                    .unwrap()
+                                    .with_span(property.expression.span),
+                            );
                             false
                         },
                     },
@@ -514,9 +552,15 @@ impl Shape for Device {
                         allowed_expression_types: vec![Expression::Integer(Default::default())],
                         multiple_allowed: false,
                         required: false,
-                        setter: |dev: &mut Self, val, _, _, _| {
-                            dev.device_config.command_address_type =
-                                Some(val.as_integer().unwrap().with_span(val.span));
+                        supports_doc_comments: false,
+                        setter: |dev: &mut Self, property, _, _, _| {
+                            dev.device_config.command_address_type = Some(
+                                property
+                                    .expression
+                                    .as_integer()
+                                    .unwrap()
+                                    .with_span(property.expression.span),
+                            );
                             false
                         },
                     },
@@ -527,9 +571,15 @@ impl Shape for Device {
                         allowed_expression_types: vec![Expression::Integer(Default::default())],
                         multiple_allowed: false,
                         required: false,
-                        setter: |dev: &mut Self, val, _, _, _| {
-                            dev.device_config.buffer_address_type =
-                                Some(val.as_integer().unwrap().with_span(val.span));
+                        supports_doc_comments: false,
+                        setter: |dev: &mut Self, property, _, _, _| {
+                            dev.device_config.buffer_address_type = Some(
+                                property
+                                    .expression
+                                    .as_integer()
+                                    .unwrap()
+                                    .with_span(property.expression.span),
+                            );
                             false
                         },
                     },
@@ -579,9 +629,13 @@ impl Shape for Block {
                         allowed_expression_types: vec![Expression::Number(Default::default())],
                         multiple_allowed: false,
                         required: true,
-                        setter: |block: &mut Self, expression, _, _, _| {
-                            block.address_offset =
-                                expression.as_number().unwrap().with_span(expression.span);
+                        supports_doc_comments: false,
+                        setter: |block: &mut Self, property, _, _, _| {
+                            block.address_offset = property
+                                .expression
+                                .as_number()
+                                .unwrap()
+                                .with_span(property.expression.span);
                             false
                         },
                     },
@@ -592,9 +646,13 @@ impl Shape for Block {
                         allowed_expression_types: vec![Expression::Repeat(Default::default())],
                         multiple_allowed: false,
                         required: false,
-                        setter: |block: &mut Self, expression, _, _, _| {
-                            block.address_offset =
-                                expression.as_number().unwrap().with_span(expression.span);
+                        supports_doc_comments: false,
+                        setter: |block: &mut Self, property, _, _, _| {
+                            block.address_offset = property
+                                .expression
+                                .as_number()
+                                .unwrap()
+                                .with_span(property.expression.span);
                             false
                         },
                     },
@@ -642,8 +700,13 @@ impl Shape for Register {
                         allowed_expression_types: vec![Expression::Number(Default::default())],
                         multiple_allowed: false,
                         required: true,
-                        setter: |r: &mut Self, e, _, _, _| {
-                            r.address = e.as_number().unwrap().with_span(e.span);
+                        supports_doc_comments: false,
+                        setter: |r: &mut Self, property, _, _, _| {
+                            r.address = property
+                                .expression
+                                .as_number()
+                                .unwrap()
+                                .with_span(property.expression.span);
                             false
                         },
                     },
@@ -654,8 +717,9 @@ impl Shape for Register {
                         allowed_expression_types: vec![Expression::Access(Default::default())],
                         multiple_allowed: false,
                         required: false,
-                        setter: |r: &mut Self, e, _, _, _| {
-                            r.access = e.as_access().unwrap();
+                        supports_doc_comments: false,
+                        setter: |r: &mut Self, property, _, _, _| {
+                            r.access = property.expression.as_access().unwrap();
                             false
                         },
                     },
@@ -666,6 +730,7 @@ impl Shape for Register {
                         allowed_expression_types: vec![Expression::Allow],
                         multiple_allowed: false,
                         required: false,
+                        supports_doc_comments: false,
                         setter: |r: &mut Self, _, _, _, _| {
                             r.allow_address_overlap = true;
                             false
@@ -681,14 +746,19 @@ impl Shape for Register {
                         ],
                         multiple_allowed: false,
                         required: false,
-                        setter: |r: &mut Self, e, _, _, _| match &e.value {
+                        supports_doc_comments: false,
+                        setter: |r: &mut Self, property, _, _, _| match &property.expression.value {
                             Expression::ResetNumber(num) => {
-                                r.reset_value = Some(ResetValue::Integer(*num).with_span(e.span));
+                                r.reset_value = Some(
+                                    ResetValue::Integer(*num).with_span(property.expression.span),
+                                );
                                 false
                             }
                             Expression::ResetArray(bytes) => {
-                                r.reset_value =
-                                    Some(ResetValue::Array(bytes.clone()).with_span(e.span));
+                                r.reset_value = Some(
+                                    ResetValue::Array(bytes.clone())
+                                        .with_span(property.expression.span),
+                                );
                                 false
                             }
                             _ => unreachable!(),
@@ -701,8 +771,9 @@ impl Shape for Register {
                         allowed_expression_types: vec![Expression::Repeat(Default::default())],
                         multiple_allowed: false,
                         required: false,
-                        setter: |r: &mut Self, e, _, _, _| {
-                            let repeat = e.as_repeat().unwrap();
+                        supports_doc_comments: false,
+                        setter: |r: &mut Self, property, _, _, _| {
+                            let repeat = property.expression.as_repeat().unwrap();
                             r.repeat = Some(Repeat {
                                 source: match repeat.source {
                                     device_driver_parser::RepeatSource::Count(count) => {
@@ -747,35 +818,37 @@ impl Shape for Register {
                         ],
                         multiple_allowed: false,
                         required: true,
-                        setter: |r: &mut Self, e, node, diagnostics, sibling_objects| match &e.value
-                        {
-                            Expression::TypeReference(ident) => {
-                                r.field_set_ref = IdentifierRef::new(ident.val.into());
-                                false
-                            }
-                            Expression::SubNode(sub_node) => {
-                                let result = lower_node(
-                                    sub_node,
-                                    Some(NodeType::Register.with_span(node.node_type.span)),
-                                    &[NodeType::FieldSet],
-                                    diagnostics,
-                                );
-
-                                match result {
-                                    LowerResult::Objects(fs, fs_siblings) => {
-                                        r.field_set_ref = fs.name().take_ref();
-                                        sibling_objects.push(fs);
-                                        sibling_objects.extend(fs_siblings);
-                                        false
-                                    }
-                                    LowerResult::Error(fs_siblings) => {
-                                        sibling_objects.extend(fs_siblings);
-                                        true
-                                    }
-                                    LowerResult::Manifest(_) => unreachable!(),
+                        supports_doc_comments: false,
+                        setter: |r: &mut Self, property, node, diagnostics, sibling_objects| {
+                            match &property.expression.value {
+                                Expression::TypeReference(ident) => {
+                                    r.field_set_ref = IdentifierRef::new(ident.val.into());
+                                    false
                                 }
+                                Expression::SubNode(sub_node) => {
+                                    let result = lower_node(
+                                        sub_node,
+                                        Some(NodeType::Register.with_span(node.node_type.span)),
+                                        &[NodeType::FieldSet],
+                                        diagnostics,
+                                    );
+
+                                    match result {
+                                        LowerResult::Objects(fs, fs_siblings) => {
+                                            r.field_set_ref = fs.name().take_ref();
+                                            sibling_objects.push(fs);
+                                            sibling_objects.extend(fs_siblings);
+                                            false
+                                        }
+                                        LowerResult::Error(fs_siblings) => {
+                                            sibling_objects.extend(fs_siblings);
+                                            true
+                                        }
+                                        LowerResult::Manifest(_) => unreachable!(),
+                                    }
+                                }
+                                _ => unreachable!(),
                             }
-                            _ => unreachable!(),
                         },
                     },
                 ),
@@ -806,19 +879,20 @@ impl Shape for FieldSet {
                         allowed_expression_types: vec![Expression::Number(8)],
                         multiple_allowed: false,
                         required: true,
-                        setter: |fs: &mut Self, e, fs_node, diagnostics, _| match u32::try_from(
-                            e.as_number().unwrap(),
-                        ) {
-                            Ok(size_bits) => {
-                                fs.size_bits = size_bits.with_span(e.span);
-                                false
-                            }
-                            Err(_) => {
-                                diagnostics.add(SizeBitsTooLarge {
-                                    value: e.span,
-                                    field_set: fs_node.span,
-                                });
-                                true
+                        supports_doc_comments: false,
+                        setter: |fs: &mut Self, property, fs_node, diagnostics, _| {
+                            match u32::try_from(property.expression.as_number().unwrap()) {
+                                Ok(size_bits) => {
+                                    fs.size_bits = size_bits.with_span(property.expression.span);
+                                    false
+                                }
+                                Err(_) => {
+                                    diagnostics.add(SizeBitsTooLarge {
+                                        value: property.expression.span,
+                                        field_set: fs_node.span,
+                                    });
+                                    true
+                                }
                             }
                         },
                     },
@@ -829,8 +903,9 @@ impl Shape for FieldSet {
                         allowed_expression_types: vec![Expression::ByteOrder(ByteOrder::LE)],
                         multiple_allowed: false,
                         required: false,
-                        setter: |fs: &mut Self, e, _, _, _| {
-                            fs.byte_order = Some(e.as_byte_order().unwrap());
+                        supports_doc_comments: false,
+                        setter: |fs: &mut Self, property, _, _, _| {
+                            fs.byte_order = Some(property.expression.as_byte_order().unwrap());
                             false
                         },
                     },
@@ -841,6 +916,7 @@ impl Shape for FieldSet {
                         allowed_expression_types: vec![Expression::Allow],
                         multiple_allowed: false,
                         required: false,
+                        supports_doc_comments: false,
                         setter: |fs: &mut Self, _, _, _, _| {
                             fs.allow_bit_overlap = true;
                             false
@@ -884,6 +960,7 @@ impl Shape for Extern {
                     allowed_expression_types: vec![Expression::Allow],
                     multiple_allowed: false,
                     required: false,
+                    supports_doc_comments: false,
                     setter: |ext: &mut Self, _, _, _, _| {
                         ext.supports_infallible = true;
                         false
@@ -920,8 +997,9 @@ impl Shape for Buffer {
                         allowed_expression_types: vec![Expression::Access(Default::default())],
                         multiple_allowed: false,
                         required: false,
-                        setter: |buf: &mut Self, e, _, _, _| {
-                            buf.access = e.as_access().unwrap();
+                        supports_doc_comments: false,
+                        setter: |buf: &mut Self, property, _, _, _| {
+                            buf.access = property.expression.as_access().unwrap();
                             false
                         },
                     },
@@ -932,8 +1010,13 @@ impl Shape for Buffer {
                         allowed_expression_types: vec![Expression::Number(Default::default())],
                         multiple_allowed: false,
                         required: true,
-                        setter: |buf: &mut Self, e, _, _, _| {
-                            buf.address = e.as_number().unwrap().with_span(e.span);
+                        supports_doc_comments: false,
+                        setter: |buf: &mut Self, property, _, _, _| {
+                            buf.address = property
+                                .expression
+                                .as_number()
+                                .unwrap()
+                                .with_span(property.expression.span);
                             false
                         },
                     },
@@ -941,5 +1024,69 @@ impl Shape for Buffer {
             ]
             .into()
         })
+    }
+}
+
+impl Shape for Enum {
+    const NODE_TYPE: NodeType = NodeType::Enum;
+
+    fn doc_comments(&mut self) -> &mut String {
+        &mut self.description
+    }
+
+    fn name(&mut self) -> &mut Spanned<Identifier> {
+        &mut self.name
+    }
+
+    fn supported_properties() -> &'static Properties<Self> {
+        static MAP: OnceLock<Properties<Enum>> = OnceLock::new();
+        MAP.get_or_init(|| {
+            [(
+                Some(""),
+                PropertyInfo {
+                    allowed_expression_types: vec![
+                        Expression::Auto,
+                        Expression::Number(0),
+                        Expression::DefaultNumber(0),
+                        Expression::CatchAllNumber(0),
+                    ],
+                    multiple_allowed: true,
+                    required: false,
+                    supports_doc_comments: true,
+                    setter: |enum_value: &mut Self, property, _, diagnostics, _| {
+                        let ident = property.name.as_ref().unwrap();
+                        let identifier = match Identifier::try_parse(ident.val) {
+                            Ok(identifier) => identifier,
+                            Err(e) => {
+                                diagnostics.add(InvalidIdentifier {
+                                    error: e,
+                                    identifier: ident.span,
+                                });
+                                return true;
+                            }
+                        };
+
+                        enum_value.variants.push(EnumVariant {
+                            description: property.doc_comments.iter().map(|c| c.value).join("\n"),
+                            name: identifier.with_span(ident.span),
+                            value: match &property.expression.value {
+                                Expression::Number(num) => EnumValue::Specified(*num),
+                                Expression::DefaultNumber(num) => EnumValue::Default(*num),
+                                Expression::CatchAllNumber(num) => EnumValue::CatchAll(*num),
+                                Expression::Auto => EnumValue::Unspecified,
+                                _ => unreachable!(),
+                            },
+                            span: property.span,
+                        });
+                        false
+                    },
+                },
+            )]
+            .into()
+        })
+    }
+
+    fn base_type(&mut self) -> Option<&mut Spanned<BaseType>> {
+        Some(&mut self.base_type)
     }
 }

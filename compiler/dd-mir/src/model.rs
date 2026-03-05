@@ -598,7 +598,7 @@ impl Enum {
     pub fn iter_variants_with_discriminant(&self) -> impl Iterator<Item = (i128, &EnumVariant)> {
         let mut next_discriminant = 0;
         self.variants.iter().map(move |variant| {
-            if let EnumValue::Specified(discriminant) = variant.value {
+            if let Some(discriminant) = variant.value.specified_discriminant() {
                 next_discriminant = discriminant + 1;
                 (discriminant, variant)
             } else {
@@ -618,7 +618,7 @@ impl Enum {
     ) -> impl Iterator<Item = (i128, &mut EnumVariant)> {
         let mut next_discriminant = 0;
         self.variants.iter_mut().map(move |variant| {
-            if let EnumValue::Specified(discriminant) = variant.value {
+            if let Some(discriminant) = variant.value.specified_discriminant() {
                 next_discriminant = discriminant + 1;
                 (discriminant, variant)
             } else {
@@ -665,8 +665,8 @@ pub enum EnumValue {
     #[default]
     Unspecified,
     Specified(i128),
-    Default,
-    CatchAll,
+    Default(i128),
+    CatchAll(i128),
 }
 
 impl EnumValue {
@@ -675,7 +675,7 @@ impl EnumValue {
     /// [`Default`]: EnumValue::Default
     #[must_use]
     pub fn is_default(&self) -> bool {
-        matches!(self, Self::Default)
+        matches!(self, Self::Default(_))
     }
 
     /// Returns `true` if the enum value is [`CatchAll`].
@@ -683,7 +683,7 @@ impl EnumValue {
     /// [`CatchAll`]: EnumValue::CatchAll
     #[must_use]
     pub fn is_catch_all(&self) -> bool {
-        matches!(self, Self::CatchAll)
+        matches!(self, Self::CatchAll(_))
     }
 
     /// Returns `true` if the enum value is [`Unspecified`].
@@ -692,6 +692,15 @@ impl EnumValue {
     #[must_use]
     pub fn is_unspecified(&self) -> bool {
         matches!(self, Self::Unspecified)
+    }
+
+    pub fn specified_discriminant(&self) -> Option<i128> {
+        match self {
+            EnumValue::Unspecified => None,
+            EnumValue::Specified(val) | EnumValue::Default(val) | EnumValue::CatchAll(val) => {
+                Some(*val)
+            }
+        }
     }
 }
 

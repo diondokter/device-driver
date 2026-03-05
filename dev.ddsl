@@ -24,6 +24,17 @@ manifest dev {
         buffer BUF {
             address: 0,
             access: RO,
+        },
+
+        /// Test
+        enum MyEnum -> u32 {
+            /// Docs for A
+            // lol
+            /// More docs
+            A: -1,
+            B: 0,
+            C: default 5,
+            D: default 6,
         }
     }
 }

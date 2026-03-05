@@ -409,8 +409,8 @@ pub fn transform_enums(manifest: &mir::Manifest) -> Vec<lir::Enum> {
                     description: description.clone(),
                     name: name.value.clone(),
                     discriminant,
-                    default: matches!(value, mir::EnumValue::Default),
-                    catch_all: matches!(value, mir::EnumValue::CatchAll),
+                    default: matches!(value, mir::EnumValue::Default(_)),
+                    catch_all: matches!(value, mir::EnumValue::CatchAll(_)),
                 }
             })
             .collect();
