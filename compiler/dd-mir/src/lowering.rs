@@ -77,56 +77,39 @@ fn lower_node(
 
     match node_type.value {
         NodeType::Manifest => match parse_node_to_shape(node, diagnostics) {
-            Ok((manifest, siblings)) => {
+            Ok((val, siblings)) => {
                 assert!(siblings.is_empty(), "Manifest has no siblings");
-                LowerResult::Manifest(manifest)
+                LowerResult::Manifest(val)
             }
-            Err(siblings) => {
-                assert!(siblings.is_empty(), "Block has no siblings");
-                LowerResult::Error(siblings)
-            }
+            Err(siblings) => LowerResult::Error(siblings),
         },
         NodeType::Device => match parse_node_to_shape(node, diagnostics) {
-            Ok((device, siblings)) => {
-                assert!(siblings.is_empty(), "Device has no siblings");
-                LowerResult::Objects(Object::Device(device), siblings)
-            }
-            Err(siblings) => {
-                assert!(siblings.is_empty(), "Block has no siblings");
-                LowerResult::Error(siblings)
-            }
+            Ok((val, siblings)) => LowerResult::Objects(Object::Device(val), siblings),
+            Err(siblings) => LowerResult::Error(siblings),
         },
         NodeType::Block => match parse_node_to_shape(node, diagnostics) {
-            Ok((block, siblings)) => {
-                assert!(siblings.is_empty(), "Block has no siblings");
-                LowerResult::Objects(Object::Block(block), siblings)
-            }
-            Err(siblings) => {
-                assert!(siblings.is_empty(), "Block has no siblings");
-                LowerResult::Error(siblings)
-            }
+            Ok((val, siblings)) => LowerResult::Objects(Object::Block(val), siblings),
+            Err(siblings) => LowerResult::Error(siblings),
         },
         NodeType::Register => match parse_node_to_shape(node, diagnostics) {
-            Ok((register, siblings)) => LowerResult::Objects(Object::Register(register), siblings),
+            Ok((val, siblings)) => LowerResult::Objects(Object::Register(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
         NodeType::Command => todo!(),
         NodeType::Buffer => match parse_node_to_shape(node, diagnostics) {
-            Ok((buffer, siblings)) => LowerResult::Objects(Object::Buffer(buffer), siblings),
+            Ok((val, siblings)) => LowerResult::Objects(Object::Buffer(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
         NodeType::FieldSet => match parse_node_to_shape(node, diagnostics) {
-            Ok((field_set, siblings)) => {
-                LowerResult::Objects(Object::FieldSet(field_set), siblings)
-            }
+            Ok((val, siblings)) => LowerResult::Objects(Object::FieldSet(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
         NodeType::Enum => match parse_node_to_shape(node, diagnostics) {
-            Ok((enum_value, siblings)) => LowerResult::Objects(Object::Enum(enum_value), siblings),
+            Ok((val, siblings)) => LowerResult::Objects(Object::Enum(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
         NodeType::Extern => match parse_node_to_shape(node, diagnostics) {
-            Ok((field_set, siblings)) => LowerResult::Objects(Object::Extern(field_set), siblings),
+            Ok((val, siblings)) => LowerResult::Objects(Object::Extern(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
         NodeType::Field => todo!(),
