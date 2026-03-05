@@ -1,7 +1,7 @@
 /// Hello!
 manifest dev {
 //    byte-order: LE,
-//    register-address-type: u8,
+    buffer-address-type: u8,
 
     /// Test
     device Foo {
@@ -19,5 +19,11 @@ manifest dev {
         extern lol -> u32 {
             infallible: allow,
         },
+
+        /// LOL
+        buffer BUF {
+            address: 0,
+            access: RO,
+        }
     }
 }

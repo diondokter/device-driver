@@ -1,6 +1,6 @@
 use std::{collections::HashMap, mem, str::FromStr, sync::OnceLock};
 
-use crate::model::{Block, Device, Extern, FieldSet, Manifest, Object, Register};
+use crate::model::{Block, Buffer, Device, Extern, FieldSet, Manifest, Object, Register};
 use device_driver_common::{
     identifier::{Identifier, IdentifierRef},
     span::{Span, SpanExt, Spanned},
@@ -108,7 +108,10 @@ fn lower_node(
             Err(siblings) => LowerResult::Error(siblings),
         },
         NodeType::Command => todo!(),
-        NodeType::Buffer => todo!(),
+        NodeType::Buffer => match parse_node_to_shape(node, diagnostics) {
+            Ok((buffer, siblings)) => LowerResult::Objects(Object::Buffer(buffer), siblings),
+            Err(siblings) => LowerResult::Error(siblings),
+        },
         NodeType::FieldSet => match parse_node_to_shape(node, diagnostics) {
             Ok((field_set, siblings)) => {
                 LowerResult::Objects(Object::FieldSet(field_set), siblings)
@@ -965,5 +968,50 @@ impl Shape for Extern {
 
     fn base_type(&mut self) -> Option<&mut Spanned<BaseType>> {
         Some(&mut self.base_type)
+    }
+}
+
+impl Shape for Buffer {
+    const NODE_TYPE: NodeType = NodeType::Buffer;
+
+    fn doc_comments(&mut self) -> &mut String {
+        &mut self.description
+    }
+
+    fn name(&mut self) -> &mut Spanned<Identifier> {
+        &mut self.name
+    }
+
+    fn supported_properties() -> &'static Properties<Self> {
+        static MAP: OnceLock<Properties<Buffer>> = OnceLock::new();
+        MAP.get_or_init(|| {
+            [
+                (
+                    Some("access"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![Expression::Access(Default::default())],
+                        multiple_allowed: false,
+                        required: false,
+                        setter: |buf: &mut Self, e, _, _, _| {
+                            buf.access = e.as_access().unwrap();
+                            false
+                        },
+                    },
+                ),
+                (
+                    Some("address"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![Expression::Number(Default::default())],
+                        multiple_allowed: false,
+                        required: true,
+                        setter: |buf: &mut Self, e, _, _, _| {
+                            buf.address = e.as_number().unwrap().with_span(e.span);
+                            false
+                        },
+                    },
+                ),
+            ]
+            .into()
+        })
     }
 }
