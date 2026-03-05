@@ -397,42 +397,6 @@ impl Shape for Manifest {
         MAP.get_or_init(|| {
             [
                 (
-                    Some("register-access"),
-                    PropertyInfo {
-                        allowed_expression_types: vec![Expression::Access(Default::default())],
-                        multiple_allowed: false,
-                        required: false,
-                        setter: |manifest: &mut Self, val, _, _, _| {
-                            manifest.config.register_access = Some(val.as_access().unwrap());
-                            false
-                        },
-                    },
-                ),
-                (
-                    Some("field-access"),
-                    PropertyInfo {
-                        allowed_expression_types: vec![Expression::Access(Default::default())],
-                        multiple_allowed: false,
-                        required: false,
-                        setter: |manifest: &mut Self, val, _, _, _| {
-                            manifest.config.field_access = Some(val.as_access().unwrap());
-                            false
-                        },
-                    },
-                ),
-                (
-                    Some("buffer-access"),
-                    PropertyInfo {
-                        allowed_expression_types: vec![Expression::Access(Default::default())],
-                        multiple_allowed: false,
-                        required: false,
-                        setter: |manifest: &mut Self, val, _, _, _| {
-                            manifest.config.buffer_access = Some(val.as_access().unwrap());
-                            false
-                        },
-                    },
-                ),
-                (
                     Some("byte-order"),
                     PropertyInfo {
                         allowed_expression_types: vec![Expression::ByteOrder(Default::default())],
@@ -519,42 +483,6 @@ impl Shape for Device {
         static MAP: OnceLock<Properties<Device>> = OnceLock::new();
         MAP.get_or_init(|| {
             [
-                (
-                    Some("register-access"),
-                    PropertyInfo {
-                        allowed_expression_types: vec![Expression::Access(Default::default())],
-                        multiple_allowed: false,
-                        required: false,
-                        setter: |dev: &mut Self, val, _, _, _| {
-                            dev.device_config.register_access = Some(val.as_access().unwrap());
-                            false
-                        },
-                    },
-                ),
-                (
-                    Some("field-access"),
-                    PropertyInfo {
-                        allowed_expression_types: vec![Expression::Access(Default::default())],
-                        multiple_allowed: false,
-                        required: false,
-                        setter: |dev: &mut Self, val, _, _, _| {
-                            dev.device_config.field_access = Some(val.as_access().unwrap());
-                            false
-                        },
-                    },
-                ),
-                (
-                    Some("buffer-access"),
-                    PropertyInfo {
-                        allowed_expression_types: vec![Expression::Access(Default::default())],
-                        multiple_allowed: false,
-                        required: false,
-                        setter: |dev: &mut Self, val, _, _, _| {
-                            dev.device_config.buffer_access = Some(val.as_access().unwrap());
-                            false
-                        },
-                    },
-                ),
                 (
                     Some("byte-order"),
                     PropertyInfo {

@@ -250,9 +250,6 @@ impl Device {
 pub struct DeviceConfig {
     /// The id of the device that owns this config. If None, then this is a manifest config
     pub owner: Option<UniqueId>,
-    pub register_access: Option<Access>,
-    pub field_access: Option<Access>,
-    pub buffer_access: Option<Access>,
     pub byte_order: Option<ByteOrder>,
     pub register_address_type: Option<Spanned<Integer>>,
     pub command_address_type: Option<Spanned<Integer>>,
@@ -266,9 +263,6 @@ impl DeviceConfig {
     pub fn override_with(&self, other: &Self) -> DeviceConfig {
         Self {
             owner: other.owner.clone().or(self.owner.clone()),
-            register_access: other.register_access.or(self.register_access),
-            field_access: other.field_access.or(self.field_access),
-            buffer_access: other.buffer_access.or(self.buffer_access),
             byte_order: other.byte_order.or(self.byte_order),
             register_address_type: other.register_address_type.or(self.register_address_type),
             command_address_type: other.command_address_type.or(self.command_address_type),
@@ -945,7 +939,6 @@ mod tests {
                     description: String::new(),
                     name: "a".into_with_dummy_span(),
                     device_config: DeviceConfig {
-                        register_access: Some(Access::RW),
                         ..Default::default()
                     },
                     objects: vec![
