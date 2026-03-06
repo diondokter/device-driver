@@ -654,10 +654,10 @@ fn find_refs<'d>(
     let mut found_refs = Vec::new();
 
     recurse_objects(&device.objects, &mut |object| {
-        if let mir::Object::Ref(ref_object) = object {
-            if ref_object.object_override.name() == source_object.name() {
-                found_refs.push(ref_object);
-            }
+        if let mir::Object::Ref(ref_object) = object
+            && ref_object.object_override.name() == source_object.name()
+        {
+            found_refs.push(ref_object);
         }
 
         Ok(())
