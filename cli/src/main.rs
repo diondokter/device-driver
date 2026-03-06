@@ -78,7 +78,6 @@ fn strip_compile_error(mut error: &str) -> &str {
 #[derive(clap::ValueEnum, Debug, Clone)]
 pub enum GenType {
     Rust,
-    Kdl,
 }
 
 impl GenType {
@@ -101,34 +100,6 @@ impl GenType {
                     "Unknown manifest file extension: '{unknown}'. Only 'dsl', 'json', 'yaml' and 'toml' are allowed."
                 ),
             },
-            GenType::Kdl => {
-                let mir_device = match manifest_type {
-                    "json" => {
-                        device_driver_generation::_private_transform_json_mir(manifest_contents)
-                    }
-                    "yaml" => {
-                        device_driver_generation::_private_transform_yaml_mir(manifest_contents)
-                    }
-                    "toml" => {
-                        device_driver_generation::_private_transform_toml_mir(manifest_contents)
-                    }
-                    "dsl" => device_driver_generation::_private_transform_dsl_mir(
-                        syn::parse_str(manifest_contents).expect("Could not (syn) parse the DSL"),
-                    )
-                    .map_err(anyhow::Error::new),
-                    unknown => panic!(
-                        "Unknown manifest file extension: '{unknown}'. Only 'dsl', 'json', 'yaml' and 'toml' are allowed."
-                    ),
-                };
-
-                match mir_device {
-                    Ok(mut mir_device) => {
-                        mir_device.name = Some(device_name.to_string());
-                        device_driver_generation::mir::kdl_transform::transform(mir_device)
-                    }
-                    Err(e) => e.to_string(),
-                }
-            }
         }
     }
 }
