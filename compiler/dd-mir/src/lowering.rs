@@ -166,7 +166,7 @@ fn parse_node_to_shape<S: Shape>(
             &None
         };
 
-        let Some(property_support) = possible_properties
+        let Some(property_info) = possible_properties
             .get(property_name)
             .or_else(|| possible_properties.get(property_fallback_name))
         else {
@@ -198,10 +198,14 @@ fn parse_node_to_shape<S: Shape>(
             continue;
         };
 
+        if !property.doc_comments.is_empty() && !property_info.supports_doc_comments {
+            todo!("Emit diagnostic warning: Doc comments placed on property that doesn't support it");
+        }
+
         let current_expression_type = mem::discriminant(&property.expression.value);
 
         let expression_supported =
-            property_support
+            property_info
                 .allowed_expression_types
                 .iter()
                 .any(|allowed_expression_type| {
@@ -215,12 +219,12 @@ fn parse_node_to_shape<S: Shape>(
                     .to_string()
                     .with_span(property.expression.span),
                 node_type: S::NODE_TYPE.with_span(node.node_type.span),
-                valid_expression_types: property_support
+                valid_expression_types: property_info
                     .allowed_expression_types
                     .iter()
                     .map(|e| e.to_string())
                     .collect(),
-                valid_expression_values: property_support
+                valid_expression_values: property_info
                     .allowed_expression_types
                     .iter()
                     .map(|e| e.get_human_string())
@@ -229,7 +233,7 @@ fn parse_node_to_shape<S: Shape>(
             continue;
         }
 
-        error |= (property_support.setter)(
+        error |= (property_info.setter)(
             &mut target,
             property,
             node,
@@ -237,7 +241,7 @@ fn parse_node_to_shape<S: Shape>(
             &mut sibling_objects,
         );
 
-        if !property_support.multiple_allowed {
+        if !property_info.multiple_allowed {
             possible_properties
                 .remove(property_name)
                 .or_else(|| possible_properties.remove(property_fallback_name));
