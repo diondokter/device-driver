@@ -2,6 +2,12 @@
 
 ### Unreleased
 
+### 1.0.8 (06-03-25)
+
+- Removed KDL-gen since v2 isn't going to use KDL anymore
+- Output formatting now happens with prettyplease again instead of rustfmt
+  - Rustfmt would give issues when not installed. This isn't an issue for normal desktop use, but can cause trouble in CI
+
 ### 1.0.7 (30-07-25)
 
 - Fix a compilation time explosion issue. The generated `read_all_registers` functions have been simplified.
