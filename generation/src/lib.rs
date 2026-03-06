@@ -1,11 +1,5 @@
 #![doc = include_str!(concat!("../", env!("CARGO_PKG_README")))]
 
-use std::{
-    io::{Read, Write},
-    process::Stdio,
-};
-
-use anyhow::ensure;
 use itertools::Itertools;
 
 #[cfg(feature = "dsl")]
@@ -150,55 +144,5 @@ fn anyhow_error_to_compile_error(error: anyhow::Error) -> String {
 }
 
 fn format_code(input: &str) -> Result<String, anyhow::Error> {
-    let mut cmd = std::process::Command::new("rustfmt");
-
-    cmd.args(["--edition", "2024"])
-        .args(["--config", "newline_style=native"])
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-
-    let mut child = cmd.spawn()?;
-    let mut child_stdin = child.stdin.take().unwrap();
-    let mut child_stdout = child.stdout.take().unwrap();
-
-    // Write to stdin in a new thread, so that we can read from stdout on this
-    // thread. This keeps the child from blocking on writing to its stdout which
-    // might block us from writing to its stdin.
-    let output = std::thread::scope(|s| {
-        s.spawn(|| {
-            child_stdin.write_all(input.as_bytes()).unwrap();
-            child_stdin.flush().unwrap();
-            drop(child_stdin);
-        });
-        let handle: std::thread::ScopedJoinHandle<'_, Result<Vec<u8>, anyhow::Error>> =
-            s.spawn(|| {
-                let mut output = Vec::new();
-                child_stdout.read_to_end(&mut output)?;
-                Ok(output)
-            });
-
-        handle.join()
-    });
-
-    let status = child.wait()?;
-    ensure!(
-        status.success(),
-        "rustfmt exited unsuccesfully ({status}):\n{}",
-        child
-            .stderr
-            .map(|mut stderr| {
-                let mut err = String::new();
-                stderr.read_to_string(&mut err).unwrap();
-                err
-            })
-            .unwrap_or_default()
-    );
-
-    let output = match output {
-        Ok(output) => output,
-        Err(e) => std::panic::resume_unwind(e),
-    };
-
-    Ok(String::from_utf8(output?)?)
+    Ok(prettyplease::unparse(&syn::parse_file(input)?))
 }

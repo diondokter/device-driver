@@ -170,12 +170,11 @@ impl Value for yaml_rust2::Yaml {
 
     fn as_uint(&self) -> Result<u64, ValueError> {
         // If string, try parse binary int
-        if let Some(s) = self.as_str() {
-            if let Some(num_str) = s.strip_prefix("0b") {
-                if let Ok(num) = u64::from_str_radix(num_str, 2) {
-                    return Ok(num);
-                }
-            }
+        if let Some(s) = self.as_str()
+            && let Some(num_str) = s.strip_prefix("0b")
+            && let Ok(num) = u64::from_str_radix(num_str, 2)
+        {
+            return Ok(num);
         }
 
         self.as_i64()
@@ -188,12 +187,11 @@ impl Value for yaml_rust2::Yaml {
 
     fn as_int(&self) -> Result<i64, ValueError> {
         // If string, try parse binary int
-        if let Some(s) = self.as_str() {
-            if let Some(num_str) = s.strip_prefix("0b") {
-                if let Ok(num) = i64::from_str_radix(num_str, 2) {
-                    return Ok(num);
-                }
-            }
+        if let Some(s) = self.as_str()
+            && let Some(num_str) = s.strip_prefix("0b")
+            && let Ok(num) = i64::from_str_radix(num_str, 2)
+        {
+            return Ok(num);
         }
 
         self.as_i64().ok_or_else(|| ValueError {

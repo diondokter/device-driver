@@ -1,13 +1,9 @@
 [book]
 authors = ["Dion Dokter"]
 language = "en"
-multilingual = false
 src = "src"
 title = "device-driver-book"
 
 [output.html]
 git-repository-url = "https://github.com/diondokter/device-driver"
-git-repository-icon = "fa-github"
-
-# cargo install mdbook-alerts
-[preprocessor.alerts]
+git-repository-icon = "fas-code"

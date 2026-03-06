@@ -19,9 +19,6 @@ jobs:
         uses: peaceiris/actions-mdbook@v2
         with:
           mdbook-version: 'latest'
-
-      # Install mdBook plugins
-      - run: cargo binstall mdbook-alerts --no-confirm
         
       - run: mdbook build
         working-directory: ./book

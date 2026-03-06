@@ -5,7 +5,6 @@ use std::{fmt::Display, ops::Range};
 
 use convert_case::Boundary;
 
-pub mod kdl_transform;
 pub mod lir_transform;
 pub mod passes;
 
@@ -190,17 +189,6 @@ impl Object {
             Object::Command(val) => &val.name,
             Object::Buffer(val) => &val.name,
             Object::Ref(val) => &val.name,
-        }
-    }
-
-    /// Get a reference to the description of the specific object
-    pub(self) fn description(&self) -> &str {
-        match self {
-            Object::Block(val) => &val.description,
-            Object::Register(val) => &val.description,
-            Object::Command(val) => &val.description,
-            Object::Buffer(val) => &val.description,
-            Object::Ref(val) => &val.description,
         }
     }
 
