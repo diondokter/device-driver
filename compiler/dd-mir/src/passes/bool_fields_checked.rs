@@ -17,7 +17,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
                     field.field_address.end += 1;
                 }
 
-                if field.field_address.value.clone().count() != 1 {
+                if field.field_address.len() != 1 {
                     diagnostics.add(BoolFieldTooLarge {
                         base_type: if field.base_type.span.is_empty() {
                             None

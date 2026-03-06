@@ -81,7 +81,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
             BaseType::Unspecified => Integer::find_smallest(
                 *seen_min,
                 *seen_max,
-                enum_value.size_bits.unwrap_or_default(),
+                enum_value.size_bits.unwrap_or_default().into(),
             ),
             BaseType::Bool => {
                 diagnostics.add(EnumBadBasetype {
@@ -97,7 +97,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                 let integer = Integer::find_smallest(
                     *seen_min,
                     *seen_max,
-                    enum_value.size_bits.unwrap_or_default(),
+                    enum_value.size_bits.unwrap_or_default().into(),
                 );
 
                 if integer.is_some_and(|i| i.is_signed()) {
@@ -117,7 +117,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
             BaseType::Int => Integer::find_smallest(
                 (*seen_min).min(-1),
                 *seen_max,
-                enum_value.size_bits.unwrap_or_default(),
+                enum_value.size_bits.unwrap_or_default().into(),
             ),
             BaseType::FixedSize(integer) => {
                 if enum_value.size_bits.unwrap_or_default() > integer.size_bits() {

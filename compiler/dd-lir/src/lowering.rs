@@ -333,7 +333,7 @@ fn transform_field_set(
             lir::Field {
                 description: description.clone(),
                 name: name.value.clone(),
-                address: field_address.value.clone(),
+                address: field_address.value,
                 base_type,
                 conversion_method,
                 access: *access,

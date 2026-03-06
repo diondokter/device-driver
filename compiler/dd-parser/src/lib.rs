@@ -48,6 +48,7 @@ pub struct Node<'src> {
     pub node_type: Ident<'src>,
     pub name: Ident<'src>,
     pub type_specifier: Option<TypeSpecifier<'src>>,
+    pub short_properties: Vec<Spanned<Expression<'src>>>,
     pub properties: Vec<Spanned<Property<'src>>>,
     pub sub_nodes: Vec<Node<'src>>,
     pub span: Span,
@@ -63,14 +64,7 @@ impl<'src> Display for Node<'src> {
         }
         write!(f, "{indentation}{} {}", self.node_type.val, self.name.val,)?;
 
-        for expression in self
-            .properties
-            .iter()
-            .filter_map(|p| match p.is_anonymous() {
-                false => None,
-                true => Some(&p.value.expression),
-            })
-        {
+        for expression in self.short_properties.iter() {
             write!(f, " {expression}")?;
         }
 
@@ -92,15 +86,15 @@ impl<'src> Display for Node<'src> {
             }
         }
 
-        if !self.sub_nodes.is_empty() || self.properties.iter().any(|p| !p.is_anonymous()) {
+        if !self.sub_nodes.is_empty() || !self.properties.is_empty() {
             writeln!(f, " {{")?;
 
-            for (ident, expression) in self
-                .properties
-                .iter()
-                .filter_map(|p| p.name.as_ref().map(|name| (name, &p.expression.value)))
-            {
-                writeln!(f, "{indentation}    {}: {},", ident.val, expression)?;
+            for property in self.properties.iter() {
+                writeln!(
+                    f,
+                    "{indentation}    {}: {},",
+                    property.name.val, property.expression
+                )?;
             }
 
             for node in self.sub_nodes.iter() {
@@ -130,14 +124,8 @@ pub enum TypeConversion<'src> {
 #[derive(Debug, Clone)]
 pub struct Property<'src> {
     pub doc_comments: Vec<Spanned<&'src str>>,
-    pub name: Option<Ident<'src>>,
+    pub name: Ident<'src>,
     pub expression: Spanned<Expression<'src>>,
-}
-
-impl<'src> Property<'src> {
-    pub fn is_anonymous(&self) -> bool {
-        self.name.is_none()
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -436,7 +424,7 @@ where
                     .map_with(|(name, expression), extra| {
                         Property {
                             doc_comments: Vec::new(),
-                            name: Some(name),
+                            name,
                             expression,
                         }
                         .spanned(extra.span())
@@ -512,19 +500,8 @@ where
                         node_type,
                         name,
                         type_specifier,
-                        properties: expressions
-                            .into_iter()
-                            .map(|expression| {
-                                let span = expression.span;
-                                Property {
-                                    doc_comments: Vec::new(),
-                                    name: None,
-                                    expression,
-                                }
-                                .spanned(span)
-                            })
-                            .chain(properties)
-                            .collect(),
+                        properties,
+                        short_properties: expressions,
                         sub_nodes,
                         span: extra.span(), // TODO: Span should not include doc comments
                     }

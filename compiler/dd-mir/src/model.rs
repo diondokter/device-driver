@@ -1,10 +1,12 @@
-use std::{fmt::Display, ops::Range, rc::Rc};
+use std::{fmt::Display, rc::Rc};
 
 use convert_case::Boundary;
 use device_driver_common::{
     identifier::{Identifier, IdentifierRef},
     span::{Span, Spanned},
-    specifiers::{Access, BaseType, ByteOrder, Integer, Repeat, ResetValue, TypeConversion},
+    specifiers::{
+        Access, AddressRange, BaseType, ByteOrder, Integer, Repeat, ResetValue, TypeConversion,
+    },
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -514,7 +516,7 @@ pub struct Field {
     pub access: Access,
     pub base_type: Spanned<BaseType>,
     pub field_conversion: Option<TypeConversion>,
-    pub field_address: Spanned<Range<u32>>,
+    pub field_address: Spanned<AddressRange>,
     pub repeat: Option<Repeat>,
     /// Span of the whole object
     pub span: Span,

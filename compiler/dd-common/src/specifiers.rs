@@ -102,7 +102,7 @@ impl Integer {
     /// This function has a preference for unsigned integers.
     /// You can force a signed integer by making the min be negative (e.g. -1)
     #[must_use]
-    pub const fn find_smallest(min: i128, max: i128, size_bits: u32) -> Option<Integer> {
+    pub const fn find_smallest(min: i128, max: i128, size_bits: u64) -> Option<Integer> {
         Some(match (min, max, size_bits) {
             (0.., ..0x1_00, ..=8) => Integer::U8,
             (0.., ..0x1_0000, ..=16) => Integer::U16,
@@ -338,5 +338,20 @@ impl VariantNames for NodeType {
 impl Display for NodeType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", Self::VARIANTS[*self as usize])
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
+pub struct AddressRange {
+    pub start: u32,
+    /// Inclusive end
+    pub end: u32,
+}
+
+impl AddressRange {
+    #[allow(clippy::len_without_is_empty, reason = "Range can never be empty")]
+    /// The amount of bits this range covers
+    pub fn len(&self) -> u64 {
+        self.end as u64 - self.start as u64 + 1
     }
 }

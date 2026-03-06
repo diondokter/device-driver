@@ -1,28 +1,26 @@
 use std::{collections::HashMap, mem, str::FromStr, sync::OnceLock};
 
 use crate::model::{
-    Block, Buffer, Command, Device, Enum, EnumValue, EnumVariant, Extern, FieldSet, Manifest,
-    Object, Register,
+    Block, Buffer, Command, Device, Enum, EnumValue, EnumVariant, Extern, Field, FieldSet,
+    Manifest, Object, Register,
 };
 use device_driver_common::{
     identifier::{Identifier, IdentifierRef},
     span::{Span, SpanExt, Spanned},
-    specifiers::{BaseType, ByteOrder, NodeType, Repeat, RepeatSource, ResetValue},
+    specifiers::{AddressRange, BaseType, ByteOrder, NodeType, Repeat, RepeatSource, ResetValue},
 };
 use device_driver_diagnostics::{
     Diagnostics,
     errors::{
-        DuplicateProperty, InvalidExpressionType, InvalidIdentifier, InvalidNodeType,
-        InvalidPropertyName, InvalidSubnode, MissingRequiredProperty, SizeBitsTooLarge,
-        UnknownNodeType,
+        DuplicateProperty, FieldAddressOutOfRange, InvalidExpressionType, InvalidIdentifier,
+        InvalidNodeType, InvalidPropertyName, InvalidSubnode, MissingRequiredProperty,
+        SizeBitsTooLarge, UnknownNodeType,
     },
 };
 use device_driver_parser::{Ast, Expression, Node, Property};
 use itertools::Itertools;
 
 pub fn lower(ast: Ast, diagnostics: &mut Diagnostics) -> Manifest {
-    println!("{ast:#?}");
-
     let Some(root_node) = ast.root_node else {
         return Default::default();
     };
@@ -115,7 +113,10 @@ fn lower_node(
             Ok((val, siblings)) => LowerResult::Objects(Object::Extern(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
-        NodeType::Field => todo!(),
+        NodeType::Field => match parse_node_to_shape(node, diagnostics) {
+            Ok((val, siblings)) => LowerResult::Objects(Object::Field(val), siblings),
+            Err(siblings) => LowerResult::Error(siblings),
+        },
     }
 }
 
@@ -162,42 +163,23 @@ fn parse_node_to_shape<S: Shape>(
     let mut possible_properties = (*S::supported_properties()).clone();
     let mut removed_possible_properties = HashMap::new();
     for property in &node.properties {
-        let property_name = &property.name.as_ref().map(|n| n.val);
-        let property_fallback_name = if property.name.is_some() {
-            &Some("")
-        } else {
-            &None
-        };
-
         let Some(property_info) = possible_properties
-            .get(property_name)
-            .or_else(|| possible_properties.get(property_fallback_name))
+            .get(property.name.val)
+            .or_else(|| possible_properties.get("*"))
         else {
-            match &property.name {
-                Some(name) => {
-                    if let Some(original) = removed_possible_properties.get(property_name).copied()
-                    {
-                        diagnostics.add(DuplicateProperty {
-                            original,
-                            duplicate: name.span,
-                        });
-                    } else {
-                        diagnostics.add(InvalidPropertyName {
-                            property: name.span,
-                            node_type: S::NODE_TYPE.with_span(node.node_type.span),
-                            expected_names: S::supported_properties()
-                                .keys()
-                                .filter_map(|k| *k)
-                                .sorted()
-                                .collect(),
-                        });
-                    }
-                }
-                None => {
-                    // Anonymous properties not allowed or expression type already seen and removed
-                    todo!()
-                }
+            if let Some(original) = removed_possible_properties.get(property.name.val).copied() {
+                diagnostics.add(DuplicateProperty {
+                    original,
+                    duplicate: property.name.span,
+                });
+            } else {
+                diagnostics.add(InvalidPropertyName {
+                    property: property.name.span,
+                    node_type: S::NODE_TYPE.with_span(node.node_type.span),
+                    expected_names: S::supported_properties().keys().sorted().copied().collect(),
+                });
             }
+
             continue;
         };
 
@@ -247,18 +229,9 @@ fn parse_node_to_shape<S: Shape>(
         );
 
         if !property_info.multiple_allowed {
-            possible_properties
-                .remove(property_name)
-                .or_else(|| possible_properties.remove(property_fallback_name));
+            possible_properties.remove(property.name.val).unwrap();
 
-            removed_possible_properties.insert(
-                *property_name,
-                property
-                    .name
-                    .as_ref()
-                    .map(|n| n.span)
-                    .unwrap_or(property.span),
-            );
+            removed_possible_properties.insert(property.name.val, property.name.span);
         }
     }
 
@@ -272,7 +245,7 @@ fn parse_node_to_shape<S: Shape>(
         for (missing_name, missing_info) in missing_properties {
             diagnostics.add(MissingRequiredProperty {
                 node_type: S::NODE_TYPE.with_span(node.node_type.span),
-                required_property_name: missing_name.map(|s| s.to_string()),
+                property_name: missing_name.to_string(),
                 allowed_property_types: missing_info
                     .allowed_expression_types
                     .iter()
@@ -323,7 +296,7 @@ fn parse_node_to_shape<S: Shape>(
     }
 }
 
-type Properties<S> = HashMap<Option<&'static str>, PropertyInfo<S>>;
+type Properties<S> = HashMap<&'static str, PropertyInfo<S>>;
 
 trait Shape: Default + 'static {
     const NODE_TYPE: NodeType;
@@ -331,7 +304,7 @@ trait Shape: Default + 'static {
     fn doc_comments(&mut self) -> &mut String;
     fn name(&mut self) -> &mut Spanned<Identifier>;
 
-    /// All the supported properties. An empty name string matches anything, None only matches anonymous properties
+    /// All the supported properties. A "*" as key matches anything
     fn supported_properties() -> &'static Properties<Self>;
 
     fn supported_subnodes() -> Option<&'static [NodeType]> {
@@ -361,7 +334,6 @@ struct PropertyInfo<T: ?Sized> {
     /// If false, a warning is emitted when the property has doc comments
     supports_doc_comments: bool,
     /// If setter returns true, there's an error
-    // TODO: Make params into a struct, this is total chaos
     setter: fn(
         &mut T, // self param
         property: &Spanned<Property<'_>>,
@@ -399,7 +371,7 @@ impl Shape for Manifest {
         MAP.get_or_init(|| {
             [
                 (
-                    Some("byte-order"),
+                    "byte-order",
                     PropertyInfo {
                         allowed_expression_types: vec![Expression::ByteOrder(Default::default())],
                         multiple_allowed: false,
@@ -413,7 +385,7 @@ impl Shape for Manifest {
                     },
                 ),
                 (
-                    Some("register-address-type"),
+                    "register-address-type",
                     PropertyInfo {
                         allowed_expression_types: vec![Expression::Integer(Default::default())],
                         multiple_allowed: false,
@@ -432,7 +404,7 @@ impl Shape for Manifest {
                     },
                 ),
                 (
-                    Some("command-address-type"),
+                    "command-address-type",
                     PropertyInfo {
                         allowed_expression_types: vec![Expression::Integer(Default::default())],
                         multiple_allowed: false,
@@ -451,7 +423,7 @@ impl Shape for Manifest {
                     },
                 ),
                 (
-                    Some("buffer-address-type"),
+                    "buffer-address-type",
                     PropertyInfo {
                         allowed_expression_types: vec![Expression::Integer(Default::default())],
                         multiple_allowed: false,
@@ -506,7 +478,7 @@ impl Shape for Device {
         MAP.get_or_init(|| {
             [
                 (
-                    Some("byte-order"),
+                    "byte-order",
                     PropertyInfo {
                         allowed_expression_types: vec![Expression::ByteOrder(Default::default())],
                         multiple_allowed: false,
@@ -520,7 +492,7 @@ impl Shape for Device {
                     },
                 ),
                 (
-                    Some("register-address-type"),
+                    "register-address-type",
                     PropertyInfo {
                         allowed_expression_types: vec![Expression::Integer(Default::default())],
                         multiple_allowed: false,
@@ -539,7 +511,7 @@ impl Shape for Device {
                     },
                 ),
                 (
-                    Some("command-address-type"),
+                    "command-address-type",
                     PropertyInfo {
                         allowed_expression_types: vec![Expression::Integer(Default::default())],
                         multiple_allowed: false,
@@ -558,7 +530,7 @@ impl Shape for Device {
                     },
                 ),
                 (
-                    Some("buffer-address-type"),
+                    "buffer-address-type",
                     PropertyInfo {
                         allowed_expression_types: vec![Expression::Integer(Default::default())],
                         multiple_allowed: false,
@@ -616,7 +588,7 @@ impl Shape for Block {
         MAP.get_or_init(|| {
             [
                 (
-                    Some("address-offset"),
+                    "address-offset",
                     PropertyInfo {
                         allowed_expression_types: vec![Expression::Number(Default::default())],
                         multiple_allowed: false,
@@ -633,7 +605,7 @@ impl Shape for Block {
                     },
                 ),
                 (
-                    Some("repeat"),
+                    "repeat",
                     PropertyInfo {
                         allowed_expression_types: vec![Expression::Repeat(Default::default())],
                         multiple_allowed: false,
@@ -687,7 +659,7 @@ impl Shape for Register {
         MAP.get_or_init(|| {
             [
                 (
-                    Some("address"),
+                    "address",
                     PropertyInfo {
                         allowed_expression_types: vec![Expression::Number(Default::default())],
                         multiple_allowed: false,
@@ -704,7 +676,7 @@ impl Shape for Register {
                     },
                 ),
                 (
-                    Some("access"),
+                    "access",
                     PropertyInfo {
                         allowed_expression_types: vec![Expression::Access(Default::default())],
                         multiple_allowed: false,
@@ -717,7 +689,7 @@ impl Shape for Register {
                     },
                 ),
                 (
-                    Some("address-overlap"),
+                    "address-overlap",
                     PropertyInfo {
                         allowed_expression_types: vec![Expression::Allow],
                         multiple_allowed: false,
@@ -730,7 +702,7 @@ impl Shape for Register {
                     },
                 ),
                 (
-                    Some("reset"),
+                    "reset",
                     PropertyInfo {
                         allowed_expression_types: vec![
                             Expression::ResetArray(vec![12, 34]),
@@ -758,7 +730,7 @@ impl Shape for Register {
                     },
                 ),
                 (
-                    Some("repeat"),
+                    "repeat",
                     PropertyInfo {
                         allowed_expression_types: vec![Expression::Repeat(Default::default())],
                         multiple_allowed: false,
@@ -785,7 +757,7 @@ impl Shape for Register {
                     },
                 ),
                 (
-                    Some("fields"),
+                    "fields",
                     PropertyInfo {
                         allowed_expression_types: vec![
                             Expression::TypeReference(device_driver_parser::Ident {
@@ -804,6 +776,7 @@ impl Shape for Register {
                                 },
                                 type_specifier: None,
                                 properties: vec![],
+                                short_properties: vec![],
                                 sub_nodes: vec![],
                                 span: Default::default(),
                             })),
@@ -866,7 +839,7 @@ impl Shape for FieldSet {
         MAP.get_or_init(|| {
             [
                 (
-                    Some("size-bits"),
+                    "size-bits",
                     PropertyInfo {
                         allowed_expression_types: vec![Expression::Number(8)],
                         multiple_allowed: false,
@@ -890,7 +863,7 @@ impl Shape for FieldSet {
                     },
                 ),
                 (
-                    Some("byte-order"),
+                    "byte-order",
                     PropertyInfo {
                         allowed_expression_types: vec![Expression::ByteOrder(ByteOrder::LE)],
                         multiple_allowed: false,
@@ -903,7 +876,7 @@ impl Shape for FieldSet {
                     },
                 ),
                 (
-                    Some("bit-overlap"),
+                    "bit-overlap",
                     PropertyInfo {
                         allowed_expression_types: vec![Expression::Allow],
                         multiple_allowed: false,
@@ -947,7 +920,7 @@ impl Shape for Extern {
         static MAP: OnceLock<Properties<Extern>> = OnceLock::new();
         MAP.get_or_init(|| {
             [(
-                Some("infallible"),
+                "infallible",
                 PropertyInfo {
                     allowed_expression_types: vec![Expression::Allow],
                     multiple_allowed: false,
@@ -984,7 +957,7 @@ impl Shape for Buffer {
         MAP.get_or_init(|| {
             [
                 (
-                    Some("access"),
+                    "access",
                     PropertyInfo {
                         allowed_expression_types: vec![Expression::Access(Default::default())],
                         multiple_allowed: false,
@@ -997,7 +970,7 @@ impl Shape for Buffer {
                     },
                 ),
                 (
-                    Some("address"),
+                    "address",
                     PropertyInfo {
                         allowed_expression_types: vec![Expression::Number(Default::default())],
                         multiple_allowed: false,
@@ -1034,7 +1007,7 @@ impl Shape for Enum {
         static MAP: OnceLock<Properties<Enum>> = OnceLock::new();
         MAP.get_or_init(|| {
             [(
-                Some(""),
+                "*",
                 PropertyInfo {
                     allowed_expression_types: vec![
                         Expression::Auto,
@@ -1046,13 +1019,12 @@ impl Shape for Enum {
                     required: false,
                     supports_doc_comments: true,
                     setter: |enum_value: &mut Self, property, _, diagnostics, _| {
-                        let ident = property.name.as_ref().unwrap();
-                        let identifier = match Identifier::try_parse(ident.val) {
+                        let identifier = match Identifier::try_parse(property.name.val) {
                             Ok(identifier) => identifier,
                             Err(e) => {
                                 diagnostics.add(InvalidIdentifier {
                                     error: e,
-                                    identifier: ident.span,
+                                    identifier: property.name.span,
                                 });
                                 return true;
                             }
@@ -1060,7 +1032,7 @@ impl Shape for Enum {
 
                         enum_value.variants.push(EnumVariant {
                             description: property.doc_comments.iter().map(|c| c.value).join("\n"),
-                            name: identifier.with_span(ident.span),
+                            name: identifier.with_span(property.name.span),
                             value: match &property.expression.value {
                                 Expression::Number(num) => EnumValue::Specified(*num),
                                 Expression::DefaultNumber(num) => EnumValue::Default(*num),
@@ -1099,7 +1071,7 @@ impl Shape for Command {
         MAP.get_or_init(|| {
             [
                 (
-                    Some("address"),
+                    "address",
                     PropertyInfo {
                         allowed_expression_types: vec![Expression::Number(0)],
                         multiple_allowed: false,
@@ -1116,7 +1088,7 @@ impl Shape for Command {
                     },
                 ),
                 (
-                    Some("address-overlap"),
+                    "address-overlap",
                     PropertyInfo {
                         allowed_expression_types: vec![Expression::Allow],
                         multiple_allowed: false,
@@ -1129,7 +1101,7 @@ impl Shape for Command {
                     },
                 ),
                 (
-                    Some("repeat"),
+                    "repeat",
                     PropertyInfo {
                         allowed_expression_types: vec![Expression::Repeat(Default::default())],
                         multiple_allowed: false,
@@ -1156,7 +1128,7 @@ impl Shape for Command {
                     },
                 ),
                 (
-                    Some("fields-in"),
+                    "fields-in",
                     PropertyInfo {
                         allowed_expression_types: vec![
                             Expression::TypeReference(device_driver_parser::Ident {
@@ -1175,6 +1147,7 @@ impl Shape for Command {
                                 },
                                 type_specifier: None,
                                 properties: vec![],
+                                short_properties: vec![],
                                 sub_nodes: vec![],
                                 span: Default::default(),
                             })),
@@ -1221,7 +1194,7 @@ impl Shape for Command {
                     },
                 ),
                 (
-                    Some("fields-out"),
+                    "fields-out",
                     PropertyInfo {
                         allowed_expression_types: vec![
                             Expression::TypeReference(device_driver_parser::Ident {
@@ -1240,6 +1213,7 @@ impl Shape for Command {
                                 },
                                 type_specifier: None,
                                 properties: vec![],
+                                short_properties: vec![],
                                 sub_nodes: vec![],
                                 span: Default::default(),
                             })),
@@ -1288,5 +1262,68 @@ impl Shape for Command {
             ]
             .into()
         })
+    }
+}
+
+impl Shape for Field {
+    const NODE_TYPE: NodeType = NodeType::Field;
+
+    fn doc_comments(&mut self) -> &mut String {
+        &mut self.description
+    }
+
+    fn name(&mut self) -> &mut Spanned<Identifier> {
+        &mut self.name
+    }
+
+    // TODO: This needs to become a new `supported_short_properties`
+    fn supported_properties() -> &'static Properties<Self> {
+        static MAP: OnceLock<Properties<Field>> = OnceLock::new();
+        MAP.get_or_init(|| {
+            [(
+                "address",
+                PropertyInfo {
+                    allowed_expression_types: vec![
+                        Expression::Number(0),
+                        Expression::AddressRange { end: 8, start: 0 },
+                    ],
+                    multiple_allowed: false,
+                    required: true,
+                    supports_doc_comments: false,
+                    setter: |field: &mut Self, property, _, diagnostics, _| {
+                        let u32_range = 0..=u32::MAX as i128;
+
+                        field.field_address = match property.expression.value {
+                            Expression::AddressRange { end, start }
+                                if u32_range.contains(&end) && u32_range.contains(&start) =>
+                            {
+                                AddressRange {
+                                    start: start.try_into().unwrap(),
+                                    end: end.try_into().unwrap(),
+                                }
+                            }
+                            Expression::Number(num) if u32_range.contains(&num) => AddressRange {
+                                start: num.try_into().unwrap(),
+                                end: num.try_into().unwrap(),
+                            },
+                            Expression::AddressRange { .. } | Expression::Number(_) => {
+                                diagnostics.add(FieldAddressOutOfRange {
+                                    field_address: property.expression.span,
+                                });
+                                return true;
+                            }
+                            _ => unreachable!(),
+                        }
+                        .with_span(property.expression.span);
+                        false
+                    },
+                },
+            )]
+            .into()
+        })
+    }
+
+    fn base_type(&mut self) -> Option<&mut Spanned<BaseType>> {
+        Some(&mut self.base_type)
     }
 }

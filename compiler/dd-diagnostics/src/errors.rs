@@ -19,7 +19,7 @@ pub struct IntegerFieldSizeTooBig {
     pub field_address: Span,
     pub base_type: Span,
     pub field_set: Span,
-    pub size_bits: u32,
+    pub size_bits: u64,
 }
 
 impl Diagnostic for IntegerFieldSizeTooBig {
@@ -1468,7 +1468,7 @@ impl Diagnostic for InvalidNodeType {
 
 pub struct MissingRequiredProperty {
     pub node_type: Spanned<NodeType>,
-    pub required_property_name: Option<String>,
+    pub property_name: String,
     pub allowed_property_types: Vec<String>,
 }
 
@@ -1488,17 +1488,11 @@ impl Diagnostic for MissingRequiredProperty {
                     Snippet::source(source).path(path).annotation(
                         AnnotationKind::Primary
                             .span(self.node_type.span.into())
-                            .label(match &self.required_property_name {
-                                Some(required_property_name) => format!(
-                                    "missing property `{}`, with one of these expression types: {}",
-                                    required_property_name,
-                                    self.allowed_property_types.join(", ")
-                                ),
-                                None => format!(
-                                    "missing short property with one of these expression types: {}",
-                                    self.allowed_property_types.join(", ")
-                                ),
-                            }),
+                            .label(format!(
+                                "missing property `{}`, with one of these expression types: {}",
+                                self.property_name,
+                                self.allowed_property_types.join(", ")
+                            )),
                     ),
                 ), // TODO: Add patches to show user adding the properties
         ]
@@ -1567,6 +1561,29 @@ impl Diagnostic for SizeBitsTooLarge {
                         .patch(Patch::new(self.value.into(), "0xFFFF_FFFF")),
                 ),
         ]
+        .to_vec()
+    }
+}
+
+pub struct FieldAddressOutOfRange {
+    pub field_address: Span,
+}
+
+impl Diagnostic for FieldAddressOutOfRange {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [Level::ERROR
+            .primary_title("field address exceeds the allowed limits")
+            .element(
+                Snippet::source(source).path(path).annotation(
+                    AnnotationKind::Primary
+                        .span(self.field_address.into())
+                        .label("address must fit in 0..2^32-1"),
+                ),
+            )]
         .to_vec()
     }
 }
