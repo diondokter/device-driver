@@ -1,8 +1,8 @@
 use std::{collections::HashMap, mem, str::FromStr, sync::OnceLock};
 
 use crate::model::{
-    Block, Buffer, Device, Enum, EnumValue, EnumVariant, Extern, FieldSet, Manifest, Object,
-    Register,
+    Block, Buffer, Command, Device, Enum, EnumValue, EnumVariant, Extern, FieldSet, Manifest,
+    Object, Register,
 };
 use device_driver_common::{
     identifier::{Identifier, IdentifierRef},
@@ -95,7 +95,10 @@ fn lower_node(
             Ok((val, siblings)) => LowerResult::Objects(Object::Register(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
-        NodeType::Command => todo!(),
+        NodeType::Command => match parse_node_to_shape(node, diagnostics) {
+            Ok((val, siblings)) => LowerResult::Objects(Object::Command(val), siblings),
+            Err(siblings) => LowerResult::Error(siblings),
+        },
         NodeType::Buffer => match parse_node_to_shape(node, diagnostics) {
             Ok((val, siblings)) => LowerResult::Objects(Object::Buffer(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
@@ -199,7 +202,9 @@ fn parse_node_to_shape<S: Shape>(
         };
 
         if !property.doc_comments.is_empty() && !property_info.supports_doc_comments {
-            todo!("Emit diagnostic warning: Doc comments placed on property that doesn't support it");
+            todo!(
+                "Emit diagnostic warning: Doc comments placed on property that doesn't support it"
+            );
         }
 
         let current_expression_type = mem::discriminant(&property.expression.value);
@@ -1075,5 +1080,213 @@ impl Shape for Enum {
 
     fn base_type(&mut self) -> Option<&mut Spanned<BaseType>> {
         Some(&mut self.base_type)
+    }
+}
+
+impl Shape for Command {
+    const NODE_TYPE: NodeType = NodeType::Command;
+
+    fn doc_comments(&mut self) -> &mut String {
+        &mut self.description
+    }
+
+    fn name(&mut self) -> &mut Spanned<Identifier> {
+        &mut self.name
+    }
+
+    fn supported_properties() -> &'static Properties<Self> {
+        static MAP: OnceLock<Properties<Command>> = OnceLock::new();
+        MAP.get_or_init(|| {
+            [
+                (
+                    Some("address"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![Expression::Number(0)],
+                        multiple_allowed: false,
+                        required: true,
+                        supports_doc_comments: false,
+                        setter: |command: &mut Self, property, _, _, _| {
+                            command.address = property
+                                .expression
+                                .as_number()
+                                .unwrap()
+                                .with_span(property.expression.span);
+                            false
+                        },
+                    },
+                ),
+                (
+                    Some("address-overlap"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![Expression::Allow],
+                        multiple_allowed: false,
+                        required: false,
+                        supports_doc_comments: false,
+                        setter: |command: &mut Self, _, _, _, _| {
+                            command.allow_address_overlap = true;
+                            false
+                        },
+                    },
+                ),
+                (
+                    Some("repeat"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![Expression::Repeat(Default::default())],
+                        multiple_allowed: false,
+                        required: false,
+                        supports_doc_comments: false,
+                        setter: |command: &mut Self, property, _, _, _| {
+                            let repeat = property.expression.as_repeat().unwrap();
+                            command.repeat = Some(Repeat {
+                                source: match repeat.source {
+                                    device_driver_parser::RepeatSource::Count(count) => {
+                                        RepeatSource::Count(count as u64)
+                                    }
+                                    device_driver_parser::RepeatSource::Enum(ident) => {
+                                        RepeatSource::Enum(
+                                            IdentifierRef::new(ident.val.into())
+                                                .with_span(ident.span),
+                                        )
+                                    }
+                                },
+                                stride: repeat.stride as i128,
+                            });
+                            false
+                        },
+                    },
+                ),
+                (
+                    Some("fields-in"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![
+                            Expression::TypeReference(device_driver_parser::Ident {
+                                val: "MyFieldset",
+                                span: Span::default(),
+                            }),
+                            Expression::SubNode(Box::new(Node {
+                                doc_comments: vec![],
+                                node_type: device_driver_parser::Ident {
+                                    val: "fieldset",
+                                    span: Default::default(),
+                                },
+                                name: device_driver_parser::Ident {
+                                    val: "MyFieldSet",
+                                    span: Default::default(),
+                                },
+                                type_specifier: None,
+                                properties: vec![],
+                                sub_nodes: vec![],
+                                span: Default::default(),
+                            })),
+                        ],
+                        multiple_allowed: false,
+                        required: false,
+                        supports_doc_comments: false,
+                        setter: |command: &mut Self,
+                                 property,
+                                 node,
+                                 diagnostics,
+                                 sibling_objects| {
+                            match &property.expression.value {
+                                Expression::TypeReference(ident) => {
+                                    command.field_set_ref_in =
+                                        Some(IdentifierRef::new(ident.val.into()));
+                                    false
+                                }
+                                Expression::SubNode(sub_node) => {
+                                    let result = lower_node(
+                                        sub_node,
+                                        Some(NodeType::Register.with_span(node.node_type.span)),
+                                        &[NodeType::FieldSet],
+                                        diagnostics,
+                                    );
+
+                                    match result {
+                                        LowerResult::Objects(fs, fs_siblings) => {
+                                            command.field_set_ref_in = Some(fs.name().take_ref());
+                                            sibling_objects.push(fs);
+                                            sibling_objects.extend(fs_siblings);
+                                            false
+                                        }
+                                        LowerResult::Error(fs_siblings) => {
+                                            sibling_objects.extend(fs_siblings);
+                                            true
+                                        }
+                                        LowerResult::Manifest(_) => unreachable!(),
+                                    }
+                                }
+                                _ => unreachable!(),
+                            }
+                        },
+                    },
+                ),
+                (
+                    Some("fields-out"),
+                    PropertyInfo {
+                        allowed_expression_types: vec![
+                            Expression::TypeReference(device_driver_parser::Ident {
+                                val: "MyFieldset",
+                                span: Span::default(),
+                            }),
+                            Expression::SubNode(Box::new(Node {
+                                doc_comments: vec![],
+                                node_type: device_driver_parser::Ident {
+                                    val: "fieldset",
+                                    span: Default::default(),
+                                },
+                                name: device_driver_parser::Ident {
+                                    val: "MyFieldSet",
+                                    span: Default::default(),
+                                },
+                                type_specifier: None,
+                                properties: vec![],
+                                sub_nodes: vec![],
+                                span: Default::default(),
+                            })),
+                        ],
+                        multiple_allowed: false,
+                        required: false,
+                        supports_doc_comments: false,
+                        setter: |command: &mut Self,
+                                 property,
+                                 node,
+                                 diagnostics,
+                                 sibling_objects| {
+                            match &property.expression.value {
+                                Expression::TypeReference(ident) => {
+                                    command.field_set_ref_out =
+                                        Some(IdentifierRef::new(ident.val.into()));
+                                    false
+                                }
+                                Expression::SubNode(sub_node) => {
+                                    let result = lower_node(
+                                        sub_node,
+                                        Some(NodeType::Register.with_span(node.node_type.span)),
+                                        &[NodeType::FieldSet],
+                                        diagnostics,
+                                    );
+
+                                    match result {
+                                        LowerResult::Objects(fs, fs_siblings) => {
+                                            command.field_set_ref_out = Some(fs.name().take_ref());
+                                            sibling_objects.push(fs);
+                                            sibling_objects.extend(fs_siblings);
+                                            false
+                                        }
+                                        LowerResult::Error(fs_siblings) => {
+                                            sibling_objects.extend(fs_siblings);
+                                            true
+                                        }
+                                        LowerResult::Manifest(_) => unreachable!(),
+                                    }
+                                }
+                                _ => unreachable!(),
+                            }
+                        },
+                    },
+                ),
+            ]
+            .into()
+        })
     }
 }

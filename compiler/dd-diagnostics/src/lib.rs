@@ -215,8 +215,7 @@ impl Display for DynError {
             match (self.message.as_str(), self.source()) {
                 ("", Some(source)) => write!(f, "{}", source),
                 ("", None) => unreachable!(),
-                (message, Some(source)) => write!(f, "{}: {}", message, source),
-                (message, None) => write!(f, "{}", message),
+                (message, _) => write!(f, "{}", message),
             }
         }
     }
