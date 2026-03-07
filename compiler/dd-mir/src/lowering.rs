@@ -1,4 +1,10 @@
-use std::{collections::HashMap, mem, str::FromStr, sync::OnceLock};
+use std::{
+    borrow::Cow,
+    collections::HashMap,
+    mem::{self, Discriminant, discriminant},
+    str::FromStr,
+    sync::LazyLock,
+};
 
 use crate::model::{
     Block, Buffer, Command, Device, Enum, EnumValue, EnumVariant, Extern, Field, FieldSet,
@@ -7,17 +13,20 @@ use crate::model::{
 use device_driver_common::{
     identifier::{Identifier, IdentifierRef},
     span::{Span, SpanExt, Spanned},
-    specifiers::{AddressRange, BaseType, ByteOrder, NodeType, Repeat, RepeatSource, ResetValue},
+    specifiers::{
+        Access, AddressRange, BaseType, ByteOrder, Integer, NodeType, Repeat, RepeatSource,
+        ResetValue,
+    },
 };
 use device_driver_diagnostics::{
     Diagnostics,
     errors::{
-        DuplicateProperty, FieldAddressOutOfRange, InvalidExpressionType, InvalidIdentifier,
-        InvalidNodeType, InvalidPropertyName, InvalidSubnode, MissingRequiredProperty,
-        SizeBitsTooLarge, UnknownNodeType,
+        DuplicateProperty, FieldAddressOutOfRange, FieldAddressWrongOrder, InvalidExpressionType,
+        InvalidIdentifier, InvalidNodeType, InvalidPropertyName, InvalidShortProperty,
+        InvalidSubnode, MissingRequiredProperty, SizeBitsTooLarge, UnknownNodeType,
     },
 };
-use device_driver_parser::{Ast, Expression, Node, Property};
+use device_driver_parser::{Ast, Expression, Ident, Node, Property};
 use itertools::Itertools;
 
 pub fn lower(ast: Ast, diagnostics: &mut Diagnostics) -> Manifest {
@@ -120,8 +129,8 @@ fn lower_node(
     }
 }
 
-fn parse_node_to_shape<S: Shape>(
-    node: &Node,
+fn parse_node_to_shape<'src, S: Shape>(
+    node: &Node<'src>,
     diagnostics: &mut Diagnostics,
 ) -> Result<(S, Vec<Object>), Vec<Object>> {
     let mut target = S::default();
@@ -160,14 +169,15 @@ fn parse_node_to_shape<S: Shape>(
 
     // Properties
 
-    let mut possible_properties = (*S::supported_properties()).clone();
-    let mut removed_possible_properties = HashMap::new();
+    let mut possible_properties = S::supported_properties().to_vec();
+    let mut removed_properties = HashMap::new();
+    let mut removed_short_properties = HashMap::new();
     for property in &node.properties {
         let Some(property_info) = possible_properties
-            .get(property.name.val)
-            .or_else(|| possible_properties.get("*"))
+            .iter()
+            .find(|p| p.name == PropertyName::Exact(property.name.val))
         else {
-            if let Some(original) = removed_possible_properties.get(property.name.val).copied() {
+            if let Some(original) = removed_properties.get(property.name.val).copied() {
                 diagnostics.add(DuplicateProperty {
                     original,
                     duplicate: property.name.span,
@@ -176,7 +186,12 @@ fn parse_node_to_shape<S: Shape>(
                 diagnostics.add(InvalidPropertyName {
                     property: property.name.span,
                     node_type: S::NODE_TYPE.with_span(node.node_type.span),
-                    expected_names: S::supported_properties().keys().sorted().copied().collect(),
+                    expected_names: S::supported_properties()
+                        .iter()
+                        .filter_map(|p| p.name.as_exact())
+                        .sorted()
+                        .copied()
+                        .collect(),
                 });
             }
 
@@ -189,7 +204,12 @@ fn parse_node_to_shape<S: Shape>(
             );
         }
 
-        let current_expression_type = mem::discriminant(&property.expression.value);
+        // Get the discriminant and cast it to the static lifetime which is explicitly allowed in the rust docs
+        let current_expression_type = unsafe {
+            std::mem::transmute::<Discriminant<Expression<'src>>, Discriminant<Expression<'static>>>(
+                mem::discriminant(&property.expression.value),
+            )
+        };
 
         let expression_supported =
             property_info
@@ -229,23 +249,92 @@ fn parse_node_to_shape<S: Shape>(
         );
 
         if !property_info.multiple_allowed {
-            possible_properties.remove(property.name.val).unwrap();
+            possible_properties.remove(possible_properties.element_offset(property_info).unwrap());
+            removed_properties.insert(property.name.val, property.name.span);
+        }
+    }
 
-            removed_possible_properties.insert(property.name.val, property.name.span);
+    for short_property in node.short_properties.iter() {
+        let short_propery_discriminant = discriminant(&short_property.value);
+
+        let Some(property_info) = possible_properties.iter().find(|p| {
+            p.name.as_short().is_some()
+                && p.allowed_expression_types
+                    .iter()
+                    .map(discriminant)
+                    .any(|ed| ed == short_propery_discriminant)
+        }) else {
+            if let Some(original) = removed_short_properties
+                .get(&short_propery_discriminant)
+                .copied()
+            {
+                diagnostics.add(DuplicateProperty {
+                    original,
+                    duplicate: short_property.span,
+                });
+            } else {
+                diagnostics.add(InvalidShortProperty {
+                    property: short_property.span,
+                    node_type: S::NODE_TYPE.with_span(node.node_type.span),
+                    expected: S::supported_properties()
+                        .iter()
+                        .filter_map(|p| {
+                            p.name.as_short().map(|purpose| {
+                                p.allowed_expression_types
+                                    .iter()
+                                    .map(|e| (e.to_string(), purpose.to_string()))
+                            })
+                        })
+                        .flatten()
+                        .sorted()
+                        .collect(),
+                });
+            }
+
+            continue;
+        };
+
+        error |= (property_info.setter)(
+            &mut target,
+            &Property {
+                doc_comments: Vec::new(),
+                name: Ident {
+                    val: "",
+                    span: short_property.span,
+                },
+                expression: short_property.clone(),
+            }
+            .with_span(short_property.span),
+            node,
+            diagnostics,
+            &mut sibling_objects,
+        );
+
+        if !property_info.multiple_allowed {
+            for allowed_expression in property_info.allowed_expression_types.iter() {
+                removed_short_properties
+                    .insert(discriminant(allowed_expression), short_property.span);
+            }
+            possible_properties.remove(possible_properties.element_offset(property_info).unwrap());
         }
     }
 
     // Required properties that haven't been seen
     let missing_properties = possible_properties
         .iter()
-        .filter(|(_, info)| info.required)
+        .filter(|info| info.required)
         .collect::<Vec<_>>();
 
     if !missing_properties.is_empty() {
-        for (missing_name, missing_info) in missing_properties {
+        for missing_info in missing_properties {
             diagnostics.add(MissingRequiredProperty {
                 node_type: S::NODE_TYPE.with_span(node.node_type.span),
-                property_name: missing_name.to_string(),
+                property_name: match missing_info.name {
+                    PropertyName::Exact(val) => val.to_string(),
+                    PropertyName::Short(val) => val.to_string(),
+                    _ => "*".to_string(),
+                },
+                short: matches!(missing_info.name, PropertyName::Short(_)),
                 allowed_property_types: missing_info
                     .allowed_expression_types
                     .iter()
@@ -296,16 +385,14 @@ fn parse_node_to_shape<S: Shape>(
     }
 }
 
-type Properties<S> = HashMap<&'static str, PropertyInfo<S>>;
-
 trait Shape: Default + 'static {
     const NODE_TYPE: NodeType;
 
     fn doc_comments(&mut self) -> &mut String;
     fn name(&mut self) -> &mut Spanned<Identifier>;
 
-    /// All the supported properties. A "*" as key matches anything
-    fn supported_properties() -> &'static Properties<Self>;
+    /// All the supported properties
+    fn supported_properties() -> &'static [PropertyInfo<Self>];
 
     fn supported_subnodes() -> Option<&'static [NodeType]> {
         None
@@ -322,10 +409,11 @@ trait Shape: Default + 'static {
 }
 
 struct PropertyInfo<T: ?Sized> {
+    name: PropertyName<'static>,
     /// The types of expressions that are supported.
     /// Comparison is done using discriminants only.
     /// The values of the expressions are used for suggestions in diagnostics.
-    allowed_expression_types: Vec<Expression<'static>>,
+    allowed_expression_types: Cow<'static, [Expression<'static>]>,
     /// If true, multiple of these properties are allowed
     multiple_allowed: bool,
     /// If true, the property must be set by the user.
@@ -346,6 +434,7 @@ struct PropertyInfo<T: ?Sized> {
 impl<T: ?Sized> Clone for PropertyInfo<T> {
     fn clone(&self) -> Self {
         Self {
+            name: self.name,
             allowed_expression_types: self.allowed_expression_types.clone(),
             multiple_allowed: self.multiple_allowed,
             required: self.required,
@@ -354,6 +443,60 @@ impl<T: ?Sized> Clone for PropertyInfo<T> {
         }
     }
 }
+
+#[derive(Clone, Copy)]
+enum PropertyName<'a> {
+    Exact(&'a str),
+    Any,
+    Short(&'a str),
+}
+
+impl<'a> PropertyName<'a> {
+    fn as_exact(&self) -> Option<&&'a str> {
+        if let Self::Exact(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    fn as_short(&self) -> Option<&&'a str> {
+        if let Self::Short(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+}
+
+impl<'a> PartialEq for PropertyName<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Exact(l0), Self::Exact(r0)) => l0 == r0,
+            (Self::Short(l0), Self::Short(r0)) => l0 == r0,
+            (Self::Exact(_), Self::Any) => true,
+            (Self::Any, Self::Exact(_)) => true,
+            _ => false,
+        }
+    }
+}
+
+const FIELD_SET_EXAMPLE: Node<'static> = Node {
+    doc_comments: Vec::new(),
+    node_type: device_driver_parser::Ident {
+        val: "fieldset",
+        span: Span::empty(),
+    },
+    name: device_driver_parser::Ident {
+        val: "MyFieldSet",
+        span: Span::empty(),
+    },
+    type_specifier: None,
+    properties: Vec::new(),
+    short_properties: Vec::new(),
+    sub_nodes: Vec::new(),
+    span: Span::empty(),
+};
 
 impl Shape for Manifest {
     const NODE_TYPE: NodeType = NodeType::Manifest;
@@ -366,86 +509,74 @@ impl Shape for Manifest {
         &mut self.name
     }
 
-    fn supported_properties() -> &'static Properties<Self> {
-        static MAP: OnceLock<Properties<Manifest>> = OnceLock::new();
-        MAP.get_or_init(|| {
-            [
-                (
-                    "byte-order",
-                    PropertyInfo {
-                        allowed_expression_types: vec![Expression::ByteOrder(Default::default())],
-                        multiple_allowed: false,
-                        required: false,
-                        supports_doc_comments: false,
-                        setter: |manifest: &mut Self, property, _, _, _| {
-                            manifest.config.byte_order =
-                                Some(property.expression.as_byte_order().unwrap());
-                            false
-                        },
-                    },
-                ),
-                (
-                    "register-address-type",
-                    PropertyInfo {
-                        allowed_expression_types: vec![Expression::Integer(Default::default())],
-                        multiple_allowed: false,
-                        required: false,
-                        supports_doc_comments: false,
-                        setter: |manifest: &mut Self, property, _, _, _| {
-                            manifest.config.register_address_type = Some(
-                                property
-                                    .expression
-                                    .as_integer()
-                                    .unwrap()
-                                    .with_span(property.expression.span),
-                            );
-                            false
-                        },
-                    },
-                ),
-                (
-                    "command-address-type",
-                    PropertyInfo {
-                        allowed_expression_types: vec![Expression::Integer(Default::default())],
-                        multiple_allowed: false,
-                        required: false,
-                        supports_doc_comments: false,
-                        setter: |manifest: &mut Self, property, _, _, _| {
-                            manifest.config.command_address_type = Some(
-                                property
-                                    .expression
-                                    .as_integer()
-                                    .unwrap()
-                                    .with_span(property.expression.span),
-                            );
-                            false
-                        },
-                    },
-                ),
-                (
-                    "buffer-address-type",
-                    PropertyInfo {
-                        allowed_expression_types: vec![Expression::Integer(Default::default())],
-                        multiple_allowed: false,
-                        required: false,
-                        supports_doc_comments: false,
-                        setter: |manifest: &mut Self, property, _, _, _| {
-                            manifest.config.buffer_address_type = Some(
-                                property
-                                    .expression
-                                    .as_integer()
-                                    .unwrap()
-                                    .with_span(property.expression.span),
-                            );
-                            false
-                        },
-                    },
-                ),
-                // TODO: name-word-boundaries
-                // TODO: defmt-feature
-            ]
-            .into()
-        })
+    fn supported_properties() -> &'static [PropertyInfo<Self>] {
+        static MAP: &[PropertyInfo<Manifest>] = &[
+            PropertyInfo {
+                name: PropertyName::Exact("byte-order"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::ByteOrder(ByteOrder::LE)]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |manifest: &mut Manifest, property, _, _, _| {
+                    manifest.config.byte_order = Some(property.expression.as_byte_order().unwrap());
+                    false
+                },
+            },
+            PropertyInfo {
+                name: PropertyName::Exact("register-address-type"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::Integer(Integer::I32)]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |manifest: &mut Manifest, property, _, _, _| {
+                    manifest.config.register_address_type = Some(
+                        property
+                            .expression
+                            .as_integer()
+                            .unwrap()
+                            .with_span(property.expression.span),
+                    );
+                    false
+                },
+            },
+            PropertyInfo {
+                name: PropertyName::Exact("command-address-type"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::Integer(Integer::I32)]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |manifest: &mut Manifest, property, _, _, _| {
+                    manifest.config.command_address_type = Some(
+                        property
+                            .expression
+                            .as_integer()
+                            .unwrap()
+                            .with_span(property.expression.span),
+                    );
+                    false
+                },
+            },
+            PropertyInfo {
+                name: PropertyName::Exact("buffer-address-type"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::Integer(Integer::I32)]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |manifest: &mut Manifest, property, _, _, _| {
+                    manifest.config.buffer_address_type = Some(
+                        property
+                            .expression
+                            .as_integer()
+                            .unwrap()
+                            .with_span(property.expression.span),
+                    );
+                    false
+                },
+            },
+            // TODO: name-word-boundaries
+            // TODO: defmt-feature
+        ];
+        MAP
     }
 
     fn supported_subnodes() -> Option<&'static [NodeType]> {
@@ -473,86 +604,75 @@ impl Shape for Device {
         &mut self.name
     }
 
-    fn supported_properties() -> &'static Properties<Self> {
-        static MAP: OnceLock<Properties<Device>> = OnceLock::new();
-        MAP.get_or_init(|| {
-            [
-                (
-                    "byte-order",
-                    PropertyInfo {
-                        allowed_expression_types: vec![Expression::ByteOrder(Default::default())],
-                        multiple_allowed: false,
-                        required: false,
-                        supports_doc_comments: false,
-                        setter: |dev: &mut Self, property, _, _, _| {
-                            dev.device_config.byte_order =
-                                Some(property.expression.as_byte_order().unwrap());
-                            false
-                        },
-                    },
-                ),
-                (
-                    "register-address-type",
-                    PropertyInfo {
-                        allowed_expression_types: vec![Expression::Integer(Default::default())],
-                        multiple_allowed: false,
-                        required: false,
-                        supports_doc_comments: false,
-                        setter: |dev: &mut Self, property, _, _, _| {
-                            dev.device_config.register_address_type = Some(
-                                property
-                                    .expression
-                                    .as_integer()
-                                    .unwrap()
-                                    .with_span(property.expression.span),
-                            );
-                            false
-                        },
-                    },
-                ),
-                (
-                    "command-address-type",
-                    PropertyInfo {
-                        allowed_expression_types: vec![Expression::Integer(Default::default())],
-                        multiple_allowed: false,
-                        required: false,
-                        supports_doc_comments: false,
-                        setter: |dev: &mut Self, property, _, _, _| {
-                            dev.device_config.command_address_type = Some(
-                                property
-                                    .expression
-                                    .as_integer()
-                                    .unwrap()
-                                    .with_span(property.expression.span),
-                            );
-                            false
-                        },
-                    },
-                ),
-                (
-                    "buffer-address-type",
-                    PropertyInfo {
-                        allowed_expression_types: vec![Expression::Integer(Default::default())],
-                        multiple_allowed: false,
-                        required: false,
-                        supports_doc_comments: false,
-                        setter: |dev: &mut Self, property, _, _, _| {
-                            dev.device_config.buffer_address_type = Some(
-                                property
-                                    .expression
-                                    .as_integer()
-                                    .unwrap()
-                                    .with_span(property.expression.span),
-                            );
-                            false
-                        },
-                    },
-                ),
-                // TODO: name-word-boundaries
-                // TODO: defmt-feature
-            ]
-            .into()
-        })
+    fn supported_properties() -> &'static [PropertyInfo<Self>] {
+        static MAP: &[PropertyInfo<Device>] = &[
+            PropertyInfo {
+                name: PropertyName::Exact("byte-order"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::ByteOrder(ByteOrder::LE)]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |dev: &mut Device, property, _, _, _| {
+                    dev.device_config.byte_order =
+                        Some(property.expression.as_byte_order().unwrap());
+                    false
+                },
+            },
+            PropertyInfo {
+                name: PropertyName::Exact("register-address-type"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::Integer(Integer::I32)]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |dev: &mut Device, property, _, _, _| {
+                    dev.device_config.register_address_type = Some(
+                        property
+                            .expression
+                            .as_integer()
+                            .unwrap()
+                            .with_span(property.expression.span),
+                    );
+                    false
+                },
+            },
+            PropertyInfo {
+                name: PropertyName::Exact("command-address-type"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::Integer(Integer::I32)]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |dev: &mut Device, property, _, _, _| {
+                    dev.device_config.command_address_type = Some(
+                        property
+                            .expression
+                            .as_integer()
+                            .unwrap()
+                            .with_span(property.expression.span),
+                    );
+                    false
+                },
+            },
+            PropertyInfo {
+                name: PropertyName::Exact("buffer-address-type"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::Integer(Integer::I32)]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |dev: &mut Device, property, _, _, _| {
+                    dev.device_config.buffer_address_type = Some(
+                        property
+                            .expression
+                            .as_integer()
+                            .unwrap()
+                            .with_span(property.expression.span),
+                    );
+                    false
+                },
+            },
+            // TODO: name-word-boundaries
+            // TODO: defmt-feature
+        ];
+        MAP
     }
 
     fn supported_subnodes() -> Option<&'static [NodeType]> {
@@ -583,47 +703,45 @@ impl Shape for Block {
         &mut self.name
     }
 
-    fn supported_properties() -> &'static Properties<Self> {
-        static MAP: OnceLock<Properties<Block>> = OnceLock::new();
-        MAP.get_or_init(|| {
-            [
-                (
-                    "address-offset",
-                    PropertyInfo {
-                        allowed_expression_types: vec![Expression::Number(Default::default())],
-                        multiple_allowed: false,
-                        required: true,
-                        supports_doc_comments: false,
-                        setter: |block: &mut Self, property, _, _, _| {
-                            block.address_offset = property
-                                .expression
-                                .as_number()
-                                .unwrap()
-                                .with_span(property.expression.span);
-                            false
-                        },
+    fn supported_properties() -> &'static [PropertyInfo<Self>] {
+        static MAP: &[PropertyInfo<Block>] = &[
+            PropertyInfo {
+                name: PropertyName::Exact("address-offset"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::Number(0)]),
+                multiple_allowed: false,
+                required: true,
+                supports_doc_comments: false,
+                setter: |block: &mut Block, property, _, _, _| {
+                    block.address_offset = property
+                        .expression
+                        .as_number()
+                        .unwrap()
+                        .with_span(property.expression.span);
+                    false
+                },
+            },
+            PropertyInfo {
+                name: PropertyName::Exact("repeat"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::Repeat(
+                    device_driver_parser::Repeat {
+                        source: device_driver_parser::RepeatSource::Count(4),
+                        stride: 2,
                     },
-                ),
-                (
-                    "repeat",
-                    PropertyInfo {
-                        allowed_expression_types: vec![Expression::Repeat(Default::default())],
-                        multiple_allowed: false,
-                        required: false,
-                        supports_doc_comments: false,
-                        setter: |block: &mut Self, property, _, _, _| {
-                            block.address_offset = property
-                                .expression
-                                .as_number()
-                                .unwrap()
-                                .with_span(property.expression.span);
-                            false
-                        },
-                    },
-                ),
-            ]
-            .into()
-        })
+                )]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |block: &mut Block, property, _, _, _| {
+                    block.address_offset = property
+                        .expression
+                        .as_number()
+                        .unwrap()
+                        .with_span(property.expression.span);
+                    false
+                },
+            },
+        ];
+        MAP
     }
 
     fn supported_subnodes() -> Option<&'static [NodeType]> {
@@ -654,172 +772,148 @@ impl Shape for Register {
         &mut self.name
     }
 
-    fn supported_properties() -> &'static Properties<Self> {
-        static MAP: OnceLock<Properties<Register>> = OnceLock::new();
-        MAP.get_or_init(|| {
+    fn supported_properties() -> &'static [PropertyInfo<Self>] {
+        static MAP: LazyLock<Vec<PropertyInfo<Register>>> = LazyLock::new(|| {
             [
-                (
-                    "address",
-                    PropertyInfo {
-                        allowed_expression_types: vec![Expression::Number(Default::default())],
-                        multiple_allowed: false,
-                        required: true,
-                        supports_doc_comments: false,
-                        setter: |r: &mut Self, property, _, _, _| {
-                            r.address = property
-                                .expression
-                                .as_number()
-                                .unwrap()
-                                .with_span(property.expression.span);
-                            false
-                        },
+                PropertyInfo {
+                    name: PropertyName::Exact("address"),
+                    allowed_expression_types: Cow::Borrowed(&[Expression::Number(0)]),
+                    multiple_allowed: false,
+                    required: true,
+                    supports_doc_comments: false,
+                    setter: |r: &mut Register, property, _, _, _| {
+                        r.address = property
+                            .expression
+                            .as_number()
+                            .unwrap()
+                            .with_span(property.expression.span);
+                        false
                     },
-                ),
-                (
-                    "access",
-                    PropertyInfo {
-                        allowed_expression_types: vec![Expression::Access(Default::default())],
-                        multiple_allowed: false,
-                        required: false,
-                        supports_doc_comments: false,
-                        setter: |r: &mut Self, property, _, _, _| {
-                            r.access = property.expression.as_access().unwrap();
-                            false
-                        },
+                },
+                PropertyInfo {
+                    name: PropertyName::Exact("access"),
+                    allowed_expression_types: Cow::Borrowed(&[Expression::Access(Access::RW)]),
+                    multiple_allowed: false,
+                    required: false,
+                    supports_doc_comments: false,
+                    setter: |r: &mut Register, property, _, _, _| {
+                        r.access = property.expression.as_access().unwrap();
+                        false
                     },
-                ),
-                (
-                    "address-overlap",
-                    PropertyInfo {
-                        allowed_expression_types: vec![Expression::Allow],
-                        multiple_allowed: false,
-                        required: false,
-                        supports_doc_comments: false,
-                        setter: |r: &mut Self, _, _, _, _| {
-                            r.allow_address_overlap = true;
-                            false
-                        },
+                },
+                PropertyInfo {
+                    name: PropertyName::Exact("address-overlap"),
+                    allowed_expression_types: Cow::Borrowed(&[Expression::Allow]),
+                    multiple_allowed: false,
+                    required: false,
+                    supports_doc_comments: false,
+                    setter: |r: &mut Register, _, _, _, _| {
+                        r.allow_address_overlap = true;
+                        false
                     },
-                ),
-                (
-                    "reset",
-                    PropertyInfo {
-                        allowed_expression_types: vec![
-                            Expression::ResetArray(vec![12, 34]),
-                            Expression::ResetNumber(1234),
-                        ],
-                        multiple_allowed: false,
-                        required: false,
-                        supports_doc_comments: false,
-                        setter: |r: &mut Self, property, _, _, _| match &property.expression.value {
-                            Expression::ResetNumber(num) => {
-                                r.reset_value = Some(
-                                    ResetValue::Integer(*num).with_span(property.expression.span),
-                                );
+                },
+                PropertyInfo {
+                    name: PropertyName::Exact("reset"),
+                    allowed_expression_types: Cow::Owned(vec![
+                        Expression::ResetArray(vec![12, 34]),
+                        Expression::ResetNumber(1234),
+                    ]),
+                    multiple_allowed: false,
+                    required: false,
+                    supports_doc_comments: false,
+                    setter: |r: &mut Register, property, _, _, _| match &property.expression.value {
+                        Expression::ResetNumber(num) => {
+                            r.reset_value =
+                                Some(ResetValue::Integer(*num).with_span(property.expression.span));
+                            false
+                        }
+                        Expression::ResetArray(bytes) => {
+                            r.reset_value = Some(
+                                ResetValue::Array(bytes.to_vec())
+                                    .with_span(property.expression.span),
+                            );
+                            false
+                        }
+                        _ => unreachable!(),
+                    },
+                },
+                PropertyInfo {
+                    name: PropertyName::Exact("repeat"),
+                    allowed_expression_types: Cow::Borrowed(&[Expression::Repeat(
+                        device_driver_parser::Repeat {
+                            source: device_driver_parser::RepeatSource::Count(4),
+                            stride: 2,
+                        },
+                    )]),
+                    multiple_allowed: false,
+                    required: false,
+                    supports_doc_comments: false,
+                    setter: |r: &mut Register, property, _, _, _| {
+                        let repeat = property.expression.as_repeat().unwrap();
+                        r.repeat = Some(Repeat {
+                            source: match repeat.source {
+                                device_driver_parser::RepeatSource::Count(count) => {
+                                    RepeatSource::Count(count as u64)
+                                }
+                                device_driver_parser::RepeatSource::Enum(ident) => {
+                                    RepeatSource::Enum(
+                                        IdentifierRef::new(ident.val.into()).with_span(ident.span),
+                                    )
+                                }
+                            },
+                            stride: repeat.stride as i128,
+                        });
+                        false
+                    },
+                },
+                PropertyInfo {
+                    name: PropertyName::Exact("fields"),
+                    allowed_expression_types: Cow::Owned(vec![
+                        Expression::TypeReference(device_driver_parser::Ident {
+                            val: "MyFieldset",
+                            span: Span::empty(),
+                        }),
+                        Expression::SubNode(Box::new(FIELD_SET_EXAMPLE)),
+                    ]),
+                    multiple_allowed: false,
+                    required: true,
+                    supports_doc_comments: false,
+                    setter: |r: &mut Register, property, node, diagnostics, sibling_objects| {
+                        match &property.expression.value {
+                            Expression::TypeReference(ident) => {
+                                r.field_set_ref = IdentifierRef::new(ident.val.into());
                                 false
                             }
-                            Expression::ResetArray(bytes) => {
-                                r.reset_value = Some(
-                                    ResetValue::Array(bytes.clone())
-                                        .with_span(property.expression.span),
+                            Expression::SubNode(sub_node) => {
+                                let result = lower_node(
+                                    sub_node,
+                                    Some(NodeType::Register.with_span(node.node_type.span)),
+                                    &[NodeType::FieldSet],
+                                    diagnostics,
                                 );
-                                false
+
+                                match result {
+                                    LowerResult::Objects(fs, fs_siblings) => {
+                                        r.field_set_ref = fs.name().take_ref();
+                                        sibling_objects.push(fs);
+                                        sibling_objects.extend(fs_siblings);
+                                        false
+                                    }
+                                    LowerResult::Error(fs_siblings) => {
+                                        sibling_objects.extend(fs_siblings);
+                                        true
+                                    }
+                                    LowerResult::Manifest(_) => unreachable!(),
+                                }
                             }
                             _ => unreachable!(),
-                        },
+                        }
                     },
-                ),
-                (
-                    "repeat",
-                    PropertyInfo {
-                        allowed_expression_types: vec![Expression::Repeat(Default::default())],
-                        multiple_allowed: false,
-                        required: false,
-                        supports_doc_comments: false,
-                        setter: |r: &mut Self, property, _, _, _| {
-                            let repeat = property.expression.as_repeat().unwrap();
-                            r.repeat = Some(Repeat {
-                                source: match repeat.source {
-                                    device_driver_parser::RepeatSource::Count(count) => {
-                                        RepeatSource::Count(count as u64)
-                                    }
-                                    device_driver_parser::RepeatSource::Enum(ident) => {
-                                        RepeatSource::Enum(
-                                            IdentifierRef::new(ident.val.into())
-                                                .with_span(ident.span),
-                                        )
-                                    }
-                                },
-                                stride: repeat.stride as i128,
-                            });
-                            false
-                        },
-                    },
-                ),
-                (
-                    "fields",
-                    PropertyInfo {
-                        allowed_expression_types: vec![
-                            Expression::TypeReference(device_driver_parser::Ident {
-                                val: "MyFieldset",
-                                span: Span::default(),
-                            }),
-                            Expression::SubNode(Box::new(Node {
-                                doc_comments: vec![],
-                                node_type: device_driver_parser::Ident {
-                                    val: "fieldset",
-                                    span: Default::default(),
-                                },
-                                name: device_driver_parser::Ident {
-                                    val: "MyFieldSet",
-                                    span: Default::default(),
-                                },
-                                type_specifier: None,
-                                properties: vec![],
-                                short_properties: vec![],
-                                sub_nodes: vec![],
-                                span: Default::default(),
-                            })),
-                        ],
-                        multiple_allowed: false,
-                        required: true,
-                        supports_doc_comments: false,
-                        setter: |r: &mut Self, property, node, diagnostics, sibling_objects| {
-                            match &property.expression.value {
-                                Expression::TypeReference(ident) => {
-                                    r.field_set_ref = IdentifierRef::new(ident.val.into());
-                                    false
-                                }
-                                Expression::SubNode(sub_node) => {
-                                    let result = lower_node(
-                                        sub_node,
-                                        Some(NodeType::Register.with_span(node.node_type.span)),
-                                        &[NodeType::FieldSet],
-                                        diagnostics,
-                                    );
-
-                                    match result {
-                                        LowerResult::Objects(fs, fs_siblings) => {
-                                            r.field_set_ref = fs.name().take_ref();
-                                            sibling_objects.push(fs);
-                                            sibling_objects.extend(fs_siblings);
-                                            false
-                                        }
-                                        LowerResult::Error(fs_siblings) => {
-                                            sibling_objects.extend(fs_siblings);
-                                            true
-                                        }
-                                        LowerResult::Manifest(_) => unreachable!(),
-                                    }
-                                }
-                                _ => unreachable!(),
-                            }
-                        },
-                    },
-                ),
+                },
             ]
             .into()
-        })
+        });
+        &MAP
     }
 }
 
@@ -834,63 +928,54 @@ impl Shape for FieldSet {
         &mut self.name
     }
 
-    fn supported_properties() -> &'static Properties<Self> {
-        static MAP: OnceLock<Properties<FieldSet>> = OnceLock::new();
-        MAP.get_or_init(|| {
-            [
-                (
-                    "size-bits",
-                    PropertyInfo {
-                        allowed_expression_types: vec![Expression::Number(8)],
-                        multiple_allowed: false,
-                        required: true,
-                        supports_doc_comments: false,
-                        setter: |fs: &mut Self, property, fs_node, diagnostics, _| {
-                            match u32::try_from(property.expression.as_number().unwrap()) {
-                                Ok(size_bits) => {
-                                    fs.size_bits = size_bits.with_span(property.expression.span);
-                                    false
-                                }
-                                Err(_) => {
-                                    diagnostics.add(SizeBitsTooLarge {
-                                        value: property.expression.span,
-                                        field_set: fs_node.span,
-                                    });
-                                    true
-                                }
-                            }
-                        },
-                    },
-                ),
-                (
-                    "byte-order",
-                    PropertyInfo {
-                        allowed_expression_types: vec![Expression::ByteOrder(ByteOrder::LE)],
-                        multiple_allowed: false,
-                        required: false,
-                        supports_doc_comments: false,
-                        setter: |fs: &mut Self, property, _, _, _| {
-                            fs.byte_order = Some(property.expression.as_byte_order().unwrap());
-                            false
-                        },
-                    },
-                ),
-                (
-                    "bit-overlap",
-                    PropertyInfo {
-                        allowed_expression_types: vec![Expression::Allow],
-                        multiple_allowed: false,
-                        required: false,
-                        supports_doc_comments: false,
-                        setter: |fs: &mut Self, _, _, _, _| {
-                            fs.allow_bit_overlap = true;
-                            false
-                        },
-                    },
-                ),
-            ]
-            .into()
-        })
+    fn supported_properties() -> &'static [PropertyInfo<Self>] {
+        static MAP: &[PropertyInfo<FieldSet>] = &[
+            PropertyInfo {
+                name: PropertyName::Exact("size-bits"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::Number(8)]),
+                multiple_allowed: false,
+                required: true,
+                supports_doc_comments: false,
+                setter: |fs: &mut FieldSet, property, fs_node, diagnostics, _| match u32::try_from(
+                    property.expression.as_number().unwrap(),
+                ) {
+                    Ok(size_bits) => {
+                        fs.size_bits = size_bits.with_span(property.expression.span);
+                        false
+                    }
+                    Err(_) => {
+                        diagnostics.add(SizeBitsTooLarge {
+                            value: property.expression.span,
+                            field_set: fs_node.span,
+                        });
+                        true
+                    }
+                },
+            },
+            PropertyInfo {
+                name: PropertyName::Exact("byte-order"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::ByteOrder(ByteOrder::LE)]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |fs: &mut FieldSet, property, _, _, _| {
+                    fs.byte_order = Some(property.expression.as_byte_order().unwrap());
+                    false
+                },
+            },
+            PropertyInfo {
+                name: PropertyName::Exact("bit-overlap"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::Allow]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |fs: &mut FieldSet, _, _, _, _| {
+                    fs.allow_bit_overlap = true;
+                    false
+                },
+            },
+        ];
+        MAP
     }
 
     fn supported_subnodes() -> Option<&'static [NodeType]> {
@@ -916,24 +1001,19 @@ impl Shape for Extern {
         &mut self.name
     }
 
-    fn supported_properties() -> &'static Properties<Self> {
-        static MAP: OnceLock<Properties<Extern>> = OnceLock::new();
-        MAP.get_or_init(|| {
-            [(
-                "infallible",
-                PropertyInfo {
-                    allowed_expression_types: vec![Expression::Allow],
-                    multiple_allowed: false,
-                    required: false,
-                    supports_doc_comments: false,
-                    setter: |ext: &mut Self, _, _, _, _| {
-                        ext.supports_infallible = true;
-                        false
-                    },
-                },
-            )]
-            .into()
-        })
+    fn supported_properties() -> &'static [PropertyInfo<Self>] {
+        static MAP: &[PropertyInfo<Extern>] = &[PropertyInfo {
+            name: PropertyName::Exact("infallible"),
+            allowed_expression_types: Cow::Borrowed(&[Expression::Allow]),
+            multiple_allowed: false,
+            required: false,
+            supports_doc_comments: false,
+            setter: |ext: &mut Extern, _, _, _, _| {
+                ext.supports_infallible = true;
+                false
+            },
+        }];
+        MAP
     }
 
     fn base_type(&mut self) -> Option<&mut Spanned<BaseType>> {
@@ -952,43 +1032,36 @@ impl Shape for Buffer {
         &mut self.name
     }
 
-    fn supported_properties() -> &'static Properties<Self> {
-        static MAP: OnceLock<Properties<Buffer>> = OnceLock::new();
-        MAP.get_or_init(|| {
-            [
-                (
-                    "access",
-                    PropertyInfo {
-                        allowed_expression_types: vec![Expression::Access(Default::default())],
-                        multiple_allowed: false,
-                        required: false,
-                        supports_doc_comments: false,
-                        setter: |buf: &mut Self, property, _, _, _| {
-                            buf.access = property.expression.as_access().unwrap();
-                            false
-                        },
-                    },
-                ),
-                (
-                    "address",
-                    PropertyInfo {
-                        allowed_expression_types: vec![Expression::Number(Default::default())],
-                        multiple_allowed: false,
-                        required: true,
-                        supports_doc_comments: false,
-                        setter: |buf: &mut Self, property, _, _, _| {
-                            buf.address = property
-                                .expression
-                                .as_number()
-                                .unwrap()
-                                .with_span(property.expression.span);
-                            false
-                        },
-                    },
-                ),
-            ]
-            .into()
-        })
+    fn supported_properties() -> &'static [PropertyInfo<Self>] {
+        static MAP: &[PropertyInfo<Buffer>] = &[
+            PropertyInfo {
+                name: PropertyName::Exact("access"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::Access(Access::RW)]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |buf: &mut Buffer, property, _, _, _| {
+                    buf.access = property.expression.as_access().unwrap();
+                    false
+                },
+            },
+            PropertyInfo {
+                name: PropertyName::Exact("address"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::Number(0)]),
+                multiple_allowed: false,
+                required: true,
+                supports_doc_comments: false,
+                setter: |buf: &mut Buffer, property, _, _, _| {
+                    buf.address = property
+                        .expression
+                        .as_number()
+                        .unwrap()
+                        .with_span(property.expression.span);
+                    false
+                },
+            },
+        ];
+        MAP
     }
 }
 
@@ -1003,51 +1076,46 @@ impl Shape for Enum {
         &mut self.name
     }
 
-    fn supported_properties() -> &'static Properties<Self> {
-        static MAP: OnceLock<Properties<Enum>> = OnceLock::new();
-        MAP.get_or_init(|| {
-            [(
-                "*",
-                PropertyInfo {
-                    allowed_expression_types: vec![
-                        Expression::Auto,
-                        Expression::Number(0),
-                        Expression::DefaultNumber(0),
-                        Expression::CatchAllNumber(0),
-                    ],
-                    multiple_allowed: true,
-                    required: false,
-                    supports_doc_comments: true,
-                    setter: |enum_value: &mut Self, property, _, diagnostics, _| {
-                        let identifier = match Identifier::try_parse(property.name.val) {
-                            Ok(identifier) => identifier,
-                            Err(e) => {
-                                diagnostics.add(InvalidIdentifier {
-                                    error: e,
-                                    identifier: property.name.span,
-                                });
-                                return true;
-                            }
-                        };
-
-                        enum_value.variants.push(EnumVariant {
-                            description: property.doc_comments.iter().map(|c| c.value).join("\n"),
-                            name: identifier.with_span(property.name.span),
-                            value: match &property.expression.value {
-                                Expression::Number(num) => EnumValue::Specified(*num),
-                                Expression::DefaultNumber(num) => EnumValue::Default(*num),
-                                Expression::CatchAllNumber(num) => EnumValue::CatchAll(*num),
-                                Expression::Auto => EnumValue::Unspecified,
-                                _ => unreachable!(),
-                            },
-                            span: property.span,
+    fn supported_properties() -> &'static [PropertyInfo<Self>] {
+        static MAP: &[PropertyInfo<Enum>] = &[PropertyInfo {
+            name: PropertyName::Any,
+            allowed_expression_types: Cow::Borrowed(&[
+                Expression::Auto,
+                Expression::Number(0),
+                Expression::DefaultNumber(0),
+                Expression::CatchAllNumber(0),
+            ]),
+            multiple_allowed: true,
+            required: false,
+            supports_doc_comments: true,
+            setter: |enum_value: &mut Enum, property, _, diagnostics, _| {
+                let identifier = match Identifier::try_parse(property.name.val) {
+                    Ok(identifier) => identifier,
+                    Err(e) => {
+                        diagnostics.add(InvalidIdentifier {
+                            error: e,
+                            identifier: property.name.span,
                         });
-                        false
+                        return true;
+                    }
+                };
+
+                enum_value.variants.push(EnumVariant {
+                    description: property.doc_comments.iter().map(|c| c.value).join("\n"),
+                    name: identifier.with_span(property.name.span),
+                    value: match &property.expression.value {
+                        Expression::Number(num) => EnumValue::Specified(*num),
+                        Expression::DefaultNumber(num) => EnumValue::Default(*num),
+                        Expression::CatchAllNumber(num) => EnumValue::CatchAll(*num),
+                        Expression::Auto => EnumValue::Unspecified,
+                        _ => unreachable!(),
                     },
-                },
-            )]
-            .into()
-        })
+                    span: property.span,
+                });
+                false
+            },
+        }];
+        MAP
     }
 
     fn base_type(&mut self) -> Option<&mut Spanned<BaseType>> {
@@ -1066,202 +1134,166 @@ impl Shape for Command {
         &mut self.name
     }
 
-    fn supported_properties() -> &'static Properties<Self> {
-        static MAP: OnceLock<Properties<Command>> = OnceLock::new();
-        MAP.get_or_init(|| {
+    fn supported_properties() -> &'static [PropertyInfo<Self>] {
+        static MAP: LazyLock<Vec<PropertyInfo<Command>>> = LazyLock::new(|| {
             [
-                (
-                    "address",
-                    PropertyInfo {
-                        allowed_expression_types: vec![Expression::Number(0)],
-                        multiple_allowed: false,
-                        required: true,
-                        supports_doc_comments: false,
-                        setter: |command: &mut Self, property, _, _, _| {
-                            command.address = property
-                                .expression
-                                .as_number()
-                                .unwrap()
-                                .with_span(property.expression.span);
-                            false
-                        },
+                PropertyInfo {
+                    name: PropertyName::Exact("address"),
+                    allowed_expression_types: Cow::Borrowed(&[Expression::Number(0)]),
+                    multiple_allowed: false,
+                    required: true,
+                    supports_doc_comments: false,
+                    setter: |command: &mut Command, property, _, _, _| {
+                        command.address = property
+                            .expression
+                            .as_number()
+                            .unwrap()
+                            .with_span(property.expression.span);
+                        false
                     },
-                ),
-                (
-                    "address-overlap",
-                    PropertyInfo {
-                        allowed_expression_types: vec![Expression::Allow],
-                        multiple_allowed: false,
-                        required: false,
-                        supports_doc_comments: false,
-                        setter: |command: &mut Self, _, _, _, _| {
-                            command.allow_address_overlap = true;
-                            false
-                        },
+                },
+                PropertyInfo {
+                    name: PropertyName::Exact("address-overlap"),
+                    allowed_expression_types: Cow::Borrowed(&[Expression::Allow]),
+                    multiple_allowed: false,
+                    required: false,
+                    supports_doc_comments: false,
+                    setter: |command: &mut Command, _, _, _, _| {
+                        command.allow_address_overlap = true;
+                        false
                     },
-                ),
-                (
-                    "repeat",
-                    PropertyInfo {
-                        allowed_expression_types: vec![Expression::Repeat(Default::default())],
-                        multiple_allowed: false,
-                        required: false,
-                        supports_doc_comments: false,
-                        setter: |command: &mut Self, property, _, _, _| {
-                            let repeat = property.expression.as_repeat().unwrap();
-                            command.repeat = Some(Repeat {
-                                source: match repeat.source {
-                                    device_driver_parser::RepeatSource::Count(count) => {
-                                        RepeatSource::Count(count as u64)
-                                    }
-                                    device_driver_parser::RepeatSource::Enum(ident) => {
-                                        RepeatSource::Enum(
-                                            IdentifierRef::new(ident.val.into())
-                                                .with_span(ident.span),
-                                        )
-                                    }
-                                },
-                                stride: repeat.stride as i128,
-                            });
-                            false
+                },
+                PropertyInfo {
+                    name: PropertyName::Exact("repeat"),
+                    allowed_expression_types: Cow::Borrowed(&[Expression::Repeat(
+                        device_driver_parser::Repeat {
+                            source: device_driver_parser::RepeatSource::Count(4),
+                            stride: 2,
                         },
-                    },
-                ),
-                (
-                    "fields-in",
-                    PropertyInfo {
-                        allowed_expression_types: vec![
-                            Expression::TypeReference(device_driver_parser::Ident {
-                                val: "MyFieldset",
-                                span: Span::default(),
-                            }),
-                            Expression::SubNode(Box::new(Node {
-                                doc_comments: vec![],
-                                node_type: device_driver_parser::Ident {
-                                    val: "fieldset",
-                                    span: Default::default(),
-                                },
-                                name: device_driver_parser::Ident {
-                                    val: "MyFieldSet",
-                                    span: Default::default(),
-                                },
-                                type_specifier: None,
-                                properties: vec![],
-                                short_properties: vec![],
-                                sub_nodes: vec![],
-                                span: Default::default(),
-                            })),
-                        ],
-                        multiple_allowed: false,
-                        required: false,
-                        supports_doc_comments: false,
-                        setter: |command: &mut Self,
-                                 property,
-                                 node,
-                                 diagnostics,
-                                 sibling_objects| {
-                            match &property.expression.value {
-                                Expression::TypeReference(ident) => {
-                                    command.field_set_ref_in =
-                                        Some(IdentifierRef::new(ident.val.into()));
-                                    false
+                    )]),
+                    multiple_allowed: false,
+                    required: false,
+                    supports_doc_comments: false,
+                    setter: |command: &mut Command, property, _, _, _| {
+                        let repeat = property.expression.as_repeat().unwrap();
+                        command.repeat = Some(Repeat {
+                            source: match repeat.source {
+                                device_driver_parser::RepeatSource::Count(count) => {
+                                    RepeatSource::Count(count as u64)
                                 }
-                                Expression::SubNode(sub_node) => {
-                                    let result = lower_node(
-                                        sub_node,
-                                        Some(NodeType::Register.with_span(node.node_type.span)),
-                                        &[NodeType::FieldSet],
-                                        diagnostics,
-                                    );
-
-                                    match result {
-                                        LowerResult::Objects(fs, fs_siblings) => {
-                                            command.field_set_ref_in = Some(fs.name().take_ref());
-                                            sibling_objects.push(fs);
-                                            sibling_objects.extend(fs_siblings);
-                                            false
-                                        }
-                                        LowerResult::Error(fs_siblings) => {
-                                            sibling_objects.extend(fs_siblings);
-                                            true
-                                        }
-                                        LowerResult::Manifest(_) => unreachable!(),
-                                    }
+                                device_driver_parser::RepeatSource::Enum(ident) => {
+                                    RepeatSource::Enum(
+                                        IdentifierRef::new(ident.val.into()).with_span(ident.span),
+                                    )
                                 }
-                                _ => unreachable!(),
+                            },
+                            stride: repeat.stride as i128,
+                        });
+                        false
+                    },
+                },
+                PropertyInfo {
+                    name: PropertyName::Exact("fields-in"),
+                    allowed_expression_types: Cow::Owned(vec![
+                        Expression::TypeReference(device_driver_parser::Ident {
+                            val: "MyFieldset",
+                            span: Span::empty(),
+                        }),
+                        Expression::SubNode(Box::new(FIELD_SET_EXAMPLE)),
+                    ]),
+                    multiple_allowed: false,
+                    required: false,
+                    supports_doc_comments: false,
+                    setter: |command: &mut Command,
+                             property,
+                             node,
+                             diagnostics,
+                             sibling_objects| {
+                        match &property.expression.value {
+                            Expression::TypeReference(ident) => {
+                                command.field_set_ref_in =
+                                    Some(IdentifierRef::new(ident.val.into()));
+                                false
                             }
-                        },
-                    },
-                ),
-                (
-                    "fields-out",
-                    PropertyInfo {
-                        allowed_expression_types: vec![
-                            Expression::TypeReference(device_driver_parser::Ident {
-                                val: "MyFieldset",
-                                span: Span::default(),
-                            }),
-                            Expression::SubNode(Box::new(Node {
-                                doc_comments: vec![],
-                                node_type: device_driver_parser::Ident {
-                                    val: "fieldset",
-                                    span: Default::default(),
-                                },
-                                name: device_driver_parser::Ident {
-                                    val: "MyFieldSet",
-                                    span: Default::default(),
-                                },
-                                type_specifier: None,
-                                properties: vec![],
-                                short_properties: vec![],
-                                sub_nodes: vec![],
-                                span: Default::default(),
-                            })),
-                        ],
-                        multiple_allowed: false,
-                        required: false,
-                        supports_doc_comments: false,
-                        setter: |command: &mut Self,
-                                 property,
-                                 node,
-                                 diagnostics,
-                                 sibling_objects| {
-                            match &property.expression.value {
-                                Expression::TypeReference(ident) => {
-                                    command.field_set_ref_out =
-                                        Some(IdentifierRef::new(ident.val.into()));
-                                    false
-                                }
-                                Expression::SubNode(sub_node) => {
-                                    let result = lower_node(
-                                        sub_node,
-                                        Some(NodeType::Register.with_span(node.node_type.span)),
-                                        &[NodeType::FieldSet],
-                                        diagnostics,
-                                    );
+                            Expression::SubNode(sub_node) => {
+                                let result = lower_node(
+                                    sub_node,
+                                    Some(NodeType::Register.with_span(node.node_type.span)),
+                                    &[NodeType::FieldSet],
+                                    diagnostics,
+                                );
 
-                                    match result {
-                                        LowerResult::Objects(fs, fs_siblings) => {
-                                            command.field_set_ref_out = Some(fs.name().take_ref());
-                                            sibling_objects.push(fs);
-                                            sibling_objects.extend(fs_siblings);
-                                            false
-                                        }
-                                        LowerResult::Error(fs_siblings) => {
-                                            sibling_objects.extend(fs_siblings);
-                                            true
-                                        }
-                                        LowerResult::Manifest(_) => unreachable!(),
+                                match result {
+                                    LowerResult::Objects(fs, fs_siblings) => {
+                                        command.field_set_ref_in = Some(fs.name().take_ref());
+                                        sibling_objects.push(fs);
+                                        sibling_objects.extend(fs_siblings);
+                                        false
                                     }
+                                    LowerResult::Error(fs_siblings) => {
+                                        sibling_objects.extend(fs_siblings);
+                                        true
+                                    }
+                                    LowerResult::Manifest(_) => unreachable!(),
                                 }
-                                _ => unreachable!(),
                             }
-                        },
+                            _ => unreachable!(),
+                        }
                     },
-                ),
+                },
+                PropertyInfo {
+                    name: PropertyName::Exact("fields-out"),
+                    allowed_expression_types: Cow::Owned(vec![
+                        Expression::TypeReference(device_driver_parser::Ident {
+                            val: "MyFieldset",
+                            span: Span::empty(),
+                        }),
+                        Expression::SubNode(Box::new(FIELD_SET_EXAMPLE)),
+                    ]),
+                    multiple_allowed: false,
+                    required: false,
+                    supports_doc_comments: false,
+                    setter: |command: &mut Command,
+                             property,
+                             node,
+                             diagnostics,
+                             sibling_objects| {
+                        match &property.expression.value {
+                            Expression::TypeReference(ident) => {
+                                command.field_set_ref_out =
+                                    Some(IdentifierRef::new(ident.val.into()));
+                                false
+                            }
+                            Expression::SubNode(sub_node) => {
+                                let result = lower_node(
+                                    sub_node,
+                                    Some(NodeType::Register.with_span(node.node_type.span)),
+                                    &[NodeType::FieldSet],
+                                    diagnostics,
+                                );
+
+                                match result {
+                                    LowerResult::Objects(fs, fs_siblings) => {
+                                        command.field_set_ref_out = Some(fs.name().take_ref());
+                                        sibling_objects.push(fs);
+                                        sibling_objects.extend(fs_siblings);
+                                        false
+                                    }
+                                    LowerResult::Error(fs_siblings) => {
+                                        sibling_objects.extend(fs_siblings);
+                                        true
+                                    }
+                                    LowerResult::Manifest(_) => unreachable!(),
+                                }
+                            }
+                            _ => unreachable!(),
+                        }
+                    },
+                },
             ]
             .into()
-        })
+        });
+        &MAP
     }
 }
 
@@ -1276,51 +1308,54 @@ impl Shape for Field {
         &mut self.name
     }
 
-    // TODO: This needs to become a new `supported_short_properties`
-    fn supported_properties() -> &'static Properties<Self> {
-        static MAP: OnceLock<Properties<Field>> = OnceLock::new();
-        MAP.get_or_init(|| {
-            [(
-                "address",
-                PropertyInfo {
-                    allowed_expression_types: vec![
-                        Expression::Number(0),
-                        Expression::AddressRange { end: 8, start: 0 },
-                    ],
-                    multiple_allowed: false,
-                    required: true,
-                    supports_doc_comments: false,
-                    setter: |field: &mut Self, property, _, diagnostics, _| {
-                        let u32_range = 0..=u32::MAX as i128;
+    fn supported_properties() -> &'static [PropertyInfo<Self>] {
+        static MAP: &[PropertyInfo<Field>] = &[PropertyInfo {
+            name: PropertyName::Short("address"),
+            allowed_expression_types: Cow::Borrowed(&[
+                Expression::Number(0),
+                Expression::AddressRange { end: 8, start: 0 },
+            ]),
+            multiple_allowed: false,
+            required: true,
+            supports_doc_comments: false,
+            setter: |field: &mut Field, property, _, diagnostics, _| {
+                let u32_range = 0..=u32::MAX as i128;
 
-                        field.field_address = match property.expression.value {
-                            Expression::AddressRange { end, start }
-                                if u32_range.contains(&end) && u32_range.contains(&start) =>
-                            {
-                                AddressRange {
-                                    start: start.try_into().unwrap(),
-                                    end: end.try_into().unwrap(),
-                                }
-                            }
-                            Expression::Number(num) if u32_range.contains(&num) => AddressRange {
-                                start: num.try_into().unwrap(),
-                                end: num.try_into().unwrap(),
-                            },
-                            Expression::AddressRange { .. } | Expression::Number(_) => {
-                                diagnostics.add(FieldAddressOutOfRange {
-                                    field_address: property.expression.span,
-                                });
-                                return true;
-                            }
-                            _ => unreachable!(),
+                field.field_address = match property.expression.value {
+                    Expression::AddressRange { end, start }
+                        if u32_range.contains(&end) && u32_range.contains(&start) =>
+                    {
+                        if end < start {
+                            diagnostics.add(FieldAddressWrongOrder {
+                                address: property.expression.span,
+                                end,
+                                start,
+                            });
+                            return true;
                         }
-                        .with_span(property.expression.span);
-                        false
+
+                        AddressRange {
+                            start: start.try_into().unwrap(),
+                            end: end.try_into().unwrap(),
+                        }
+                    }
+                    Expression::Number(num) if u32_range.contains(&num) => AddressRange {
+                        start: num.try_into().unwrap(),
+                        end: num.try_into().unwrap(),
                     },
-                },
-            )]
-            .into()
-        })
+                    Expression::AddressRange { .. } | Expression::Number(_) => {
+                        diagnostics.add(FieldAddressOutOfRange {
+                            field_address: property.expression.span,
+                        });
+                        return true;
+                    }
+                    _ => unreachable!(),
+                }
+                .with_span(property.expression.span);
+                false
+            },
+        }];
+        MAP
     }
 
     fn base_type(&mut self) -> Option<&mut Spanned<BaseType>> {

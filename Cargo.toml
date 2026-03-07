@@ -24,7 +24,7 @@ package.license = "MIT OR Apache-2.0"
 package.homepage = "https://device-driver.com"
 package.repository = "https://github.com/diondokter/device-driver"
 package.edition = "2024"
-package.rust-version = "1.88"
+package.rust-version = "1.94"
 
 [workspace.dependencies]
 device-driver-codegen = { path = "compiler/dd-codegen", version = "=1.0.7" }

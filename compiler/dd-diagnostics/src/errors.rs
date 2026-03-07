@@ -1469,6 +1469,7 @@ impl Diagnostic for InvalidNodeType {
 pub struct MissingRequiredProperty {
     pub node_type: Spanned<NodeType>,
     pub property_name: String,
+    pub short: bool,
     pub allowed_property_types: Vec<String>,
 }
 
@@ -1478,6 +1479,20 @@ impl Diagnostic for MissingRequiredProperty {
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        let label = if self.short {
+            format!(
+                "missing short property for `{}`, with one of these expression types: {}",
+                self.property_name,
+                self.allowed_property_types.join(", ")
+            )
+        } else {
+            format!(
+                "missing property `{}`, with one of these expression types: {}",
+                self.property_name,
+                self.allowed_property_types.join(", ")
+            )
+        };
+
         [
             Level::ERROR
                 .primary_title(format!(
@@ -1488,11 +1503,7 @@ impl Diagnostic for MissingRequiredProperty {
                     Snippet::source(source).path(path).annotation(
                         AnnotationKind::Primary
                             .span(self.node_type.span.into())
-                            .label(format!(
-                                "missing property `{}`, with one of these expression types: {}",
-                                self.property_name,
-                                self.allowed_property_types.join(", ")
-                            )),
+                            .label(label),
                     ),
                 ), // TODO: Add patches to show user adding the properties
         ]
@@ -1581,9 +1592,80 @@ impl Diagnostic for FieldAddressOutOfRange {
                 Snippet::source(source).path(path).annotation(
                     AnnotationKind::Primary
                         .span(self.field_address.into())
-                        .label("address must fit in 0..2^32-1"),
+                        .label("address must be non-negative and lower than 2^32"),
                 ),
             )]
         .to_vec()
+    }
+}
+
+pub struct InvalidShortProperty {
+    pub property: Span,
+    pub node_type: Spanned<NodeType>,
+    pub expected: Vec<(String, String)>,
+}
+
+impl Diagnostic for InvalidShortProperty {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [Level::ERROR
+            .primary_title(format!(
+                "invalid short property for `{}` nodes",
+                self.node_type
+            ))
+            .element(Snippet::source(source).path(path).annotation(
+                AnnotationKind::Primary.span(self.property.into()).label(
+                    if self.expected.is_empty() {
+                        "no short properties are expected".into()
+                    } else {
+                        format!(
+                            "expected one of: {}",
+                            self.expected
+                                .iter()
+                                .map(|(expression, purpose)| format!("`{expression}` as {purpose}"))
+                                .join(", ")
+                        )
+                    },
+                ),
+            ))]
+        .to_vec()
+    }
+}
+
+pub struct FieldAddressWrongOrder {
+    pub address: Span,
+    pub end: i128,
+    pub start: i128,
+}
+
+impl Diagnostic for FieldAddressWrongOrder {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        const NOTE_TEXT: &str = "the ordering is `high:low` because that mirrors the format commonly used in datasheets and HDLs";
+        [
+            Level::ERROR
+                .primary_title("field address specified in wrong order")
+                .element(
+                    Snippet::source(source).path(path).annotation(
+                        AnnotationKind::Primary
+                            .span(self.address.into())
+                            .label("address must be specified as `high:low`"),
+                    ),
+                ),
+            Level::HELP
+                .secondary_title("try switching around the numbers")
+                .element(Snippet::source(source).path(path).patch(Patch::new(
+                    self.address.into(),
+                    format!("{}:{}", self.start, self.end),
+                ))),
+            Group::with_title(Level::NOTE.secondary_title(NOTE_TEXT)),
+        ]
+        .into()
     }
 }

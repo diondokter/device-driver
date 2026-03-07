@@ -7,6 +7,10 @@ pub struct Span {
 }
 
 impl Span {
+    pub const fn empty() -> Self {
+        Self { start: 0, end: 0 }
+    }
+
     pub fn is_empty(&self) -> bool {
         self.start >= self.end
     }
