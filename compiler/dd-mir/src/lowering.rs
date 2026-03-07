@@ -1309,52 +1309,92 @@ impl Shape for Field {
     }
 
     fn supported_properties() -> &'static [PropertyInfo<Self>] {
-        static MAP: &[PropertyInfo<Field>] = &[PropertyInfo {
-            name: PropertyName::Short("address"),
-            allowed_expression_types: Cow::Borrowed(&[
-                Expression::Number(0),
-                Expression::AddressRange { end: 8, start: 0 },
-            ]),
-            multiple_allowed: false,
-            required: true,
-            supports_doc_comments: false,
-            setter: |field: &mut Field, property, _, diagnostics, _| {
-                let u32_range = 0..=u32::MAX as i128;
+        static MAP: &[PropertyInfo<Field>] = &[
+            PropertyInfo {
+                name: PropertyName::Short("address"),
+                allowed_expression_types: Cow::Borrowed(&[
+                    Expression::Number(0),
+                    Expression::AddressRange { end: 8, start: 0 },
+                ]),
+                multiple_allowed: false,
+                required: true,
+                supports_doc_comments: false,
+                setter: |field: &mut Field, property, _, diagnostics, _| {
+                    let u32_range = 0..=u32::MAX as i128;
 
-                field.field_address = match property.expression.value {
-                    Expression::AddressRange { end, start }
-                        if u32_range.contains(&end) && u32_range.contains(&start) =>
-                    {
-                        if end < start {
-                            diagnostics.add(FieldAddressWrongOrder {
-                                address: property.expression.span,
-                                end,
-                                start,
+                    field.field_address = match property.expression.value {
+                        Expression::AddressRange { end, start }
+                            if u32_range.contains(&end) && u32_range.contains(&start) =>
+                        {
+                            if end < start {
+                                diagnostics.add(FieldAddressWrongOrder {
+                                    address: property.expression.span,
+                                    end,
+                                    start,
+                                });
+                                return true;
+                            }
+
+                            AddressRange {
+                                start: start.try_into().unwrap(),
+                                end: end.try_into().unwrap(),
+                            }
+                        }
+                        Expression::Number(num) if u32_range.contains(&num) => AddressRange {
+                            start: num.try_into().unwrap(),
+                            end: num.try_into().unwrap(),
+                        },
+                        Expression::AddressRange { .. } | Expression::Number(_) => {
+                            diagnostics.add(FieldAddressOutOfRange {
+                                field_address: property.expression.span,
                             });
                             return true;
                         }
-
-                        AddressRange {
-                            start: start.try_into().unwrap(),
-                            end: end.try_into().unwrap(),
-                        }
+                        _ => unreachable!(),
                     }
-                    Expression::Number(num) if u32_range.contains(&num) => AddressRange {
-                        start: num.try_into().unwrap(),
-                        end: num.try_into().unwrap(),
-                    },
-                    Expression::AddressRange { .. } | Expression::Number(_) => {
-                        diagnostics.add(FieldAddressOutOfRange {
-                            field_address: property.expression.span,
-                        });
-                        return true;
-                    }
-                    _ => unreachable!(),
-                }
-                .with_span(property.expression.span);
-                false
+                    .with_span(property.expression.span);
+                    false
+                },
             },
-        }];
+            PropertyInfo {
+                name: PropertyName::Short("access"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::Access(Access::RW)]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |field: &mut Field, property, _, _, _| {
+                    field.access = property.expression.as_access().unwrap();
+                    false
+                },
+            },
+            PropertyInfo {
+                name: PropertyName::Short("repeat"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::Repeat(
+                    device_driver_parser::Repeat {
+                        source: device_driver_parser::RepeatSource::Count(4),
+                        stride: 2,
+                    },
+                )]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |field: &mut Field, property, _, _, _| {
+                    let repeat = property.expression.as_repeat().unwrap();
+                    field.repeat = Some(Repeat {
+                        source: match repeat.source {
+                            device_driver_parser::RepeatSource::Count(count) => {
+                                RepeatSource::Count(count as u64)
+                            }
+                            device_driver_parser::RepeatSource::Enum(ident) => RepeatSource::Enum(
+                                IdentifierRef::new(ident.val.into()).with_span(ident.span),
+                            ),
+                        },
+                        stride: repeat.stride as i128,
+                    });
+                    false
+                },
+            },
+        ];
         MAP
     }
 

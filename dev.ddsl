@@ -16,7 +16,7 @@ manifest dev {
                 byte-order: LE,
                 bit-overlap: allow,
 
-                field aha 15:0,
+                field aha 7:0 RO <2 by 2> -> i16,
             },
         },
 
