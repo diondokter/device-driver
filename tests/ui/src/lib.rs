@@ -1,5 +1,6 @@
 use std::{path::Path, sync::LazyLock};
 
+use device_driver_core::Target;
 use device_driver_diagnostics::Metadata;
 use regex::Regex;
 
@@ -16,7 +17,13 @@ pub fn run_test(source_paths: &[&Path], output_path: &Path) {
         let input_extension = source_path.extension().unwrap().display().to_string();
         let (transformed, diagnostics) = match &*input_extension {
             "ddsl" => {
-                let (transformed, diagnostics) = device_driver_core::compile(&source).unwrap();
+                let (transformed, diagnostics) = device_driver_core::compile(
+                    &source,
+                    Target::Rust {
+                        defmt_feature: Some("defmt".into()),
+                    },
+                )
+                .unwrap();
 
                 let mut diagnostics_output = String::new();
 

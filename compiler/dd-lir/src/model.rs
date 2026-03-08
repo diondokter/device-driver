@@ -12,7 +12,6 @@ pub struct Driver {
 pub struct Device {
     pub internal_address_type: Integer,
     pub blocks: Vec<Block>,
-    pub defmt_feature: Option<String>,
 }
 
 pub struct Block {
@@ -72,7 +71,6 @@ pub struct FieldSet {
     pub byte_order: ByteOrder,
     pub size_bits: u32,
     pub fields: Vec<Field>,
-    pub defmt_feature: Option<String>,
 }
 
 impl FieldSet {
@@ -126,7 +124,6 @@ pub struct Enum {
     pub name: Identifier,
     pub base_type: String,
     pub variants: Vec<EnumVariant>,
-    pub defmt_feature: Option<String>,
 }
 
 impl Enum {

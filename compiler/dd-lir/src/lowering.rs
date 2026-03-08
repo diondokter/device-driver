@@ -44,7 +44,6 @@ pub fn transform_devices(manifest: &mir::Manifest) -> Result<Vec<lir::Device>, D
             Ok(lir::Device {
                 internal_address_type: find_best_internal_address_type(manifest, device),
                 blocks,
-                defmt_feature: device_config.defmt_feature.clone(),
             })
         })
         .collect()
@@ -252,23 +251,18 @@ fn get_method(
 
 pub fn transform_field_sets(manifest: &mir::Manifest) -> Vec<lir::FieldSet> {
     manifest
-        .iter_objects_with_config()
-        .filter_map(|(o, config)| {
+        .iter_objects()
+        .filter_map(|o| {
             if let Object::FieldSet(fs) = o {
-                Some((fs, config))
+                Some(transform_field_set(manifest, fs))
             } else {
                 None
             }
         })
-        .map(|(fs, config)| transform_field_set(manifest, fs, &config))
         .collect()
 }
 
-fn transform_field_set(
-    manifest: &mir::Manifest,
-    field_set: &mir::FieldSet,
-    config: &mir::DeviceConfig,
-) -> lir::FieldSet {
+fn transform_field_set(manifest: &mir::Manifest, field_set: &mir::FieldSet) -> lir::FieldSet {
     let fields = field_set
         .fields
         .iter()
@@ -372,12 +366,11 @@ fn transform_field_set(
             .expect("Byte order should never be none at this point after the MIR passes"),
         size_bits: field_set.size_bits.value,
         fields,
-        defmt_feature: config.defmt_feature.clone(),
     }
 }
 
 pub fn transform_enums(manifest: &mir::Manifest) -> Vec<lir::Enum> {
-    manifest.iter_enums_with_config().map(|(e, config)| {
+    manifest.iter_enums().map(|e| {
         let mir::Enum {
             description,
             name,
@@ -420,7 +413,6 @@ pub fn transform_enums(manifest: &mir::Manifest) -> Vec<lir::Enum> {
             name: name.value.clone(),
             base_type,
             variants,
-            defmt_feature: config.defmt_feature.clone(),
         }
     }).collect()
 }

@@ -258,7 +258,6 @@ pub struct DeviceConfig {
     pub command_address_type: Option<Spanned<Integer>>,
     pub buffer_address_type: Option<Spanned<Integer>>,
     pub name_word_boundaries: Option<Vec<Boundary>>,
-    pub defmt_feature: Option<String>,
 }
 
 impl DeviceConfig {
@@ -274,11 +273,6 @@ impl DeviceConfig {
                 .name_word_boundaries
                 .as_ref()
                 .or(self.name_word_boundaries.as_ref())
-                .cloned(),
-            defmt_feature: other
-                .defmt_feature
-                .as_ref()
-                .or(self.defmt_feature.as_ref())
                 .cloned(),
         }
     }

@@ -1,4 +1,5 @@
 use clap::Command;
+use device_driver_core::Target;
 use device_driver_diagnostics::Metadata;
 
 fn main() {
@@ -47,7 +48,13 @@ fn accept() {
             let source_extension = source_path.extension().unwrap().display().to_string();
             let (transformed, diagnostics) = match &*source_extension {
                 "ddsl" => {
-                    let (transformed, diagnostics) = device_driver_core::compile(&source).unwrap();
+                    let (transformed, diagnostics) = device_driver_core::compile(
+                        &source,
+                        Target::Rust {
+                            defmt_feature: Some("defmt".into()),
+                        },
+                    )
+                    .unwrap();
                     let mut diagnostics_output = String::new();
 
                     diagnostics

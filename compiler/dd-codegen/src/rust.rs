@@ -9,18 +9,22 @@ use device_driver_lir::model::{BlockMethodType, Driver, Field, FieldConversionMe
 #[template(path = "rust/device.rs.j2", escape = "none", whitespace = "minimize")]
 pub struct DeviceTemplateRust<'a> {
     driver: &'a Driver,
+    defmt_feature: Option<String>,
 }
 
 impl<'a> DeviceTemplateRust<'a> {
-    pub fn new(device: &'a Driver) -> Self {
-        Self { driver: device }
+    pub fn new(device: &'a Driver, defmt_feature: Option<String>) -> Self {
+        Self {
+            driver: device,
+            defmt_feature,
+        }
     }
 }
 
 fn description_to_docstring(description: &str) -> String {
     description
         .lines()
-        .map(|line| format!("///{}{line}", if line.starts_with(' ') { "" } else { " " }))
+        .map(|line| format!("///{line}"))
         .join("\n")
 }
 

@@ -637,7 +637,6 @@ impl Shape for Manifest {
                 },
             },
             // TODO: name-word-boundaries
-            // TODO: defmt-feature
         ];
         MAP
     }
@@ -733,7 +732,6 @@ impl Shape for Device {
                 },
             },
             // TODO: name-word-boundaries
-            // TODO: defmt-feature
         ];
         MAP
     }

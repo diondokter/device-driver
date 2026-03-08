@@ -3,7 +3,9 @@
 use device_driver_diagnostics::{Diagnostics, DynError, ResultExt};
 use itertools::Itertools;
 
-pub fn compile(source: &str) -> Result<(String, Diagnostics), DynError> {
+pub use device_driver_codegen::Target;
+
+pub fn compile(source: &str, target: Target) -> Result<(String, Diagnostics), DynError> {
     let mut diagnostics = Diagnostics::new();
 
     let tokens = device_driver_lexer::lex(source);
@@ -11,9 +13,10 @@ pub fn compile(source: &str) -> Result<(String, Diagnostics), DynError> {
     let mir = device_driver_mir::lower_ast(ast, &mut diagnostics)
         .with_message(|| "could not lower AST to MIR")?;
     let lir = device_driver_lir::lower_mir(mir).with_message(|| "could not lower MIR to LIR")?;
-    let mut code = device_driver_codegen::codegen(device_driver_codegen::Target::Rust, lir);
+    let mut code = device_driver_codegen::codegen(target, lir);
 
     if diagnostics.has_error() {
+        // TODO: Make target-specific
         code +=
             "\ncompile_error!(\"The device driver input has errors that need to be solved!\");\n";
     }

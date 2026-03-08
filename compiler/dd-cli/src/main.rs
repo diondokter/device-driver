@@ -1,6 +1,6 @@
 use clap::Parser;
-use device_driver_diagnostics::{Diagnostics, DynError, Metadata, ResultExt};
-use std::{io::Write, path::PathBuf, process::ExitCode};
+use device_driver_diagnostics::{DynError, Metadata, ResultExt};
+use std::{collections::HashMap, io::Write, path::PathBuf, process::ExitCode};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -12,7 +12,22 @@ struct Args {
     output_path: Option<PathBuf>,
     /// Type of generated output
     #[arg(short = 't', long = "target", default_value = "rust")]
-    target: Target,
+    target: TargetArg,
+    /// Compiler options
+    #[arg(
+        short = 'C',
+        value_name = "KEY=VALUE", 
+        value_parser = parse_key_val,
+        action = clap::ArgAction::Append,
+    )]
+    c_opts: Option<Vec<(String, String)>>,
+}
+
+/// Parse a single key-value pair
+fn parse_key_val(s: &str) -> Result<(String, String), String> {
+    s.split_once('=')
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .ok_or_else(|| format!("no `=` found`"))
 }
 
 fn main() -> ExitCode {
@@ -27,6 +42,7 @@ fn main() -> ExitCode {
 
 fn run() -> Result<ExitCode, DynError> {
     let args = Args::parse();
+    let mut c_opts: HashMap<String, String> = HashMap::from_iter(args.c_opts.unwrap_or_default());
 
     let source = std::fs::read_to_string(&args.source_path).with_message(|| {
         format!(
@@ -35,9 +51,21 @@ fn run() -> Result<ExitCode, DynError> {
         )
     })?;
 
-    let (output, diagnostics) = args
-        .target
-        .generate(&source)
+    let target = match args.target {
+        TargetArg::Rust => {
+            let defmt_feature = c_opts.remove("defmt-feature");
+            device_driver_core::Target::Rust { defmt_feature }
+        }
+    };
+
+    if let Some(unknown_key) = c_opts.keys().next() {
+        // Any key not removed is unknown
+        return Err(DynError::new(format!(
+            "Unknown compiler flag: `{unknown_key}`"
+        )));
+    }
+
+    let (output, diagnostics) = device_driver_core::compile(&source, target)
         .with_message(|| "internal compilation error")?;
 
     let diagnostics_has_error = diagnostics.has_error();
@@ -85,14 +113,6 @@ fn run() -> Result<ExitCode, DynError> {
 }
 
 #[derive(clap::ValueEnum, Debug, Clone)]
-pub enum Target {
+pub enum TargetArg {
     Rust,
-}
-
-impl Target {
-    pub fn generate(&self, source: &str) -> Result<(String, Diagnostics), DynError> {
-        match self {
-            Target::Rust => device_driver_core::compile(source),
-        }
-    }
 }
