@@ -15,7 +15,7 @@ use device_driver_common::{
     span::{Span, SpanExt, Spanned},
     specifiers::{
         Access, AddressRange, BaseType, ByteOrder, Integer, NodeType, Repeat, RepeatSource,
-        ResetValue,
+        ResetValue, TypeConversion,
     },
 };
 use device_driver_diagnostics::{
@@ -157,7 +157,7 @@ fn parse_node_to_shape<'src, S: Shape>(
     match (target.base_type(), node.type_specifier.as_ref()) {
         (None, None) => {}
         (None, Some(_)) => {
-            todo!("Emit diagnostic: Type specifier found for node type that doesn't support it")
+            todo!("Emit diagnostic: Base type found for node type that doesn't support it")
         }
         (Some(base_type), None) => *base_type = BaseType::Unspecified.with_dummy_span(),
         (Some(base_type), Some(type_specifier)) => {
@@ -165,7 +165,52 @@ fn parse_node_to_shape<'src, S: Shape>(
         }
     }
 
-    // Conversion: TODO
+    // Conversion
+
+    match (target.conversion_type(), node.type_specifier.as_ref()) {
+        (None, Some(type_specifier)) if type_specifier.conversion.is_some() => {
+            todo!("Emit diagnostic: Type conversion found for node type that doesn't support it")
+        }
+        (None, _) => {}
+        (Some(conversion_type), None) => *conversion_type = None,
+        (Some(conversion_type), Some(type_specifier)) => {
+            *conversion_type = type_specifier.conversion.as_ref().and_then(|c| {
+                let reference = match c {
+                    device_driver_parser::TypeConversion::Reference(ident) => {
+                        Some(IdentifierRef::new(ident.val.into()).with_span(ident.span))
+                    }
+                    device_driver_parser::TypeConversion::Subnode(sub_node) => {
+                        let sub_node = lower_node(
+                            sub_node,
+                            Some(NodeType::Field.with_span(node.node_type.span)),
+                            &[NodeType::Enum, NodeType::Extern],
+                            diagnostics,
+                        );
+
+                        match sub_node {
+                            LowerResult::Manifest(_) => unreachable!(),
+                            LowerResult::Objects(object, objects) => {
+                                let reference =
+                                    object.name().take_ref().with_span(object.name_span());
+                                sibling_objects.push(object);
+                                sibling_objects.extend(objects);
+                                Some(reference)
+                            }
+                            LowerResult::Error(objects) => {
+                                sibling_objects.extend(objects);
+                                None
+                            }
+                        }
+                    }
+                };
+
+                reference.map(|reference| TypeConversion {
+                    type_name: reference,
+                    fallible: type_specifier.use_try,
+                })
+            })
+        }
+    }
 
     // Properties
 
@@ -360,14 +405,10 @@ fn parse_node_to_shape<'src, S: Shape>(
                 LowerResult::Manifest(_) => unreachable!(),
                 LowerResult::Objects(object, siblings) => {
                     target.push_subnode(object);
-                    for sibling in siblings {
-                        target.push_subnode(sibling);
-                    }
+                    sibling_objects.extend(siblings);
                 }
                 LowerResult::Error(siblings) => {
-                    for sibling in siblings {
-                        target.push_subnode(sibling);
-                    }
+                    sibling_objects.extend(siblings);
                 }
             }
         }
@@ -376,6 +417,15 @@ fn parse_node_to_shape<'src, S: Shape>(
             node_type: S::NODE_TYPE.with_span(node.node_type.span),
             subnode: subnode.span,
         });
+    }
+
+    // Make all sibling objects into subnodes if supported
+    if let Some(supported_subnodes) = S::supported_subnodes() {
+        for i in (0..sibling_objects.len()).rev() {
+            if supported_subnodes.contains(&sibling_objects[i].node_type()) {
+                target.push_subnode(sibling_objects.remove(i));
+            }
+        }
     }
 
     if !error {
@@ -404,6 +454,10 @@ trait Shape: Default + 'static {
 
     /// If the shape requires a base type, Some is returned
     fn base_type(&mut self) -> Option<&mut Spanned<BaseType>> {
+        None
+    }
+
+    fn conversion_type(&mut self) -> Option<&mut Option<TypeConversion>> {
         None
     }
 }
@@ -984,7 +1038,7 @@ impl Shape for FieldSet {
 
     fn push_subnode(&mut self, object: Object) {
         let Object::Field(field) = object else {
-            unreachable!()
+            unreachable!("{object:?}")
         };
         self.fields.push(field);
     }
@@ -1400,5 +1454,9 @@ impl Shape for Field {
 
     fn base_type(&mut self) -> Option<&mut Spanned<BaseType>> {
         Some(&mut self.base_type)
+    }
+
+    fn conversion_type(&mut self) -> Option<&mut Option<TypeConversion>> {
+        Some(&mut self.field_conversion)
     }
 }

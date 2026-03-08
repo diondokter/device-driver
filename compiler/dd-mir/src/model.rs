@@ -5,7 +5,8 @@ use device_driver_common::{
     identifier::{Identifier, IdentifierRef},
     span::{Span, Spanned},
     specifiers::{
-        Access, AddressRange, BaseType, ByteOrder, Integer, Repeat, ResetValue, TypeConversion,
+        Access, AddressRange, BaseType, ByteOrder, Integer, NodeType, Repeat, ResetValue,
+        TypeConversion,
     },
 };
 
@@ -468,6 +469,20 @@ impl Object {
             Object::Enum(val) => val.span,
             Object::Extern(val) => val.span,
             Object::Field(val) => val.span,
+        }
+    }
+
+    pub(crate) fn node_type(&self) -> NodeType {
+        match self {
+            Object::Device(_) => NodeType::Device,
+            Object::Block(_) => NodeType::Block,
+            Object::Register(_) => NodeType::Register,
+            Object::Command(_) => NodeType::Command,
+            Object::Buffer(_) => NodeType::Buffer,
+            Object::FieldSet(_) => NodeType::FieldSet,
+            Object::Enum(_) => NodeType::Enum,
+            Object::Extern(_) => NodeType::Extern,
+            Object::Field(_) => NodeType::Field,
         }
     }
 }

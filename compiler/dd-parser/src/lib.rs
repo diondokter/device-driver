@@ -444,9 +444,12 @@ where
         );
         let type_specifier = just(Token::Arrow)
             .ignore_then(
-                any_base_type
-                    .or(any_integer.map(BaseType::FixedSize))
-                    .map_with(|b, e| b.spanned(e.span())),
+                choice((
+                    any_base_type,
+                    any_integer.map(BaseType::FixedSize),
+                    just(Token::Underscore).map(|_| BaseType::Unspecified),
+                ))
+                .map_with(|b, e| b.spanned(e.span())),
             )
             .then(type_conversion.or_not())
             .map(|(base_type, conversion)| TypeSpecifier {
