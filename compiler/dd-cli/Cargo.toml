@@ -21,5 +21,4 @@ path = "src/main.rs"
 device-driver-core.workspace = true
 device-driver-diagnostics.workspace = true
 
-miette.workspace = true
 clap.workspace = true

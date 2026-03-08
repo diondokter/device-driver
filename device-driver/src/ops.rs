@@ -1,6 +1,6 @@
 use core::ops::{BitAnd, BitOr, BitOrAssign, Shl, Shr};
 
-/// Load an integer from a byte slice located at the `start`..`end` range.
+/// Load an integer from a byte slice located at the `start`..=`end` range.
 /// The integer is loaded with the [LE] or [BE] byte order generic param and using lsb0 bit order.
 ///
 /// ## Safety:
@@ -22,7 +22,7 @@ where
 
         // Go through start..end, but in a while so we have more control over the index
         let mut i = start;
-        while i < end {
+        while i <= end {
             let byte = unsafe { ByteO::get_byte_from_index(data, i) };
 
             if i.is_multiple_of(8) & (i + 8 <= end) {
@@ -44,10 +44,10 @@ where
     }
 
     T::cast_deduplicate_back(unsafe { inner::<T::DedupType, ByteO>(data, start, end) })
-        .sign_extend(end - start - 1)
+        .sign_extend(end - start)
 }
 
-/// Store an integer into a byte slice located at the `start`..`end` range.
+/// Store an integer into a byte slice located at the `start`..=`end` range.
 /// The integer is stored with the [LE] or [BE] byte order generic param and using lsb0 bit order.
 ///
 /// ## Safety:
@@ -65,7 +65,7 @@ where
     {
         // Go through start..end, but in a while so we have more control over the index
         let mut i = start;
-        while i < end {
+        while i <= end {
             let byte = unsafe { ByteO::get_byte_from_index_mut(data, i) };
 
             if i.is_multiple_of(8) & (i + 8 <= end) {
@@ -268,13 +268,13 @@ mod tests {
 
             println!("{start}..{end} @ {:#010b}", Bytes(&data));
 
-            let test_value = unsafe { load::<u32, LE>(&data, start, end) };
+            let test_value = unsafe { load::<u32, LE>(&data, start, end - 1) };
             let check_value = data.view_bits::<bitvec::order::Lsb0>()[start..end].load_le::<u32>();
             println!("LE Lsb0: {check_value:016b} *");
             println!("LE Lsb0: {test_value:016b}");
             assert_eq!(test_value, check_value);
 
-            let test_value = unsafe { load::<u32, BE>(&data, start, end) };
+            let test_value = unsafe { load::<u32, BE>(&data, start, end - 1) };
             let check_value =
                 reversed_data.view_bits::<bitvec::order::Lsb0>()[start..end].load_le::<u32>();
             println!("BE Lsb0: {check_value:016b} *");
@@ -304,7 +304,7 @@ mod tests {
             );
 
             let mut test_data = data.clone();
-            unsafe { store::<_, LE>(input_data, start, end, &mut test_data) };
+            unsafe { store::<_, LE>(input_data, start, end - 1, &mut test_data) };
             let mut check_data = data.clone();
             check_data.view_bits_mut::<bitvec::order::Lsb0>()[start..end].store_le(input_data);
             println!("LE Lsb0: {:#010b} *", Bytes(&check_data));
@@ -312,7 +312,7 @@ mod tests {
             assert_eq!(test_data, check_data);
 
             let mut test_data = data.clone();
-            unsafe { store::<_, BE>(input_data, start, end, &mut test_data) };
+            unsafe { store::<_, BE>(input_data, start, end - 1, &mut test_data) };
             let mut check_data = reversed_data.clone();
             check_data.view_bits_mut::<bitvec::order::Lsb0>()[start..end].store_le(input_data);
             check_data.reverse();

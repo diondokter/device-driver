@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use device_driver_common::{
-    span::SpanExt,
+    span::{Span, SpanExt},
     specifiers::{BaseType, Integer},
 };
 use itertools::Itertools;
@@ -44,16 +44,16 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                 if variant.value.is_unspecified() {
                     variant.value = EnumValue::Specified(discriminant);
                 }
-                (discriminant, variant.id_with(e_id.clone()))
+                (discriminant, (variant.id_with(e_id.clone()), variant.span))
             })
             .collect_vec();
 
-        let mut seen_values_map = HashMap::<i128, Vec<&UniqueId>>::new();
-        for (variant_value, variant_id) in &seen_values {
+        let mut seen_values_map = HashMap::<i128, Vec<(&UniqueId, Span)>>::new();
+        for (variant_value, (variant_id, span)) in &seen_values {
             seen_values_map
                 .entry(*variant_value)
                 .or_default()
-                .push(variant_id);
+                .push((variant_id, *span));
         }
         for (value, variants) in seen_values_map
             .into_iter()
@@ -61,14 +61,14 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
         {
             if variants.len() > 1 {
                 diagnostics.add(DuplicateVariantValue {
-                    duplicates: variants.iter().map(|id| id.span()).collect(),
+                    duplicates: variants.iter().map(|(_, span)| *span).collect(),
                     value,
                 });
                 removals.insert(enum_value.id());
             }
         }
 
-        let (seen_min, seen_min_id) = seen_values
+        let (seen_min, (_, seen_min_span)) = seen_values
             .iter()
             .min_by_key(|(val, _)| val)
             .expect("Enums must not be empty");
@@ -81,7 +81,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
             BaseType::Unspecified => Integer::find_smallest(
                 *seen_min,
                 *seen_max,
-                enum_value.size_bits.unwrap_or_default(),
+                enum_value.size_bits.unwrap_or_default().into(),
             ),
             BaseType::Bool => {
                 diagnostics.add(EnumBadBasetype {
@@ -97,7 +97,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                 let integer = Integer::find_smallest(
                     *seen_min,
                     *seen_max,
-                    enum_value.size_bits.unwrap_or_default(),
+                    enum_value.size_bits.unwrap_or_default().into(),
                 );
 
                 if integer.is_some_and(|i| i.is_signed()) {
@@ -106,7 +106,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                         enum_name: enum_value.name.span,
                         base_type: enum_value.base_type.span,
                         info: "enums must use a signed integer when any variant has a negative value",
-                        context: vec![format!("variant with negative value: {seen_min}").with_span(seen_min_id.span())],
+                        context: vec![format!("variant with negative value: {seen_min}").with_span(*seen_min_span)],
                     });
                     removals.insert(enum_value.id());
                     continue;
@@ -117,7 +117,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
             BaseType::Int => Integer::find_smallest(
                 (*seen_min).min(-1),
                 *seen_max,
-                enum_value.size_bits.unwrap_or_default(),
+                enum_value.size_bits.unwrap_or_default().into(),
             ),
             BaseType::FixedSize(integer) => {
                 if enum_value.size_bits.unwrap_or_default() > integer.size_bits() {
@@ -137,7 +137,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                         enum_name: enum_value.name.span,
                         base_type: enum_value.base_type.span,
                         info: "enums must use a signed integer when any variant has a negative value",
-                        context: vec![format!("variant with negative value: {seen_min}").with_span(seen_min_id.span())],
+                        context: vec![format!("variant with negative value: {seen_min}").with_span(*seen_min_span)],
                     });
                     removals.insert(enum_value.id());
                     continue;
@@ -176,7 +176,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
         let has_fallback = enum_value
             .variants
             .iter()
-            .any(|v| matches!(v.value, EnumValue::Default | EnumValue::CatchAll));
+            .any(|v| matches!(v.value, EnumValue::Default(_) | EnumValue::CatchAll(_)));
         let has_bits_covered = all_values
             .clone()
             .all(|val| seen_values.iter().any(|(seen_val, _)| val == *seen_val));
@@ -191,12 +191,12 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
         let too_high_values = seen_values
             .iter()
             .filter(|(val, _)| val > all_values.end())
-            .map(|(_, id)| id.span())
+            .map(|(_, (_, span))| *span)
             .collect::<Vec<_>>();
         let too_low_values = seen_values
             .iter()
             .filter(|(val, _)| val < all_values.start())
-            .map(|(_, id)| id.span())
+            .map(|(_, (_, span))| *span)
             .collect::<Vec<_>>();
 
         if !too_high_values.is_empty() {
@@ -225,7 +225,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
             .variants
             .iter()
             .filter(|v| v.value.is_default())
-            .map(|v| v.name.span)
+            .map(|v| v.span)
             .collect::<Vec<_>>();
 
         if default_variants.len() > 1 {
@@ -251,7 +251,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
             .variants
             .iter()
             .filter(|v| v.value.is_catch_all())
-            .map(|v| v.name.span)
+            .map(|v| v.span)
             .collect::<Vec<_>>();
 
         if catch_all_variants.len() > 1 {
@@ -385,7 +385,7 @@ mod tests {
                     },
                     EnumVariant {
                         name: "var1".into_with_dummy_span(),
-                        value: EnumValue::Default,
+                        value: EnumValue::Default(1),
                         ..Default::default()
                     },
                 ],
@@ -412,7 +412,7 @@ mod tests {
                     },
                     EnumVariant {
                         name: "var1".into_with_dummy_span(),
-                        value: EnumValue::Default,
+                        value: EnumValue::Default(1),
                         ..Default::default()
                     },
                 ],

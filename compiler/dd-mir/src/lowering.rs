@@ -1,2151 +1,1462 @@
-#![allow(unused_assignments)]
-
-use std::{collections::HashMap, str::FromStr};
-
-use convert_case::Boundary;
-use device_driver_common::{
-    identifier::{Identifier, IdentifierRef},
-    span::{SpanExt, Spanned},
-    specifiers::{
-        Access, BaseType, ByteOrder, Integer, Repeat, RepeatSource, ResetValue, TypeConversion,
-        VariantNames,
-    },
+use std::{
+    borrow::Cow,
+    collections::HashMap,
+    mem::{self, Discriminant, discriminant},
+    str::FromStr,
+    sync::LazyLock,
 };
-use itertools::Itertools;
-use kdl::{KdlDiagnostic, KdlDocument, KdlEntry, KdlIdentifier, KdlNode, KdlValue};
-use miette::{Diagnostic, SourceSpan};
-use thiserror::Error;
 
 use crate::model::{
-    Block, Buffer, Command, Device, DeviceConfig, Enum, EnumValue, EnumVariant, Extern, Field,
-    FieldSet, Manifest, Object, Register, Unique,
+    Block, Buffer, Command, Device, Enum, EnumValue, EnumVariant, Extern, Field, FieldSet,
+    Manifest, Object, Register,
+};
+use device_driver_common::{
+    identifier::{Identifier, IdentifierRef},
+    span::{Span, SpanExt, Spanned},
+    specifiers::{
+        Access, AddressRange, BaseType, ByteOrder, Integer, NodeType, Repeat, RepeatSource,
+        ResetValue, TypeConversion,
+    },
 };
 use device_driver_diagnostics::{
     Diagnostics,
-    errors::{self, InvalidIdentifier, UnexpectedEntries},
+    errors::{
+        DuplicateProperty, FieldAddressOutOfRange, FieldAddressWrongOrder, InvalidExpressionType,
+        InvalidIdentifier, InvalidNodeType, InvalidPropertyName, InvalidShortProperty,
+        InvalidSubnode, MissingRequiredProperty, SizeBitsTooLarge, UnknownNodeType,
+    },
 };
+use device_driver_parser::{Ast, Expression, Ident, Node, Property};
+use itertools::Itertools;
 
-pub fn transform(
-    file_contents: &str,
-    source_span: Option<SourceSpan>,
-    diagnostics: &mut Diagnostics,
-) -> Manifest {
-    let file_subslice = if let Some(span) = source_span {
-        file_contents
-            .get(span.offset()..span.offset() + span.len())
-            .unwrap()
-    } else {
-        file_contents
+pub fn lower(ast: Ast, diagnostics: &mut Diagnostics) -> Manifest {
+    let Some(root_node) = ast.root_node else {
+        return Default::default();
     };
 
-    let mut document = match kdl::KdlDocument::parse(file_subslice) {
-        Ok(document) => document,
-        Err(e) => {
-            for diagnostic in e.diagnostics {
-                diagnostics.add_miette(ConvertedKdlDiagnostic::from_original_and_span(
-                    diagnostic,
-                    source_span,
-                ));
-            }
-            return Manifest {
-                root_objects: Vec::new(),
-                config: DeviceConfig::default(),
-            };
-        }
-    };
-
-    if let Some(source_span) = source_span {
-        change_document_span(&mut document, &source_span);
-    }
-
-    transform_manifest(&document, diagnostics)
-}
-
-fn transform_manifest(manifest_document: &KdlDocument, diagnostics: &mut Diagnostics) -> Manifest {
-    let mut manifest = Manifest {
-        root_objects: Vec::new(),
-        config: DeviceConfig::default(), // TODO: Parse this
-    };
-
-    for node in manifest_document.nodes() {
-        if let Ok(root_object_type) = node.name().value().parse::<RootObjectType>() {
-            match root_object_type {
-                RootObjectType::Device => {
-                    let Some(device) = transform_device(node, diagnostics) else {
-                        continue;
-                    };
-                    manifest.root_objects.push(Object::Device(device));
-                }
-                RootObjectType::FieldSet => {
-                    let (fs, enums) = transform_field_set(node, diagnostics, None);
-                    if let Some(fs) = fs {
-                        manifest.root_objects.push(Object::FieldSet(fs));
-                    }
-                    manifest
-                        .root_objects
-                        .extend(enums.into_iter().map(Object::Enum));
-                }
-                RootObjectType::Enum => {
-                    if let Some(enum_value) = transform_enum(node, diagnostics) {
-                        manifest.root_objects.push(Object::Enum(enum_value));
-                    }
-                }
-                RootObjectType::Extern => {
-                    if let Some(extern_value) = transform_extern(node, diagnostics) {
-                        manifest.root_objects.push(Object::Extern(extern_value));
-                    }
-                }
-            }
-        } else {
-            diagnostics.add_miette(errors::UnexpectedNode {
-                node_name: node.name().span().into(),
-                expected_names: ROOT_OBJECT_TYPES.iter().map(|v| v.0).collect(),
-            });
-        }
-    }
-
-    manifest
-}
-
-fn transform_device(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Device> {
-    let (device_name, device_name_span) = parse_single_string_entry(node, diagnostics, None, true);
-    let (device_name, device_name_span) = (device_name?, device_name_span?);
-
-    let device_name = match Identifier::try_parse(&device_name) {
-        Ok(id) => id,
-        Err(e) => {
-            diagnostics.add(InvalidIdentifier::new(e, device_name_span.into()));
-            return None;
-        }
-    };
-
-    let mut device = Device {
-        description: parse_description(node),
-        name: device_name.with_span(device_name_span),
-        device_config: DeviceConfig::default(),
-        objects: Vec::new(),
-        span: node.span().into(),
-    };
-
-    device.device_config.owner = Some(device.id());
-
-    if let Some(device_document) = node.children()
-        && !device_document.nodes().is_empty()
-    {
-        transform_device_internals(&mut device, device_document, diagnostics);
-    } else {
-        diagnostics.add_miette(errors::EmptyNode {
-            node: node.span().into(),
-        });
-    }
-
-    Some(device)
-}
-
-fn transform_device_internals(
-    device: &mut Device,
-    device_document: &KdlDocument,
-    diagnostics: &mut Diagnostics,
-) {
-    let mut seen_device_configs = HashMap::<DeviceConfigType, SourceSpan>::new();
-
-    for node in device_document.nodes() {
-        if let Ok(device_config_type) = node.name().value().parse::<DeviceConfigType>() {
-            match seen_device_configs.insert(device_config_type, node.span()) {
-                None => transform_device_config_node(device, node, device_config_type, diagnostics),
-                Some(original_node) => {
-                    diagnostics.add_miette(errors::DuplicateNode {
-                        duplicate: node.span().into(),
-                        original: original_node.into(),
-                    });
-                }
-            }
-        } else if let Ok(object_type) = node.name().value().parse::<ObjectType>() {
-            for object in transform_object(node, diagnostics, object_type) {
-                device.objects.push(object);
-            }
-        } else {
-            diagnostics.add_miette(errors::UnexpectedNode {
-                node_name: node.name().span().into(),
-                expected_names: DEVICE_CONFIG_TYPES
-                    .iter()
-                    .map(|v| v.0)
-                    .chain(OBJECT_TYPES.iter().map(|v| v.0))
-                    .collect(),
-            });
-        }
-    }
-}
-
-fn transform_object(
-    node: &KdlNode,
-    diagnostics: &mut Diagnostics,
-    object_type: ObjectType,
-) -> Vec<Object> {
-    match object_type {
-        ObjectType::Block => transform_block(node, diagnostics)
-            .map(Object::Block)
-            .into_iter()
-            .collect(),
-        ObjectType::Register => {
-            let (register, fieldset, enums) = transform_register(node, diagnostics);
-            register
-                .map(Object::Register)
-                .into_iter()
-                .chain(fieldset.map(Object::FieldSet))
-                .chain(enums.into_iter().map(Object::Enum))
-                .collect()
-        }
-        ObjectType::Command => {
-            let (command, field_sets, enums) = transform_command(node, diagnostics);
-            command
-                .map(Object::Command)
-                .into_iter()
-                .chain(field_sets.into_iter().map(Object::FieldSet))
-                .chain(enums.into_iter().map(Object::Enum))
-                .collect()
-        }
-        ObjectType::Buffer => transform_buffer(node, diagnostics)
-            .map(Object::Buffer)
-            .into_iter()
-            .collect(),
-        ObjectType::FieldSet => {
-            let (fs, enums) = transform_field_set(node, diagnostics, None);
-            fs.map(Object::FieldSet)
-                .into_iter()
-                .chain(enums.into_iter().map(Object::Enum))
-                .collect()
-        }
-        ObjectType::Enum => transform_enum(node, diagnostics)
-            .map(Object::Enum)
-            .into_iter()
-            .collect(),
-        ObjectType::Extern => transform_extern(node, diagnostics)
-            .map(Object::Extern)
-            .into_iter()
-            .collect(),
-    }
-}
-
-fn transform_block(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Block> {
-    let (Some(name), Some(name_span)) = parse_single_string_entry(node, diagnostics, None, true)
-    else {
-        return None;
-    };
-
-    let name = match Identifier::try_parse(&name) {
-        Ok(id) => id,
-        Err(e) => {
-            diagnostics.add(InvalidIdentifier::new(e, name_span.into()));
-            return None;
-        }
-    };
-
-    let mut block_objects = Vec::new();
-    let mut offset = None;
-    let mut repeat = None;
-
-    for child in node.iter_children() {
-        if let Ok(buffer_field) = child.name().value().parse::<BlockField>() {
-            match buffer_field {
-                BlockField::Offset => {
-                    if let Some((_, span)) = offset {
-                        diagnostics.add_miette(errors::DuplicateNode {
-                            duplicate: child.name().span().into(),
-                            original: span,
-                        });
-                        continue;
-                    }
-
-                    offset = parse_single_integer_entry(child, diagnostics)
-                        .0
-                        .map(|val| (val, child.name().span().into()));
-                }
-                BlockField::Repeat => {
-                    if let Some((_, span)) = repeat {
-                        diagnostics.add_miette(errors::DuplicateNode {
-                            duplicate: child.name().span().into(),
-                            original: span,
-                        });
-                        continue;
-                    }
-
-                    repeat = parse_repeat_entries(child, diagnostics, true)
-                        .map(|val| (val, child.name().span().into()));
-                }
-            }
-        } else if let Ok(object_type) = child.name().value().parse::<ObjectType>() {
-            for object in transform_object(child, diagnostics, object_type) {
-                block_objects.push(object);
-            }
-        } else {
-            diagnostics.add_miette(errors::UnexpectedNode {
-                node_name: child.name().span().into(),
-                expected_names: BLOCK_FIELDS
-                    .iter()
-                    .map(|v| v.0)
-                    .chain(OBJECT_TYPES.iter().map(|v| v.0))
-                    .collect(),
-            });
-        }
-    }
-
-    Some(Block {
-        description: parse_description(node),
-        name: (name, name_span).into(),
-        address_offset: offset.unwrap_or((0, name_span.into())).into(),
-        repeat: repeat.map(|(r, _)| r),
-        objects: block_objects,
-        span: node.span().into(),
-    })
-}
-
-fn transform_register(
-    node: &KdlNode,
-    diagnostics: &mut Diagnostics,
-) -> (Option<Register>, Option<FieldSet>, Vec<Enum>) {
-    let (Some(name), Some(name_span)) = parse_single_string_entry(node, diagnostics, None, true)
-    else {
-        return (None, None, Vec::new());
-    };
-
-    let name = match Identifier::try_parse(&name) {
-        Ok(id) => id,
-        Err(e) => {
-            diagnostics.add(InvalidIdentifier::new(e, name_span.into()));
-            return (None, None, Vec::new());
-        }
-    };
-
-    let mut inline_enums = Vec::new();
-
-    let mut access = None;
-    let mut allow_address_overlap = None;
-    let mut address = None;
-    let mut reset_value = None;
-    let mut repeat = None;
-    let mut field_set = None;
-
-    for child in node.iter_children() {
-        match child.name().value().parse() {
-            Ok(RegisterField::Access) => {
-                if let Some((_, span)) = access {
-                    diagnostics.add_miette(errors::DuplicateNode {
-                        duplicate: child.name().span().into(),
-                        original: span,
-                    });
-                    continue;
-                }
-
-                access = parse_single_string_value::<Access>(child, diagnostics)
-                    .map(|val| (val, child.name().span().into()));
-            }
-            Ok(RegisterField::AllowAddressOverlap) => {
-                if let Some((_, span)) = allow_address_overlap {
-                    diagnostics.add_miette(errors::DuplicateNode {
-                        duplicate: child.name().span().into(),
-                        original: span,
-                    });
-                    continue;
-                }
-
-                ensure_zero_entries(child, diagnostics);
-                allow_address_overlap = Some(true).map(|val| (val, child.name().span().into()));
-            }
-            Ok(RegisterField::Address) => {
-                if let Some((_, span)) = address {
-                    diagnostics.add_miette(errors::DuplicateNode {
-                        duplicate: child.name().span().into(),
-                        original: span,
-                    });
-                    continue;
-                }
-
-                address = parse_single_integer_entry(child, diagnostics)
-                    .0
-                    .map(|val| (val, child.name().span().into()));
-            }
-            Ok(RegisterField::ResetValue) => {
-                if let Some((_, span)) = reset_value {
-                    diagnostics.add_miette(errors::DuplicateNode {
-                        duplicate: child.name().span().into(),
-                        original: span,
-                    });
-                    continue;
-                }
-
-                reset_value = parse_reset_value_entries(child, diagnostics)
-                    .map(|val| (val, child.name().span().into()));
-            }
-            Ok(RegisterField::Repeat) => {
-                if let Some((_, span)) = repeat {
-                    diagnostics.add_miette(errors::DuplicateNode {
-                        duplicate: child.name().span().into(),
-                        original: span,
-                    });
-                    continue;
-                }
-
-                repeat = parse_repeat_entries(child, diagnostics, true)
-                    .map(|val| (val, child.name().span().into()));
-            }
-            Ok(RegisterField::FieldSet) => {
-                if let Some((_, span)) = field_set {
-                    diagnostics.add_miette(errors::DuplicateNode {
-                        duplicate: child.name().span().into(),
-                        original: span,
-                    });
-                    continue;
-                }
-
-                let (fs, mut enums) = transform_field_set(
-                    child,
-                    diagnostics,
-                    Some(
-                        name.clone().concat(
-                            Identifier::try_parse("field_set")
-                                .unwrap()
-                                .apply_boundaries(&[Boundary::Underscore]),
-                        ),
-                    ),
-                );
-
-                field_set = fs.map(|val| (val, child.name().span().into()));
-                inline_enums.append(&mut enums);
-            }
-            Err(()) => {
-                diagnostics.add_miette(errors::UnexpectedNode {
-                    node_name: child.name().span().into(),
-                    expected_names: REGISTER_FIELDS.iter().map(|v| v.0).collect(),
-                });
-            }
-        }
-    }
-
-    let mut error = false;
-
-    if address.is_none() {
-        error = true;
-        diagnostics.add_miette(errors::MissingChildNode {
-            node: name_span.into(),
-            node_type: Some("register"),
-            missing_node_type: "address",
-        });
-    }
-
-    if field_set.is_none() {
-        error = true;
-        diagnostics.add_miette(errors::MissingChildNode {
-            node: name_span.into(),
-            node_type: Some("register"),
-            missing_node_type: "fields",
-        });
-    }
-
-    if error {
-        (None, field_set.map(|(fs, _)| fs), inline_enums)
-    } else {
-        let mut register = Register {
-            description: parse_description(node),
-            name: (name, name_span).into(),
-            address: address.unwrap().into(),
-            reset_value: reset_value.map(Into::into),
-            repeat: repeat.map(|(r, _)| r),
-            field_set_ref: field_set.as_ref().unwrap().0.name.take_ref(),
-            access: Default::default(),
-            allow_address_overlap: Default::default(),
-            span: node.span().into(),
-        };
-
-        if let Some((access, _)) = access {
-            register.access = access.value;
-        }
-        if let Some((allow_address_overlap, _)) = allow_address_overlap {
-            register.allow_address_overlap = allow_address_overlap;
-        }
-
-        (Some(register), Some(field_set.unwrap().0), inline_enums)
-    }
-}
-
-fn transform_command(
-    node: &KdlNode,
-    diagnostics: &mut Diagnostics,
-) -> (Option<Command>, Vec<FieldSet>, Vec<Enum>) {
-    let (Some(name), Some(name_span)) = parse_single_string_entry(node, diagnostics, None, true)
-    else {
-        return (None, Vec::new(), Vec::new());
-    };
-
-    let name = match Identifier::try_parse(&name) {
-        Ok(id) => id,
-        Err(e) => {
-            diagnostics.add(InvalidIdentifier::new(e, name_span.into()));
-            return (None, Vec::new(), Vec::new());
-        }
-    };
-
-    let mut inline_enums = Vec::new();
-
-    let mut allow_address_overlap = None;
-    let mut address = None;
-    let mut repeat = None;
-    let mut field_set_in = None;
-    let mut field_set_out = None;
-
-    for child in node.iter_children() {
-        match child.name().value().parse() {
-            Ok(CommandField::AllowAddressOverlap) => {
-                if let Some((_, span)) = allow_address_overlap {
-                    diagnostics.add_miette(errors::DuplicateNode {
-                        duplicate: child.name().span().into(),
-                        original: span,
-                    });
-                    continue;
-                }
-
-                ensure_zero_entries(child, diagnostics);
-                allow_address_overlap = Some(true).map(|val| (val, child.name().span().into()));
-            }
-            Ok(CommandField::Address) => {
-                if let Some((_, span)) = address {
-                    diagnostics.add_miette(errors::DuplicateNode {
-                        duplicate: child.name().span().into(),
-                        original: span,
-                    });
-                    continue;
-                }
-
-                address = parse_single_integer_entry(child, diagnostics)
-                    .0
-                    .map(|val| (val, child.name().span().into()));
-            }
-            Ok(CommandField::Repeat) => {
-                if let Some((_, span)) = repeat {
-                    diagnostics.add_miette(errors::DuplicateNode {
-                        duplicate: child.name().span().into(),
-                        original: span,
-                    });
-                    continue;
-                }
-
-                repeat = parse_repeat_entries(child, diagnostics, true)
-                    .map(|val| (val, child.name().span().into()));
-            }
-            Ok(CommandField::FieldSetIn) => {
-                if let Some((_, span)) = field_set_in {
-                    diagnostics.add_miette(errors::DuplicateNode {
-                        duplicate: child.name().span().into(),
-                        original: span,
-                    });
-                    continue;
-                }
-
-                let (fs, mut enums) = transform_field_set(
-                    child,
-                    diagnostics,
-                    Some(
-                        name.clone().concat(
-                            Identifier::try_parse("field_set_in")
-                                .unwrap()
-                                .apply_boundaries(&[Boundary::Underscore]),
-                        ),
-                    ),
-                );
-
-                field_set_in = fs.map(|val| (val, child.name().span().into()));
-                inline_enums.append(&mut enums);
-            }
-            Ok(CommandField::FieldSetOut) => {
-                if let Some((_, span)) = field_set_out {
-                    diagnostics.add_miette(errors::DuplicateNode {
-                        duplicate: child.name().span().into(),
-                        original: span,
-                    });
-                    continue;
-                }
-
-                let (fs, mut enums) = transform_field_set(
-                    child,
-                    diagnostics,
-                    Some(
-                        name.clone().concat(
-                            Identifier::try_parse("field_set_out")
-                                .unwrap()
-                                .apply_boundaries(&[Boundary::Underscore]),
-                        ),
-                    ),
-                );
-
-                field_set_out = fs.map(|val| (val, child.name().span().into()));
-                inline_enums.append(&mut enums);
-            }
-            Err(()) => {
-                diagnostics.add_miette(errors::UnexpectedNode {
-                    node_name: child.name().span().into(),
-                    expected_names: COMMAND_FIELDS.iter().map(|v| v.0).collect(),
-                });
-            }
-        }
-    }
-
-    let mut error = false;
-
-    if address.is_none() {
-        error = true;
-        diagnostics.add_miette(errors::MissingChildNode {
-            node: name_span.into(),
-            node_type: Some("command"),
-            missing_node_type: "address",
-        });
-    }
-
-    if error {
-        (
-            None,
-            [field_set_in, field_set_out]
-                .into_iter()
-                .filter_map(|fs| Some(fs?.0))
-                .collect(),
-            inline_enums,
-        )
-    } else {
-        let mut command = Command {
-            description: parse_description(node),
-            name: (name, name_span).into(),
-            address: address.unwrap().into(),
-            allow_address_overlap: Default::default(),
-            repeat: repeat.map(|(r, _)| r),
-            field_set_ref_in: field_set_in.as_ref().map(|(f, _)| f.name.take_ref()),
-            field_set_ref_out: field_set_out.as_ref().map(|(f, _)| f.name.take_ref()),
-            span: node.span().into(),
-        };
-
-        if let Some((allow_address_overlap, _)) = allow_address_overlap {
-            command.allow_address_overlap = allow_address_overlap;
-        }
-
-        (
-            Some(command),
-            [field_set_in, field_set_out]
-                .into_iter()
-                .filter_map(|fs| Some(fs?.0))
-                .collect(),
-            inline_enums,
-        )
-    }
-}
-
-fn transform_buffer(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Buffer> {
-    let (Some(name), Some(name_span)) = parse_single_string_entry(node, diagnostics, None, true)
-    else {
-        return None;
-    };
-
-    let name = match Identifier::try_parse(&name) {
-        Ok(id) => id,
-        Err(e) => {
-            diagnostics.add(InvalidIdentifier::new(e, name_span.into()));
-            return None;
-        }
-    };
-
-    let mut access = None;
-    let mut address = None;
-
-    for child in node.iter_children() {
-        match child.name().value().parse() {
-            Ok(BufferField::Access) => {
-                if let Some((_, span)) = access {
-                    diagnostics.add_miette(errors::DuplicateNode {
-                        duplicate: child.name().span().into(),
-                        original: span,
-                    });
-                    continue;
-                }
-
-                access = parse_single_string_value::<Access>(child, diagnostics)
-                    .map(|val| (val, child.name().span().into()));
-            }
-            Ok(BufferField::Address) => {
-                if let Some((_, span)) = address {
-                    diagnostics.add_miette(errors::DuplicateNode {
-                        duplicate: child.name().span().into(),
-                        original: span,
-                    });
-                    continue;
-                }
-
-                address = parse_single_integer_entry(child, diagnostics)
-                    .0
-                    .map(|val| (val, child.name().span().into()));
-            }
-            Err(()) => {
-                diagnostics.add_miette(errors::UnexpectedNode {
-                    node_name: child.name().span().into(),
-                    expected_names: BUFFER_FIELDS.iter().map(|v| v.0).collect(),
-                });
-            }
-        }
-    }
-
-    let mut error = false;
-
-    if address.is_none() {
-        error = true;
-        diagnostics.add_miette(errors::MissingChildNode {
-            node: name_span.into(),
-            node_type: Some("register"),
-            missing_node_type: "address",
-        });
-    }
-
-    if error {
-        None
-    } else {
-        let mut buffer = Buffer {
-            description: parse_description(node),
-            name: (name, name_span).into(),
-            access: Default::default(),
-            address: address.unwrap().into(),
-            span: node.span().into(),
-        };
-
-        if let Some((access, _)) = access {
-            buffer.access = access.value;
-        }
-
-        Some(buffer)
-    }
-}
-
-fn transform_device_config_node(
-    device: &mut Device,
-    node: &KdlNode,
-    device_config_type: DeviceConfigType,
-    diagnostics: &mut Diagnostics,
-) {
-    match device_config_type {
-        DeviceConfigType::RegisterAccess => {
-            if let Some(value) = parse_single_string_value(node, diagnostics) {
-                device.device_config.register_access = Some(value.value);
-            }
-        }
-        DeviceConfigType::FieldAccess => {
-            if let Some(value) = parse_single_string_value(node, diagnostics) {
-                device.device_config.field_access = Some(value.value);
-            }
-        }
-        DeviceConfigType::BufferAccess => {
-            if let Some(value) = parse_single_string_value(node, diagnostics) {
-                device.device_config.buffer_access = Some(value.value);
-            }
-        }
-        DeviceConfigType::ByteOrder => {
-            if let Some(value) = parse_single_string_value(node, diagnostics) {
-                device.device_config.byte_order = Some(value.value);
-            }
-        }
-        DeviceConfigType::RegisterAddressType => {
-            if let Some(value) = parse_single_string_value(node, diagnostics) {
-                device.device_config.register_address_type = Some(value);
-            }
-        }
-        DeviceConfigType::CommandAddressType => {
-            if let Some(value) = parse_single_string_value(node, diagnostics) {
-                device.device_config.command_address_type = Some(value);
-            }
-        }
-        DeviceConfigType::BufferAddressType => {
-            if let Some(value) = parse_single_string_value(node, diagnostics) {
-                device.device_config.buffer_address_type = Some(value);
-            }
-        }
-        DeviceConfigType::NameWordBoundaries => {
-            if let Some(value) = parse_single_string_entry(node, diagnostics, None, false).0 {
-                device.device_config.name_word_boundaries =
-                    Some(convert_case::Boundary::defaults_from(&value));
-            }
-        }
-        DeviceConfigType::DefmtFeature => {
-            if let Some(value) = parse_single_string_entry(node, diagnostics, None, false).0 {
-                device.device_config.defmt_feature = Some(value);
-            }
-        }
-    }
-}
-
-fn transform_field_set(
-    node: &KdlNode,
-    diagnostics: &mut Diagnostics,
-    default_name: Option<Identifier>,
-) -> (Option<FieldSet>, Vec<Enum>) {
-    let mut inline_enums = Vec::new();
-
-    let mut field_set = FieldSet {
-        description: parse_description(node),
-        name: Default::default(),
-        size_bits: Default::default(),
-        byte_order: Default::default(),
-        allow_bit_overlap: Default::default(),
-        fields: Default::default(),
-        span: node.span().into(),
-    };
-
-    let mut unexpected_entries = errors::UnexpectedEntries {
-        superfluous_entries: Vec::new(),
-        unexpected_name_entries: Vec::new(),
-        not_anonymous_entries: Vec::new(),
-        unexpected_anonymous_entries: Vec::new(),
-    };
-
-    let mut name: Option<&kdl::KdlEntry> = None;
-    let mut size_bits: Option<&kdl::KdlEntry> = None;
-    let mut byte_order: Option<&kdl::KdlEntry> = None;
-    let mut allow_bit_overlap: Option<&kdl::KdlEntry> = None;
-
-    for (i, entry) in node.entries().iter().enumerate() {
-        match entry.name().map(kdl::KdlIdentifier::value) {
-            Some("size-bits") => {
-                if let Some(size_bits) = size_bits {
-                    diagnostics.add_miette(errors::DuplicateEntry {
-                        duplicate: entry.span().into(),
-                        original: size_bits.span().into(),
-                    });
-                } else {
-                    size_bits = Some(entry);
-                }
-            }
-            Some("byte-order") => {
-                if let Some(byte_order) = byte_order {
-                    diagnostics.add_miette(errors::DuplicateEntry {
-                        duplicate: entry.span().into(),
-                        original: byte_order.span().into(),
-                    });
-                } else {
-                    byte_order = Some(entry);
-                }
-            }
-            Some("allow-bit-overlap") => {
-                if let Some(allow_bit_overlap) = allow_bit_overlap {
-                    diagnostics.add_miette(errors::DuplicateEntry {
-                        duplicate: entry.span().into(),
-                        original: allow_bit_overlap.span().into(),
-                    });
-                } else {
-                    allow_bit_overlap = Some(entry);
-                }
-            }
-            Some(_) => {
-                unexpected_entries
-                    .unexpected_name_entries
-                    .push(entry.span().into());
-            }
-            None => {
-                if entry.value().as_string() == Some("allow-bit-overlap") {
-                    if let Some(allow_bit_overlap) = allow_bit_overlap {
-                        diagnostics.add_miette(errors::DuplicateEntry {
-                            duplicate: entry.span().into(),
-                            original: allow_bit_overlap.span().into(),
-                        });
-                    } else {
-                        allow_bit_overlap = Some(entry);
-                    }
-                } else if i == 0 {
-                    name = Some(entry);
-                } else {
-                    unexpected_entries
-                        .unexpected_anonymous_entries
-                        .push(entry.span().into());
-                }
-            }
-        }
-    }
-
-    if !unexpected_entries.is_empty() {
-        diagnostics.add_miette(unexpected_entries);
-    }
-
-    if let Some(name) = name {
-        match name.value() {
-            KdlValue::String(name_value) => {
-                match Identifier::try_parse(name_value) {
-                    Ok(id) => {
-                        field_set.name = id.with_span(name.span());
-                    }
-                    Err(e) => {
-                        diagnostics.add(InvalidIdentifier::new(e, name.span().into()));
-                    }
-                };
-            }
-            _ => {
-                diagnostics.add_miette(errors::UnexpectedType {
-                    value_name: name.span().into(),
-                    expected_type: "string",
-                });
-            }
-        }
-    } else if let Some(default_name) = default_name {
-        field_set.name = default_name.with_span((node.span().offset(), node.span().offset()));
-    } else {
-        diagnostics.add_miette(errors::MissingObjectName {
-            object_keyword: node.name().span().into(),
-            found_instead: None,
-            object_type: node.name().value().into(),
-        });
-    }
-
-    if let Some(size_bits) = size_bits {
-        match size_bits.value() {
-            KdlValue::Integer(sb) if (0..=i128::from(u32::MAX)).contains(sb) => {
-                field_set.size_bits = (*sb as u32).with_span(size_bits.span());
-            }
-            KdlValue::Integer(_) => {
-                diagnostics.add_miette(errors::ValueOutOfRange {
-                    value: size_bits.span().into(),
-                    context: Some("size-bits is encoded as a u32"),
-                    range: "0..2^32",
-                });
-            }
-            _ => {
-                diagnostics.add_miette(errors::UnexpectedType {
-                    value_name: size_bits.span().into(),
-                    expected_type: "integer",
-                });
-            }
-        }
-    } else {
-        diagnostics.add_miette(errors::MissingEntry {
-            node_name: node.name().span().into(),
-            expected_entries: vec!["size-bits=<integer>"],
-        });
-    }
-
-    if let Some(byte_order) = byte_order {
-        match byte_order.value() {
-            KdlValue::String(s) => match s.parse() {
-                Ok(byte_order) => {
-                    field_set.byte_order = Some(byte_order);
-                }
-                Err(_) => {
-                    diagnostics.add_miette(errors::UnexpectedValue {
-                        value_name: byte_order.span().into(),
-                        expected_values: ByteOrder::VARIANTS.to_vec(),
-                    });
-                }
-            },
-            _ => {
-                diagnostics.add_miette(errors::UnexpectedType {
-                    value_name: byte_order.span().into(),
-                    expected_type: "string",
-                });
-            }
-        }
-    }
-
-    if let Some(allow_bit_overlap) = allow_bit_overlap {
-        match allow_bit_overlap.value() {
-            KdlValue::Bool(b) => {
-                field_set.allow_bit_overlap = *b;
-            }
-            KdlValue::String(s) if s == "allow-bit-overlap" => {
-                field_set.allow_bit_overlap = true;
-            }
-            _ => {
-                diagnostics.add_miette(errors::UnexpectedType {
-                    value_name: allow_bit_overlap.span().into(),
-                    expected_type: "bool",
-                });
-            }
-        }
-    }
-
-    for field_node in node.iter_children() {
-        let (field, inline_enum) = transform_field(field_node, diagnostics);
-
-        if let Some(field) = field {
-            field_set.fields.push(field);
-        }
-        if let Some(inline_enum) = inline_enum {
-            inline_enums.push(inline_enum);
-        }
-    }
-
-    if field_set.name.is_empty() {
-        // No name is a major error state we can't let go
-        (None, inline_enums)
-    } else {
-        (Some(field_set), inline_enums)
-    }
-}
-
-#[allow(clippy::collapsible_else_if)]
-fn transform_field(node: &KdlNode, diagnostics: &mut Diagnostics) -> (Option<Field>, Option<Enum>) {
-    let mut inline_enum = None;
-
-    let mut unexpected_entries = UnexpectedEntries {
-        superfluous_entries: Vec::new(),
-        unexpected_name_entries: Vec::new(),
-        not_anonymous_entries: Vec::new(),
-        unexpected_anonymous_entries: Vec::new(),
-    };
-
-    let mut address = None;
-    let mut access = None;
-
-    let repeat = parse_repeat_entries(node, diagnostics, false);
-
-    for entry in node.entries() {
-        match entry.name().map(kdl::KdlIdentifier::value) {
-            // Ignore the repeat fields. they're parsed separately
-            Some("count" | "with" | "stride") => continue,
-            Some(_) => {
-                unexpected_entries
-                    .not_anonymous_entries
-                    .push(entry.span().into());
-                continue;
-            }
-            None => {}
-        }
-
-        match entry.value() {
-            KdlValue::String(s) if s.starts_with('@') => {
-                if let Some((_, span)) = address {
-                    diagnostics.add_miette(errors::DuplicateEntry {
-                        duplicate: entry.span().into(),
-                        original: span,
-                    });
-                    continue;
-                }
-
-                let trimmed_string = s.trim_start_matches('@');
-
-                if let Some((end, start)) = trimmed_string.split_once(':') {
-                    if let Ok(end) = end.parse::<u32>()
-                        && let Ok(start) = start.parse::<u32>()
-                    {
-                        if end >= start {
-                            address = Some((start..end + 1, entry.span().into()));
-                        } else {
-                            diagnostics.add_miette(errors::AddressWrongOrder {
-                                address_entry: entry.span().into(),
-                                end,
-                                start,
-                            });
-                        }
-                    } else {
-                        diagnostics.add_miette(errors::BadValueFormat {
-                            span: entry.span().into(),
-                            expected_format: "@<u32>:<u32>",
-                            example: "@7:0",
-                        });
-                    }
-                } else {
-                    if let Ok(addr) = trimmed_string.parse::<u32>() {
-                        address = Some((addr..addr + 1, entry.span().into()));
-                    } else {
-                        diagnostics.add_miette(errors::BadValueFormat {
-                            span: entry.span().into(),
-                            expected_format: "@<u32>",
-                            example: "@10",
-                        });
-                    }
-                }
-            }
-            KdlValue::String(s) if s.parse::<Access>().is_ok() => {
-                if let Some((_, span)) = access {
-                    diagnostics.add_miette(errors::DuplicateEntry {
-                        duplicate: entry.span().into(),
-                        original: span,
-                    });
-                    continue;
-                }
-
-                access = Some((s.parse().unwrap(), entry.span().into()));
-            }
-            KdlValue::String(_) => {
-                diagnostics.add_miette(errors::UnexpectedValue {
-                    value_name: entry.span().into(),
-                    expected_values: [
-                        "@<u32>",
-                        "@<u32>:<u32>",
-                        "count=<integer>",
-                        "with=<string>",
-                        "stride=<integer>",
-                    ]
-                    .iter()
-                    .chain(Access::VARIANTS)
-                    .copied()
-                    .collect(),
-                });
-            }
-            _ => {
-                diagnostics.add_miette(errors::UnexpectedType {
-                    value_name: entry.span().into(),
-                    expected_type: "string",
-                });
-            }
-        }
-    }
-
-    if !unexpected_entries.is_empty() {
-        diagnostics.add_miette(unexpected_entries);
-    }
-
-    let (base_type, field_conversion) = parse_type(node.ty(), diagnostics);
-
-    if let Some(variants) = node.children() {
-        if let Some(field_conversion) = field_conversion.as_ref() {
-            // This is an enum, change the field conversion with that info
-            let variants = transform_enum_variants(variants, diagnostics);
-
-            match Identifier::try_parse(field_conversion.type_name.original()) {
-                Ok(enum_name) => {
-                    inline_enum = Some(Enum::new(
-                        // Take the description of the field
-                        parse_description(node),
-                        enum_name.with_span(field_conversion.type_name.span),
-                        variants,
-                        base_type,
-                        address.as_ref().map(|(address, _)| address.len() as u32),
-                        node.span().into(),
-                    ));
-                }
-                Err(e) => {
-                    diagnostics.add(InvalidIdentifier::new(e, field_conversion.type_name.span));
-                }
-            }
-        } else {
-            diagnostics.add_miette(errors::InlineEnumDefinitionWithoutName {
-                field_name: node.name().span().into(),
-                existing_ty: node.ty().map(|ty| ty.span().into()),
-            });
-        }
-    }
-
-    if address.is_none() {
-        diagnostics.add_miette(errors::MissingEntry {
-            node_name: node.name().span().into(),
-            expected_entries: vec!["address (\"@<u32>:<u32>\")"],
-        });
-        return (None, inline_enum);
-    }
-
-    let name = match Identifier::try_parse(node.name().value()) {
-        Ok(id) => id,
-        Err(e) => {
-            diagnostics.add(InvalidIdentifier::new(e, node.name().span().into()));
-            return (None, inline_enum);
-        }
-    };
-
-    (
-        Some(Field {
-            description: parse_description(node),
-            name: (name, node.name().span()).into(),
-            access: access.map(|(a, _)| a).unwrap_or_default(),
-            base_type,
-            field_conversion,
-            field_address: address.unwrap().into(),
-            repeat,
-            span: node.span().into(),
-        }),
-        inline_enum,
-    )
-}
-
-fn transform_enum(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Enum> {
-    let mut unexpected_entries = errors::UnexpectedEntries {
-        superfluous_entries: Vec::new(),
-        unexpected_name_entries: Vec::new(),
-        not_anonymous_entries: Vec::new(),
-        unexpected_anonymous_entries: Vec::new(),
-    };
-
-    let (base_type, field_conversion) = parse_type(node.ty(), diagnostics);
-
-    if let Some(field_conversion) = field_conversion {
-        diagnostics.add_miette(errors::OnlyBaseTypeAllowed {
-            existing_ty: node.ty().unwrap().span().into(),
-            field_conversion,
-        });
-    }
-
-    let mut enum_value = Enum::new(
-        parse_description(node),
-        Identifier::default().with_dummy_span(),
-        node.children()
-            .map(|children| transform_enum_variants(children, diagnostics))
-            .unwrap_or_default(),
-        base_type,
+    let result = lower_node(
+        &root_node,
         None,
-        node.span().into(),
+        &[NodeType::Manifest, NodeType::Device],
+        diagnostics,
     );
 
-    let mut name: Option<&kdl::KdlEntry> = None;
-    let mut size_bits: Option<&kdl::KdlEntry> = None;
-
-    for (i, entry) in node.entries().iter().enumerate() {
-        match entry.name().map(kdl::KdlIdentifier::value) {
-            Some("size-bits") => {
-                if let Some(size_bits) = size_bits {
-                    diagnostics.add_miette(errors::DuplicateEntry {
-                        duplicate: entry.span().into(),
-                        original: size_bits.span().into(),
-                    });
-                } else {
-                    size_bits = Some(entry);
-                }
-            }
-            Some(_) => {
-                unexpected_entries
-                    .unexpected_name_entries
-                    .push(entry.span().into());
-            }
-            None => {
-                if i == 0 {
-                    name = Some(entry);
-                } else {
-                    unexpected_entries
-                        .unexpected_anonymous_entries
-                        .push(entry.span().into());
-                }
-            }
+    match result {
+        LowerResult::Manifest(m) => m,
+        LowerResult::Objects(Object::Device(d), siblings) => {
+            assert!(siblings.is_empty(), "Device doesn't have sibling objects");
+            d.into()
         }
-    }
-
-    if !unexpected_entries.is_empty() {
-        diagnostics.add_miette(unexpected_entries);
-    }
-
-    if let Some(name) = name {
-        match name.value() {
-            KdlValue::String(name_value) => match Identifier::try_parse(name_value) {
-                Ok(id) => {
-                    enum_value.name = id.with_span(name.span());
-                }
-                Err(e) => {
-                    diagnostics.add(InvalidIdentifier::new(e, name.span().into()));
-                }
-            },
-            _ => {
-                diagnostics.add_miette(errors::UnexpectedType {
-                    value_name: name.span().into(),
-                    expected_type: "string",
-                });
-            }
-        }
-    } else {
-        diagnostics.add_miette(errors::MissingObjectName {
-            object_keyword: node.name().span().into(),
-            found_instead: None,
-            object_type: node.name().value().into(),
-        });
-    }
-
-    if let Some(size_bits) = size_bits {
-        match size_bits.value() {
-            KdlValue::Integer(sb) if (0..=i128::from(u32::MAX)).contains(sb) => {
-                enum_value.size_bits = Some(*sb as u32);
-            }
-            KdlValue::Integer(_) => {
-                diagnostics.add_miette(errors::ValueOutOfRange {
-                    value: size_bits.span().into(),
-                    context: Some("size-bits is encoded as a u32"),
-                    range: "0..2^32",
-                });
-            }
-            _ => {
-                diagnostics.add_miette(errors::UnexpectedType {
-                    value_name: size_bits.span().into(),
-                    expected_type: "integer",
-                });
-            }
-        }
-    }
-
-    if !enum_value.name.is_empty() {
-        Some(enum_value)
-    } else {
-        None
+        LowerResult::Objects(_, _) => unreachable!(),
+        LowerResult::Error(_) => Default::default(),
     }
 }
 
-fn transform_enum_variants(nodes: &KdlDocument, diagnostics: &mut Diagnostics) -> Vec<EnumVariant> {
-    nodes
-        .nodes()
-        .iter()
-        .filter_map(|node| {
-            let variant_name = node.name();
-
-            let variant_value = match node.entries().len() {
-                0 => None,
-                1 if node.entries()[0].name().is_none() => Some(&node.entries()[0]),
-                _ => {
-                    diagnostics.add_miette(errors::UnexpectedEntries {
-                        superfluous_entries: node
-                            .entries()
-                            .get(1..)
-                            .map(|superfluous_entries| {
-                                superfluous_entries
-                                    .iter()
-                                    .map(|entry| entry.span().into())
-                                    .collect()
-                            })
-                            .unwrap_or_default(),
-                        unexpected_name_entries: Vec::new(),
-                        not_anonymous_entries: node
-                            .entries()
-                            .first()
-                            .into_iter()
-                            .filter_map(|entry| {
-                                entry.name().is_some().then_some(entry.span().into())
-                            })
-                            .collect(),
-                        unexpected_anonymous_entries: Vec::new(),
-                    });
-                    Some(&node.entries()[0])
-                }
-            };
-
-            let variant_value = match variant_value {
-                Some(variant_value) => match variant_value.value() {
-                    KdlValue::String(val) if val == "default" => EnumValue::Default,
-                    KdlValue::String(val) if val == "catch-all" => EnumValue::CatchAll,
-                    KdlValue::Integer(val) => EnumValue::Specified(*val),
-                    _ => {
-                        diagnostics.add_miette(errors::UnexpectedValue {
-                            value_name: variant_value.span().into(),
-                            expected_values: vec!["", "<integer>", "default", "catch-all"],
-                        });
-                        return None;
-                    }
-                },
-                None => EnumValue::Unspecified,
-            };
-
-            let name = match Identifier::try_parse(variant_name.value()) {
-                Ok(id) => id,
-                Err(e) => {
-                    diagnostics.add(InvalidIdentifier::new(e, variant_name.span().into()));
-                    return None;
-                }
-            };
-
-            Some(EnumVariant {
-                description: parse_description(node),
-                name: name.with_span(variant_name.span()),
-                value: variant_value,
-                span: node.span().into(),
-            })
-        })
-        .collect()
+enum LowerResult {
+    Manifest(Manifest),
+    Objects(Object, Vec<Object>),
+    Error(Vec<Object>),
 }
 
-fn transform_extern(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<Extern> {
-    let mut extern_value = Extern {
-        description: Default::default(),
-        name: Default::default(),
-        base_type: Default::default(),
-        supports_infallible: Default::default(),
-        span: node.span().into(),
-    };
-
-    let mut unexpected_entries = errors::UnexpectedEntries {
-        superfluous_entries: Vec::new(),
-        unexpected_name_entries: Vec::new(),
-        not_anonymous_entries: Vec::new(),
-        unexpected_anonymous_entries: Vec::new(),
-    };
-
-    let (base_type, field_conversion) = parse_type(node.ty(), diagnostics);
-
-    extern_value.base_type = base_type;
-
-    if let Some(field_conversion) = field_conversion {
-        diagnostics.add_miette(errors::OnlyBaseTypeAllowed {
-            existing_ty: node.ty().unwrap().span().into(),
-            field_conversion,
-        });
-    }
-
-    if let Some(children) = node.children() {
-        diagnostics.add_miette(errors::NoChildrenExpected {
-            children: children.span().into(),
-        });
-    }
-
-    let mut name: Option<&kdl::KdlEntry> = None;
-    let mut infallible: Option<&kdl::KdlEntry> = None;
-
-    for (i, entry) in node.entries().iter().enumerate() {
-        match entry.name().map(kdl::KdlIdentifier::value) {
-            Some(_) => {
-                unexpected_entries
-                    .unexpected_name_entries
-                    .push(entry.span().into());
-            }
-            None => {
-                if entry.value().as_string() == Some("infallible") {
-                    if let Some(infallible) = infallible {
-                        diagnostics.add_miette(errors::DuplicateEntry {
-                            duplicate: entry.span().into(),
-                            original: infallible.span().into(),
-                        });
-                    } else {
-                        infallible = Some(entry);
-                    }
-                } else if i == 0 {
-                    name = Some(entry);
-                } else {
-                    unexpected_entries
-                        .unexpected_anonymous_entries
-                        .push(entry.span().into());
-                }
-            }
-        }
-    }
-
-    if !unexpected_entries.is_empty() {
-        diagnostics.add_miette(unexpected_entries);
-    }
-
-    if let Some(name) = name {
-        match name.value() {
-            KdlValue::String(name_value) => match Identifier::try_parse(name_value) {
-                Ok(id) => {
-                    extern_value.name = id.with_span(name.span());
-                }
-                Err(e) => {
-                    diagnostics.add(InvalidIdentifier::new(e, name.span().into()));
-                }
-            },
-            _ => {
-                diagnostics.add_miette(errors::UnexpectedType {
-                    value_name: name.span().into(),
-                    expected_type: "string",
-                });
-            }
-        }
-    } else {
-        diagnostics.add_miette(errors::MissingObjectName {
-            object_keyword: node.name().span().into(),
-            found_instead: None,
-            object_type: node.name().value().into(),
-        });
-    }
-
-    extern_value.supports_infallible = infallible.is_some();
-
-    if !extern_value.name.is_empty() {
-        Some(extern_value)
-    } else {
-        None
-    }
-}
-
-fn parse_type(
-    ty: Option<&KdlIdentifier>,
+fn lower_node(
+    node: &Node,
+    parent_node_type: Option<Spanned<NodeType>>,
+    allowed_node_types: &[NodeType],
     diagnostics: &mut Diagnostics,
-) -> (Spanned<BaseType>, Option<TypeConversion>) {
-    let Some(ty) = ty else {
-        return (BaseType::Unspecified.with_dummy_span(), None);
-    };
-
-    let ty_str = ty.value();
-    let mut field_conversion = None;
-    let base_type_str;
-
-    if let Some((base_type, conversion)) = ty_str.split_once(':') {
-        base_type_str = base_type;
-
-        let use_try = conversion.ends_with('?');
-        let conversion = IdentifierRef::new(conversion.trim_end_matches('?').into());
-
-        field_conversion = Some(TypeConversion {
-            type_name: conversion.with_span(ty.span()),
-            fallible: use_try,
+) -> LowerResult {
+    let Ok(node_type) = NodeType::from_str(node.node_type.val) else {
+        diagnostics.add(UnknownNodeType {
+            node_type: node.node_type.span,
+            allowed_node_types: allowed_node_types.to_vec(),
         });
-    } else {
-        base_type_str = ty_str;
+        return LowerResult::Error(Vec::new());
+    };
+    let node_type = node_type.with_span(node.node_type.span);
+
+    if !allowed_node_types.contains(&node_type) {
+        diagnostics.add(InvalidNodeType {
+            node_type: node_type.span,
+            parent_node_type,
+            allowed_node_types: allowed_node_types.to_vec(),
+        });
+        return LowerResult::Error(Vec::new());
     }
 
-    let base_type = match base_type_str {
-        "bool" => BaseType::Bool,
-        "uint" => BaseType::Uint,
-        "int" => BaseType::Int,
-        s if s.parse::<Integer>().is_ok() => BaseType::FixedSize(s.parse().unwrap()),
-        "" => BaseType::Unspecified,
-        _ => {
-            diagnostics.add_miette(errors::UnexpectedValue {
-                value_name: ty.span().into(),
-                expected_values: ["bool", "uint", "int"]
+    match node_type.value {
+        NodeType::Manifest => match parse_node_to_shape(node, diagnostics) {
+            Ok((val, siblings)) => {
+                assert!(siblings.is_empty(), "Manifest has no siblings");
+                LowerResult::Manifest(val)
+            }
+            Err(siblings) => LowerResult::Error(siblings),
+        },
+        NodeType::Device => match parse_node_to_shape(node, diagnostics) {
+            Ok((val, siblings)) => LowerResult::Objects(Object::Device(val), siblings),
+            Err(siblings) => LowerResult::Error(siblings),
+        },
+        NodeType::Block => match parse_node_to_shape(node, diagnostics) {
+            Ok((val, siblings)) => LowerResult::Objects(Object::Block(val), siblings),
+            Err(siblings) => LowerResult::Error(siblings),
+        },
+        NodeType::Register => match parse_node_to_shape(node, diagnostics) {
+            Ok((val, siblings)) => LowerResult::Objects(Object::Register(val), siblings),
+            Err(siblings) => LowerResult::Error(siblings),
+        },
+        NodeType::Command => match parse_node_to_shape(node, diagnostics) {
+            Ok((val, siblings)) => LowerResult::Objects(Object::Command(val), siblings),
+            Err(siblings) => LowerResult::Error(siblings),
+        },
+        NodeType::Buffer => match parse_node_to_shape(node, diagnostics) {
+            Ok((val, siblings)) => LowerResult::Objects(Object::Buffer(val), siblings),
+            Err(siblings) => LowerResult::Error(siblings),
+        },
+        NodeType::FieldSet => match parse_node_to_shape(node, diagnostics) {
+            Ok((val, siblings)) => LowerResult::Objects(Object::FieldSet(val), siblings),
+            Err(siblings) => LowerResult::Error(siblings),
+        },
+        NodeType::Enum => match parse_node_to_shape(node, diagnostics) {
+            Ok((val, siblings)) => LowerResult::Objects(Object::Enum(val), siblings),
+            Err(siblings) => LowerResult::Error(siblings),
+        },
+        NodeType::Extern => match parse_node_to_shape(node, diagnostics) {
+            Ok((val, siblings)) => LowerResult::Objects(Object::Extern(val), siblings),
+            Err(siblings) => LowerResult::Error(siblings),
+        },
+        NodeType::Field => match parse_node_to_shape(node, diagnostics) {
+            Ok((val, siblings)) => LowerResult::Objects(Object::Field(val), siblings),
+            Err(siblings) => LowerResult::Error(siblings),
+        },
+    }
+}
+
+fn parse_node_to_shape<'src, S: Shape>(
+    node: &Node<'src>,
+    diagnostics: &mut Diagnostics,
+) -> Result<(S, Vec<Object>), Vec<Object>> {
+    let mut target = S::default();
+    let mut sibling_objects = Vec::new();
+    let mut error = false;
+
+    // Doc comments
+
+    *target.doc_comments() = node.doc_comments.iter().map(|c| c.value).join("\n");
+
+    // Object name
+
+    match Identifier::try_parse(node.name.val) {
+        Ok(ident) => *target.name() = ident.with_span(node.name.span),
+        Err(e) => {
+            diagnostics.add(InvalidIdentifier::new(e, node.name.span));
+            // Can't continue with this node when there's no name
+            error = true;
+        }
+    }
+
+    // Base type
+
+    match (target.base_type(), node.type_specifier.as_ref()) {
+        (None, None) => {}
+        (None, Some(_)) => {
+            todo!("Emit diagnostic: Base type found for node type that doesn't support it")
+        }
+        (Some(base_type), None) => *base_type = BaseType::Unspecified.with_dummy_span(),
+        (Some(base_type), Some(type_specifier)) => {
+            *base_type = type_specifier.base_type;
+        }
+    }
+
+    // Conversion
+
+    match (target.conversion_type(), node.type_specifier.as_ref()) {
+        (None, Some(type_specifier)) if type_specifier.conversion.is_some() => {
+            todo!("Emit diagnostic: Type conversion found for node type that doesn't support it")
+        }
+        (None, _) => {}
+        (Some(conversion_type), None) => *conversion_type = None,
+        (Some(conversion_type), Some(type_specifier)) => {
+            *conversion_type = type_specifier.conversion.as_ref().and_then(|c| {
+                let reference = match c {
+                    device_driver_parser::TypeConversion::Reference(ident) => {
+                        Some(IdentifierRef::new(ident.val.into()).with_span(ident.span))
+                    }
+                    device_driver_parser::TypeConversion::Subnode(sub_node) => {
+                        let sub_node = lower_node(
+                            sub_node,
+                            Some(NodeType::Field.with_span(node.node_type.span)),
+                            &[NodeType::Enum, NodeType::Extern],
+                            diagnostics,
+                        );
+
+                        match sub_node {
+                            LowerResult::Manifest(_) => unreachable!(),
+                            LowerResult::Objects(object, objects) => {
+                                let reference =
+                                    object.name().take_ref().with_span(object.name_span());
+                                sibling_objects.push(object);
+                                sibling_objects.extend(objects);
+                                Some(reference)
+                            }
+                            LowerResult::Error(objects) => {
+                                sibling_objects.extend(objects);
+                                None
+                            }
+                        }
+                    }
+                };
+
+                reference.map(|reference| TypeConversion {
+                    type_name: reference,
+                    fallible: type_specifier.use_try,
+                })
+            })
+        }
+    }
+
+    // Properties
+
+    let mut possible_properties = S::supported_properties().to_vec();
+    let mut removed_properties = HashMap::new();
+    let mut removed_short_properties = HashMap::new();
+    for property in &node.properties {
+        let Some(property_info) = possible_properties
+            .iter()
+            .find(|p| p.name == PropertyName::Exact(property.name.val))
+        else {
+            if let Some(original) = removed_properties.get(property.name.val).copied() {
+                diagnostics.add(DuplicateProperty {
+                    original,
+                    duplicate: property.name.span,
+                });
+            } else {
+                diagnostics.add(InvalidPropertyName {
+                    property: property.name.span,
+                    node_type: S::NODE_TYPE.with_span(node.node_type.span),
+                    expected_names: S::supported_properties()
+                        .iter()
+                        .filter_map(|p| p.name.as_exact())
+                        .sorted()
+                        .copied()
+                        .collect(),
+                });
+            }
+
+            continue;
+        };
+
+        if !property.doc_comments.is_empty() && !property_info.supports_doc_comments {
+            todo!(
+                "Emit diagnostic warning: Doc comments placed on property that doesn't support it"
+            );
+        }
+
+        // Get the discriminant and cast it to the static lifetime which is explicitly allowed in the rust docs
+        let current_expression_type = unsafe {
+            std::mem::transmute::<Discriminant<Expression<'src>>, Discriminant<Expression<'static>>>(
+                mem::discriminant(&property.expression.value),
+            )
+        };
+
+        let expression_supported =
+            property_info
+                .allowed_expression_types
+                .iter()
+                .any(|allowed_expression_type| {
+                    current_expression_type == mem::discriminant(allowed_expression_type)
+                });
+
+        if !expression_supported {
+            diagnostics.add(InvalidExpressionType {
+                expression: property
+                    .expression
+                    .to_string()
+                    .with_span(property.expression.span),
+                node_type: S::NODE_TYPE.with_span(node.node_type.span),
+                valid_expression_types: property_info
+                    .allowed_expression_types
                     .iter()
-                    .chain(Integer::VARIANTS)
-                    .chain(["<base>:<target>", "<base>:<target>?"].iter())
-                    .copied()
+                    .map(|e| e.to_string())
+                    .collect(),
+                valid_expression_values: property_info
+                    .allowed_expression_types
+                    .iter()
+                    .map(|e| e.get_human_string())
                     .collect(),
             });
-            BaseType::Unspecified
+            continue;
         }
-    };
 
-    (base_type.with_span(ty.span()), field_conversion)
-}
+        error |= (property_info.setter)(
+            &mut target,
+            property,
+            node,
+            diagnostics,
+            &mut sibling_objects,
+        );
 
-fn ensure_zero_entries(node: &KdlNode, diagnostics: &mut Diagnostics) {
-    if !node.entries().is_empty() {
-        diagnostics.add_miette(errors::UnexpectedEntries {
-            superfluous_entries: node
-                .entries()
-                .iter()
-                .map(|entry| entry.span().into())
-                .collect(),
-            unexpected_name_entries: Vec::new(),
-            not_anonymous_entries: Vec::new(),
-            unexpected_anonymous_entries: Vec::new(),
-        });
-    }
-}
-
-/// Parse the repeat specifiers.
-///
-/// If `standalone_repeat` is true, it's expected only repeat entries are to be found and appropriate errors will be emitted.
-/// If false, then the only errors emitted is when the repeat is incomplete
-fn parse_repeat_entries(
-    node: &KdlNode,
-    diagnostics: &mut Diagnostics,
-    standalone_repeat: bool,
-) -> Option<Repeat> {
-    let mut unexpected_entries = errors::UnexpectedEntries {
-        superfluous_entries: Vec::new(),
-        unexpected_name_entries: Vec::new(),
-        not_anonymous_entries: Vec::new(),
-        unexpected_anonymous_entries: Vec::new(),
-    };
-
-    let mut count = None;
-    let mut stride = None;
-    let mut with = None;
-
-    for entry in node.entries() {
-        match (entry.name().map(kdl::KdlIdentifier::value), entry.value()) {
-            (Some("count"), KdlValue::Integer(val)) => count = Some((*val, entry.span())),
-            (Some("stride"), KdlValue::Integer(val)) => stride = Some((*val, entry.span())),
-            (Some("with"), KdlValue::String(val)) => {
-                with = Some((IdentifierRef::new(val.clone()), entry.span()))
-            }
-            (Some("count" | "stride"), _) => diagnostics.add_miette(errors::UnexpectedType {
-                value_name: entry.span().into(),
-                expected_type: "integer",
-            }),
-            (Some("with"), _) => diagnostics.add_miette(errors::UnexpectedType {
-                value_name: entry.span().into(),
-                expected_type: "string",
-            }),
-            (Some(_), _) => {
-                unexpected_entries
-                    .unexpected_name_entries
-                    .push(entry.span().into());
-            }
-            (None, _) => {
-                unexpected_entries
-                    .superfluous_entries
-                    .push(entry.span().into());
-            }
+        if !property_info.multiple_allowed {
+            possible_properties.remove(possible_properties.element_offset(property_info).unwrap());
+            removed_properties.insert(property.name.val, property.name.span);
         }
     }
 
-    if !unexpected_entries.is_empty() && standalone_repeat {
-        diagnostics.add_miette(unexpected_entries);
-    }
+    for short_property in node.short_properties.iter() {
+        let short_propery_discriminant = discriminant(&short_property.value);
 
-    let mut error = false;
-
-    if let (Some((_, count_span)), Some((_, with_span))) = (&count, &with) {
-        error = true;
-        diagnostics.add_miette(errors::RepeatOverSpecified {
-            count: (*count_span).into(),
-            with: (*with_span).into(),
-        });
-    }
-
-    let mut missing_entry_error = errors::MissingEntry {
-        node_name: node.name().span().into(),
-        expected_entries: Vec::new(),
-    };
-
-    if standalone_repeat || count.is_some() || with.is_some() || stride.is_some() {
-        if count.is_none() && with.is_none() {
-            error = true;
-            missing_entry_error.expected_entries.push("count=<integer>");
-            missing_entry_error.expected_entries.push("with=<string>");
-        }
-        if stride.is_none() {
-            error = true;
-            missing_entry_error
-                .expected_entries
-                .push("stride=<integer>");
-        }
-    }
-
-    if !missing_entry_error.expected_entries.is_empty() {
-        diagnostics.add_miette(missing_entry_error);
-    }
-
-    if let Some((count, span)) = count
-        && !(0..=i128::from(u64::MAX)).contains(&count)
-    {
-        error = true;
-        diagnostics.add_miette(errors::ValueOutOfRange {
-            value: span.into(),
-            context: Some("The count is encoded as a u64"),
-            range: "0..2^64",
-        });
-    }
-    if let Some((stride, span)) = stride
-        && stride == 0
-    {
-        error = true;
-        diagnostics.add_miette(errors::ValueOutOfRange {
-            value: span.into(),
-            context: Some("The stride must not be 0"),
-            range: "any non-0 number",
-        });
-    }
-
-    if error {
-        None
-    } else {
-        match (count, with, stride) {
-            (None, Some((with, with_span)), Some((stride, _))) => Some(Repeat {
-                source: RepeatSource::Enum(with.with_span(with_span)),
-                stride,
-            }),
-            (Some((count, _)), None, Some((stride, _))) => Some(Repeat {
-                source: RepeatSource::Count(count as u64),
-                stride,
-            }),
-            (None, None, None) => None,
-            _ => unreachable!(),
-        }
-    }
-}
-
-fn parse_reset_value_entries(node: &KdlNode, diagnostics: &mut Diagnostics) -> Option<ResetValue> {
-    let mut error = false;
-    let mut array = Vec::new();
-
-    for entry in node.entries() {
-        if let KdlValue::Integer(val) = entry.value() {
-            array.push((*val, entry.span()));
-        } else {
-            error = true;
-            diagnostics.add_miette(errors::UnexpectedType {
-                value_name: entry.span().into(),
-                expected_type: "integer",
-            });
-        }
-    }
-
-    if error {
-        return None;
-    }
-
-    if array.len() == 1 {
-        let (integer, span) = array[0];
-
-        if integer.is_negative() {
-            diagnostics.add_miette(errors::ValueOutOfRange {
-                value: span.into(),
-                range: "0..",
-                context: Some("Negative reset values are not allowed"),
-            });
-            None
-        } else {
-            Some(ResetValue::Integer(integer as u128))
-        }
-    } else {
-        let mut error = false;
-        for (byte, span) in &array {
-            if !(0..=255).contains(byte) {
-                error = true;
-                diagnostics.add_miette(errors::ValueOutOfRange {
-                    value: (*span).into(),
-                    range: "0..256",
-                    context: Some(
-                        "When specifying the reset values as an array, all numbers must be bytes",
-                    ),
+        let Some(property_info) = possible_properties.iter().find(|p| {
+            p.name.as_short().is_some()
+                && p.allowed_expression_types
+                    .iter()
+                    .map(discriminant)
+                    .any(|ed| ed == short_propery_discriminant)
+        }) else {
+            if let Some(original) = removed_short_properties
+                .get(&short_propery_discriminant)
+                .copied()
+            {
+                diagnostics.add(DuplicateProperty {
+                    original,
+                    duplicate: short_property.span,
+                });
+            } else {
+                diagnostics.add(InvalidShortProperty {
+                    property: short_property.span,
+                    node_type: S::NODE_TYPE.with_span(node.node_type.span),
+                    expected: S::supported_properties()
+                        .iter()
+                        .filter_map(|p| {
+                            p.name.as_short().map(|purpose| {
+                                p.allowed_expression_types
+                                    .iter()
+                                    .map(|e| (e.to_string(), purpose.to_string()))
+                            })
+                        })
+                        .flatten()
+                        .sorted()
+                        .collect(),
                 });
             }
-        }
 
-        if error {
-            None
-        } else {
-            Some(ResetValue::Array(
-                array.iter().map(|(byte, _)| *byte as u8).collect(),
-            ))
-        }
-    }
-}
+            continue;
+        };
 
-fn parse_single_integer_entry(
-    node: &KdlNode,
-    diagnostics: &mut Diagnostics,
-) -> (Option<i128>, Option<SourceSpan>) {
-    let unexpected_entries = errors::UnexpectedEntries {
-        superfluous_entries: node
-            .entries()
-            .iter()
-            .skip(1)
-            .map(|entry| entry.span().into())
-            .collect(),
-        unexpected_name_entries: Vec::new(),
-        not_anonymous_entries: node
-            .entries()
-            .first()
-            .iter()
-            .filter_map(|entry| entry.name().map(|_| entry.span().into()))
-            .collect(),
-        unexpected_anonymous_entries: Vec::new(),
-    };
-    if !unexpected_entries.is_empty() {
-        diagnostics.add_miette(unexpected_entries);
-    }
-
-    match node.entries().first() {
-        Some(entry) if entry.name().is_none() => {
-            if let KdlValue::Integer(val) = entry.value() {
-                (Some(*val), Some(entry.span()))
-            } else {
-                diagnostics.add_miette(errors::UnexpectedType {
-                    value_name: entry.span().into(),
-                    expected_type: "integer",
-                });
-                (None, Some(entry.span()))
+        error |= (property_info.setter)(
+            &mut target,
+            &Property {
+                doc_comments: Vec::new(),
+                name: Ident {
+                    val: "",
+                    span: short_property.span,
+                },
+                expression: short_property.clone(),
             }
+            .with_span(short_property.span),
+            node,
+            diagnostics,
+            &mut sibling_objects,
+        );
+
+        if !property_info.multiple_allowed {
+            for allowed_expression in property_info.allowed_expression_types.iter() {
+                removed_short_properties
+                    .insert(discriminant(allowed_expression), short_property.span);
+            }
+            possible_properties.remove(possible_properties.element_offset(property_info).unwrap());
         }
-        _ => {
-            diagnostics.add_miette(errors::MissingEntry {
-                node_name: node.name().span().into(),
-                expected_entries: vec!["integer"],
+    }
+
+    // Required properties that haven't been seen
+    let missing_properties = possible_properties
+        .iter()
+        .filter(|info| info.required)
+        .collect::<Vec<_>>();
+
+    if !missing_properties.is_empty() {
+        for missing_info in missing_properties {
+            diagnostics.add(MissingRequiredProperty {
+                node_type: S::NODE_TYPE.with_span(node.node_type.span),
+                property_name: match missing_info.name {
+                    PropertyName::Exact(val) => val.to_string(),
+                    PropertyName::Short(val) => val.to_string(),
+                    _ => "*".to_string(),
+                },
+                short: matches!(missing_info.name, PropertyName::Short(_)),
+                allowed_property_types: missing_info
+                    .allowed_expression_types
+                    .iter()
+                    .map(|e| e.to_string())
+                    .collect(),
             });
-            (None, None)
         }
-    }
-}
-
-fn parse_single_string_entry(
-    node: &KdlNode,
-    diagnostics: &mut Diagnostics,
-    expected_entries: Option<&[&'static str]>,
-    is_name: bool,
-) -> (Option<String>, Option<SourceSpan>) {
-    let unexpected_entries = errors::UnexpectedEntries {
-        superfluous_entries: node
-            .entries()
-            .iter()
-            .skip(1)
-            .map(|entry| entry.span().into())
-            .collect(),
-        unexpected_name_entries: Vec::new(),
-        not_anonymous_entries: node
-            .entries()
-            .first()
-            .iter()
-            .filter_map(|entry| entry.name().map(|_| entry.span().into()))
-            .collect(),
-        unexpected_anonymous_entries: Vec::new(),
-    };
-    if !unexpected_entries.is_empty() {
-        diagnostics.add_miette(unexpected_entries);
+        error = true;
     }
 
-    match node.entries().first() {
-        Some(entry) if entry.name().is_none() => {
-            if let KdlValue::String(val) = entry.value() {
-                (Some(val.clone()), Some(entry.span()))
-            } else {
-                if is_name {
-                    diagnostics.add_miette(errors::MissingObjectName {
-                        object_keyword: node.name().span().into(),
-                        object_type: node.name().value().into(),
-                        found_instead: Some(entry.span().into()),
-                    });
-                } else {
-                    diagnostics.add_miette(errors::UnexpectedType {
-                        value_name: entry.span().into(),
-                        expected_type: "string",
-                    });
+    // Sub nodes
+
+    if let Some(supported_subnodes) = S::supported_subnodes() {
+        for sub_node in node.sub_nodes.iter() {
+            let sub_node_result = lower_node(
+                sub_node,
+                Some(S::NODE_TYPE.with_span(node.node_type.span)),
+                supported_subnodes,
+                diagnostics,
+            );
+
+            match sub_node_result {
+                LowerResult::Manifest(_) => unreachable!(),
+                LowerResult::Objects(object, siblings) => {
+                    target.push_subnode(object);
+                    sibling_objects.extend(siblings);
                 }
-                (None, Some(entry.span()))
+                LowerResult::Error(siblings) => {
+                    sibling_objects.extend(siblings);
+                }
             }
         }
-        _ => {
-            if is_name {
-                diagnostics.add_miette(errors::MissingObjectName {
-                    object_keyword: node.name().span().into(),
-                    object_type: node.name().value().into(),
-                    found_instead: None,
-                });
-            } else {
-                diagnostics.add_miette(errors::MissingEntry {
-                    node_name: node.name().span().into(),
-                    expected_entries: expected_entries
-                        .map_or_else(|| vec!["string"], <[&str]>::to_vec),
-                });
+    } else if let Some(subnode) = node.sub_nodes.first() {
+        diagnostics.add(InvalidSubnode {
+            node_type: S::NODE_TYPE.with_span(node.node_type.span),
+            subnode: subnode.span,
+        });
+    }
+
+    // Make all sibling objects into subnodes if supported
+    if let Some(supported_subnodes) = S::supported_subnodes() {
+        for i in (0..sibling_objects.len()).rev() {
+            if supported_subnodes.contains(&sibling_objects[i].node_type()) {
+                target.push_subnode(sibling_objects.remove(i));
             }
-            (None, None)
+        }
+    }
+
+    if !error {
+        Ok((target, sibling_objects))
+    } else {
+        Err(sibling_objects)
+    }
+}
+
+trait Shape: Default + 'static {
+    const NODE_TYPE: NodeType;
+
+    fn doc_comments(&mut self) -> &mut String;
+    fn name(&mut self) -> &mut Spanned<Identifier>;
+
+    /// All the supported properties
+    fn supported_properties() -> &'static [PropertyInfo<Self>];
+
+    fn supported_subnodes() -> Option<&'static [NodeType]> {
+        None
+    }
+
+    fn push_subnode(&mut self, _: Object) {
+        unimplemented!()
+    }
+
+    /// If the shape requires a base type, Some is returned
+    fn base_type(&mut self) -> Option<&mut Spanned<BaseType>> {
+        None
+    }
+
+    fn conversion_type(&mut self) -> Option<&mut Option<TypeConversion>> {
+        None
+    }
+}
+
+struct PropertyInfo<T: ?Sized> {
+    name: PropertyName<'static>,
+    /// The types of expressions that are supported.
+    /// Comparison is done using discriminants only.
+    /// The values of the expressions are used for suggestions in diagnostics.
+    allowed_expression_types: Cow<'static, [Expression<'static>]>,
+    /// If true, multiple of these properties are allowed
+    multiple_allowed: bool,
+    /// If true, the property must be set by the user.
+    /// Doesn't work well with [Self::multiple_allowed] set at the same time.
+    required: bool,
+    /// If false, a warning is emitted when the property has doc comments
+    supports_doc_comments: bool,
+    /// If setter returns true, there's an error
+    setter: fn(
+        &mut T, // self param
+        property: &Spanned<Property<'_>>,
+        node: &Node, // The node that's being parsed
+        diagnostics: &mut Diagnostics,
+        sibling_objects: &mut Vec<Object>,
+    ) -> bool,
+}
+
+impl<T: ?Sized> Clone for PropertyInfo<T> {
+    fn clone(&self) -> Self {
+        Self {
+            name: self.name,
+            allowed_expression_types: self.allowed_expression_types.clone(),
+            multiple_allowed: self.multiple_allowed,
+            required: self.required,
+            supports_doc_comments: self.supports_doc_comments,
+            setter: self.setter,
         }
     }
 }
 
-fn parse_single_string_value<T: VariantNames + FromStr>(
-    node: &KdlNode,
-    diagnostics: &mut Diagnostics,
-) -> Option<Spanned<T>> {
-    match parse_single_string_entry(node, diagnostics, Some(T::VARIANTS), false) {
-        (Some(val), Some(entry)) if T::from_str(&val).is_ok() => {
-            T::from_str(&val).ok().map(|val| val.with_span(entry))
-        }
-        (Some(_), Some(entry)) => {
-            diagnostics.add_miette(errors::UnexpectedValue {
-                value_name: entry.into(),
-                expected_values: T::VARIANTS.to_vec(),
-            });
+#[derive(Clone, Copy)]
+enum PropertyName<'a> {
+    Exact(&'a str),
+    Any,
+    Short(&'a str),
+}
+
+impl<'a> PropertyName<'a> {
+    fn as_exact(&self) -> Option<&&'a str> {
+        if let Self::Exact(v) = self {
+            Some(v)
+        } else {
             None
         }
-        _ => None,
     }
-}
 
-fn parse_description(node: &KdlNode) -> String {
-    if let Some(format) = node.format() {
-        format
-            .leading
-            .lines()
-            .filter(|line| line.trim_start().starts_with("///"))
-            .map(|line| line.trim().trim_start_matches("///"))
-            .join("\n")
-    } else {
-        Default::default()
-    }
-}
-
-#[rustfmt::skip]
-const REGISTER_FIELDS: &[(&str, RegisterField)] = &[
-    ("access", RegisterField::Access),
-    ("allow-address-overlap", RegisterField::AllowAddressOverlap),
-    ("address", RegisterField::Address),
-    ("reset-value", RegisterField::ResetValue),
-    ("repeat", RegisterField::Repeat),
-    ("fields", RegisterField::FieldSet),
-];
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-enum RegisterField {
-    Access,
-    AllowAddressOverlap,
-    Address,
-    ResetValue,
-    Repeat,
-    FieldSet,
-}
-
-impl FromStr for RegisterField {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        for (name, val) in REGISTER_FIELDS {
-            if *name == s {
-                return Ok(*val);
-            }
+    fn as_short(&self) -> Option<&&'a str> {
+        if let Self::Short(v) = self {
+            Some(v)
+        } else {
+            None
         }
-
-        Err(())
     }
 }
 
-#[rustfmt::skip]
-const COMMAND_FIELDS: &[(&str, CommandField)] = &[
-    ("allow-address-overlap", CommandField::AllowAddressOverlap),
-    ("address", CommandField::Address),
-    ("repeat", CommandField::Repeat),
-    ("in", CommandField::FieldSetIn),
-    ("out", CommandField::FieldSetOut),
-];
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-enum CommandField {
-    AllowAddressOverlap,
-    Address,
-    Repeat,
-    FieldSetIn,
-    FieldSetOut,
-}
-
-impl FromStr for CommandField {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        for (name, val) in COMMAND_FIELDS {
-            if *name == s {
-                return Ok(*val);
-            }
+impl<'a> PartialEq for PropertyName<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Exact(l0), Self::Exact(r0)) => l0 == r0,
+            (Self::Short(l0), Self::Short(r0)) => l0 == r0,
+            (Self::Exact(_), Self::Any) => true,
+            (Self::Any, Self::Exact(_)) => true,
+            _ => false,
         }
-
-        Err(())
     }
 }
 
-#[rustfmt::skip]
-const BUFFER_FIELDS: &[(&str, BufferField)] = &[
-    ("access", BufferField::Access),
-    ("address", BufferField::Address),
-];
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-enum BufferField {
-    Access,
-    Address,
-}
+const FIELD_SET_EXAMPLE: Node<'static> = Node {
+    doc_comments: Vec::new(),
+    node_type: device_driver_parser::Ident {
+        val: "fieldset",
+        span: Span::empty(),
+    },
+    name: device_driver_parser::Ident {
+        val: "MyFieldSet",
+        span: Span::empty(),
+    },
+    type_specifier: None,
+    properties: Vec::new(),
+    short_properties: Vec::new(),
+    sub_nodes: Vec::new(),
+    span: Span::empty(),
+};
 
-impl FromStr for BufferField {
-    type Err = ();
+impl Shape for Manifest {
+    const NODE_TYPE: NodeType = NodeType::Manifest;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        for (name, val) in BUFFER_FIELDS {
-            if *name == s {
-                return Ok(*val);
-            }
-        }
-
-        Err(())
-    }
-}
-
-#[rustfmt::skip]
-const BLOCK_FIELDS: &[(&str, BlockField)] = &[
-    ("offset", BlockField::Offset),
-    ("repeat", BlockField::Repeat),
-];
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-enum BlockField {
-    Offset,
-    Repeat,
-}
-
-impl FromStr for BlockField {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        for (name, val) in BLOCK_FIELDS {
-            if *name == s {
-                return Ok(*val);
-            }
-        }
-
-        Err(())
-    }
-}
-
-#[rustfmt::skip]
-const DEVICE_CONFIG_TYPES: &[(&str, DeviceConfigType)] = &[
-    ("register-access", DeviceConfigType::RegisterAccess),
-    ("field-access", DeviceConfigType::FieldAccess),
-    ("buffer-access", DeviceConfigType::BufferAccess),
-    ("byte-order", DeviceConfigType::ByteOrder),
-    ("register-address-type", DeviceConfigType::RegisterAddressType),
-    ("command-address-type", DeviceConfigType::CommandAddressType),
-    ("buffer-address-type", DeviceConfigType::BufferAddressType),
-    ("name-word-boundaries", DeviceConfigType::NameWordBoundaries),
-    ("defmt-feature", DeviceConfigType::DefmtFeature),
-];
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-enum DeviceConfigType {
-    RegisterAccess,
-    FieldAccess,
-    BufferAccess,
-    ByteOrder,
-    RegisterAddressType,
-    CommandAddressType,
-    BufferAddressType,
-    NameWordBoundaries,
-    DefmtFeature,
-}
-
-impl FromStr for DeviceConfigType {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        for (name, val) in DEVICE_CONFIG_TYPES {
-            if *name == s {
-                return Ok(*val);
-            }
-        }
-
-        Err(())
-    }
-}
-
-#[rustfmt::skip]
-const OBJECT_TYPES: &[(&str, ObjectType)] = &[
-    ("block", ObjectType::Block),
-    ("register", ObjectType::Register),
-    ("command", ObjectType::Command),
-    ("buffer", ObjectType::Buffer),
-    ("fieldset", ObjectType::FieldSet),
-    ("enum", ObjectType::Enum),
-    ("extern", ObjectType::Extern),
-];
-#[derive(Clone, Copy)]
-enum ObjectType {
-    Block,
-    Register,
-    Command,
-    Buffer,
-    FieldSet,
-    Enum,
-    Extern,
-}
-
-impl FromStr for ObjectType {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        for (name, val) in OBJECT_TYPES {
-            if *name == s {
-                return Ok(*val);
-            }
-        }
-
-        Err(())
-    }
-}
-
-#[rustfmt::skip]
-const ROOT_OBJECT_TYPES: &[(&str, RootObjectType)] = &[
-    ("device", RootObjectType::Device),
-    ("fieldset", RootObjectType::FieldSet),
-    ("enum", RootObjectType::Enum),
-    ("extern", RootObjectType::Extern),
-];
-#[derive(Clone, Copy)]
-enum RootObjectType {
-    Device,
-    FieldSet,
-    Enum,
-    Extern,
-}
-
-impl FromStr for RootObjectType {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        for (name, val) in ROOT_OBJECT_TYPES {
-            if *name == s {
-                return Ok(*val);
-            }
-        }
-
-        Err(())
-    }
-}
-
-fn change_document_span(document: &mut KdlDocument, source_span: &SourceSpan) {
-    document.set_span((
-        document.span().offset() + source_span.offset(),
-        document.span().len(),
-    ));
-
-    for node in document.nodes_mut() {
-        change_node_span(node, source_span);
-    }
-}
-
-fn change_node_span(node: &mut KdlNode, source_span: &SourceSpan) {
-    node.set_span((
-        node.span().offset() + source_span.offset(),
-        node.span().len(),
-    ));
-
-    if let Some(ty) = node.ty_mut() {
-        change_identifier_span(ty, source_span);
+    fn doc_comments(&mut self) -> &mut String {
+        &mut self.description
     }
 
-    change_identifier_span(node.name_mut(), source_span);
-
-    for entry in node.entries_mut() {
-        change_entry_span(entry, source_span);
+    fn name(&mut self) -> &mut Spanned<Identifier> {
+        &mut self.name
     }
 
-    if let Some(children) = node.children_mut() {
-        change_document_span(children, source_span);
-    }
-}
-
-fn change_identifier_span(id: &mut KdlIdentifier, source_span: &SourceSpan) {
-    id.set_span((id.span().offset() + source_span.offset(), id.span().len()));
-}
-
-fn change_entry_span(entry: &mut KdlEntry, source_span: &SourceSpan) {
-    entry.set_span((
-        entry.span().offset() + source_span.offset(),
-        entry.span().len(),
-    ));
-
-    if let Some(ty) = entry.ty_mut() {
-        change_identifier_span(ty, source_span);
-    }
-
-    if let Some(name) = entry.name_mut() {
-        change_identifier_span(name, source_span);
-    }
-}
-
-/// The same as the [`kdl::KdlDiagnostic`], but with a named source input and updated spans
-#[derive(Debug, Diagnostic, Clone, Eq, PartialEq, Error)]
-#[error("{}", message.clone().unwrap_or_else(|| "Unexpected error".into()))]
-pub struct ConvertedKdlDiagnostic {
-    /// Offset in chars of the error.
-    #[label("{}", label.clone().unwrap_or_else(|| "here".into()))]
-    span: SourceSpan,
-
-    /// Message for the error itself.
-    message: Option<String>,
-
-    /// Label text for this span. Defaults to `"here"`.
-    label: Option<String>,
-
-    /// Suggestion for fixing the parser error.
-    #[help]
-    help: Option<String>,
-
-    /// Severity level for the Diagnostic.
-    #[diagnostic(severity)]
-    severity: miette::Severity,
-}
-
-impl ConvertedKdlDiagnostic {
-    #[must_use]
-    pub fn from_original_and_span(original: KdlDiagnostic, input_span: Option<SourceSpan>) -> Self {
-        let KdlDiagnostic {
-            input: _,
-            span,
-            message,
-            label,
-            help,
-            severity,
-        } = original;
-
-        Self {
-            span: if let Some(input_span) = input_span {
-                (input_span.offset() + span.offset(), span.len()).into()
-            } else {
-                span
+    fn supported_properties() -> &'static [PropertyInfo<Self>] {
+        static MAP: &[PropertyInfo<Manifest>] = &[
+            PropertyInfo {
+                name: PropertyName::Exact("byte-order"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::ByteOrder(ByteOrder::LE)]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |manifest: &mut Manifest, property, _, _, _| {
+                    manifest.config.byte_order = Some(property.expression.as_byte_order().unwrap());
+                    false
+                },
             },
-            message,
-            label,
-            help,
-            severity,
-        }
+            PropertyInfo {
+                name: PropertyName::Exact("register-address-type"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::Integer(Integer::I32)]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |manifest: &mut Manifest, property, _, _, _| {
+                    manifest.config.register_address_type = Some(
+                        property
+                            .expression
+                            .as_integer()
+                            .unwrap()
+                            .with_span(property.expression.span),
+                    );
+                    false
+                },
+            },
+            PropertyInfo {
+                name: PropertyName::Exact("command-address-type"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::Integer(Integer::I32)]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |manifest: &mut Manifest, property, _, _, _| {
+                    manifest.config.command_address_type = Some(
+                        property
+                            .expression
+                            .as_integer()
+                            .unwrap()
+                            .with_span(property.expression.span),
+                    );
+                    false
+                },
+            },
+            PropertyInfo {
+                name: PropertyName::Exact("buffer-address-type"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::Integer(Integer::I32)]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |manifest: &mut Manifest, property, _, _, _| {
+                    manifest.config.buffer_address_type = Some(
+                        property
+                            .expression
+                            .as_integer()
+                            .unwrap()
+                            .with_span(property.expression.span),
+                    );
+                    false
+                },
+            },
+            // TODO: name-word-boundaries
+            // TODO: defmt-feature
+        ];
+        MAP
+    }
+
+    fn supported_subnodes() -> Option<&'static [NodeType]> {
+        Some(&[
+            NodeType::Device,
+            NodeType::FieldSet,
+            NodeType::Enum,
+            NodeType::Extern,
+        ])
+    }
+
+    fn push_subnode(&mut self, object: Object) {
+        self.objects.push(object);
+    }
+}
+
+impl Shape for Device {
+    const NODE_TYPE: NodeType = NodeType::Device;
+
+    fn doc_comments(&mut self) -> &mut String {
+        &mut self.description
+    }
+
+    fn name(&mut self) -> &mut Spanned<Identifier> {
+        &mut self.name
+    }
+
+    fn supported_properties() -> &'static [PropertyInfo<Self>] {
+        static MAP: &[PropertyInfo<Device>] = &[
+            PropertyInfo {
+                name: PropertyName::Exact("byte-order"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::ByteOrder(ByteOrder::LE)]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |dev: &mut Device, property, _, _, _| {
+                    dev.device_config.byte_order =
+                        Some(property.expression.as_byte_order().unwrap());
+                    false
+                },
+            },
+            PropertyInfo {
+                name: PropertyName::Exact("register-address-type"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::Integer(Integer::I32)]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |dev: &mut Device, property, _, _, _| {
+                    dev.device_config.register_address_type = Some(
+                        property
+                            .expression
+                            .as_integer()
+                            .unwrap()
+                            .with_span(property.expression.span),
+                    );
+                    false
+                },
+            },
+            PropertyInfo {
+                name: PropertyName::Exact("command-address-type"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::Integer(Integer::I32)]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |dev: &mut Device, property, _, _, _| {
+                    dev.device_config.command_address_type = Some(
+                        property
+                            .expression
+                            .as_integer()
+                            .unwrap()
+                            .with_span(property.expression.span),
+                    );
+                    false
+                },
+            },
+            PropertyInfo {
+                name: PropertyName::Exact("buffer-address-type"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::Integer(Integer::I32)]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |dev: &mut Device, property, _, _, _| {
+                    dev.device_config.buffer_address_type = Some(
+                        property
+                            .expression
+                            .as_integer()
+                            .unwrap()
+                            .with_span(property.expression.span),
+                    );
+                    false
+                },
+            },
+            // TODO: name-word-boundaries
+            // TODO: defmt-feature
+        ];
+        MAP
+    }
+
+    fn supported_subnodes() -> Option<&'static [NodeType]> {
+        Some(&[
+            NodeType::Block,
+            NodeType::Register,
+            NodeType::Command,
+            NodeType::Buffer,
+            NodeType::FieldSet,
+            NodeType::Enum,
+            NodeType::Extern,
+        ])
+    }
+
+    fn push_subnode(&mut self, object: Object) {
+        self.objects.push(object);
+    }
+}
+
+impl Shape for Block {
+    const NODE_TYPE: NodeType = NodeType::Block;
+
+    fn doc_comments(&mut self) -> &mut String {
+        &mut self.description
+    }
+
+    fn name(&mut self) -> &mut Spanned<Identifier> {
+        &mut self.name
+    }
+
+    fn supported_properties() -> &'static [PropertyInfo<Self>] {
+        static MAP: &[PropertyInfo<Block>] = &[
+            PropertyInfo {
+                name: PropertyName::Exact("address-offset"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::Number(0)]),
+                multiple_allowed: false,
+                required: true,
+                supports_doc_comments: false,
+                setter: |block: &mut Block, property, _, _, _| {
+                    block.address_offset = property
+                        .expression
+                        .as_number()
+                        .unwrap()
+                        .with_span(property.expression.span);
+                    false
+                },
+            },
+            PropertyInfo {
+                name: PropertyName::Exact("repeat"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::Repeat(
+                    device_driver_parser::Repeat {
+                        source: device_driver_parser::RepeatSource::Count(4),
+                        stride: 2,
+                    },
+                )]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |block: &mut Block, property, _, _, _| {
+                    block.address_offset = property
+                        .expression
+                        .as_number()
+                        .unwrap()
+                        .with_span(property.expression.span);
+                    false
+                },
+            },
+        ];
+        MAP
+    }
+
+    fn supported_subnodes() -> Option<&'static [NodeType]> {
+        Some(&[
+            NodeType::Block,
+            NodeType::Register,
+            NodeType::Command,
+            NodeType::Buffer,
+            NodeType::FieldSet,
+            NodeType::Enum,
+            NodeType::Extern,
+        ])
+    }
+
+    fn push_subnode(&mut self, object: Object) {
+        self.objects.push(object);
+    }
+}
+
+impl Shape for Register {
+    const NODE_TYPE: NodeType = NodeType::Register;
+
+    fn doc_comments(&mut self) -> &mut String {
+        &mut self.description
+    }
+
+    fn name(&mut self) -> &mut Spanned<Identifier> {
+        &mut self.name
+    }
+
+    fn supported_properties() -> &'static [PropertyInfo<Self>] {
+        static MAP: LazyLock<Vec<PropertyInfo<Register>>> = LazyLock::new(|| {
+            [
+                PropertyInfo {
+                    name: PropertyName::Exact("address"),
+                    allowed_expression_types: Cow::Borrowed(&[Expression::Number(0)]),
+                    multiple_allowed: false,
+                    required: true,
+                    supports_doc_comments: false,
+                    setter: |r: &mut Register, property, _, _, _| {
+                        r.address = property
+                            .expression
+                            .as_number()
+                            .unwrap()
+                            .with_span(property.expression.span);
+                        false
+                    },
+                },
+                PropertyInfo {
+                    name: PropertyName::Exact("access"),
+                    allowed_expression_types: Cow::Borrowed(&[Expression::Access(Access::RW)]),
+                    multiple_allowed: false,
+                    required: false,
+                    supports_doc_comments: false,
+                    setter: |r: &mut Register, property, _, _, _| {
+                        r.access = property.expression.as_access().unwrap();
+                        false
+                    },
+                },
+                PropertyInfo {
+                    name: PropertyName::Exact("address-overlap"),
+                    allowed_expression_types: Cow::Borrowed(&[Expression::Allow]),
+                    multiple_allowed: false,
+                    required: false,
+                    supports_doc_comments: false,
+                    setter: |r: &mut Register, _, _, _, _| {
+                        r.allow_address_overlap = true;
+                        false
+                    },
+                },
+                PropertyInfo {
+                    name: PropertyName::Exact("reset"),
+                    allowed_expression_types: Cow::Owned(vec![
+                        Expression::ResetArray(vec![12, 34]),
+                        Expression::ResetNumber(1234),
+                    ]),
+                    multiple_allowed: false,
+                    required: false,
+                    supports_doc_comments: false,
+                    setter: |r: &mut Register, property, _, _, _| match &property.expression.value {
+                        Expression::ResetNumber(num) => {
+                            r.reset_value =
+                                Some(ResetValue::Integer(*num).with_span(property.expression.span));
+                            false
+                        }
+                        Expression::ResetArray(bytes) => {
+                            r.reset_value = Some(
+                                ResetValue::Array(bytes.to_vec())
+                                    .with_span(property.expression.span),
+                            );
+                            false
+                        }
+                        _ => unreachable!(),
+                    },
+                },
+                PropertyInfo {
+                    name: PropertyName::Exact("repeat"),
+                    allowed_expression_types: Cow::Borrowed(&[Expression::Repeat(
+                        device_driver_parser::Repeat {
+                            source: device_driver_parser::RepeatSource::Count(4),
+                            stride: 2,
+                        },
+                    )]),
+                    multiple_allowed: false,
+                    required: false,
+                    supports_doc_comments: false,
+                    setter: |r: &mut Register, property, _, _, _| {
+                        let repeat = property.expression.as_repeat().unwrap();
+                        r.repeat = Some(Repeat {
+                            source: match repeat.source {
+                                device_driver_parser::RepeatSource::Count(count) => {
+                                    RepeatSource::Count(count as u64)
+                                }
+                                device_driver_parser::RepeatSource::Enum(ident) => {
+                                    RepeatSource::Enum(
+                                        IdentifierRef::new(ident.val.into()).with_span(ident.span),
+                                    )
+                                }
+                            },
+                            stride: repeat.stride as i128,
+                        });
+                        false
+                    },
+                },
+                PropertyInfo {
+                    name: PropertyName::Exact("fields"),
+                    allowed_expression_types: Cow::Owned(vec![
+                        Expression::TypeReference(device_driver_parser::Ident {
+                            val: "MyFieldset",
+                            span: Span::empty(),
+                        }),
+                        Expression::SubNode(Box::new(FIELD_SET_EXAMPLE)),
+                    ]),
+                    multiple_allowed: false,
+                    required: true,
+                    supports_doc_comments: false,
+                    setter: |r: &mut Register, property, node, diagnostics, sibling_objects| {
+                        match &property.expression.value {
+                            Expression::TypeReference(ident) => {
+                                r.field_set_ref = IdentifierRef::new(ident.val.into());
+                                false
+                            }
+                            Expression::SubNode(sub_node) => {
+                                let result = lower_node(
+                                    sub_node,
+                                    Some(NodeType::Register.with_span(node.node_type.span)),
+                                    &[NodeType::FieldSet],
+                                    diagnostics,
+                                );
+
+                                match result {
+                                    LowerResult::Objects(fs, fs_siblings) => {
+                                        r.field_set_ref = fs.name().take_ref();
+                                        sibling_objects.push(fs);
+                                        sibling_objects.extend(fs_siblings);
+                                        false
+                                    }
+                                    LowerResult::Error(fs_siblings) => {
+                                        sibling_objects.extend(fs_siblings);
+                                        true
+                                    }
+                                    LowerResult::Manifest(_) => unreachable!(),
+                                }
+                            }
+                            _ => unreachable!(),
+                        }
+                    },
+                },
+            ]
+            .into()
+        });
+        &MAP
+    }
+}
+
+impl Shape for FieldSet {
+    const NODE_TYPE: NodeType = NodeType::FieldSet;
+
+    fn doc_comments(&mut self) -> &mut String {
+        &mut self.description
+    }
+
+    fn name(&mut self) -> &mut Spanned<Identifier> {
+        &mut self.name
+    }
+
+    fn supported_properties() -> &'static [PropertyInfo<Self>] {
+        static MAP: &[PropertyInfo<FieldSet>] = &[
+            PropertyInfo {
+                name: PropertyName::Exact("size-bits"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::Number(8)]),
+                multiple_allowed: false,
+                required: true,
+                supports_doc_comments: false,
+                setter: |fs: &mut FieldSet, property, fs_node, diagnostics, _| match u32::try_from(
+                    property.expression.as_number().unwrap(),
+                ) {
+                    Ok(size_bits) => {
+                        fs.size_bits = size_bits.with_span(property.expression.span);
+                        false
+                    }
+                    Err(_) => {
+                        diagnostics.add(SizeBitsTooLarge {
+                            value: property.expression.span,
+                            field_set: fs_node.span,
+                        });
+                        true
+                    }
+                },
+            },
+            PropertyInfo {
+                name: PropertyName::Exact("byte-order"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::ByteOrder(ByteOrder::LE)]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |fs: &mut FieldSet, property, _, _, _| {
+                    fs.byte_order = Some(property.expression.as_byte_order().unwrap());
+                    false
+                },
+            },
+            PropertyInfo {
+                name: PropertyName::Exact("bit-overlap"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::Allow]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |fs: &mut FieldSet, _, _, _, _| {
+                    fs.allow_bit_overlap = true;
+                    false
+                },
+            },
+        ];
+        MAP
+    }
+
+    fn supported_subnodes() -> Option<&'static [NodeType]> {
+        Some(&[NodeType::Field])
+    }
+
+    fn push_subnode(&mut self, object: Object) {
+        let Object::Field(field) = object else {
+            unreachable!("{object:?}")
+        };
+        self.fields.push(field);
+    }
+}
+
+impl Shape for Extern {
+    const NODE_TYPE: NodeType = NodeType::Extern;
+
+    fn doc_comments(&mut self) -> &mut String {
+        &mut self.description
+    }
+
+    fn name(&mut self) -> &mut Spanned<Identifier> {
+        &mut self.name
+    }
+
+    fn supported_properties() -> &'static [PropertyInfo<Self>] {
+        static MAP: &[PropertyInfo<Extern>] = &[PropertyInfo {
+            name: PropertyName::Exact("infallible"),
+            allowed_expression_types: Cow::Borrowed(&[Expression::Allow]),
+            multiple_allowed: false,
+            required: false,
+            supports_doc_comments: false,
+            setter: |ext: &mut Extern, _, _, _, _| {
+                ext.supports_infallible = true;
+                false
+            },
+        }];
+        MAP
+    }
+
+    fn base_type(&mut self) -> Option<&mut Spanned<BaseType>> {
+        Some(&mut self.base_type)
+    }
+}
+
+impl Shape for Buffer {
+    const NODE_TYPE: NodeType = NodeType::Buffer;
+
+    fn doc_comments(&mut self) -> &mut String {
+        &mut self.description
+    }
+
+    fn name(&mut self) -> &mut Spanned<Identifier> {
+        &mut self.name
+    }
+
+    fn supported_properties() -> &'static [PropertyInfo<Self>] {
+        static MAP: &[PropertyInfo<Buffer>] = &[
+            PropertyInfo {
+                name: PropertyName::Exact("access"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::Access(Access::RW)]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |buf: &mut Buffer, property, _, _, _| {
+                    buf.access = property.expression.as_access().unwrap();
+                    false
+                },
+            },
+            PropertyInfo {
+                name: PropertyName::Exact("address"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::Number(0)]),
+                multiple_allowed: false,
+                required: true,
+                supports_doc_comments: false,
+                setter: |buf: &mut Buffer, property, _, _, _| {
+                    buf.address = property
+                        .expression
+                        .as_number()
+                        .unwrap()
+                        .with_span(property.expression.span);
+                    false
+                },
+            },
+        ];
+        MAP
+    }
+}
+
+impl Shape for Enum {
+    const NODE_TYPE: NodeType = NodeType::Enum;
+
+    fn doc_comments(&mut self) -> &mut String {
+        &mut self.description
+    }
+
+    fn name(&mut self) -> &mut Spanned<Identifier> {
+        &mut self.name
+    }
+
+    fn supported_properties() -> &'static [PropertyInfo<Self>] {
+        static MAP: &[PropertyInfo<Enum>] = &[PropertyInfo {
+            name: PropertyName::Any,
+            allowed_expression_types: Cow::Borrowed(&[
+                Expression::Auto,
+                Expression::Number(0),
+                Expression::DefaultNumber(0),
+                Expression::CatchAllNumber(0),
+            ]),
+            multiple_allowed: true,
+            required: false,
+            supports_doc_comments: true,
+            setter: |enum_value: &mut Enum, property, _, diagnostics, _| {
+                let identifier = match Identifier::try_parse(property.name.val) {
+                    Ok(identifier) => identifier,
+                    Err(e) => {
+                        diagnostics.add(InvalidIdentifier {
+                            error: e,
+                            identifier: property.name.span,
+                        });
+                        return true;
+                    }
+                };
+
+                enum_value.variants.push(EnumVariant {
+                    description: property.doc_comments.iter().map(|c| c.value).join("\n"),
+                    name: identifier.with_span(property.name.span),
+                    value: match &property.expression.value {
+                        Expression::Number(num) => EnumValue::Specified(*num),
+                        Expression::DefaultNumber(num) => EnumValue::Default(*num),
+                        Expression::CatchAllNumber(num) => EnumValue::CatchAll(*num),
+                        Expression::Auto => EnumValue::Unspecified,
+                        _ => unreachable!(),
+                    },
+                    span: property.span,
+                });
+                false
+            },
+        }];
+        MAP
+    }
+
+    fn base_type(&mut self) -> Option<&mut Spanned<BaseType>> {
+        Some(&mut self.base_type)
+    }
+}
+
+impl Shape for Command {
+    const NODE_TYPE: NodeType = NodeType::Command;
+
+    fn doc_comments(&mut self) -> &mut String {
+        &mut self.description
+    }
+
+    fn name(&mut self) -> &mut Spanned<Identifier> {
+        &mut self.name
+    }
+
+    fn supported_properties() -> &'static [PropertyInfo<Self>] {
+        static MAP: LazyLock<Vec<PropertyInfo<Command>>> = LazyLock::new(|| {
+            [
+                PropertyInfo {
+                    name: PropertyName::Exact("address"),
+                    allowed_expression_types: Cow::Borrowed(&[Expression::Number(0)]),
+                    multiple_allowed: false,
+                    required: true,
+                    supports_doc_comments: false,
+                    setter: |command: &mut Command, property, _, _, _| {
+                        command.address = property
+                            .expression
+                            .as_number()
+                            .unwrap()
+                            .with_span(property.expression.span);
+                        false
+                    },
+                },
+                PropertyInfo {
+                    name: PropertyName::Exact("address-overlap"),
+                    allowed_expression_types: Cow::Borrowed(&[Expression::Allow]),
+                    multiple_allowed: false,
+                    required: false,
+                    supports_doc_comments: false,
+                    setter: |command: &mut Command, _, _, _, _| {
+                        command.allow_address_overlap = true;
+                        false
+                    },
+                },
+                PropertyInfo {
+                    name: PropertyName::Exact("repeat"),
+                    allowed_expression_types: Cow::Borrowed(&[Expression::Repeat(
+                        device_driver_parser::Repeat {
+                            source: device_driver_parser::RepeatSource::Count(4),
+                            stride: 2,
+                        },
+                    )]),
+                    multiple_allowed: false,
+                    required: false,
+                    supports_doc_comments: false,
+                    setter: |command: &mut Command, property, _, _, _| {
+                        let repeat = property.expression.as_repeat().unwrap();
+                        command.repeat = Some(Repeat {
+                            source: match repeat.source {
+                                device_driver_parser::RepeatSource::Count(count) => {
+                                    RepeatSource::Count(count as u64)
+                                }
+                                device_driver_parser::RepeatSource::Enum(ident) => {
+                                    RepeatSource::Enum(
+                                        IdentifierRef::new(ident.val.into()).with_span(ident.span),
+                                    )
+                                }
+                            },
+                            stride: repeat.stride as i128,
+                        });
+                        false
+                    },
+                },
+                PropertyInfo {
+                    name: PropertyName::Exact("fields-in"),
+                    allowed_expression_types: Cow::Owned(vec![
+                        Expression::TypeReference(device_driver_parser::Ident {
+                            val: "MyFieldset",
+                            span: Span::empty(),
+                        }),
+                        Expression::SubNode(Box::new(FIELD_SET_EXAMPLE)),
+                    ]),
+                    multiple_allowed: false,
+                    required: false,
+                    supports_doc_comments: false,
+                    setter: |command: &mut Command,
+                             property,
+                             node,
+                             diagnostics,
+                             sibling_objects| {
+                        match &property.expression.value {
+                            Expression::TypeReference(ident) => {
+                                command.field_set_ref_in =
+                                    Some(IdentifierRef::new(ident.val.into()));
+                                false
+                            }
+                            Expression::SubNode(sub_node) => {
+                                let result = lower_node(
+                                    sub_node,
+                                    Some(NodeType::Register.with_span(node.node_type.span)),
+                                    &[NodeType::FieldSet],
+                                    diagnostics,
+                                );
+
+                                match result {
+                                    LowerResult::Objects(fs, fs_siblings) => {
+                                        command.field_set_ref_in = Some(fs.name().take_ref());
+                                        sibling_objects.push(fs);
+                                        sibling_objects.extend(fs_siblings);
+                                        false
+                                    }
+                                    LowerResult::Error(fs_siblings) => {
+                                        sibling_objects.extend(fs_siblings);
+                                        true
+                                    }
+                                    LowerResult::Manifest(_) => unreachable!(),
+                                }
+                            }
+                            _ => unreachable!(),
+                        }
+                    },
+                },
+                PropertyInfo {
+                    name: PropertyName::Exact("fields-out"),
+                    allowed_expression_types: Cow::Owned(vec![
+                        Expression::TypeReference(device_driver_parser::Ident {
+                            val: "MyFieldset",
+                            span: Span::empty(),
+                        }),
+                        Expression::SubNode(Box::new(FIELD_SET_EXAMPLE)),
+                    ]),
+                    multiple_allowed: false,
+                    required: false,
+                    supports_doc_comments: false,
+                    setter: |command: &mut Command,
+                             property,
+                             node,
+                             diagnostics,
+                             sibling_objects| {
+                        match &property.expression.value {
+                            Expression::TypeReference(ident) => {
+                                command.field_set_ref_out =
+                                    Some(IdentifierRef::new(ident.val.into()));
+                                false
+                            }
+                            Expression::SubNode(sub_node) => {
+                                let result = lower_node(
+                                    sub_node,
+                                    Some(NodeType::Register.with_span(node.node_type.span)),
+                                    &[NodeType::FieldSet],
+                                    diagnostics,
+                                );
+
+                                match result {
+                                    LowerResult::Objects(fs, fs_siblings) => {
+                                        command.field_set_ref_out = Some(fs.name().take_ref());
+                                        sibling_objects.push(fs);
+                                        sibling_objects.extend(fs_siblings);
+                                        false
+                                    }
+                                    LowerResult::Error(fs_siblings) => {
+                                        sibling_objects.extend(fs_siblings);
+                                        true
+                                    }
+                                    LowerResult::Manifest(_) => unreachable!(),
+                                }
+                            }
+                            _ => unreachable!(),
+                        }
+                    },
+                },
+            ]
+            .into()
+        });
+        &MAP
+    }
+}
+
+impl Shape for Field {
+    const NODE_TYPE: NodeType = NodeType::Field;
+
+    fn doc_comments(&mut self) -> &mut String {
+        &mut self.description
+    }
+
+    fn name(&mut self) -> &mut Spanned<Identifier> {
+        &mut self.name
+    }
+
+    fn supported_properties() -> &'static [PropertyInfo<Self>] {
+        static MAP: &[PropertyInfo<Field>] = &[
+            PropertyInfo {
+                name: PropertyName::Short("address"),
+                allowed_expression_types: Cow::Borrowed(&[
+                    Expression::Number(0),
+                    Expression::AddressRange { end: 8, start: 0 },
+                ]),
+                multiple_allowed: false,
+                required: true,
+                supports_doc_comments: false,
+                setter: |field: &mut Field, property, _, diagnostics, _| {
+                    let u32_range = 0..=u32::MAX as i128;
+
+                    field.field_address = match property.expression.value {
+                        Expression::AddressRange { end, start }
+                            if u32_range.contains(&end) && u32_range.contains(&start) =>
+                        {
+                            if end < start {
+                                diagnostics.add(FieldAddressWrongOrder {
+                                    address: property.expression.span,
+                                    end,
+                                    start,
+                                });
+                                return true;
+                            }
+
+                            AddressRange {
+                                start: start.try_into().unwrap(),
+                                end: end.try_into().unwrap(),
+                            }
+                        }
+                        Expression::Number(num) if u32_range.contains(&num) => AddressRange {
+                            start: num.try_into().unwrap(),
+                            end: num.try_into().unwrap(),
+                        },
+                        Expression::AddressRange { .. } | Expression::Number(_) => {
+                            diagnostics.add(FieldAddressOutOfRange {
+                                field_address: property.expression.span,
+                            });
+                            return true;
+                        }
+                        _ => unreachable!(),
+                    }
+                    .with_span(property.expression.span);
+                    false
+                },
+            },
+            PropertyInfo {
+                name: PropertyName::Short("access"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::Access(Access::RW)]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |field: &mut Field, property, _, _, _| {
+                    field.access = property.expression.as_access().unwrap();
+                    false
+                },
+            },
+            PropertyInfo {
+                name: PropertyName::Short("repeat"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::Repeat(
+                    device_driver_parser::Repeat {
+                        source: device_driver_parser::RepeatSource::Count(4),
+                        stride: 2,
+                    },
+                )]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |field: &mut Field, property, _, _, _| {
+                    let repeat = property.expression.as_repeat().unwrap();
+                    field.repeat = Some(Repeat {
+                        source: match repeat.source {
+                            device_driver_parser::RepeatSource::Count(count) => {
+                                RepeatSource::Count(count as u64)
+                            }
+                            device_driver_parser::RepeatSource::Enum(ident) => RepeatSource::Enum(
+                                IdentifierRef::new(ident.val.into()).with_span(ident.span),
+                            ),
+                        },
+                        stride: repeat.stride as i128,
+                    });
+                    false
+                },
+            },
+        ];
+        MAP
+    }
+
+    fn base_type(&mut self) -> Option<&mut Spanned<BaseType>> {
+        Some(&mut self.base_type)
+    }
+
+    fn conversion_type(&mut self) -> Option<&mut Option<TypeConversion>> {
+        Some(&mut self.field_conversion)
     }
 }

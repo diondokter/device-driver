@@ -32,7 +32,7 @@ impl BufferInterface for DeviceInterface {
 }
 
 device_driver::create_device!(
-    kdl: "
+    ddsl: "
         device MyTestDevice {
             byte-order LE
             buffer-address-type u8

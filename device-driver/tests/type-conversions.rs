@@ -45,7 +45,7 @@ impl RegisterInterface for DeviceInterface {
 }
 
 device_driver::create_device!(
-    kdl: "
+    ddsl: "
         device MyTestDevice {
             byte-order LE
             register-address-type u8

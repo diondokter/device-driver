@@ -47,7 +47,7 @@ impl RegisterInterface for DeviceInterface {
 }
 
 device_driver::create_device!(
-    manifest: "tests/basic-register.kdl"
+    manifest: "tests/basic-register.ddsl"
 );
 
 #[test]

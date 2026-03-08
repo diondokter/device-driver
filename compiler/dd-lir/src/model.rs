@@ -1,8 +1,6 @@
-use std::ops::Range;
-
 use device_driver_common::{
     identifier::Identifier,
-    specifiers::{Access, ByteOrder, Integer},
+    specifiers::{Access, AddressRange, ByteOrder, Integer},
 };
 
 pub struct Driver {
@@ -86,7 +84,7 @@ impl FieldSet {
 pub struct Field {
     pub description: String,
     pub name: Identifier,
-    pub address: Range<u32>,
+    pub address: AddressRange,
     pub base_type: String,
     pub conversion_method: FieldConversionMethod,
     pub access: Access,

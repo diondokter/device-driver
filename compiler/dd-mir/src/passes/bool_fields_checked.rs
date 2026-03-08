@@ -11,28 +11,21 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
         };
 
         for field in field_set.fields.iter_mut() {
-            if field.base_type == BaseType::Bool {
-                // When zero bits long, extend to one bit
-                if field.field_address.start == field.field_address.end {
-                    field.field_address.end += 1;
-                }
+            if field.base_type == BaseType::Bool && field.field_address.len() != 1 {
+                diagnostics.add(BoolFieldTooLarge {
+                    base_type: if field.base_type.span.is_empty() {
+                        None
+                    } else {
+                        Some(field.base_type.span)
+                    },
+                    address: field.field_address.span,
+                    address_bits: field.field_address.len() as u32,
+                    address_start: field.field_address.start,
 
-                if field.field_address.value.clone().count() != 1 {
-                    diagnostics.add(BoolFieldTooLarge {
-                        base_type: if field.base_type.span.is_empty() {
-                            None
-                        } else {
-                            Some(field.base_type.span)
-                        },
-                        address: field.field_address.span,
-                        address_bits: field.field_address.len() as u32,
-                        address_start: field.field_address.start,
-
-                        field_set_context: field_set.name.span,
-                    });
-                    // To fix for further use, set the len to just 1
-                    field.field_address.end = field.field_address.start + 1;
-                }
+                    field_set_context: field_set.name.span,
+                });
+                // To fix for further use, set the len to just 1
+                field.field_address.end = field.field_address.start + 1;
             }
         }
     }

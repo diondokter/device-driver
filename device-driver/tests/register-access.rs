@@ -1,7 +1,7 @@
 //! Having registers and fields with different access specifiers should still compile
 
 device_driver::create_device!(
-    kdl: "
+    ddsl: "
         device MyTestDevice {
             register-address-type u8
 
