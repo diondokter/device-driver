@@ -1669,3 +1669,30 @@ impl Diagnostic for FieldAddressWrongOrder {
         .into()
     }
 }
+
+pub struct IgnoredDocCommentOnProperty {
+    pub doc_comments: Span,
+    pub property: Span,
+}
+
+impl Diagnostic for IgnoredDocCommentOnProperty {
+    fn is_error(&self) -> bool {
+        false
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [Level::WARNING
+            .primary_title("doc comments placed on property that doesn't use them")
+            .element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(
+                        AnnotationKind::Primary
+                            .span(self.doc_comments.into())
+                            .label("these doc comments are ignored"),
+                    )
+                    .annotation(AnnotationKind::Visible.span(self.property.into())),
+            )]
+        .into()
+    }
+}

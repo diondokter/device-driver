@@ -19,6 +19,15 @@ impl Span {
     pub fn or(&self, other: Self) -> Self {
         if self.is_empty() { other } else { *self }
     }
+
+    /// Get the combined span that encompasses both spans.
+    /// The order does not matter.
+    pub fn to(&self, other: Self) -> Self {
+        Self {
+            start: self.start.min(other.start),
+            end: self.end.max(other.end),
+        }
+    }
 }
 
 impl chumsky::span::Span for Span {

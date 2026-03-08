@@ -21,9 +21,10 @@ use device_driver_common::{
 use device_driver_diagnostics::{
     Diagnostics,
     errors::{
-        DuplicateProperty, FieldAddressOutOfRange, FieldAddressWrongOrder, InvalidExpressionType,
-        InvalidIdentifier, InvalidNodeType, InvalidPropertyName, InvalidShortProperty,
-        InvalidSubnode, MissingRequiredProperty, SizeBitsTooLarge, UnknownNodeType,
+        DuplicateProperty, FieldAddressOutOfRange, FieldAddressWrongOrder,
+        IgnoredDocCommentOnProperty, InvalidExpressionType, InvalidIdentifier, InvalidNodeType,
+        InvalidPropertyName, InvalidShortProperty, InvalidSubnode, MissingRequiredProperty,
+        SizeBitsTooLarge, UnknownNodeType,
     },
 };
 use device_driver_parser::{Ast, Expression, Ident, Node, Property};
@@ -244,9 +245,17 @@ fn parse_node_to_shape<'src, S: Shape>(
         };
 
         if !property.doc_comments.is_empty() && !property_info.supports_doc_comments {
-            todo!(
-                "Emit diagnostic warning: Doc comments placed on property that doesn't support it"
-            );
+            let doc_comments = property
+                .doc_comments
+                .iter()
+                .map(|dc| dc.span)
+                .reduce(|x, y| x.to(y))
+                .unwrap();
+
+            diagnostics.add(IgnoredDocCommentOnProperty {
+                doc_comments,
+                property: property.name.span,
+            });
         }
 
         // Get the discriminant and cast it to the static lifetime which is explicitly allowed in the rust docs
