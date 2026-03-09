@@ -3,15 +3,17 @@ use device_driver::RegisterInterface;
 device_driver::create_device!(
     ddsl: "
         device MyTestDevice {
-            byte-order LE
-            register-address-type u8
+            byte-order: LE,
+            register-address-type: u8,
 
             register Foo {
-                address 0
-                reset-value 0xFFFFFFFF
+                address: 0,
+                reset: [0xFFFFFFFF],
 
-                fields size-bits=32 {
-                    (uint)value @31:0
+                fields: fieldset FooFieldSet {
+                    size-bits: 32,
+
+                    field value 31:0 -> uint
                 }
             }
         }

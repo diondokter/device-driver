@@ -12,7 +12,6 @@ rust-version.workspace = true
 device-driver-common.workspace = true
 device-driver-lir.workspace = true
 
-itertools.workspace = true
 convert_case.workspace = true
 
 askama = { version = "0.15.4", default-features = false, features = ["derive", "alloc"] }

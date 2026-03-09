@@ -34,17 +34,17 @@ impl BufferInterface for DeviceInterface {
 device_driver::create_device!(
     ddsl: "
         device MyTestDevice {
-            byte-order LE
-            buffer-address-type u8
+            byte-order: LE,
+            buffer-address-type: u8,
 
             /// A read only buffer
             buffer RoBuf {
-                access RO
-                address 0
-            }
+                access: RO,
+                address: 0,
+            },
             buffer WoBuf {
-                access WO
-                address 1
+                access: WO,
+                address: 1,
             }
         }
     "

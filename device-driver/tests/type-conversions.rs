@@ -47,53 +47,55 @@ impl RegisterInterface for DeviceInterface {
 device_driver::create_device!(
     ddsl: "
         device MyTestDevice {
-            byte-order LE
-            register-address-type u8
+            byte-order: LE,
+            register-address-type: u8,
             register Foo {
-                address 0
-                fields size-bits=64 {
+                address: 0,
+                fields: fieldset FooFields {
+                    size-bits: 64,
+
                     /// Try needed since [MyTryEnum] doesn't impl [From]
-                    (uint:MyTryEnum?)convert_custom_try @1:0
+                    field convert_custom_try 1:0 -> uint as try MyTryEnum,
                     /// No try needed since [MyEnum] impls [From]
-                    (uint:MyEnum)convert_custom @3:2
+                    field convert_custom 3:2 -> uint as MyEnum,
                     /// Try needed since not all bit patters are covered
-                    (uint:GenTryEnum?)convert_generated_try @5:4 {
-                        A
-                        B
-                    }
+                    field convert_generated_try 5:4 -> uint as try enum GenTryEnum {
+                        A: _,
+                        B: _,
+                    },
                     /// No try needed because it covers every bit pattern (2 bit)
-                    (uint:GenEnum)convert_generated @7:6 {
-                        A
-                        B
-                        C 2
-                        D
-                    }
+                    field convert_generated 7:6 -> uint as enum GenEnum {
+                        A: _,
+                        B: _,
+                        C: 2,
+                        D: _,
+                    },
                     /// No try needed since default
-                    (uint:GenDefaultEnum)convert_generated_default @9:8 {
-                        A
-                        B default
-                    }
+                    field convert_generated_default 9:8 -> uint as enum GenDefaultEnum {
+                        A: _,
+                        B: default 1,
+                    },
                     /// No try needed since catch-all
-                    (uint:GenCatchAllEnum)convert_generated_catchall @11:10 {
-                        A
-                        B catch-all
-                    }
+                    field convert_generated_catchall 11:10 -> uint as enum GenCatchAllEnum {
+                        A: _,
+                        B: catch-all 1,
+                    },
                     /// No try needed since it recognizes GenEnum (even though it doesn implement From<u8>)
-                    (uint:GenEnum)convert_generated_copied @13:12
+                    field convert_generated_copied 13:12 -> uint as GenEnum,
                     /// Try needed since it recognizes GenEnum, but the bits are too big (3 bit vs 2 bit)
-                    (uint:GenEnum?)convert_generated_copied_too_large @16:14
+                    field convert_generated_copied_too_large 16:14 -> uint as try GenEnum,
                 }
-            }
+            },
             enum MyTryEnum {
-                A
-                B
-                C
-            }
+                A: _,
+                B: _,
+                C: _,
+            },
             enum MyEnum {
-                A
-                B
-                C
-                D
+                A: _,
+                B: _,
+                C: _,
+                D: _,
             }
         }
     "

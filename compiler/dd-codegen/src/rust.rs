@@ -1,7 +1,6 @@
 use askama::Template;
 use convert_case::Case;
 use device_driver_common::{identifier::Identifier, specifiers::Access};
-use itertools::Itertools;
 
 use device_driver_lir::model::{BlockMethodType, Driver, Field, FieldConversionMethod, Repeat};
 
@@ -22,10 +21,20 @@ impl<'a> DeviceTemplateRust<'a> {
 }
 
 fn description_to_docstring(description: &str) -> String {
-    description
-        .lines()
-        .map(|line| format!("///{line}"))
-        .join("\n")
+    use std::fmt::Write;
+
+    let mut docstring = String::new();
+
+    for line in description.lines() {
+        writeln!(
+            &mut docstring,
+            "///{}{line}",
+            if line.starts_with(' ') { "" } else { " " }
+        )
+        .unwrap();
+    }
+
+    docstring
 }
 
 fn get_defmt_fmt_string(field: &Field) -> String {

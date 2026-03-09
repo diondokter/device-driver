@@ -49,28 +49,26 @@ impl RegisterInterface for DeviceInterface {
 device_driver::create_device!(
     ddsl: "
         device MyTestDevice {
-            byte-order LE
-            register-address-type u8
+            byte-order: LE,
+            register-address-type: u8,
+
             /// This is the Foo register
             register Foo {
-                address 0
-                fields size-bits=24 {
+                address: 0,
+                fields: fieldset FooFields {
+                    size-bits: 24,
+
                     /// This is a bool!
-                    (bool)value0 @0
-                    (uint)value1 @15:1
-                    (int)value2 @23:17
+                    field value0 0 -> bool,
+                    field value1 15:1 -> uint,
+                    field value2 23:16 -> int,
                 }
-            }
+            },
             /// This is the Foo register
             register FooRepeated {
-                address 3
-                repeat count=4 stride=3
-                fields size-bits=24 {
-                    /// This is a bool!
-                    (bool)value0 @0
-                    (uint)value1 @15:1
-                    (int)value2 @23:16
-                }
+                address: 3,
+                repeat: <4 by 3>,
+                fields: FooFields,
             }
         }
     "

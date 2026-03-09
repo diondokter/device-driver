@@ -109,7 +109,7 @@ enum GenerationType {
 
 impl syn::parse::Parse for Input {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let defmt_feature = None; // TODO: Parse feature
+        let defmt_feature = Some("defmt".into()); // TODO: Parse feature
 
         let look = input.lookahead1();
 

@@ -793,11 +793,18 @@ impl Shape for Block {
                 required: false,
                 supports_doc_comments: false,
                 setter: |block: &mut Block, property, _, _, _| {
-                    block.address_offset = property
-                        .expression
-                        .as_number()
-                        .unwrap()
-                        .with_span(property.expression.span);
+                    let repeat = property.expression.as_repeat().unwrap();
+                    block.repeat = Some(Repeat {
+                        source: match repeat.source {
+                            device_driver_parser::RepeatSource::Count(count) => {
+                                RepeatSource::Count(count as u64)
+                            }
+                            device_driver_parser::RepeatSource::Enum(ident) => RepeatSource::Enum(
+                                IdentifierRef::new(ident.val.into()).with_span(ident.span),
+                            ),
+                        },
+                        stride: repeat.stride as i128,
+                    });
                     false
                 },
             },
