@@ -92,9 +92,9 @@ pub struct Field {
 impl Field {
     pub fn address_text(&self) -> String {
         if self.address.len() <= 1 {
-            format!("@{}", self.address.start)
+            format!("bit {}", self.address.start)
         } else {
-            format!("@{}:{}", self.address.end - 1, self.address.start)
+            format!("{}:{}", self.address.end, self.address.start)
         }
     }
 }

@@ -110,8 +110,8 @@ fn validate_overlap(field_set: &FieldSet, manifest: &Manifest, diagnostics: &mut
 }
 
 fn ranges_overlap(l: &AddressRange, offset: i128, r: &AddressRange, second_offset: i128) -> bool {
-    (i128::from(l.start) + offset) < (i128::from(r.end) + second_offset)
-        && (i128::from(r.start) + second_offset) < (i128::from(l.end) + offset)
+    (i128::from(l.start) + offset) <= (i128::from(r.end) + second_offset)
+        && (i128::from(r.start) + second_offset) <= (i128::from(l.end) + offset)
 }
 
 fn get_repeat_iter(manifest: &Manifest, field: &Field) -> (Vec<i128>, bool) {

@@ -100,8 +100,8 @@ fn test_basic_read_modify_write() {
     assert_eq!(reg.value_2(), -1);
 
     assert_eq!(
-        &device.interface.device_memory[0..3],
-        &[(0x39 << 1) + 1, 0x30 << 1, 0xFE]
+        u32::from_le_bytes(*device.interface.device_memory[0..4].as_array().unwrap()),
+        1 | 12345 << 1 | ((-1i8 as u8) as u32) << 16
     );
 }
 

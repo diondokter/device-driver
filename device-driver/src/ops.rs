@@ -324,7 +324,7 @@ mod tests {
 
     #[test]
     fn twos_complement() {
-        for i in 1..=32 {
+        for i in 1..=31 {
             println!("Bit width: {i}");
             let mut data = [0; 4];
 

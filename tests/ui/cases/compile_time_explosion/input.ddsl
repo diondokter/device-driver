@@ -1,55 +1,59 @@
 device Device {
-    byte-order LE
-    register-address-type u32
+    byte-order: LE,
+    register-address-type: u32,
+
+    fieldset Foo {
+        size-bits: 0
+    },
 
     register Foo0 {
-        address 0
-        repeat count=100 stride=1000
-        fields size-bits=0
-    }
+        address: 0,
+        repeat: <100 by 1000>,
+        fields: Foo,
+    },
     register Foo1 {
-        address 1
-        repeat count=100 stride=1000
-        fields size-bits=0
-    }
+        address: 1,
+        repeat: <100 by 1000>,
+        fields: Foo,
+    },
     register Foo2 {
-        address 2
-        repeat count=100 stride=1000
-        fields size-bits=0
-    }
+        address: 2,
+        repeat: <100 by 1000>,
+        fields: Foo,
+    },
     register Foo3 {
-        address 3
-        repeat count=100 stride=1000
-        fields size-bits=0
-    }
+        address: 3,
+        repeat: <100 by 1000>,
+        fields: Foo,
+    },
     register Foo4 {
-        address 4
-        repeat count=100 stride=1000
-        fields size-bits=0
-    }
+        address: 4,
+        repeat: <100 by 1000>,
+        fields: Foo,
+    },
     register Foo5 {
-        address 5
-        repeat count=100 stride=1000
-        fields size-bits=0
-    }
+        address: 5,
+        repeat: <100 by 1000>,
+        fields: Foo,
+    },
     register Foo6 {
-        address 6
-        repeat count=100 stride=1000
-        fields size-bits=0
-    }
+        address: 6,
+        repeat: <100 by 1000>,
+        fields: Foo,
+    },
     register Foo7 {
-        address 7
-        repeat count=100 stride=1000
-        fields size-bits=0
-    }
+        address: 7,
+        repeat: <100 by 1000>,
+        fields: Foo,
+    },
     register Foo8 {
-        address 8
-        repeat count=100 stride=1000
-        fields size-bits=0
-    }
+        address: 8,
+        repeat: <100 by 1000>,
+        fields: Foo,
+    },
     register Foo9 {
-        address 9
-        repeat count=100 stride=1000
-        fields size-bits=0
+        address: 9,
+        repeat: <100 by 1000>,
+        fields: Foo,
     }
 }
