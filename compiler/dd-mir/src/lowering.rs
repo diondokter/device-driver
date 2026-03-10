@@ -309,17 +309,17 @@ fn parse_node_to_shape<'src, S: Shape>(
     }
 
     for short_property in node.short_properties.iter() {
-        let short_propery_discriminant = discriminant(&short_property.value);
+        let short_property_discriminant = discriminant(&short_property.value);
 
         let Some(property_info) = possible_properties.iter().find(|p| {
             p.name.as_short().is_some()
                 && p.allowed_expression_types
                     .iter()
                     .map(discriminant)
-                    .any(|ed| ed == short_propery_discriminant)
+                    .any(|ed| ed == short_property_discriminant)
         }) else {
             if let Some(original) = removed_short_properties
-                .get(&short_propery_discriminant)
+                .get(&short_property_discriminant)
                 .copied()
             {
                 diagnostics.add(DuplicateProperty {
