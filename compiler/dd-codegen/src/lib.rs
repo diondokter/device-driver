@@ -8,6 +8,8 @@ pub enum Target {
 
 pub fn codegen(target: Target, lir_driver: Driver) -> String {
     match target {
-        Target::Rust { defmt_feature } => rust::DeviceTemplateRust::new(&lir_driver, defmt_feature).to_string(),
+        Target::Rust { defmt_feature } => {
+            rust::DeviceTemplateRust::new(&lir_driver, defmt_feature).to_string()
+        }
     }
 }

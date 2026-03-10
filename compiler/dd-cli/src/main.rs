@@ -24,10 +24,10 @@ struct Args {
 }
 
 /// Parse a single key-value pair
-fn parse_key_val(s: &str) -> Result<(String, String), String> {
+fn parse_key_val(s: &str) -> Result<(String, String), &'static str> {
     s.split_once('=')
         .map(|(k, v)| (k.to_string(), v.to_string()))
-        .ok_or_else(|| format!("no `=` found`"))
+        .ok_or("no `=` found`")
 }
 
 fn main() -> ExitCode {
