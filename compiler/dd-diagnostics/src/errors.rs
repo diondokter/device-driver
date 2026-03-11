@@ -1224,7 +1224,7 @@ impl Diagnostic for InvalidIdentifier {
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
-        const INFO_TEXT: &str = "Identifiers are split into words using the name-word-boundaries.\n\
+        const INFO_TEXT: &str = "Identifiers are split into words using the 'word-boundaries'.\n\
 After the split the first character of the first word must be a unicode XID start character.\n\
 All other characters must be a unicode XID continue character.";
 

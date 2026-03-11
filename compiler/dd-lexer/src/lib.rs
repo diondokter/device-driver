@@ -82,6 +82,9 @@ pub enum Token<'src> {
     #[token("i32", |_| Integer::I32)]
     #[token("i64", |_| Integer::I64)]
     Integer(Integer),
+    // Very simple definition without string escaping
+    #[regex(r#""[^"]*""#, callback = |lex| lex.slice().strip_prefix('"').unwrap().strip_suffix('"').unwrap())]
+    String(&'src str),
     #[regex(r"\S", priority = 0)] // Any non-whitespace character
     Unexpected(&'src str),
     Error, // Catch-all for errors
@@ -113,6 +116,7 @@ impl<'src> Display for Token<'src> {
             Token::ByteOrder(_) => write!(f, "byte-order"),
             Token::BaseType(_) => write!(f, "base type"),
             Token::Integer(_) => write!(f, "integer type"),
+            Token::String(_) => write!(f, "string"),
             Token::Unexpected(val) => write!(f, "{}", val.escape_debug()),
             Token::Error => write!(f, "ERROR"),
         }
@@ -147,6 +151,7 @@ impl<'src> Token<'src> {
             Token::CatchAll => "catch-all".into(),
             Token::Unexpected(raw) => format!("!{raw}").into(),
             Token::Error => "UNEXPECTED".into(),
+            Token::String(val) => format!("\"{val}\"").into(),
         }
     }
 

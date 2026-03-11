@@ -10,6 +10,7 @@ use crate::model::{
     Block, Buffer, Command, Device, Enum, EnumValue, EnumVariant, Extern, Field, FieldSet,
     Manifest, Object, Register,
 };
+use convert_case::Boundary;
 use device_driver_common::{
     identifier::{Identifier, IdentifierRef},
     span::{Span, SpanExt, Spanned},
@@ -636,7 +637,19 @@ impl Shape for Manifest {
                     false
                 },
             },
-            // TODO: name-word-boundaries
+            PropertyInfo {
+                name: PropertyName::Exact("word-boundaries"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::String("bD:0B:_")]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |manifest: &mut Manifest, property, _, _, _| {
+                    manifest.config.name_word_boundaries = Some(Boundary::defaults_from(
+                        property.expression.as_string().unwrap(),
+                    ));
+                    false
+                },
+            },
         ];
         MAP
     }
@@ -731,7 +744,19 @@ impl Shape for Device {
                     false
                 },
             },
-            // TODO: name-word-boundaries
+            PropertyInfo {
+                name: PropertyName::Exact("word-boundaries"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::String("bD:0B:_")]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |dev: &mut Device, property, _, _, _| {
+                    dev.device_config.name_word_boundaries = Some(Boundary::defaults_from(
+                        property.expression.as_string().unwrap(),
+                    ));
+                    false
+                },
+            },
         ];
         MAP
     }

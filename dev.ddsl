@@ -8,6 +8,7 @@ manifest dev {
     /// Test
     device Foo {
         byte-order: BE,
+        word-boundaries: "-",
 
         register Bar {
             address: 0,
@@ -19,7 +20,7 @@ manifest dev {
                 field aha 10:0 RO <2 by 2> -> _ as try
                     extern lol2 -> u16,
                 field hah 15:11 WO -> u8 as
-                    enum hahnum -> u8 {
+                    enum hah-num -> u8 {
                         A: _,
                         B: catch-all 1
                     },

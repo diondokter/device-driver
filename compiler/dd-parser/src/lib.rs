@@ -140,6 +140,7 @@ pub enum Expression<'src> {
     Number(i128),
     DefaultNumber(i128),
     CatchAllNumber(i128),
+    String(&'src str),
     Access(Access),
     ByteOrder(ByteOrder),
     TypeReference(Ident<'src>),
@@ -181,6 +182,14 @@ impl<'src> Expression<'src> {
         }
     }
 
+    pub fn as_string(&self) -> Option<&'src str> {
+        if let Self::String(v) = self {
+            Some(*v)
+        } else {
+            None
+        }
+    }
+
     pub fn get_human_string(&self) -> Cow<'static, str> {
         match self {
             Expression::AddressRange { end, start } => format!("{end}:{start}").into(),
@@ -200,6 +209,7 @@ impl<'src> Expression<'src> {
             Expression::Number(num) => num.to_string().into(),
             Expression::DefaultNumber(num) => format!("default {num}").into(),
             Expression::CatchAllNumber(num) => format!("catch-all {num}").into(),
+            Expression::String(val) => format!("\"{val}\"").into(),
             Expression::Access(val) => val.to_string().into(),
             Expression::ByteOrder(val) => val.to_string().into(),
             Expression::TypeReference(ident) => ident.val.to_string().into(),
@@ -231,6 +241,7 @@ impl<'src> Display for Expression<'src> {
             Expression::Number(_) => write!(f, "number"),
             Expression::DefaultNumber(_) => write!(f, "default number"),
             Expression::CatchAllNumber(_) => write!(f, "catch-all number"),
+            Expression::String(_) => write!(f, "string"),
             Expression::Access(_) => write!(f, "access specifier"),
             Expression::ByteOrder(_) => write!(f, "byte order"),
             Expression::TypeReference(_) => write!(f, "type reference"),
@@ -401,6 +412,9 @@ where
                 .map(Expression::ByteOrder)
                 .labelled("'byte order'"),
             just(Token::Underscore).map(|_| Expression::Auto),
+            select! { Token::String(val) => val }
+                .map(Expression::String)
+                .labelled("'string'"),
         ))
         .map_with(|expression, extra| expression.spanned(extra.span()))
         .boxed();
