@@ -397,11 +397,11 @@ where
             just(Token::Default)
                 .ignore_then(any_num.try_map(try_num::<i128>))
                 .map(Expression::DefaultNumber)
-                .labelled("'default number'"),
+                .labelled("'default number'"), // TODO: Add `default _`
             just(Token::CatchAll)
                 .ignore_then(any_num.try_map(try_num::<i128>))
                 .map(Expression::CatchAllNumber)
-                .labelled("'catch-all number'"),
+                .labelled("'catch-all number'"), // TODO: Add `catch-all _`
             repeat_expression,
             reset_expression,
             just(Token::Allow).map(|_| Expression::Allow),
