@@ -28,6 +28,14 @@ impl Span {
             end: self.end.max(other.end),
         }
     }
+
+    /// Take the current span, but skip the start until the `skip` span has been passed
+    pub fn skip(&self, skip: Self) -> Self {
+        Self {
+            start: skip.end,
+            end: self.end,
+        }
+    }
 }
 
 impl chumsky::span::Span for Span {

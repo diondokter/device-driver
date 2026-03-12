@@ -1696,3 +1696,81 @@ impl Diagnostic for IgnoredDocCommentOnProperty {
         .into()
     }
 }
+
+pub struct InvalidTypeSpecifier {
+    pub node_type: Spanned<NodeType>,
+    pub type_specifier: Span,
+}
+
+impl Diagnostic for InvalidTypeSpecifier {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [
+            Level::ERROR
+                .primary_title(format!(
+                    "invalid type specifier for `{}` nodes",
+                    self.node_type
+                ))
+                .element(
+                    Snippet::source(source)
+                        .path(path)
+                        .annotation(AnnotationKind::Visible.span(self.node_type.span.into()))
+                        .annotation(
+                            AnnotationKind::Primary
+                                .span(self.type_specifier.into())
+                                .label("no type specifier is allowed on this node"),
+                        ),
+                ),
+            Level::HELP
+                .secondary_title("remove the type specifier")
+                .element(
+                    Snippet::source(source)
+                        .path(path)
+                        .patch(Patch::new(self.type_specifier.into(), "")),
+                ),
+        ]
+        .to_vec()
+    }
+}
+
+pub struct InvalidTypeConversion {
+    pub node_type: Spanned<NodeType>,
+    pub type_conversion: Span,
+}
+
+impl Diagnostic for InvalidTypeConversion {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [
+            Level::ERROR
+                .primary_title(format!(
+                    "invalid type conversion for `{}` nodes",
+                    self.node_type
+                ))
+                .element(
+                    Snippet::source(source)
+                        .path(path)
+                        .annotation(AnnotationKind::Visible.span(self.node_type.span.into()))
+                        .annotation(
+                            AnnotationKind::Primary
+                                .span(self.type_conversion.into())
+                                .label("no type conversion is allowed on this node"),
+                        ),
+                ),
+            Level::HELP
+                .secondary_title("remove the type conversion")
+                .element(
+                    Snippet::source(source)
+                        .path(path)
+                        .patch(Patch::new(self.type_conversion.into(), "")),
+                ),
+        ]
+        .to_vec()
+    }
+}

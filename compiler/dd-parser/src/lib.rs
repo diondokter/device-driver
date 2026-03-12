@@ -47,7 +47,7 @@ pub struct Node<'src> {
     pub doc_comments: Vec<Spanned<&'src str>>,
     pub node_type: Ident<'src>,
     pub name: Ident<'src>,
-    pub type_specifier: Option<TypeSpecifier<'src>>,
+    pub type_specifier: Option<Spanned<TypeSpecifier<'src>>>,
     pub short_properties: Vec<Spanned<Expression<'src>>>,
     pub properties: Vec<Spanned<Property<'src>>>,
     pub sub_nodes: Vec<Node<'src>>,
@@ -474,6 +474,7 @@ where
                     .unwrap_or_default(),
                 conversion: conversion.map(|(_, conversion)| conversion),
             })
+            .map_with(|ts, e| ts.spanned(e.span()))
             .boxed();
 
         let properties = property

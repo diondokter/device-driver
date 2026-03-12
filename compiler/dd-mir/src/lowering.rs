@@ -24,8 +24,8 @@ use device_driver_diagnostics::{
     errors::{
         DuplicateProperty, FieldAddressOutOfRange, FieldAddressWrongOrder,
         IgnoredDocCommentOnProperty, InvalidExpressionType, InvalidIdentifier, InvalidNodeType,
-        InvalidPropertyName, InvalidShortProperty, InvalidSubnode, MissingRequiredProperty,
-        SizeBitsTooLarge, UnknownNodeType,
+        InvalidPropertyName, InvalidShortProperty, InvalidSubnode, InvalidTypeConversion,
+        InvalidTypeSpecifier, MissingRequiredProperty, SizeBitsTooLarge, UnknownNodeType,
     },
 };
 use device_driver_parser::{Ast, Expression, Ident, Node, Property};
@@ -158,8 +158,11 @@ fn parse_node_to_shape<'src, S: Shape>(
 
     match (target.base_type(), node.type_specifier.as_ref()) {
         (None, None) => {}
-        (None, Some(_)) => {
-            todo!("Emit diagnostic: Base type found for node type that doesn't support it")
+        (None, Some(type_specifier)) => {
+            diagnostics.add(InvalidTypeSpecifier {
+                node_type: S::NODE_TYPE.with_span(node.node_type.span),
+                type_specifier: type_specifier.span,
+            });
         }
         (Some(base_type), None) => *base_type = BaseType::Unspecified.with_dummy_span(),
         (Some(base_type), Some(type_specifier)) => {
@@ -171,7 +174,13 @@ fn parse_node_to_shape<'src, S: Shape>(
 
     match (target.conversion_type(), node.type_specifier.as_ref()) {
         (None, Some(type_specifier)) if type_specifier.conversion.is_some() => {
-            todo!("Emit diagnostic: Type conversion found for node type that doesn't support it")
+            if target.base_type().is_some() {
+                // Only emit this diagnostic if a base type is supported. Otherwise we'll get double diagnostics
+                diagnostics.add(InvalidTypeConversion {
+                    node_type: S::NODE_TYPE.with_span(node.node_type.span),
+                    type_conversion: type_specifier.span.skip(type_specifier.base_type.span),
+                });
+            }
         }
         (None, _) => {}
         (Some(conversion_type), None) => *conversion_type = None,
