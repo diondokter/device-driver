@@ -4,19 +4,25 @@ use device_driver_common::{identifier::Identifier, specifiers::Access};
 
 use device_driver_lir::model::{BlockMethodType, Driver, Field, FieldConversionMethod, Repeat};
 
+use crate::CompileOptions;
+
 #[derive(Template)]
 #[template(path = "rust/device.rs.j2", escape = "none", whitespace = "minimize")]
 pub struct DeviceTemplateRust<'a> {
     driver: &'a Driver,
-    defmt_feature: Option<String>,
+    compile_options: &'a CompileOptions,
 }
 
 impl<'a> DeviceTemplateRust<'a> {
-    pub fn new(device: &'a Driver, defmt_feature: Option<String>) -> Self {
+    pub fn new(device: &'a Driver, compile_options: &'a CompileOptions) -> Self {
         Self {
             driver: device,
-            defmt_feature,
+            compile_options,
         }
+    }
+
+    fn defmt_feature(&self) -> Option<&str> {
+        self.compile_options.get("defmt-feature")
     }
 }
 

@@ -1,6 +1,7 @@
 use clap::Parser;
+use device_driver_core::Target;
 use device_driver_diagnostics::{DynError, Metadata, ResultExt};
-use std::{collections::HashMap, io::Write, path::PathBuf, process::ExitCode};
+use std::{io::Write, path::PathBuf, process::ExitCode};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -42,7 +43,15 @@ fn main() -> ExitCode {
 
 fn run() -> Result<ExitCode, DynError> {
     let args = Args::parse();
-    let mut c_opts: HashMap<String, String> = HashMap::from_iter(args.c_opts.unwrap_or_default());
+
+    let target: Target = args.target.into();
+    let mut compile_options = target.get_compile_options();
+
+    for (key, value) in args.c_opts.unwrap_or_default().into_iter() {
+        if !compile_options.add(&key, value) {
+            return Err(DynError::new(format!("Unknown compiler flag: `{key}`")));
+        }
+    }
 
     let source = std::fs::read_to_string(&args.source_path).with_message(|| {
         format!(
@@ -51,21 +60,7 @@ fn run() -> Result<ExitCode, DynError> {
         )
     })?;
 
-    let target = match args.target {
-        TargetArg::Rust => {
-            let defmt_feature = c_opts.remove("defmt-feature");
-            device_driver_core::Target::Rust { defmt_feature }
-        }
-    };
-
-    if let Some(unknown_key) = c_opts.keys().next() {
-        // Any key not removed is unknown
-        return Err(DynError::new(format!(
-            "Unknown compiler flag: `{unknown_key}`"
-        )));
-    }
-
-    let (output, diagnostics) = device_driver_core::compile(&source, target)
+    let (output, diagnostics) = device_driver_core::compile(&source, target, compile_options)
         .with_message(|| "internal compilation error")?;
 
     let diagnostics_has_error = diagnostics.has_error();
@@ -115,4 +110,12 @@ fn run() -> Result<ExitCode, DynError> {
 #[derive(clap::ValueEnum, Debug, Clone)]
 pub enum TargetArg {
     Rust,
+}
+
+impl From<TargetArg> for Target {
+    fn from(value: TargetArg) -> Self {
+        match value {
+            TargetArg::Rust => Self::Rust,
+        }
+    }
 }

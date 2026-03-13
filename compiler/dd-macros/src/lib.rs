@@ -6,7 +6,7 @@ use std::{
     path::PathBuf,
 };
 
-use device_driver_core::Target;
+use device_driver_core::{CompileOptions, Target};
 use device_driver_diagnostics::{DynError, Metadata, ResultExt};
 use proc_macro::TokenStream;
 use proc_macro2::Span;
@@ -71,12 +71,8 @@ fn try_create_device(item: TokenStream) -> Result<TokenStream, DynError> {
         }
     };
 
-    let (output, diagnostics) = device_driver_core::compile(
-        &source,
-        Target::Rust {
-            defmt_feature: input.defmt_feature,
-        },
-    )?;
+    let (output, diagnostics) =
+        device_driver_core::compile(&source, Target::Rust, input.compile_options)?;
 
     diagnostics
         .print_to(
@@ -99,7 +95,7 @@ fn try_create_device(item: TokenStream) -> Result<TokenStream, DynError> {
 
 struct Input {
     generation_type: GenerationType,
-    defmt_feature: Option<String>,
+    compile_options: CompileOptions,
 }
 
 enum GenerationType {
@@ -109,7 +105,8 @@ enum GenerationType {
 
 impl syn::parse::Parse for Input {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let defmt_feature = Some("defmt".into()); // TODO: Parse feature
+        let mut compile_options = Target::Rust.get_compile_options();
+        assert!(compile_options.add("defmt-feature", "defmt".into())); // TODO: Parse options
 
         let look = input.lookahead1();
 
@@ -121,7 +118,7 @@ impl syn::parse::Parse for Input {
 
             Ok(Self {
                 generation_type: GenerationType::Ddsl(tokens),
-                defmt_feature,
+                compile_options,
             })
         } else if look.peek(kw::manifest) {
             input.parse::<kw::manifest>()?;
@@ -131,7 +128,7 @@ impl syn::parse::Parse for Input {
 
             Ok(Self {
                 generation_type: GenerationType::Manifest(path),
-                defmt_feature,
+                compile_options,
             })
         } else {
             Err(look.error())

@@ -6,34 +6,32 @@ extern crate wasm_bindgen;
 
 #[wasm_bindgen]
 pub fn compile(source: &str, chars_per_line: usize) -> Output {
-    let (output, diagnostics_string) = match device_driver_core::compile(
-        source,
-        // TODO: Get target as param
-        Target::Rust {
-            defmt_feature: Some("defmt".into()),
-        },
-    )
-    .with_message(|| "internal compiler error")
-    {
-        Ok((output, diagnostics)) => {
-            let mut diagnostics_string = String::new();
-            diagnostics
-                .print_to_fmt(
-                    &mut diagnostics_string,
-                    Metadata {
-                        source,
-                        source_path: "input.ddsl",
-                        term_width: Some(chars_per_line),
-                        ansi: true,
-                        unicode: true,
-                        anonymized_line_numbers: false,
-                    },
-                )
-                .unwrap();
-            (output, diagnostics_string)
-        }
-        Err(e) => (String::new(), e.to_string()),
-    };
+    let mut compile_options = Target::Rust.get_compile_options();
+    assert!(compile_options.add("defmt-feature", "defmt".into())); // TODO: Get options as param
+
+    let (output, diagnostics_string) =
+        match device_driver_core::compile(source, Target::Rust, compile_options)
+            .with_message(|| "internal compiler error")
+        {
+            Ok((output, diagnostics)) => {
+                let mut diagnostics_string = String::new();
+                diagnostics
+                    .print_to_fmt(
+                        &mut diagnostics_string,
+                        Metadata {
+                            source,
+                            source_path: "input.ddsl",
+                            term_width: Some(chars_per_line),
+                            ansi: true,
+                            unicode: true,
+                            anonymized_line_numbers: false,
+                        },
+                    )
+                    .unwrap();
+                (output, diagnostics_string)
+            }
+            Err(e) => (String::new(), e.to_string()),
+        };
 
     Output {
         code: output,
