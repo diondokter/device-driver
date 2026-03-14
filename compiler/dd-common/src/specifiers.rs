@@ -2,13 +2,12 @@ use std::{fmt::Display, str::FromStr};
 
 use crate::{identifier::IdentifierRef, span::Spanned};
 
-/// TODO: Remove when KDL is removed
 pub trait VariantNames {
     /// Names of the variants of this enum
     const VARIANTS: &'static [&'static str];
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum Integer {
     U8,
     U16,
@@ -16,6 +15,7 @@ pub enum Integer {
     U64,
     I8,
     I16,
+    #[default]
     I32,
     I64,
 }
@@ -102,7 +102,7 @@ impl Integer {
     /// This function has a preference for unsigned integers.
     /// You can force a signed integer by making the min be negative (e.g. -1)
     #[must_use]
-    pub const fn find_smallest(min: i128, max: i128, size_bits: u32) -> Option<Integer> {
+    pub const fn find_smallest(min: i128, max: i128, size_bits: u64) -> Option<Integer> {
         Some(match (min, max, size_bits) {
             (0.., ..0x1_00, ..=8) => Integer::U8,
             (0.., ..0x1_0000, ..=16) => Integer::U16,
@@ -188,8 +188,9 @@ impl FromStr for Access {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum ByteOrder {
+    #[default]
     LE,
     BE,
 }
@@ -218,9 +219,9 @@ impl FromStr for ByteOrder {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
 pub enum BaseType {
+    #[default]
     Unspecified,
     Bool,
-    #[default]
     Uint,
     Int,
     FixedSize(Integer),
@@ -290,5 +291,67 @@ impl ResetValue {
         } else {
             None
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NodeType {
+    Manifest,
+    Device,
+    Block,
+    Register,
+    Command,
+    Buffer,
+    FieldSet,
+    Enum,
+    Extern,
+    Field,
+}
+
+impl FromStr for NodeType {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "manifest" => Ok(Self::Manifest),
+            "device" => Ok(Self::Device),
+            "block" => Ok(Self::Block),
+            "register" => Ok(Self::Register),
+            "command" => Ok(Self::Command),
+            "buffer" => Ok(Self::Buffer),
+            "fieldset" => Ok(Self::FieldSet),
+            "enum" => Ok(Self::Enum),
+            "extern" => Ok(Self::Extern),
+            "field" => Ok(Self::Field),
+            _ => Err(()),
+        }
+    }
+}
+
+impl VariantNames for NodeType {
+    const VARIANTS: &'static [&'static str] = &[
+        "manifest", "device", "block", "register", "command", "buffer", "fieldset", "enum",
+        "extern", "field",
+    ];
+}
+
+impl Display for NodeType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", Self::VARIANTS[*self as usize])
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
+pub struct AddressRange {
+    pub start: u32,
+    /// Inclusive end
+    pub end: u32,
+}
+
+impl AddressRange {
+    #[allow(clippy::len_without_is_empty, reason = "Range can never be empty")]
+    /// The amount of bits this range covers
+    pub fn len(&self) -> u64 {
+        self.end as u64 - self.start as u64 + 1
     }
 }

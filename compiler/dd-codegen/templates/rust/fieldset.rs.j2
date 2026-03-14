@@ -164,7 +164,7 @@ impl core::fmt::Debug for {{field_set.name.to_case(Case::Pascal)}} {
     }
 }
 
-{% if let Some(defmt_feature) = field_set.defmt_feature %}
+{% if let Some(defmt_feature) = defmt_feature() %}
 #[cfg(feature = "{{defmt_feature}}")]
 impl defmt::Format for {{field_set.name.to_case(Case::Pascal)}} {
     fn format(&self, f: defmt::Formatter) {

@@ -1,31 +1,37 @@
 //! Having registers and fields with different access specifiers should still compile
 
-device_driver::create_device!(
-    kdl: "
+device_driver::compile!(
+    ddsl: "
         device MyTestDevice {
-            register-address-type u8
+            register-address-type: u8,
 
             register Foo {
-                address 0
-                fields size-bits=8 {
+                address: 0,
+                fields: fieldset FooFields {
+                    size-bits: 8,
+
                     /// X
-                    (bool)value0 @0
+                    field value0 0 -> bool,
                 }
-            }
+            },
             register Bar {
-                access RO
-                address 1
-                fields size-bits=8 {
+                access: RO,
+                address: 1,
+                fields: fieldset BarFields {
+                    size-bits: 8,
+
                     /// X
-                    (bool)value0 WO @0
+                    field value0 WO 0 -> bool,
                 }
-            }
+            },
             register Baz {
-                access WO
-                address 2
-                fields size-bits=8 {
+                access: WO,
+                address: 2,
+                fields: fieldset BazFields {
+                    size-bits: 8,
+
                     /// X
-                    (bool)value0 @0
+                    field value0 0 -> bool,
                 }
             }
         }

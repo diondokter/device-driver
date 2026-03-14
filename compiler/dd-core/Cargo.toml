@@ -18,9 +18,10 @@ device-driver-diagnostics.workspace = true
 device-driver-mir.workspace = true
 device-driver-lir.workspace = true
 device-driver-codegen.workspace = true
+device-driver-lexer.workspace = true
+device-driver-parser.workspace = true
 
 itertools.workspace = true
-miette.workspace = true
 
 prettyplease = { version = "0.2.37", optional = true }
 syn = { workspace = true, optional = true }

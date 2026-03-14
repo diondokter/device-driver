@@ -1,6 +1,6 @@
 use clap::Parser;
-use device_driver_diagnostics::{Diagnostics, Metadata};
-use miette::{Context, IntoDiagnostic};
+use device_driver_core::Target;
+use device_driver_diagnostics::{DynError, Metadata, ResultExt};
 use std::{io::Write, path::PathBuf, process::ExitCode};
 
 #[derive(Parser, Debug)]
@@ -13,34 +13,55 @@ struct Args {
     output_path: Option<PathBuf>,
     /// Type of generated output
     #[arg(short = 't', long = "target", default_value = "rust")]
-    target: Target,
+    target: TargetArg,
+    /// Compiler options
+    #[arg(
+        short = 'C',
+        value_name = "KEY=VALUE", 
+        value_parser = parse_key_val,
+        action = clap::ArgAction::Append,
+    )]
+    c_opts: Option<Vec<(String, String)>>,
+}
+
+/// Parse a single key-value pair
+fn parse_key_val(s: &str) -> Result<(String, String), &'static str> {
+    s.split_once('=')
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .ok_or("no `=` found`")
 }
 
 fn main() -> ExitCode {
     match run() {
         Ok(exit) => exit,
         Err(error) => {
-            eprintln!("{error:?}");
+            eprintln!("{error:#}");
             ExitCode::FAILURE
         }
     }
 }
 
-fn run() -> miette::Result<ExitCode> {
+fn run() -> Result<ExitCode, DynError> {
     let args = Args::parse();
 
-    device_driver_diagnostics::set_miette_hook(true);
+    let target: Target = args.target.into();
+    let mut compile_options = target.get_compile_options();
 
-    let source = std::fs::read_to_string(&args.source_path)
-        .into_diagnostic()
-        .wrap_err_with(|| {
-            format!(
-                "Trying to open input file at: {:?}",
-                args.source_path.display()
-            )
-        })?;
+    for (key, value) in args.c_opts.unwrap_or_default().into_iter() {
+        if !compile_options.add(&key, value) {
+            return Err(DynError::new(format!("Unknown compiler flag: `{key}`")));
+        }
+    }
 
-    let (output, diagnostics) = args.target.generate(&source);
+    let source = std::fs::read_to_string(&args.source_path).with_message(|| {
+        format!(
+            "Failed to open input file at: {:?}",
+            args.source_path.display()
+        )
+    })?;
+
+    let (output, diagnostics) = device_driver_core::compile(&source, target, compile_options)
+        .with_message(|| "internal compilation error")?;
 
     let diagnostics_has_error = diagnostics.has_error();
 
@@ -56,31 +77,28 @@ fn run() -> miette::Result<ExitCode> {
                 anonymized_line_numbers: false,
             },
         )
-        .into_diagnostic()?;
+        .into_dyn_result()?;
 
     if diagnostics_has_error {
         return Ok(ExitCode::FAILURE);
     }
 
     let output_writer: &mut dyn Write = match &args.output_path {
-        Some(path) => &mut std::fs::File::create(path)
-            .into_diagnostic()
-            .wrap_err_with(|| {
-                format!(
-                    "Could not create the output file at: {:?}. Does its directory exist?",
-                    path.display()
-                )
-            })?,
+        Some(path) => &mut std::fs::File::create(path).with_message(|| {
+            format!(
+                "could not create the output file at: {:?}. Does its directory exist?",
+                path.display()
+            )
+        })?,
         None => &mut std::io::stdout().lock(),
     };
 
     let mut output_writer = std::io::BufWriter::new(output_writer);
     output_writer
         .write_all(output.as_bytes())
-        .into_diagnostic()
-        .wrap_err_with(|| {
+        .with_message(|| {
             format!(
-                "Could not write output to {}",
+                "could not write output to {}",
                 args.output_path
                     .map_or_else(|| "stdout".into(), |path| format!("{:?}", path.display()))
             )
@@ -90,15 +108,14 @@ fn run() -> miette::Result<ExitCode> {
 }
 
 #[derive(clap::ValueEnum, Debug, Clone)]
-pub enum Target {
+pub enum TargetArg {
     Rust,
 }
 
-impl Target {
-    #[must_use]
-    pub fn generate(&self, source: &str) -> (String, Diagnostics) {
-        match self {
-            Target::Rust => device_driver_core::compile(source, None),
+impl From<TargetArg> for Target {
+    fn from(value: TargetArg) -> Self {
+        match value {
+            TargetArg::Rust => Self::Rust,
         }
     }
 }

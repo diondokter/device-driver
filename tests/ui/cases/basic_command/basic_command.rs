@@ -57,11 +57,11 @@ impl FooFieldSetIn {
     pub const fn new() -> Self {
         Self { bits: [0; 3] }
     }
-    /// `@23:0` - Read the `value` field.
+    /// `23:0` - Read the `value` field.
     ///
     pub fn value(&self) -> u32 {
         let start = 0;
-        let end = 24;
+        let end = 23;
         let raw = unsafe {
             ::device_driver::ops::load::<
                 u32,
@@ -70,11 +70,11 @@ impl FooFieldSetIn {
         };
         raw
     }
-    /// `@23:0` - Set the `value` field.
+    /// `23:0` - Set the `value` field.
     ///
     pub fn set_value(&mut self, value: u32) {
         let start = 0;
-        let end = 24;
+        let end = 23;
         let raw = value;
         unsafe {
             ::device_driver::ops::store::<
@@ -104,6 +104,14 @@ impl core::fmt::Debug for FooFieldSetIn {
         let mut d = f.debug_struct("FooFieldSetIn");
         d.field("value", &self.value());
         d.finish()
+    }
+}
+#[cfg(feature = "defmt")]
+impl defmt::Format for FooFieldSetIn {
+    fn format(&self, f: defmt::Formatter) {
+        defmt::write!(f, "FooFieldSetIn {{ ");
+        defmt::write!(f, "value: {=u32}, ", & self.value());
+        defmt::write!(f, "}}");
     }
 }
 impl core::ops::BitAnd for FooFieldSetIn {

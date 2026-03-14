@@ -1,0 +1,56 @@
+/// Hello!
+manifest dev {
+    byte-order: LE,
+    buffer-address-type: u8,
+    command-address-type: u8,
+    register-address-type: u8,
+
+    /// Test
+    device Foo {
+        byte-order: BE,
+        word-boundaries: "-",
+
+        register Bar {
+            address: 0,
+            fields: fieldset a {
+                size-bits: 16,
+                byte-order: LE,
+                bit-overlap: allow,
+
+                field aha 10:0 RO <2 by 2> -> _ as try
+                    extern lol2 -> u16,
+                field hah 15:11 WO -> u8 as
+                    enum hah-num -> u8 {
+                        A: _,
+                        B: catch-all 1
+                    },
+            },
+        },
+
+        extern lol -> u32 {
+            infallible: allow,
+        },
+
+        /// LOL
+        buffer BUF {
+            address: 0,
+            access: RO,
+        },
+
+        /// Test
+        enum MyEnum -> i8 {
+            /// Docs for A
+            A: -1,
+            B: 0,
+            C: default 5,
+        },
+
+        command MyCommand {
+            address: 42,
+            address-overlap: allow,
+            repeat: <MyEnum by 1>,
+            fields-in: a,
+            fields-out: a,
+        }
+    }
+}

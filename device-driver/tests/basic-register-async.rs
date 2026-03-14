@@ -25,15 +25,16 @@ impl AsyncRegisterInterface for DeviceInterface {
     }
 }
 
-device_driver::create_device!(
-    kdl: "
+device_driver::compile!(
+    ddsl: "
         device MyTestDevice {
-            register-address-type u8
+            register-address-type: u8,
 
             register Foo {
-                address 0
-                fields size-bits=8 {
-                    (bool)value0 @0
+                address: 0,
+                fields: fieldset FooFields {
+                    size-bits: 8,
+                    field value0 0 -> bool
                 }
             }
         }

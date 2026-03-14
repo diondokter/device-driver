@@ -1,8 +1,6 @@
-use std::ops::Range;
-
 use device_driver_common::{
     identifier::Identifier,
-    specifiers::{Access, ByteOrder, Integer},
+    specifiers::{Access, AddressRange, ByteOrder, Integer},
 };
 
 pub struct Driver {
@@ -14,7 +12,6 @@ pub struct Driver {
 pub struct Device {
     pub internal_address_type: Integer,
     pub blocks: Vec<Block>,
-    pub defmt_feature: Option<String>,
 }
 
 pub struct Block {
@@ -74,7 +71,6 @@ pub struct FieldSet {
     pub byte_order: ByteOrder,
     pub size_bits: u32,
     pub fields: Vec<Field>,
-    pub defmt_feature: Option<String>,
 }
 
 impl FieldSet {
@@ -86,7 +82,7 @@ impl FieldSet {
 pub struct Field {
     pub description: String,
     pub name: Identifier,
-    pub address: Range<u32>,
+    pub address: AddressRange,
     pub base_type: String,
     pub conversion_method: FieldConversionMethod,
     pub access: Access,
@@ -96,9 +92,9 @@ pub struct Field {
 impl Field {
     pub fn address_text(&self) -> String {
         if self.address.len() <= 1 {
-            format!("@{}", self.address.start)
+            format!("bit {}", self.address.start)
         } else {
-            format!("@{}:{}", self.address.end - 1, self.address.start)
+            format!("{}:{}", self.address.end, self.address.start)
         }
     }
 }
@@ -128,7 +124,6 @@ pub struct Enum {
     pub name: Identifier,
     pub base_type: String,
     pub variants: Vec<EnumVariant>,
-    pub defmt_feature: Option<String>,
 }
 
 impl Enum {

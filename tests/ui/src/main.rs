@@ -1,12 +1,11 @@
 use clap::Command;
+use device_driver_core::Target;
 use device_driver_diagnostics::Metadata;
 
 fn main() {
     let matches = Command::new("Tests")
         .subcommand(Command::new("accept").about("Accept all changes and update the output files"))
         .get_matches();
-
-    device_driver_diagnostics::set_miette_hook(false);
 
     match matches.subcommand_name() {
         Some("accept") => accept(),
@@ -48,8 +47,12 @@ fn accept() {
 
             let source_extension = source_path.extension().unwrap().display().to_string();
             let (transformed, diagnostics) = match &*source_extension {
-                "kdl" => {
-                    let (transformed, diagnostics) = device_driver_core::compile(&source, None);
+                "ddsl" => {
+                    let mut compile_options = Target::Rust.get_compile_options();
+                    assert!(compile_options.add("defmt-feature", "defmt".into()));
+                    let (transformed, diagnostics) =
+                        device_driver_core::compile(&source, Target::Rust, compile_options)
+                            .unwrap();
                     let mut diagnostics_output = String::new();
 
                     diagnostics
@@ -57,7 +60,7 @@ fn accept() {
                             &mut diagnostics_output,
                             Metadata {
                                 source: &source,
-                                source_path: "input.kdl",
+                                source_path: "input.ddsl",
                                 term_width: None,
                                 ansi: false,
                                 unicode: false,

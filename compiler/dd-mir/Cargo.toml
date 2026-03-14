@@ -11,10 +11,7 @@ rust-version.workspace = true
 [dependencies]
 device-driver-common.workspace = true
 device-driver-diagnostics.workspace = true
+device-driver-parser.workspace = true
 
 convert_case.workspace = true
 itertools.workspace = true
-miette.workspace = true
-thiserror.workspace = true
-
-kdl = "6.5.0"

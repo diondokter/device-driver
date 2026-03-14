@@ -9,7 +9,7 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-miette.workspace = true
 convert_case.workspace = true
+chumsky.workspace = true
 
 unicode-ident = "1.0.22"

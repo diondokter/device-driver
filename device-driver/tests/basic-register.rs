@@ -46,31 +46,32 @@ impl RegisterInterface for DeviceInterface {
     }
 }
 
-device_driver::create_device!(
-    kdl: "
+device_driver::compile!(
+    options: [
+        "defmt-feature=defmt"
+    ],
+    ddsl: "
         device MyTestDevice {
-            byte-order LE
-            register-address-type u8
+            byte-order: LE,
+            register-address-type: u8,
+
             /// This is the Foo register
             register Foo {
-                address 0
-                fields size-bits=24 {
+                address: 0,
+                fields: fieldset FooFields {
+                    size-bits: 24,
+
                     /// This is a bool!
-                    (bool)value0 @0
-                    (uint)value1 @15:1
-                    (int)value2 @23:17
+                    field value0 0 -> bool,
+                    field value1 15:1 -> uint,
+                    field value2 23:16 -> int,
                 }
-            }
+            },
             /// This is the Foo register
             register FooRepeated {
-                address 3
-                repeat count=4 stride=3
-                fields size-bits=24 {
-                    /// This is a bool!
-                    (bool)value0 @0
-                    (uint)value1 @15:1
-                    (int)value2 @23:16
-                }
+                address: 3,
+                repeat: <4 by 3>,
+                fields: FooFields,
             }
         }
     "
@@ -102,8 +103,8 @@ fn test_basic_read_modify_write() {
     assert_eq!(reg.value_2(), -1);
 
     assert_eq!(
-        &device.interface.device_memory[0..3],
-        &[(0x39 << 1) + 1, 0x30 << 1, 0xFE]
+        u32::from_le_bytes(*device.interface.device_memory[0..4].as_array().unwrap()),
+        1 | 12345 << 1 | ((-1i8 as u8) as u32) << 16
     );
 }
 

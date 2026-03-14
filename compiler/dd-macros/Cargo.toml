@@ -20,12 +20,6 @@ proc-macro = true
 device-driver-core.workspace = true
 device-driver-diagnostics.workspace = true
 
-miette.workspace = true
 syn.workspace = true
 
 proc-macro2 = { version = "1.0.101", features = ["span-locations"] }
-rustversion = "1.0"
-
-[features]
-# Massively better error reporting for inline kdl
-nightly = []
