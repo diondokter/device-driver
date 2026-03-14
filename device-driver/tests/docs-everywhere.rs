@@ -2,7 +2,7 @@
 
 #![deny(missing_docs)]
 
-device_driver::create_device!(
+device_driver::compile!(
     ddsl: "
         device MyTestDevice {
             register-address-type: u8,

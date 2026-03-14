@@ -46,7 +46,7 @@ impl RegisterInterface for DeviceInterface {
     }
 }
 
-device_driver::create_device!(
+device_driver::compile!(
     manifest: "tests/basic-register.ddsl"
 );
 

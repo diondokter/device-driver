@@ -10,32 +10,39 @@ use device_driver_core::{CompileOptions, Target};
 use device_driver_diagnostics::{DynError, Metadata, ResultExt};
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use syn::LitStr;
+use syn::{LitStr, Token, bracketed, punctuated::Punctuated};
 
 /// Macro to implement the device driver.
 ///
 /// ## Usage:
 ///
-/// Inline:
+/// Manifest:
 /// ```rust,ignore
 /// # use device_driver_macros::create_device;
-/// create_device!(
+/// compile!(
+///     options: [],
+///     manifest: "path/to/manifest/file.ddsl"
+/// );
+/// ```
+///
+/// Inline ddsl (not recommended, only used for testing):
+/// ```rust,ignore
+/// # use device_driver_macros::create_device;
+/// compile!(
+///     options: [],
 ///     ddsl: "
 ///         // DDSL input
 ///     "
 /// );
 /// ```
-///
-/// Manifest:
-/// ```rust,ignore
-/// # use device_driver_macros::create_device;
-/// create_device!(
-///     manifest: "path/to/manifest/file.ddsl"
-/// );
-/// ```
 #[proc_macro]
-pub fn create_device(item: TokenStream) -> TokenStream {
-    match try_create_device(item) {
+pub fn compile(item: TokenStream) -> TokenStream {
+    let input = match syn::parse::<Input>(item) {
+        Ok(i) => i,
+        Err(e) => return e.into_compile_error().into(),
+    };
+
+    match try_create_device(input) {
         Ok(tokens) => tokens,
         Err(e) => syn::Error::new(Span::call_site(), e.to_string())
             .into_compile_error()
@@ -43,15 +50,10 @@ pub fn create_device(item: TokenStream) -> TokenStream {
     }
 }
 
-fn try_create_device(item: TokenStream) -> Result<TokenStream, DynError> {
-    let input = match syn::parse::<Input>(item) {
-        Ok(i) => i,
-        Err(e) => return Ok(e.into_compile_error().into()),
-    };
-
-    let (source, source_path) = match input.generation_type {
-        GenerationType::Ddsl(source_lit) => (source_lit.value(), source_lit.span().file()),
-        GenerationType::Manifest(path) => {
+fn try_create_device(input: Input) -> Result<TokenStream, DynError> {
+    let (source, source_path) = match input.source {
+        Source::Ddsl(source_lit) => (source_lit.value(), source_lit.span().file()),
+        Source::Manifest(path) => {
             let mut source_path = PathBuf::from(path.value());
             if source_path.is_relative() {
                 let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
@@ -93,50 +95,96 @@ fn try_create_device(item: TokenStream) -> Result<TokenStream, DynError> {
         .with_message(|| "could not parse the output")
 }
 
-struct Input {
-    generation_type: GenerationType,
-    compile_options: CompileOptions,
+enum Source {
+    Ddsl(LitStr),
+    Manifest(LitStr),
 }
 
-enum GenerationType {
-    Ddsl(syn::LitStr),
-    Manifest(LitStr),
+struct Input {
+    source: Source,
+    compile_options: CompileOptions,
 }
 
 impl syn::parse::Parse for Input {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
-        let mut compile_options = Target::Rust.get_compile_options();
-        assert!(compile_options.add("defmt-feature", "defmt".into())); // TODO: Parse options
+        let mut compile_options = None;
+        let mut source: Option<Source> = None;
 
-        let look = input.lookahead1();
+        let mut first_loop = true;
 
-        if look.peek(kw::ddsl) {
-            input.parse::<kw::ddsl>()?;
-            input.parse::<syn::Token![:]>()?;
+        loop {
+            if first_loop {
+                first_loop = false;
+            } else {
+                if !input.is_empty() {
+                    input.parse::<Token![,]>()?;
+                }
+            }
 
-            let tokens = input.parse()?;
+            if input.is_empty()
+                && let Some(source) = source
+            {
+                return Ok(Input {
+                    source,
+                    compile_options: compile_options
+                        .unwrap_or_else(|| Target::Rust.get_compile_options()),
+                });
+            }
 
-            Ok(Self {
-                generation_type: GenerationType::Ddsl(tokens),
-                compile_options,
-            })
-        } else if look.peek(kw::manifest) {
-            input.parse::<kw::manifest>()?;
-            input.parse::<syn::Token![:]>()?;
+            let look = input.lookahead1();
 
-            let path = input.parse()?;
+            if compile_options.is_none() && look.peek(kw::options) {
+                let compile_options = compile_options.insert(Target::Rust.get_compile_options());
 
-            Ok(Self {
-                generation_type: GenerationType::Manifest(path),
-                compile_options,
-            })
-        } else {
-            Err(look.error())
+                input.parse::<kw::options>()?;
+                input.parse::<syn::Token![:]>()?;
+
+                let content;
+                bracketed!(content in input);
+                let options = Punctuated::<LitStr, syn::Token![,]>::parse_terminated(&content)?;
+
+                for option in options {
+                    let option_value = option.value();
+                    let Some((key, value)) = option_value.split_once('=') else {
+                        return Err(syn::Error::new_spanned(
+                            option,
+                            "Compile option must be in format: <key>=<value>",
+                        ));
+                    };
+
+                    if !compile_options.add(key, value.to_string()) {
+                        return Err(syn::Error::new_spanned(
+                            option,
+                            if compile_options.possible_options().contains(&key) {
+                                "Duplicate option".into()
+                            } else {
+                                format!(
+                                    "Compile option not expected. Expected one of these keys: {}",
+                                    compile_options.possible_options().join(",")
+                                )
+                            },
+                        ));
+                    }
+                }
+            } else if source.is_none() && look.peek(kw::ddsl) {
+                input.parse::<kw::ddsl>()?;
+                input.parse::<syn::Token![:]>()?;
+
+                source = Some(Source::Ddsl(input.parse()?));
+            } else if source.is_none() && look.peek(kw::manifest) {
+                input.parse::<kw::manifest>()?;
+                input.parse::<syn::Token![:]>()?;
+
+                source = Some(Source::Manifest(input.parse()?));
+            } else {
+                return Err(look.error());
+            }
         }
     }
 }
 
 mod kw {
+    syn::custom_keyword!(options);
     syn::custom_keyword!(ddsl);
     syn::custom_keyword!(manifest);
 }

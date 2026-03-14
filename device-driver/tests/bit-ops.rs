@@ -1,6 +1,6 @@
 use device_driver::RegisterInterface;
 
-device_driver::create_device!(
+device_driver::compile!(
     ddsl: "
         device MyTestDevice {
             byte-order: LE,
