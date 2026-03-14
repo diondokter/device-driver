@@ -43,7 +43,7 @@ impl CompileOptions {
         self.selected.get(&key).map(|s| s.as_str())
     }
 
-    #[must_use = "Check bool to see if operation suceeded"]
+    #[must_use = "Check bool to see if operation succeeded"]
     pub fn add(&mut self, key: &str, value: String) -> bool {
         let Some(found_key) = self
             .possible_options
