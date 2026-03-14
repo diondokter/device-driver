@@ -160,7 +160,7 @@ impl syn::parse::Parse for Input {
                             } else {
                                 format!(
                                     "Compile option not expected. Expected one of these keys: {}",
-                                    compile_options.possible_options().join(",")
+                                    compile_options.possible_options().join(", ")
                                 )
                             },
                         ));

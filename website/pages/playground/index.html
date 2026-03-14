@@ -8,9 +8,24 @@
 
 <body>
     <ul id="header">
-        <a href="../">&emsp;device-driver&emsp;</a>
-        <li><a onclick="Website.then((w) => { if (confirm('Reset to default code example?')) { w.reset() }})">Reset
-                code</a></li>
+        <li><a href="../">&emsp;device-driver&emsp;</a></li>
+        <li id="compiler-options">
+            <label for="options">Options:</label>
+            <input type="text" id="compiler-options-input">
+        </li>
+        <li>
+            <div id="target-picker">
+                <label for="targets">Target:</label>
+                <select name="targets" id="target-picker-select">
+                    <option value="Rust">Rust</option>
+                </select>
+            </div>
+        </li>
+        <li>
+            <a onclick="Website.then((w) => { if (confirm('Reset to default code example?')) { w.reset() }})">
+                Reset code
+            </a>
+        </li>
     </ul>
 
     <div id="editor-container">

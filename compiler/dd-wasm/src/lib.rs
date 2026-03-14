@@ -5,9 +5,58 @@ use wasm_bindgen::prelude::*;
 extern crate wasm_bindgen;
 
 #[wasm_bindgen]
-pub fn compile(source: &str, chars_per_line: usize) -> Output {
-    let mut compile_options = Target::Rust.get_compile_options();
-    assert!(compile_options.add("defmt-feature", "defmt".into())); // TODO: Get options as param
+pub fn compile(source: &str, chars_per_line: usize, target: TargetArg, options: &str) -> Output {
+    let mut compile_options = Target::from(target).get_compile_options();
+
+    let mut options = options.split(' ').filter(|s| !s.is_empty());
+
+    loop {
+        let Some(option) = options.next() else {
+            break;
+        };
+
+        let value = if option == "-C" {
+            options.next()
+        } else if let Some(value) = option.strip_prefix("-C") {
+            Some(value)
+        } else {
+            return Output {
+                code: String::new(),
+                diagnostics: format!("unknown compiler option: \"{option}\""),
+            };
+        };
+
+        let Some(value) = value else {
+            return Output {
+                code: String::new(),
+                diagnostics: "-C flag not followed up with a `<key>=<value>`".into(),
+            };
+        };
+
+        let Some((key, value)) = value.split_once('=') else {
+            return Output {
+                code: String::new(),
+                diagnostics: "-C flag not followed up with a `<key>=<value>`".into(),
+            };
+        };
+
+        if !compile_options.add(key, value.into()) {
+            if compile_options.possible_options().contains(&key) {
+                return Output {
+                    code: String::new(),
+                    diagnostics: format!("duplicate key found: {key}"),
+                };
+            } else {
+                return Output {
+                    code: String::new(),
+                    diagnostics: format!(
+                        "key not recognized. Expected one of: {}",
+                        compile_options.possible_options().join(", ")
+                    ),
+                };
+            }
+        }
+    }
 
     let (output, diagnostics_string) =
         match device_driver_core::compile(source, Target::Rust, compile_options)
@@ -43,4 +92,18 @@ pub fn compile(source: &str, chars_per_line: usize) -> Output {
 pub struct Output {
     pub code: String,
     pub diagnostics: String,
+}
+
+#[wasm_bindgen]
+#[derive(Debug, Clone, Copy)]
+pub enum TargetArg {
+    Rust,
+}
+
+impl From<TargetArg> for Target {
+    fn from(value: TargetArg) -> Self {
+        match value {
+            TargetArg::Rust => Self::Rust,
+        }
+    }
 }
