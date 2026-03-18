@@ -138,8 +138,8 @@ pub enum Expression<'src> {
     Integer(Integer),
     Allow,
     Number(i128),
-    DefaultNumber(i128),
-    CatchAllNumber(i128),
+    DefaultNumber(Option<i128>),
+    CatchAllNumber(Option<i128>),
     String(&'src str),
     Access(Access),
     ByteOrder(ByteOrder),
@@ -207,8 +207,10 @@ impl<'src> Expression<'src> {
             Expression::Integer(integer) => integer.to_string().into(),
             Expression::Allow => "allow".into(),
             Expression::Number(num) => num.to_string().into(),
-            Expression::DefaultNumber(num) => format!("default {num}").into(),
-            Expression::CatchAllNumber(num) => format!("catch-all {num}").into(),
+            Expression::DefaultNumber(Some(num)) => format!("default {num}").into(),
+            Expression::DefaultNumber(None) => format!("default _").into(),
+            Expression::CatchAllNumber(Some(num)) => format!("catch-all {num}").into(),
+            Expression::CatchAllNumber(None) => format!("catch-all _").into(),
             Expression::String(val) => format!("\"{val}\"").into(),
             Expression::Access(val) => val.to_string().into(),
             Expression::ByteOrder(val) => val.to_string().into(),
@@ -395,13 +397,23 @@ where
             any_integer.map(Expression::Integer),
             any_num.try_map(try_num::<i128>).map(Expression::Number),
             just(Token::Default)
-                .ignore_then(any_num.try_map(try_num::<i128>))
+                .ignore_then(
+                    any_num
+                        .try_map(try_num::<i128>)
+                        .map(Some)
+                        .or(just(Token::Underscore).map(|_| None)),
+                )
                 .map(Expression::DefaultNumber)
-                .labelled("'default number'"), // TODO: Add `default _`
+                .labelled("'default number'"),
             just(Token::CatchAll)
-                .ignore_then(any_num.try_map(try_num::<i128>))
+                .ignore_then(
+                    any_num
+                        .try_map(try_num::<i128>)
+                        .map(Some)
+                        .or(just(Token::Underscore).map(|_| None)),
+                )
                 .map(Expression::CatchAllNumber)
-                .labelled("'catch-all number'"), // TODO: Add `catch-all _`
+                .labelled("'catch-all number'"),
             repeat_expression,
             reset_expression,
             just(Token::Allow).map(|_| Expression::Allow),

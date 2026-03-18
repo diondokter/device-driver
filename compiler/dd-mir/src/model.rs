@@ -695,41 +695,35 @@ pub enum EnumValue {
     Unspecified,
     Specified(i128),
     Default(i128),
+    UnspecifiedDefault,
     CatchAll(i128),
+    UnspecifiedCatchAll,
 }
 
 impl EnumValue {
-    /// Returns `true` if the enum value is [`Default`].
-    ///
-    /// [`Default`]: EnumValue::Default
     #[must_use]
     pub fn is_default(&self) -> bool {
-        matches!(self, Self::Default(_))
+        matches!(self, Self::Default(_) | Self::UnspecifiedDefault)
     }
 
-    /// Returns `true` if the enum value is [`CatchAll`].
-    ///
-    /// [`CatchAll`]: EnumValue::CatchAll
     #[must_use]
     pub fn is_catch_all(&self) -> bool {
-        matches!(self, Self::CatchAll(_))
-    }
-
-    /// Returns `true` if the enum value is [`Unspecified`].
-    ///
-    /// [`Unspecified`]: EnumValue::Unspecified
-    #[must_use]
-    pub fn is_unspecified(&self) -> bool {
-        matches!(self, Self::Unspecified)
+        matches!(self, Self::CatchAll(_) | Self::UnspecifiedCatchAll)
     }
 
     pub fn specified_discriminant(&self) -> Option<i128> {
         match self {
-            EnumValue::Unspecified => None,
-            EnumValue::Specified(val) | EnumValue::Default(val) | EnumValue::CatchAll(val) => {
-                Some(*val)
-            }
+            Self::Unspecified | Self::UnspecifiedDefault | Self::UnspecifiedCatchAll => None,
+            Self::Specified(val) | EnumValue::Default(val) | EnumValue::CatchAll(val) => Some(*val),
         }
+    }
+
+    pub fn specify(&mut self, num: i128) {
+        *self = match self {
+            EnumValue::Unspecified | EnumValue::Specified(_) => Self::Specified(num),
+            EnumValue::Default(_) | EnumValue::UnspecifiedDefault => Self::Default(num),
+            EnumValue::CatchAll(_) | EnumValue::UnspecifiedCatchAll => Self::CatchAll(num),
+        };
     }
 }
 

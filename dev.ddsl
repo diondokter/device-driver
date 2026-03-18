@@ -42,7 +42,7 @@ manifest dev {
             /// Docs for A
             A: -1,
             B: 0,
-            C: default 5,
+            C: default _,
         },
 
         command MyCommand {

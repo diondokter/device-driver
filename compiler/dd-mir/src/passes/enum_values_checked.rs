@@ -41,8 +41,8 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
         let seen_values = enum_value
             .iter_variants_with_discriminant_mut()
             .map(|(discriminant, variant)| {
-                if variant.value.is_unspecified() {
-                    variant.value = EnumValue::Specified(discriminant);
+                if variant.value.specified_discriminant().is_none() {
+                    variant.value.specify(discriminant);
                 }
                 (discriminant, (variant.id_with(e_id.clone()), variant.span))
             })
