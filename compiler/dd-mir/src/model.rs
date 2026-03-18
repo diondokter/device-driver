@@ -479,6 +479,24 @@ impl Object {
             Object::Field(_) => NodeType::Field,
         }
     }
+
+    /// Get the fieldset refs of the object. Only returns non-zero for registers and commands
+    pub(crate) fn fieldset_refs(&self) -> Vec<Spanned<IdentifierRef>> {
+        match self {
+            Object::Device(_) => Vec::new(),
+            Object::Block(_) => Vec::new(),
+            Object::Register(r) => vec![r.field_set_ref.clone()],
+            Object::Command(c) => [c.field_set_ref_in.clone(), c.field_set_ref_out.clone()]
+                .into_iter()
+                .flatten()
+                .collect(),
+            Object::Buffer(_) => Vec::new(),
+            Object::FieldSet(_) => Vec::new(),
+            Object::Enum(_) => Vec::new(),
+            Object::Extern(_) => Vec::new(),
+            Object::Field(_) => Vec::new(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
@@ -501,7 +519,7 @@ pub struct Register {
     pub address: Spanned<i128>,
     pub reset_value: Option<Spanned<ResetValue>>,
     pub repeat: Option<Repeat>,
-    pub field_set_ref: IdentifierRef,
+    pub field_set_ref: Spanned<IdentifierRef>,
     /// Span of the whole object
     pub span: Span,
 }
@@ -723,8 +741,8 @@ pub struct Command {
     pub allow_address_overlap: bool,
     pub repeat: Option<Repeat>,
 
-    pub field_set_ref_in: Option<IdentifierRef>,
-    pub field_set_ref_out: Option<IdentifierRef>,
+    pub field_set_ref_in: Option<Spanned<IdentifierRef>>,
+    pub field_set_ref_out: Option<Spanned<IdentifierRef>>,
 
     /// Span of the whole object
     pub span: Span,

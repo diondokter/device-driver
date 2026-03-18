@@ -983,7 +983,8 @@ impl Shape for Register {
                     setter: |r: &mut Register, property, node, diagnostics, sibling_objects| {
                         match &property.expression.value {
                             Expression::TypeReference(ident) => {
-                                r.field_set_ref = IdentifierRef::new(ident.val.into());
+                                r.field_set_ref =
+                                    IdentifierRef::new(ident.val.into()).with_span(ident.span);
                                 false
                             }
                             Expression::SubNode(sub_node) => {
@@ -996,7 +997,8 @@ impl Shape for Register {
 
                                 match result {
                                     LowerResult::Objects(fs, fs_siblings) => {
-                                        r.field_set_ref = fs.name().take_ref();
+                                        r.field_set_ref =
+                                            fs.name().take_ref().with_span(fs.name_span());
                                         sibling_objects.push(fs);
                                         sibling_objects.extend(fs_siblings);
                                         false
@@ -1313,8 +1315,9 @@ impl Shape for Command {
                              sibling_objects| {
                         match &property.expression.value {
                             Expression::TypeReference(ident) => {
-                                command.field_set_ref_in =
-                                    Some(IdentifierRef::new(ident.val.into()));
+                                command.field_set_ref_in = Some(
+                                    IdentifierRef::new(ident.val.into()).with_span(ident.span),
+                                );
                                 false
                             }
                             Expression::SubNode(sub_node) => {
@@ -1327,7 +1330,8 @@ impl Shape for Command {
 
                                 match result {
                                     LowerResult::Objects(fs, fs_siblings) => {
-                                        command.field_set_ref_in = Some(fs.name().take_ref());
+                                        command.field_set_ref_in =
+                                            Some(fs.name().take_ref().with_span(fs.name_span()));
                                         sibling_objects.push(fs);
                                         sibling_objects.extend(fs_siblings);
                                         false
@@ -1362,8 +1366,9 @@ impl Shape for Command {
                              sibling_objects| {
                         match &property.expression.value {
                             Expression::TypeReference(ident) => {
-                                command.field_set_ref_out =
-                                    Some(IdentifierRef::new(ident.val.into()));
+                                command.field_set_ref_out = Some(
+                                    IdentifierRef::new(ident.val.into()).with_span(ident.span),
+                                );
                                 false
                             }
                             Expression::SubNode(sub_node) => {
@@ -1376,7 +1381,8 @@ impl Shape for Command {
 
                                 match result {
                                     LowerResult::Objects(fs, fs_siblings) => {
-                                        command.field_set_ref_out = Some(fs.name().take_ref());
+                                        command.field_set_ref_out =
+                                            Some(fs.name().take_ref().with_span(fs.name_span()));
                                         sibling_objects.push(fs);
                                         sibling_objects.extend(fs_siblings);
                                         false

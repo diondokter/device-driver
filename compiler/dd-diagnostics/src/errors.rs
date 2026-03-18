@@ -1774,3 +1774,34 @@ impl Diagnostic for InvalidTypeConversion {
         .to_vec()
     }
 }
+
+pub struct InvalidFieldsetRef {
+    pub reference: Span,
+    pub pointee: Option<Span>,
+}
+
+impl Diagnostic for InvalidFieldsetRef {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [Level::ERROR
+            .primary_title("invalid fieldset reference")
+            .element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(
+                        AnnotationKind::Primary
+                            .span(self.reference.into())
+                            .label("no fieldset found with this name"),
+                    )
+                    .annotations(self.pointee.map(|pointee| {
+                        AnnotationKind::Context
+                            .span(pointee.into())
+                            .label("reference points to this non-fieldset object instead")
+                    })),
+            )]
+        .to_vec()
+    }
+}
