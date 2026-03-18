@@ -18,7 +18,7 @@ members = [
 
 exclude = ["website"]
 
-package.version = "1.0.7"
+package.version = "2.0.0-alpha.1"
 package.authors = ["Dion Dokter <dev@diondokter.nl>"]
 package.license = "MIT OR Apache-2.0"
 package.homepage = "https://device-driver.com"
@@ -27,15 +27,15 @@ package.edition = "2024"
 package.rust-version = "1.94"
 
 [workspace.dependencies]
-device-driver-codegen = { path = "compiler/dd-codegen", version = "=1.0.7" }
-device-driver-common = { path = "compiler/dd-common", version = "=1.0.7" }
-device-driver-core = { path = "compiler/dd-core", version = "=1.0.7" }
-device-driver-diagnostics = { path = "compiler/dd-diagnostics", version = "=1.0.7" }
-device-driver-lexer = { path = "compiler/dd-lexer", version = "=1.0.7" }
-device-driver-lir = { path = "compiler/dd-lir", version = "=1.0.7" }
-device-driver-macros = { path = "compiler/dd-macros", version = "=1.0.7" }
-device-driver-mir = { path = "compiler/dd-mir", version = "=1.0.7" }
-device-driver-parser = { path = "compiler/dd-parser", version = "=1.0.7" }
+device-driver-codegen = { path = "compiler/dd-codegen", version = "=2.0.0-alpha.1" }
+device-driver-common = { path = "compiler/dd-common", version = "=2.0.0-alpha.1" }
+device-driver-core = { path = "compiler/dd-core", version = "=2.0.0-alpha.1" }
+device-driver-diagnostics = { path = "compiler/dd-diagnostics", version = "=2.0.0-alpha.1" }
+device-driver-lexer = { path = "compiler/dd-lexer", version = "=2.0.0-alpha.1" }
+device-driver-lir = { path = "compiler/dd-lir", version = "=2.0.0-alpha.1" }
+device-driver-macros = { path = "compiler/dd-macros", version = "=2.0.0-alpha.1" }
+device-driver-mir = { path = "compiler/dd-mir", version = "=2.0.0-alpha.1" }
+device-driver-parser = { path = "compiler/dd-parser", version = "=2.0.0-alpha.1" }
 
 itertools = "0.14.0"
 convert_case = "0.10.0"
