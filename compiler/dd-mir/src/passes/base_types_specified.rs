@@ -9,7 +9,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
         if let Some(field_set) = object.as_field_set_mut() {
             for field in &mut field_set.fields {
                 loop {
-                    let size_bits = field.field_address.len() as u32;
+                    let size_bits = field.field_address.len();
                     field.base_type.value = match field.base_type.value {
                         BaseType::Unspecified => match size_bits {
                             0 => unreachable!(),

@@ -26,41 +26,49 @@ impl CommandInterface for DeviceInterface {
     }
 }
 
-device_driver::create_device!(
-    kdl: "
+device_driver::compile!(
+    ddsl: "
         device MyTestDevice {
-            byte-order LE
-            command-address-type u8
+            byte-order: LE,
+            command-address-type: u8,
             /// A simple command
             command Simple {
-                address 0
-            }
+                address: 0
+            },
             /// A command with only inputs
             command Input {
-                address 1
-                in size-bits=16 {
+                address: 1,
+                fields-in: fieldset InputFieldsIn {
+                    size-bits: 16,
+
                     /// The value!
-                    (uint)val @15:0
+                    field val 15:0 -> uint
                 }
-            }
+            },
             /// A command with only outputs
             command Output {
-                address 2
-                out size-bits=8 {
+                address: 2,
+                fields-out: fieldset OutputFieldsOut {
+                    size-bits: 8,
+
                     /// The value!
-                    (uint)val @7:0
+                    field val 7:0 -> uint
                 }
-            }
+            },
             /// A command with inputs and outputs
             command InOut {
-                address 3
-                in size-bits=16 {
+                address: 3,
+                fields-in: fieldset InOutFieldsIn {
+                    size-bits: 16,
+
                     /// The value!
-                    (uint)val @15:0
-                }
-                out size-bits=8 {
+                    field val 15:0 -> uint,
+                },
+                fields-out: fieldset InOutFieldsOut {
+                    size-bits: 8,
+
                     /// The value!
-                    (uint)val @7:0
+                    field val 7:0 -> uint
                 }
             }
         }

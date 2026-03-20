@@ -1,9 +1,11 @@
+use std::num::NonZero;
+
 use device_driver_common::{
     identifier::IdentifierRef,
     specifiers::{Repeat, RepeatSource},
 };
-use device_driver_diagnostics::Diagnostics;
-use miette::SourceSpan;
+use device_driver_diagnostics::{Diagnostics, DynError};
+use device_driver_parser::Ast;
 
 use crate::model::{Device, Manifest, Object};
 
@@ -11,16 +13,12 @@ mod lowering;
 pub mod model;
 pub(crate) mod passes;
 
-pub fn lower_kdl_source(
-    file_contents: &str,
-    source_span: Option<SourceSpan>,
-    diagnostics: &mut Diagnostics,
-) -> model::Manifest {
-    let mut mir = lowering::transform(file_contents, source_span, diagnostics);
+pub fn lower_ast(ast: Ast, diagnostics: &mut Diagnostics) -> Result<model::Manifest, DynError> {
+    let mut mir = lowering::lower(ast, diagnostics);
 
-    passes::run_passes(&mut mir, diagnostics);
+    passes::run_passes(&mut mir, diagnostics)?;
 
-    mir
+    Ok(mir)
 }
 
 pub fn search_object<'o>(manifest: &'o Manifest, name: &IdentifierRef) -> Option<&'o Object> {
@@ -58,7 +56,7 @@ pub fn find_min_max_addresses<'m>(
 
         if let Some(address) = object.address() {
             let repeat = object.repeat().cloned().unwrap_or(Repeat {
-                source: RepeatSource::Count(1),
+                source: RepeatSource::Count(NonZero::new(1).unwrap()),
                 stride: 0,
             });
 
@@ -67,8 +65,8 @@ pub fn find_min_max_addresses<'m>(
             match repeat.source {
                 RepeatSource::Count(count) => {
                     let count_0_address = total_address_offsets + address.value;
-                    let count_max_address =
-                        count_0_address + (i128::from(count.saturating_sub(1)) * repeat.stride);
+                    let count_max_address = count_0_address
+                        + (i128::from(count.get().saturating_sub(1)) * repeat.stride);
                     let min_address = count_0_address.min(count_max_address);
                     let max_address = count_0_address.max(count_max_address);
 

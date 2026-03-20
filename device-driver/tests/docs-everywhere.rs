@@ -2,42 +2,48 @@
 
 #![deny(missing_docs)]
 
-device_driver::create_device!(
-    kdl: "
+device_driver::compile!(
+    ddsl: "
         device MyTestDevice {
-            register-address-type u8
-            command-address-type u8
-            buffer-address-type u8
+            register-address-type: u8,
+            command-address-type: u8,
+            buffer-address-type: u8,
             /// X
             register Foo {
-                address 0
-                /// X
-                fields size-bits=8 {
+                address: 0,
+                fields:
                     /// X
-                    (bool)value0 @0
-                }
-            }
+                    fieldset FooFields {
+                        size-bits: 8,
+                        /// X
+                        field value0 0 -> bool
+                    }
+            },
             /// X
             command Bar {
-                address 0
-                /// X
-                in size-bits=8 {
+                address: 0,
+                fields-in:
                     /// X
-                    (bool)value0 @0
-                }
-                /// X
-                out size-bits=8 {
+                    fieldset BarFieldsIn {
+                        size-bits: 8,
+                        /// X
+                        field value0 0 -> bool
+                    },
+                fields-out:
                     /// X
-                    (bool)value0 @0
-                }
-            }
+                    fieldset BarFieldsOut {
+                        size-bits: 8,
+                        /// X
+                        field value0 0 -> bool
+                    },
+            },
             /// X
             buffer Baz {
-                address 0
-            }
+                address: 0
+            },
             /// X
             block B {
-                offset 0
+                address-offset: 0
             }
         }
     "

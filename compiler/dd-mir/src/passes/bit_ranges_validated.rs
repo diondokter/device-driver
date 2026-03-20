@@ -1,6 +1,6 @@
-use std::{collections::HashSet, ops::Range};
+use std::collections::HashSet;
 
-use device_driver_common::specifiers::RepeatSource;
+use device_driver_common::specifiers::{AddressRange, RepeatSource};
 
 use crate::{
     model::{Field, FieldSet, Manifest, Unique, UniqueId},
@@ -34,7 +34,7 @@ fn validate_len(
     removals: &mut HashSet<UniqueId>,
 ) {
     for field in &field_set.fields {
-        let field_len = field.field_address.value.clone().count();
+        let field_len = field.field_address.len();
 
         if field_len == 0 {
             panic!("A zero-sized field can't be specified");
@@ -48,10 +48,10 @@ fn validate_len(
         let max_field_end = i128::from(field.field_address.end) + max_repeat_offset;
         let min_field_start = i128::from(field.field_address.start) + min_repeat_offset;
 
-        if max_field_end > i128::from(field_set.size_bits.value) {
+        if max_field_end >= i128::from(field_set.size_bits.value) {
             diagnostics.add(FieldAddressExceedsFieldsetSize {
                 address: field.field_address.span,
-                max_field_end: max_field_end - 1,
+                max_field_end,
                 repeat_offset: repeated.then_some(*max_repeat_offset),
                 fieldset_size: field_set.size_bits.value,
                 fieldset_size_bits: field_set.size_bits.span,
@@ -109,9 +109,9 @@ fn validate_overlap(field_set: &FieldSet, manifest: &Manifest, diagnostics: &mut
     }
 }
 
-fn ranges_overlap(l: &Range<u32>, offset: i128, r: &Range<u32>, second_offset: i128) -> bool {
-    (i128::from(l.start) + offset) < (i128::from(r.end) + second_offset)
-        && (i128::from(r.start) + second_offset) < (i128::from(l.end) + offset)
+fn ranges_overlap(l: &AddressRange, offset: i128, r: &AddressRange, second_offset: i128) -> bool {
+    (i128::from(l.start) + offset) <= (i128::from(r.end) + second_offset)
+        && (i128::from(r.start) + second_offset) <= (i128::from(l.end) + offset)
 }
 
 fn get_repeat_iter(manifest: &Manifest, field: &Field) -> (Vec<i128>, bool) {
@@ -119,7 +119,7 @@ fn get_repeat_iter(manifest: &Manifest, field: &Field) -> (Vec<i128>, bool) {
         let stride = repeat.stride;
         match &repeat.source {
             RepeatSource::Count(count) => (
-                (0..i128::from(*count))
+                (0..i128::from(count.get()))
                     .map(move |count| count * stride)
                     .collect(),
                 true,
@@ -142,6 +142,8 @@ fn get_repeat_iter(manifest: &Manifest, field: &Field) -> (Vec<i128>, bool) {
 
 #[cfg(test)]
 mod tests {
+    use std::num::NonZero;
+
     use device_driver_common::{
         span::{Span, SpanExt},
         specifiers::Repeat,
@@ -162,7 +164,7 @@ mod tests {
                 size_bits: 10.with_dummy_span(),
                 fields: vec![Field {
                     name: "my_field".into_with_dummy_span(),
-                    field_address: (0..10).with_dummy_span(),
+                    field_address: AddressRange { start: 0, end: 9 }.with_dummy_span(),
                     ..Default::default()
                 }],
                 ..Default::default()
@@ -184,7 +186,7 @@ mod tests {
                 size_bits: 10.with_dummy_span(),
                 fields: vec![Field {
                     name: "my_field".into_with_dummy_span(),
-                    field_address: (0..11).with_dummy_span(),
+                    field_address: AddressRange { start: 0, end: 10 }.with_dummy_span(),
                     ..Default::default()
                 }],
                 ..Default::default()
@@ -206,7 +208,7 @@ mod tests {
                 size_bits: 10.with_dummy_span(),
                 fields: vec![Field {
                     name: "my_field".into_with_dummy_span(),
-                    field_address: (0..10).with_dummy_span(),
+                    field_address: AddressRange { start: 0, end: 9 }.with_dummy_span(),
                     ..Default::default()
                 }],
                 ..Default::default()
@@ -228,7 +230,7 @@ mod tests {
                 size_bits: 10.with_dummy_span(),
                 fields: vec![Field {
                     name: "my_field".into_with_dummy_span(),
-                    field_address: (0..11).with_dummy_span(),
+                    field_address: AddressRange { start: 0, end: 10 }.with_dummy_span(),
                     ..Default::default()
                 }],
                 ..Default::default()
@@ -250,7 +252,7 @@ mod tests {
                 size_bits: 10.with_dummy_span(),
                 fields: vec![Field {
                     name: "my_field".into_with_dummy_span(),
-                    field_address: (0..10).with_dummy_span(),
+                    field_address: AddressRange { start: 0, end: 9 }.with_dummy_span(),
                     ..Default::default()
                 }],
                 ..Default::default()
@@ -272,7 +274,7 @@ mod tests {
                 size_bits: 10.with_dummy_span(),
                 fields: vec![Field {
                     name: "my_field".into_with_dummy_span(),
-                    field_address: (0..11).with_dummy_span(),
+                    field_address: AddressRange { start: 0, end: 10 }.with_dummy_span(),
                     ..Default::default()
                 }],
                 ..Default::default()
@@ -294,9 +296,9 @@ mod tests {
                 size_bits: 10.with_dummy_span(),
                 fields: vec![Field {
                     name: "my_field".into_with_dummy_span(),
-                    field_address: (0..5).with_dummy_span(),
+                    field_address: AddressRange { start: 0, end: 4 }.with_dummy_span(),
                     repeat: Some(Repeat {
-                        source: RepeatSource::Count(3),
+                        source: RepeatSource::Count(NonZero::new(3).unwrap()),
                         stride: 5,
                     }),
                     ..Default::default()
@@ -324,12 +326,12 @@ mod tests {
                 fields: vec![
                     Field {
                         name: "my_field".into_with_dummy_span(),
-                        field_address: (0..5).with_dummy_span(),
+                        field_address: AddressRange { start: 0, end: 4 }.with_dummy_span(),
                         ..Default::default()
                     },
                     Field {
                         name: "my_field2".into_with_dummy_span(),
-                        field_address: (5..10).with_dummy_span(),
+                        field_address: AddressRange { start: 5, end: 9 }.with_dummy_span(),
                         ..Default::default()
                     },
                 ],
@@ -354,12 +356,12 @@ mod tests {
                 fields: vec![
                     Field {
                         name: "my_field".into_with_dummy_span(),
-                        field_address: (0..6).with_dummy_span(),
+                        field_address: AddressRange { start: 0, end: 5 }.with_dummy_span(),
                         ..Default::default()
                     },
                     Field {
                         name: "my_field2".into_with_dummy_span(),
-                        field_address: (5..10).with_dummy_span(),
+                        field_address: AddressRange { start: 5, end: 9 }.with_dummy_span(),
                         ..Default::default()
                     },
                 ],
@@ -383,12 +385,12 @@ mod tests {
                 fields: vec![
                     Field {
                         name: "my_field".into_with_dummy_span(),
-                        field_address: (0..6).with_dummy_span(),
+                        field_address: AddressRange { start: 0, end: 5 }.with_dummy_span(),
                         ..Default::default()
                     },
                     Field {
                         name: "my_field2".into_with_dummy_span(),
-                        field_address: (5..10).with_dummy_span(),
+                        field_address: AddressRange { start: 5, end: 9 }.with_dummy_span(),
                         ..Default::default()
                     },
                 ],
@@ -413,16 +415,16 @@ mod tests {
                 fields: vec![
                     Field {
                         name: "my_field".into_with_dummy_span(),
-                        field_address: (0..1).with_dummy_span(),
+                        field_address: AddressRange { start: 0, end: 0 }.with_dummy_span(),
                         repeat: Some(Repeat {
-                            source: RepeatSource::Count(6),
+                            source: RepeatSource::Count(NonZero::new(6).unwrap()),
                             stride: 1,
                         }),
                         ..Default::default()
                     },
                     Field {
                         name: "my_field2".into_with_dummy_span(),
-                        field_address: (5..10).with_dummy_span(),
+                        field_address: AddressRange { start: 5, end: 9 }.with_dummy_span(),
                         ..Default::default()
                     },
                 ],

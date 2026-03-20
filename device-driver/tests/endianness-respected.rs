@@ -29,45 +29,57 @@ impl RegisterInterface for DeviceInterface {
     }
 }
 
-device_driver::create_device!(
-    kdl: "
+device_driver::compile!(
+    ddsl: "
         device MyTestDevice {
-            register-address-type u8
+            register-address-type: u8,
 
             register FooLE {
-                allow-address-overlap
-                address 0
-                reset-value 0x1234
+                address-overlap: allow,
+                address: 0,
+                reset: 0x1234,
 
-                fields byte-order=LE size-bits=16 {
-                    (uint)val @15:0
+                fields: fieldset FooLEFields {
+                    byte-order: LE,
+                    size-bits: 16,
+
+                    field val 15:0 -> uint
                 }
-            }
+            },
             register FooLEArray {
-                allow-address-overlap
-                address 0
-                reset-value 0x34 0x12
+                address-overlap: allow,
+                address: 0,
+                reset: [0x34, 0x12],
 
-                fields byte-order=LE size-bits=16 {
-                    (uint)val @15:0
+                fields: fieldset FooLEArrayFields {
+                    byte-order: LE,
+                    size-bits: 16,
+
+                    field val 15:0 -> uint
                 }
-            }
+            },
             register FooBE {
-                allow-address-overlap
-                address 0
-                reset-value 0x3412
+                address-overlap: allow,
+                address: 0,
+                reset: 0x3412,
 
-                fields byte-order=BE size-bits=16 {
-                    (uint)val @15:0
+                fields: fieldset FooBEFields {
+                    byte-order: BE,
+                    size-bits: 16,
+
+                    field val 15:0 -> uint
                 }
-            }
+            },
             register FooBEArray {
-                allow-address-overlap
-                address 0
-                reset-value 0x34 0x12
+                address-overlap: allow,
+                address: 0,
+                reset: [0x34, 0x12],
 
-                fields byte-order=BE size-bits=16 {
-                    (uint)val @15:0
+                fields: fieldset FooBEArrayFields {
+                    byte-order: BE,
+                    size-bits: 16,
+
+                    field val 15:0 -> uint
                 }
             }
         }

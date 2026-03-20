@@ -1,3 +1,5 @@
+use std::num::NonZero;
+
 use device_driver_common::{
     span::{SpanExt, Spanned},
     specifiers::{Repeat, RepeatSource},
@@ -85,7 +87,7 @@ fn find_object_addresses<'m>(
             )
         {
             let repeat = object.repeat().cloned().unwrap_or(Repeat {
-                source: RepeatSource::Count(1),
+                source: RepeatSource::Count(NonZero::new(1).unwrap()),
                 stride: 0,
             });
 
@@ -93,7 +95,7 @@ fn find_object_addresses<'m>(
 
             match repeat.source {
                 RepeatSource::Count(count) => {
-                    for index in 0..i128::from(count) {
+                    for index in 0..i128::from(count.get()) {
                         let repeat_offset = index * repeat.stride;
                         let address_value = total_address_offsets + address.value + repeat_offset;
 

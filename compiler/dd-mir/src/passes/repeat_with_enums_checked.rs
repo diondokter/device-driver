@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, num::NonZero};
 
 use device_driver_common::{
     span::Span,
@@ -45,7 +45,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
         if let Some(repeat) = object.repeat_mut()
             && bad_object_repeat.contains(&id)
         {
-            repeat.source = RepeatSource::Count(1);
+            repeat.source = RepeatSource::Count(NonZero::new(1).unwrap());
         }
 
         if let Object::FieldSet(fs) = object {
@@ -55,7 +55,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
                 if let Some(repeat) = field.repeat.as_mut()
                     && bad_field_repeat.contains(&(id.clone(), field_id))
                 {
-                    repeat.source = RepeatSource::Count(1);
+                    repeat.source = RepeatSource::Count(NonZero::new(1).unwrap());
                 }
             }
         }

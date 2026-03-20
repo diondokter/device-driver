@@ -106,6 +106,13 @@ impl core::fmt::Debug for FooFieldSet {
         d.finish()
     }
 }
+#[cfg(feature = "defmt")]
+impl defmt::Format for FooFieldSet {
+    fn format(&self, f: defmt::Formatter) {
+        defmt::write!(f, "FooFieldSet {{ ");
+        defmt::write!(f, "}}");
+    }
+}
 impl core::ops::BitAnd for FooFieldSet {
     type Output = Self;
     fn bitand(mut self, rhs: Self) -> Self::Output {

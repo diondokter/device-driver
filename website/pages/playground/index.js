@@ -1,64 +1,53 @@
 import * as device_driver_wasm from '../../pkg';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
-import * as KDLMonarch from './kdl.monarch'
+import * as DDSLMonarch from './ddsl.monarch'
 import * as AU from 'ansi_up';
 
 await device_driver_wasm;
 await monaco;
 
-monaco.languages.register({ id: 'kdl' })
-monaco.languages.setMonarchTokensProvider('kdl', KDLMonarch.language)
-monaco.languages.setLanguageConfiguration('kdl', KDLMonarch.config)
+monaco.languages.register({ id: 'ddsl' })
+monaco.languages.onLanguage('ddsl', () => {
+    monaco.languages.setMonarchTokensProvider('ddsl', DDSLMonarch.language);
+    monaco.languages.setLanguageConfiguration('ddsl', DDSLMonarch.config);
+});
 
-const DEFAULT_CODE =
-    `device Foo {
-    register-address-type u8
+const DEFAULT_CODE = `device Foo {
+    register-address-type: u8,
 
     /// Doc comments get reflected in the output code!
     register Bar {
-        address 0
-        fields size-bits=8 {
-            /// Inline enums :)
-            (i8:Xena) xena @7:4 {
-                A
-                B
-                C
-                /// D is the default!
-                D default
+        address: 0,
+        
+        fields: fieldset BarFields {
+            size-bits: 8,
+
+            field xena[2*2] 2:0 -> u8 as enum Xena {
+                A: _,
+                B: _,
+                D: catch-all 5,
             }
-            quux @3:1
-            /// One bit? Then this is a bool by default
-            bilb @0
         }
     }
 }
 `
+const DEFAULT_OPTIONS = `-C defmt-feature=defmt`;
 
 const diagnostics = document.getElementById('diagnostics');
-
-/** 
- * @param {String} text
- * @param {monaco.editor.IStandaloneCodeEditor} output_editor
- * */
-function run_compile(text, output_editor) {
-    var output = device_driver_wasm.compile(text, diagnostics_chars_per_line());
-
-    output_editor.getModel().setValue(output.code);
-
-    var ansi_up = new AU.AnsiUp();
-    diagnostics.innerHTML = replace_paths_with_links(ansi_up.ansi_to_html(output.diagnostics));
-
-    localStorage.setItem("code-session", text);
-}
 
 var start_code = localStorage.getItem("code-session");
 if (start_code == null) {
     start_code = DEFAULT_CODE;
 }
+var start_target = localStorage.getItem("target");
+var start_options = localStorage.getItem("compile-options");
+if (start_options == null) {
+    start_options = DEFAULT_OPTIONS;
+}
 
 var code_editor = monaco.editor.create(document.getElementById('code-editor'), {
     value: start_code,
-    language: 'kdl',
+    language: 'ddsl',
     theme: 'vs-dark',
     automaticLayout: true,
 });
@@ -71,21 +60,74 @@ var output_editor = monaco.editor.create(document.getElementById('output-editor'
     automaticLayout: true,
 });
 
-code_editor.getModel().onDidChangeContent((event) => {
-    run_compile(code_editor.getModel().getValue(), output_editor)
+/**
+ * @type HTMLSelectElement
+ */
+var target_picker_select = document.getElementById('target-picker-select');
+if (start_target != null) {
+    target_picker_select.value = start_target;
+}
+target_picker_select.addEventListener('change', (_) => {
+    run_compile();
+});
+
+/**
+ * @type HTMLInputElement
+ */
+var compiler_options_input = document.getElementById('compiler-options-input');
+if (start_options != null) {
+    compiler_options_input.value = start_options;
+}
+'keyup change'.split(' ').forEach(event => {
+    compiler_options_input.addEventListener(event, (_) => {
+        run_compile();
+    });
+});
+
+function run_compile() {
+    var text = code_editor.getModel().getValue();
+
+    let target_arg = device_driver_wasm.TargetArg[target_picker_select.value];
+    if (target_arg == undefined) {
+        console.error("Got an undefined target_arg: " + target_picker_select.value);
+        target_picker_select.selectedIndex = 0;
+        target_arg = device_driver_wasm.TargetArg[target_picker_select.value];
+    }
+
+    var output = device_driver_wasm
+        .compile(
+            text,
+            diagnostics_chars_per_line(),
+            target_arg,
+            compiler_options_input.value
+        );
+
+    output_editor.getModel().setValue(output.code);
+
+    var ansi_up = new AU.AnsiUp();
+    diagnostics.innerHTML = replace_paths_with_links(ansi_up.ansi_to_html(output.diagnostics));
+
+    localStorage.setItem("code-session", text);
+    localStorage.setItem("target", target_picker_select.value);
+    localStorage.setItem("compile-options", compiler_options_input.value);
+}
+
+
+code_editor.getModel().onDidChangeContent((_) => {
+    run_compile()
 });
 var reset_timeout = null;
 const ro = new ResizeObserver(entries => {
     if (reset_timeout != null) {
         clearTimeout(reset_timeout);
     }
-    reset_timeout = setTimeout(() => { run_compile(code_editor.getModel().getValue(), output_editor) }, 500);
+    reset_timeout = setTimeout(() => { run_compile() }, 500);
 
     update_grid({ movementX: 0, movementY: 0, force: true });
 });
 ro.observe(diagnostics);
 ro.observe(document.body);
-run_compile(DEFAULT_CODE, output_editor);
+run_compile();
 
 function diagnostics_chars_per_line() {
     const style = window.getComputedStyle(diagnostics);
@@ -106,10 +148,10 @@ function diagnostics_chars_per_line() {
  * @returns {String}
  * */
 function replace_paths_with_links(diagnostics) {
-    return diagnostics.replace(/\[.+.kdl:\d+:\d+]/gm, (path_block) => { // For miette reports
+    return diagnostics.replace(/\[.+.ddsl:\d+:\d+]/gm, (path_block) => { // For miette reports
         var splits = path_block.replace("]", "").split(":");
         return `<a href="javascript:Website.then((w) => w.scroll_to(${Number.parseInt(splits[1])}, ${Number.parseInt(splits[2])}))">${path_block}</a>`;
-    }).replace(/\w+.kdl:\d+:\d+/gm, (path_block) => { // For annotate-snippets reports
+    }).replace(/\w+.ddsl:\d+:\d+/gm, (path_block) => { // For annotate-snippets reports
         var splits = path_block.split(":");
         return `<a href="javascript:Website.then((w) => w.scroll_to(${Number.parseInt(splits[1])}, ${Number.parseInt(splits[2])}))">${path_block}</a>`;
     });
@@ -127,6 +169,8 @@ export function scroll_to(line, column) {
 
 export function reset() {
     code_editor.setValue(DEFAULT_CODE);
+    target_picker_select.selectedIndex = 0;
+    compiler_options_input.value = DEFAULT_OPTIONS;
 }
 
 var horizontal_dragging = false;

@@ -81,11 +81,11 @@ impl<I> Device<I> {
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
-pub struct FooRoFieldSet {
+pub struct FooWoFieldSet {
     /// The internal bits
     bits: [u8; 8],
 }
-impl ::device_driver::FieldSet for FooRoFieldSet {
+impl ::device_driver::FieldSet for FooWoFieldSet {
     const SIZE_BITS: u32 = 64;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
@@ -94,16 +94,16 @@ impl ::device_driver::FieldSet for FooRoFieldSet {
         &mut self.bits
     }
 }
-impl FooRoFieldSet {
+impl FooWoFieldSet {
     /// Create a new instance, loaded with all zeroes
     pub const fn new() -> Self {
         Self { bits: [0; 8] }
     }
-    /// `@15:0` - Read the `value_ro` field.
+    /// `15:0` - Read the `value_ro` field.
     ///
     pub fn value_ro(&self) -> u16 {
         let start = 0;
-        let end = 16;
+        let end = 15;
         let raw = unsafe {
             ::device_driver::ops::load::<
                 u16,
@@ -112,11 +112,11 @@ impl FooRoFieldSet {
         };
         raw
     }
-    /// `@31:16` - Read the `value_rw` field.
+    /// `31:16` - Read the `value_rw` field.
     ///
     pub fn value_rw(&self) -> i16 {
         let start = 16;
-        let end = 32;
+        let end = 31;
         let raw = unsafe {
             ::device_driver::ops::load::<
                 i16,
@@ -125,11 +125,11 @@ impl FooRoFieldSet {
         };
         raw
     }
-    /// `@31:16` - Set the `value_rw` field.
+    /// `31:16` - Set the `value_rw` field.
     ///
     pub fn set_value_rw(&mut self, value: i16) {
         let start = 16;
-        let end = 32;
+        let end = 31;
         let raw = value;
         unsafe {
             ::device_driver::ops::store::<
@@ -138,11 +138,11 @@ impl FooRoFieldSet {
             >(raw, start, end, &mut self.bits)
         };
     }
-    /// `@32` - Set the `value_wo` field.
+    /// `bit 32` - Set the `value_wo` field.
     ///
     pub fn set_value_wo(&mut self, value: bool) {
         let start = 32;
-        let end = 33;
+        let end = 32;
         let raw = value as _;
         unsafe {
             ::device_driver::ops::store::<
@@ -152,72 +152,81 @@ impl FooRoFieldSet {
         };
     }
 }
-impl Default for FooRoFieldSet {
+impl Default for FooWoFieldSet {
     fn default() -> Self {
         Self::new()
     }
 }
-impl From<[u8; 8]> for FooRoFieldSet {
+impl From<[u8; 8]> for FooWoFieldSet {
     fn from(bits: [u8; 8]) -> Self {
         Self { bits }
     }
 }
-impl From<FooRoFieldSet> for [u8; 8] {
-    fn from(val: FooRoFieldSet) -> Self {
+impl From<FooWoFieldSet> for [u8; 8] {
+    fn from(val: FooWoFieldSet) -> Self {
         val.bits
     }
 }
-impl core::fmt::Debug for FooRoFieldSet {
+impl core::fmt::Debug for FooWoFieldSet {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
-        let mut d = f.debug_struct("FooRoFieldSet");
+        let mut d = f.debug_struct("FooWoFieldSet");
         d.field("value_ro", &self.value_ro());
         d.field("value_rw", &self.value_rw());
         d.finish()
     }
 }
-impl core::ops::BitAnd for FooRoFieldSet {
+#[cfg(feature = "defmt")]
+impl defmt::Format for FooWoFieldSet {
+    fn format(&self, f: defmt::Formatter) {
+        defmt::write!(f, "FooWoFieldSet {{ ");
+        defmt::write!(f, "value_ro: {=u16}, ", & self.value_ro());
+        defmt::write!(f, "value_rw: {=i16}, ", & self.value_rw());
+        defmt::write!(f, "}}");
+    }
+}
+impl core::ops::BitAnd for FooWoFieldSet {
     type Output = Self;
     fn bitand(mut self, rhs: Self) -> Self::Output {
         self &= rhs;
         self
     }
 }
-impl core::ops::BitAndAssign for FooRoFieldSet {
+impl core::ops::BitAndAssign for FooWoFieldSet {
     fn bitand_assign(&mut self, rhs: Self) {
         for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
             *l &= *r;
         }
     }
 }
-impl core::ops::BitOr for FooRoFieldSet {
+impl core::ops::BitOr for FooWoFieldSet {
     type Output = Self;
     fn bitor(mut self, rhs: Self) -> Self::Output {
         self |= rhs;
         self
     }
 }
-impl core::ops::BitOrAssign for FooRoFieldSet {
+impl core::ops::BitOrAssign for FooWoFieldSet {
     fn bitor_assign(&mut self, rhs: Self) {
         for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
             *l |= *r;
         }
     }
 }
-impl core::ops::BitXor for FooRoFieldSet {
+impl core::ops::BitXor for FooWoFieldSet {
     type Output = Self;
     fn bitxor(mut self, rhs: Self) -> Self::Output {
         self ^= rhs;
         self
     }
 }
-impl core::ops::BitXorAssign for FooRoFieldSet {
+impl core::ops::BitXorAssign for FooWoFieldSet {
     fn bitxor_assign(&mut self, rhs: Self) {
         for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
             *l ^= *r;
         }
     }
 }
-impl core::ops::Not for FooRoFieldSet {
+impl core::ops::Not for FooWoFieldSet {
     type Output = Self;
     fn not(mut self) -> Self::Output {
         for val in self.bits.iter_mut() {
@@ -245,11 +254,11 @@ impl FooRwFieldSet {
     pub const fn new() -> Self {
         Self { bits: [0; 8] }
     }
-    /// `@15:0` - Read the `value_ro` field.
+    /// `15:0` - Read the `value_ro` field.
     ///
     pub fn value_ro(&self) -> u16 {
         let start = 0;
-        let end = 16;
+        let end = 15;
         let raw = unsafe {
             ::device_driver::ops::load::<
                 u16,
@@ -258,11 +267,11 @@ impl FooRwFieldSet {
         };
         raw
     }
-    /// `@31:16` - Read the `value_rw` field.
+    /// `31:16` - Read the `value_rw` field.
     ///
     pub fn value_rw(&self) -> i16 {
         let start = 16;
-        let end = 32;
+        let end = 31;
         let raw = unsafe {
             ::device_driver::ops::load::<
                 i16,
@@ -271,11 +280,11 @@ impl FooRwFieldSet {
         };
         raw
     }
-    /// `@31:16` - Set the `value_rw` field.
+    /// `31:16` - Set the `value_rw` field.
     ///
     pub fn set_value_rw(&mut self, value: i16) {
         let start = 16;
-        let end = 32;
+        let end = 31;
         let raw = value;
         unsafe {
             ::device_driver::ops::store::<
@@ -284,11 +293,11 @@ impl FooRwFieldSet {
             >(raw, start, end, &mut self.bits)
         };
     }
-    /// `@32` - Set the `value_wo` field.
+    /// `bit 32` - Set the `value_wo` field.
     ///
     pub fn set_value_wo(&mut self, value: bool) {
         let start = 32;
-        let end = 33;
+        let end = 32;
         let raw = value as _;
         unsafe {
             ::device_driver::ops::store::<
@@ -319,6 +328,15 @@ impl core::fmt::Debug for FooRwFieldSet {
         d.field("value_ro", &self.value_ro());
         d.field("value_rw", &self.value_rw());
         d.finish()
+    }
+}
+#[cfg(feature = "defmt")]
+impl defmt::Format for FooRwFieldSet {
+    fn format(&self, f: defmt::Formatter) {
+        defmt::write!(f, "FooRwFieldSet {{ ");
+        defmt::write!(f, "value_ro: {=u16}, ", & self.value_ro());
+        defmt::write!(f, "value_rw: {=i16}, ", & self.value_rw());
+        defmt::write!(f, "}}");
     }
 }
 impl core::ops::BitAnd for FooRwFieldSet {
@@ -373,11 +391,11 @@ impl core::ops::Not for FooRwFieldSet {
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
-pub struct FooWoFieldSet {
+pub struct FooRoFieldSet {
     /// The internal bits
     bits: [u8; 8],
 }
-impl ::device_driver::FieldSet for FooWoFieldSet {
+impl ::device_driver::FieldSet for FooRoFieldSet {
     const SIZE_BITS: u32 = 64;
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
@@ -386,16 +404,16 @@ impl ::device_driver::FieldSet for FooWoFieldSet {
         &mut self.bits
     }
 }
-impl FooWoFieldSet {
+impl FooRoFieldSet {
     /// Create a new instance, loaded with all zeroes
     pub const fn new() -> Self {
         Self { bits: [0; 8] }
     }
-    /// `@15:0` - Read the `value_ro` field.
+    /// `15:0` - Read the `value_ro` field.
     ///
     pub fn value_ro(&self) -> u16 {
         let start = 0;
-        let end = 16;
+        let end = 15;
         let raw = unsafe {
             ::device_driver::ops::load::<
                 u16,
@@ -404,11 +422,11 @@ impl FooWoFieldSet {
         };
         raw
     }
-    /// `@31:16` - Read the `value_rw` field.
+    /// `31:16` - Read the `value_rw` field.
     ///
     pub fn value_rw(&self) -> i16 {
         let start = 16;
-        let end = 32;
+        let end = 31;
         let raw = unsafe {
             ::device_driver::ops::load::<
                 i16,
@@ -417,11 +435,11 @@ impl FooWoFieldSet {
         };
         raw
     }
-    /// `@31:16` - Set the `value_rw` field.
+    /// `31:16` - Set the `value_rw` field.
     ///
     pub fn set_value_rw(&mut self, value: i16) {
         let start = 16;
-        let end = 32;
+        let end = 31;
         let raw = value;
         unsafe {
             ::device_driver::ops::store::<
@@ -430,11 +448,11 @@ impl FooWoFieldSet {
             >(raw, start, end, &mut self.bits)
         };
     }
-    /// `@32` - Set the `value_wo` field.
+    /// `bit 32` - Set the `value_wo` field.
     ///
     pub fn set_value_wo(&mut self, value: bool) {
         let start = 32;
-        let end = 33;
+        let end = 32;
         let raw = value as _;
         unsafe {
             ::device_driver::ops::store::<
@@ -444,72 +462,81 @@ impl FooWoFieldSet {
         };
     }
 }
-impl Default for FooWoFieldSet {
+impl Default for FooRoFieldSet {
     fn default() -> Self {
         Self::new()
     }
 }
-impl From<[u8; 8]> for FooWoFieldSet {
+impl From<[u8; 8]> for FooRoFieldSet {
     fn from(bits: [u8; 8]) -> Self {
         Self { bits }
     }
 }
-impl From<FooWoFieldSet> for [u8; 8] {
-    fn from(val: FooWoFieldSet) -> Self {
+impl From<FooRoFieldSet> for [u8; 8] {
+    fn from(val: FooRoFieldSet) -> Self {
         val.bits
     }
 }
-impl core::fmt::Debug for FooWoFieldSet {
+impl core::fmt::Debug for FooRoFieldSet {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
-        let mut d = f.debug_struct("FooWoFieldSet");
+        let mut d = f.debug_struct("FooRoFieldSet");
         d.field("value_ro", &self.value_ro());
         d.field("value_rw", &self.value_rw());
         d.finish()
     }
 }
-impl core::ops::BitAnd for FooWoFieldSet {
+#[cfg(feature = "defmt")]
+impl defmt::Format for FooRoFieldSet {
+    fn format(&self, f: defmt::Formatter) {
+        defmt::write!(f, "FooRoFieldSet {{ ");
+        defmt::write!(f, "value_ro: {=u16}, ", & self.value_ro());
+        defmt::write!(f, "value_rw: {=i16}, ", & self.value_rw());
+        defmt::write!(f, "}}");
+    }
+}
+impl core::ops::BitAnd for FooRoFieldSet {
     type Output = Self;
     fn bitand(mut self, rhs: Self) -> Self::Output {
         self &= rhs;
         self
     }
 }
-impl core::ops::BitAndAssign for FooWoFieldSet {
+impl core::ops::BitAndAssign for FooRoFieldSet {
     fn bitand_assign(&mut self, rhs: Self) {
         for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
             *l &= *r;
         }
     }
 }
-impl core::ops::BitOr for FooWoFieldSet {
+impl core::ops::BitOr for FooRoFieldSet {
     type Output = Self;
     fn bitor(mut self, rhs: Self) -> Self::Output {
         self |= rhs;
         self
     }
 }
-impl core::ops::BitOrAssign for FooWoFieldSet {
+impl core::ops::BitOrAssign for FooRoFieldSet {
     fn bitor_assign(&mut self, rhs: Self) {
         for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
             *l |= *r;
         }
     }
 }
-impl core::ops::BitXor for FooWoFieldSet {
+impl core::ops::BitXor for FooRoFieldSet {
     type Output = Self;
     fn bitxor(mut self, rhs: Self) -> Self::Output {
         self ^= rhs;
         self
     }
 }
-impl core::ops::BitXorAssign for FooWoFieldSet {
+impl core::ops::BitXorAssign for FooRoFieldSet {
     fn bitxor_assign(&mut self, rhs: Self) {
         for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
             *l ^= *r;
         }
     }
 }
-impl core::ops::Not for FooWoFieldSet {
+impl core::ops::Not for FooRoFieldSet {
     type Output = Self;
     fn not(mut self) -> Self::Output {
         for val in self.bits.iter_mut() {

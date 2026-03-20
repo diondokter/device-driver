@@ -13,7 +13,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
         {
             diagnostics.add(ExternInvalidBaseType {
                 extern_name: extern_value.name.span,
-                base_type: (!extern_value.base_type.is_unspecified())
+                base_type: (!extern_value.base_type.span.is_empty())
                     .then_some(extern_value.base_type.span),
             });
             removals.insert(extern_value.id());

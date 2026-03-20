@@ -1,0 +1,14 @@
+device Device {
+    byte-order: LE,
+    register-address-type: u8,
+    /// \\\\\\/\/\/\////\/\/;{}'"`'
+    register Foo {
+        address: 0,
+        fields: fieldset FooFieldSet {
+            size-bits: 24,
+            /// \\\"#{
+            /// %@&\n
+            field value 23:0 -> uint
+        }
+    }
+}

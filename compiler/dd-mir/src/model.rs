@@ -1,22 +1,27 @@
-use std::{fmt::Display, ops::Range, rc::Rc};
+use std::{fmt::Display, rc::Rc};
 
 use convert_case::Boundary;
 use device_driver_common::{
     identifier::{Identifier, IdentifierRef},
     span::{Span, Spanned},
-    specifiers::{Access, BaseType, ByteOrder, Integer, Repeat, ResetValue, TypeConversion},
+    specifiers::{
+        Access, AddressRange, BaseType, ByteOrder, Integer, NodeType, Repeat, ResetValue,
+        TypeConversion,
+    },
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Manifest {
-    pub root_objects: Vec<Object>,
+    pub description: String,
+    pub name: Spanned<Identifier>,
     pub config: DeviceConfig,
+    pub objects: Vec<Object>,
 }
 
 impl Manifest {
     pub fn iter_objects_with_config_mut(&mut self) -> ObjectIterMut<'_> {
         ObjectIterMut {
-            children: &mut self.root_objects,
+            children: &mut self.objects,
             parent: None,
             collection_object_returned: false,
             current_device_config: Rc::new(self.config.clone()),
@@ -25,7 +30,7 @@ impl Manifest {
 
     pub fn iter_objects(&self) -> impl Iterator<Item = &Object> {
         ObjectIter {
-            children: &self.root_objects,
+            children: &self.objects,
             parent: None,
             collection_object_returned: false,
             current_device_config: Rc::new(self.config.clone()),
@@ -36,7 +41,7 @@ impl Manifest {
     #[must_use]
     pub fn iter_objects_with_config(&self) -> ObjectIter<'_> {
         ObjectIter {
-            children: &self.root_objects,
+            children: &self.objects,
             parent: None,
             collection_object_returned: false,
             current_device_config: Rc::new(self.config.clone()),
@@ -215,7 +220,9 @@ impl<'a> Iterator for ObjectIter<'a> {
 impl From<Device> for Manifest {
     fn from(value: Device) -> Self {
         Self {
-            root_objects: vec![Object::Device(value)],
+            description: String::new(),
+            name: value.name.clone(),
+            objects: vec![Object::Device(value)],
             config: DeviceConfig::default(),
         }
     }
@@ -244,17 +251,13 @@ impl Device {
 }
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct DeviceConfig {
-    /// The id of the device that owns this config. If None, then this is a global config
+    /// The id of the device that owns this config. If None, then this is a manifest config
     pub owner: Option<UniqueId>,
-    pub register_access: Option<Access>,
-    pub field_access: Option<Access>,
-    pub buffer_access: Option<Access>,
     pub byte_order: Option<ByteOrder>,
     pub register_address_type: Option<Spanned<Integer>>,
     pub command_address_type: Option<Spanned<Integer>>,
     pub buffer_address_type: Option<Spanned<Integer>>,
     pub name_word_boundaries: Option<Vec<Boundary>>,
-    pub defmt_feature: Option<String>,
 }
 
 impl DeviceConfig {
@@ -262,9 +265,6 @@ impl DeviceConfig {
     pub fn override_with(&self, other: &Self) -> DeviceConfig {
         Self {
             owner: other.owner.clone().or(self.owner.clone()),
-            register_access: other.register_access.or(self.register_access),
-            field_access: other.field_access.or(self.field_access),
-            buffer_access: other.buffer_access.or(self.buffer_access),
             byte_order: other.byte_order.or(self.byte_order),
             register_address_type: other.register_address_type.or(self.register_address_type),
             command_address_type: other.command_address_type.or(self.command_address_type),
@@ -273,11 +273,6 @@ impl DeviceConfig {
                 .name_word_boundaries
                 .as_ref()
                 .or(self.name_word_boundaries.as_ref())
-                .cloned(),
-            defmt_feature: other
-                .defmt_feature
-                .as_ref()
-                .or(self.defmt_feature.as_ref())
                 .cloned(),
         }
     }
@@ -293,6 +288,7 @@ pub enum Object {
     FieldSet(FieldSet),
     Enum(Enum),
     Extern(Extern),
+    Field(Field),
 }
 
 impl Object {
@@ -338,6 +334,7 @@ impl Object {
             Object::FieldSet(val) => &mut val.name,
             Object::Enum(val) => &mut val.name,
             Object::Extern(val) => &mut val.name,
+            Object::Field(val) => &mut val.name,
         }
     }
 
@@ -352,6 +349,7 @@ impl Object {
             Object::FieldSet(val) => &val.name,
             Object::Enum(val) => &val.name,
             Object::Extern(val) => &val.name,
+            Object::Field(val) => &val.name,
         }
     }
 
@@ -366,6 +364,7 @@ impl Object {
             Object::FieldSet(val) => val.name.span,
             Object::Enum(val) => val.name.span,
             Object::Extern(val) => val.name.span,
+            Object::Field(val) => val.name.span,
         }
     }
 
@@ -380,6 +379,7 @@ impl Object {
             Object::FieldSet(_) => None,
             Object::Enum(_) => None,
             Object::Extern(_) => None,
+            Object::Field(_) => None,
         }
     }
 
@@ -394,6 +394,7 @@ impl Object {
             Object::FieldSet(_) => None,
             Object::Enum(_) => None,
             Object::Extern(_) => None,
+            Object::Field(field) => field.repeat.as_ref(),
         }
     }
 
@@ -408,6 +409,7 @@ impl Object {
             Object::FieldSet(_) => None,
             Object::Enum(_) => None,
             Object::Extern(_) => None,
+            Object::Field(field) => field.repeat.as_mut(),
         }
     }
 
@@ -445,6 +447,7 @@ impl Object {
             Object::FieldSet(_) => false,
             Object::Enum(_) => false,
             Object::Extern(_) => false,
+            Object::Field(_) => false,
         }
     }
 
@@ -459,6 +462,39 @@ impl Object {
             Object::FieldSet(val) => val.span,
             Object::Enum(val) => val.span,
             Object::Extern(val) => val.span,
+            Object::Field(val) => val.span,
+        }
+    }
+
+    pub(crate) fn node_type(&self) -> NodeType {
+        match self {
+            Object::Device(_) => NodeType::Device,
+            Object::Block(_) => NodeType::Block,
+            Object::Register(_) => NodeType::Register,
+            Object::Command(_) => NodeType::Command,
+            Object::Buffer(_) => NodeType::Buffer,
+            Object::FieldSet(_) => NodeType::FieldSet,
+            Object::Enum(_) => NodeType::Enum,
+            Object::Extern(_) => NodeType::Extern,
+            Object::Field(_) => NodeType::Field,
+        }
+    }
+
+    /// Get the fieldset refs of the object. Only returns non-zero for registers and commands
+    pub(crate) fn fieldset_refs(&self) -> Vec<Spanned<IdentifierRef>> {
+        match self {
+            Object::Device(_) => Vec::new(),
+            Object::Block(_) => Vec::new(),
+            Object::Register(r) => vec![r.field_set_ref.clone()],
+            Object::Command(c) => [c.field_set_ref_in.clone(), c.field_set_ref_out.clone()]
+                .into_iter()
+                .flatten()
+                .collect(),
+            Object::Buffer(_) => Vec::new(),
+            Object::FieldSet(_) => Vec::new(),
+            Object::Enum(_) => Vec::new(),
+            Object::Extern(_) => Vec::new(),
+            Object::Field(_) => Vec::new(),
         }
     }
 }
@@ -483,7 +519,7 @@ pub struct Register {
     pub address: Spanned<i128>,
     pub reset_value: Option<Spanned<ResetValue>>,
     pub repeat: Option<Repeat>,
-    pub field_set_ref: IdentifierRef,
+    pub field_set_ref: Spanned<IdentifierRef>,
     /// Span of the whole object
     pub span: Span,
 }
@@ -507,7 +543,7 @@ pub struct Field {
     pub access: Access,
     pub base_type: Spanned<BaseType>,
     pub field_conversion: Option<TypeConversion>,
-    pub field_address: Spanned<Range<u32>>,
+    pub field_address: Spanned<AddressRange>,
     pub repeat: Option<Repeat>,
     /// Span of the whole object
     pub span: Span,
@@ -591,7 +627,7 @@ impl Enum {
     pub fn iter_variants_with_discriminant(&self) -> impl Iterator<Item = (i128, &EnumVariant)> {
         let mut next_discriminant = 0;
         self.variants.iter().map(move |variant| {
-            if let EnumValue::Specified(discriminant) = variant.value {
+            if let Some(discriminant) = variant.value.specified_discriminant() {
                 next_discriminant = discriminant + 1;
                 (discriminant, variant)
             } else {
@@ -611,7 +647,7 @@ impl Enum {
     ) -> impl Iterator<Item = (i128, &mut EnumVariant)> {
         let mut next_discriminant = 0;
         self.variants.iter_mut().map(move |variant| {
-            if let EnumValue::Specified(discriminant) = variant.value {
+            if let Some(discriminant) = variant.value.specified_discriminant() {
                 next_discriminant = discriminant + 1;
                 (discriminant, variant)
             } else {
@@ -658,33 +694,36 @@ pub enum EnumValue {
     #[default]
     Unspecified,
     Specified(i128),
-    Default,
-    CatchAll,
+    Default(i128),
+    UnspecifiedDefault,
+    CatchAll(i128),
+    UnspecifiedCatchAll,
 }
 
 impl EnumValue {
-    /// Returns `true` if the enum value is [`Default`].
-    ///
-    /// [`Default`]: EnumValue::Default
     #[must_use]
     pub fn is_default(&self) -> bool {
-        matches!(self, Self::Default)
+        matches!(self, Self::Default(_) | Self::UnspecifiedDefault)
     }
 
-    /// Returns `true` if the enum value is [`CatchAll`].
-    ///
-    /// [`CatchAll`]: EnumValue::CatchAll
     #[must_use]
     pub fn is_catch_all(&self) -> bool {
-        matches!(self, Self::CatchAll)
+        matches!(self, Self::CatchAll(_) | Self::UnspecifiedCatchAll)
     }
 
-    /// Returns `true` if the enum value is [`Unspecified`].
-    ///
-    /// [`Unspecified`]: EnumValue::Unspecified
-    #[must_use]
-    pub fn is_unspecified(&self) -> bool {
-        matches!(self, Self::Unspecified)
+    pub fn specified_discriminant(&self) -> Option<i128> {
+        match self {
+            Self::Unspecified | Self::UnspecifiedDefault | Self::UnspecifiedCatchAll => None,
+            Self::Specified(val) | EnumValue::Default(val) | EnumValue::CatchAll(val) => Some(*val),
+        }
+    }
+
+    pub fn specify(&mut self, num: i128) {
+        *self = match self {
+            EnumValue::Unspecified | EnumValue::Specified(_) => Self::Specified(num),
+            EnumValue::Default(_) | EnumValue::UnspecifiedDefault => Self::Default(num),
+            EnumValue::CatchAll(_) | EnumValue::UnspecifiedCatchAll => Self::CatchAll(num),
+        };
     }
 }
 
@@ -696,8 +735,8 @@ pub struct Command {
     pub allow_address_overlap: bool,
     pub repeat: Option<Repeat>,
 
-    pub field_set_ref_in: Option<IdentifierRef>,
-    pub field_set_ref_out: Option<IdentifierRef>,
+    pub field_set_ref_in: Option<Spanned<IdentifierRef>>,
+    pub field_set_ref_out: Option<Spanned<IdentifierRef>>,
 
     /// Span of the whole object
     pub span: Span,
@@ -889,6 +928,8 @@ impl Unique for Object {
             Object::FieldSet(val) => val.id(),
             Object::Enum(val) => val.id(),
             Object::Extern(val) => val.id(),
+            // Special
+            Object::Field(_) => unimplemented!(),
         }
     }
 
@@ -906,6 +947,8 @@ impl Unique for Object {
             Object::FieldSet(val) => val.has_id(id),
             Object::Enum(val) => val.has_id(id),
             Object::Extern(val) => val.has_id(id),
+            // Special
+            Object::Field(_) => unimplemented!(),
         }
     }
 }
@@ -921,12 +964,13 @@ mod tests {
         const NAME_ORDER: &[&str] = &["a", "b", "c", "d"];
 
         let mut manifest = Manifest {
-            root_objects: vec![
+            description: Default::default(),
+            name: Default::default(),
+            objects: vec![
                 Object::Device(Device {
                     description: String::new(),
                     name: "a".into_with_dummy_span(),
                     device_config: DeviceConfig {
-                        register_access: Some(Access::RW),
                         ..Default::default()
                     },
                     objects: vec![

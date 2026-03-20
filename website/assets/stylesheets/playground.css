@@ -43,6 +43,7 @@ body {
     grid-column: 1 / 4;
     cursor: ns-resize;
 }
+
 #horizontal-separator {
     cursor: ew-resize;
 }
@@ -82,36 +83,68 @@ code {
     padding: 5px;
     background-color: #960018;
     user-select: none;
-}
 
-#header li {
-    background-color: #41121a;
-    /* Green */
-    border: none;
-    text-align: center;
-    text-decoration: none;
-    display: inline-block;
-    font-size: 16px;
-    color: #dcdcdc;
-    border-radius: 4px;
-    transition-duration: 0.1s;
-    cursor: pointer;
-}
+    li {
+        background-color: #41121a;
+        border: none;
+        text-align: center;
+        text-decoration: none;
+        font-size: 16px;
+        color: #dcdcdc;
+        border-radius: 4px;
+        transition-duration: 0.1s;
+        line-height: 20px;
+        margin: 5px;
+        float: right;
 
-#header li:hover {
-    background-color: #46272c;
-}
+        &:first-child {
+            float: left;
+        }
 
-#header li:active {
-    background-color: #372327;
-}
+        a {
+            cursor: pointer;
+            padding: 10px 20px;
+            display: block;
+            border-radius: 4px;
 
-#header li a {
-    display: block;
-    padding: 10px 32px;
-}
+            &:hover {
+                background-color: #46272c;
+            }
 
-#header a {
-    color: inherit;
-    text-decoration: inherit;
+            &:active {
+                background-color: #372327;
+            }
+        }
+
+        #target-picker {
+            padding: 10px 10px;
+
+            select {
+                margin: 0px;
+                padding: 0px;
+            }
+        }
+
+        &#compiler-options {
+            padding: 10px 10px;
+            width: 50%;
+            min-width: 400px;
+            max-width: 800px;
+            display: flex;
+
+            label {
+                margin-right: 5px;
+            }
+
+            input {
+                padding: 0px;
+                flex: 1;
+            }
+        }
+    }
+
+    a {
+        color: inherit;
+        text-decoration: inherit;
+    }
 }

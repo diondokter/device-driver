@@ -1,22 +1,55 @@
-use std::fmt::Display;
+use std::{borrow::Cow, fmt::Display, num::NonZeroU32};
 
 use chumsky::{input::ValueInput, prelude::*};
 use device_driver_common::{
     span::{Span, SpanExt, Spanned},
-    specifiers::{Access, BaseType, ByteOrder},
+    specifiers::{Access, BaseType, ByteOrder, Integer},
 };
+use device_driver_diagnostics::{Diagnostics, errors::ParsingError};
 use device_driver_lexer::{ParseIntRadix, ParseIntRadixError, ParseIntRadixErrorKind, Token};
 
-pub struct Ast<'src> {
-    pub nodes: Vec<Node<'src>>,
+pub fn parse<'src>(tokens: &[Spanned<Token<'src>>], diagnostics: &mut Diagnostics) -> Ast<'src> {
+    let (ast, parse_errs) = parser()
+        .map_with(|ast, e| (ast, e.span()))
+        .parse(
+            tokens.map(
+                tokens
+                    .last()
+                    .map(|t| Span::from(t.span.end..t.span.end))
+                    .unwrap_or_default(),
+                |token| (&token.value, &token.span),
+            ),
+        )
+        .into_output_errors();
+
+    for error in parse_errs {
+        diagnostics.add(ParsingError {
+            reason: error.to_string(),
+            span: *error.span(),
+        });
+    }
+
+    ast.map(|(root_node, span)| Ast {
+        root_node: Some(root_node),
+        span,
+    })
+    .unwrap_or_default()
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
+pub struct Ast<'src> {
+    pub root_node: Option<Node<'src>>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
 pub struct Node<'src> {
     pub doc_comments: Vec<Spanned<&'src str>>,
-    pub object_type: Ident<'src>,
+    pub node_type: Ident<'src>,
     pub name: Ident<'src>,
-    pub type_specifier: Option<TypeSpecifier<'src>>,
+    pub repeat: Option<Spanned<Repeat<'src>>>,
+    pub type_specifier: Option<Spanned<TypeSpecifier<'src>>>,
+    pub short_properties: Vec<Spanned<Expression<'src>>>,
     pub properties: Vec<Spanned<Property<'src>>>,
     pub sub_nodes: Vec<Node<'src>>,
     pub span: Span,
@@ -30,12 +63,9 @@ impl<'src> Display for Node<'src> {
         for doc_comment in &self.doc_comments {
             writeln!(f, "{indentation}///{doc_comment}")?;
         }
-        write!(f, "{indentation}{} {}", self.object_type.val, self.name.val)?;
+        write!(f, "{indentation}{} {}", self.node_type.val, self.name.val,)?;
 
-        for expression in self.properties.iter().filter_map(|p| match &p.value {
-            Property::Full { .. } => None,
-            Property::Anonymous { expression } => Some(&expression.value),
-        }) {
+        for expression in self.short_properties.iter() {
             write!(f, " {expression}")?;
         }
 
@@ -57,14 +87,15 @@ impl<'src> Display for Node<'src> {
             }
         }
 
-        if !self.sub_nodes.is_empty() || self.properties.iter().any(|p| !p.is_anonymous()) {
+        if !self.sub_nodes.is_empty() || !self.properties.is_empty() {
             writeln!(f, " {{")?;
 
-            for (ident, expression) in self.properties.iter().filter_map(|p| match &p.value {
-                Property::Full { name, expression } => Some((name, &expression.value)),
-                Property::Anonymous { .. } => None,
-            }) {
-                writeln!(f, "{indentation}    {}: {},", ident.val, expression)?;
+            for property in self.properties.iter() {
+                writeln!(
+                    f,
+                    "{indentation}    {}: {},",
+                    property.name.val, property.expression
+                )?;
             }
 
             for node in self.sub_nodes.iter() {
@@ -78,99 +109,158 @@ impl<'src> Display for Node<'src> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TypeSpecifier<'src> {
-    pub base_type: BaseType,
+    pub base_type: Spanned<BaseType>,
     pub use_try: bool,
     pub conversion: Option<TypeConversion<'src>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TypeConversion<'src> {
     Reference(Ident<'src>),
     Subnode(Box<Node<'src>>),
 }
 
-#[derive(Debug)]
-pub enum Property<'src> {
-    Full {
-        name: Ident<'src>,
-        expression: Spanned<Expression<'src>>,
-    },
-    Anonymous {
-        expression: Spanned<Expression<'src>>,
-    },
+#[derive(Debug, Clone)]
+pub struct Property<'src> {
+    pub doc_comments: Vec<Spanned<&'src str>>,
+    pub name: Ident<'src>,
+    pub expression: Spanned<Expression<'src>>,
 }
 
-impl<'src> Property<'src> {
-    /// Returns `true` if the property is [`Anonymous`].
-    ///
-    /// [`Anonymous`]: Property::Anonymous
-    #[must_use]
-    pub fn is_anonymous(&self) -> bool {
-        matches!(self, Self::Anonymous { .. })
-    }
-}
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expression<'src> {
-    Range { end: i128, start: i128 },
-    Repeat(Repeat<'src>),
-    ResetNumber(u128),
-    ResetArray(Vec<u8>),
+    AddressRange { end: i128, start: i128 },
+    ByteArray(Vec<u8>),
     BaseType(BaseType),
+    Integer(Integer),
     Allow,
     Number(i128),
-    DefaultNumber(i128),
-    CatchAllNumber(i128),
+    DefaultNumber(Option<i128>),
+    CatchAllNumber(Option<i128>),
+    String(&'src str),
     Access(Access),
     ByteOrder(ByteOrder),
     TypeReference(Ident<'src>),
     SubNode(Box<Node<'src>>),
+    Auto,
     Error,
+}
+
+impl<'src> Expression<'src> {
+    pub fn as_byte_order(&self) -> Option<ByteOrder> {
+        if let Self::ByteOrder(v) = self {
+            Some(*v)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_access(&self) -> Option<Access> {
+        if let Self::Access(v) = self {
+            Some(*v)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_integer(&self) -> Option<Integer> {
+        if let Self::Integer(v) = self {
+            Some(*v)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_unsigned_integer(&self) -> Option<Integer> {
+        if let Self::Integer(v) = self {
+            Some(*v)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_number(&self) -> Option<i128> {
+        if let Self::Number(v) = self {
+            Some(*v)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_string(&self) -> Option<&'src str> {
+        if let Self::String(v) = self {
+            Some(*v)
+        } else {
+            None
+        }
+    }
+
+    pub fn get_human_string(&self) -> Cow<'static, str> {
+        match self {
+            Expression::AddressRange { end, start } => format!("{end}:{start}").into(),
+            Expression::ByteArray(items) => format!("{items:?}").into(),
+            Expression::BaseType(base_type) => base_type.to_string().into(),
+            Expression::Integer(integer) => integer.to_string().into(),
+            Expression::Allow => "allow".into(),
+            Expression::Number(num) => num.to_string().into(),
+            Expression::DefaultNumber(Some(num)) => format!("default {num}").into(),
+            Expression::DefaultNumber(None) => "default _".into(),
+            Expression::CatchAllNumber(Some(num)) => format!("catch-all {num}").into(),
+            Expression::CatchAllNumber(None) => "catch-all _".into(),
+            Expression::String(val) => format!("\"{val}\"").into(),
+            Expression::Access(val) => val.to_string().into(),
+            Expression::ByteOrder(val) => val.to_string().into(),
+            Expression::TypeReference(ident) => ident.val.to_string().into(),
+            Expression::SubNode(val) => val.to_string().into(),
+            Expression::Auto => "_".into(),
+            Expression::Error => "ERROR".into(),
+        }
+    }
 }
 
 impl<'src> Display for Expression<'src> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Expression::Range { end, start } => write!(f, "{end}:{start}"),
-            Expression::Repeat(Repeat {
-                source: RepeatSource::Count(count),
-                stride,
-            }) => write!(f, "<{count} by {stride}>"),
-            Expression::Repeat(Repeat {
-                source: RepeatSource::Enum(ident),
-                stride,
-            }) => write!(f, "<{} by {stride}>", ident.val),
-            Expression::ResetNumber(num) => write!(f, "[{num}]"),
-            Expression::ResetArray(items) => write!(f, "{items:?}"),
-            Expression::BaseType(base_type) => base_type.fmt(f),
+            Expression::AddressRange { .. } => write!(f, "range"),
+            Expression::ByteArray(_) => write!(f, "[bytes]"),
+            Expression::BaseType(_) => write!(f, "base type"),
+            Expression::Integer(_) => write!(f, "integer type"),
             Expression::Allow => write!(f, "allow"),
-            Expression::Number(num) => num.fmt(f),
-            Expression::DefaultNumber(num) => write!(f, "default {num}"),
-            Expression::CatchAllNumber(num) => write!(f, "catch-all {num}"),
-            Expression::Access(val) => val.fmt(f),
-            Expression::ByteOrder(val) => val.fmt(f),
-            Expression::TypeReference(ident) => ident.val.fmt(f),
-            Expression::SubNode(val) => val.fmt(f),
-            Expression::Error => write!(f, "ERROR"),
+            Expression::Number(_) => write!(f, "number"),
+            Expression::DefaultNumber(_) => write!(f, "default number"),
+            Expression::CatchAllNumber(_) => write!(f, "catch-all number"),
+            Expression::String(_) => write!(f, "string"),
+            Expression::Access(_) => write!(f, "access specifier"),
+            Expression::ByteOrder(_) => write!(f, "byte order"),
+            Expression::TypeReference(_) => write!(f, "type reference"),
+            Expression::SubNode(_) => write!(f, "sub node"),
+            Expression::Auto => write!(f, "_"),
+            Expression::Error => write!(f, "error"),
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct Repeat<'src> {
     pub source: RepeatSource<'src>,
     pub stride: i32,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum RepeatSource<'src> {
-    Count(u32),
+    Count(NonZeroU32),
     Enum(Ident<'src>),
 }
 
-#[derive(Debug)]
+impl<'src> Default for RepeatSource<'src> {
+    fn default() -> Self {
+        Self::Count(1.try_into().unwrap())
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 pub struct Ident<'src> {
     pub val: &'src str,
     pub span: Span,
@@ -191,31 +281,34 @@ fn try_num<'tokens, 'src: 'tokens, I: ParseIntRadix>(
             ParseIntRadixErrorKind::Overflow => Err(Rich::custom(
                 span,
                 format!(
-                    "Number `{source}` is parsed as a {}{target_bits}, but overflows.",
+                    "number `{source}` is parsed as a {}{target_bits}, but overflows.",
                     if target_signed { 'i' } else { 'u' }
                 ),
             )),
             ParseIntRadixErrorKind::Underflow => Err(Rich::custom(
                 span,
                 format!(
-                    "Number `{source}` is parsed as a {}{target_bits}, but underflows.",
+                    "number `{source}` is parsed as a {}{target_bits}, but underflows.",
                     if target_signed { 'i' } else { 'u' }
                 ),
             )),
             ParseIntRadixErrorKind::Empty => Err(Rich::custom(
                 span,
-                format!("Could not parse `{source}` as a number because it contains no numbers"),
+                format!("could not parse `{source}` as a number because it contains no numbers"),
             )),
+            ParseIntRadixErrorKind::Zero => {
+                Err(Rich::custom(span, "number can't be 0 in this position"))
+            }
         },
     }
 }
 
 pub fn parser<'tokens, 'src: 'tokens, I>()
--> impl Parser<'tokens, I, Vec<Node<'src>>, extra::Err<Rich<'tokens, Token<'src>, Span>>> + Clone
+-> impl Parser<'tokens, I, Node<'src>, extra::Err<Rich<'tokens, Token<'src>, Span>>> + Clone
 where
     I: ValueInput<'tokens, Token = Token<'src>, Span = Span>,
 {
-    let node = recursive(|node| {
+    recursive(|node| {
         let any_ident = select! {
             Token::Ident(val) = e => Ident { val, span: e.span() }
         }
@@ -236,85 +329,116 @@ where
             .try_map(try_num::<i128>)
             .then_ignore(just(Token::Colon))
             .then(any_num.try_map(try_num::<i128>))
-            .map(|(end, start)| Expression::Range { end, start })
+            .map(|(end, start)| Expression::AddressRange { end, start })
             .labelled("'range'");
         let any_base_type = select! { Token::BaseType(bt) => bt }.labelled("'base type'");
-        let repeat_expression = any_num
-            .try_map(try_num::<u32>)
-            .map(RepeatSource::Count)
-            .or(any_ident.map(RepeatSource::Enum))
-            .then(
-                just(Token::By)
-                    .ignore_then(any_num.try_map(try_num::<i32>))
-                    .or_not(),
-            )
-            .map(|(source, stride)| {
-                Expression::Repeat(Repeat {
-                    source,
-                    stride: stride.unwrap_or(1),
-                })
-            })
-            .delimited_by(just(Token::AngleOpen), just(Token::AngleClose))
-            .labelled("'<repeat>'")
-            .boxed();
-        let reset_expression = any_num
+        let any_integer = select! { Token::Integer(i) => i }.labelled("'integer type'");
+        let array_expression = any_num
             .try_map(try_num::<u128>)
             .map_with(|num, extra| (num, extra.span()))
             .separated_by(just(Token::Comma))
             .allow_trailing()
             .collect::<Vec<_>>()
             .validate(|numbers, _, emitter| {
-                if numbers.len() == 1 {
-                    Expression::ResetNumber(numbers[0].0)
-                } else {
-                    match numbers
-                        .into_iter()
-                        .map(|(num, num_span)| {
-                            u8::try_from(num)
-                                .map_err(|_| Rich::custom(num_span, "Value must be a byte"))
-                        })
-                        .collect::<Result<Vec<u8>, _>>()
-                    {
-                        Ok(array) => Expression::ResetArray(array),
-                        Err(e) => {
-                            emitter.emit(e);
-                            Expression::Error
-                        }
+                match numbers
+                    .into_iter()
+                    .map(|(num, num_span)| {
+                        u8::try_from(num)
+                            .map_err(|_| Rich::custom(num_span, "Value must be a byte"))
+                    })
+                    .collect::<Result<Vec<u8>, _>>()
+                {
+                    Ok(array) => Expression::ByteArray(array),
+                    Err(e) => {
+                        emitter.emit(e);
+                        Expression::Error
                     }
                 }
             })
             .delimited_by(just(Token::BracketOpen), just(Token::BracketClose))
-            .labelled("'[reset]'")
+            .labelled("'[bytes]'")
             .boxed();
 
-        let expression = choice((
+        // Expression without type reference
+        let simple_expression = choice((
             range,
             any_base_type.map(Expression::BaseType),
+            any_integer.map(Expression::Integer),
             any_num.try_map(try_num::<i128>).map(Expression::Number),
             just(Token::Default)
-                .ignore_then(any_num.try_map(try_num::<i128>))
+                .ignore_then(
+                    any_num
+                        .try_map(try_num::<i128>)
+                        .map(Some)
+                        .or(just(Token::Underscore).map(|_| None)),
+                )
                 .map(Expression::DefaultNumber)
                 .labelled("'default number'"),
             just(Token::CatchAll)
-                .ignore_then(any_num.try_map(try_num::<i128>))
+                .ignore_then(
+                    any_num
+                        .try_map(try_num::<i128>)
+                        .map(Some)
+                        .or(just(Token::Underscore).map(|_| None)),
+                )
                 .map(Expression::CatchAllNumber)
                 .labelled("'catch-all number'"),
-            repeat_expression,
-            reset_expression,
+            array_expression,
             just(Token::Allow).map(|_| Expression::Allow),
-            select! { Token::Access(val) => val }.map(Expression::Access),
-            select! { Token::ByteOrder(val) => val }.map(Expression::ByteOrder),
-            any_ident.map(Expression::TypeReference),
+            select! { Token::Access(val) => val }
+                .map(Expression::Access)
+                .labelled("'access'"),
+            select! { Token::ByteOrder(val) => val }
+                .map(Expression::ByteOrder)
+                .labelled("'byte order'"),
+            just(Token::Underscore).map(|_| Expression::Auto),
+            select! { Token::String(val) => val }
+                .map(Expression::String)
+                .labelled("'string'"),
         ))
         .map_with(|expression, extra| expression.spanned(extra.span()))
         .boxed();
 
-        let property = any_ident
-            .then(just(Token::Colon).ignore_then(expression.clone()))
-            .map_with(|(name, expression), extra| {
-                Property::Full { name, expression }.spanned(extra.span())
+        let property = any_doc_comment
+            .repeated()
+            .collect()
+            .then(
+                any_ident
+                    .then(
+                        just(Token::Colon).ignore_then(choice((
+                            simple_expression.clone(),
+                            node.clone().map_with(|node, extra| {
+                                Expression::SubNode(Box::new(node)).spanned(extra.span())
+                            }),
+                            any_ident
+                                .map(Expression::TypeReference)
+                                .map_with(|expression, extra| expression.spanned(extra.span())),
+                        ))),
+                    )
+                    .map_with(|(name, expression), extra| {
+                        Property {
+                            doc_comments: Vec::new(),
+                            name,
+                            expression,
+                        }
+                        .spanned(extra.span())
+                    }),
+            )
+            .map(|(docs, mut prop)| {
+                prop.doc_comments = docs;
+                prop
             })
             .labelled("'property'")
+            .boxed();
+
+        let repeat = any_num
+            .try_map(try_num::<NonZeroU32>)
+            .map(RepeatSource::Count)
+            .or(any_ident.map(RepeatSource::Enum))
+            .then(just(Token::Star).ignore_then(any_num.try_map(try_num::<i32>)))
+            .delimited_by(just(Token::BracketOpen), just(Token::BracketClose))
+            .map_with(|(source, stride), extra| Repeat { source, stride }.spanned(extra.span()))
+            .labelled("'[repeat]'")
             .boxed();
 
         let type_conversion = just(Token::As).ignore_then(just(Token::Try).or_not()).then(
@@ -323,7 +447,14 @@ where
                 .or(any_ident.map(TypeConversion::Reference)),
         );
         let type_specifier = just(Token::Arrow)
-            .ignore_then(any_base_type)
+            .ignore_then(
+                choice((
+                    any_base_type,
+                    any_integer.map(BaseType::FixedSize),
+                    just(Token::Underscore).map(|_| BaseType::Unspecified),
+                ))
+                .map_with(|b, e| b.spanned(e.span())),
+            )
             .then(type_conversion.or_not())
             .map(|(base_type, conversion)| TypeSpecifier {
                 base_type,
@@ -333,57 +464,64 @@ where
                     .unwrap_or_default(),
                 conversion: conversion.map(|(_, conversion)| conversion),
             })
+            .map_with(|ts, e| ts.spanned(e.span()))
             .boxed();
 
-        let node_body = just(Token::CurlyOpen)
-            .ignore_then(
-                property
-                    .separated_by(just(Token::Comma))
-                    .allow_trailing()
-                    .collect::<Vec<_>>(),
-            )
-            .then(
-                node.separated_by(just(Token::Comma))
-                    .allow_trailing()
-                    .collect::<Vec<_>>(),
-            )
-            .then_ignore(just(Token::CurlyClose))
-            .labelled("'node body'");
+        let properties = property
+            .separated_by(just(Token::Comma))
+            .at_least(1)
+            .collect::<Vec<_>>();
+        let nodes = node
+            .separated_by(just(Token::Comma))
+            .allow_trailing()
+            .collect::<Vec<_>>();
+        // Body with comma forced between properties and nodes
+        let node_body = choice((
+            // Properties + comma + nodes
+            properties
+                .clone()
+                .then_ignore(just(Token::Comma))
+                .then(nodes.clone()),
+            // Properties + no comma + no nodes
+            properties.clone().then(empty().to(Vec::new())),
+            // No properties + no comma + nodes
+            empty().to(Vec::<Spanned<Property<'_>>>::new()).then(nodes),
+        ))
+        .delimited_by(just(Token::CurlyOpen), just(Token::CurlyClose))
+        .labelled("'node body'");
 
         any_doc_comment
             .repeated()
             .collect()
-            .then(any_ident.labelled("'object-type'"))
-            .then(any_ident.labelled("'object-name'"))
-            .then(expression.repeated().collect::<Vec<_>>())
+            .then(any_ident.labelled("'node type'"))
+            .then(any_ident.labelled("'node name'"))
+            .then(repeat.or_not())
+            .then(simple_expression.repeated().collect::<Vec<_>>())
             .then(type_specifier.or_not())
             .then(node_body.or_not())
             .map_with(
-                |(((((doc_comments, object_type), name), expressions), type_specifier), body),
+                |(
+                    (((((doc_comments, node_type), name), repeat), expressions), type_specifier),
+                    body,
+                ),
                  extra| {
                     let (properties, sub_nodes) = body.unwrap_or_default();
 
+                    let mut span: Span = extra.span();
+                    span = span.start_from(node_type.span);
+
                     Node {
                         doc_comments,
-                        object_type,
+                        node_type,
                         name,
+                        repeat,
                         type_specifier,
-                        properties: expressions
-                            .into_iter()
-                            .map(|expression| {
-                                let span = expression.span;
-                                Property::Anonymous { expression }.spanned(span)
-                            })
-                            .chain(properties)
-                            .collect(),
+                        properties,
+                        short_properties: expressions,
                         sub_nodes,
-                        span: extra.span(),
+                        span,
                     }
                 },
             )
-    });
-
-    node.separated_by(just(Token::Comma))
-        .allow_trailing()
-        .collect()
+    })
 }
