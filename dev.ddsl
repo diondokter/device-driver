@@ -12,13 +12,13 @@ manifest dev {
 
         register Bar {
             address: 0,
+
             fields: fieldset a {
                 size-bits: 16,
                 byte-order: LE,
                 bit-overlap: allow,
 
-                field aha 10:0 RO <2 by 2> -> _ as try
-                    extern lol2 -> u16,
+                field aha[2*2] 10:0 RO -> u8,
                 field hah 15:11 WO -> u8 as
                     enum hah-num -> u8 {
                         A: _,
@@ -45,10 +45,9 @@ manifest dev {
             C: default _,
         },
 
-        command MyCommand {
+        command MyCommand[MyEnum*1] {
             address: 42,
             address-overlap: allow,
-            repeat: <MyEnum by 1>,
             fields-in: a,
             fields-out: a,
         }

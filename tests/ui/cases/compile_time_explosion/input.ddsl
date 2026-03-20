@@ -6,54 +6,44 @@ device Device {
         size-bits: 0
     },
 
-    register Foo0 {
+    register Foo0[100*1000] {
         address: 0,
-        repeat: <100 by 1000>,
         fields: Foo,
     },
-    register Foo1 {
+    register Foo1[100*1000] {
         address: 1,
-        repeat: <100 by 1000>,
         fields: Foo,
     },
-    register Foo2 {
+    register Foo2[100*1000] {
         address: 2,
-        repeat: <100 by 1000>,
         fields: Foo,
     },
-    register Foo3 {
+    register Foo3[100*1000] {
         address: 3,
-        repeat: <100 by 1000>,
         fields: Foo,
     },
-    register Foo4 {
+    register Foo4[100*1000] {
         address: 4,
-        repeat: <100 by 1000>,
         fields: Foo,
     },
-    register Foo5 {
+    register Foo5[100*1000] {
         address: 5,
-        repeat: <100 by 1000>,
         fields: Foo,
     },
-    register Foo6 {
+    register Foo6[100*1000] {
         address: 6,
-        repeat: <100 by 1000>,
         fields: Foo,
     },
-    register Foo7 {
+    register Foo7[100*1000] {
         address: 7,
-        repeat: <100 by 1000>,
         fields: Foo,
     },
-    register Foo8 {
+    register Foo8[100*1000] {
         address: 8,
-        repeat: <100 by 1000>,
         fields: Foo,
     },
-    register Foo9 {
+    register Foo9[100*1000] {
         address: 9,
-        repeat: <100 by 1000>,
         fields: Foo,
     }
 }

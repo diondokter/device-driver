@@ -1599,9 +1599,33 @@ impl Diagnostic for FieldAddressOutOfRange {
     }
 }
 
+pub struct ResetValueNegative {
+    pub reset_value: Span,
+}
+
+impl Diagnostic for ResetValueNegative {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [Level::ERROR
+            .primary_title("reset value is negative")
+            .element(
+                Snippet::source(source).path(path).annotation(
+                    AnnotationKind::Primary
+                        .span(self.reset_value.into())
+                        .label("value may not be negative"),
+                ),
+            )]
+        .to_vec()
+    }
+}
+
 pub struct InvalidShortProperty {
     pub property: Span,
     pub node_type: Spanned<NodeType>,
+    pub got: String,
     pub expected: Vec<(String, String)>,
 }
 
@@ -1616,21 +1640,30 @@ impl Diagnostic for InvalidShortProperty {
                 "invalid short property for `{}` nodes",
                 self.node_type
             ))
-            .element(Snippet::source(source).path(path).annotation(
-                AnnotationKind::Primary.span(self.property.into()).label(
-                    if self.expected.is_empty() {
-                        "no short properties are expected".into()
-                    } else {
-                        format!(
-                            "expected one of: {}",
-                            self.expected
-                                .iter()
-                                .map(|(expression, purpose)| format!("`{expression}` as {purpose}"))
-                                .join(", ")
-                        )
-                    },
-                ),
-            ))]
+            .element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(AnnotationKind::Primary.span(self.property.into()).label(
+                        if self.expected.is_empty() {
+                            "no short properties are expected".into()
+                        } else {
+                            format!(
+                                "expected one of: {}",
+                                self.expected
+                                    .iter()
+                                    .map(|(expression, purpose)| format!(
+                                        "`{expression}` as {purpose}"
+                                    ))
+                                    .join(", ")
+                            )
+                        },
+                    ))
+                    .annotation(
+                        AnnotationKind::Context
+                            .span(self.property.into())
+                            .label(format!("got: `{}`", self.got,)),
+                    ),
+            )]
         .to_vec()
     }
 }
@@ -1802,6 +1835,41 @@ impl Diagnostic for InvalidFieldsetRef {
                             .label("reference points to this non-fieldset object instead")
                     })),
             )]
+        .to_vec()
+    }
+}
+
+pub struct InvalidRepeat {
+    pub repeat: Span,
+    pub node_type: Spanned<NodeType>,
+}
+
+impl Diagnostic for InvalidRepeat {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [
+            Level::ERROR.primary_title("invalid repeat").element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(
+                        AnnotationKind::Primary
+                            .span(self.repeat.into())
+                            .label(format!(
+                                "repeats can't be applied on {} nodes",
+                                self.node_type
+                            )),
+                    )
+                    .annotation(AnnotationKind::Visible.span(self.node_type.span.into())),
+            ),
+            Level::HELP.secondary_title("remove the repeat").element(
+                Snippet::source(source)
+                    .path(path)
+                    .patch(Patch::new(self.repeat.into(), "")),
+            ),
+        ]
         .to_vec()
     }
 }

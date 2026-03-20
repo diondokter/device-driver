@@ -8,7 +8,7 @@ device_driver::compile!(
 
             register Foo {
                 address: 0,
-                reset: [0xFFFFFFFF],
+                reset: 0xFFFFFFFF,
 
                 fields: fieldset FooFieldSet {
                     size-bits: 32,

@@ -37,7 +37,7 @@ device_driver::compile!(
             register FooLE {
                 address-overlap: allow,
                 address: 0,
-                reset: [0x1234],
+                reset: 0x1234,
 
                 fields: fieldset FooLEFields {
                     byte-order: LE,
@@ -61,7 +61,7 @@ device_driver::compile!(
             register FooBE {
                 address-overlap: allow,
                 address: 0,
-                reset: [0x3412],
+                reset: 0x3412,
 
                 fields: fieldset FooBEFields {
                     byte-order: BE,

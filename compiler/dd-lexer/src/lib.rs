@@ -48,8 +48,8 @@ pub enum Token<'src> {
     Underscore,
     #[token("->")]
     Arrow,
-    #[token("by")]
-    By,
+    #[token("*")]
+    Star,
     #[token("try")]
     Try,
     #[token("as")]
@@ -109,7 +109,7 @@ impl<'src> Display for Token<'src> {
             Token::Underscore => write!(f, "_"),
             Token::Comma => write!(f, ","),
             Token::Arrow => write!(f, "->"),
-            Token::By => write!(f, "by"),
+            Token::Star => write!(f, "*"),
             Token::Try => write!(f, "try"),
             Token::As => write!(f, "as"),
             Token::Allow => write!(f, "allow"),
@@ -143,7 +143,7 @@ impl<'src> Token<'src> {
             Token::Comma => ",".into(),
             Token::Arrow => "->".into(),
             Token::Try => "try".into(),
-            Token::By => "by".into(),
+            Token::Star => "*".into(),
             Token::As => "as".into(),
             Token::Num(n) => n.to_string().into(),
             Token::Access(val) => val.to_string().into(),
@@ -242,7 +242,10 @@ macro_rules! impl_parse_int_radix {
                         IntErrorKind::PosOverflow => ParseIntRadixErrorKind::Overflow,
                         IntErrorKind::NegOverflow => ParseIntRadixErrorKind::Underflow,
                         IntErrorKind::Empty => ParseIntRadixErrorKind::Empty,
-                        _ => unreachable!("{e}"),
+                        IntErrorKind::InvalidDigit if cleaned_num_slice.starts_with('-') => {
+                            ParseIntRadixErrorKind::Underflow
+                        }
+                        _ => unreachable!("{e}: {cleaned_num_slice}"),
                     };
 
                     ParseIntRadixError {
@@ -279,7 +282,10 @@ impl ParseIntRadix for NonZeroU32 {
                 IntErrorKind::PosOverflow => ParseIntRadixErrorKind::Overflow,
                 IntErrorKind::NegOverflow => ParseIntRadixErrorKind::Underflow,
                 IntErrorKind::Empty => ParseIntRadixErrorKind::Empty,
-                _ => unreachable!("{e}"),
+                IntErrorKind::InvalidDigit if cleaned_num_slice.starts_with('-') => {
+                    ParseIntRadixErrorKind::Underflow
+                }
+                _ => unreachable!("{e}: {cleaned_num_slice}"),
             })
             .and_then(|val| NonZeroU32::new(val).ok_or(ParseIntRadixErrorKind::Zero))
             .map_err(|kind| ParseIntRadixError {

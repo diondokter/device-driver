@@ -15,9 +15,8 @@ device MyTestDevice {
         }
     },
     /// This is the Foo register
-    register FooRepeated {
+    register FooRepeated[4*3] {
         address: 3,
-        repeat: <4 by 3>,
         fields: FooFields,
     }
 }

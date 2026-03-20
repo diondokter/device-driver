@@ -51,9 +51,8 @@ device_driver::compile!(
             register-address-type: u8,
 
             /// Block description
-            block Bar {
+            block Bar[2*20] {
                 address-offset: 10,
-                repeat: <2 by 20>,
                 /// This is the Foo register
                 register Foo {
                     address: 0,

@@ -2,7 +2,6 @@ use std::{
     borrow::Cow,
     collections::HashMap,
     mem::{self, Discriminant, discriminant},
-    num::NonZero,
     str::FromStr,
     sync::LazyLock,
 };
@@ -25,8 +24,9 @@ use device_driver_diagnostics::{
     errors::{
         DuplicateProperty, FieldAddressOutOfRange, FieldAddressWrongOrder,
         IgnoredDocCommentOnProperty, InvalidExpressionType, InvalidIdentifier, InvalidNodeType,
-        InvalidPropertyName, InvalidShortProperty, InvalidSubnode, InvalidTypeConversion,
-        InvalidTypeSpecifier, MissingRequiredProperty, SizeBitsTooLarge, UnknownNodeType,
+        InvalidPropertyName, InvalidRepeat, InvalidShortProperty, InvalidSubnode,
+        InvalidTypeConversion, InvalidTypeSpecifier, MissingRequiredProperty, ResetValueNegative,
+        SizeBitsTooLarge, UnknownNodeType,
     },
 };
 use device_driver_parser::{Ast, Expression, Ident, Node, Property};
@@ -153,6 +153,29 @@ fn parse_node_to_shape<'src, S: Shape>(
             // Can't continue with this node when there's no name
             error = true;
         }
+    }
+
+    // Repeat
+
+    match (target.repeat(), node.repeat) {
+        (None, Some(node_repeat)) => {
+            diagnostics.add(InvalidRepeat {
+                repeat: node_repeat.span,
+                node_type: S::NODE_TYPE.with_span(node.node_type.span),
+            });
+        }
+        (Some(target_repeat), Some(node_repeat)) => {
+            *target_repeat = Some(Repeat {
+                source: match node_repeat.source {
+                    device_driver_parser::RepeatSource::Count(count) => RepeatSource::Count(count),
+                    device_driver_parser::RepeatSource::Enum(ident) => RepeatSource::Enum(
+                        IdentifierRef::new(ident.val.into()).with_span(ident.span),
+                    ),
+                },
+                stride: node_repeat.stride as i128,
+            })
+        }
+        (_, None) => {}
     }
 
     // Base type
@@ -341,6 +364,7 @@ fn parse_node_to_shape<'src, S: Shape>(
                 diagnostics.add(InvalidShortProperty {
                     property: short_property.span,
                     node_type: S::NODE_TYPE.with_span(node.node_type.span),
+                    got: short_property.to_string(),
                     expected: S::supported_properties()
                         .iter()
                         .filter_map(|p| {
@@ -480,6 +504,10 @@ trait Shape: Default + 'static {
     fn conversion_type(&mut self) -> Option<&mut Option<TypeConversion>> {
         None
     }
+
+    fn repeat(&mut self) -> Option<&mut Option<Repeat>> {
+        None
+    }
 }
 
 struct PropertyInfo<T: ?Sized> {
@@ -565,6 +593,7 @@ const FIELD_SET_EXAMPLE: Node<'static> = Node {
         val: "MyFieldSet",
         span: Span::empty(),
     },
+    repeat: None,
     type_specifier: None,
     properties: Vec::new(),
     short_properties: Vec::new(),
@@ -800,50 +829,21 @@ impl Shape for Block {
     }
 
     fn supported_properties() -> &'static [PropertyInfo<Self>] {
-        static MAP: &[PropertyInfo<Block>] = &[
-            PropertyInfo {
-                name: PropertyName::Exact("address-offset"),
-                allowed_expression_types: Cow::Borrowed(&[Expression::Number(0)]),
-                multiple_allowed: false,
-                required: true,
-                supports_doc_comments: false,
-                setter: |block: &mut Block, property, _, _, _| {
-                    block.address_offset = property
-                        .expression
-                        .as_number()
-                        .unwrap()
-                        .with_span(property.expression.span);
-                    false
-                },
+        static MAP: &[PropertyInfo<Block>] = &[PropertyInfo {
+            name: PropertyName::Exact("address-offset"),
+            allowed_expression_types: Cow::Borrowed(&[Expression::Number(0)]),
+            multiple_allowed: false,
+            required: true,
+            supports_doc_comments: false,
+            setter: |block: &mut Block, property, _, _, _| {
+                block.address_offset = property
+                    .expression
+                    .as_number()
+                    .unwrap()
+                    .with_span(property.expression.span);
+                false
             },
-            PropertyInfo {
-                name: PropertyName::Exact("repeat"),
-                allowed_expression_types: Cow::Borrowed(&[Expression::Repeat(
-                    device_driver_parser::Repeat {
-                        source: device_driver_parser::RepeatSource::Count(NonZero::new(4).unwrap()),
-                        stride: 2,
-                    },
-                )]),
-                multiple_allowed: false,
-                required: false,
-                supports_doc_comments: false,
-                setter: |block: &mut Block, property, _, _, _| {
-                    let repeat = property.expression.as_repeat().unwrap();
-                    block.repeat = Some(Repeat {
-                        source: match repeat.source {
-                            device_driver_parser::RepeatSource::Count(count) => {
-                                RepeatSource::Count(count)
-                            }
-                            device_driver_parser::RepeatSource::Enum(ident) => RepeatSource::Enum(
-                                IdentifierRef::new(ident.val.into()).with_span(ident.span),
-                            ),
-                        },
-                        stride: repeat.stride as i128,
-                    });
-                    false
-                },
-            },
-        ];
+        }];
         MAP
     }
 
@@ -861,6 +861,10 @@ impl Shape for Block {
 
     fn push_subnode(&mut self, object: Object) {
         self.objects.push(object);
+    }
+
+    fn repeat(&mut self) -> Option<&mut Option<Repeat>> {
+        Some(&mut self.repeat)
     }
 }
 
@@ -918,19 +922,31 @@ impl Shape for Register {
                 PropertyInfo {
                     name: PropertyName::Exact("reset"),
                     allowed_expression_types: Cow::Owned(vec![
-                        Expression::ResetArray(vec![12, 34]),
-                        Expression::ResetNumber(1234),
+                        Expression::ByteArray(vec![12, 34]),
+                        Expression::Number(1234),
                     ]),
                     multiple_allowed: false,
                     required: false,
                     supports_doc_comments: false,
-                    setter: |r: &mut Register, property, _, _, _| match &property.expression.value {
-                        Expression::ResetNumber(num) => {
-                            r.reset_value =
-                                Some(ResetValue::Integer(*num).with_span(property.expression.span));
-                            false
-                        }
-                        Expression::ResetArray(bytes) => {
+                    setter: |r: &mut Register, property, _, diagnostics, _| match &property
+                        .expression
+                        .value
+                    {
+                        Expression::Number(num) => match u128::try_from(*num) {
+                            Ok(num) => {
+                                r.reset_value = Some(
+                                    ResetValue::Integer(num).with_span(property.expression.span),
+                                );
+                                false
+                            }
+                            Err(_) => {
+                                diagnostics.add(ResetValueNegative {
+                                    reset_value: property.expression.span,
+                                });
+                                true
+                            }
+                        },
+                        Expression::ByteArray(bytes) => {
                             r.reset_value = Some(
                                 ResetValue::Array(bytes.to_vec())
                                     .with_span(property.expression.span),
@@ -938,37 +954,6 @@ impl Shape for Register {
                             false
                         }
                         _ => unreachable!(),
-                    },
-                },
-                PropertyInfo {
-                    name: PropertyName::Exact("repeat"),
-                    allowed_expression_types: Cow::Borrowed(&[Expression::Repeat(
-                        device_driver_parser::Repeat {
-                            source: device_driver_parser::RepeatSource::Count(
-                                const { NonZero::new(4).unwrap() },
-                            ),
-                            stride: 2,
-                        },
-                    )]),
-                    multiple_allowed: false,
-                    required: false,
-                    supports_doc_comments: false,
-                    setter: |r: &mut Register, property, _, _, _| {
-                        let repeat = property.expression.as_repeat().unwrap();
-                        r.repeat = Some(Repeat {
-                            source: match repeat.source {
-                                device_driver_parser::RepeatSource::Count(count) => {
-                                    RepeatSource::Count(count)
-                                }
-                                device_driver_parser::RepeatSource::Enum(ident) => {
-                                    RepeatSource::Enum(
-                                        IdentifierRef::new(ident.val.into()).with_span(ident.span),
-                                    )
-                                }
-                            },
-                            stride: repeat.stride as i128,
-                        });
-                        false
                     },
                 },
                 PropertyInfo {
@@ -1021,6 +1006,10 @@ impl Shape for Register {
             .into()
         });
         &MAP
+    }
+
+    fn repeat(&mut self) -> Option<&mut Option<Repeat>> {
+        Some(&mut self.repeat)
     }
 }
 
@@ -1275,37 +1264,6 @@ impl Shape for Command {
                     },
                 },
                 PropertyInfo {
-                    name: PropertyName::Exact("repeat"),
-                    allowed_expression_types: Cow::Borrowed(&[Expression::Repeat(
-                        device_driver_parser::Repeat {
-                            source: device_driver_parser::RepeatSource::Count(
-                                const { NonZero::new(4).unwrap() },
-                            ),
-                            stride: 2,
-                        },
-                    )]),
-                    multiple_allowed: false,
-                    required: false,
-                    supports_doc_comments: false,
-                    setter: |command: &mut Command, property, _, _, _| {
-                        let repeat = property.expression.as_repeat().unwrap();
-                        command.repeat = Some(Repeat {
-                            source: match repeat.source {
-                                device_driver_parser::RepeatSource::Count(count) => {
-                                    RepeatSource::Count(count)
-                                }
-                                device_driver_parser::RepeatSource::Enum(ident) => {
-                                    RepeatSource::Enum(
-                                        IdentifierRef::new(ident.val.into()).with_span(ident.span),
-                                    )
-                                }
-                            },
-                            stride: repeat.stride as i128,
-                        });
-                        false
-                    },
-                },
-                PropertyInfo {
                     name: PropertyName::Exact("fields-in"),
                     allowed_expression_types: Cow::Owned(vec![
                         Expression::TypeReference(device_driver_parser::Ident {
@@ -1412,6 +1370,10 @@ impl Shape for Command {
         });
         &MAP
     }
+
+    fn repeat(&mut self) -> Option<&mut Option<Repeat>> {
+        Some(&mut self.repeat)
+    }
 }
 
 impl Shape for Field {
@@ -1484,35 +1446,6 @@ impl Shape for Field {
                     false
                 },
             },
-            PropertyInfo {
-                name: PropertyName::Short("repeat"),
-                allowed_expression_types: Cow::Borrowed(&[Expression::Repeat(
-                    device_driver_parser::Repeat {
-                        source: device_driver_parser::RepeatSource::Count(
-                            const { NonZero::new(4).unwrap() },
-                        ),
-                        stride: 2,
-                    },
-                )]),
-                multiple_allowed: false,
-                required: false,
-                supports_doc_comments: false,
-                setter: |field: &mut Field, property, _, _, _| {
-                    let repeat = property.expression.as_repeat().unwrap();
-                    field.repeat = Some(Repeat {
-                        source: match repeat.source {
-                            device_driver_parser::RepeatSource::Count(count) => {
-                                RepeatSource::Count(count)
-                            }
-                            device_driver_parser::RepeatSource::Enum(ident) => RepeatSource::Enum(
-                                IdentifierRef::new(ident.val.into()).with_span(ident.span),
-                            ),
-                        },
-                        stride: repeat.stride as i128,
-                    });
-                    false
-                },
-            },
         ];
         MAP
     }
@@ -1523,5 +1456,9 @@ impl Shape for Field {
 
     fn conversion_type(&mut self) -> Option<&mut Option<TypeConversion>> {
         Some(&mut self.field_conversion)
+    }
+
+    fn repeat(&mut self) -> Option<&mut Option<Repeat>> {
+        Some(&mut self.repeat)
     }
 }

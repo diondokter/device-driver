@@ -47,6 +47,7 @@ pub struct Node<'src> {
     pub doc_comments: Vec<Spanned<&'src str>>,
     pub node_type: Ident<'src>,
     pub name: Ident<'src>,
+    pub repeat: Option<Spanned<Repeat<'src>>>,
     pub type_specifier: Option<Spanned<TypeSpecifier<'src>>>,
     pub short_properties: Vec<Spanned<Expression<'src>>>,
     pub properties: Vec<Spanned<Property<'src>>>,
@@ -131,9 +132,7 @@ pub struct Property<'src> {
 #[derive(Debug, Clone)]
 pub enum Expression<'src> {
     AddressRange { end: i128, start: i128 },
-    Repeat(Repeat<'src>),
-    ResetNumber(u128),
-    ResetArray(Vec<u8>),
+    ByteArray(Vec<u8>),
     BaseType(BaseType),
     Integer(Integer),
     Allow,
@@ -174,6 +173,14 @@ impl<'src> Expression<'src> {
         }
     }
 
+    pub fn as_unsigned_integer(&self) -> Option<Integer> {
+        if let Self::Integer(v) = self {
+            Some(*v)
+        } else {
+            None
+        }
+    }
+
     pub fn as_number(&self) -> Option<i128> {
         if let Self::Number(v) = self {
             Some(*v)
@@ -193,16 +200,7 @@ impl<'src> Expression<'src> {
     pub fn get_human_string(&self) -> Cow<'static, str> {
         match self {
             Expression::AddressRange { end, start } => format!("{end}:{start}").into(),
-            Expression::Repeat(Repeat {
-                source: RepeatSource::Count(count),
-                stride,
-            }) => format!("<{count} by {stride}>").into(),
-            Expression::Repeat(Repeat {
-                source: RepeatSource::Enum(ident),
-                stride,
-            }) => format!("<{} by {stride}>", ident.val).into(),
-            Expression::ResetNumber(num) => format!("[{num}]").into(),
-            Expression::ResetArray(items) => format!("{items:?}").into(),
+            Expression::ByteArray(items) => format!("{items:?}").into(),
             Expression::BaseType(base_type) => base_type.to_string().into(),
             Expression::Integer(integer) => integer.to_string().into(),
             Expression::Allow => "allow".into(),
@@ -220,23 +218,13 @@ impl<'src> Expression<'src> {
             Expression::Error => "ERROR".into(),
         }
     }
-
-    pub fn as_repeat(&self) -> Option<Repeat<'src>> {
-        if let Self::Repeat(v) = self {
-            Some(*v)
-        } else {
-            None
-        }
-    }
 }
 
 impl<'src> Display for Expression<'src> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Expression::AddressRange { .. } => write!(f, "range"),
-            Expression::Repeat(Repeat { .. }) => write!(f, "repeat"),
-            Expression::ResetNumber(_) => write!(f, "reset number"),
-            Expression::ResetArray(_) => write!(f, "reset array"),
+            Expression::ByteArray(_) => write!(f, "[bytes]"),
             Expression::BaseType(_) => write!(f, "base type"),
             Expression::Integer(_) => write!(f, "integer type"),
             Expression::Allow => write!(f, "allow"),
@@ -345,52 +333,30 @@ where
             .labelled("'range'");
         let any_base_type = select! { Token::BaseType(bt) => bt }.labelled("'base type'");
         let any_integer = select! { Token::Integer(i) => i }.labelled("'integer type'");
-        let repeat_expression = any_num
-            .try_map(try_num::<NonZeroU32>)
-            .map(RepeatSource::Count)
-            .or(any_ident.map(RepeatSource::Enum))
-            .then(
-                just(Token::By)
-                    .ignore_then(any_num.try_map(try_num::<i32>))
-                    .or_not(),
-            )
-            .map(|(source, stride)| {
-                Expression::Repeat(Repeat {
-                    source,
-                    stride: stride.unwrap_or(1),
-                })
-            })
-            .delimited_by(just(Token::AngleOpen), just(Token::AngleClose))
-            .labelled("'<repeat>'")
-            .boxed();
-        let reset_expression = any_num
+        let array_expression = any_num
             .try_map(try_num::<u128>)
             .map_with(|num, extra| (num, extra.span()))
             .separated_by(just(Token::Comma))
             .allow_trailing()
             .collect::<Vec<_>>()
             .validate(|numbers, _, emitter| {
-                if numbers.len() == 1 {
-                    Expression::ResetNumber(numbers[0].0)
-                } else {
-                    match numbers
-                        .into_iter()
-                        .map(|(num, num_span)| {
-                            u8::try_from(num)
-                                .map_err(|_| Rich::custom(num_span, "Value must be a byte"))
-                        })
-                        .collect::<Result<Vec<u8>, _>>()
-                    {
-                        Ok(array) => Expression::ResetArray(array),
-                        Err(e) => {
-                            emitter.emit(e);
-                            Expression::Error
-                        }
+                match numbers
+                    .into_iter()
+                    .map(|(num, num_span)| {
+                        u8::try_from(num)
+                            .map_err(|_| Rich::custom(num_span, "Value must be a byte"))
+                    })
+                    .collect::<Result<Vec<u8>, _>>()
+                {
+                    Ok(array) => Expression::ByteArray(array),
+                    Err(e) => {
+                        emitter.emit(e);
+                        Expression::Error
                     }
                 }
             })
             .delimited_by(just(Token::BracketOpen), just(Token::BracketClose))
-            .labelled("'[reset]'")
+            .labelled("'[bytes]'")
             .boxed();
 
         // Expression without type reference
@@ -417,8 +383,7 @@ where
                 )
                 .map(Expression::CatchAllNumber)
                 .labelled("'catch-all number'"),
-            repeat_expression,
-            reset_expression,
+            array_expression,
             just(Token::Allow).map(|_| Expression::Allow),
             select! { Token::Access(val) => val }
                 .map(Expression::Access)
@@ -464,6 +429,16 @@ where
                 prop
             })
             .labelled("'property'")
+            .boxed();
+
+        let repeat = any_num
+            .try_map(try_num::<NonZeroU32>)
+            .map(RepeatSource::Count)
+            .or(any_ident.map(RepeatSource::Enum))
+            .then(just(Token::Star).ignore_then(any_num.try_map(try_num::<i32>)))
+            .delimited_by(just(Token::BracketOpen), just(Token::BracketClose))
+            .map_with(|(source, stride), extra| Repeat { source, stride }.spanned(extra.span()))
+            .labelled("'[repeat]'")
             .boxed();
 
         let type_conversion = just(Token::As).ignore_then(just(Token::Try).or_not()).then(
@@ -520,11 +495,15 @@ where
             .collect()
             .then(any_ident.labelled("'node type'"))
             .then(any_ident.labelled("'node name'"))
+            .then(repeat.or_not())
             .then(simple_expression.repeated().collect::<Vec<_>>())
             .then(type_specifier.or_not())
             .then(node_body.or_not())
             .map_with(
-                |(((((doc_comments, node_type), name), expressions), type_specifier), body),
+                |(
+                    (((((doc_comments, node_type), name), repeat), expressions), type_specifier),
+                    body,
+                ),
                  extra| {
                     let (properties, sub_nodes) = body.unwrap_or_default();
 
@@ -532,6 +511,7 @@ where
                         doc_comments,
                         node_type,
                         name,
+                        repeat,
                         type_specifier,
                         properties,
                         short_properties: expressions,
