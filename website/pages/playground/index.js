@@ -1,14 +1,16 @@
 import * as device_driver_wasm from '../../pkg';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
-import * as KDLMonarch from './kdl.monarch'
+import * as DDSLMonarch from './ddsl.monarch'
 import * as AU from 'ansi_up';
 
 await device_driver_wasm;
 await monaco;
 
-monaco.languages.register({ id: 'kdl' })
-monaco.languages.setMonarchTokensProvider('kdl', KDLMonarch.language)
-monaco.languages.setLanguageConfiguration('kdl', KDLMonarch.config)
+monaco.languages.register({ id: 'ddsl' })
+monaco.languages.onLanguage('ddsl', () => {
+    monaco.languages.setMonarchTokensProvider('ddsl', DDSLMonarch.language);
+    monaco.languages.setLanguageConfiguration('ddsl', DDSLMonarch.config);
+});
 
 const DEFAULT_CODE = `device Foo {
     register-address-type: u8,
@@ -20,7 +22,7 @@ const DEFAULT_CODE = `device Foo {
         fields: fieldset BarFields {
             size-bits: 8,
 
-            field xena 2:0 <2 by 2> -> u8 as enum Xena {
+            field xena[2*2] 2:0 -> u8 as enum Xena {
                 A: _,
                 B: _,
                 D: catch-all 5,
@@ -45,7 +47,7 @@ if (start_options == null) {
 
 var code_editor = monaco.editor.create(document.getElementById('code-editor'), {
     value: start_code,
-    language: 'kdl',
+    language: 'ddsl',
     theme: 'vs-dark',
     automaticLayout: true,
 });
@@ -146,10 +148,10 @@ function diagnostics_chars_per_line() {
  * @returns {String}
  * */
 function replace_paths_with_links(diagnostics) {
-    return diagnostics.replace(/\[.+.kdl:\d+:\d+]/gm, (path_block) => { // For miette reports
+    return diagnostics.replace(/\[.+.ddsl:\d+:\d+]/gm, (path_block) => { // For miette reports
         var splits = path_block.replace("]", "").split(":");
         return `<a href="javascript:Website.then((w) => w.scroll_to(${Number.parseInt(splits[1])}, ${Number.parseInt(splits[2])}))">${path_block}</a>`;
-    }).replace(/\w+.kdl:\d+:\d+/gm, (path_block) => { // For annotate-snippets reports
+    }).replace(/\w+.ddsl:\d+:\d+/gm, (path_block) => { // For annotate-snippets reports
         var splits = path_block.split(":");
         return `<a href="javascript:Website.then((w) => w.scroll_to(${Number.parseInt(splits[1])}, ${Number.parseInt(splits[2])}))">${path_block}</a>`;
     });
