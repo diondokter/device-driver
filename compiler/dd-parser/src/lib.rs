@@ -507,6 +507,9 @@ where
                  extra| {
                     let (properties, sub_nodes) = body.unwrap_or_default();
 
+                    let mut span: Span = extra.span();
+                    span = span.start_from(node_type.span);
+
                     Node {
                         doc_comments,
                         node_type,
@@ -516,7 +519,7 @@ where
                         properties,
                         short_properties: expressions,
                         sub_nodes,
-                        span: extra.span(), // TODO: Span should not include doc comments
+                        span,
                     }
                 },
             )

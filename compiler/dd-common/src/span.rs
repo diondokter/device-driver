@@ -16,12 +16,14 @@ impl Span {
     }
 
     /// Return self if not empty, or the other span if self is empty
+    #[must_use]
     pub fn or(&self, other: Self) -> Self {
         if self.is_empty() { other } else { *self }
     }
 
     /// Get the combined span that encompasses both spans.
     /// The order does not matter.
+    #[must_use]
     pub fn to(&self, other: Self) -> Self {
         Self {
             start: self.start.min(other.start),
@@ -30,9 +32,23 @@ impl Span {
     }
 
     /// Take the current span, but skip the start until the `skip` span has been passed
+    #[must_use]
     pub fn skip(&self, skip: Self) -> Self {
+        assert!(skip.end >= self.start);
+        assert!(skip.end <= self.end);
         Self {
             start: skip.end,
+            end: self.end,
+        }
+    }
+
+    /// Take the current span, but skip the first part and start from the given start span
+    #[must_use]
+    pub fn start_from(&self, start: Self) -> Self {
+        assert!(start.start >= self.start);
+        assert!(start.start <= self.end);
+        Self {
+            start: start.start,
             end: self.end,
         }
     }
