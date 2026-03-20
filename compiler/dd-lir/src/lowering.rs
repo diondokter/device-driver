@@ -335,7 +335,7 @@ fn transform_field_set(manifest: &mir::Manifest, field_set: &mir::FieldSet) -> l
                     .as_ref()
                     .map_or(lir::Repeat::None, |repeat| match &repeat.source {
                         RepeatSource::Count(c) => lir::Repeat::Count {
-                            count: *c,
+                            count: c.get(),
                             stride: repeat.stride,
                         },
                         RepeatSource::Enum(enum_name) => {
@@ -423,7 +423,7 @@ fn repeat_to_method_kind(repeat: &Option<Repeat>, manifest: &mir::Manifest) -> l
             source: RepeatSource::Count(count),
             stride,
         }) => lir::Repeat::Count {
-            count: *count,
+            count: count.get(),
             stride: *stride,
         },
         Some(Repeat {

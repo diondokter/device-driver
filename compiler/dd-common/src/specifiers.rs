@@ -1,4 +1,4 @@
-use std::{fmt::Display, str::FromStr};
+use std::{fmt::Display, num::NonZeroU32, str::FromStr};
 
 use crate::{identifier::IdentifierRef, span::Spanned};
 
@@ -273,7 +273,7 @@ pub struct Repeat {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RepeatSource {
-    Count(u64),
+    Count(NonZeroU32),
     Enum(Spanned<IdentifierRef>),
 }
 

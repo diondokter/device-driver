@@ -2,6 +2,7 @@ use std::{
     borrow::Cow,
     collections::HashMap,
     mem::{self, Discriminant, discriminant},
+    num::NonZero,
     str::FromStr,
     sync::LazyLock,
 };
@@ -819,7 +820,7 @@ impl Shape for Block {
                 name: PropertyName::Exact("repeat"),
                 allowed_expression_types: Cow::Borrowed(&[Expression::Repeat(
                     device_driver_parser::Repeat {
-                        source: device_driver_parser::RepeatSource::Count(4),
+                        source: device_driver_parser::RepeatSource::Count(NonZero::new(4).unwrap()),
                         stride: 2,
                     },
                 )]),
@@ -831,7 +832,7 @@ impl Shape for Block {
                     block.repeat = Some(Repeat {
                         source: match repeat.source {
                             device_driver_parser::RepeatSource::Count(count) => {
-                                RepeatSource::Count(count as u64)
+                                RepeatSource::Count(count)
                             }
                             device_driver_parser::RepeatSource::Enum(ident) => RepeatSource::Enum(
                                 IdentifierRef::new(ident.val.into()).with_span(ident.span),
@@ -943,7 +944,9 @@ impl Shape for Register {
                     name: PropertyName::Exact("repeat"),
                     allowed_expression_types: Cow::Borrowed(&[Expression::Repeat(
                         device_driver_parser::Repeat {
-                            source: device_driver_parser::RepeatSource::Count(4),
+                            source: device_driver_parser::RepeatSource::Count(
+                                const { NonZero::new(4).unwrap() },
+                            ),
                             stride: 2,
                         },
                     )]),
@@ -955,7 +958,7 @@ impl Shape for Register {
                         r.repeat = Some(Repeat {
                             source: match repeat.source {
                                 device_driver_parser::RepeatSource::Count(count) => {
-                                    RepeatSource::Count(count as u64)
+                                    RepeatSource::Count(count)
                                 }
                                 device_driver_parser::RepeatSource::Enum(ident) => {
                                     RepeatSource::Enum(
@@ -1275,7 +1278,9 @@ impl Shape for Command {
                     name: PropertyName::Exact("repeat"),
                     allowed_expression_types: Cow::Borrowed(&[Expression::Repeat(
                         device_driver_parser::Repeat {
-                            source: device_driver_parser::RepeatSource::Count(4),
+                            source: device_driver_parser::RepeatSource::Count(
+                                const { NonZero::new(4).unwrap() },
+                            ),
                             stride: 2,
                         },
                     )]),
@@ -1287,7 +1292,7 @@ impl Shape for Command {
                         command.repeat = Some(Repeat {
                             source: match repeat.source {
                                 device_driver_parser::RepeatSource::Count(count) => {
-                                    RepeatSource::Count(count as u64)
+                                    RepeatSource::Count(count)
                                 }
                                 device_driver_parser::RepeatSource::Enum(ident) => {
                                     RepeatSource::Enum(
@@ -1483,7 +1488,9 @@ impl Shape for Field {
                 name: PropertyName::Short("repeat"),
                 allowed_expression_types: Cow::Borrowed(&[Expression::Repeat(
                     device_driver_parser::Repeat {
-                        source: device_driver_parser::RepeatSource::Count(4),
+                        source: device_driver_parser::RepeatSource::Count(
+                            const { NonZero::new(4).unwrap() },
+                        ),
                         stride: 2,
                     },
                 )]),
@@ -1495,7 +1502,7 @@ impl Shape for Field {
                     field.repeat = Some(Repeat {
                         source: match repeat.source {
                             device_driver_parser::RepeatSource::Count(count) => {
-                                RepeatSource::Count(count as u64)
+                                RepeatSource::Count(count)
                             }
                             device_driver_parser::RepeatSource::Enum(ident) => RepeatSource::Enum(
                                 IdentifierRef::new(ident.val.into()).with_span(ident.span),

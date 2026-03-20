@@ -1,4 +1,4 @@
-use std::{borrow::Cow, fmt::Display};
+use std::{borrow::Cow, fmt::Display, num::NonZeroU32};
 
 use chumsky::{input::ValueInput, prelude::*};
 use device_driver_common::{
@@ -208,9 +208,9 @@ impl<'src> Expression<'src> {
             Expression::Allow => "allow".into(),
             Expression::Number(num) => num.to_string().into(),
             Expression::DefaultNumber(Some(num)) => format!("default {num}").into(),
-            Expression::DefaultNumber(None) => format!("default _").into(),
+            Expression::DefaultNumber(None) => "default _".into(),
             Expression::CatchAllNumber(Some(num)) => format!("catch-all {num}").into(),
-            Expression::CatchAllNumber(None) => format!("catch-all _").into(),
+            Expression::CatchAllNumber(None) => "catch-all _".into(),
             Expression::String(val) => format!("\"{val}\"").into(),
             Expression::Access(val) => val.to_string().into(),
             Expression::ByteOrder(val) => val.to_string().into(),
@@ -262,13 +262,13 @@ pub struct Repeat<'src> {
 
 #[derive(Debug, Clone, Copy)]
 pub enum RepeatSource<'src> {
-    Count(u32),
+    Count(NonZeroU32),
     Enum(Ident<'src>),
 }
 
 impl<'src> Default for RepeatSource<'src> {
     fn default() -> Self {
-        Self::Count(1)
+        Self::Count(1.try_into().unwrap())
     }
 }
 
@@ -293,21 +293,24 @@ fn try_num<'tokens, 'src: 'tokens, I: ParseIntRadix>(
             ParseIntRadixErrorKind::Overflow => Err(Rich::custom(
                 span,
                 format!(
-                    "Number `{source}` is parsed as a {}{target_bits}, but overflows.",
+                    "number `{source}` is parsed as a {}{target_bits}, but overflows.",
                     if target_signed { 'i' } else { 'u' }
                 ),
             )),
             ParseIntRadixErrorKind::Underflow => Err(Rich::custom(
                 span,
                 format!(
-                    "Number `{source}` is parsed as a {}{target_bits}, but underflows.",
+                    "number `{source}` is parsed as a {}{target_bits}, but underflows.",
                     if target_signed { 'i' } else { 'u' }
                 ),
             )),
             ParseIntRadixErrorKind::Empty => Err(Rich::custom(
                 span,
-                format!("Could not parse `{source}` as a number because it contains no numbers"),
+                format!("could not parse `{source}` as a number because it contains no numbers"),
             )),
+            ParseIntRadixErrorKind::Zero => {
+                Err(Rich::custom(span, "number can't be 0 in this position"))
+            }
         },
     }
 }
@@ -343,7 +346,7 @@ where
         let any_base_type = select! { Token::BaseType(bt) => bt }.labelled("'base type'");
         let any_integer = select! { Token::Integer(i) => i }.labelled("'integer type'");
         let repeat_expression = any_num
-            .try_map(try_num::<u32>)
+            .try_map(try_num::<NonZeroU32>)
             .map(RepeatSource::Count)
             .or(any_ident.map(RepeatSource::Enum))
             .then(

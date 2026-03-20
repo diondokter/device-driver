@@ -33,7 +33,7 @@ pub struct BlockMethod {
 pub enum Repeat {
     None,
     Count {
-        count: u64,
+        count: u32,
         stride: i128,
     },
     Enum {

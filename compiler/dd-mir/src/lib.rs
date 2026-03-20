@@ -1,3 +1,5 @@
+use std::num::NonZero;
+
 use device_driver_common::{
     identifier::IdentifierRef,
     specifiers::{Repeat, RepeatSource},
@@ -54,7 +56,7 @@ pub fn find_min_max_addresses<'m>(
 
         if let Some(address) = object.address() {
             let repeat = object.repeat().cloned().unwrap_or(Repeat {
-                source: RepeatSource::Count(1),
+                source: RepeatSource::Count(NonZero::new(1).unwrap()),
                 stride: 0,
             });
 
@@ -63,8 +65,8 @@ pub fn find_min_max_addresses<'m>(
             match repeat.source {
                 RepeatSource::Count(count) => {
                     let count_0_address = total_address_offsets + address.value;
-                    let count_max_address =
-                        count_0_address + (i128::from(count.saturating_sub(1)) * repeat.stride);
+                    let count_max_address = count_0_address
+                        + (i128::from(count.get().saturating_sub(1)) * repeat.stride);
                     let min_address = count_0_address.min(count_max_address);
                     let max_address = count_0_address.max(count_max_address);
 

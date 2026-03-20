@@ -1,4 +1,8 @@
-use std::{borrow::Cow, fmt::Display, num::IntErrorKind};
+use std::{
+    borrow::Cow,
+    fmt::Display,
+    num::{IntErrorKind, NonZeroU32},
+};
 
 use device_driver_common::{
     span::{SpanExt, Spanned},
@@ -264,6 +268,29 @@ impl_parse_int_radix!(i32);
 impl_parse_int_radix!(i64);
 impl_parse_int_radix!(i128);
 
+impl ParseIntRadix for NonZeroU32 {
+    fn parse<'src>(
+        source: &'src str,
+        cleaned_num_slice: &str,
+        radix: u32,
+    ) -> Result<Self, ParseIntRadixError<'src>> {
+        u32::from_str_radix(cleaned_num_slice, radix)
+            .map_err(|e| match e.kind() {
+                IntErrorKind::PosOverflow => ParseIntRadixErrorKind::Overflow,
+                IntErrorKind::NegOverflow => ParseIntRadixErrorKind::Underflow,
+                IntErrorKind::Empty => ParseIntRadixErrorKind::Empty,
+                _ => unreachable!("{e}"),
+            })
+            .and_then(|val| NonZeroU32::new(val).ok_or(ParseIntRadixErrorKind::Zero))
+            .map_err(|kind| ParseIntRadixError {
+                source,
+                kind,
+                target_bits: Self::BITS,
+                target_signed: false,
+            })
+    }
+}
+
 pub struct ParseIntRadixError<'src> {
     pub source: &'src str,
     pub kind: ParseIntRadixErrorKind,
@@ -275,4 +302,6 @@ pub enum ParseIntRadixErrorKind {
     Overflow,
     Underflow,
     Empty,
+    // A nonzero number is zero
+    Zero,
 }

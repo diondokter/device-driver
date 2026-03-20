@@ -119,7 +119,7 @@ fn get_repeat_iter(manifest: &Manifest, field: &Field) -> (Vec<i128>, bool) {
         let stride = repeat.stride;
         match &repeat.source {
             RepeatSource::Count(count) => (
-                (0..i128::from(*count))
+                (0..i128::from(count.get()))
                     .map(move |count| count * stride)
                     .collect(),
                 true,
@@ -142,6 +142,8 @@ fn get_repeat_iter(manifest: &Manifest, field: &Field) -> (Vec<i128>, bool) {
 
 #[cfg(test)]
 mod tests {
+    use std::num::NonZero;
+
     use device_driver_common::{
         span::{Span, SpanExt},
         specifiers::Repeat,
@@ -296,7 +298,7 @@ mod tests {
                     name: "my_field".into_with_dummy_span(),
                     field_address: AddressRange { start: 0, end: 4 }.with_dummy_span(),
                     repeat: Some(Repeat {
-                        source: RepeatSource::Count(3),
+                        source: RepeatSource::Count(NonZero::new(3).unwrap()),
                         stride: 5,
                     }),
                     ..Default::default()
@@ -415,7 +417,7 @@ mod tests {
                         name: "my_field".into_with_dummy_span(),
                         field_address: AddressRange { start: 0, end: 0 }.with_dummy_span(),
                         repeat: Some(Repeat {
-                            source: RepeatSource::Count(6),
+                            source: RepeatSource::Count(NonZero::new(6).unwrap()),
                             stride: 1,
                         }),
                         ..Default::default()
