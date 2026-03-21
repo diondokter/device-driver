@@ -117,7 +117,6 @@ header {
             border: none;
             height: 100%;
             outline: none;
-            text-align: justify;
 
             &:focus {
                 outline: 2px solid #46272c;
