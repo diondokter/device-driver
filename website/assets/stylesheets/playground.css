@@ -1,7 +1,33 @@
+:root {
+    --header-red: #960018;
+    --header-box: #df8191;
+    --header-box-hover: #dd9ea9;
+    --header-box-active: #e7cfd4;
+    --separator-color: #cccccc;
+    --diagnostics-bg: #f3f3f3;
+    --editor-bg: #ffffff;
+    --text-color: #121212;
+
+    color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --header-red: #960018;
+    --header-box: #41121a;
+    --header-box-hover: #46272c;
+    --header-box-active: #372327;
+    --separator-color: #2a2a2a;
+    --diagnostics-bg: #181818;
+    --editor-bg: #1f1f1f;
+    --text-color: #dcdcdc;
+  }
+}
+
 body {
-    background-color: #181818;
+    background-color: var(--diagnostics-bg);
     margin: 0px;
-    color: #dcdcdc;
+    color: var(--text-color);
     font-family: Consolas, sans-serif;
     display: grid;
     height: 100%;
@@ -11,7 +37,7 @@ body {
 
 #editor-container {
     width: 100%;
-    background-color: #1f1f1f;
+    background-color: var(--editor-bg);
     clear: both;
     display: grid;
     grid-template-columns: calc(50% - 2.5px) 5px auto;
@@ -20,13 +46,12 @@ body {
 
 #code-editor,
 #output-editor {
-    margin-top: 5px;
     min-width: 0;
     min-height: 0;
 }
 
 .separator {
-    background-color: #2a2a2a;
+    background-color: var(--separator-color);
     padding: 0px;
     margin: 0px;
     transition-delay: 0.1s;
@@ -35,7 +60,7 @@ body {
 
 .separator:hover {
     transition-delay: 0.2s;
-    background-color: #960018;
+    background-color: var(--header-red);
 }
 
 
@@ -81,8 +106,8 @@ header {
     display: flex;
     align-items: stretch;
     justify-content: space-around;
-    background-color: #960018;
-    color: #dcdcdc;
+    background-color: var(--header-red);
+    color: var(--text-color);
     padding: 5px;
     flex-direction: row;
     flex-wrap: wrap;
@@ -90,7 +115,7 @@ header {
 
     .box {
         display: flex;
-        background-color: #41121a;
+        background-color: var(--header-box);
         border-radius: 4px;
         align-items: center;
         justify-content: space-around;
@@ -102,30 +127,30 @@ header {
             border-radius: 4px;
 
             &:hover {
-                background-color: #46272c;
+                background-color: var(--header-box-hover);
             }
 
             &:active {
-                background-color: #372327;
+                background-color: var(--header-box-active);
             }
         }
 
         textarea {
             resize: none;
-            background-color: #372327;
-            color: #dcdcdc;
+            background-color: var(--header-box-active);
+            color: var(--text-color);
             border: none;
             height: 100%;
             outline: none;
 
             &:focus {
-                outline: 2px solid #46272c;
+                outline: 2px solid var(--header-box-hover);
             }
         }
 
         select {
-            background-color: #372327;
-            color: #dcdcdc;
+            background-color: var(--header-box-active);
+            color: var(--text-color);
             border: none;
             height: 100%;
             text-align: center;
@@ -143,4 +168,8 @@ header {
     .nopad {
         padding: 1px;
     }
+}
+
+.noselect {
+    user-select: none;
 }

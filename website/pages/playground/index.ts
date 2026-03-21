@@ -3,6 +3,11 @@ import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import * as DDSLMonarch from './ddsl.monarch'
 import * as AU from 'ansi_up';
 
+enum Theme {
+    Dark,
+    Light,
+}
+
 const DEFAULT_CODE = `device Foo {
     register-address-type: u8,
 
@@ -46,7 +51,11 @@ function setup(): PageContext {
     }
     compilerOptionsInput.value = startOptions;
 
-    let editors = setup_monaco(startCode);
+    const darkThemeMq = window.matchMedia("(prefers-color-scheme: dark)");
+    darkThemeMq.addEventListener('change', onThemeChange);
+    let theme = darkThemeMq.matches ? Theme.Dark : Theme.Light;
+
+    let editors = setup_monaco(startCode, theme);
 
     let recompile = () => {
         let source = editors.codeEditor.getModel().getValue();
@@ -98,10 +107,11 @@ function setup(): PageContext {
         editors,
         compilerOptionsInput,
         targetPickerSelect,
+        currentTheme: theme,
     };
 }
 
-function setup_monaco(start_code: string): Editors {
+function setup_monaco(start_code: string, theme: Theme): Editors {
     monaco.languages.register({ id: 'ddsl' })
     monaco.languages.onLanguage('ddsl', () => {
         monaco.languages.setMonarchTokensProvider('ddsl', DDSLMonarch.language);
@@ -111,14 +121,14 @@ function setup_monaco(start_code: string): Editors {
     let codeEditor = monaco.editor.create(document.getElementById('code-editor'), {
         value: start_code,
         language: 'ddsl',
-        theme: 'vs-dark',
+        theme: monacoThemeString(theme),
         automaticLayout: true,
     });
 
     let outputEditor = monaco.editor.create(document.getElementById('output-editor'), {
         value: "",
         language: 'rust',
-        theme: 'vs-dark',
+        theme: monacoThemeString(theme),
         readOnly: true,
         automaticLayout: true,
     });
@@ -259,11 +269,25 @@ function clamp(num: number, min: number, max: number) {
 
 let page_ctx = setup();
 
-type PageContext = {
+interface PageContext {
     editors: Editors,
     targetPickerSelect: HTMLSelectElement,
     compilerOptionsInput: HTMLTextAreaElement,
-};
+    currentTheme: Theme,
+}
+
+function onThemeChange(e: MediaQueryListEvent) {
+    page_ctx.currentTheme = e.matches ? Theme.Dark : Theme.Light;
+    monaco.editor.setTheme(monacoThemeString(page_ctx.currentTheme));
+}
+
+function monacoThemeString(theme: Theme): string {
+    switch (theme) {
+        case Theme.Dark: return 'vs-dark';
+        case Theme.Light: return 'vs-light';
+        default: throw "unknown theme";
+    }
+}
 
 export function scroll_to(line: number, column: number) {
     page_ctx.editors.codeEditor.setPosition({ lineNumber: line, column: column });
