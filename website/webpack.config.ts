@@ -6,8 +6,8 @@ const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
 
 module.exports = {
     entry: {
-        home: './pages/home/index.js',
-        playground: './pages/playground/index.js',
+        home: './pages/home/index.ts',
+        playground: './pages/playground/index.ts',
     },
     output: {
         path: path.resolve(__dirname, '..', 'dist', 'website'),
@@ -38,7 +38,7 @@ module.exports = {
             ]
         }),
         new MonacoWebpackPlugin({
-            languages: ['kdl', 'rust']
+            languages: ['rust']
         }),
     ],
     module: {
@@ -48,10 +48,14 @@ module.exports = {
                 use: ['style-loader', 'css-loader']
             },
             {
-                test: /\.ttf$/,
-                type: 'asset/resource'
-            }
+                test: /\.tsx?$/,
+                use: "ts-loader",
+                exclude: /node_modules/,
+            },
         ]
+    },
+    resolve: {
+        extensions: [".tsx", ".ts", ".js"],
     },
     watchOptions: {
         aggregateTimeout: 1000, // Delays the rebuild slightly to let WasmPack finish

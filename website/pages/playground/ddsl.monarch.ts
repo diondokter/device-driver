@@ -1,4 +1,6 @@
-export const config = {
+import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
+
+export const config: monaco.languages.LanguageConfiguration = {
   comments: {
     lineComment: '//',
   },
@@ -18,7 +20,7 @@ export const config = {
   ]
 };
 
-export const language = {
+export const language: monaco.languages.IMonarchLanguage = {
   // Set defaultToken to invalid to see what you do not tokenize yet
   defaultToken: 'invalid',
 
