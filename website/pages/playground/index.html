@@ -8,28 +8,26 @@
 </head>
 
 <body>
-    <ul id="header">
-        <a href="../">
-            <img src="../assets/images/ddsl.png" style="height: 100%; object-fit: contain;" />
+    <header>
+        <a class="box nopad" href="../">
+            <img src="../assets/images/ddsl.png" height="64px" />
         </a>
-        <li id="compiler-options">
-            <label for="options">Options:</label>
-            <input type="text" id="compiler-options-input">
-        </li>
-        <li>
-            <div id="target-picker">
-                <label for="targets">Target:</label>
-                <select name="targets" id="target-picker-select">
-                    <option value="Rust">Rust</option>
-                </select>
-            </div>
-        </li>
-        <li>
-            <a onclick="Website.then((w) => { if (confirm('Reset to default code example?')) { w.reset() }})">
-                Reset code
-            </a>
-        </li>
-    </ul>
+        <a class="box grow1"
+            onclick="Website.then((w) => { if (confirm('Reset to default code example?')) { w.reset() }})">
+            Reset code
+        </a>
+        <div class="box grow1">
+            <label for="target-picker-select">Target:</label>
+            <select class="grow10" name="targets" id="target-picker-select">
+                <option value="Rust">Rust</option>
+            </select>
+        </div>
+        <div class="box grow10">
+            <label for="compiler-options-input">Options:</label>
+            <textarea class="grow10" rows="2" cols="50" spellcheck="false" autocorrect="off" autocomplete="off"
+                id="compiler-options-input"></textarea>
+        </div>
+    </header>
 
     <div id="editor-container">
         <div id="code-editor"></div>

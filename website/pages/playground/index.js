@@ -72,7 +72,7 @@ target_picker_select.addEventListener('change', (_) => {
 });
 
 /**
- * @type HTMLInputElement
+ * @type HTMLTextAreaElement
  */
 var compiler_options_input = document.getElementById('compiler-options-input');
 if (start_options != null) {
@@ -85,7 +85,7 @@ if (start_options != null) {
 });
 
 function run_compile() {
-    var text = code_editor.getModel().getValue();
+    var code_text = code_editor.getModel().getValue();
 
     let target_arg = device_driver_wasm.TargetArg[target_picker_select.value];
     if (target_arg == undefined) {
@@ -96,7 +96,7 @@ function run_compile() {
 
     var output = device_driver_wasm
         .compile(
-            text,
+            code_text,
             diagnostics_chars_per_line(),
             target_arg,
             compiler_options_input.value
@@ -107,7 +107,7 @@ function run_compile() {
     var ansi_up = new AU.AnsiUp();
     diagnostics.innerHTML = replace_paths_with_links(ansi_up.ansi_to_html(output.diagnostics));
 
-    localStorage.setItem("code-session", text);
+    localStorage.setItem("code-session", code_text);
     localStorage.setItem("target", target_picker_select.value);
     localStorage.setItem("compile-options", compiler_options_input.value);
 }

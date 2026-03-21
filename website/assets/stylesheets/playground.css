@@ -77,35 +77,28 @@ code {
 }
 
 
-#header {
-    list-style-type: none;
-    margin: 0;
-    padding: 5px;
+header {
+    display: flex;
+    align-items: stretch;
+    justify-content: space-around;
     background-color: #960018;
-    user-select: none;
-    height: 50px;
+    color: #dcdcdc;
+    padding: 5px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 5px;
 
-    li {
+    .box {
+        display: flex;
         background-color: #41121a;
-        border: none;
-        text-align: center;
-        text-decoration: none;
-        font-size: 16px;
-        color: #dcdcdc;
         border-radius: 4px;
-        transition-duration: 0.1s;
-        line-height: 20px;
-        margin: 5px;
-        float: right;
+        align-items: center;
+        justify-content: space-around;
+        padding: 5px 10px;
+        gap: 5px;
 
-        &:first-child {
-            float: left;
-        }
-
-        a {
+        a& {
             cursor: pointer;
-            padding: 10px 20px;
-            display: block;
             border-radius: 4px;
 
             &:hover {
@@ -117,35 +110,38 @@ code {
             }
         }
 
-        #target-picker {
-            padding: 10px 10px;
+        textarea {
+            resize: none;
+            background-color: #372327;
+            color: #dcdcdc;
+            border: none;
+            height: 100%;
+            outline: none;
+            text-align: justify;
 
-            select {
-                margin: 0px;
-                padding: 0px;
+            &:focus {
+                outline: 2px solid #46272c;
             }
         }
 
-        &#compiler-options {
-            padding: 10px 10px;
-            width: 50%;
-            min-width: 400px;
-            max-width: 800px;
-            display: flex;
-
-            label {
-                margin-right: 5px;
-            }
-
-            input {
-                padding: 0px;
-                flex: 1;
-            }
+        select {
+            background-color: #372327;
+            color: #dcdcdc;
+            border: none;
+            height: 100%;
+            text-align: center;
         }
     }
 
-    a {
-        color: inherit;
-        text-decoration: inherit;
+    .grow10 {
+        flex-grow: 10;
+    }
+
+    .grow1 {
+        flex-grow: 1;
+    }
+
+    .nopad {
+        padding: 1px;
     }
 }
