@@ -12,18 +12,18 @@
         <a class="box nopad" href="../">
             <img src="../assets/images/ddsl.png" height="64px" />
         </a>
-        <a class="box grow1"
+        <a class="box grow1 noselect"
             onclick="Website.then((w) => { if (confirm('Reset to default code example?')) { w.reset() }})">
             Reset code
         </a>
         <div class="box grow1">
-            <label for="target-picker-select">Target:</label>
+            <label for="target-picker-select" class="noselect">Target:</label>
             <select class="grow10" name="targets" id="target-picker-select">
                 <option value="Rust">Rust</option>
             </select>
         </div>
         <div class="box grow10">
-            <label for="compiler-options-input">Options:</label>
+            <label for="compiler-options-input" class="noselect">Options:</label>
             <textarea class="grow10" rows="2" cols="50" spellcheck="false" autocorrect="off" autocomplete="off"
                 id="compiler-options-input"></textarea>
         </div>
