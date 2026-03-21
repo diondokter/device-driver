@@ -3,9 +3,9 @@
     "prebuild": "mdbook build ../book",
     "prebuild_prod": "mdbook build ../book",
     "preserve": "mdbook build ../book",
-    "build": "webpack",
-    "build_prod": "webpack --mode production",
-    "serve": "webpack serve"
+    "build": "webpack --config ./webpack.config.ts",
+    "build_prod": "webpack --config ./webpack.config.ts --mode production",
+    "serve": "webpack serve --config ./webpack.config.ts"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
