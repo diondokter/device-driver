@@ -21,7 +21,7 @@ pub mod ops;
 #[cfg(feature = "macros")]
 pub use device_driver_macros::*;
 
-#[doc(hidden)]
+// #[doc(hidden)]
 pub trait FieldSet: Default {
     /// The size of the field set in number of bits
     const SIZE_BITS: u32;
