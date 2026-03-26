@@ -80,16 +80,18 @@ device_driver::compile!(
 );
 
 #[repr(C)]
-struct MultiFS<L: FieldSet, R: FieldSet>(L, R);
+struct MultiFS<L: FieldSet, R>(L, R);
 
-impl<L: FieldSet, R: FieldSet> MultiFS<L, R> {
-    const GAP_BITS: u32 = { core::mem::size_of::<L>() as u32 * 8 - L::SIZE_BITS };
-
-    fn push<T: FieldSet>(self, c: T) -> MultiFS<MultiFS<L, R>, T> {
-        let mut new = MultiFS(MultiFS(self.0, self.1), c);
-        new.pack_r();
-        new
+impl<L: FieldSet, R: SimpleFieldSet> From<(L, R)> for MultiFS<L, R> {
+    fn from(value: (L, R)) -> Self {
+        let mut multi = MultiFS(value.0, value.1);
+        multi.pack_r();
+        multi
     }
+}
+
+impl<L: FieldSet, R: SimpleFieldSet> MultiFS<L, R> {
+    const GAP_BITS: u32 = { core::mem::size_of::<L>() as u32 * 8 - L::SIZE_BITS };
 
     fn pack_r(&mut self) {
         if Self::GAP_BITS == 0 {
@@ -108,7 +110,7 @@ impl<L: FieldSet, R: FieldSet> MultiFS<L, R> {
     }
 }
 
-impl<L: FieldSet, R: FieldSet> Default for MultiFS<L, R> {
+impl<L: FieldSet, R: SimpleFieldSet> Default for MultiFS<L, R> {
     fn default() -> Self {
         let mut val = Self(Default::default(), Default::default());
         val.pack_r();
@@ -116,7 +118,7 @@ impl<L: FieldSet, R: FieldSet> Default for MultiFS<L, R> {
     }
 }
 
-impl<L: FieldSet, R: FieldSet> FieldSet for MultiFS<L, R> {
+impl<L: FieldSet, R: SimpleFieldSet> FieldSet for MultiFS<L, R> {
     const SIZE_BITS: u32 = L::SIZE_BITS + R::SIZE_BITS;
 
     fn get_inner_buffer(&self) -> &[u8] {
@@ -144,7 +146,15 @@ trait ToTuple {
     fn to_tuple(self) -> Self::Tuple;
 }
 
-impl<A: FieldSet, B: FieldSet> ToTuple for MultiFS<A, B> {
+impl<A: SimpleFieldSet> ToTuple for A {
+    type Tuple = A;
+
+    fn to_tuple(self) -> Self::Tuple {
+        self
+    }
+}
+
+impl<A: SimpleFieldSet, B: SimpleFieldSet> ToTuple for MultiFS<A, B> {
     type Tuple = (A, B);
 
     fn to_tuple(mut self) -> Self::Tuple {
@@ -153,16 +163,49 @@ impl<A: FieldSet, B: FieldSet> ToTuple for MultiFS<A, B> {
     }
 }
 
-impl<A: FieldSet, B: FieldSet, C: FieldSet> ToTuple for MultiFS<MultiFS<A, B>, C> {
+impl<A: SimpleFieldSet, B: SimpleFieldSet, C: SimpleFieldSet> ToTuple
+    for MultiFS<MultiFS<A, B>, C>
+{
     type Tuple = (A, B, C);
 
     fn to_tuple(mut self) -> Self::Tuple {
         self.unpack_r();
-        let c = self.1;
         self.0.unpack_r();
         (self.0.0, self.0.1, self.1)
     }
 }
+
+impl<A: SimpleFieldSet, B: SimpleFieldSet, C: SimpleFieldSet, D: SimpleFieldSet> ToTuple
+    for MultiFS<MultiFS<MultiFS<A, B>, C>, D>
+{
+    type Tuple = (A, B, C, D);
+
+    fn to_tuple(mut self) -> Self::Tuple {
+        self.unpack_r();
+        self.0.unpack_r();
+        self.0.0.unpack_r();
+        (self.0.0.0, self.0.0.1, self.0.1, self.1)
+    }
+}
+
+impl<A: SimpleFieldSet, B: SimpleFieldSet, C: SimpleFieldSet, D: SimpleFieldSet, E: SimpleFieldSet>
+    ToTuple for MultiFS<MultiFS<MultiFS<MultiFS<A, B>, C>, D>, E>
+{
+    type Tuple = (A, B, C, D, E);
+
+    fn to_tuple(mut self) -> Self::Tuple {
+        self.unpack_r();
+        self.0.unpack_r();
+        self.0.0.unpack_r();
+        self.0.0.0.unpack_r();
+        (self.0.0.0.0, self.0.0.0.1, self.0.0.1, self.0.1, self.1)
+    }
+}
+
+trait SimpleFieldSet: FieldSet {}
+
+impl SimpleFieldSet for BarFields {}
+impl SimpleFieldSet for FooFields {}
 
 #[test]
 fn simple_layout_ok() {
@@ -170,10 +213,16 @@ fn simple_layout_ok() {
         FooFields::from([0x00, 0x11, 0x22]),
         FooFields::from([0x33, 0x44, 0x55]),
     );
-    let mfs = mfs.push(BarFields::from([0x66]));
+    let mfs = MultiFS::from((mfs, BarFields::from([0x66])));
 
     assert_eq!(
         mfs.get_inner_buffer(),
         &[0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66]
     );
+
+    let (foo1, foo2, bar) = mfs.to_tuple();
+
+    assert_eq!(foo1.bits, [0x00, 0x11, 0x22]);
+    assert_eq!(foo2.bits, [0x33, 0x44, 0x55]);
+    assert_eq!(bar.bits, [0x66]);
 }
