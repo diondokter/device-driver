@@ -52,19 +52,15 @@ device_driver::compile!(
     ],
     ddsl: "
         device MyTestDevice {
-            byte-order: LE,
+            byte-order: BE,
             register-address-type: u8,
 
             /// This is the Foo register
             register Foo {
                 address: 0,
                 fields: fieldset FooFields {
-                    size-bits: 24,
-
-                    /// This is a bool!
-                    field value0 0 -> bool,
-                    field value1 15:1 -> uint,
-                    field value2 23:16 -> int,
+                    size-bits: 20,
+                    field value 19:0 -> uint,
                 }
             },
             /// This is the Foo register
@@ -73,7 +69,8 @@ device_driver::compile!(
                 fields: FooFields,
             },
             fieldset BarFields {
-                size-bits: 8
+                size-bits: 12,
+                field value 11:0 -> uint,
             }
         }
     "
@@ -98,7 +95,43 @@ impl<L: FieldSet, R: SimpleFieldSet> MultiFS<L, R> {
             return;
         }
 
-        todo!("Shift the bits of R into the gap of L");
+        println!("pack gap: {}", Self::GAP_BITS);
+
+        let shift_offset = if Self::GAP_BITS % 8 == 0 {
+            8
+        } else {
+            Self::GAP_BITS % 8
+        };
+
+        let inner_buf = self.get_inner_buffer_mut();
+
+        let mut overlap_byte_index =
+            L::SIZE_BITS.div_ceil(8) as usize - 1 + (shift_offset / 8) as usize;
+        let mut source_byte_index = core::mem::size_of::<L>();
+
+        let mut wide_mask = 0x00FF;
+        wide_mask <<= shift_offset;
+
+        while source_byte_index < inner_buf.len() {
+            println!("target: {overlap_byte_index}, source: {source_byte_index}");
+
+            let mut wide_source = inner_buf[source_byte_index] as u16;
+
+            wide_source <<= shift_offset;
+
+            println!("1. {inner_buf:02X?}");
+            inner_buf[overlap_byte_index] &= !(wide_mask >> 8) as u8;
+            println!("2. {inner_buf:02X?}");
+            inner_buf[overlap_byte_index] |= (wide_source >> 8) as u8;
+            println!("3. {inner_buf:02X?}");
+            inner_buf[overlap_byte_index + 1] &= !wide_mask as u8;
+            println!("4. {inner_buf:02X?}");
+            inner_buf[overlap_byte_index + 1] |= wide_source as u8;
+            println!("5. {inner_buf:02X?}");
+
+            overlap_byte_index += 1;
+            source_byte_index += 1;
+        }
     }
 
     fn unpack_r(&mut self) {
@@ -106,7 +139,36 @@ impl<L: FieldSet, R: SimpleFieldSet> MultiFS<L, R> {
             return;
         }
 
-        todo!("Shift the bits of R from the gap of L to the normal position");
+        println!("unpack gap: {}", Self::GAP_BITS);
+
+        let shift_offset = if Self::GAP_BITS % 8 == 0 {
+            0
+        } else {
+            Self::GAP_BITS % 8
+        };
+
+        let inner_buf = self.get_inner_buffer_mut();
+
+        let end_source_byte_index = core::mem::size_of::<L>();
+        let end_overlap_byte_index = L::SIZE_BITS.div_ceil(8) as usize - 1;
+
+        for i in (1..=core::mem::size_of::<R>()).rev().map(|i| i - 1) {
+            let source_byte_index = end_source_byte_index + i;
+            let overlap_byte_index = end_overlap_byte_index + i;
+
+            println!("target: {overlap_byte_index}, source: {source_byte_index}");
+
+            let overlap = ((inner_buf[overlap_byte_index] as u16) << 8)
+                | inner_buf[overlap_byte_index + 1] as u16;
+
+            println!(
+                "Overlap: {overlap:04X}, shifted: {:02X}",
+                (overlap >> shift_offset) as u8
+            );
+            println!("1. {inner_buf:02X?}");
+            inner_buf[source_byte_index] = (overlap >> shift_offset) as u8;
+            println!("2. {inner_buf:02X?}");
+        }
     }
 }
 
@@ -125,7 +187,7 @@ impl<L: FieldSet, R: SimpleFieldSet> FieldSet for MultiFS<L, R> {
         unsafe {
             core::slice::from_raw_parts(
                 (&raw const *self).cast::<u8>(),
-                Self::SIZE_BITS.div_ceil(8) as usize,
+                core::mem::size_of::<Self>(),
             )
         }
     }
@@ -134,7 +196,7 @@ impl<L: FieldSet, R: SimpleFieldSet> FieldSet for MultiFS<L, R> {
         unsafe {
             core::slice::from_raw_parts_mut(
                 (&raw mut *self).cast::<u8>(),
-                Self::SIZE_BITS.div_ceil(8) as usize,
+                core::mem::size_of::<Self>(),
             )
         }
     }
@@ -209,20 +271,31 @@ impl SimpleFieldSet for FooFields {}
 
 #[test]
 fn simple_layout_ok() {
-    let mfs = MultiFS(
-        FooFields::from([0x00, 0x11, 0x22]),
-        FooFields::from([0x33, 0x44, 0x55]),
-    );
-    let mfs = MultiFS::from((mfs, BarFields::from([0x66])));
+    let mut foo1_in = FooFields::new();
+    foo1_in.set_value(0x12345);
+    let mut foo2_in = FooFields::new();
+    foo2_in.set_value(0x12345);
+    let mut bar_in = BarFields::new();
+    bar_in.set_value(0x123);
+
+    let mfs = MultiFS::from((foo1_in, foo2_in));
+    let mfs = MultiFS::from((mfs, bar_in));
+
+    assert_eq!(size_bits_of_val(&mfs), 20 + 20 + 12);
+    assert_eq!(core::mem::size_of_val(&mfs), 3 + 3 + 2);
 
     assert_eq!(
         mfs.get_inner_buffer(),
-        &[0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66]
+        &[0x11, 0x11, 0x12, 0x22, 0x22, 0x66, 0x77, 0x77]
     );
 
     let (foo1, foo2, bar) = mfs.to_tuple();
 
-    assert_eq!(foo1.bits, [0x00, 0x11, 0x22]);
-    assert_eq!(foo2.bits, [0x33, 0x44, 0x55]);
-    assert_eq!(bar.bits, [0x66]);
+    assert_eq!(foo1, foo1_in);
+    assert_eq!(foo2, foo2_in);
+    assert_eq!(bar, bar_in);
+}
+
+fn size_bits_of_val<T: FieldSet>(_: &T) -> u32 {
+    T::SIZE_BITS
 }
