@@ -15,7 +15,7 @@ pub use command::*;
 mod buffer;
 pub use buffer::*;
 
-#[doc(hidden)]
+// #[doc(hidden)]
 pub mod ops;
 
 #[cfg(feature = "macros")]
