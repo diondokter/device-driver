@@ -741,14 +741,14 @@ impl Diagnostic for UnspecifiedByteOrder {
                     Snippet::source(source).path(path).annotation(
                         AnnotationKind::Primary
                             .span(self.fieldset_name.into())
-                            .label("fielset requires a byte order, but none is specified"),
+                            .label("fieldset requires a byte order, but none is specified"),
                     ),
                 ),
             Group::with_title(Level::HELP.secondary_title(
                 "specify the byte order on the fieldset or add a default byte order on the device",
             )), // TODO: Add patch for adding byte order
             Group::with_title(Level::NOTE.secondary_title(
-                "the fieldset has a size larger than 8 bits and will span multiple bytes",
+                "the fieldset spans multiple bytes, so it needs to have byte ordering specified",
             )),
             Group::with_title(Level::INFO.secondary_title(
                 "byte order is important for any multi-byte value. It has no default, so it needs to be manually specified",
