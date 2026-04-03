@@ -1,5 +1,6 @@
 {{self::description_to_docstring(field_set.description)}}
 #[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct {{field_set.name.to_case(Case::Pascal)}} {
     /// The internal bits
     bits: [u8; {{field_set.size_bytes}}]
@@ -9,6 +10,7 @@ impl ::device_driver::Fieldset for {{field_set.name.to_case(Case::Pascal)}} {
     const METADATA: ::device_driver::FieldsetMetadata =
         ::device_driver::FieldsetMetadata::new()
             .with_byte_order(::device_driver::ByteOrder::{{field_set.byte_order}});
+    const ZERO: Self = Self { bits: [0; {{field_set.size_bytes}}] };
             
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
@@ -19,11 +21,6 @@ impl ::device_driver::Fieldset for {{field_set.name.to_case(Case::Pascal)}} {
 }
 
 impl {{field_set.name.to_case(Case::Pascal)}} {
-    /// Create a new instance, loaded with all zeroes
-    pub const fn new() -> Self {
-        Self { bits: [0; {{field_set.size_bytes}}] }
-    }
-
     {% for field in field_set.fields %}
         {% if matches!(field.access, Access::RW | Access::RO) %}
             /// `{{field.address_text()}}` - Read the `{{field.name.to_case(Case::Snake)}}` field.
@@ -128,7 +125,7 @@ impl {{field_set.name.to_case(Case::Pascal)}} {
 
 impl Default for {{field_set.name.to_case(Case::Pascal)}} {
     fn default() -> Self {
-        Self::new()
+        <Self as ::device_driver::Fieldset>::ZERO
     }
 }
 

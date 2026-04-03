@@ -97,7 +97,7 @@ where
 {
     /// Dispatch the command to the device
     pub fn dispatch(self, f: impl FnOnce(&mut InFieldset)) -> Result<(), Interface::Error> {
-        let mut in_fields = InFieldset::default();
+        let mut in_fields = InFieldset::ZERO;
         f(&mut in_fields);
 
         self.interface.dispatch_command(
@@ -118,7 +118,7 @@ where
 {
     /// Dispatch the command to the device
     pub fn dispatch(self) -> Result<OutFieldset, Interface::Error> {
-        let mut out_fields = OutFieldset::default();
+        let mut out_fields = OutFieldset::ZERO;
 
         self.interface.dispatch_command(
             &FieldsetMetadata::DEFAULT,
@@ -143,10 +143,10 @@ where
         self,
         f: impl FnOnce(&mut InFieldset),
     ) -> Result<OutFieldset, Interface::Error> {
-        let mut in_fields = InFieldset::default();
+        let mut in_fields = InFieldset::ZERO;
         f(&mut in_fields);
 
-        let mut out_fields = OutFieldset::default();
+        let mut out_fields = OutFieldset::ZERO;
 
         self.interface.dispatch_command(
             &InFieldset::METADATA,
@@ -190,7 +190,7 @@ where
         self,
         f: impl FnOnce(&mut InFieldset),
     ) -> Result<(), Interface::Error> {
-        let mut in_fields = InFieldset::default();
+        let mut in_fields = InFieldset::ZERO;
         f(&mut in_fields);
 
         self.interface
@@ -213,7 +213,7 @@ where
 {
     /// Dispatch the command to the device
     pub async fn dispatch_async(self) -> Result<OutFieldset, Interface::Error> {
-        let mut out_fields = OutFieldset::default();
+        let mut out_fields = OutFieldset::ZERO;
 
         self.interface
             .dispatch_command(
@@ -240,10 +240,10 @@ where
         self,
         f: impl FnOnce(&mut InFieldset),
     ) -> Result<OutFieldset, Interface::Error> {
-        let mut in_fields = InFieldset::default();
+        let mut in_fields = InFieldset::ZERO;
         f(&mut in_fields);
 
-        let mut out_fields = OutFieldset::default();
+        let mut out_fields = OutFieldset::ZERO;
 
         self.interface
             .dispatch_command(
