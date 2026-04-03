@@ -1,6 +1,6 @@
 use core::marker::PhantomData;
 
-use crate::FieldSet;
+use crate::{Fieldset, FieldsetMetadata};
 
 /// A trait to represent the interface to the device.
 ///
@@ -19,10 +19,10 @@ pub trait CommandInterface {
     /// The slices are empty if the respective in or out fields are not specified.
     fn dispatch_command(
         &mut self,
+        _metadata_input: &FieldsetMetadata,
+        _metadata_output: &FieldsetMetadata,
         address: Self::AddressType,
-        size_bits_in: u32,
         input: &[u8],
-        size_bits_out: u32,
         output: &mut [u8],
     ) -> Result<(), Self::Error>;
 }
@@ -44,23 +44,23 @@ pub trait AsyncCommandInterface {
     /// The slices are empty if the respective in or out fields are not specified.
     async fn dispatch_command(
         &mut self,
+        _metadata_input: &FieldsetMetadata,
+        _metadata_output: &FieldsetMetadata,
         address: Self::AddressType,
-        size_bits_in: u32,
         input: &[u8],
-        size_bits_out: u32,
         output: &mut [u8],
     ) -> Result<(), Self::Error>;
 }
 
 /// Intermediate type for doing command operations
-pub struct CommandOperation<'i, Interface, AddressType: Copy, InFieldSet, OutFieldSet> {
+pub struct CommandOperation<'i, Interface, AddressType: Copy, InFieldset, OutFieldset> {
     interface: &'i mut Interface,
     address: AddressType,
-    _phantom: PhantomData<(InFieldSet, OutFieldSet)>,
+    _phantom: PhantomData<(InFieldset, OutFieldset)>,
 }
 
-impl<'i, Interface, AddressType: Copy, InFieldSet, OutFieldSet>
-    CommandOperation<'i, Interface, AddressType, InFieldSet, OutFieldSet>
+impl<'i, Interface, AddressType: Copy, InFieldset, OutFieldset>
+    CommandOperation<'i, Interface, AddressType, InFieldset, OutFieldset>
 {
     #[doc(hidden)]
     pub fn new(interface: &'i mut Interface, address: AddressType) -> Self {
@@ -79,47 +79,52 @@ where
 {
     /// Dispatch the command to the device
     pub fn dispatch(self) -> Result<(), Interface::Error> {
-        self.interface
-            .dispatch_command(self.address, 0, &[], 0, &mut [])
+        self.interface.dispatch_command(
+            &FieldsetMetadata::DEFAULT,
+            &FieldsetMetadata::DEFAULT,
+            self.address,
+            &[],
+            &mut [],
+        )
     }
 }
 
 /// Only input
-impl<Interface, AddressType: Copy, InFieldSet: FieldSet>
-    CommandOperation<'_, Interface, AddressType, InFieldSet, ()>
+impl<Interface, AddressType: Copy, InFieldset: Fieldset>
+    CommandOperation<'_, Interface, AddressType, InFieldset, ()>
 where
     Interface: CommandInterface<AddressType = AddressType>,
 {
     /// Dispatch the command to the device
-    pub fn dispatch(self, f: impl FnOnce(&mut InFieldSet)) -> Result<(), Interface::Error> {
-        let mut in_fields = InFieldSet::default();
+    pub fn dispatch(self, f: impl FnOnce(&mut InFieldset)) -> Result<(), Interface::Error> {
+        let mut in_fields = InFieldset::default();
         f(&mut in_fields);
 
         self.interface.dispatch_command(
+            &InFieldset::METADATA,
+            &FieldsetMetadata::DEFAULT,
             self.address,
-            InFieldSet::SIZE_BITS,
             in_fields.get_inner_buffer(),
-            0,
             &mut [],
         )
     }
 }
 
 /// Only output
-impl<Interface, AddressType: Copy, OutFieldSet: FieldSet>
-    CommandOperation<'_, Interface, AddressType, (), OutFieldSet>
+impl<Interface, AddressType: Copy, OutFieldset: Fieldset>
+    CommandOperation<'_, Interface, AddressType, (), OutFieldset>
 where
     Interface: CommandInterface<AddressType = AddressType>,
 {
     /// Dispatch the command to the device
-    pub fn dispatch(self) -> Result<OutFieldSet, Interface::Error> {
-        let mut out_fields = OutFieldSet::default();
+    pub fn dispatch(self) -> Result<OutFieldset, Interface::Error> {
+        let mut out_fields = OutFieldset::default();
 
         self.interface.dispatch_command(
+            &FieldsetMetadata::DEFAULT,
+            &OutFieldset::METADATA,
             self.address,
-            0,
             &[],
-            OutFieldSet::SIZE_BITS,
             out_fields.get_inner_buffer_mut(),
         )?;
 
@@ -128,26 +133,26 @@ where
 }
 
 /// Input and output
-impl<Interface, AddressType: Copy, InFieldSet: FieldSet, OutFieldSet: FieldSet>
-    CommandOperation<'_, Interface, AddressType, InFieldSet, OutFieldSet>
+impl<Interface, AddressType: Copy, InFieldset: Fieldset, OutFieldset: Fieldset>
+    CommandOperation<'_, Interface, AddressType, InFieldset, OutFieldset>
 where
     Interface: CommandInterface<AddressType = AddressType>,
 {
     /// Dispatch the command to the device
     pub fn dispatch(
         self,
-        f: impl FnOnce(&mut InFieldSet),
-    ) -> Result<OutFieldSet, Interface::Error> {
-        let mut in_fields = InFieldSet::default();
+        f: impl FnOnce(&mut InFieldset),
+    ) -> Result<OutFieldset, Interface::Error> {
+        let mut in_fields = InFieldset::default();
         f(&mut in_fields);
 
-        let mut out_fields = OutFieldSet::default();
+        let mut out_fields = OutFieldset::default();
 
         self.interface.dispatch_command(
+            &InFieldset::METADATA,
+            &OutFieldset::METADATA,
             self.address,
-            InFieldSet::SIZE_BITS,
             in_fields.get_inner_buffer(),
-            OutFieldSet::SIZE_BITS,
             out_fields.get_inner_buffer_mut(),
         )?;
 
@@ -163,31 +168,37 @@ where
     /// Dispatch the command to the device
     pub async fn dispatch_async(self) -> Result<(), Interface::Error> {
         self.interface
-            .dispatch_command(self.address, 0, &[], 0, &mut [])
+            .dispatch_command(
+                &FieldsetMetadata::DEFAULT,
+                &FieldsetMetadata::DEFAULT,
+                self.address,
+                &[],
+                &mut [],
+            )
             .await
     }
 }
 
 /// Only input async
-impl<Interface, AddressType: Copy, InFieldSet: FieldSet>
-    CommandOperation<'_, Interface, AddressType, InFieldSet, ()>
+impl<Interface, AddressType: Copy, InFieldset: Fieldset>
+    CommandOperation<'_, Interface, AddressType, InFieldset, ()>
 where
     Interface: AsyncCommandInterface<AddressType = AddressType>,
 {
     /// Dispatch the command to the device
     pub async fn dispatch_async(
         self,
-        f: impl FnOnce(&mut InFieldSet),
+        f: impl FnOnce(&mut InFieldset),
     ) -> Result<(), Interface::Error> {
-        let mut in_fields = InFieldSet::default();
+        let mut in_fields = InFieldset::default();
         f(&mut in_fields);
 
         self.interface
             .dispatch_command(
+                &InFieldset::METADATA,
+                &FieldsetMetadata::DEFAULT,
                 self.address,
-                InFieldSet::SIZE_BITS,
                 in_fields.get_inner_buffer(),
-                0,
                 &mut [],
             )
             .await
@@ -195,21 +206,21 @@ where
 }
 
 /// Only output async
-impl<Interface, AddressType: Copy, OutFieldSet: FieldSet>
-    CommandOperation<'_, Interface, AddressType, (), OutFieldSet>
+impl<Interface, AddressType: Copy, OutFieldset: Fieldset>
+    CommandOperation<'_, Interface, AddressType, (), OutFieldset>
 where
     Interface: AsyncCommandInterface<AddressType = AddressType>,
 {
     /// Dispatch the command to the device
-    pub async fn dispatch_async(self) -> Result<OutFieldSet, Interface::Error> {
-        let mut out_fields = OutFieldSet::default();
+    pub async fn dispatch_async(self) -> Result<OutFieldset, Interface::Error> {
+        let mut out_fields = OutFieldset::default();
 
         self.interface
             .dispatch_command(
+                &FieldsetMetadata::DEFAULT,
+                &OutFieldset::METADATA,
                 self.address,
-                0,
                 &[],
-                OutFieldSet::SIZE_BITS,
                 out_fields.get_inner_buffer_mut(),
             )
             .await?;
@@ -219,27 +230,27 @@ where
 }
 
 /// Input and output async
-impl<Interface, AddressType: Copy, InFieldSet: FieldSet, OutFieldSet: FieldSet>
-    CommandOperation<'_, Interface, AddressType, InFieldSet, OutFieldSet>
+impl<Interface, AddressType: Copy, InFieldset: Fieldset, OutFieldset: Fieldset>
+    CommandOperation<'_, Interface, AddressType, InFieldset, OutFieldset>
 where
     Interface: AsyncCommandInterface<AddressType = AddressType>,
 {
     /// Dispatch the command to the device
     pub async fn dispatch_async(
         self,
-        f: impl FnOnce(&mut InFieldSet),
-    ) -> Result<OutFieldSet, Interface::Error> {
-        let mut in_fields = InFieldSet::default();
+        f: impl FnOnce(&mut InFieldset),
+    ) -> Result<OutFieldset, Interface::Error> {
+        let mut in_fields = InFieldset::default();
         f(&mut in_fields);
 
-        let mut out_fields = OutFieldSet::default();
+        let mut out_fields = OutFieldset::default();
 
         self.interface
             .dispatch_command(
+                &InFieldset::METADATA,
+                &OutFieldset::METADATA,
                 self.address,
-                InFieldSet::SIZE_BITS,
                 in_fields.get_inner_buffer(),
-                OutFieldSet::SIZE_BITS,
                 out_fields.get_inner_buffer_mut(),
             )
             .await?;

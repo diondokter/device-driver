@@ -211,8 +211,9 @@ pub struct Foo {
     /// The internal bits
     bits: [u8; 0],
 }
-impl ::device_driver::FieldSet for Foo {
-    const SIZE_BITS: u32 = 0;
+impl ::device_driver::Fieldset for Foo {
+    const METADATA: ::device_driver::FieldsetMetadata = ::device_driver::FieldsetMetadata::new()
+        .with_byte_order(::device_driver::ByteOrder::LE);
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }

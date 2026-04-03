@@ -1,4 +1,4 @@
-use device_driver::RegisterInterface;
+use device_driver::{FieldsetMetadata, RegisterInterface};
 
 pub struct DeviceInterface;
 
@@ -8,8 +8,8 @@ impl RegisterInterface for DeviceInterface {
 
     fn write_register(
         &mut self,
+        _metadata: &FieldsetMetadata,
         _address: Self::AddressType,
-        _size_bits: u32,
         data: &[u8],
     ) -> Result<(), Self::Error> {
         // Assert data is little endian
@@ -20,8 +20,8 @@ impl RegisterInterface for DeviceInterface {
 
     fn read_register(
         &mut self,
+        _metadata: &FieldsetMetadata,
         _address: Self::AddressType,
-        _size_bits: u32,
         data: &mut [u8],
     ) -> Result<(), Self::Error> {
         data.copy_from_slice(&[0x32, 0x12]);
@@ -41,7 +41,7 @@ device_driver::compile!(
 
                 fields: fieldset FooLEFields {
                     byte-order: LE,
-                    size-bits: 16,
+                    size-bytes: 2,
 
                     field val 15:0 -> uint
                 }
@@ -53,7 +53,7 @@ device_driver::compile!(
 
                 fields: fieldset FooLEArrayFields {
                     byte-order: LE,
-                    size-bits: 16,
+                    size-bytes: 2,
 
                     field val 15:0 -> uint
                 }
@@ -65,7 +65,7 @@ device_driver::compile!(
 
                 fields: fieldset FooBEFields {
                     byte-order: BE,
-                    size-bits: 16,
+                    size-bytes: 2,
 
                     field val 15:0 -> uint
                 }
@@ -77,7 +77,7 @@ device_driver::compile!(
 
                 fields: fieldset FooBEArrayFields {
                     byte-order: BE,
-                    size-bits: 16,
+                    size-bytes: 2,
 
                     field val 15:0 -> uint
                 }

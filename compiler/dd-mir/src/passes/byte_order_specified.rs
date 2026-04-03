@@ -11,7 +11,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
                 fs.byte_order = config.byte_order;
             }
 
-            if fs.size_bits > 8 && fs.byte_order.is_none() {
+            if fs.size_bytes > 1 && fs.byte_order.is_none() {
                 diagnostics.add(UnspecifiedByteOrder {
                     fieldset_name: fs.name.span,
                 });
@@ -43,12 +43,12 @@ mod tests {
             objects: vec![
                 Object::FieldSet(FieldSet {
                     name: "MyRegister".into_with_dummy_span(),
-                    size_bits: 8.with_dummy_span(),
+                    size_bytes: 1.with_dummy_span(),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
                     name: "MyRegister2".into_with_dummy_span(),
-                    size_bits: 9.with_dummy_span(),
+                    size_bytes: 2.with_dummy_span(),
                     byte_order: Some(ByteOrder::LE),
                     ..Default::default()
                 }),
@@ -70,7 +70,7 @@ mod tests {
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyRegister".into_with_dummy_span(),
-                size_bits: 9.with_dummy_span(),
+                size_bytes: 2.with_dummy_span(),
                 ..Default::default()
             })],
             span: Span::default(),
@@ -95,7 +95,7 @@ mod tests {
             device_config: global_config,
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyRegister".into_with_dummy_span(),
-                size_bits: 9.with_dummy_span(),
+                size_bytes: 2.with_dummy_span(),
                 ..Default::default()
             })],
             span: Span::default(),

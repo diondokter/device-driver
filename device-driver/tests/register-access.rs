@@ -8,7 +8,7 @@ device_driver::compile!(
             register Foo {
                 address: 0,
                 fields: fieldset FooFields {
-                    size-bits: 8,
+                    size-bytes: 1,
 
                     /// X
                     field value0 0 -> bool,
@@ -18,7 +18,7 @@ device_driver::compile!(
                 access: RO,
                 address: 1,
                 fields: fieldset BarFields {
-                    size-bits: 8,
+                    size-bytes: 1,
 
                     /// X
                     field value0 WO 0 -> bool,
@@ -28,7 +28,7 @@ device_driver::compile!(
                 access: WO,
                 address: 2,
                 fields: fieldset BazFields {
-                    size-bits: 8,
+                    size-bytes: 1,
 
                     /// X
                     field value0 0 -> bool,

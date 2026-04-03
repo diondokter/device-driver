@@ -2,11 +2,14 @@
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct {{field_set.name.to_case(Case::Pascal)}} {
     /// The internal bits
-    bits: [u8; {{field_set.size_bytes()}}]
+    bits: [u8; {{field_set.size_bytes}}]
 }
 
-impl ::device_driver::FieldSet for {{field_set.name.to_case(Case::Pascal)}} {
-    const SIZE_BITS: u32 = {{field_set.size_bits}};
+impl ::device_driver::Fieldset for {{field_set.name.to_case(Case::Pascal)}} {
+    const METADATA: ::device_driver::FieldsetMetadata =
+        ::device_driver::FieldsetMetadata::new()
+            .with_byte_order(::device_driver::ByteOrder::{{field_set.byte_order}});
+            
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
@@ -18,7 +21,7 @@ impl ::device_driver::FieldSet for {{field_set.name.to_case(Case::Pascal)}} {
 impl {{field_set.name.to_case(Case::Pascal)}} {
     /// Create a new instance, loaded with all zeroes
     pub const fn new() -> Self {
-        Self { bits: [0; {{field_set.size_bytes()}}] }
+        Self { bits: [0; {{field_set.size_bytes}}] }
     }
 
     {% for field in field_set.fields %}
@@ -129,13 +132,13 @@ impl Default for {{field_set.name.to_case(Case::Pascal)}} {
     }
 }
 
-impl From<[u8; {{field_set.size_bytes()}}]> for {{field_set.name.to_case(Case::Pascal)}} {
-    fn from(bits: [u8; {{field_set.size_bytes()}}]) -> Self {
+impl From<[u8; {{field_set.size_bytes}}]> for {{field_set.name.to_case(Case::Pascal)}} {
+    fn from(bits: [u8; {{field_set.size_bytes}}]) -> Self {
         Self { bits }
     }
 }
 
-impl From<{{field_set.name.to_case(Case::Pascal)}}> for [u8; {{field_set.size_bytes()}}] {
+impl From<{{field_set.name.to_case(Case::Pascal)}}> for [u8; {{field_set.size_bytes}}] {
     fn from(val: {{field_set.name.to_case(Case::Pascal)}}) -> Self {
         val.bits
     }

@@ -15,6 +15,7 @@ use itertools::Itertools;
 
 use crate::{Diagnostic, encode_ansi_url};
 
+#[derive(Debug)]
 pub struct IntegerFieldSizeTooBig {
     pub field_address: Span,
     pub base_type: Span,
@@ -63,6 +64,7 @@ impl Diagnostic for IntegerFieldSizeTooBig {
     }
 }
 
+#[derive(Debug)]
 pub struct DeviceNameNotPascal {
     pub device_name: Span,
     pub suggestion: String,
@@ -97,6 +99,7 @@ impl Diagnostic for DeviceNameNotPascal {
     }
 }
 
+#[derive(Debug)]
 pub struct DuplicateName {
     pub original: Span,
     pub original_value: Identifier,
@@ -139,6 +142,7 @@ impl Diagnostic for DuplicateName {
     }
 }
 
+#[derive(Debug)]
 pub struct EmptyEnum {
     pub enum_node: Span,
 }
@@ -165,6 +169,7 @@ impl Diagnostic for EmptyEnum {
     }
 }
 
+#[derive(Debug)]
 pub struct DuplicateVariantValue {
     pub duplicates: Vec<Span>,
     pub value: i128,
@@ -195,6 +200,7 @@ impl Diagnostic for DuplicateVariantValue {
     }
 }
 
+#[derive(Debug)]
 pub struct EnumBadBasetype {
     pub enum_name: Span,
     pub base_type: Span,
@@ -236,6 +242,7 @@ impl Diagnostic for EnumBadBasetype {
     }
 }
 
+#[derive(Debug)]
 pub struct EnumSizeBitsBiggerThanBaseType {
     pub enum_name: Span,
     pub base_type: Span,
@@ -275,6 +282,7 @@ impl Diagnostic for EnumSizeBitsBiggerThanBaseType {
     }
 }
 
+#[derive(Debug)]
 pub struct EnumNoAutoBaseTypeSelected {
     pub enum_name: Span,
 }
@@ -304,6 +312,7 @@ impl Diagnostic for EnumNoAutoBaseTypeSelected {
     }
 }
 
+#[derive(Debug)]
 pub struct VariantValuesTooHigh {
     pub variant_names: Vec<Span>,
     pub enum_name: Span,
@@ -341,6 +350,7 @@ impl Diagnostic for VariantValuesTooHigh {
     }
 }
 
+#[derive(Debug)]
 pub struct VariantValuesTooLow {
     pub variant_names: Vec<Span>,
     pub enum_name: Span,
@@ -378,6 +388,7 @@ impl Diagnostic for VariantValuesTooLow {
     }
 }
 
+#[derive(Debug)]
 pub struct EnumMultipleDefaults {
     pub enum_name: Span,
     pub variant_names: Vec<Span>,
@@ -422,6 +433,7 @@ impl Diagnostic for EnumMultipleDefaults {
     }
 }
 
+#[derive(Debug)]
 pub struct EnumMultipleCatchalls {
     pub enum_name: Span,
     pub variant_names: Vec<Span>,
@@ -466,6 +478,7 @@ impl Diagnostic for EnumMultipleCatchalls {
     }
 }
 
+#[derive(Debug)]
 pub struct ReferencedObjectDoesNotExist {
     pub object_reference: Span,
 }
@@ -494,6 +507,7 @@ impl Diagnostic for ReferencedObjectDoesNotExist {
     }
 }
 
+#[derive(Debug)]
 pub struct InvalidConversionType {
     pub object_reference: Span,
     pub referenced_object: Span,
@@ -530,6 +544,7 @@ impl Diagnostic for InvalidConversionType {
     }
 }
 
+#[derive(Debug)]
 pub struct RepeatEnumWithCatchAll {
     pub repeat_enum: Span,
     pub enum_name: Span,
@@ -572,6 +587,7 @@ This is not possible with an enum containing a catch-all since it can take on an
     }
 }
 
+#[derive(Debug)]
 pub struct ExternInvalidBaseType {
     pub extern_name: Span,
     pub base_type: Option<Span>,
@@ -616,6 +632,7 @@ impl Diagnostic for ExternInvalidBaseType {
     }
 }
 
+#[derive(Debug)]
 pub struct DifferentBaseTypes {
     pub field: Span,
     pub field_base_type: BaseType,
@@ -665,6 +682,7 @@ impl Diagnostic for DifferentBaseTypes {
 }
 
 // TODO: Split in multiple error types
+#[derive(Debug)]
 pub struct InvalidInfallibleConversion {
     pub conversion: Span,
     pub context: Vec<Spanned<Cow<'static, str>>>,
@@ -705,6 +723,7 @@ impl Diagnostic for InvalidInfallibleConversion {
     }
 }
 
+#[derive(Debug)]
 pub struct UnspecifiedByteOrder {
     pub fieldset_name: Span,
 }
@@ -739,20 +758,21 @@ impl Diagnostic for UnspecifiedByteOrder {
     }
 }
 
-pub struct ResetValueTooBig {
+#[derive(Debug)]
+pub struct ResetValueIntTooBig {
     pub register_context: Span,
     pub reset_value: Span,
-    pub reset_value_size_bits: u32,
-    pub register_size_bits: u32,
+    pub reset_value_size_bytes: u32,
+    pub register_size_bytes: u32,
 }
 
-impl Diagnostic for ResetValueTooBig {
+impl Diagnostic for ResetValueIntTooBig {
     fn is_error(&self) -> bool {
         true
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
-        const INFO_TEXT: &str = "reset values must have the same size as their associated register. Integer-specified values are allowed to be smaller and will be 0-padded to the required size";
+        const INFO_TEXT: &str = "reset values cannot be bigger than their fieldset";
 
         [
             Level::ERROR.primary_title("reset value too big").element(
@@ -760,8 +780,8 @@ impl Diagnostic for ResetValueTooBig {
                     .path(path)
                     .annotation(AnnotationKind::Primary.span(self.reset_value.into()).label(
                         format!(
-                            "the reset value is specified with {} bits, but the register only has {}",
-                            self.reset_value_size_bits, self.register_size_bits
+                            "the reset value is specified with {} bytes, but the register only has {}",
+                            self.reset_value_size_bytes, self.register_size_bytes
                         ),
                     ))
                     .annotation(AnnotationKind::Visible.span(self.register_context.into())),
@@ -772,6 +792,7 @@ impl Diagnostic for ResetValueTooBig {
     }
 }
 
+#[derive(Debug)]
 pub struct ResetValueArrayWrongSize {
     pub register_context: Span,
     pub reset_value: Span,
@@ -807,6 +828,7 @@ impl Diagnostic for ResetValueArrayWrongSize {
     }
 }
 
+#[derive(Debug)]
 pub struct BoolFieldTooLarge {
     pub base_type: Option<Span>,
     pub address: Span,
@@ -852,12 +874,13 @@ impl Diagnostic for BoolFieldTooLarge {
     }
 }
 
+#[derive(Debug)]
 pub struct FieldAddressExceedsFieldsetSize {
     pub address: Span,
     pub max_field_end: i128,
     pub repeat_offset: Option<i128>,
-    pub fieldset_size_bits: Span,
-    pub fieldset_size: u32,
+    pub fieldset_size_span: Span,
+    pub fieldset_size_bits: u32,
 }
 
 impl FieldAddressExceedsFieldsetSize {
@@ -890,8 +913,11 @@ impl Diagnostic for FieldAddressExceedsFieldsetSize {
                         ))
                         .annotation(
                             AnnotationKind::Context
-                                .span(self.fieldset_size_bits.into())
-                                .label(format!("The fieldset is only {} bits", self.fieldset_size)),
+                                .span(self.fieldset_size_span.into())
+                                .label(format!(
+                                    "The fieldset is only {} bits",
+                                    self.fieldset_size_bits
+                                )),
                         ),
                 ),
             Group::with_title(Level::INFO.secondary_title(
@@ -902,6 +928,7 @@ impl Diagnostic for FieldAddressExceedsFieldsetSize {
     }
 }
 
+#[derive(Debug)]
 pub struct FieldAddressNegative {
     pub address: Span,
     pub min_field_start: i128,
@@ -947,6 +974,7 @@ impl Diagnostic for FieldAddressNegative {
     }
 }
 
+#[derive(Debug)]
 pub struct OverlappingFields {
     pub field_address_1: Span,
     pub repeat_offset_1: Option<i128>,
@@ -1019,6 +1047,7 @@ impl Diagnostic for OverlappingFields {
     }
 }
 
+#[derive(Debug)]
 pub struct AddressTypeUndefined {
     pub object_name: Span,
     pub device: Span,
@@ -1066,6 +1095,7 @@ impl Diagnostic for AddressTypeUndefined {
     }
 }
 
+#[derive(Debug)]
 pub struct AddressOutOfRange {
     pub object: Span,
     pub address: Span,
@@ -1129,6 +1159,7 @@ impl Diagnostic for AddressOutOfRange {
     }
 }
 
+#[derive(Debug)]
 pub struct AddressOverlap {
     pub address: i128,
     pub object_1: Span,
@@ -1207,6 +1238,7 @@ impl Diagnostic for AddressOverlap {
     }
 }
 
+#[derive(Debug)]
 pub struct InvalidIdentifier {
     pub error: identifier::Error,
     pub identifier: Span,
@@ -1268,6 +1300,7 @@ All other characters must be a unicode XID continue character.";
     }
 }
 
+#[derive(Debug)]
 pub struct ParsingError {
     pub reason: String,
     pub span: Span,
@@ -1290,6 +1323,7 @@ impl Diagnostic for ParsingError {
     }
 }
 
+#[derive(Debug)]
 pub struct UnknownNodeType {
     pub node_type: Span,
     pub allowed_node_types: Vec<NodeType>,
@@ -1315,6 +1349,7 @@ impl Diagnostic for UnknownNodeType {
     }
 }
 
+#[derive(Debug)]
 pub struct InvalidPropertyName {
     pub property: Span,
     pub node_type: Spanned<NodeType>,
@@ -1345,6 +1380,7 @@ impl Diagnostic for InvalidPropertyName {
     }
 }
 
+#[derive(Debug)]
 pub struct InvalidExpressionType {
     pub expression: Spanned<String>,
     pub node_type: Spanned<NodeType>,
@@ -1396,6 +1432,7 @@ impl Diagnostic for InvalidExpressionType {
     }
 }
 
+#[derive(Debug)]
 pub struct DuplicateProperty {
     pub original: Span,
     pub duplicate: Span,
@@ -1425,6 +1462,7 @@ impl Diagnostic for DuplicateProperty {
     }
 }
 
+#[derive(Debug)]
 pub struct InvalidNodeType {
     pub node_type: Span,
     pub parent_node_type: Option<Spanned<NodeType>>,
@@ -1466,6 +1504,7 @@ impl Diagnostic for InvalidNodeType {
     }
 }
 
+#[derive(Debug)]
 pub struct MissingRequiredProperty {
     pub node_type: Spanned<NodeType>,
     pub property_name: String,
@@ -1511,6 +1550,7 @@ impl Diagnostic for MissingRequiredProperty {
     }
 }
 
+#[derive(Debug)]
 pub struct InvalidSubnode {
     pub node_type: Spanned<NodeType>,
     pub subnode: Span,
@@ -1540,19 +1580,20 @@ impl Diagnostic for InvalidSubnode {
     }
 }
 
-pub struct SizeBitsTooLarge {
+#[derive(Debug)]
+pub struct SizeBytesTooLarge {
     pub value: Span,
     pub field_set: Span,
 }
 
-impl Diagnostic for SizeBitsTooLarge {
+impl Diagnostic for SizeBytesTooLarge {
     fn is_error(&self) -> bool {
         true
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         [
-            Level::ERROR.primary_title("size-bits too large").element(
+            Level::ERROR.primary_title("size-bytes too large").element(
                 Snippet::source(source)
                     .path(path)
                     .annotation(AnnotationKind::Context.span(self.field_set.into()))
@@ -1564,7 +1605,7 @@ impl Diagnostic for SizeBitsTooLarge {
             ),
             Level::HELP
                 .secondary_title(
-                    "the maximum value of size-bits is 2^32-1. Keep the value below the limit",
+                    "the maximum value of size-bytes is 0x10_0000 (or 1MB). Keep the value below the limit",
                 )
                 .element(
                     Snippet::source(source)
@@ -1576,6 +1617,7 @@ impl Diagnostic for SizeBitsTooLarge {
     }
 }
 
+#[derive(Debug)]
 pub struct FieldAddressOutOfRange {
     pub field_address: Span,
 }
@@ -1599,6 +1641,7 @@ impl Diagnostic for FieldAddressOutOfRange {
     }
 }
 
+#[derive(Debug)]
 pub struct ResetValueNegative {
     pub reset_value: Span,
 }
@@ -1622,6 +1665,7 @@ impl Diagnostic for ResetValueNegative {
     }
 }
 
+#[derive(Debug)]
 pub struct InvalidShortProperty {
     pub property: Span,
     pub node_type: Spanned<NodeType>,
@@ -1668,6 +1712,7 @@ impl Diagnostic for InvalidShortProperty {
     }
 }
 
+#[derive(Debug)]
 pub struct FieldAddressWrongOrder {
     pub address: Span,
     pub end: i128,
@@ -1703,6 +1748,7 @@ impl Diagnostic for FieldAddressWrongOrder {
     }
 }
 
+#[derive(Debug)]
 pub struct IgnoredDocCommentOnProperty {
     pub doc_comments: Span,
     pub property: Span,
@@ -1730,6 +1776,7 @@ impl Diagnostic for IgnoredDocCommentOnProperty {
     }
 }
 
+#[derive(Debug)]
 pub struct InvalidTypeSpecifier {
     pub node_type: Spanned<NodeType>,
     pub type_specifier: Span,
@@ -1769,6 +1816,7 @@ impl Diagnostic for InvalidTypeSpecifier {
     }
 }
 
+#[derive(Debug)]
 pub struct InvalidTypeConversion {
     pub node_type: Spanned<NodeType>,
     pub type_conversion: Span,
@@ -1808,6 +1856,7 @@ impl Diagnostic for InvalidTypeConversion {
     }
 }
 
+#[derive(Debug)]
 pub struct InvalidFieldsetRef {
     pub reference: Span,
     pub pointee: Option<Span>,
@@ -1839,6 +1888,7 @@ impl Diagnostic for InvalidFieldsetRef {
     }
 }
 
+#[derive(Debug)]
 pub struct InvalidRepeat {
     pub repeat: Span,
     pub node_type: Spanned<NodeType>,
