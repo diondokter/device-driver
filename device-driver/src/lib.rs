@@ -22,12 +22,53 @@ pub mod ops;
 pub use device_driver_macros::*;
 
 // #[doc(hidden)]
-pub trait FieldSet: Default {
-    /// The size of the field set in number of bits
-    const SIZE_BITS: u32;
+pub trait Fieldset: Default {
+    const METADATA: FieldsetMetadata;
 
     fn get_inner_buffer(&self) -> &[u8];
     fn get_inner_buffer_mut(&mut self) -> &mut [u8];
+}
+
+/// Metadata about fieldsets
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[non_exhaustive]
+pub struct FieldsetMetadata {
+    /// The byte order of the fieldset
+    pub byte_order: ByteOrder,
+}
+
+impl FieldsetMetadata {
+    /// A default that allow you to construct the metadata
+    pub const DEFAULT: Self = Self {
+        byte_order: ByteOrder::LE,
+    };
+
+    /// Create a new instance with the default value
+    pub const fn new() -> Self {
+        Self::DEFAULT
+    }
+
+    /// Set the byte order
+    pub const fn with_byte_order(self, byte_order: ByteOrder) -> Self {
+        Self { byte_order, ..self }
+    }
+}
+
+impl Default for FieldsetMetadata {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
+/// Value representing the byte order
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub enum ByteOrder {
+    /// Little endian
+    LE,
+    /// Big endian
+    BE,
 }
 
 /// The error returned by the generated [`TryFrom`]s.
@@ -59,10 +100,6 @@ pub struct WO;
 pub struct RO;
 #[doc(hidden)]
 pub struct RW;
-#[doc(hidden)]
-pub struct RC;
-#[doc(hidden)]
-pub struct CO;
 
 #[doc(hidden)]
 pub trait ReadCapability {}

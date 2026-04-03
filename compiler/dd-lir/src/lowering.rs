@@ -364,7 +364,7 @@ fn transform_field_set(manifest: &mir::Manifest, field_set: &mir::FieldSet) -> l
         byte_order: field_set
             .byte_order
             .expect("Byte order should never be none at this point after the MIR passes"),
-        size_bits: field_set.size_bits.value,
+        size_bytes: field_set.size_bytes.value,
         fields,
     }
 }

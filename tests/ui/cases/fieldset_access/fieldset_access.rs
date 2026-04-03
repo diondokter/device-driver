@@ -85,8 +85,9 @@ pub struct FooWoFieldSet {
     /// The internal bits
     bits: [u8; 8],
 }
-impl ::device_driver::FieldSet for FooWoFieldSet {
-    const SIZE_BITS: u32 = 64;
+impl ::device_driver::Fieldset for FooWoFieldSet {
+    const METADATA: ::device_driver::FieldsetMetadata = ::device_driver::FieldsetMetadata::new()
+        .with_byte_order(::device_driver::ByteOrder::LE);
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
@@ -240,8 +241,9 @@ pub struct FooRwFieldSet {
     /// The internal bits
     bits: [u8; 8],
 }
-impl ::device_driver::FieldSet for FooRwFieldSet {
-    const SIZE_BITS: u32 = 64;
+impl ::device_driver::Fieldset for FooRwFieldSet {
+    const METADATA: ::device_driver::FieldsetMetadata = ::device_driver::FieldsetMetadata::new()
+        .with_byte_order(::device_driver::ByteOrder::LE);
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
@@ -395,8 +397,9 @@ pub struct FooRoFieldSet {
     /// The internal bits
     bits: [u8; 8],
 }
-impl ::device_driver::FieldSet for FooRoFieldSet {
-    const SIZE_BITS: u32 = 64;
+impl ::device_driver::Fieldset for FooRoFieldSet {
+    const METADATA: ::device_driver::FieldsetMetadata = ::device_driver::FieldsetMetadata::new()
+        .with_byte_order(::device_driver::ByteOrder::LE);
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }

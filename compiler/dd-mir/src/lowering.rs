@@ -26,7 +26,7 @@ use device_driver_diagnostics::{
         IgnoredDocCommentOnProperty, InvalidExpressionType, InvalidIdentifier, InvalidNodeType,
         InvalidPropertyName, InvalidRepeat, InvalidShortProperty, InvalidSubnode,
         InvalidTypeConversion, InvalidTypeSpecifier, MissingRequiredProperty, ResetValueNegative,
-        SizeBitsTooLarge, UnknownNodeType,
+        SizeBytesTooLarge, UnknownNodeType,
     },
 };
 use device_driver_parser::{Ast, Expression, Ident, Node, Property};
@@ -1027,7 +1027,7 @@ impl Shape for FieldSet {
     fn supported_properties() -> &'static [PropertyInfo<Self>] {
         static MAP: &[PropertyInfo<FieldSet>] = &[
             PropertyInfo {
-                name: PropertyName::Exact("size-bits"),
+                name: PropertyName::Exact("size-bytes"),
                 allowed_expression_types: Cow::Borrowed(&[Expression::Number(8)]),
                 multiple_allowed: false,
                 required: true,
@@ -1035,12 +1035,12 @@ impl Shape for FieldSet {
                 setter: |fs: &mut FieldSet, property, fs_node, diagnostics, _| match u32::try_from(
                     property.expression.as_number().unwrap(),
                 ) {
-                    Ok(size_bits) => {
-                        fs.size_bits = size_bits.with_span(property.expression.span);
+                    Ok(size_bytes) if size_bytes <= 0x10_0000 => {
+                        fs.size_bytes = size_bytes.with_span(property.expression.span);
                         false
                     }
-                    Err(_) => {
-                        diagnostics.add(SizeBitsTooLarge {
+                    _ => {
+                        diagnostics.add(SizeBytesTooLarge {
                             value: property.expression.span,
                             field_set: fs_node.span,
                         });

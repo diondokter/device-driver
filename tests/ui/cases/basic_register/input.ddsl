@@ -7,7 +7,7 @@ device Device {
         address: 0,
 
         fields: fieldset FooFieldSet {
-            size-bits: 24,
+            size-bytes: 3,
 
             field value 23:0 -> uint
         }

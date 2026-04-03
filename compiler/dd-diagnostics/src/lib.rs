@@ -3,12 +3,13 @@
     reason = "Something going on with the diagnostics derive"
 )]
 
-use std::{borrow::Cow, error::Error, fmt::Display, ops::Deref};
+use std::{borrow::Cow, error::Error, fmt::Debug, fmt::Display, ops::Deref};
 
 use annotate_snippets::{Group, Level, Renderer, renderer::DecorStyle};
 
 pub mod errors;
 
+#[derive(Debug)]
 pub struct Diagnostics {
     diagnostics: Vec<Box<dyn Diagnostic>>,
 }
@@ -167,7 +168,7 @@ fn strip_ansi_urls(text: &str) -> String {
     output
 }
 
-pub trait Diagnostic {
+pub trait Diagnostic: Debug {
     fn is_error(&self) -> bool;
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>>;
 }
@@ -269,6 +270,7 @@ impl<T, E: ErrorExt> ResultExt<T, E> for Result<T, E> {
     }
 }
 
+#[derive(Debug)]
 pub struct Message<'s> {
     string: Cow<'s, str>,
 }

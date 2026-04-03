@@ -1,4 +1,4 @@
-use device_driver::{ConversionError, RegisterInterface};
+use device_driver::{ConversionError, FieldsetMetadata, RegisterInterface};
 
 pub struct DeviceInterface {
     device_memory: [u8; 128],
@@ -24,8 +24,8 @@ impl RegisterInterface for DeviceInterface {
 
     fn write_register(
         &mut self,
+        _metadata: &FieldsetMetadata,
         address: Self::AddressType,
-        _size_bits: u32,
         data: &[u8],
     ) -> Result<(), Self::Error> {
         self.device_memory[address as usize..][..data.len()].copy_from_slice(data);
@@ -35,8 +35,8 @@ impl RegisterInterface for DeviceInterface {
 
     fn read_register(
         &mut self,
+        _metadata: &FieldsetMetadata,
         address: Self::AddressType,
-        _size_bits: u32,
         data: &mut [u8],
     ) -> Result<(), Self::Error> {
         data.copy_from_slice(&self.device_memory[address as usize..][..data.len()]);
@@ -52,7 +52,7 @@ device_driver::compile!(
             register Foo {
                 address: 0,
                 fields: fieldset FooFields {
-                    size-bits: 64,
+                    size-bytes: 8,
 
                     /// Try needed since [MyTryEnum] doesn't impl [From]
                     field convert_custom_try 1:0 -> uint as try MyTryEnum,

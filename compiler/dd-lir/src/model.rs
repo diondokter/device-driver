@@ -69,14 +69,8 @@ pub struct FieldSet {
     pub description: String,
     pub name: Identifier,
     pub byte_order: ByteOrder,
-    pub size_bits: u32,
+    pub size_bytes: u32,
     pub fields: Vec<Field>,
-}
-
-impl FieldSet {
-    pub fn size_bytes(&self) -> u32 {
-        self.size_bits.div_ceil(8)
-    }
 }
 
 pub struct Field {

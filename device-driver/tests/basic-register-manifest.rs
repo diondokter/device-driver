@@ -1,4 +1,4 @@
-use device_driver::RegisterInterface;
+use device_driver::{FieldsetMetadata, RegisterInterface};
 
 pub struct DeviceInterface {
     device_memory: [u8; 128],
@@ -24,11 +24,11 @@ impl RegisterInterface for DeviceInterface {
 
     fn write_register(
         &mut self,
+        _metadata: &FieldsetMetadata,
         address: Self::AddressType,
-        size_bits: u32,
         data: &[u8],
     ) -> Result<(), Self::Error> {
-        assert_eq!(size_bits, 24);
+        assert_eq!(data.len(), 3);
         self.device_memory[address as usize..][..data.len()].copy_from_slice(data);
 
         Ok(())
@@ -36,11 +36,11 @@ impl RegisterInterface for DeviceInterface {
 
     fn read_register(
         &mut self,
+        _metadata: &FieldsetMetadata,
         address: Self::AddressType,
-        size_bits: u32,
         data: &mut [u8],
     ) -> Result<(), Self::Error> {
-        assert_eq!(size_bits, 24);
+        assert_eq!(data.len(), 3);
         data.copy_from_slice(&self.device_memory[address as usize..][..data.len()]);
         Ok(())
     }

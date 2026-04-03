@@ -1,4 +1,4 @@
-use device_driver::RegisterInterface;
+use device_driver::{FieldsetMetadata, RegisterInterface};
 
 device_driver::compile!(
     ddsl: "
@@ -11,7 +11,7 @@ device_driver::compile!(
                 reset: 0xFFFFFFFF,
 
                 fields: fieldset FooFieldSet {
-                    size-bits: 32,
+                    size-bytes: 4,
 
                     field value 31:0 -> uint
                 }
@@ -28,8 +28,8 @@ impl RegisterInterface for DeviceInterface {
 
     fn write_register(
         &mut self,
+        _metadata: &FieldsetMetadata,
         _address: Self::AddressType,
-        _size_bits: u32,
         _data: &[u8],
     ) -> Result<(), Self::Error> {
         unimplemented!()
@@ -37,8 +37,8 @@ impl RegisterInterface for DeviceInterface {
 
     fn read_register(
         &mut self,
+        _metadata: &FieldsetMetadata,
         _address: Self::AddressType,
-        _size_bits: u32,
         _data: &mut [u8],
     ) -> Result<(), Self::Error> {
         unimplemented!()
