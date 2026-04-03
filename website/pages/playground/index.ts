@@ -16,13 +16,14 @@ const DEFAULT_CODE = `device Foo {
         address: 0,
         
         fields: fieldset BarFields {
-            size-bits: 8,
+            size-bytes: 1,
 
-            field xena[2*2] 2:0 -> u8 as enum Xena {
+            field xena 1:0 -> u8 as enum Xena {
                 A: _,
                 B: _,
-                D: catch-all 5,
-            }
+                C: default 3,
+            },
+            field quux 7:2 -> u8,
         }
     }
 }
