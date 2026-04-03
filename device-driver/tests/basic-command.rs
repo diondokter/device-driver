@@ -39,7 +39,7 @@ device_driver::compile!(
             command Input {
                 address: 1,
                 fields-in: fieldset InputFieldsIn {
-                    size-bits: 16,
+                    size-bytes: 2,
 
                     /// The value!
                     field val 15:0 -> uint
@@ -49,7 +49,7 @@ device_driver::compile!(
             command Output {
                 address: 2,
                 fields-out: fieldset OutputFieldsOut {
-                    size-bits: 8,
+                    size-bytes: 1,
 
                     /// The value!
                     field val 7:0 -> uint
@@ -59,13 +59,13 @@ device_driver::compile!(
             command InOut {
                 address: 3,
                 fields-in: fieldset InOutFieldsIn {
-                    size-bits: 16,
+                    size-bytes: 2,
 
                     /// The value!
                     field val 15:0 -> uint,
                 },
                 fields-out: fieldset InOutFieldsOut {
-                    size-bits: 8,
+                    size-bytes: 1,
 
                     /// The value!
                     field val 7:0 -> uint

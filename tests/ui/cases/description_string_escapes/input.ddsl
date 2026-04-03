@@ -5,7 +5,7 @@ device Device {
     register Foo {
         address: 0,
         fields: fieldset FooFieldSet {
-            size-bits: 24,
+            size-bytes: 3,
             /// \\\"#{
             /// %@&\n
             field value 23:0 -> uint

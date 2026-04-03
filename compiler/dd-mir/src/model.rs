@@ -528,12 +528,18 @@ pub struct Register {
 pub struct FieldSet {
     pub description: String,
     pub name: Spanned<Identifier>,
-    pub size_bits: Spanned<u32>,
+    pub size_bytes: Spanned<u32>,
     pub byte_order: Option<ByteOrder>,
     pub allow_bit_overlap: bool,
     pub fields: Vec<Field>,
     /// Span of the whole object
     pub span: Span,
+}
+
+impl FieldSet {
+    pub fn size_bits(&self) -> u32 {
+        self.size_bytes.value * 8
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]

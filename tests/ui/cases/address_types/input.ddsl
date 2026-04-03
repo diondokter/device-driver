@@ -7,7 +7,7 @@ device Device {
     register Foo {
         address: 0,
         fields: fieldset FooFieldSet {
-            size-bits: 0
+            size-bytes: 0
         }
     },
     command Bar {

@@ -3,7 +3,7 @@ device Device {
     register-address-type: u32,
 
     fieldset Foo {
-        size-bits: 0
+        size-bytes: 0
     },
 
     register Foo0[100*1000] {

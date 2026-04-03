@@ -14,7 +14,7 @@ device_driver::compile!(
                 fields:
                     /// X
                     fieldset FooFields {
-                        size-bits: 8,
+                        size-bytes: 1,
                         /// X
                         field value0 0 -> bool
                     }
@@ -25,14 +25,14 @@ device_driver::compile!(
                 fields-in:
                     /// X
                     fieldset BarFieldsIn {
-                        size-bits: 8,
+                        size-bytes: 1,
                         /// X
                         field value0 0 -> bool
                     },
                 fields-out:
                     /// X
                     fieldset BarFieldsOut {
-                        size-bits: 8,
+                        size-bytes: 1,
                         /// X
                         field value0 0 -> bool
                     },

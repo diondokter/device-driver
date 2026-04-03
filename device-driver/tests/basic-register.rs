@@ -59,7 +59,7 @@ device_driver::compile!(
             register Foo {
                 address: 0,
                 fields: fieldset FooFields {
-                    size-bits: 24,
+                    size-bytes: 3,
 
                     /// This is a bool!
                     field value0 0 -> bool,

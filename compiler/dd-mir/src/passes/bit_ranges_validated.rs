@@ -48,13 +48,13 @@ fn validate_len(
         let max_field_end = i128::from(field.field_address.end) + max_repeat_offset;
         let min_field_start = i128::from(field.field_address.start) + min_repeat_offset;
 
-        if max_field_end >= i128::from(field_set.size_bits.value) {
+        if max_field_end >= i128::from(field_set.size_bits()) {
             diagnostics.add(FieldAddressExceedsFieldsetSize {
                 address: field.field_address.span,
                 max_field_end,
                 repeat_offset: repeated.then_some(*max_repeat_offset),
-                fieldset_size: field_set.size_bits.value,
-                fieldset_size_bits: field_set.size_bits.span,
+                fieldset_size_bits: field_set.size_bits(),
+                fieldset_size_span: field_set.size_bytes.span,
             });
             removals.insert(field.id_with(field_set.id()));
         }
@@ -161,10 +161,10 @@ mod tests {
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into_with_dummy_span(),
-                size_bits: 10.with_dummy_span(),
+                size_bytes: 1.with_dummy_span(),
                 fields: vec![Field {
                     name: "my_field".into_with_dummy_span(),
-                    field_address: AddressRange { start: 0, end: 9 }.with_dummy_span(),
+                    field_address: AddressRange { start: 0, end: 7 }.with_dummy_span(),
                     ..Default::default()
                 }],
                 ..Default::default()
@@ -183,10 +183,10 @@ mod tests {
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into_with_dummy_span(),
-                size_bits: 10.with_dummy_span(),
+                size_bytes: 1.with_dummy_span(),
                 fields: vec![Field {
                     name: "my_field".into_with_dummy_span(),
-                    field_address: AddressRange { start: 0, end: 10 }.with_dummy_span(),
+                    field_address: AddressRange { start: 0, end: 8 }.with_dummy_span(),
                     ..Default::default()
                 }],
                 ..Default::default()
@@ -205,95 +205,7 @@ mod tests {
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into_with_dummy_span(),
-                size_bits: 10.with_dummy_span(),
-                fields: vec![Field {
-                    name: "my_field".into_with_dummy_span(),
-                    field_address: AddressRange { start: 0, end: 9 }.with_dummy_span(),
-                    ..Default::default()
-                }],
-                ..Default::default()
-            })],
-            span: Span::default(),
-        }
-        .into();
-
-        let mut diagnostics = Diagnostics::new();
-        run_pass(&mut start_mir, &mut diagnostics);
-        assert!(!diagnostics.has_error());
-
-        let mut start_mir = Device {
-            description: String::new(),
-            name: "Device".into_with_dummy_span(),
-            device_config: Default::default(),
-            objects: vec![Object::FieldSet(FieldSet {
-                name: "MyReg".into_with_dummy_span(),
-                size_bits: 10.with_dummy_span(),
-                fields: vec![Field {
-                    name: "my_field".into_with_dummy_span(),
-                    field_address: AddressRange { start: 0, end: 10 }.with_dummy_span(),
-                    ..Default::default()
-                }],
-                ..Default::default()
-            })],
-            span: Span::default(),
-        }
-        .into();
-
-        let mut diagnostics = Diagnostics::new();
-        run_pass(&mut start_mir, &mut diagnostics);
-        assert!(diagnostics.has_error());
-
-        let mut start_mir = Device {
-            description: String::new(),
-            name: "Device".into_with_dummy_span(),
-            device_config: Default::default(),
-            objects: vec![Object::FieldSet(FieldSet {
-                name: "MyReg".into_with_dummy_span(),
-                size_bits: 10.with_dummy_span(),
-                fields: vec![Field {
-                    name: "my_field".into_with_dummy_span(),
-                    field_address: AddressRange { start: 0, end: 9 }.with_dummy_span(),
-                    ..Default::default()
-                }],
-                ..Default::default()
-            })],
-            span: Span::default(),
-        }
-        .into();
-
-        let mut diagnostics = Diagnostics::new();
-        run_pass(&mut start_mir, &mut diagnostics);
-        assert!(!diagnostics.has_error());
-
-        let mut start_mir = Device {
-            description: String::new(),
-            name: "Device".into_with_dummy_span(),
-            device_config: Default::default(),
-            objects: vec![Object::FieldSet(FieldSet {
-                name: "MyReg".into_with_dummy_span(),
-                size_bits: 10.with_dummy_span(),
-                fields: vec![Field {
-                    name: "my_field".into_with_dummy_span(),
-                    field_address: AddressRange { start: 0, end: 10 }.with_dummy_span(),
-                    ..Default::default()
-                }],
-                ..Default::default()
-            })],
-            span: Span::default(),
-        }
-        .into();
-
-        let mut diagnostics = Diagnostics::new();
-        run_pass(&mut start_mir, &mut diagnostics);
-        assert!(diagnostics.has_error());
-
-        let mut start_mir = Device {
-            description: String::new(),
-            name: "Device".into_with_dummy_span(),
-            device_config: Default::default(),
-            objects: vec![Object::FieldSet(FieldSet {
-                name: "MyReg".into_with_dummy_span(),
-                size_bits: 10.with_dummy_span(),
+                size_bytes: 1.with_dummy_span(),
                 fields: vec![Field {
                     name: "my_field".into_with_dummy_span(),
                     field_address: AddressRange { start: 0, end: 4 }.with_dummy_span(),
@@ -322,7 +234,7 @@ mod tests {
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into_with_dummy_span(),
-                size_bits: 10.with_dummy_span(),
+                size_bytes: 2.with_dummy_span(),
                 fields: vec![
                     Field {
                         name: "my_field".into_with_dummy_span(),
@@ -351,7 +263,7 @@ mod tests {
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into_with_dummy_span(),
-                size_bits: 10.with_dummy_span(),
+                size_bytes: 2.with_dummy_span(),
                 allow_bit_overlap: true,
                 fields: vec![
                     Field {
@@ -381,7 +293,7 @@ mod tests {
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into_with_dummy_span(),
-                size_bits: 10.with_dummy_span(),
+                size_bytes: 2.with_dummy_span(),
                 fields: vec![
                     Field {
                         name: "my_field".into_with_dummy_span(),
@@ -411,7 +323,7 @@ mod tests {
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: "MyReg".into_with_dummy_span(),
-                size_bits: 10.with_dummy_span(),
+                size_bytes: 2.with_dummy_span(),
                 fields: vec![
                     Field {
                         name: "my_field".into_with_dummy_span(),

@@ -11,7 +11,7 @@ device_driver::compile!(
                 reset: 0xFFFFFFFF,
 
                 fields: fieldset FooFieldSet {
-                    size-bits: 32,
+                    size-bytes: 4,
 
                     field value 31:0 -> uint
                 }

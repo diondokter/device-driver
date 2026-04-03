@@ -5,7 +5,7 @@ device Device {
         access: RO,
         address: 0,
         fields: fieldset foo_roFieldSet {
-            size-bits: 64,
+            size-bytes: 8,
 
             field value_ro RO 15:0 -> uint,
             field value_rw 31:16 -> int,
@@ -15,7 +15,7 @@ device Device {
     register foo_rw {
         address: 1,
         fields: fieldset foo_rwFieldSet {
-            size-bits: 64,
+            size-bytes: 8,
 
             field value_ro RO 15:0 -> uint,
             field value_rw 31:16 -> int,
@@ -26,7 +26,7 @@ device Device {
         access: WO,
         address: 2,
         fields: fieldset foo_woFieldSet {
-            size-bits: 64,
+            size-bytes: 8,
             field value_ro RO 15:0 -> uint,
             field value_rw 31:16 -> int,
             field value_wo WO 32 -> bool,

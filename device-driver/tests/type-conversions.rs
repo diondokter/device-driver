@@ -52,7 +52,7 @@ device_driver::compile!(
             register Foo {
                 address: 0,
                 fields: fieldset FooFields {
-                    size-bits: 64,
+                    size-bytes: 8,
 
                     /// Try needed since [MyTryEnum] doesn't impl [From]
                     field convert_custom_try 1:0 -> uint as try MyTryEnum,

@@ -41,7 +41,7 @@ device_driver::compile!(
 
                 fields: fieldset FooLEFields {
                     byte-order: LE,
-                    size-bits: 16,
+                    size-bytes: 2,
 
                     field val 15:0 -> uint
                 }
@@ -53,7 +53,7 @@ device_driver::compile!(
 
                 fields: fieldset FooLEArrayFields {
                     byte-order: LE,
-                    size-bits: 16,
+                    size-bytes: 2,
 
                     field val 15:0 -> uint
                 }
@@ -65,7 +65,7 @@ device_driver::compile!(
 
                 fields: fieldset FooBEFields {
                     byte-order: BE,
-                    size-bits: 16,
+                    size-bytes: 2,
 
                     field val 15:0 -> uint
                 }
@@ -77,7 +77,7 @@ device_driver::compile!(
 
                 fields: fieldset FooBEArrayFields {
                     byte-order: BE,
-                    size-bits: 16,
+                    size-bytes: 2,
 
                     field val 15:0 -> uint
                 }
