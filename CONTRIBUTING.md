@@ -16,9 +16,9 @@ Limited use of AI is permitted in these situations:
 - Artifacts inspired by AI are submitted to the project
   - For example: You may use a chat as rubber duck or to ask for inspiration
 - Artifacts contain small obvious snippets suggested by AI
-  - For example: You may ask an AI something you would otherwise typically use StackOverflow for.
-  - But: Normal StackOverflow principles apply. Make sure the snippet is good and isn't sourced from a proprietary or GPL codebase.
-  - This means very limited use of tab-completion style AI is allowed, though frowned upon.
+  - For example: You may ask an AI something you would otherwise typically use StackOverflow for
+  - But: Normal StackOverflow principles apply. Make sure the snippet is good and isn't sourced from a proprietary or GPL codebase
+  - This means very limited use of tab-completion style AI is allowed, though frowned upon
 
 ---
 
