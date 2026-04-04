@@ -1,4 +1,4 @@
-This file is marked <a href="https://creativecommons.org/publicdomain/zero/1.0/">CC0 1.0
+This file is marked [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)
 
 ## AI guidelines
 
