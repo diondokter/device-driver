@@ -104,7 +104,7 @@ where
             &InFieldset::METADATA,
             &FieldsetMetadata::DEFAULT,
             self.address,
-            in_fields.get_inner_buffer(),
+            in_fields.as_slice(),
             &mut [],
         )
     }
@@ -125,7 +125,7 @@ where
             &OutFieldset::METADATA,
             self.address,
             &[],
-            out_fields.get_inner_buffer_mut(),
+            out_fields.as_slice_mut(),
         )?;
 
         Ok(out_fields)
@@ -152,8 +152,8 @@ where
             &InFieldset::METADATA,
             &OutFieldset::METADATA,
             self.address,
-            in_fields.get_inner_buffer(),
-            out_fields.get_inner_buffer_mut(),
+            in_fields.as_slice(),
+            out_fields.as_slice_mut(),
         )?;
 
         Ok(out_fields)
@@ -198,7 +198,7 @@ where
                 &InFieldset::METADATA,
                 &FieldsetMetadata::DEFAULT,
                 self.address,
-                in_fields.get_inner_buffer(),
+                in_fields.as_slice(),
                 &mut [],
             )
             .await
@@ -221,7 +221,7 @@ where
                 &OutFieldset::METADATA,
                 self.address,
                 &[],
-                out_fields.get_inner_buffer_mut(),
+                out_fields.as_slice_mut(),
             )
             .await?;
 
@@ -250,8 +250,8 @@ where
                 &InFieldset::METADATA,
                 &OutFieldset::METADATA,
                 self.address,
-                in_fields.get_inner_buffer(),
-                out_fields.get_inner_buffer_mut(),
+                in_fields.as_slice(),
+                out_fields.as_slice_mut(),
             )
             .await?;
 

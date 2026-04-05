@@ -2,7 +2,7 @@
 
 use crate::FieldsetMetadata;
 
-/// # Safety:
+/// # Safety
 /// Implers of this trait will get their memory changed through a byte slice.
 /// So make sure the type has a stable ABI and has no padding bits.
 pub unsafe trait Fieldset: Sized {
@@ -11,8 +11,8 @@ pub unsafe trait Fieldset: Sized {
     /// Get a zero-initialized instance of the fieldset
     const ZERO: Self;
 
-    /// Access the inner buffer as a slice
-    fn get_inner_buffer(&self) -> &[u8] {
+    /// Get the fieldset as a slice
+    fn as_slice(&self) -> &[u8] {
         unsafe {
             core::slice::from_raw_parts(
                 (self as *const Self).cast::<u8>(),
@@ -20,8 +20,8 @@ pub unsafe trait Fieldset: Sized {
             )
         }
     }
-    /// Access the inner buffer as a mutable slice
-    fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
+    /// Get the fieldset as a mutable slice
+    fn as_slice_mut(&mut self) -> &mut [u8] {
         unsafe {
             core::slice::from_raw_parts_mut(
                 (self as *mut Self).cast::<u8>(),
@@ -36,14 +36,24 @@ unsafe impl<T: Fieldset, const N: usize> Fieldset for [T; N] {
     const ZERO: Self = [T::ZERO; N];
 }
 
-pub(crate) trait ToTuple {
+#[doc(hidden)]
+pub trait ToTuple {
     type Tuple;
     fn to_tuple(self) -> Self::Tuple;
 }
 
-pub(crate) trait Append<T> {
+#[doc(hidden)]
+pub trait Append<T> {
     type Appended;
     fn append(self, val: T) -> Self::Appended;
+}
+
+impl<A> Append<A> for () {
+    type Appended = Fs1<A>;
+
+    fn append(self, val: A) -> Self::Appended {
+        Fs1(val)
+    }
 }
 
 macro_rules! impl_append {
@@ -66,7 +76,7 @@ macro_rules! create_fsn {
         #[derive(Debug)]
         #[repr(C)]
         #[doc(hidden)]
-        pub(crate) struct $name<$($tname),*>($($tname),*);
+        pub struct $name<$($tname),*>($($tname),*);
 
         unsafe impl<$($tname: Fieldset),*> Fieldset for $name<$($tname),*> {
             const METADATA: FieldsetMetadata = A::METADATA;
@@ -78,6 +88,14 @@ macro_rules! create_fsn {
             fn to_tuple(self) -> Self::Tuple {
                 (
                     $(self.$tnum),*
+                )
+            }
+        }
+        impl<'a, $($tname),*> ToTuple for &'a mut $name<$($tname),*> {
+            type Tuple = ($(&'a mut $tname),*);
+            fn to_tuple(self) -> Self::Tuple {
+                (
+                    $(&mut self.$tnum),*
                 )
             }
         }

@@ -34,15 +34,26 @@ impl<I> Device<I> {
         u8,
         FooFieldSet,
         ::device_driver::RW,
+        (),
     > {
         let address = self.base_address + 0;
         ::device_driver::RegisterOperation::<
             '_,
             I,
-            u8,
-            FooFieldSet,
-            ::device_driver::RW,
+            _,
+            _,
+            _,
+            _,
         >::new(self.interface(), address as u8, FooFieldSet::default)
+    }
+}
+impl<I> ::device_driver::Block for Device<I> {
+    type Interface = I;
+    type RegisterAddressType = u8;
+    type CommandAddressType = u8;
+    type BufferAddressType = u8;
+    fn interface(&mut self) -> &mut Self::Interface {
+        &mut self.interface
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq)]

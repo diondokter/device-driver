@@ -38,6 +38,15 @@ impl<I> Device<I> {
         >::new(self.interface(), address as u8)
     }
 }
+impl<I> ::device_driver::Block for Device<I> {
+    type Interface = I;
+    type RegisterAddressType = u8;
+    type CommandAddressType = u8;
+    type BufferAddressType = u8;
+    fn interface(&mut self) -> &mut Self::Interface {
+        &mut self.interface
+    }
+}
 #[derive(Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct FooFieldSetIn {

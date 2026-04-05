@@ -4,24 +4,87 @@
 #![doc = include_str!(concat!("../", env!("CARGO_PKG_README")))]
 
 use core::fmt::{Debug, Display};
+use core::marker::PhantomData;
+
+mod buffer;
+mod command;
+mod fieldset;
+mod register;
+
+pub use buffer::*;
+pub use command::*;
+pub use fieldset::*;
+pub use register::*;
 
 pub use embedded_io;
 pub use embedded_io_async;
-
-mod register;
-pub use register::*;
-mod command;
-pub use command::*;
-mod buffer;
-pub use buffer::*;
-mod fieldset;
-pub use fieldset::*;
 
 #[doc(hidden)]
 pub mod ops;
 
 #[cfg(feature = "macros")]
 pub use device_driver_macros::*;
+
+/// Trait implemented on every generated block/device.
+pub trait Block: Sized {
+    /// The interface used by the block
+    type Interface;
+    /// The register address type
+    type RegisterAddressType: Address;
+    /// The command address type
+    type CommandAddressType;
+    /// The buffer address type
+    type BufferAddressType;
+
+    /// Get a reference to the inner interface.
+    /// With it you can do out-of-band operations that aren't defined in the generated code.
+    fn interface(&mut self) -> &mut Self::Interface;
+
+    /// Start a multi-read transaction
+    ///
+    /// You can chain reads by calling [register::MultiRegisterOperation::with].
+    /// Once chained, call [register::MultiRegisterOperation::execute] to perform the read.
+    fn multi_read(
+        &mut self,
+    ) -> register::MultiRegisterOperation<'_, Self, Self::RegisterAddressType, (), RO> {
+        register::MultiRegisterOperation {
+            device: self,
+            start_address: None,
+            field_sets: (),
+            _phantom: PhantomData,
+        }
+    }
+
+    /// Start a multi-write transaction
+    ///
+    /// You can chain writes by calling [register::MultiRegisterOperation::with].
+    /// Once chained, call [register::MultiRegisterOperation::execute] to perform the read.
+    fn multi_write(
+        &mut self,
+    ) -> register::MultiRegisterOperation<'_, Self, Self::RegisterAddressType, (), WO> {
+        register::MultiRegisterOperation {
+            device: self,
+            start_address: None,
+            field_sets: (),
+            _phantom: PhantomData,
+        }
+    }
+
+    /// Start a multi-modify transaction
+    ///
+    /// You can chain modifies by calling [register::MultiRegisterOperation::with].
+    /// Once chained, call [register::MultiRegisterOperation::execute] to perform the read.
+    fn multi_modify(
+        &mut self,
+    ) -> register::MultiRegisterOperation<'_, Self, Self::RegisterAddressType, (), RW> {
+        register::MultiRegisterOperation {
+            device: self,
+            start_address: None,
+            field_sets: (),
+            _phantom: PhantomData,
+        }
+    }
+}
 
 /// Metadata about fieldsets
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -106,3 +169,49 @@ impl ReadCapability for RO {}
 
 impl WriteCapability for RW {}
 impl ReadCapability for RW {}
+
+#[doc(hidden)]
+pub trait Address: Copy {
+    fn add(self, val: i32) -> Self;
+}
+
+impl Address for u8 {
+    fn add(self, val: i32) -> Self {
+        (self as i32 + val).try_into().unwrap()
+    }
+}
+impl Address for u16 {
+    fn add(self, val: i32) -> Self {
+        (self as i32 + val).try_into().unwrap()
+    }
+}
+impl Address for u32 {
+    fn add(self, val: i32) -> Self {
+        self.checked_add_signed(val).unwrap()
+    }
+}
+impl Address for u64 {
+    fn add(self, val: i32) -> Self {
+        self.checked_add_signed(val as i64).unwrap()
+    }
+}
+impl Address for i8 {
+    fn add(self, val: i32) -> Self {
+        (self as i32 + val).try_into().unwrap()
+    }
+}
+impl Address for i16 {
+    fn add(self, val: i32) -> Self {
+        (self as i32 + val).try_into().unwrap()
+    }
+}
+impl Address for i32 {
+    fn add(self, val: i32) -> Self {
+        self + val
+    }
+}
+impl Address for i64 {
+    fn add(self, val: i32) -> Self {
+        self + val as i64
+    }
+}

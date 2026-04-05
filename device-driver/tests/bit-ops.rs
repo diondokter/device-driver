@@ -90,10 +90,7 @@ mod tests {
         let reset_foo = MyTestDevice::new(DeviceInterface).foo().reset_value();
 
         assert_eq!(FooFieldSet::ZERO ^ reset_foo, reset_foo);
-        assert_eq!(
-            FooFieldSet::ZERO ^ reset_foo ^ reset_foo,
-            FooFieldSet::ZERO
-        );
+        assert_eq!(FooFieldSet::ZERO ^ reset_foo ^ reset_foo, FooFieldSet::ZERO);
 
         let mut test_foo = FooFieldSet::ZERO;
         test_foo.set_value(0x12345678);

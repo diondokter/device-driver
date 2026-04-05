@@ -1,6 +1,9 @@
 use core::marker::PhantomData;
 
-use crate::{Fieldset, FieldsetMetadata, ReadCapability, WriteCapability};
+use crate::{
+    Address, Append, Block, Fieldset, FieldsetMetadata, RO, RW, ReadCapability, ToTuple, WO,
+    WriteCapability,
+};
 
 /// A trait to represent the interface to the device.
 ///
@@ -9,7 +12,7 @@ pub trait RegisterInterface {
     /// The error type
     type Error;
     /// The address type used by this interface. Should likely be an integer.
-    type AddressType: Copy;
+    type AddressType: Address;
 
     /// Write the given data to the register located at the given address
     fn write_register(
@@ -35,7 +38,7 @@ pub trait AsyncRegisterInterface {
     /// The error type
     type Error;
     /// The address type used by this interface. Should likely be an integer.
-    type AddressType: Copy;
+    type AddressType: Address;
 
     /// Write the given data to the register located at the given address
     async fn write_register(
@@ -55,15 +58,25 @@ pub trait AsyncRegisterInterface {
 }
 
 /// Object that performs actions on the device in the context of a register
-pub struct RegisterOperation<'i, Interface, AddressType: Copy, RegisterFs: Fieldset, Access> {
+pub struct RegisterOperation<
+    'i,
+    Interface,
+    AddressType: Address,
+    RegisterFs: Fieldset,
+    Access,
+    Repeat,
+> {
     interface: &'i mut Interface,
     address: AddressType,
     register_new_with_reset: fn() -> RegisterFs,
-    _phantom: PhantomData<(RegisterFs, Access)>,
+    _phantom: PhantomData<(RegisterFs, Access, Repeat)>,
 }
 
-impl<'i, Interface, AddressType: Copy, RegisterFs: Fieldset, Access>
-    RegisterOperation<'i, Interface, AddressType, RegisterFs, Access>
+impl<'i, Interface, AddressType, RegisterFs, Access, Repeat>
+    RegisterOperation<'i, Interface, AddressType, RegisterFs, Access, Repeat>
+where
+    AddressType: Address,
+    RegisterFs: Fieldset,
 {
     #[doc(hidden)]
     pub fn new(
@@ -91,29 +104,177 @@ impl<'i, Interface, AddressType: Copy, RegisterFs: Fieldset, Access>
     pub fn reset_value(&self) -> RegisterFs {
         (self.register_new_with_reset)()
     }
-}
 
-impl<Interface, AddressType: Copy, RegisterFs: Fieldset, Access>
-    RegisterOperation<'_, Interface, AddressType, RegisterFs, Access>
-where
-    Interface: RegisterInterface<AddressType = AddressType>,
-    Access: WriteCapability,
-{
+    /// Get a plan to read, write or modify for multi register transactions
+    pub fn plan(&self) -> Plan<AddressType, RegisterFs, Access>
+    where
+        Repeat: NotRepeating,
+    {
+        Plan {
+            address: self.address(),
+            value: self.reset_value(),
+            _phantom: PhantomData,
+        }
+    }
+
+    /// Get a plan to read, write or modify for multi register transactions
+    #[track_caller]
+    pub fn plan_at(&self, index: Repeat::Index) -> Plan<AddressType, RegisterFs, Access>
+    where
+        Repeat: Repeating,
+    {
+        Plan {
+            address: Repeat::calc_address(self.address, index),
+            value: self.reset_value(),
+            _phantom: PhantomData,
+        }
+    }
+
+    /// Same as [Self::plan], but initialize the fieldset with all zeroes
+    #[track_caller]
+    pub fn plan_with_zero(&self) -> Plan<AddressType, RegisterFs, Access>
+    where
+        Repeat: NotRepeating,
+        Access: WriteCapability,
+    {
+        Plan {
+            address: self.address(),
+            value: RegisterFs::ZERO,
+            _phantom: PhantomData,
+        }
+    }
+
+    /// Same as [Self::plan_at], but initialize the fieldset with all zeroes
+    #[track_caller]
+    pub fn plan_with_zero_at(&self, index: Repeat::Index) -> Plan<AddressType, RegisterFs, Access>
+    where
+        Repeat: Repeating,
+        Access: WriteCapability,
+    {
+        Plan {
+            address: Repeat::calc_address(self.address, index),
+            value: RegisterFs::ZERO,
+            _phantom: PhantomData,
+        }
+    }
+
     /// Write to the register.
     ///
     /// The closure is given the write object initialized to the reset value of the register.
     /// If no reset value is specified for this register, this function is the same as [`Self::write_with_zero`].
-    pub fn write<R>(
+    #[track_caller]
+    pub fn write<R>(&mut self, f: impl FnOnce(&mut RegisterFs) -> R) -> Result<R, Interface::Error>
+    where
+        Repeat: NotRepeating,
+        Interface: RegisterInterface<AddressType = AddressType>,
+        Access: WriteCapability,
+    {
+        let mut register = (self.register_new_with_reset)();
+        let returned = f(&mut register);
+
+        self.interface
+            .write_register(&RegisterFs::METADATA, self.address, register.as_slice())?;
+        Ok(returned)
+    }
+
+    /// Write to the register.
+    ///
+    /// The closure is given the write object initialized to the reset value of the register.
+    /// If no reset value is specified for this register, this function is the same as [`Self::write_with_zero`].
+    #[track_caller]
+    pub fn write_at<R>(
         &mut self,
+        index: Repeat::Index,
         f: impl FnOnce(&mut RegisterFs) -> R,
-    ) -> Result<R, Interface::Error> {
+    ) -> Result<R, Interface::Error>
+    where
+        Repeat: Repeating,
+        Interface: RegisterInterface<AddressType = AddressType>,
+        Access: WriteCapability,
+    {
         let mut register = (self.register_new_with_reset)();
         let returned = f(&mut register);
 
         self.interface.write_register(
             &RegisterFs::METADATA,
+            Repeat::calc_address(self.address, index),
+            register.as_slice(),
+        )?;
+        Ok(returned)
+    }
+
+    /// Write to the register.
+    ///
+    /// The closure is given the write object initialized to the reset value of the register.
+    /// If no reset value is specified for this register, this function is the same as [`Self::write_with_zero`].
+    #[track_caller]
+    pub fn write_async<R>(
+        &mut self,
+        f: impl FnOnce(&mut RegisterFs) -> R,
+    ) -> impl Future<Output = Result<R, Interface::Error>>
+    where
+        Repeat: NotRepeating,
+        Interface: AsyncRegisterInterface<AddressType = AddressType>,
+        Access: WriteCapability,
+    {
+        let mut register = (self.register_new_with_reset)();
+        let returned = f(&mut register);
+
+        async move {
+            self.interface
+                .write_register(&RegisterFs::METADATA, self.address, register.as_slice())
+                .await?;
+            Ok(returned)
+        }
+    }
+
+    /// Write to the register.
+    ///
+    /// The closure is given the write object initialized to the reset value of the register.
+    /// If no reset value is specified for this register, this function is the same as [`Self::write_with_zero`].
+    #[track_caller]
+    pub fn write_at_async<R>(
+        &mut self,
+        index: Repeat::Index,
+        f: impl FnOnce(&mut RegisterFs) -> R,
+    ) -> impl Future<Output = Result<R, Interface::Error>>
+    where
+        Repeat: Repeating,
+        Interface: AsyncRegisterInterface<AddressType = AddressType>,
+        Access: WriteCapability,
+    {
+        let mut register = (self.register_new_with_reset)();
+        let returned = f(&mut register);
+
+        let address = Repeat::calc_address(self.address, index);
+
+        async move {
+            self.interface
+                .write_register(&RegisterFs::METADATA, address, register.as_slice())
+                .await?;
+            Ok(returned)
+        }
+    }
+
+    /// Write to the register.
+    ///
+    /// The closure is given the write object initialized to all zero.
+    #[track_caller]
+    pub fn write_with_zero<R>(
+        &mut self,
+        f: impl FnOnce(&mut RegisterFs) -> R,
+    ) -> Result<R, Interface::Error>
+    where
+        Repeat: NotRepeating,
+        Interface: RegisterInterface<AddressType = AddressType>,
+        Access: WriteCapability,
+    {
+        let mut register = RegisterFs::ZERO;
+        let returned = f(&mut register);
+        self.interface.write_register(
+            &RegisterFs::METADATA,
             self.address,
-            register.get_inner_buffer(),
+            register.as_slice_mut(),
         )?;
         Ok(returned)
     }
@@ -121,156 +282,561 @@ where
     /// Write to the register.
     ///
     /// The closure is given the write object initialized to all zero.
-    pub fn write_with_zero<R>(
+    #[track_caller]
+    pub fn write_with_zero_at<R>(
         &mut self,
+        index: Repeat::Index,
         f: impl FnOnce(&mut RegisterFs) -> R,
-    ) -> Result<R, Interface::Error> {
+    ) -> Result<R, Interface::Error>
+    where
+        Repeat: Repeating,
+        Interface: RegisterInterface<AddressType = AddressType>,
+        Access: WriteCapability,
+    {
         let mut register = RegisterFs::ZERO;
         let returned = f(&mut register);
         self.interface.write_register(
             &RegisterFs::METADATA,
-            self.address,
-            register.get_inner_buffer_mut(),
+            Repeat::calc_address(self.address, index),
+            register.as_slice_mut(),
         )?;
         Ok(returned)
     }
-}
 
-impl<Interface, AddressType: Copy, RegisterFs: Fieldset, Access>
-    RegisterOperation<'_, Interface, AddressType, RegisterFs, Access>
-where
-    Interface: RegisterInterface<AddressType = AddressType>,
-    Access: ReadCapability,
-{
+    /// Write to the register.
+    ///
+    /// The closure is given the write object initialized to all zero.
+    #[track_caller]
+    pub fn write_with_zero_async<R>(
+        &mut self,
+        f: impl FnOnce(&mut RegisterFs) -> R,
+    ) -> impl Future<Output = Result<R, Interface::Error>>
+    where
+        Repeat: NotRepeating,
+        Interface: AsyncRegisterInterface<AddressType = AddressType>,
+        Access: WriteCapability,
+    {
+        let mut register = RegisterFs::ZERO;
+        let returned = f(&mut register);
+
+        async move {
+            self.interface
+                .write_register(&RegisterFs::METADATA, self.address, register.as_slice_mut())
+                .await?;
+            Ok(returned)
+        }
+    }
+
+    /// Write to the register.
+    ///
+    /// The closure is given the write object initialized to all zero.
+    #[track_caller]
+    pub fn write_with_zero_at_async<R>(
+        &mut self,
+        index: Repeat::Index,
+        f: impl FnOnce(&mut RegisterFs) -> R,
+    ) -> impl Future<Output = Result<R, Interface::Error>>
+    where
+        Repeat: Repeating,
+        Interface: AsyncRegisterInterface<AddressType = AddressType>,
+        Access: WriteCapability,
+    {
+        let mut register = RegisterFs::ZERO;
+        let returned = f(&mut register);
+
+        let address = Repeat::calc_address(self.address, index);
+
+        async move {
+            self.interface
+                .write_register(&RegisterFs::METADATA, address, register.as_slice_mut())
+                .await?;
+            Ok(returned)
+        }
+    }
+
     /// Read the register from the device
-    pub fn read(&mut self) -> Result<RegisterFs, Interface::Error> {
+    #[track_caller]
+    pub fn read(&mut self) -> Result<RegisterFs, Interface::Error>
+    where
+        Repeat: NotRepeating,
+        Interface: RegisterInterface<AddressType = AddressType>,
+        Access: ReadCapability,
+    {
         let mut register = RegisterFs::ZERO;
 
         self.interface.read_register(
             &RegisterFs::METADATA,
             self.address,
-            register.get_inner_buffer_mut(),
+            register.as_slice_mut(),
         )?;
         Ok(register)
     }
-}
 
-impl<Interface, AddressType: Copy, RegisterFs: Fieldset, Access>
-    RegisterOperation<'_, Interface, AddressType, RegisterFs, Access>
-where
-    Interface: RegisterInterface<AddressType = AddressType>,
-    Access: ReadCapability + WriteCapability,
-{
+    /// Read the register from the device
+    #[track_caller]
+    pub fn read_at(&mut self, index: Repeat::Index) -> Result<RegisterFs, Interface::Error>
+    where
+        Repeat: Repeating,
+        Interface: RegisterInterface<AddressType = AddressType>,
+        Access: ReadCapability,
+    {
+        let mut register = RegisterFs::ZERO;
+
+        self.interface.read_register(
+            &RegisterFs::METADATA,
+            Repeat::calc_address(self.address, index),
+            register.as_slice_mut(),
+        )?;
+        Ok(register)
+    }
+
+    /// Read the register from the device
+    #[track_caller]
+    pub fn read_async(&mut self) -> impl Future<Output = Result<RegisterFs, Interface::Error>>
+    where
+        Repeat: NotRepeating,
+        Interface: AsyncRegisterInterface<AddressType = AddressType>,
+        Access: ReadCapability,
+    {
+        let mut register = RegisterFs::ZERO;
+
+        async move {
+            self.interface
+                .read_register(&RegisterFs::METADATA, self.address, register.as_slice_mut())
+                .await?;
+            Ok(register)
+        }
+    }
+
+    /// Read the register from the device
+    pub fn read_at_async(
+        &mut self,
+        index: Repeat::Index,
+    ) -> impl Future<Output = Result<RegisterFs, Interface::Error>>
+    where
+        Repeat: Repeating,
+        Interface: AsyncRegisterInterface<AddressType = AddressType>,
+        Access: ReadCapability,
+    {
+        let mut register = RegisterFs::ZERO;
+        let address = Repeat::calc_address(self.address, index);
+
+        async move {
+            self.interface
+                .read_register(&RegisterFs::METADATA, address, register.as_slice_mut())
+                .await?;
+            Ok(register)
+        }
+    }
+
     /// Modify the existing register value.
     ///
     /// The register is read, the value is then passed to the closure for making changes.
     /// The result is then written back to the device.
-    pub fn modify<R>(
-        &mut self,
-        f: impl FnOnce(&mut RegisterFs) -> R,
-    ) -> Result<R, Interface::Error> {
+    #[track_caller]
+    pub fn modify<R>(&mut self, f: impl FnOnce(&mut RegisterFs) -> R) -> Result<R, Interface::Error>
+    where
+        Repeat: NotRepeating,
+        Interface: RegisterInterface<AddressType = AddressType>,
+        Access: ReadCapability + WriteCapability,
+    {
         let mut register = self.read()?;
         let returned = f(&mut register);
         self.interface.write_register(
             &RegisterFs::METADATA,
             self.address,
-            register.get_inner_buffer_mut(),
+            register.as_slice_mut(),
+        )?;
+        Ok(returned)
+    }
+
+    /// Modify the existing register value.
+    ///
+    /// The register is read, the value is then passed to the closure for making changes.
+    /// The result is then written back to the device.
+    #[track_caller]
+    pub fn modify_at<R>(
+        &mut self,
+        index: Repeat::Index,
+        f: impl FnOnce(&mut RegisterFs) -> R,
+    ) -> Result<R, Interface::Error>
+    where
+        Repeat: Repeating,
+        Interface: RegisterInterface<AddressType = AddressType>,
+        Access: ReadCapability + WriteCapability,
+    {
+        let mut register = self.read_at(index.clone())?;
+        let returned = f(&mut register);
+        self.interface.write_register(
+            &RegisterFs::METADATA,
+            Repeat::calc_address(self.address, index),
+            register.as_slice_mut(),
+        )?;
+        Ok(returned)
+    }
+
+    /// Modify the existing register value.
+    ///
+    /// The register is read, the value is then passed to the closure for making changes.
+    /// The result is then written back to the device.
+    #[track_caller]
+    pub fn modify_async<R>(
+        &mut self,
+        f: impl FnOnce(&mut RegisterFs) -> R,
+    ) -> impl Future<Output = Result<R, Interface::Error>>
+    where
+        Repeat: NotRepeating,
+        Interface: AsyncRegisterInterface<AddressType = AddressType>,
+        Access: ReadCapability + WriteCapability,
+    {
+        let mut register = RegisterFs::ZERO;
+
+        async move {
+            self.interface
+                .read_register(&RegisterFs::METADATA, self.address, register.as_slice_mut())
+                .await?;
+
+            let returned = f(&mut register);
+
+            self.interface
+                .write_register(&RegisterFs::METADATA, self.address, register.as_slice())
+                .await?;
+            Ok(returned)
+        }
+    }
+
+    /// Modify the existing register value.
+    ///
+    /// The register is read, the value is then passed to the closure for making changes.
+    /// The result is then written back to the device.
+    #[track_caller]
+    pub fn modify_at_async<R>(
+        &mut self,
+        index: Repeat::Index,
+        f: impl FnOnce(&mut RegisterFs) -> R,
+    ) -> impl Future<Output = Result<R, Interface::Error>>
+    where
+        Repeat: Repeating,
+        Interface: AsyncRegisterInterface<AddressType = AddressType>,
+        Access: ReadCapability + WriteCapability,
+    {
+        let mut register = RegisterFs::ZERO;
+
+        let address = Repeat::calc_address(self.address, index);
+
+        async move {
+            self.interface
+                .read_register(&RegisterFs::METADATA, address, register.as_slice_mut())
+                .await?;
+
+            let returned = f(&mut register);
+
+            self.interface
+                .write_register(&RegisterFs::METADATA, address, register.as_slice())
+                .await?;
+            Ok(returned)
+        }
+    }
+}
+
+/// A plan that is used for multi-reads and writes.
+pub struct Plan<AddressType: Copy, FS, Access> {
+    /// The address of the register
+    pub address: AddressType,
+    /// The starting value of the register. This is either the reset value or all-0's
+    pub value: FS,
+    _phantom: PhantomData<Access>,
+}
+
+/// A register operation for reading or writing multiple registers in one transaction
+pub struct MultiRegisterOperation<'d, D, AddressType: Address, Fieldsets, Access> {
+    pub(crate) device: &'d mut D,
+    pub(crate) start_address: Option<AddressType>,
+    pub(crate) field_sets: Fieldsets,
+    pub(crate) _phantom: PhantomData<Access>,
+}
+
+impl<'d, D, AddressType, FieldSets> MultiRegisterOperation<'d, D, AddressType, FieldSets, WO>
+where
+    D: Block,
+    AddressType: Address,
+{
+    /// Chain an extra write onto the multi-write.
+    ///
+    /// The closure must return a plan for the register you want to write.
+    /// The plan is created by calling [RegisterOperation::plan] or [RegisterOperation::plan_with_zero].
+    ///
+    /// After chaining, call [Self::execute].
+    #[inline]
+    pub fn with<FS: Fieldset, LocalAccess: WriteCapability>(
+        mut self,
+        f: impl FnOnce(&mut D) -> crate::Plan<AddressType, FS, LocalAccess>,
+    ) -> MultiRegisterOperation<'d, D, AddressType, FieldSets::Appended, WO>
+    where
+        FieldSets: Append<FS>,
+    {
+        let Plan { address, value, .. } = f(self.device);
+
+        if self.start_address.is_none() {
+            self.start_address = Some(address)
+        }
+
+        // TODO: Check if legal
+
+        MultiRegisterOperation {
+            device: self.device,
+            start_address: self.start_address,
+            field_sets: self.field_sets.append(value),
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<'d, D, AddressType, FieldSets> MultiRegisterOperation<'d, D, AddressType, FieldSets, RO>
+where
+    D: Block,
+    AddressType: Address,
+{
+    /// Chain an extra read onto the multi-read.
+    ///
+    /// The closure must return a plan for the register you want to read.
+    /// The plan is created by calling [RegisterOperation::plan].
+    ///
+    /// After chaining, call [Self::execute].
+    #[inline]
+    pub fn with<FS: Fieldset, LocalAccess: ReadCapability>(
+        mut self,
+        f: impl FnOnce(&mut D) -> crate::Plan<AddressType, FS, LocalAccess>,
+    ) -> MultiRegisterOperation<'d, D, AddressType, FieldSets::Appended, RO>
+    where
+        FieldSets: Append<FS>,
+    {
+        let Plan { address, value, .. } = f(self.device);
+
+        if self.start_address.is_none() {
+            self.start_address = Some(address)
+        }
+
+        // TODO: Check if legal
+
+        MultiRegisterOperation {
+            device: self.device,
+            start_address: self.start_address,
+            field_sets: self.field_sets.append(value),
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<'d, D, AddressType, FieldSets> MultiRegisterOperation<'d, D, AddressType, FieldSets, RW>
+where
+    D: Block,
+    AddressType: Address,
+{
+    /// Chain an extra modify onto the multi-modify.
+    ///
+    /// The closure must return a plan for the register you want to modify.
+    /// The plan is created by calling [RegisterOperation::plan].
+    ///
+    /// After chaining, call [Self::execute].
+    #[inline]
+    pub fn with<FS: Fieldset, LocalAccess: ReadCapability + WriteCapability>(
+        mut self,
+        f: impl FnOnce(&mut D) -> crate::Plan<AddressType, FS, LocalAccess>,
+    ) -> MultiRegisterOperation<'d, D, AddressType, FieldSets::Appended, RW>
+    where
+        FieldSets: Append<FS>,
+    {
+        let Plan { address, value, .. } = f(self.device);
+
+        if self.start_address.is_none() {
+            self.start_address = Some(address)
+        }
+
+        // TODO: Check if legal
+
+        MultiRegisterOperation {
+            device: self.device,
+            start_address: self.start_address,
+            field_sets: self.field_sets.append(value),
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<'d, D, Fieldsets>
+    MultiRegisterOperation<
+        'd,
+        D,
+        <D::Interface as crate::RegisterInterface>::AddressType,
+        Fieldsets,
+        RO,
+    >
+where
+    D: Block,
+    D::Interface: crate::RegisterInterface,
+    Fieldsets: Fieldset + ToTuple,
+{
+    /// Execute the read.
+    ///
+    /// If ok, the fieldset values are returned as a tuple.
+    /// If the multi-read was illegal or the read failed, an error is returned.
+    #[inline]
+    pub fn execute(
+        mut self,
+    ) -> Result<Fieldsets::Tuple, <D::Interface as crate::RegisterInterface>::Error> {
+        self.device.interface().read_register(
+            &Fieldsets::METADATA,
+            self.start_address.unwrap(),
+            self.field_sets.as_slice_mut(),
+        )?;
+
+        Ok(self.field_sets.to_tuple())
+    }
+}
+
+impl<'d, D, Fieldsets>
+    MultiRegisterOperation<
+        'd,
+        D,
+        <D::Interface as crate::RegisterInterface>::AddressType,
+        Fieldsets,
+        WO,
+    >
+where
+    D: Block,
+    D::Interface: crate::RegisterInterface,
+    Fieldsets: Fieldset,
+    for<'a> &'a mut Fieldsets: ToTuple,
+{
+    /// Execute the write.
+    ///
+    /// Use the closure to change contents of the fieldset values that will be written.
+    /// The fieldset values are either the reset value or all-0's based on which plan was used in the chaining phase.
+    ///
+    /// If ok, the return value of the closure is returned.
+    /// If the multi-write was illegal or the read failed, an error is returned.
+    #[inline]
+    pub fn execute<R>(
+        mut self,
+        f: impl FnOnce(<&mut Fieldsets as ToTuple>::Tuple) -> R,
+    ) -> Result<R, <D::Interface as crate::RegisterInterface>::Error> {
+        let returned = f(self.field_sets.to_tuple());
+        self.device.interface().write_register(
+            &Fieldsets::METADATA,
+            self.start_address.unwrap(),
+            self.field_sets.as_slice(),
         )?;
         Ok(returned)
     }
 }
 
-impl<Interface, AddressType: Copy, RegisterFs: Fieldset, Access>
-    RegisterOperation<'_, Interface, AddressType, RegisterFs, Access>
+impl<'d, D, Fieldsets>
+    MultiRegisterOperation<
+        'd,
+        D,
+        <D::Interface as crate::RegisterInterface>::AddressType,
+        Fieldsets,
+        RW,
+    >
 where
-    Interface: AsyncRegisterInterface<AddressType = AddressType>,
-    Access: WriteCapability,
+    D: Block,
+    D::Interface: crate::RegisterInterface,
+    Fieldsets: Fieldset,
+    for<'a> &'a mut Fieldsets: ToTuple,
 {
-    /// Write to the register.
+    /// Execute the modify.
     ///
-    /// The closure is given the write object initialized to the reset value of the register.
-    /// If no reset value is specified for this register, this function is the same as [`Self::write_with_zero`].
-    pub async fn write_async<R>(
-        &mut self,
-        f: impl FnOnce(&mut RegisterFs) -> R,
-    ) -> Result<R, Interface::Error> {
-        let mut register = (self.register_new_with_reset)();
-        let returned = f(&mut register);
-
-        self.interface
-            .write_register(
-                &RegisterFs::METADATA,
-                self.address,
-                register.get_inner_buffer(),
-            )
-            .await?;
-        Ok(returned)
-    }
-
-    /// Write to the register.
+    /// Use the closure to change contents of the fieldset values that have been read.
+    /// The modified values will be written back to the device.
     ///
-    /// The closure is given the write object initialized to all zero.
-    pub async fn write_with_zero_async<R>(
-        &mut self,
-        f: impl FnOnce(&mut RegisterFs) -> R,
-    ) -> Result<R, Interface::Error> {
-        let mut register = RegisterFs::ZERO;
-        let returned = f(&mut register);
-        self.interface
-            .write_register(
-                &RegisterFs::METADATA,
-                self.address,
-                register.get_inner_buffer_mut(),
-            )
-            .await?;
+    /// If ok, the return value of the closure is returned.
+    /// If the multi-modify was illegal or the read failed, an error is returned.
+    #[inline]
+    pub fn execute<R>(
+        mut self,
+        f: impl FnOnce(<&mut Fieldsets as ToTuple>::Tuple) -> R,
+    ) -> Result<R, <D::Interface as crate::RegisterInterface>::Error> {
+        self.device.interface().read_register(
+            &Fieldsets::METADATA,
+            self.start_address.unwrap(),
+            self.field_sets.as_slice_mut(),
+        )?;
+
+        let returned = f(self.field_sets.to_tuple());
+
+        self.device.interface().write_register(
+            &Fieldsets::METADATA,
+            self.start_address.unwrap(),
+            self.field_sets.as_slice(),
+        )?;
+
         Ok(returned)
     }
 }
 
-impl<Interface, AddressType: Copy, RegisterFs: Fieldset, Access>
-    RegisterOperation<'_, Interface, AddressType, RegisterFs, Access>
-where
-    Interface: AsyncRegisterInterface<AddressType = AddressType>,
-    Access: ReadCapability,
-{
-    /// Read the register from the device
-    pub async fn read_async(&mut self) -> Result<RegisterFs, Interface::Error> {
-        let mut register = RegisterFs::ZERO;
+#[doc(hidden)]
+pub trait Repeating {
+    type Index: Clone;
 
-        self.interface
-            .read_register(
-                &RegisterFs::METADATA,
-                self.address,
-                register.get_inner_buffer_mut(),
-            )
-            .await?;
-        Ok(register)
+    /// Calculate an address with the index
+    #[allow(private_bounds)]
+    fn calc_address<AddressType: Address>(start: AddressType, index: Self::Index) -> AddressType;
+}
+#[doc(hidden)]
+pub trait NotRepeating {}
+impl NotRepeating for () {}
+#[doc(hidden)]
+pub trait LinearRepeating: Repeating {
+    const COUNT: u16;
+    const STRIDE: i32;
+
+    fn assert_len_and_index(len: usize, index: Self::Index);
+}
+
+#[doc(hidden)]
+pub struct ArrayRepeat<const COUNT: u16, const STRIDE: i32>;
+impl<const COUNT: u16, const STRIDE: i32> Repeating for ArrayRepeat<COUNT, STRIDE> {
+    type Index = usize;
+
+    #[track_caller]
+    #[inline(always)]
+    fn calc_address<AddressType: Address>(start: AddressType, index: Self::Index) -> AddressType {
+        assert!(
+            index < COUNT as usize,
+            "Index out of range: {index} (array len: {COUNT})"
+        );
+        let offset = index as i32 * STRIDE;
+        start.add(offset)
+    }
+}
+impl<const COUNT: u16, const STRIDE: i32> LinearRepeating for ArrayRepeat<COUNT, STRIDE> {
+    const COUNT: u16 = COUNT;
+    const STRIDE: i32 = STRIDE;
+
+    #[track_caller]
+    #[inline(always)]
+    fn assert_len_and_index(len: usize, index: Self::Index) {
+        assert!(
+            index < COUNT as usize,
+            "Index out of range: {index} (array len: {COUNT})"
+        );
+        assert!(
+            len + index <= COUNT as usize,
+            "Array too long. At index {index}, the max len is {}",
+            COUNT as usize - index,
+        );
     }
 }
 
-impl<Interface, AddressType: Copy, RegisterFs: Fieldset, Access>
-    RegisterOperation<'_, Interface, AddressType, RegisterFs, Access>
-where
-    Interface: AsyncRegisterInterface<AddressType = AddressType>,
-    Access: ReadCapability + WriteCapability,
-{
-    /// Modify the existing register value.
-    ///
-    /// The register is read, the value is then passed to the closure for making changes.
-    /// The result is then written back to the device.
-    pub async fn modify_async<R>(
-        &mut self,
-        f: impl FnOnce(&mut RegisterFs) -> R,
-    ) -> Result<R, Interface::Error> {
-        let mut register = self.read_async().await?;
-        let returned = f(&mut register);
-        self.interface
-            .write_register(
-                &RegisterFs::METADATA,
-                self.address,
-                register.get_inner_buffer(),
-            )
-            .await?;
-        Ok(returned)
+#[doc(hidden)]
+pub struct EnumRepeat<T, const STRIDE: i32>(PhantomData<T>);
+impl<T: Clone + Into<i32>, const STRIDE: i32> Repeating for EnumRepeat<T, STRIDE> {
+    type Index = T;
+
+    #[inline(always)]
+    fn calc_address<AddressType: Address>(start: AddressType, index: Self::Index) -> AddressType {
+        let offset = index.into() * STRIDE;
+        start.add(offset)
     }
 }
