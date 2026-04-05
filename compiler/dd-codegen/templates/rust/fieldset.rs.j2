@@ -11,13 +11,6 @@ unsafe impl ::device_driver::Fieldset for {{field_set.name.to_case(Case::Pascal)
         ::device_driver::FieldsetMetadata::new()
             .with_byte_order(::device_driver::ByteOrder::{{field_set.byte_order}});
     const ZERO: Self = Self { bits: [0; {{field_set.size_bytes}}] };
-            
-    fn get_inner_buffer(&self) -> &[u8] {
-        &self.bits
-    }
-    fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
-        &mut self.bits
-    }
 }
 
 impl {{field_set.name.to_case(Case::Pascal)}} {

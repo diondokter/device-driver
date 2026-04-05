@@ -75,12 +75,6 @@ unsafe impl ::device_driver::Fieldset for FooFieldSet {
     const METADATA: ::device_driver::FieldsetMetadata = ::device_driver::FieldsetMetadata::new()
         .with_byte_order(::device_driver::ByteOrder::LE);
     const ZERO: Self = Self { bits: [0; 0] };
-    fn get_inner_buffer(&self) -> &[u8] {
-        &self.bits
-    }
-    fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
-        &mut self.bits
-    }
 }
 impl FooFieldSet {}
 impl Default for FooFieldSet {

@@ -90,12 +90,6 @@ unsafe impl ::device_driver::Fieldset for FooWoFieldSet {
     const METADATA: ::device_driver::FieldsetMetadata = ::device_driver::FieldsetMetadata::new()
         .with_byte_order(::device_driver::ByteOrder::LE);
     const ZERO: Self = Self { bits: [0; 8] };
-    fn get_inner_buffer(&self) -> &[u8] {
-        &self.bits
-    }
-    fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
-        &mut self.bits
-    }
 }
 impl FooWoFieldSet {
     /// `15:0` - Read the `value_ro` field.
@@ -244,12 +238,6 @@ unsafe impl ::device_driver::Fieldset for FooRwFieldSet {
     const METADATA: ::device_driver::FieldsetMetadata = ::device_driver::FieldsetMetadata::new()
         .with_byte_order(::device_driver::ByteOrder::LE);
     const ZERO: Self = Self { bits: [0; 8] };
-    fn get_inner_buffer(&self) -> &[u8] {
-        &self.bits
-    }
-    fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
-        &mut self.bits
-    }
 }
 impl FooRwFieldSet {
     /// `15:0` - Read the `value_ro` field.
@@ -398,12 +386,6 @@ unsafe impl ::device_driver::Fieldset for FooRoFieldSet {
     const METADATA: ::device_driver::FieldsetMetadata = ::device_driver::FieldsetMetadata::new()
         .with_byte_order(::device_driver::ByteOrder::LE);
     const ZERO: Self = Self { bits: [0; 8] };
-    fn get_inner_buffer(&self) -> &[u8] {
-        &self.bits
-    }
-    fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
-        &mut self.bits
-    }
 }
 impl FooRoFieldSet {
     /// `15:0` - Read the `value_ro` field.
