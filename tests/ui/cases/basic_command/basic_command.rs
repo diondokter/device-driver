@@ -39,13 +39,15 @@ impl<I> Device<I> {
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct FooFieldSetIn {
     /// The internal bits
     bits: [u8; 3],
 }
-impl ::device_driver::Fieldset for FooFieldSetIn {
+unsafe impl ::device_driver::Fieldset for FooFieldSetIn {
     const METADATA: ::device_driver::FieldsetMetadata = ::device_driver::FieldsetMetadata::new()
         .with_byte_order(::device_driver::ByteOrder::LE);
+    const ZERO: Self = Self { bits: [0; 3] };
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
@@ -54,10 +56,6 @@ impl ::device_driver::Fieldset for FooFieldSetIn {
     }
 }
 impl FooFieldSetIn {
-    /// Create a new instance, loaded with all zeroes
-    pub const fn new() -> Self {
-        Self { bits: [0; 3] }
-    }
     /// `23:0` - Read the `value` field.
     ///
     pub fn value(&self) -> u32 {
@@ -87,7 +85,7 @@ impl FooFieldSetIn {
 }
 impl Default for FooFieldSetIn {
     fn default() -> Self {
-        Self::new()
+        <Self as ::device_driver::Fieldset>::ZERO
     }
 }
 impl From<[u8; 3]> for FooFieldSetIn {

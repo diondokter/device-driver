@@ -41,7 +41,7 @@ impl<I> Device<I> {
             u16,
             FooFieldSet,
             ::device_driver::RW,
-        >::new(self.interface(), address as u16, FooFieldSet::new)
+        >::new(self.interface(), address as u16, FooFieldSet::default)
     }
     pub fn bar(&mut self) -> ::device_driver::CommandOperation<'_, I, i32, (), ()> {
         let address = self.base_address + 0;
@@ -66,13 +66,15 @@ impl<I> Device<I> {
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct FooFieldSet {
     /// The internal bits
     bits: [u8; 0],
 }
-impl ::device_driver::Fieldset for FooFieldSet {
+unsafe impl ::device_driver::Fieldset for FooFieldSet {
     const METADATA: ::device_driver::FieldsetMetadata = ::device_driver::FieldsetMetadata::new()
         .with_byte_order(::device_driver::ByteOrder::LE);
+    const ZERO: Self = Self { bits: [0; 0] };
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
@@ -80,15 +82,10 @@ impl ::device_driver::Fieldset for FooFieldSet {
         &mut self.bits
     }
 }
-impl FooFieldSet {
-    /// Create a new instance, loaded with all zeroes
-    pub const fn new() -> Self {
-        Self { bits: [0; 0] }
-    }
-}
+impl FooFieldSet {}
 impl Default for FooFieldSet {
     fn default() -> Self {
-        Self::new()
+        <Self as ::device_driver::Fieldset>::ZERO
     }
 }
 impl From<[u8; 0]> for FooFieldSet {

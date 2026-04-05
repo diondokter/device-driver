@@ -6,7 +6,7 @@ pub struct {{field_set.name.to_case(Case::Pascal)}} {
     bits: [u8; {{field_set.size_bytes}}]
 }
 
-impl ::device_driver::Fieldset for {{field_set.name.to_case(Case::Pascal)}} {
+unsafe impl ::device_driver::Fieldset for {{field_set.name.to_case(Case::Pascal)}} {
     const METADATA: ::device_driver::FieldsetMetadata =
         ::device_driver::FieldsetMetadata::new()
             .with_byte_order(::device_driver::ByteOrder::{{field_set.byte_order}});

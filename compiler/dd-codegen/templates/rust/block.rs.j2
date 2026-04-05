@@ -94,7 +94,7 @@ impl{{block_generics}} {{ block.name.to_case(Case::Pascal) }}{{block_generics}} 
                         {% if let Some(rv) = reset_value %}
                             || {{field_set_name.to_case(Case::Pascal)}}::from([{{rv | join(", ")}}]),
                         {% else %}
-                            {{field_set_name.to_case(Case::Pascal)}}::new,
+                            {{field_set_name.to_case(Case::Pascal)}}::default,
                         {% endif %}
                         )
                 {% endwhen %}

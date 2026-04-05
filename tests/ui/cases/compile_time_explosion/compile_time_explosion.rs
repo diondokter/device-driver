@@ -41,7 +41,7 @@ impl<I> Device<I> {
             u32,
             Foo,
             ::device_driver::RW,
-        >::new(self.interface(), address as u32, Foo::new)
+        >::new(self.interface(), address as u32, Foo::default)
     }
     ///
     /// Valid index range: 0..100
@@ -59,7 +59,7 @@ impl<I> Device<I> {
             u32,
             Foo,
             ::device_driver::RW,
-        >::new(self.interface(), address as u32, Foo::new)
+        >::new(self.interface(), address as u32, Foo::default)
     }
     ///
     /// Valid index range: 0..100
@@ -77,7 +77,7 @@ impl<I> Device<I> {
             u32,
             Foo,
             ::device_driver::RW,
-        >::new(self.interface(), address as u32, Foo::new)
+        >::new(self.interface(), address as u32, Foo::default)
     }
     ///
     /// Valid index range: 0..100
@@ -95,7 +95,7 @@ impl<I> Device<I> {
             u32,
             Foo,
             ::device_driver::RW,
-        >::new(self.interface(), address as u32, Foo::new)
+        >::new(self.interface(), address as u32, Foo::default)
     }
     ///
     /// Valid index range: 0..100
@@ -113,7 +113,7 @@ impl<I> Device<I> {
             u32,
             Foo,
             ::device_driver::RW,
-        >::new(self.interface(), address as u32, Foo::new)
+        >::new(self.interface(), address as u32, Foo::default)
     }
     ///
     /// Valid index range: 0..100
@@ -131,7 +131,7 @@ impl<I> Device<I> {
             u32,
             Foo,
             ::device_driver::RW,
-        >::new(self.interface(), address as u32, Foo::new)
+        >::new(self.interface(), address as u32, Foo::default)
     }
     ///
     /// Valid index range: 0..100
@@ -149,7 +149,7 @@ impl<I> Device<I> {
             u32,
             Foo,
             ::device_driver::RW,
-        >::new(self.interface(), address as u32, Foo::new)
+        >::new(self.interface(), address as u32, Foo::default)
     }
     ///
     /// Valid index range: 0..100
@@ -167,7 +167,7 @@ impl<I> Device<I> {
             u32,
             Foo,
             ::device_driver::RW,
-        >::new(self.interface(), address as u32, Foo::new)
+        >::new(self.interface(), address as u32, Foo::default)
     }
     ///
     /// Valid index range: 0..100
@@ -185,7 +185,7 @@ impl<I> Device<I> {
             u32,
             Foo,
             ::device_driver::RW,
-        >::new(self.interface(), address as u32, Foo::new)
+        >::new(self.interface(), address as u32, Foo::default)
     }
     ///
     /// Valid index range: 0..100
@@ -203,17 +203,19 @@ impl<I> Device<I> {
             u32,
             Foo,
             ::device_driver::RW,
-        >::new(self.interface(), address as u32, Foo::new)
+        >::new(self.interface(), address as u32, Foo::default)
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct Foo {
     /// The internal bits
     bits: [u8; 0],
 }
-impl ::device_driver::Fieldset for Foo {
+unsafe impl ::device_driver::Fieldset for Foo {
     const METADATA: ::device_driver::FieldsetMetadata = ::device_driver::FieldsetMetadata::new()
         .with_byte_order(::device_driver::ByteOrder::LE);
+    const ZERO: Self = Self { bits: [0; 0] };
     fn get_inner_buffer(&self) -> &[u8] {
         &self.bits
     }
@@ -221,15 +223,10 @@ impl ::device_driver::Fieldset for Foo {
         &mut self.bits
     }
 }
-impl Foo {
-    /// Create a new instance, loaded with all zeroes
-    pub const fn new() -> Self {
-        Self { bits: [0; 0] }
-    }
-}
+impl Foo {}
 impl Default for Foo {
     fn default() -> Self {
-        Self::new()
+        <Self as ::device_driver::Fieldset>::ZERO
     }
 }
 impl From<[u8; 0]> for Foo {
