@@ -154,6 +154,47 @@ where
         }
     }
 
+    /// Get a plan with the reset value of the register
+    #[track_caller]
+    pub fn plan_array_at<const N: usize>(
+        self,
+        index: Repeat::Index,
+    ) -> Plan<AddressType, [RegisterFs; N], Access>
+    where
+        Repeat: ArrayRepeating,
+    {
+        Repeat::assert_len_and_index(N, index.clone());
+
+        // TODO: Check if legal
+
+        Plan {
+            address: Repeat::calc_address(self.address, index),
+            value: core::array::from_fn(|_| self.reset_value()),
+            _phantom: PhantomData,
+        }
+    }
+
+    /// Get a plan with the reset value of the register
+    #[track_caller]
+    pub fn plan_array_with_zero_at<const N: usize>(
+        self,
+        index: Repeat::Index,
+    ) -> Plan<AddressType, [RegisterFs; N], Access>
+    where
+        Repeat: ArrayRepeating,
+        Access: WriteCapability,
+    {
+        Repeat::assert_len_and_index(N, index.clone());
+
+        // TODO: Check if legal
+
+        Plan {
+            address: Repeat::calc_address(self.address, index),
+            value: Fieldset::ZERO,
+            _phantom: PhantomData,
+        }
+    }
+
     /// Write to the register.
     ///
     /// The closure is given the write object initialized to the reset value of the register.
@@ -201,6 +242,36 @@ where
             &RegisterFs::METADATA,
             Repeat::calc_address(self.address, index),
             register.as_slice(),
+        )?;
+        Ok(returned)
+    }
+
+    /// Write to the register.
+    ///
+    /// The closure is given the write object initialized to the reset value of the register.
+    /// If no reset value is specified for this register, this function is the same as [`Self::write_with_zero`].
+    #[track_caller]
+    pub fn write_array_at<R, const N: usize>(
+        &mut self,
+        index: Repeat::Index,
+        f: impl FnOnce(&mut [RegisterFs; N]) -> R,
+    ) -> Result<R, <B::Interface as RegisterInterfaceBase>::Error>
+    where
+        Repeat: ArrayRepeating,
+        B::Interface: RegisterInterface,
+        Access: WriteCapability,
+    {
+        Repeat::assert_len_and_index(N, index.clone());
+
+        // TODO: Check if legal
+
+        let mut register = core::array::from_fn(|_| (self.register_new_with_reset)());
+        let returned = f(&mut register);
+
+        self.block.interface().write_register(
+            &RegisterFs::METADATA,
+            Repeat::calc_address(self.address, index),
+            Fieldset::as_slice(&register),
         )?;
         Ok(returned)
     }
@@ -262,6 +333,43 @@ where
 
     /// Write to the register.
     ///
+    /// The closure is given the write object initialized to the reset value of the register.
+    /// If no reset value is specified for this register, this function is the same as [`Self::write_with_zero`].
+    #[track_caller]
+    pub fn write_array_at_async<R, const N: usize>(
+        &mut self,
+        index: Repeat::Index,
+        f: impl FnOnce(&mut [RegisterFs; N]) -> R,
+    ) -> impl Future<Output = Result<R, <B::Interface as RegisterInterfaceBase>::Error>>
+    where
+        Repeat: ArrayRepeating,
+        B::Interface: AsyncRegisterInterface,
+        Access: WriteCapability,
+    {
+        Repeat::assert_len_and_index(N, index.clone());
+
+        // TODO: Check if legal
+
+        let mut register = core::array::from_fn(|_| (self.register_new_with_reset)());
+        let returned = f(&mut register);
+
+        let address = Repeat::calc_address(self.address, index);
+
+        async move {
+            self.block
+                .interface()
+                .write_register(
+                    &RegisterFs::METADATA,
+                    address,
+                    Fieldset::as_slice(&register),
+                )
+                .await?;
+            Ok(returned)
+        }
+    }
+
+    /// Write to the register.
+    ///
     /// The closure is given the write object initialized to all zero.
     #[track_caller]
     pub fn write_with_zero<R>(
@@ -298,6 +406,34 @@ where
         Access: WriteCapability,
     {
         let mut register = RegisterFs::ZERO;
+        let returned = f(&mut register);
+        self.block.interface().write_register(
+            &RegisterFs::METADATA,
+            Repeat::calc_address(self.address, index),
+            register.as_slice_mut(),
+        )?;
+        Ok(returned)
+    }
+
+    /// Write to the register.
+    ///
+    /// The closure is given the write object initialized to all zero.
+    #[track_caller]
+    pub fn write_array_with_zero_at<R, const N: usize>(
+        &mut self,
+        index: Repeat::Index,
+        f: impl FnOnce(&mut [RegisterFs; N]) -> R,
+    ) -> Result<R, <B::Interface as RegisterInterfaceBase>::Error>
+    where
+        Repeat: ArrayRepeating,
+        B::Interface: RegisterInterface,
+        Access: WriteCapability,
+    {
+        Repeat::assert_len_and_index(N, index.clone());
+
+        // TODO: check if legal
+
+        let mut register = <[RegisterFs; N] as Fieldset>::ZERO;
         let returned = f(&mut register);
         self.block.interface().write_register(
             &RegisterFs::METADATA,
@@ -360,6 +496,38 @@ where
         }
     }
 
+    /// Write to the register.
+    ///
+    /// The closure is given the write object initialized to all zero.
+    #[track_caller]
+    pub fn write_array_with_zero_at_async<R, const N: usize>(
+        &mut self,
+        index: Repeat::Index,
+        f: impl FnOnce(&mut [RegisterFs; N]) -> R,
+    ) -> impl Future<Output = Result<R, <B::Interface as RegisterInterfaceBase>::Error>>
+    where
+        Repeat: ArrayRepeating,
+        B::Interface: AsyncRegisterInterface,
+        Access: WriteCapability,
+    {
+        Repeat::assert_len_and_index(N, index.clone());
+
+        // TODO: check if legal
+
+        let mut register = <[RegisterFs; N] as Fieldset>::ZERO;
+        let returned = f(&mut register);
+
+        let address = Repeat::calc_address(self.address, index);
+
+        async move {
+            self.block
+                .interface()
+                .write_register(&RegisterFs::METADATA, address, register.as_slice_mut())
+                .await?;
+            Ok(returned)
+        }
+    }
+
     /// Read the register from the device
     #[track_caller]
     pub fn read(&mut self) -> Result<RegisterFs, <B::Interface as RegisterInterfaceBase>::Error>
@@ -390,6 +558,31 @@ where
         Access: ReadCapability,
     {
         let mut register = RegisterFs::ZERO;
+
+        self.block.interface().read_register(
+            &RegisterFs::METADATA,
+            Repeat::calc_address(self.address, index),
+            register.as_slice_mut(),
+        )?;
+        Ok(register)
+    }
+
+    /// Read the register from the device
+    #[track_caller]
+    pub fn read_array_at<const N: usize>(
+        &mut self,
+        index: Repeat::Index,
+    ) -> Result<[RegisterFs; N], <B::Interface as RegisterInterfaceBase>::Error>
+    where
+        Repeat: ArrayRepeating,
+        B::Interface: RegisterInterface,
+        Access: ReadCapability,
+    {
+        Repeat::assert_len_and_index(N, index.clone());
+
+        // TODO: check if legal
+
+        let mut register = <[RegisterFs; N] as Fieldset>::ZERO;
 
         self.block.interface().read_register(
             &RegisterFs::METADATA,
@@ -442,6 +635,32 @@ where
         }
     }
 
+    /// Read the register from the device
+    pub fn read_array_at_async<const N: usize>(
+        &mut self,
+        index: Repeat::Index,
+    ) -> impl Future<Output = Result<[RegisterFs; N], <B::Interface as RegisterInterfaceBase>::Error>>
+    where
+        Repeat: ArrayRepeating,
+        B::Interface: AsyncRegisterInterface,
+        Access: ReadCapability,
+    {
+        Repeat::assert_len_and_index(N, index.clone());
+
+        // TODO: check if legal
+
+        let mut register = <[RegisterFs; N] as Fieldset>::ZERO;
+        let address = Repeat::calc_address(self.address, index);
+
+        async move {
+            self.block
+                .interface()
+                .read_register(&RegisterFs::METADATA, address, register.as_slice_mut())
+                .await?;
+            Ok(register)
+        }
+    }
+
     /// Modify the existing register value.
     ///
     /// The register is read, the value is then passed to the closure for making changes.
@@ -482,6 +701,35 @@ where
         Access: ReadCapability + WriteCapability,
     {
         let mut register = self.read_at(index.clone())?;
+        let returned = f(&mut register);
+        self.block.interface().write_register(
+            &RegisterFs::METADATA,
+            Repeat::calc_address(self.address, index),
+            register.as_slice_mut(),
+        )?;
+        Ok(returned)
+    }
+
+    /// Modify the existing register value.
+    ///
+    /// The register is read, the value is then passed to the closure for making changes.
+    /// The result is then written back to the device.
+    #[track_caller]
+    pub fn modify_array_at<R, const N: usize>(
+        &mut self,
+        index: Repeat::Index,
+        f: impl FnOnce(&mut [RegisterFs; N]) -> R,
+    ) -> Result<R, <B::Interface as RegisterInterfaceBase>::Error>
+    where
+        Repeat: ArrayRepeating,
+        B::Interface: RegisterInterface,
+        Access: ReadCapability + WriteCapability,
+    {
+        Repeat::assert_len_and_index(N, index.clone());
+
+        // TODO: check if legal
+
+        let mut register = self.read_array_at::<N>(index.clone())?;
         let returned = f(&mut register);
         self.block.interface().write_register(
             &RegisterFs::METADATA,
@@ -557,6 +805,49 @@ where
             Ok(returned)
         }
     }
+
+    /// Modify the existing register value.
+    ///
+    /// The register is read, the value is then passed to the closure for making changes.
+    /// The result is then written back to the device.
+    #[track_caller]
+    pub fn modify_array_at_async<R, const N: usize>(
+        &mut self,
+        index: Repeat::Index,
+        f: impl FnOnce(&mut [RegisterFs; N]) -> R,
+    ) -> impl Future<Output = Result<R, <B::Interface as RegisterInterfaceBase>::Error>>
+    where
+        Repeat: ArrayRepeating,
+        B::Interface: AsyncRegisterInterface,
+        Access: ReadCapability + WriteCapability,
+    {
+        Repeat::assert_len_and_index(N, index.clone());
+
+        // TODO: check if legal
+
+        let mut register = <[RegisterFs; N] as Fieldset>::ZERO;
+
+        let address = Repeat::calc_address(self.address, index);
+
+        async move {
+            self.block
+                .interface()
+                .read_register(&RegisterFs::METADATA, address, register.as_slice_mut())
+                .await?;
+
+            let returned = f(&mut register);
+
+            self.block
+                .interface()
+                .write_register(
+                    &RegisterFs::METADATA,
+                    address,
+                    Fieldset::as_slice(&register),
+                )
+                .await?;
+            Ok(returned)
+        }
+    }
 }
 
 /// A plan that is used for multi-reads and writes.
@@ -595,13 +886,13 @@ where
     where
         FieldSets: Append<FS>,
     {
+        // TODO: Check if legal
+
         let Plan { address, value, .. } = f(self.device);
 
         if self.start_address.is_none() {
             self.start_address = Some(address)
         }
-
-        // TODO: Check if legal
 
         MultiRegisterOperation {
             device: self.device,
@@ -631,13 +922,13 @@ where
     where
         FieldSets: Append<FS>,
     {
+        // TODO: Check if legal
+
         let Plan { address, value, .. } = f(self.device);
 
         if self.start_address.is_none() {
             self.start_address = Some(address)
         }
-
-        // TODO: Check if legal
 
         MultiRegisterOperation {
             device: self.device,
@@ -667,13 +958,13 @@ where
     where
         FieldSets: Append<FS>,
     {
+        // TODO: Check if legal
+
         let Plan { address, value, .. } = f(self.device);
 
         if self.start_address.is_none() {
             self.start_address = Some(address)
         }
-
-        // TODO: Check if legal
 
         MultiRegisterOperation {
             device: self.device,
@@ -807,7 +1098,7 @@ pub trait Repeating {
 pub trait NotRepeating {}
 impl NotRepeating for () {}
 #[doc(hidden)]
-pub trait LinearRepeating: Repeating {
+pub trait ArrayRepeating: Repeating {
     const COUNT: u16;
     const STRIDE: i32;
 
@@ -830,7 +1121,7 @@ impl<const COUNT: u16, const STRIDE: i32> Repeating for ArrayRepeat<COUNT, STRID
         start.add(offset)
     }
 }
-impl<const COUNT: u16, const STRIDE: i32> LinearRepeating for ArrayRepeat<COUNT, STRIDE> {
+impl<const COUNT: u16, const STRIDE: i32> ArrayRepeating for ArrayRepeat<COUNT, STRIDE> {
     const COUNT: u16 = COUNT;
     const STRIDE: i32 = STRIDE;
 
