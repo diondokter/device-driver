@@ -21,69 +21,65 @@ impl<I> Device<I> {
     pub const fn new(interface: I) -> Self {
         Self { interface, base_address: 0 }
     }
-    /// A reference to the interface used to communicate with the device
-    pub(crate) fn interface(&mut self) -> &mut I {
-        &mut self.interface
-    }
     pub fn foo_ro(
         &mut self,
     ) -> ::device_driver::RegisterOperation<
         '_,
-        I,
-        u8,
+        Self,
         FooRoFieldSet,
+        u8,
         ::device_driver::RO,
         (),
-    > {
+    >
+    where
+        I: ::device_driver::RegisterInterfaceBase<AddressType = u8>,
+    {
         let address = self.base_address + 0;
-        ::device_driver::RegisterOperation::<
-            '_,
-            I,
-            _,
-            _,
-            _,
-            _,
-        >::new(self.interface(), address as u8, FooRoFieldSet::default)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u8,
+            FooRoFieldSet::default,
+        )
     }
     pub fn foo_rw(
         &mut self,
     ) -> ::device_driver::RegisterOperation<
         '_,
-        I,
-        u8,
+        Self,
         FooRwFieldSet,
+        u8,
         ::device_driver::RW,
         (),
-    > {
+    >
+    where
+        I: ::device_driver::RegisterInterfaceBase<AddressType = u8>,
+    {
         let address = self.base_address + 1;
-        ::device_driver::RegisterOperation::<
-            '_,
-            I,
-            _,
-            _,
-            _,
-            _,
-        >::new(self.interface(), address as u8, FooRwFieldSet::default)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u8,
+            FooRwFieldSet::default,
+        )
     }
     pub fn foo_wo(
         &mut self,
     ) -> ::device_driver::RegisterOperation<
         '_,
-        I,
-        u8,
+        Self,
         FooWoFieldSet,
+        u8,
         ::device_driver::WO,
         (),
-    > {
+    >
+    where
+        I: ::device_driver::RegisterInterfaceBase<AddressType = u8>,
+    {
         let address = self.base_address + 2;
-        ::device_driver::RegisterOperation::<
-            '_,
-            I,
-            _,
-            _,
-            _,
-            _,
-        >::new(self.interface(), address as u8, FooWoFieldSet::default)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u8,
+            FooWoFieldSet::default,
+        )
     }
 }
 impl<I> ::device_driver::Block for Device<I> {

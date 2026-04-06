@@ -21,21 +21,14 @@ impl<I> Device<I> {
     pub const fn new(interface: I) -> Self {
         Self { interface, base_address: 0 }
     }
-    /// A reference to the interface used to communicate with the device
-    pub(crate) fn interface(&mut self) -> &mut I {
-        &mut self.interface
-    }
     pub fn foo(
         &mut self,
-    ) -> ::device_driver::CommandOperation<'_, I, u8, FooFieldSetIn, ()> {
+    ) -> ::device_driver::CommandOperation<'_, Self, u8, FooFieldSetIn, ()>
+    where
+        I: ::device_driver::CommandInterfaceBase<AddressType = u8>,
+    {
         let address = self.base_address + 0;
-        ::device_driver::CommandOperation::<
-            '_,
-            I,
-            u8,
-            FooFieldSetIn,
-            (),
-        >::new(self.interface(), address as u8)
+        ::device_driver::CommandOperation::new(self, address as u8)
     }
 }
 impl<I> ::device_driver::Block for Device<I> {

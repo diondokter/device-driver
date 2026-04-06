@@ -21,50 +21,41 @@ impl<I> Device<I> {
     pub const fn new(interface: I) -> Self {
         Self { interface, base_address: 0 }
     }
-    /// A reference to the interface used to communicate with the device
-    pub(crate) fn interface(&mut self) -> &mut I {
-        &mut self.interface
-    }
     pub fn foo(
         &mut self,
     ) -> ::device_driver::RegisterOperation<
         '_,
-        I,
-        u16,
+        Self,
         FooFieldSet,
+        u16,
         ::device_driver::RW,
         (),
-    > {
+    >
+    where
+        I: ::device_driver::RegisterInterfaceBase<AddressType = u16>,
+    {
         let address = self.base_address + 0;
-        ::device_driver::RegisterOperation::<
-            '_,
-            I,
-            _,
-            _,
-            _,
-            _,
-        >::new(self.interface(), address as u16, FooFieldSet::default)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u16,
+            FooFieldSet::default,
+        )
     }
-    pub fn bar(&mut self) -> ::device_driver::CommandOperation<'_, I, i32, (), ()> {
+    pub fn bar(&mut self) -> ::device_driver::CommandOperation<'_, Self, i32, (), ()>
+    where
+        I: ::device_driver::CommandInterfaceBase<AddressType = i32>,
+    {
         let address = self.base_address + 0;
-        ::device_driver::CommandOperation::<
-            '_,
-            I,
-            i32,
-            (),
-            (),
-        >::new(self.interface(), address as i32)
+        ::device_driver::CommandOperation::new(self, address as i32)
     }
     pub fn quux(
         &mut self,
-    ) -> ::device_driver::BufferOperation<'_, I, i8, ::device_driver::RW> {
+    ) -> ::device_driver::BufferOperation<'_, Self, i8, ::device_driver::RW>
+    where
+        I: ::device_driver::BufferInterfaceBase<AddressType = i8>,
+    {
         let address = self.base_address + 0;
-        ::device_driver::BufferOperation::<
-            '_,
-            I,
-            i8,
-            ::device_driver::RW,
-        >::new(self.interface(), address as i8)
+        ::device_driver::BufferOperation::new(self, address as i8)
     }
 }
 impl<I> ::device_driver::Block for Device<I> {

@@ -21,30 +21,26 @@ impl<I> Device<I> {
     pub const fn new(interface: I) -> Self {
         Self { interface, base_address: 0 }
     }
-    /// A reference to the interface used to communicate with the device
-    pub(crate) fn interface(&mut self) -> &mut I {
-        &mut self.interface
-    }
     /// \\\\\\/\/\/\////\/\/;{}'"`'
     pub fn foo(
         &mut self,
     ) -> ::device_driver::RegisterOperation<
         '_,
-        I,
-        u8,
+        Self,
         FooFieldSet,
+        u8,
         ::device_driver::RW,
         (),
-    > {
+    >
+    where
+        I: ::device_driver::RegisterInterfaceBase<AddressType = u8>,
+    {
         let address = self.base_address + 0;
-        ::device_driver::RegisterOperation::<
-            '_,
-            I,
-            _,
-            _,
-            _,
-            _,
-        >::new(self.interface(), address as u8, FooFieldSet::default)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u8,
+            FooFieldSet::default,
+        )
     }
 }
 impl<I> ::device_driver::Block for Device<I> {
