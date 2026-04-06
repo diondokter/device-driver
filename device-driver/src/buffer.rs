@@ -205,63 +205,11 @@ where
     {
         self.block.interface().read(self.address, buf).await
     }
-
-    /// Read the exact number of bytes required to fill buf.
-    /// This function calls `read()` in a loop until exactly `buf.len()` bytes have been read, blocking if needed.
-    ///
-    /// Mirror function of [`embedded_io::Read::read_exact`].
-    pub fn read_exact(
-        &mut self,
-        mut buf: &mut [u8],
-    ) -> Result<(), embedded_io::ReadExactError<<B::Interface as BufferInterfaceBase>::Error>>
-    where
-        B::Interface: BufferInterface,
-        Access: ReadCapability,
-    {
-        while !buf.is_empty() {
-            match self.read(buf) {
-                Ok(0) => break,
-                Ok(n) => buf = &mut buf[n..],
-                Err(e) => return Err(embedded_io::ReadExactError::Other(e)),
-            }
-        }
-        if buf.is_empty() {
-            Ok(())
-        } else {
-            Err(embedded_io::ReadExactError::UnexpectedEof)
-        }
-    }
-
-    /// Read the exact number of bytes required to fill buf.
-    ///
-    /// This function calls `read()` in a loop until exactly `buf.len()` bytes have been read, waiting if needed.
-    ///
-    /// Mirror function of [`embedded_io_async::Read::read_exact`].
-    pub async fn read_exact_async(
-        &mut self,
-        mut buf: &mut [u8],
-    ) -> Result<(), embedded_io::ReadExactError<<B::Interface as BufferInterfaceBase>::Error>>
-    where
-        B::Interface: AsyncBufferInterface,
-        Access: ReadCapability,
-    {
-        while !buf.is_empty() {
-            match self.read_async(buf).await {
-                Ok(0) => break,
-                Ok(n) => buf = &mut buf[n..],
-                Err(e) => return Err(embedded_io::ReadExactError::Other(e)),
-            }
-        }
-        if buf.is_empty() {
-            Ok(())
-        } else {
-            Err(embedded_io::ReadExactError::UnexpectedEof)
-        }
-    }
 }
 
 // ------- embedded-io impls -------
 
+#[cfg(feature = "embedded-io-07")]
 impl<B, AddressType, Access> embedded_io::ErrorType for BufferOperation<'_, B, AddressType, Access>
 where
     B: Block,
@@ -272,6 +220,7 @@ where
     type Error = <B::Interface as BufferInterfaceBase>::Error;
 }
 
+#[cfg(feature = "embedded-io-07")]
 impl<B, AddressType, Access> embedded_io::Write for BufferOperation<'_, B, AddressType, Access>
 where
     B: Block,
@@ -289,6 +238,7 @@ where
     }
 }
 
+#[cfg(feature = "embedded-io-07")]
 impl<B, AddressType, Access> embedded_io::Read for BufferOperation<'_, B, AddressType, Access>
 where
     B: Block,
@@ -302,6 +252,7 @@ where
     }
 }
 
+#[cfg(feature = "embedded-io-07")]
 impl<B, AddressType, Access> embedded_io_async::Write
     for BufferOperation<'_, B, AddressType, Access>
 where
@@ -320,6 +271,7 @@ where
     }
 }
 
+#[cfg(feature = "embedded-io-07")]
 impl<B, AddressType, Access> embedded_io_async::Read for BufferOperation<'_, B, AddressType, Access>
 where
     B: Block,

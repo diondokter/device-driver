@@ -16,9 +16,6 @@ pub use command::*;
 pub use fieldset::*;
 pub use register::*;
 
-pub use embedded_io;
-pub use embedded_io_async;
-
 #[doc(hidden)]
 pub mod ops;
 
