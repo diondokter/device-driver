@@ -1,14 +1,15 @@
-use device_driver::{CommandInterface, FieldsetMetadata};
+use device_driver::{CommandInterface, CommandInterfaceBase, FieldsetMetadata};
 
 pub struct DeviceInterface {
     last_command: u8,
     last_input: Vec<u8>,
 }
 
-impl CommandInterface for DeviceInterface {
+impl CommandInterfaceBase for DeviceInterface {
     type Error = ();
     type AddressType = u8;
-
+}
+impl CommandInterface for DeviceInterface {
     fn dispatch_command(
         &mut self,
         _metadata_input: &FieldsetMetadata,

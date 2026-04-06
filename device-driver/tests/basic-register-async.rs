@@ -1,11 +1,13 @@
-use device_driver::{AsyncRegisterInterface, FieldsetMetadata};
+use device_driver::{AsyncRegisterInterface, FieldsetMetadata, RegisterInterfaceBase};
 
 pub struct DeviceInterface;
 
-impl AsyncRegisterInterface for DeviceInterface {
+impl RegisterInterfaceBase for DeviceInterface {
     type Error = ();
     type AddressType = u8;
+}
 
+impl AsyncRegisterInterface for DeviceInterface {
     async fn write_register(
         &mut self,
         _metadata: &FieldsetMetadata,

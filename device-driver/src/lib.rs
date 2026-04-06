@@ -32,9 +32,9 @@ pub trait Block: Sized {
     /// The register address type
     type RegisterAddressType: Address;
     /// The command address type
-    type CommandAddressType;
+    type CommandAddressType: Address;
     /// The buffer address type
-    type BufferAddressType;
+    type BufferAddressType: Address;
 
     /// Get a reference to the inner interface.
     /// With it you can do out-of-band operations that aren't defined in the generated code.
@@ -46,7 +46,16 @@ pub trait Block: Sized {
     /// Once chained, call [register::MultiRegisterOperation::execute] to perform the read.
     fn multi_read(
         &mut self,
-    ) -> register::MultiRegisterOperation<'_, Self, Self::RegisterAddressType, (), RO> {
+    ) -> register::MultiRegisterOperation<
+        '_,
+        Self,
+        <Self::Interface as RegisterInterfaceBase>::AddressType,
+        (),
+        RO,
+    >
+    where
+        Self::Interface: RegisterInterfaceBase,
+    {
         register::MultiRegisterOperation {
             device: self,
             start_address: None,
@@ -61,7 +70,16 @@ pub trait Block: Sized {
     /// Once chained, call [register::MultiRegisterOperation::execute] to perform the read.
     fn multi_write(
         &mut self,
-    ) -> register::MultiRegisterOperation<'_, Self, Self::RegisterAddressType, (), WO> {
+    ) -> register::MultiRegisterOperation<
+        '_,
+        Self,
+        <Self::Interface as RegisterInterfaceBase>::AddressType,
+        (),
+        WO,
+    >
+    where
+        Self::Interface: RegisterInterfaceBase,
+    {
         register::MultiRegisterOperation {
             device: self,
             start_address: None,
@@ -76,7 +94,16 @@ pub trait Block: Sized {
     /// Once chained, call [register::MultiRegisterOperation::execute] to perform the read.
     fn multi_modify(
         &mut self,
-    ) -> register::MultiRegisterOperation<'_, Self, Self::RegisterAddressType, (), RW> {
+    ) -> register::MultiRegisterOperation<
+        '_,
+        Self,
+        <Self::Interface as RegisterInterfaceBase>::AddressType,
+        (),
+        RW,
+    >
+    where
+        Self::Interface: RegisterInterfaceBase,
+    {
         register::MultiRegisterOperation {
             device: self,
             start_address: None,
