@@ -49,6 +49,7 @@ impl<I> ::device_driver::Block for Device<I> {
     type RegisterAddressType = u8;
     type CommandAddressType = u8;
     type BufferAddressType = u8;
+    const REGISTER_ADDRESS_MODE: Option<::device_driver::AddressMode> = None;
     fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }

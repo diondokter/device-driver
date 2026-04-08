@@ -32,6 +32,8 @@ pub trait Block: Sized {
     type CommandAddressType: Address;
     /// The buffer address type
     type BufferAddressType: Address;
+    /// The address mode of the registers in this block
+    const REGISTER_ADDRESS_MODE: Option<AddressMode>;
 
     /// Get a reference to the inner interface.
     /// With it you can do out-of-band operations that aren't defined in the generated code.
@@ -54,7 +56,7 @@ pub trait Block: Sized {
         Self::Interface: RegisterInterfaceBase,
     {
         register::MultiRegisterOperation {
-            device: self,
+            block: self,
             start_address: None,
             field_sets: (),
             _phantom: PhantomData,
@@ -78,7 +80,7 @@ pub trait Block: Sized {
         Self::Interface: RegisterInterfaceBase,
     {
         register::MultiRegisterOperation {
-            device: self,
+            block: self,
             start_address: None,
             field_sets: (),
             _phantom: PhantomData,
@@ -102,7 +104,7 @@ pub trait Block: Sized {
         Self::Interface: RegisterInterfaceBase,
     {
         register::MultiRegisterOperation {
-            device: self,
+            block: self,
             start_address: None,
             field_sets: (),
             _phantom: PhantomData,
@@ -150,6 +152,19 @@ pub enum ByteOrder {
     LE,
     /// Big endian
     BE,
+}
+
+/// Type to specify how addresses work
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum AddressMode {
+    /// Objects are memory-mapped.
+    ///
+    /// If object `A` has address `X` and is `Y` bytes big, then object `B` (if it exists) will have the address `X+Y`.
+    Mapped,
+    /// Objects are sequentially indexed.
+    ///
+    /// If object `A` has address `X`, then object `B` (if it exists) will have the address `X+1`.
+    Indexed,
 }
 
 /// The error returned by the generated [`TryFrom`]s.

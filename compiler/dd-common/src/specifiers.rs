@@ -355,3 +355,38 @@ impl AddressRange {
         self.end as u64 - self.start as u64 + 1
     }
 }
+
+/// Type to specify how addresses work
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum AddressMode {
+    /// Objects are memory-mapped.
+    ///
+    /// If object `A` has address `X` and is `Y` bytes big, then object `B` (if it exists) will have the address `X+Y`.
+    Mapped,
+    /// Objects are sequentially indexed.
+    ///
+    /// If object `A` has address `X`, then object `B` (if it exists) will have the address `X+1`.
+    Indexed,
+}
+
+impl VariantNames for AddressMode {
+    const VARIANTS: &[&'static str] = &["mapped", "indexed"];
+}
+
+impl Display for AddressMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", Self::VARIANTS[*self as usize])
+    }
+}
+
+impl FromStr for AddressMode {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "mapped" => Ok(Self::Mapped),
+            "indexed" => Ok(Self::Indexed),
+            _ => Err(()),
+        }
+    }
+}

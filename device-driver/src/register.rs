@@ -860,16 +860,16 @@ pub struct Plan<AddressType: Copy, FS, Access> {
 }
 
 /// A register operation for reading or writing multiple registers in one transaction
-pub struct MultiRegisterOperation<'d, D, AddressType: Address, Fieldsets, Access> {
-    pub(crate) device: &'d mut D,
+pub struct MultiRegisterOperation<'b, B, AddressType: Address, Fieldsets, Access> {
+    pub(crate) block: &'b mut B,
     pub(crate) start_address: Option<AddressType>,
     pub(crate) field_sets: Fieldsets,
     pub(crate) _phantom: PhantomData<Access>,
 }
 
-impl<'d, D, AddressType, FieldSets> MultiRegisterOperation<'d, D, AddressType, FieldSets, WO>
+impl<'b, B, AddressType, FieldSets> MultiRegisterOperation<'b, B, AddressType, FieldSets, WO>
 where
-    D: Block,
+    B: Block,
     AddressType: Address,
 {
     /// Chain an extra write onto the multi-write.
@@ -881,21 +881,21 @@ where
     #[inline]
     pub fn with<FS: Fieldset, LocalAccess: WriteCapability>(
         mut self,
-        f: impl FnOnce(&mut D) -> Plan<AddressType, FS, LocalAccess>,
-    ) -> MultiRegisterOperation<'d, D, AddressType, FieldSets::Appended, WO>
+        f: impl FnOnce(&mut B) -> Plan<AddressType, FS, LocalAccess>,
+    ) -> MultiRegisterOperation<'b, B, AddressType, FieldSets::Appended, WO>
     where
         FieldSets: Append<FS>,
     {
         // TODO: Check if legal
 
-        let Plan { address, value, .. } = f(self.device);
+        let Plan { address, value, .. } = f(self.block);
 
         if self.start_address.is_none() {
             self.start_address = Some(address)
         }
 
         MultiRegisterOperation {
-            device: self.device,
+            block: self.block,
             start_address: self.start_address,
             field_sets: self.field_sets.append(value),
             _phantom: PhantomData,
@@ -903,9 +903,9 @@ where
     }
 }
 
-impl<'d, D, AddressType, FieldSets> MultiRegisterOperation<'d, D, AddressType, FieldSets, RO>
+impl<'b, B, AddressType, FieldSets> MultiRegisterOperation<'b, B, AddressType, FieldSets, RO>
 where
-    D: Block,
+    B: Block,
     AddressType: Address,
 {
     /// Chain an extra read onto the multi-read.
@@ -917,21 +917,21 @@ where
     #[inline]
     pub fn with<FS: Fieldset, LocalAccess: ReadCapability>(
         mut self,
-        f: impl FnOnce(&mut D) -> Plan<AddressType, FS, LocalAccess>,
-    ) -> MultiRegisterOperation<'d, D, AddressType, FieldSets::Appended, RO>
+        f: impl FnOnce(&mut B) -> Plan<AddressType, FS, LocalAccess>,
+    ) -> MultiRegisterOperation<'b, B, AddressType, FieldSets::Appended, RO>
     where
         FieldSets: Append<FS>,
     {
         // TODO: Check if legal
 
-        let Plan { address, value, .. } = f(self.device);
+        let Plan { address, value, .. } = f(self.block);
 
         if self.start_address.is_none() {
             self.start_address = Some(address)
         }
 
         MultiRegisterOperation {
-            device: self.device,
+            block: self.block,
             start_address: self.start_address,
             field_sets: self.field_sets.append(value),
             _phantom: PhantomData,
@@ -939,9 +939,9 @@ where
     }
 }
 
-impl<'d, D, AddressType, FieldSets> MultiRegisterOperation<'d, D, AddressType, FieldSets, RW>
+impl<'b, B, AddressType, FieldSets> MultiRegisterOperation<'b, B, AddressType, FieldSets, RW>
 where
-    D: Block,
+    B: Block,
     AddressType: Address,
 {
     /// Chain an extra modify onto the multi-modify.
@@ -953,21 +953,21 @@ where
     #[inline]
     pub fn with<FS: Fieldset, LocalAccess: ReadCapability + WriteCapability>(
         mut self,
-        f: impl FnOnce(&mut D) -> Plan<AddressType, FS, LocalAccess>,
-    ) -> MultiRegisterOperation<'d, D, AddressType, FieldSets::Appended, RW>
+        f: impl FnOnce(&mut B) -> Plan<AddressType, FS, LocalAccess>,
+    ) -> MultiRegisterOperation<'b, B, AddressType, FieldSets::Appended, RW>
     where
         FieldSets: Append<FS>,
     {
         // TODO: Check if legal
 
-        let Plan { address, value, .. } = f(self.device);
+        let Plan { address, value, .. } = f(self.block);
 
         if self.start_address.is_none() {
             self.start_address = Some(address)
         }
 
         MultiRegisterOperation {
-            device: self.device,
+            block: self.block,
             start_address: self.start_address,
             field_sets: self.field_sets.append(value),
             _phantom: PhantomData,
@@ -975,17 +975,17 @@ where
     }
 }
 
-impl<'d, D, Fieldsets>
+impl<'b, B, Fieldsets>
     MultiRegisterOperation<
-        'd,
-        D,
-        <D::Interface as RegisterInterfaceBase>::AddressType,
+        'b,
+        B,
+        <B::Interface as RegisterInterfaceBase>::AddressType,
         Fieldsets,
         RO,
     >
 where
-    D: Block,
-    D::Interface: RegisterInterface,
+    B: Block,
+    B::Interface: RegisterInterface,
     Fieldsets: Fieldset + ToTuple,
 {
     /// Execute the read.
@@ -995,8 +995,8 @@ where
     #[inline]
     pub fn execute(
         mut self,
-    ) -> Result<Fieldsets::Tuple, <D::Interface as RegisterInterfaceBase>::Error> {
-        self.device.interface().read_register(
+    ) -> Result<Fieldsets::Tuple, <B::Interface as RegisterInterfaceBase>::Error> {
+        self.block.interface().read_register(
             &Fieldsets::METADATA,
             self.start_address.unwrap(),
             self.field_sets.as_slice_mut(),
@@ -1006,17 +1006,17 @@ where
     }
 }
 
-impl<'d, D, Fieldsets>
+impl<'b, B, Fieldsets>
     MultiRegisterOperation<
-        'd,
-        D,
-        <D::Interface as RegisterInterfaceBase>::AddressType,
+        'b,
+        B,
+        <B::Interface as RegisterInterfaceBase>::AddressType,
         Fieldsets,
         WO,
     >
 where
-    D: Block,
-    D::Interface: RegisterInterface,
+    B: Block,
+    B::Interface: RegisterInterface,
     Fieldsets: Fieldset,
     for<'a> &'a mut Fieldsets: ToTuple,
 {
@@ -1031,9 +1031,9 @@ where
     pub fn execute<R>(
         mut self,
         f: impl FnOnce(<&mut Fieldsets as ToTuple>::Tuple) -> R,
-    ) -> Result<R, <D::Interface as RegisterInterfaceBase>::Error> {
+    ) -> Result<R, <B::Interface as RegisterInterfaceBase>::Error> {
         let returned = f(self.field_sets.to_tuple());
-        self.device.interface().write_register(
+        self.block.interface().write_register(
             &Fieldsets::METADATA,
             self.start_address.unwrap(),
             self.field_sets.as_slice(),
@@ -1042,17 +1042,17 @@ where
     }
 }
 
-impl<'d, D, Fieldsets>
+impl<'b, B, Fieldsets>
     MultiRegisterOperation<
-        'd,
-        D,
-        <D::Interface as RegisterInterfaceBase>::AddressType,
+        'b,
+        B,
+        <B::Interface as RegisterInterfaceBase>::AddressType,
         Fieldsets,
         RW,
     >
 where
-    D: Block,
-    D::Interface: RegisterInterface,
+    B: Block,
+    B::Interface: RegisterInterface,
     Fieldsets: Fieldset,
     for<'a> &'a mut Fieldsets: ToTuple,
 {
@@ -1067,8 +1067,8 @@ where
     pub fn execute<R>(
         mut self,
         f: impl FnOnce(<&mut Fieldsets as ToTuple>::Tuple) -> R,
-    ) -> Result<R, <D::Interface as RegisterInterfaceBase>::Error> {
-        self.device.interface().read_register(
+    ) -> Result<R, <B::Interface as RegisterInterfaceBase>::Error> {
+        self.block.interface().read_register(
             &Fieldsets::METADATA,
             self.start_address.unwrap(),
             self.field_sets.as_slice_mut(),
@@ -1076,7 +1076,7 @@ where
 
         let returned = f(self.field_sets.to_tuple());
 
-        self.device.interface().write_register(
+        self.block.interface().write_register(
             &Fieldsets::METADATA,
             self.start_address.unwrap(),
             self.field_sets.as_slice(),

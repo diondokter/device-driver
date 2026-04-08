@@ -1,6 +1,6 @@
 use device_driver_common::{
     identifier::Identifier,
-    specifiers::{Access, AddressRange, ByteOrder, Integer},
+    specifiers::{Access, AddressMode, AddressRange, ByteOrder, Integer},
 };
 
 pub struct Driver {
@@ -22,6 +22,7 @@ pub struct Block {
     pub register_address_type: Integer,
     pub command_address_type: Integer,
     pub buffer_address_type: Integer,
+    pub register_address_mode: Option<AddressMode>,
     pub methods: Vec<BlockMethod>,
 }
 

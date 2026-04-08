@@ -98,6 +98,7 @@ fn collect_into_blocks(
             .buffer_address_type
             .map(|v| v.value)
             .unwrap_or(Integer::U8),
+        register_address_mode: device_config.register_address_mode.map(|v| v.value),
         methods,
     };
 

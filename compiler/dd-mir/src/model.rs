@@ -5,8 +5,8 @@ use device_driver_common::{
     identifier::{Identifier, IdentifierRef},
     span::{Span, Spanned},
     specifiers::{
-        Access, AddressRange, BaseType, ByteOrder, Integer, NodeType, Repeat, ResetValue,
-        TypeConversion,
+        Access, AddressMode, AddressRange, BaseType, ByteOrder, Integer, NodeType, Repeat,
+        ResetValue, TypeConversion,
     },
 };
 
@@ -258,6 +258,7 @@ pub struct DeviceConfig {
     pub command_address_type: Option<Spanned<Integer>>,
     pub buffer_address_type: Option<Spanned<Integer>>,
     pub name_word_boundaries: Option<Vec<Boundary>>,
+    pub register_address_mode: Option<Spanned<AddressMode>>,
 }
 
 impl DeviceConfig {
@@ -274,6 +275,7 @@ impl DeviceConfig {
                 .as_ref()
                 .or(self.name_word_boundaries.as_ref())
                 .cloned(),
+            register_address_mode: other.register_address_mode.or(self.register_address_mode),
         }
     }
 }

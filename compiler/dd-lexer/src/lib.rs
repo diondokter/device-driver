@@ -6,7 +6,7 @@ use std::{
 
 use device_driver_common::{
     span::{SpanExt, Spanned},
-    specifiers::{Access, BaseType, ByteOrder, Integer},
+    specifiers::{Access, AddressMode, BaseType, ByteOrder, Integer},
 };
 use logos::Logos;
 
@@ -86,6 +86,9 @@ pub enum Token<'src> {
     #[token("i32", |_| Integer::I32)]
     #[token("i64", |_| Integer::I64)]
     Integer(Integer),
+    #[token("mapped", |_| AddressMode::Mapped)]
+    #[token("indexed", |_| AddressMode::Indexed)]
+    AddressMode(AddressMode),
     // Very simple definition without string escaping
     #[regex(r#""[^"]*""#, callback = |lex| lex.slice().strip_prefix('"').unwrap().strip_suffix('"').unwrap())]
     String(&'src str),
@@ -116,10 +119,11 @@ impl<'src> Display for Token<'src> {
             Token::Default => write!(f, "default"),
             Token::CatchAll => write!(f, "catch-all"),
             Token::Num(_) => write!(f, "number"),
-            Token::Access(_) => write!(f, "access-specifier"),
-            Token::ByteOrder(_) => write!(f, "byte-order"),
+            Token::Access(_) => write!(f, "access specifier"),
+            Token::ByteOrder(_) => write!(f, "byte order"),
             Token::BaseType(_) => write!(f, "base type"),
             Token::Integer(_) => write!(f, "integer type"),
+            Token::AddressMode(_) => write!(f, "address mode"),
             Token::String(_) => write!(f, "string"),
             Token::Unexpected(val) => write!(f, "{}", val.escape_debug()),
             Token::Error => write!(f, "ERROR"),
@@ -150,6 +154,7 @@ impl<'src> Token<'src> {
             Token::ByteOrder(val) => val.to_string().into(),
             Token::BaseType(val) => val.to_string().into(),
             Token::Integer(val) => val.to_string().into(),
+            Token::AddressMode(val) => val.to_string().into(),
             Token::Allow => "allow".into(),
             Token::Default => "default".into(),
             Token::CatchAll => "catch-all".into(),

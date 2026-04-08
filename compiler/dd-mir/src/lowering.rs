@@ -15,8 +15,8 @@ use device_driver_common::{
     identifier::{Identifier, IdentifierRef},
     span::{Span, SpanExt, Spanned},
     specifiers::{
-        Access, AddressRange, BaseType, ByteOrder, Integer, NodeType, Repeat, RepeatSource,
-        ResetValue, TypeConversion,
+        Access, AddressMode, AddressRange, BaseType, ByteOrder, Integer, NodeType, Repeat,
+        RepeatSource, ResetValue, TypeConversion,
     },
 };
 use device_driver_diagnostics::{
@@ -689,6 +689,25 @@ impl Shape for Manifest {
                     false
                 },
             },
+            PropertyInfo {
+                name: PropertyName::Exact("register-address-mode"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::AddressMode(
+                    AddressMode::Mapped,
+                )]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |manifest: &mut Manifest, property, _, _, _| {
+                    manifest.config.register_address_mode = Some(
+                        property
+                            .expression
+                            .as_address_mode()
+                            .unwrap()
+                            .with_span(property.expression.span),
+                    );
+                    false
+                },
+            },
         ];
         MAP
     }
@@ -793,6 +812,25 @@ impl Shape for Device {
                     dev.device_config.name_word_boundaries = Some(Boundary::defaults_from(
                         property.expression.as_string().unwrap(),
                     ));
+                    false
+                },
+            },
+            PropertyInfo {
+                name: PropertyName::Exact("register-address-mode"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::AddressMode(
+                    AddressMode::Mapped,
+                )]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |device: &mut Device, property, _, _, _| {
+                    device.device_config.register_address_mode = Some(
+                        property
+                            .expression
+                            .as_address_mode()
+                            .unwrap()
+                            .with_span(property.expression.span),
+                    );
                     false
                 },
             },
