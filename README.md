@@ -14,25 +14,24 @@ Read [the book](https://diondokter.github.io/device-driver/) to learn about how 
 This toolkit consists of these parts:
 
 - `device-driver`: The main crate you as the writer of a driver should include in your project.
-  It defines a set of types used by the generated code and (by default) reexports the macros.
-- `ddc`: A small command line interface that uses the compiler crate. It allows you to generate the driver in advance to reduce compile times.
-- `device-driver-compiler`: The compiler in library form. It takes the KDL input and generates the device driver.
-- `device-driver-macros`: A small frontend to the compiler crate. It can take KDL or open a text file
-  and feed that to the compiler and it outputs the compiler output.
+  It is the runtime used by the generated code and offers an optional macro to easily compile DDSL code in your Rust project.
+- `compiler`: The set of crates that form the compiler.
+  - `device-driver-cli`: The source for the `ddc` binary, the traditional compiler executable for DDSL.
+  - `device-driver-macros`: The compiler in Rust macro form.
+  - `device-driver-wasm`: The compiler in wasm-bindgen form.
+- `website`: The source of the [device-driver.com](https://device-driver.com) website.
 - `tests`: A suite of tests that presents input files and compares the known output with the generated output.
+
+Of these, only the `device-driver` and `device-driver-cli` crates are considered public.
 
 ## Semver
 
 Anything that can reasonably break user code will warrant a *breaking* semver bump.
-
-The `compiler`, `macros` & `tests` crates are considered internal and so might not be as strict in their semver bumps.
-This is mostly to keep them somewhat in line with the version of the main crate.
-
-If you depend on these crates directly, please let me know! If I know those have direct users, I will be stricter with the versions.
+This only holds if the user is only consuming 'public' device-driver code.
 
 ## License
 
-Licensed under either of
+Code licensed under either of
 
  * Apache License, Version 2.0
    ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
@@ -41,8 +40,16 @@ Licensed under either of
 
 at your option.
 
+All non-code work, unless indicated otherwise, is licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), to be attributed to Dion Dokter & device-driver contributors.
+
+All trademarks are owned by Dion Dokter.
+
 ## Contribution
 
-Unless you explicitly state otherwise, any contribution intentionally submitted
+Unless you explicitly state otherwise, any code contribution intentionally submitted
 for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
 dual licensed as above, without any additional terms or conditions.
+
+Similarly, any non-code contribution shall be licenced under CC BY 4.0 and any trademark ownership shall be transferred to Dion Dokter.
+
+Contributions must be in accordance with the notices in [CONTRIBUTING.md](CONTRIBUTING.md).
