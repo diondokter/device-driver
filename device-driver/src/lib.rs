@@ -205,6 +205,7 @@ impl ReadCapability for RW {}
 #[doc(hidden)]
 #[cfg(feature = "defmt")]
 pub trait Address: Copy + Eq + Display + defmt::Format {
+    const ZERO: Self;
     fn add(self, val: i32) -> Self;
 }
 #[doc(hidden)]
