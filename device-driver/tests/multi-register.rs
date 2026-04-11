@@ -66,7 +66,7 @@ device_driver::compile!(
                     field value 7:0 -> uint,
                 }
             },
-            register FooRepeated[4*4] {
+            register FooRepeated[4*3] {
                 address: 4,
                 fields: FooFields,
             }
