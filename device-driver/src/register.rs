@@ -1258,6 +1258,9 @@ where
     }
 }
 
+#[diagnostic::on_unimplemented(
+    label = "this register does not repeat. Use the function variant without `_at` in the name to interact with the register"
+)]
 #[doc(hidden)]
 pub trait Repeating {
     type Index: Clone;
@@ -1266,9 +1269,18 @@ pub trait Repeating {
     #[allow(private_bounds)]
     fn calc_address<AddressType: Address>(start: AddressType, index: Self::Index) -> AddressType;
 }
+
+#[diagnostic::on_unimplemented(
+    label = "this register has a repeat and you must specify an index. Use the function variant with `_at` in the name to interact with the register"
+)]
 #[doc(hidden)]
 pub trait NotRepeating {}
 impl NotRepeating for () {}
+
+#[diagnostic::on_unimplemented(
+    label = "this register has a repeat, but can't be used with array operations. Avoid using functions with `_array` in the name to interact with the register",
+    note = "repeats that use an enum cannot be used as an array"
+)]
 #[doc(hidden)]
 pub trait ArrayRepeating: Repeating {
     const COUNT: u16;
@@ -1302,11 +1314,11 @@ impl<const COUNT: u16, const STRIDE: i32> ArrayRepeating for ArrayRepeat<COUNT, 
     fn assert_len_and_index(len: usize, index: Self::Index) {
         assert!(
             index < COUNT as usize,
-            "Index out of range: {index} (array len: {COUNT})"
+            "index out of range: {index} (array len: {COUNT})"
         );
         assert!(
             len + index <= COUNT as usize,
-            "Array too long. Requested {len}, max len remaining at requested index is {}",
+            "array too long. Requested {len}, max len remaining at requested index is {}",
             COUNT as usize - index,
         );
     }
