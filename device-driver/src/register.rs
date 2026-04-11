@@ -170,19 +170,7 @@ where
         Repeat::assert_len_and_index(N, index.clone());
 
         let address = Repeat::calc_address(self.address, index);
-
-        if address.add(Repeat::STRIDE)
-            != B::RegisterAddressMode::next_address(address, core::mem::size_of::<RegisterFs>())
-        {
-            panic!(
-                "array operations can't be used with this register due to the `register-address-map` rule. Used stride: {}, accepted stride: {}",
-                Repeat::STRIDE,
-                B::RegisterAddressMode::next_address(
-                    AddressType::ZERO,
-                    core::mem::size_of::<RegisterFs>()
-                )
-            );
-        }
+        Self::assert_array_op_legal(address);
 
         Plan {
             address,
@@ -205,19 +193,7 @@ where
         Repeat::assert_len_and_index(N, index.clone());
 
         let address = Repeat::calc_address(self.address, index);
-
-        if address.add(Repeat::STRIDE)
-            != B::RegisterAddressMode::next_address(address, core::mem::size_of::<RegisterFs>())
-        {
-            panic!(
-                "array operations can't be used with this register due to the `register-address-map` rule. Used stride: {}, accepted stride: {}",
-                Repeat::STRIDE,
-                B::RegisterAddressMode::next_address(
-                    AddressType::ZERO,
-                    core::mem::size_of::<RegisterFs>()
-                )
-            );
-        }
+        Self::assert_array_op_legal(address);
 
         Plan {
             address,
@@ -299,19 +275,7 @@ where
         let returned = f(&mut register);
 
         let address = Repeat::calc_address(self.address, index);
-
-        if address.add(Repeat::STRIDE)
-            != B::RegisterAddressMode::next_address(address, core::mem::size_of::<RegisterFs>())
-        {
-            panic!(
-                "array operations can't be used with this register due to the `register-address-map` rule. Used stride: {}, accepted stride: {}",
-                Repeat::STRIDE,
-                B::RegisterAddressMode::next_address(
-                    AddressType::ZERO,
-                    core::mem::size_of::<RegisterFs>()
-                )
-            );
-        }
+        Self::assert_array_op_legal(address);
 
         self.block.interface().write_register(
             &RegisterFs::METADATA,
@@ -398,19 +362,7 @@ where
         let returned = f(&mut register);
 
         let address = Repeat::calc_address(self.address, index);
-
-        if address.add(Repeat::STRIDE)
-            != B::RegisterAddressMode::next_address(address, core::mem::size_of::<RegisterFs>())
-        {
-            panic!(
-                "array operations can't be used with this register due to the `register-address-map` rule. Used stride: {}, accepted stride: {}",
-                Repeat::STRIDE,
-                B::RegisterAddressMode::next_address(
-                    AddressType::ZERO,
-                    core::mem::size_of::<RegisterFs>()
-                )
-            );
-        }
+        Self::assert_array_op_legal(address);
 
         async move {
             self.block
@@ -493,19 +445,7 @@ where
         let returned = f(&mut register);
 
         let address = Repeat::calc_address(self.address, index);
-
-        if address.add(Repeat::STRIDE)
-            != B::RegisterAddressMode::next_address(address, core::mem::size_of::<RegisterFs>())
-        {
-            panic!(
-                "array operations can't be used with this register due to the `register-address-map` rule. Used stride: {}, accepted stride: {}",
-                Repeat::STRIDE,
-                B::RegisterAddressMode::next_address(
-                    AddressType::ZERO,
-                    core::mem::size_of::<RegisterFs>()
-                )
-            );
-        }
+        Self::assert_array_op_legal(address);
 
         self.block.interface().write_register(
             &RegisterFs::METADATA,
@@ -589,19 +529,7 @@ where
         let returned = f(&mut register);
 
         let address = Repeat::calc_address(self.address, index);
-
-        if address.add(Repeat::STRIDE)
-            != B::RegisterAddressMode::next_address(address, core::mem::size_of::<RegisterFs>())
-        {
-            panic!(
-                "array operations can't be used with this register due to the `register-address-map` rule. Used stride: {}, accepted stride: {}",
-                Repeat::STRIDE,
-                B::RegisterAddressMode::next_address(
-                    AddressType::ZERO,
-                    core::mem::size_of::<RegisterFs>()
-                )
-            );
-        }
+        Self::assert_array_op_legal(address);
 
         async move {
             self.block
@@ -667,19 +595,7 @@ where
 
         let mut register = <[RegisterFs; N] as Fieldset>::ZERO;
         let address = Repeat::calc_address(self.address, index);
-
-        if address.add(Repeat::STRIDE)
-            != B::RegisterAddressMode::next_address(address, core::mem::size_of::<RegisterFs>())
-        {
-            panic!(
-                "array operations can't be used with this register due to the `register-address-map` rule. Used stride: {}, accepted stride: {}",
-                Repeat::STRIDE,
-                B::RegisterAddressMode::next_address(
-                    AddressType::ZERO,
-                    core::mem::size_of::<RegisterFs>()
-                )
-            );
-        }
+        Self::assert_array_op_legal(address);
 
         self.block.interface().read_register(
             &RegisterFs::METADATA,
@@ -748,19 +664,7 @@ where
 
         let mut register = <[RegisterFs; N] as Fieldset>::ZERO;
         let address = Repeat::calc_address(self.address, index);
-
-        if address.add(Repeat::STRIDE)
-            != B::RegisterAddressMode::next_address(address, core::mem::size_of::<RegisterFs>())
-        {
-            panic!(
-                "array operations can't be used with this register due to the `register-address-map` rule. Used stride: {}, accepted stride: {}",
-                Repeat::STRIDE,
-                B::RegisterAddressMode::next_address(
-                    AddressType::ZERO,
-                    core::mem::size_of::<RegisterFs>()
-                )
-            );
-        }
+        Self::assert_array_op_legal(address);
 
         async move {
             self.block
@@ -841,19 +745,7 @@ where
         let mut register = <[RegisterFs; N] as Fieldset>::ZERO;
 
         let address = Repeat::calc_address(self.address, index);
-
-        if address.add(Repeat::STRIDE)
-            != B::RegisterAddressMode::next_address(address, core::mem::size_of::<RegisterFs>())
-        {
-            panic!(
-                "array operations can't be used with this register due to the `register-address-map` rule. Used stride: {}, accepted stride: {}",
-                Repeat::STRIDE,
-                B::RegisterAddressMode::next_address(
-                    AddressType::ZERO,
-                    core::mem::size_of::<RegisterFs>()
-                )
-            );
-        }
+        Self::assert_array_op_legal(address);
 
         self.block.interface().read_register(
             &RegisterFs::METADATA,
@@ -959,19 +851,7 @@ where
         let mut register = <[RegisterFs; N] as Fieldset>::ZERO;
 
         let address = Repeat::calc_address(self.address, index);
-
-        if address.add(Repeat::STRIDE)
-            != B::RegisterAddressMode::next_address(address, core::mem::size_of::<RegisterFs>())
-        {
-            panic!(
-                "array operations can't be used with this register due to the `register-address-map` rule. Used stride: {}, accepted stride: {}",
-                Repeat::STRIDE,
-                B::RegisterAddressMode::next_address(
-                    AddressType::ZERO,
-                    core::mem::size_of::<RegisterFs>()
-                )
-            );
-        }
+        Self::assert_array_op_legal(address);
 
         async move {
             self.block
@@ -992,6 +872,26 @@ where
             Ok(returned)
         }
     }
+
+    #[track_caller]
+    fn assert_array_op_legal(address: AddressType)
+    where
+        B::RegisterAddressMode: AddressMode,
+        Repeat: ArrayRepeating,
+    {
+        if address.add(Repeat::STRIDE)
+            != B::RegisterAddressMode::next_address(address, core::mem::size_of::<RegisterFs>())
+        {
+            panic!(
+                "array operations can't be used with this register due to the `register-address-map` rule. Used stride: {}, accepted stride: {}",
+                Repeat::STRIDE,
+                B::RegisterAddressMode::next_address(
+                    AddressType::ZERO,
+                    core::mem::size_of::<RegisterFs>()
+                )
+            );
+        }
+    }
 }
 
 /// A plan that is used for multi-reads and writes.
@@ -1010,6 +910,26 @@ pub struct MultiRegisterOperation<'b, B, AddressType: Address, Fieldsets, Access
     pub(crate) next_address: Option<AddressType>,
     pub(crate) field_sets: Fieldsets,
     pub(crate) _phantom: PhantomData<Access>,
+}
+
+impl<'b, B, AddressType, FieldSets, Access>
+    MultiRegisterOperation<'b, B, AddressType, FieldSets, Access>
+where
+    B: Block,
+    B::RegisterAddressMode: AddressMode,
+    AddressType: Address,
+{
+    #[track_caller]
+    fn assert_legal(&self, address: AddressType) {
+        if let Some(next_address) = self.next_address
+            && address != next_address
+        {
+            panic!(
+                "order of registers not valid according to the address mode rules. Expected address: {}, got: {}",
+                next_address, address
+            );
+        }
+    }
 }
 
 impl<'b, B, AddressType, FieldSets> MultiRegisterOperation<'b, B, AddressType, FieldSets, WO>
@@ -1034,15 +954,7 @@ where
         FieldSets: Append<FS>,
     {
         let Plan { address, value, .. } = f(self.block);
-
-        if let Some(next_address) = self.next_address
-            && address != next_address
-        {
-            panic!(
-                "order of registers not valid according to the address mode rules. Expected address: {}, got: {}",
-                next_address, address
-            );
-        }
+        self.assert_legal(address);
 
         MultiRegisterOperation {
             block: self.block,
@@ -1079,15 +991,7 @@ where
         FieldSets: Append<FS>,
     {
         let Plan { address, value, .. } = f(self.block);
-
-        if let Some(next_address) = self.next_address
-            && address != next_address
-        {
-            panic!(
-                "order of registers not valid according to the address mode rules. Expected address: {}, got: {}",
-                next_address, address
-            );
-        }
+        self.assert_legal(address);
 
         MultiRegisterOperation {
             block: self.block,
@@ -1124,15 +1028,7 @@ where
         FieldSets: Append<FS>,
     {
         let Plan { address, value, .. } = f(self.block);
-
-        if let Some(next_address) = self.next_address
-            && address != next_address
-        {
-            panic!(
-                "order of registers not valid according to the address mode rules. Expected address: {}, got: {}",
-                next_address, address
-            );
-        }
+        self.assert_legal(address);
 
         MultiRegisterOperation {
             block: self.block,
