@@ -1,9 +1,12 @@
 use core::marker::PhantomData;
 
 use crate::{
-    Address, Append, Block, Fieldset, FieldsetMetadata, RO, RW, ReadCapability, ToTuple, WO,
-    WriteCapability,
+    Address, AddressMode, Append, Block, Fieldset, FieldsetMetadata, RO, RW, ReadCapability,
+    ToTuple, WO, WriteCapability,
 };
+
+#[cfg(feature = "defmt")]
+use defmt::panic;
 
 /// Common properties shared by [RegisterInterface] & [AsyncRegisterInterface]
 pub trait RegisterInterfaceBase {
@@ -162,13 +165,27 @@ where
     ) -> Plan<AddressType, [RegisterFs; N], Access>
     where
         Repeat: ArrayRepeating,
+        B::RegisterAddressMode: AddressMode,
     {
         Repeat::assert_len_and_index(N, index.clone());
 
-        // TODO: Check if legal
+        let address = Repeat::calc_address(self.address, index);
+
+        if address.add(Repeat::STRIDE)
+            != B::RegisterAddressMode::next_address(address, core::mem::size_of::<RegisterFs>())
+        {
+            panic!(
+                "array operations can't be used with this register due to the `register-address-map` rule. Used stride: {}, accepted stride: {}",
+                Repeat::STRIDE,
+                B::RegisterAddressMode::next_address(
+                    AddressType::ZERO,
+                    core::mem::size_of::<RegisterFs>()
+                )
+            );
+        }
 
         Plan {
-            address: Repeat::calc_address(self.address, index),
+            address,
             value: core::array::from_fn(|_| self.reset_value()),
             _phantom: PhantomData,
         }
@@ -182,14 +199,28 @@ where
     ) -> Plan<AddressType, [RegisterFs; N], Access>
     where
         Repeat: ArrayRepeating,
+        B::RegisterAddressMode: AddressMode,
         Access: WriteCapability,
     {
         Repeat::assert_len_and_index(N, index.clone());
 
-        // TODO: Check if legal
+        let address = Repeat::calc_address(self.address, index);
+
+        if address.add(Repeat::STRIDE)
+            != B::RegisterAddressMode::next_address(address, core::mem::size_of::<RegisterFs>())
+        {
+            panic!(
+                "array operations can't be used with this register due to the `register-address-map` rule. Used stride: {}, accepted stride: {}",
+                Repeat::STRIDE,
+                B::RegisterAddressMode::next_address(
+                    AddressType::ZERO,
+                    core::mem::size_of::<RegisterFs>()
+                )
+            );
+        }
 
         Plan {
-            address: Repeat::calc_address(self.address, index),
+            address,
             value: Fieldset::ZERO,
             _phantom: PhantomData,
         }
@@ -259,18 +290,32 @@ where
     where
         Repeat: ArrayRepeating,
         B::Interface: RegisterInterface,
+        B::RegisterAddressMode: AddressMode,
         Access: WriteCapability,
     {
         Repeat::assert_len_and_index(N, index.clone());
 
-        // TODO: Check if legal
-
         let mut register = core::array::from_fn(|_| (self.register_new_with_reset)());
         let returned = f(&mut register);
 
+        let address = Repeat::calc_address(self.address, index);
+
+        if address.add(Repeat::STRIDE)
+            != B::RegisterAddressMode::next_address(address, core::mem::size_of::<RegisterFs>())
+        {
+            panic!(
+                "array operations can't be used with this register due to the `register-address-map` rule. Used stride: {}, accepted stride: {}",
+                Repeat::STRIDE,
+                B::RegisterAddressMode::next_address(
+                    AddressType::ZERO,
+                    core::mem::size_of::<RegisterFs>()
+                )
+            );
+        }
+
         self.block.interface().write_register(
             &RegisterFs::METADATA,
-            Repeat::calc_address(self.address, index),
+            address,
             Fieldset::as_slice(&register),
         )?;
         Ok(returned)
@@ -344,16 +389,28 @@ where
     where
         Repeat: ArrayRepeating,
         B::Interface: AsyncRegisterInterface,
+        B::RegisterAddressMode: AddressMode,
         Access: WriteCapability,
     {
         Repeat::assert_len_and_index(N, index.clone());
-
-        // TODO: Check if legal
 
         let mut register = core::array::from_fn(|_| (self.register_new_with_reset)());
         let returned = f(&mut register);
 
         let address = Repeat::calc_address(self.address, index);
+
+        if address.add(Repeat::STRIDE)
+            != B::RegisterAddressMode::next_address(address, core::mem::size_of::<RegisterFs>())
+        {
+            panic!(
+                "array operations can't be used with this register due to the `register-address-map` rule. Used stride: {}, accepted stride: {}",
+                Repeat::STRIDE,
+                B::RegisterAddressMode::next_address(
+                    AddressType::ZERO,
+                    core::mem::size_of::<RegisterFs>()
+                )
+            );
+        }
 
         async move {
             self.block
@@ -427,17 +484,32 @@ where
     where
         Repeat: ArrayRepeating,
         B::Interface: RegisterInterface,
+        B::RegisterAddressMode: AddressMode,
         Access: WriteCapability,
     {
         Repeat::assert_len_and_index(N, index.clone());
 
-        // TODO: check if legal
-
         let mut register = <[RegisterFs; N] as Fieldset>::ZERO;
         let returned = f(&mut register);
+
+        let address = Repeat::calc_address(self.address, index);
+
+        if address.add(Repeat::STRIDE)
+            != B::RegisterAddressMode::next_address(address, core::mem::size_of::<RegisterFs>())
+        {
+            panic!(
+                "array operations can't be used with this register due to the `register-address-map` rule. Used stride: {}, accepted stride: {}",
+                Repeat::STRIDE,
+                B::RegisterAddressMode::next_address(
+                    AddressType::ZERO,
+                    core::mem::size_of::<RegisterFs>()
+                )
+            );
+        }
+
         self.block.interface().write_register(
             &RegisterFs::METADATA,
-            Repeat::calc_address(self.address, index),
+            address,
             register.as_slice_mut(),
         )?;
         Ok(returned)
@@ -508,16 +580,28 @@ where
     where
         Repeat: ArrayRepeating,
         B::Interface: AsyncRegisterInterface,
+        B::RegisterAddressMode: AddressMode,
         Access: WriteCapability,
     {
         Repeat::assert_len_and_index(N, index.clone());
-
-        // TODO: check if legal
 
         let mut register = <[RegisterFs; N] as Fieldset>::ZERO;
         let returned = f(&mut register);
 
         let address = Repeat::calc_address(self.address, index);
+
+        if address.add(Repeat::STRIDE)
+            != B::RegisterAddressMode::next_address(address, core::mem::size_of::<RegisterFs>())
+        {
+            panic!(
+                "array operations can't be used with this register due to the `register-address-map` rule. Used stride: {}, accepted stride: {}",
+                Repeat::STRIDE,
+                B::RegisterAddressMode::next_address(
+                    AddressType::ZERO,
+                    core::mem::size_of::<RegisterFs>()
+                )
+            );
+        }
 
         async move {
             self.block
@@ -576,17 +660,30 @@ where
     where
         Repeat: ArrayRepeating,
         B::Interface: RegisterInterface,
+        B::RegisterAddressMode: AddressMode,
         Access: ReadCapability,
     {
         Repeat::assert_len_and_index(N, index.clone());
 
-        // TODO: check if legal
-
         let mut register = <[RegisterFs; N] as Fieldset>::ZERO;
+        let address = Repeat::calc_address(self.address, index);
+
+        if address.add(Repeat::STRIDE)
+            != B::RegisterAddressMode::next_address(address, core::mem::size_of::<RegisterFs>())
+        {
+            panic!(
+                "array operations can't be used with this register due to the `register-address-map` rule. Used stride: {}, accepted stride: {}",
+                Repeat::STRIDE,
+                B::RegisterAddressMode::next_address(
+                    AddressType::ZERO,
+                    core::mem::size_of::<RegisterFs>()
+                )
+            );
+        }
 
         self.block.interface().read_register(
             &RegisterFs::METADATA,
-            Repeat::calc_address(self.address, index),
+            address,
             register.as_slice_mut(),
         )?;
         Ok(register)
@@ -621,6 +718,7 @@ where
     where
         Repeat: Repeating,
         B::Interface: AsyncRegisterInterface,
+        B::RegisterAddressMode: AddressMode,
         Access: ReadCapability,
     {
         let mut register = RegisterFs::ZERO;
@@ -643,14 +741,26 @@ where
     where
         Repeat: ArrayRepeating,
         B::Interface: AsyncRegisterInterface,
+        B::RegisterAddressMode: AddressMode,
         Access: ReadCapability,
     {
         Repeat::assert_len_and_index(N, index.clone());
 
-        // TODO: check if legal
-
         let mut register = <[RegisterFs; N] as Fieldset>::ZERO;
         let address = Repeat::calc_address(self.address, index);
+
+        if address.add(Repeat::STRIDE)
+            != B::RegisterAddressMode::next_address(address, core::mem::size_of::<RegisterFs>())
+        {
+            panic!(
+                "array operations can't be used with this register due to the `register-address-map` rule. Used stride: {}, accepted stride: {}",
+                Repeat::STRIDE,
+                B::RegisterAddressMode::next_address(
+                    AddressType::ZERO,
+                    core::mem::size_of::<RegisterFs>()
+                )
+            );
+        }
 
         async move {
             self.block
@@ -723,18 +833,40 @@ where
     where
         Repeat: ArrayRepeating,
         B::Interface: RegisterInterface,
+        B::RegisterAddressMode: AddressMode,
         Access: ReadCapability + WriteCapability,
     {
         Repeat::assert_len_and_index(N, index.clone());
 
-        // TODO: check if legal
+        let mut register = <[RegisterFs; N] as Fieldset>::ZERO;
 
-        let mut register = self.read_array_at::<N>(index.clone())?;
+        let address = Repeat::calc_address(self.address, index);
+
+        if address.add(Repeat::STRIDE)
+            != B::RegisterAddressMode::next_address(address, core::mem::size_of::<RegisterFs>())
+        {
+            panic!(
+                "array operations can't be used with this register due to the `register-address-map` rule. Used stride: {}, accepted stride: {}",
+                Repeat::STRIDE,
+                B::RegisterAddressMode::next_address(
+                    AddressType::ZERO,
+                    core::mem::size_of::<RegisterFs>()
+                )
+            );
+        }
+
+        self.block.interface().read_register(
+            &RegisterFs::METADATA,
+            address,
+            register.as_slice_mut(),
+        )?;
+
         let returned = f(&mut register);
+
         self.block.interface().write_register(
             &RegisterFs::METADATA,
-            Repeat::calc_address(self.address, index),
-            register.as_slice_mut(),
+            address,
+            Fieldset::as_slice(&register),
         )?;
         Ok(returned)
     }
@@ -819,15 +951,27 @@ where
     where
         Repeat: ArrayRepeating,
         B::Interface: AsyncRegisterInterface,
+        B::RegisterAddressMode: AddressMode,
         Access: ReadCapability + WriteCapability,
     {
         Repeat::assert_len_and_index(N, index.clone());
 
-        // TODO: check if legal
-
         let mut register = <[RegisterFs; N] as Fieldset>::ZERO;
 
         let address = Repeat::calc_address(self.address, index);
+
+        if address.add(Repeat::STRIDE)
+            != B::RegisterAddressMode::next_address(address, core::mem::size_of::<RegisterFs>())
+        {
+            panic!(
+                "array operations can't be used with this register due to the `register-address-map` rule. Used stride: {}, accepted stride: {}",
+                Repeat::STRIDE,
+                B::RegisterAddressMode::next_address(
+                    AddressType::ZERO,
+                    core::mem::size_of::<RegisterFs>()
+                )
+            );
+        }
 
         async move {
             self.block
@@ -863,6 +1007,7 @@ pub struct Plan<AddressType: Copy, FS, Access> {
 pub struct MultiRegisterOperation<'b, B, AddressType: Address, Fieldsets, Access> {
     pub(crate) block: &'b mut B,
     pub(crate) start_address: Option<AddressType>,
+    pub(crate) next_address: Option<AddressType>,
     pub(crate) field_sets: Fieldsets,
     pub(crate) _phantom: PhantomData<Access>,
 }
@@ -870,6 +1015,7 @@ pub struct MultiRegisterOperation<'b, B, AddressType: Address, Fieldsets, Access
 impl<'b, B, AddressType, FieldSets> MultiRegisterOperation<'b, B, AddressType, FieldSets, WO>
 where
     B: Block,
+    B::RegisterAddressMode: AddressMode,
     AddressType: Address,
 {
     /// Chain an extra write onto the multi-write.
@@ -878,25 +1024,33 @@ where
     /// The plan is created by calling [RegisterOperation::plan] or [RegisterOperation::plan_with_zero].
     ///
     /// After chaining, call [Self::execute].
+    #[track_caller]
     #[inline]
     pub fn with<FS: Fieldset, LocalAccess: WriteCapability>(
-        mut self,
+        self,
         f: impl FnOnce(&mut B) -> Plan<AddressType, FS, LocalAccess>,
     ) -> MultiRegisterOperation<'b, B, AddressType, FieldSets::Appended, WO>
     where
         FieldSets: Append<FS>,
     {
-        // TODO: Check if legal
-
         let Plan { address, value, .. } = f(self.block);
 
-        if self.start_address.is_none() {
-            self.start_address = Some(address)
+        if let Some(next_address) = self.next_address
+            && address != next_address
+        {
+            panic!(
+                "order of registers not valid according to the address mode rules. Expected address: {}, got: {}",
+                next_address, address
+            );
         }
 
         MultiRegisterOperation {
             block: self.block,
-            start_address: self.start_address,
+            start_address: self.start_address.or(Some(address)),
+            next_address: Some(B::RegisterAddressMode::next_address(
+                address,
+                core::mem::size_of::<FS>(),
+            )),
             field_sets: self.field_sets.append(value),
             _phantom: PhantomData,
         }
@@ -906,6 +1060,7 @@ where
 impl<'b, B, AddressType, FieldSets> MultiRegisterOperation<'b, B, AddressType, FieldSets, RO>
 where
     B: Block,
+    B::RegisterAddressMode: AddressMode,
     AddressType: Address,
 {
     /// Chain an extra read onto the multi-read.
@@ -914,25 +1069,33 @@ where
     /// The plan is created by calling [RegisterOperation::plan].
     ///
     /// After chaining, call [Self::execute].
+    #[track_caller]
     #[inline]
     pub fn with<FS: Fieldset, LocalAccess: ReadCapability>(
-        mut self,
+        self,
         f: impl FnOnce(&mut B) -> Plan<AddressType, FS, LocalAccess>,
     ) -> MultiRegisterOperation<'b, B, AddressType, FieldSets::Appended, RO>
     where
         FieldSets: Append<FS>,
     {
-        // TODO: Check if legal
-
         let Plan { address, value, .. } = f(self.block);
 
-        if self.start_address.is_none() {
-            self.start_address = Some(address)
+        if let Some(next_address) = self.next_address
+            && address != next_address
+        {
+            panic!(
+                "order of registers not valid according to the address mode rules. Expected address: {}, got: {}",
+                next_address, address
+            );
         }
 
         MultiRegisterOperation {
             block: self.block,
-            start_address: self.start_address,
+            start_address: self.start_address.or(Some(address)),
+            next_address: Some(B::RegisterAddressMode::next_address(
+                address,
+                core::mem::size_of::<FS>(),
+            )),
             field_sets: self.field_sets.append(value),
             _phantom: PhantomData,
         }
@@ -942,6 +1105,7 @@ where
 impl<'b, B, AddressType, FieldSets> MultiRegisterOperation<'b, B, AddressType, FieldSets, RW>
 where
     B: Block,
+    B::RegisterAddressMode: AddressMode,
     AddressType: Address,
 {
     /// Chain an extra modify onto the multi-modify.
@@ -950,25 +1114,33 @@ where
     /// The plan is created by calling [RegisterOperation::plan].
     ///
     /// After chaining, call [Self::execute].
+    #[track_caller]
     #[inline]
     pub fn with<FS: Fieldset, LocalAccess: ReadCapability + WriteCapability>(
-        mut self,
+        self,
         f: impl FnOnce(&mut B) -> Plan<AddressType, FS, LocalAccess>,
     ) -> MultiRegisterOperation<'b, B, AddressType, FieldSets::Appended, RW>
     where
         FieldSets: Append<FS>,
     {
-        // TODO: Check if legal
-
         let Plan { address, value, .. } = f(self.block);
 
-        if self.start_address.is_none() {
-            self.start_address = Some(address)
+        if let Some(next_address) = self.next_address
+            && address != next_address
+        {
+            panic!(
+                "order of registers not valid according to the address mode rules. Expected address: {}, got: {}",
+                next_address, address
+            );
         }
 
         MultiRegisterOperation {
             block: self.block,
-            start_address: self.start_address,
+            start_address: self.start_address.or(Some(address)),
+            next_address: Some(B::RegisterAddressMode::next_address(
+                address,
+                core::mem::size_of::<FS>(),
+            )),
             field_sets: self.field_sets.append(value),
             _phantom: PhantomData,
         }
@@ -1134,7 +1306,7 @@ impl<const COUNT: u16, const STRIDE: i32> ArrayRepeating for ArrayRepeat<COUNT, 
         );
         assert!(
             len + index <= COUNT as usize,
-            "Array too long. At index {index}, the max len is {}",
+            "Array too long. Requested {len}, max len remaining at requested index is {}",
             COUNT as usize - index,
         );
     }

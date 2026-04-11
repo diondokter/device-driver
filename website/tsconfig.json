@@ -7,6 +7,6 @@
     "target": "es6",
     "jsx": "react",
     "allowJs": false,
-    "moduleResolution": "bundler"
+    "moduleResolution": "node"
   }
 }

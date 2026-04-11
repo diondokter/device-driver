@@ -50,6 +50,7 @@ device_driver::compile!(
         device MyTestDevice {
             byte-order: LE,
             register-address-type: u8,
+            register-address-mode: mapped,
 
             register Foo {
                 address: 0,
@@ -65,7 +66,7 @@ device_driver::compile!(
                     field value 7:0 -> uint,
                 }
             },
-            register FooRepeated[4*3] {
+            register FooRepeated[4*4] {
                 address: 4,
                 fields: FooFields,
             }
@@ -117,4 +118,23 @@ fn multi_test() {
 
     assert_eq!(foo.value(), 43);
     assert_eq!(bar.value(), 43);
+}
+
+#[test]
+fn test_array() {
+    let mut device = MyTestDevice::new(DeviceInterface::new());
+
+    device
+        .foo_repeated()
+        .modify_array_at(1, |[foo1, foo2]| {
+            foo1.set_value(1);
+            foo2.set_value(2);
+        })
+        .unwrap();
+
+    let [foo0, foo1, foo2, foo3] = device.foo_repeated().read_array_at(0).unwrap();
+    assert_eq!(foo0.value(), 0);
+    assert_eq!(foo1.value(), 1);
+    assert_eq!(foo2.value(), 2);
+    assert_eq!(foo3.value(), 0);
 }

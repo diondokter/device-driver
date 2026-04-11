@@ -81,8 +81,8 @@ fn get_enum_base_type<'d>(driver: &'d Driver, enum_name: &Identifier) -> &'d str
 
 fn get_address_mode_const_value(value: &Option<AddressMode>) -> &'static str {
     match value {
-        Some(AddressMode::Mapped) => "Some(::device_driver::AddressMode::Mapped)",
-        Some(AddressMode::Indexed) => "Some(::device_driver::AddressMode::Indexed)",
-        None => "None",
+        Some(AddressMode::Mapped) => "::device_driver::MappedAddressMode",
+        Some(AddressMode::Indexed) => "::device_driver::IndexedAddressMode",
+        None => "()",
     }
 }

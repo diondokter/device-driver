@@ -129,7 +129,7 @@ impl{{block_generics}} ::device_driver::Block for {{ block.name.to_case(Case::Pa
     type RegisterAddressType = {{ block.register_address_type }};
     type CommandAddressType = {{ block.command_address_type }};
     type BufferAddressType = {{ block.buffer_address_type }};
-    const REGISTER_ADDRESS_MODE: Option<::device_driver::AddressMode> = {{self::get_address_mode_const_value(block.register_address_mode)}};
+    type RegisterAddressMode = {{self::get_address_mode_const_value(block.register_address_mode)}};
 
     {% if block.root %}
     fn interface(&mut self) -> &mut Self::Interface {

@@ -1,5 +1,5 @@
 #![allow(async_fn_in_trait)]
-#![cfg_attr(not(test), no_std)]
+// #![cfg_attr(not(test), no_std)]
 #![warn(missing_docs)]
 #![doc = include_str!(concat!("../", env!("CARGO_PKG_README")))]
 
@@ -33,7 +33,7 @@ pub trait Block: Sized {
     /// The buffer address type
     type BufferAddressType: Address;
     /// The address mode of the registers in this block
-    const REGISTER_ADDRESS_MODE: Option<AddressMode>;
+    type RegisterAddressMode;
 
     /// Get a reference to the inner interface.
     /// With it you can do out-of-band operations that aren't defined in the generated code.
@@ -54,10 +54,12 @@ pub trait Block: Sized {
     >
     where
         Self::Interface: RegisterInterfaceBase,
+        Self::RegisterAddressMode: AddressMode,
     {
         register::MultiRegisterOperation {
             block: self,
             start_address: None,
+            next_address: None,
             field_sets: (),
             _phantom: PhantomData,
         }
@@ -78,10 +80,12 @@ pub trait Block: Sized {
     >
     where
         Self::Interface: RegisterInterfaceBase,
+        Self::RegisterAddressMode: AddressMode,
     {
         register::MultiRegisterOperation {
             block: self,
             start_address: None,
+            next_address: None,
             field_sets: (),
             _phantom: PhantomData,
         }
@@ -102,10 +106,12 @@ pub trait Block: Sized {
     >
     where
         Self::Interface: RegisterInterfaceBase,
+        Self::RegisterAddressMode: AddressMode,
     {
         register::MultiRegisterOperation {
             block: self,
             start_address: None,
+            next_address: None,
             field_sets: (),
             _phantom: PhantomData,
         }
@@ -154,19 +160,6 @@ pub enum ByteOrder {
     BE,
 }
 
-/// Type to specify how addresses work
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum AddressMode {
-    /// Objects are memory-mapped.
-    ///
-    /// If object `A` has address `X` and is `Y` bytes big, then object `B` (if it exists) will have the address `X+Y`.
-    Mapped,
-    /// Objects are sequentially indexed.
-    ///
-    /// If object `A` has address `X`, then object `B` (if it exists) will have the address `X+1`.
-    Indexed,
-}
-
 /// The error returned by the generated [`TryFrom`]s.
 /// It contains the base type of the enum.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -210,47 +203,95 @@ impl WriteCapability for RW {}
 impl ReadCapability for RW {}
 
 #[doc(hidden)]
-pub trait Address: Copy {
+#[cfg(feature = "defmt")]
+pub trait Address: Copy + Eq + Display + defmt::Format {
+    fn add(self, val: i32) -> Self;
+}
+#[doc(hidden)]
+#[cfg(not(feature = "defmt"))]
+pub trait Address: Copy + Eq + Display {
+    const ZERO: Self;
     fn add(self, val: i32) -> Self;
 }
 
 impl Address for u8 {
+    const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
         (self as i32 + val).try_into().unwrap()
     }
 }
 impl Address for u16 {
+    const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
         (self as i32 + val).try_into().unwrap()
     }
 }
 impl Address for u32 {
+    const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
         self.checked_add_signed(val).unwrap()
     }
 }
 impl Address for u64 {
+    const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
         self.checked_add_signed(val as i64).unwrap()
     }
 }
 impl Address for i8 {
+    const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
         (self as i32 + val).try_into().unwrap()
     }
 }
 impl Address for i16 {
+    const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
         (self as i32 + val).try_into().unwrap()
     }
 }
 impl Address for i32 {
+    const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
         self + val
     }
 }
 impl Address for i64 {
+    const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
         self + val as i64
+    }
+}
+
+#[diagnostic::on_unimplemented(
+    message = "no `register-address-mode` is specified in the driver, so multi-register operations are not possible",
+    label = "not supported for this driver",
+    note = "if you are the author of the driver, specify `register-address-mode` in the device config to enable this feature if the device supports it",
+    note = "not all devices support this feature"
+)]
+#[doc(hidden)]
+pub trait AddressMode {
+    #[doc(hidden)]
+    fn next_address<A: Address>(current_address: A, current_size: usize) -> A;
+}
+
+#[doc(hidden)]
+pub struct MappedAddressMode;
+impl AddressMode for MappedAddressMode {
+    #[inline]
+    fn next_address<A: Address>(current_address: A, current_size: usize) -> A {
+        // Current size can be cast to i32 fine because this is the size of a fieldset
+        // Fieldsets are limited to 1MB in size
+
+        current_address.add(current_size as i32)
+    }
+}
+
+#[doc(hidden)]
+pub struct IndexedAddressMode;
+impl AddressMode for IndexedAddressMode {
+    #[inline]
+    fn next_address<A: Address>(current_address: A, _current_size: usize) -> A {
+        current_address.add(1)
     }
 }
