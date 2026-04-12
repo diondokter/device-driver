@@ -128,7 +128,8 @@ pub struct FieldsetMetadata {
 }
 
 impl FieldsetMetadata {
-    /// A default that allow you to construct the metadata
+    /// A default that allows you to construct the metadata in const contexts.
+    /// Yields the same value as [Self::default].
     pub const DEFAULT: Self = Self {
         byte_order: ByteOrder::LE,
     };

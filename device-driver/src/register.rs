@@ -116,7 +116,7 @@ where
         }
     }
 
-    /// Get a plan to read, write or modify for multi register transactions
+    /// Get a plan to read, write or modify for multi register transactions at a given index
     #[track_caller]
     pub fn plan_at(&self, index: Repeat::Index) -> Plan<AddressType, RegisterFs, Access>
     where
@@ -157,7 +157,7 @@ where
         }
     }
 
-    /// Get a plan with the reset value of the register
+    /// Get a plan to read, write or modify an array of registers for multi register transactions with a given start index and length
     #[track_caller]
     pub fn plan_array_at<const N: usize>(
         self,
@@ -179,7 +179,7 @@ where
         }
     }
 
-    /// Get a plan with the reset value of the register
+    /// Same as [Self::plan_array_at], but initialize the fieldsets with all zeroes
     #[track_caller]
     pub fn plan_array_with_zero_at<const N: usize>(
         self,
@@ -227,10 +227,10 @@ where
         Ok(returned)
     }
 
-    /// Write to the register.
+    /// Write to the register at a given index.
     ///
     /// The closure is given the write object initialized to the reset value of the register.
-    /// If no reset value is specified for this register, this function is the same as [`Self::write_with_zero`].
+    /// If no reset value is specified for this register, this function is the same as [`Self::write_with_zero_at`].
     #[track_caller]
     pub fn write_at<R>(
         &mut self,
@@ -253,10 +253,10 @@ where
         Ok(returned)
     }
 
-    /// Write to the register.
+    /// Write to an array of register at the given index and N length.
     ///
     /// The closure is given the write object initialized to the reset value of the register.
-    /// If no reset value is specified for this register, this function is the same as [`Self::write_with_zero`].
+    /// If no reset value is specified for this register, this function is the same as [`Self::write_array_with_zero_at`].
     #[track_caller]
     pub fn write_array_at<R, const N: usize>(
         &mut self,
@@ -311,10 +311,10 @@ where
         }
     }
 
-    /// Write to the register.
+    /// Write to the register at a given index.
     ///
     /// The closure is given the write object initialized to the reset value of the register.
-    /// If no reset value is specified for this register, this function is the same as [`Self::write_with_zero`].
+    /// If no reset value is specified for this register, this function is the same as [`Self::write_with_zero_at_async`].
     #[track_caller]
     pub fn write_at_async<R>(
         &mut self,
@@ -340,10 +340,10 @@ where
         }
     }
 
-    /// Write to the register.
+    /// Write to an array of register at the given index and N length.
     ///
     /// The closure is given the write object initialized to the reset value of the register.
-    /// If no reset value is specified for this register, this function is the same as [`Self::write_with_zero`].
+    /// If no reset value is specified for this register, this function is the same as [`Self::write_array_with_zero_at_async`].
     #[track_caller]
     pub fn write_array_at_async<R, const N: usize>(
         &mut self,
@@ -400,7 +400,7 @@ where
         Ok(returned)
     }
 
-    /// Write to the register.
+    /// Write to the register at a given index.
     ///
     /// The closure is given the write object initialized to all zero.
     #[track_caller]
@@ -424,7 +424,7 @@ where
         Ok(returned)
     }
 
-    /// Write to the register.
+    /// Write to an array of registers at a given index and length.
     ///
     /// The closure is given the write object initialized to all zero.
     #[track_caller]
@@ -480,7 +480,7 @@ where
         }
     }
 
-    /// Write to the register.
+    /// Write to the register at a given index.
     ///
     /// The closure is given the write object initialized to all zero.
     #[track_caller]
@@ -508,7 +508,7 @@ where
         }
     }
 
-    /// Write to the register.
+    /// Write to an array of registers at a given index and length.
     ///
     /// The closure is given the write object initialized to all zero.
     #[track_caller]
@@ -558,7 +558,7 @@ where
         Ok(register)
     }
 
-    /// Read the register from the device
+    /// Read the register from the device at a given index
     #[track_caller]
     pub fn read_at(
         &mut self,
@@ -579,7 +579,7 @@ where
         Ok(register)
     }
 
-    /// Read the register from the device
+    /// Read an array of registers from the device at a given index and length
     #[track_caller]
     pub fn read_array_at<const N: usize>(
         &mut self,
@@ -626,7 +626,7 @@ where
         }
     }
 
-    /// Read the register from the device
+    /// Read the register from the device at a given index
     pub fn read_at_async(
         &mut self,
         index: Repeat::Index,
@@ -649,7 +649,7 @@ where
         }
     }
 
-    /// Read the register from the device
+    /// Read an array of registers from the device at a given index and length
     pub fn read_array_at_async<const N: usize>(
         &mut self,
         index: Repeat::Index,
@@ -699,7 +699,7 @@ where
         Ok(returned)
     }
 
-    /// Modify the existing register value.
+    /// Modify the existing register value at a given index.
     ///
     /// The register is read, the value is then passed to the closure for making changes.
     /// The result is then written back to the device.
@@ -724,9 +724,9 @@ where
         Ok(returned)
     }
 
-    /// Modify the existing register value.
+    /// Modify an array of existing register values at a given start index and length.
     ///
-    /// The register is read, the value is then passed to the closure for making changes.
+    /// The registers are read, the values are then passed to the closure for making changes.
     /// The result is then written back to the device.
     #[track_caller]
     pub fn modify_array_at<R, const N: usize>(
@@ -795,7 +795,7 @@ where
         }
     }
 
-    /// Modify the existing register value.
+    /// Modify the existing register value at a given index.
     ///
     /// The register is read, the value is then passed to the closure for making changes.
     /// The result is then written back to the device.
@@ -830,9 +830,9 @@ where
         }
     }
 
-    /// Modify the existing register value.
+    /// Modify an array of existing register values at a given starting index and length.
     ///
-    /// The register is read, the value is then passed to the closure for making changes.
+    /// The registers are read, the values are then passed to the closure for making changes.
     /// The result is then written back to the device.
     #[track_caller]
     pub fn modify_array_at_async<R, const N: usize>(
