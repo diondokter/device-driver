@@ -5,7 +5,6 @@ use itertools::Itertools;
 fn main() {
     println!("cargo::rerun-if-changed=build.rs");
     println!("cargo::rerun-if-changed=cases");
-    println!("cargo::rerun-if-changed=../device-driver-cli");
 
     let test_cases = std::fs::read_dir("cases").unwrap();
 
