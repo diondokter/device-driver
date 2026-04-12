@@ -8,7 +8,7 @@ use crate::{
 #[cfg(feature = "defmt")]
 use defmt::panic;
 
-/// Common properties shared by [RegisterInterface] & [AsyncRegisterInterface]
+/// Common properties shared by [`RegisterInterface`] & [`AsyncRegisterInterface`]
 pub trait RegisterInterfaceBase {
     /// The error type
     type Error;
@@ -129,7 +129,7 @@ where
         }
     }
 
-    /// Same as [Self::plan], but initialize the fieldset with all zeroes
+    /// Same as [`Self::plan`], but initialize the fieldset with all zeroes
     #[track_caller]
     pub fn plan_with_zero(&self) -> Plan<AddressType, RegisterFs, Access>
     where
@@ -143,7 +143,7 @@ where
         }
     }
 
-    /// Same as [Self::plan_at], but initialize the fieldset with all zeroes
+    /// Same as [`Self::plan_at`], but initialize the fieldset with all zeroes
     #[track_caller]
     pub fn plan_with_zero_at(&self, index: Repeat::Index) -> Plan<AddressType, RegisterFs, Access>
     where
@@ -179,7 +179,7 @@ where
         }
     }
 
-    /// Same as [Self::plan_array_at], but initialize the fieldsets with all zeroes
+    /// Same as [`Self::plan_array_at`], but initialize the fieldsets with all zeroes
     #[track_caller]
     pub fn plan_array_with_zero_at<const N: usize>(
         self,
@@ -941,9 +941,9 @@ where
     /// Chain an extra write onto the multi-write.
     ///
     /// The closure must return a plan for the register you want to write.
-    /// The plan is created by calling [RegisterOperation::plan] or [RegisterOperation::plan_with_zero].
+    /// The plan is created by calling [`RegisterOperation::plan`] or [`RegisterOperation::plan_with_zero`].
     ///
-    /// After chaining, call [Self::execute].
+    /// After chaining, call [`Self::execute`].
     #[track_caller]
     #[inline]
     pub fn with<FS: Fieldset, LocalAccess: WriteCapability>(
@@ -978,9 +978,9 @@ where
     /// Chain an extra read onto the multi-read.
     ///
     /// The closure must return a plan for the register you want to read.
-    /// The plan is created by calling [RegisterOperation::plan].
+    /// The plan is created by calling [`RegisterOperation::plan`].
     ///
-    /// After chaining, call [Self::execute].
+    /// After chaining, call [`Self::execute`].
     #[track_caller]
     #[inline]
     pub fn with<FS: Fieldset, LocalAccess: ReadCapability>(
@@ -1015,9 +1015,9 @@ where
     /// Chain an extra modify onto the multi-modify.
     ///
     /// The closure must return a plan for the register you want to modify.
-    /// The plan is created by calling [RegisterOperation::plan].
+    /// The plan is created by calling [`RegisterOperation::plan`].
     ///
-    /// After chaining, call [Self::execute].
+    /// After chaining, call [`Self::execute`].
     #[track_caller]
     #[inline]
     pub fn with<FS: Fieldset, LocalAccess: ReadCapability + WriteCapability>(

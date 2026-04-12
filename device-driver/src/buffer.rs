@@ -1,7 +1,7 @@
 use crate::{Address, Block, ReadCapability, WriteCapability};
 use core::marker::PhantomData;
 
-/// Common properties shared by [BufferInterface] & [AsyncBufferInterface]
+/// Common properties shared by [`BufferInterface`] & [`AsyncBufferInterface`]
 pub trait BufferInterfaceBase {
     /// The error type
     type Error;

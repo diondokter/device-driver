@@ -122,12 +122,12 @@ impl Metadata<'_> {
     }
 }
 
-/// Encode links using OSC8: https://github.com/Alhadis/OSC8-Adoption
+/// Encode links using OSC8: <https://github.com/Alhadis/OSC8-Adoption>
 pub fn encode_ansi_url(link: &str, name: &str) -> String {
     format!("\x1b]8;;{link}\x1b\\{name}\x1b]8;;\x1b\\")
 }
 
-/// Probably not fully compliant, but will work for links generated from [encode_ansi_url]
+/// Probably not fully compliant, but will work for links generated from [`encode_ansi_url`]
 fn strip_ansi_urls(text: &str) -> String {
     let mut output = String::new();
 

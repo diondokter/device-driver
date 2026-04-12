@@ -519,7 +519,7 @@ struct PropertyInfo<T: ?Sized> {
     /// If true, multiple of these properties are allowed
     multiple_allowed: bool,
     /// If true, the property must be set by the user.
-    /// Doesn't work well with [Self::multiple_allowed] set at the same time.
+    /// Doesn't work well with [`Self::multiple_allowed`] set at the same time.
     required: bool,
     /// If false, a warning is emitted when the property has doc comments
     supports_doc_comments: bool,

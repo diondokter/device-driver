@@ -41,8 +41,8 @@ pub trait Block: Sized {
 
     /// Start a multi-read transaction
     ///
-    /// You can chain reads by calling [register::MultiRegisterOperation::with].
-    /// Once chained, call [register::MultiRegisterOperation::execute] to perform the read.
+    /// You can chain reads by calling [`register::MultiRegisterOperation::with`].
+    /// Once chained, call [`register::MultiRegisterOperation::execute`] to perform the read.
     fn multi_read(
         &mut self,
     ) -> register::MultiRegisterOperation<
@@ -67,8 +67,8 @@ pub trait Block: Sized {
 
     /// Start a multi-write transaction
     ///
-    /// You can chain writes by calling [register::MultiRegisterOperation::with].
-    /// Once chained, call [register::MultiRegisterOperation::execute] to perform the read.
+    /// You can chain writes by calling [`register::MultiRegisterOperation::with`].
+    /// Once chained, call [`register::MultiRegisterOperation::execute`] to perform the read.
     fn multi_write(
         &mut self,
     ) -> register::MultiRegisterOperation<
@@ -93,8 +93,8 @@ pub trait Block: Sized {
 
     /// Start a multi-modify transaction
     ///
-    /// You can chain modifies by calling [register::MultiRegisterOperation::with].
-    /// Once chained, call [register::MultiRegisterOperation::execute] to perform the read.
+    /// You can chain modifies by calling [`register::MultiRegisterOperation::with`].
+    /// Once chained, call [`register::MultiRegisterOperation::execute`] to perform the read.
     fn multi_modify(
         &mut self,
     ) -> register::MultiRegisterOperation<
@@ -129,7 +129,7 @@ pub struct FieldsetMetadata {
 
 impl FieldsetMetadata {
     /// A default that allows you to construct the metadata in const contexts.
-    /// Yields the same value as [Self::default].
+    /// Yields the same value as [`Self::default`].
     pub const DEFAULT: Self = Self {
         byte_order: ByteOrder::LE,
     };

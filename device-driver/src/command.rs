@@ -2,7 +2,7 @@ use core::marker::PhantomData;
 
 use crate::{Address, Block, Fieldset, FieldsetMetadata};
 
-/// Common properties shared by [CommandInterface] & [AsyncCommandInterface]
+/// Common properties shared by [`CommandInterface`] & [`AsyncCommandInterface`]
 pub trait CommandInterfaceBase {
     /// The error type
     type Error;
