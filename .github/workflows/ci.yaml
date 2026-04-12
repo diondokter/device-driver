@@ -41,11 +41,11 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - uses: dtolnay/rust-toolchain@stable
-    - run: cargo clippy -- -D warnings
+    - run: cargo clippy --features defmt -- -D warnings
 
   run-cli:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - uses: dtolnay/rust-toolchain@1.88 # Use 1.88 to see if everything still compiles for it
+    - uses: dtolnay/rust-toolchain@stable
     - run: cargo run -- -o generated.rs device-driver/tests/basic-register.ddsl

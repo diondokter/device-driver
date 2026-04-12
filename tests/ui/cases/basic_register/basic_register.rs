@@ -23,49 +23,49 @@ impl<I> Device<I> {
     pub const fn new(interface: I) -> Self {
         Self { interface, base_address: 0 }
     }
-    /// A reference to the interface used to communicate with the device
-    pub(crate) fn interface(&mut self) -> &mut I {
-        &mut self.interface
-    }
     pub fn foo(
         &mut self,
     ) -> ::device_driver::RegisterOperation<
         '_,
-        I,
-        u8,
+        Self,
         FooFieldSet,
+        u8,
         ::device_driver::RW,
-    > {
+        (),
+    >
+    where
+        I: ::device_driver::RegisterInterfaceBase<AddressType = u8>,
+    {
         let address = self.base_address + 0;
-        ::device_driver::RegisterOperation::<
-            '_,
-            I,
-            u8,
-            FooFieldSet,
-            ::device_driver::RW,
-        >::new(self.interface(), address as u8, FooFieldSet::new)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u8,
+            FooFieldSet::default,
+        )
+    }
+}
+impl<I> ::device_driver::Block for Device<I> {
+    type Interface = I;
+    type RegisterAddressType = u8;
+    type CommandAddressType = u8;
+    type BufferAddressType = u8;
+    type RegisterAddressMode = ();
+    fn interface(&mut self) -> &mut Self::Interface {
+        &mut self.interface
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct FooFieldSet {
     /// The internal bits
     bits: [u8; 3],
 }
-impl ::device_driver::Fieldset for FooFieldSet {
+unsafe impl ::device_driver::Fieldset for FooFieldSet {
     const METADATA: ::device_driver::FieldsetMetadata = ::device_driver::FieldsetMetadata::new()
         .with_byte_order(::device_driver::ByteOrder::LE);
-    fn get_inner_buffer(&self) -> &[u8] {
-        &self.bits
-    }
-    fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
-        &mut self.bits
-    }
+    const ZERO: Self = Self { bits: [0; 3] };
 }
 impl FooFieldSet {
-    /// Create a new instance, loaded with all zeroes
-    pub const fn new() -> Self {
-        Self { bits: [0; 3] }
-    }
     /// `23:0` - Read the `value` field.
     ///
     pub fn value(&self) -> u32 {
@@ -95,7 +95,7 @@ impl FooFieldSet {
 }
 impl Default for FooFieldSet {
     fn default() -> Self {
-        Self::new()
+        <Self as ::device_driver::Fieldset>::ZERO
     }
 }
 impl From<[u8; 3]> for FooFieldSet {

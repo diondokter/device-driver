@@ -72,9 +72,7 @@ impl Identifier {
             }
         }
 
-        if self.words().iter().all(|w| w.is_empty())
-        /* || self.to_case(Case::Flat).is_empty()*/
-        {
+        if self.words().iter().all(String::is_empty) {
             return Err(Error::EmptyAfterSplits);
         }
 
@@ -96,7 +94,7 @@ impl Identifier {
             words.push(format!("{dup_id:X}"));
         }
 
-        let words = case.mutate(&words.iter().map(|s| s.as_str()).collect::<Vec<_>>());
+        let words = case.mutate(&words.iter().map(String::as_str).collect::<Vec<_>>());
         case.join(&words)
     }
 
@@ -125,7 +123,7 @@ impl Identifier {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.words.iter().all(|w| w.is_empty())
+        self.words.iter().all(String::is_empty)
     }
 
     pub fn take_ref(&self) -> IdentifierRef {

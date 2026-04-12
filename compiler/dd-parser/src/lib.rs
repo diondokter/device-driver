@@ -3,7 +3,7 @@ use std::{borrow::Cow, fmt::Display, num::NonZeroU32};
 use chumsky::{input::ValueInput, prelude::*};
 use device_driver_common::{
     span::{Span, SpanExt, Spanned},
-    specifiers::{Access, BaseType, ByteOrder, Integer},
+    specifiers::{Access, AddressMode, BaseType, ByteOrder, Integer},
 };
 use device_driver_diagnostics::{Diagnostics, errors::ParsingError};
 use device_driver_lexer::{ParseIntRadix, ParseIntRadixError, ParseIntRadixErrorKind, Token};
@@ -145,6 +145,7 @@ pub enum Expression<'src> {
     TypeReference(Ident<'src>),
     SubNode(Box<Node<'src>>),
     Auto,
+    AddressMode(AddressMode),
     Error,
 }
 
@@ -197,6 +198,14 @@ impl<'src> Expression<'src> {
         }
     }
 
+    pub fn as_address_mode(&self) -> Option<AddressMode> {
+        if let Self::AddressMode(v) = self {
+            Some(*v)
+        } else {
+            None
+        }
+    }
+
     pub fn get_human_string(&self) -> Cow<'static, str> {
         match self {
             Expression::AddressRange { end, start } => format!("{end}:{start}").into(),
@@ -215,6 +224,7 @@ impl<'src> Expression<'src> {
             Expression::TypeReference(ident) => ident.val.to_string().into(),
             Expression::SubNode(val) => val.to_string().into(),
             Expression::Auto => "_".into(),
+            Expression::AddressMode(val) => val.to_string().into(),
             Expression::Error => "ERROR".into(),
         }
     }
@@ -237,6 +247,7 @@ impl<'src> Display for Expression<'src> {
             Expression::TypeReference(_) => write!(f, "type reference"),
             Expression::SubNode(_) => write!(f, "sub node"),
             Expression::Auto => write!(f, "_"),
+            Expression::AddressMode(_) => write!(f, "address mode"),
             Expression::Error => write!(f, "error"),
         }
     }
@@ -395,6 +406,9 @@ where
             select! { Token::String(val) => val }
                 .map(Expression::String)
                 .labelled("'string'"),
+            select! { Token::AddressMode(val) => val }
+                .map(Expression::AddressMode)
+                .labelled("'address mode'"),
         ))
         .map_with(|expression, extra| expression.spanned(extra.span()))
         .boxed();

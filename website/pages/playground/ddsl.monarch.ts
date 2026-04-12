@@ -33,7 +33,7 @@ export const language: monaco.languages.IMonarchLanguage = {
   ],
 
   typeKeywords: [
-    'bool', 'int', 'uint', 'u8', 'u16', 'u32', 'u64', 'i8', 'i16', 'i32', 'i64', 'LE', 'BE', '_', 'RO', 'RW', 'WO'
+    'bool', 'int', 'uint', 'u8', 'u16', 'u32', 'u64', 'i8', 'i16', 'i32', 'i64', 'LE', 'BE', '_', 'RO', 'RW', 'WO', 'mapped', 'indexed'
   ],
 
   // The main tokenizer for our languages

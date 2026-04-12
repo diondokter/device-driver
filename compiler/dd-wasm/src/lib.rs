@@ -8,7 +8,7 @@ extern crate wasm_bindgen;
 pub fn compile(source: &str, chars_per_line: usize, target: TargetArg, options: &str) -> Output {
     let mut compile_options = Target::from(target).get_compile_options();
 
-    let options = options.replace("\r\n", " ").replace("\n", " ");
+    let options = options.replace("\r\n", " ").replace('\n', " ");
     let mut options = options.split(' ').filter(|s| !s.is_empty());
 
     loop {

@@ -1,11 +1,12 @@
-use device_driver::{FieldsetMetadata, RegisterInterface};
+use device_driver::{FieldsetMetadata, RegisterInterface, RegisterInterfaceBase};
 
 pub struct DeviceInterface;
 
-impl RegisterInterface for DeviceInterface {
+impl RegisterInterfaceBase for DeviceInterface {
     type Error = ();
     type AddressType = u8;
-
+}
+impl RegisterInterface for DeviceInterface {
     fn write_register(
         &mut self,
         _metadata: &FieldsetMetadata,

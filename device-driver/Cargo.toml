@@ -15,16 +15,19 @@ readme = "README.md"
 [dependencies]
 device-driver-macros = { workspace = true, optional = true }
 
-embedded-io = "0.7.1"
-embedded-io-async = "0.7.0"
+embedded-io = { version = "0.7.1", optional = true }
+embedded-io-async = { version = "0.7.0", optional = true }
 defmt = { version = "1.0.1", optional = true }
 
 [dev-dependencies]
 bitvec.workspace = true
 rand = "0.9"
+# Enable embedded-io for tests
+device-driver = { path = ".", features = ["embedded-io-07"] }
 
 [features]
 default = ["macros"]
-defmt = ["dep:defmt", "embedded-io/defmt"]
+defmt = ["dep:defmt", "embedded-io?/defmt", "embedded-io-async?/defmt"]
+embedded-io-07 = ["dep:embedded-io", "dep:embedded-io-async"]
 
 macros = ["dep:device-driver-macros"]

@@ -1,6 +1,9 @@
 use askama::Template;
 use convert_case::Case;
-use device_driver_common::{identifier::Identifier, specifiers::Access};
+use device_driver_common::{
+    identifier::Identifier,
+    specifiers::{Access, AddressMode},
+};
 
 use device_driver_lir::model::{BlockMethodType, Driver, Field, FieldConversionMethod, Repeat};
 
@@ -74,4 +77,12 @@ fn get_enum_base_type<'d>(driver: &'d Driver, enum_name: &Identifier) -> &'d str
         .find(|e| e.name == *enum_name)
         .expect("This enum reference is checked in a mir pass")
         .base_type
+}
+
+fn get_address_mode_const_value(value: &Option<AddressMode>) -> &'static str {
+    match value {
+        Some(AddressMode::Mapped) => "::device_driver::MappedAddressMode",
+        Some(AddressMode::Indexed) => "::device_driver::IndexedAddressMode",
+        None => "()",
+    }
 }

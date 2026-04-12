@@ -47,7 +47,7 @@ fn run() -> Result<ExitCode, DynError> {
     let target: Target = args.target.into();
     let mut compile_options = target.get_compile_options();
 
-    for (key, value) in args.c_opts.unwrap_or_default().into_iter() {
+    for (key, value) in args.c_opts.unwrap_or_default() {
         if !compile_options.add(&key, value) {
             return Err(DynError::new(format!("Unknown compiler flag: `{key}`")));
         }

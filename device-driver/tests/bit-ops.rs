@@ -1,4 +1,4 @@
-use device_driver::{FieldsetMetadata, RegisterInterface};
+use device_driver::{FieldsetMetadata, RegisterInterface, RegisterInterfaceBase};
 
 device_driver::compile!(
     ddsl: "
@@ -22,10 +22,11 @@ device_driver::compile!(
 
 pub struct DeviceInterface;
 
-impl RegisterInterface for DeviceInterface {
+impl RegisterInterfaceBase for DeviceInterface {
     type Error = ();
     type AddressType = u8;
-
+}
+impl RegisterInterface for DeviceInterface {
     fn write_register(
         &mut self,
         _metadata: &FieldsetMetadata,
@@ -47,35 +48,37 @@ impl RegisterInterface for DeviceInterface {
 
 #[cfg(test)]
 mod tests {
+    use device_driver::Fieldset;
+
     use super::*;
 
     #[test]
     fn and() {
         let reset_foo = MyTestDevice::new(DeviceInterface).foo().reset_value();
 
-        assert_eq!(reset_foo & FooFieldSet::new(), FooFieldSet::new());
+        assert_eq!(reset_foo & FooFieldSet::ZERO, FooFieldSet::ZERO);
 
-        let mut test_foo = FooFieldSet::new();
+        let mut test_foo = FooFieldSet::ZERO;
         test_foo.set_value(0x12345678);
 
         assert_eq!(reset_foo & test_foo, test_foo);
-        assert_eq!(test_foo & FooFieldSet::new(), FooFieldSet::new());
+        assert_eq!(test_foo & FooFieldSet::ZERO, FooFieldSet::ZERO);
 
-        test_foo &= FooFieldSet::new();
+        test_foo &= FooFieldSet::ZERO;
 
-        assert_eq!(test_foo, FooFieldSet::new());
+        assert_eq!(test_foo, FooFieldSet::ZERO);
     }
 
     #[test]
     fn or() {
         let reset_foo = MyTestDevice::new(DeviceInterface).foo().reset_value();
 
-        assert_eq!(FooFieldSet::new() | reset_foo, reset_foo);
+        assert_eq!(FooFieldSet::ZERO | reset_foo, reset_foo);
 
-        let mut test_foo = FooFieldSet::new();
+        let mut test_foo = FooFieldSet::ZERO;
         test_foo.set_value(0x12345678);
 
-        assert_eq!(FooFieldSet::new() | test_foo, test_foo);
+        assert_eq!(FooFieldSet::ZERO | test_foo, test_foo);
         assert_eq!(test_foo | reset_foo, reset_foo);
 
         test_foo |= reset_foo;
@@ -87,28 +90,25 @@ mod tests {
     fn xor() {
         let reset_foo = MyTestDevice::new(DeviceInterface).foo().reset_value();
 
-        assert_eq!(FooFieldSet::new() ^ reset_foo, reset_foo);
-        assert_eq!(
-            FooFieldSet::new() ^ reset_foo ^ reset_foo,
-            FooFieldSet::new()
-        );
+        assert_eq!(FooFieldSet::ZERO ^ reset_foo, reset_foo);
+        assert_eq!(FooFieldSet::ZERO ^ reset_foo ^ reset_foo, FooFieldSet::ZERO);
 
-        let mut test_foo = FooFieldSet::new();
+        let mut test_foo = FooFieldSet::ZERO;
         test_foo.set_value(0x12345678);
 
-        assert_eq!(FooFieldSet::new() ^ test_foo, test_foo);
+        assert_eq!(FooFieldSet::ZERO ^ test_foo, test_foo);
         assert_eq!(test_foo ^ reset_foo, !test_foo);
 
         test_foo ^= test_foo;
 
-        assert_eq!(test_foo, FooFieldSet::new());
+        assert_eq!(test_foo, FooFieldSet::ZERO);
     }
 
     #[test]
     fn not() {
         let reset_foo = MyTestDevice::new(DeviceInterface).foo().reset_value();
 
-        assert_eq!(!FooFieldSet::new(), reset_foo);
-        assert_eq!(!reset_foo, FooFieldSet::new());
+        assert_eq!(!FooFieldSet::ZERO, reset_foo);
+        assert_eq!(!reset_foo, FooFieldSet::ZERO);
     }
 }

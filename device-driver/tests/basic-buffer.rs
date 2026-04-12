@@ -1,17 +1,16 @@
-use device_driver::{BufferInterface, BufferInterfaceError};
+use device_driver::{BufferInterface, BufferInterfaceBase};
 
 pub struct DeviceInterface {
     last_address: u8,
     last_val: Vec<u8>,
 }
 
-impl BufferInterfaceError for DeviceInterface {
+impl BufferInterfaceBase for DeviceInterface {
     type Error = core::convert::Infallible;
+    type AddressType = u8;
 }
 
 impl BufferInterface for DeviceInterface {
-    type AddressType = u8;
-
     fn write(&mut self, address: Self::AddressType, buf: &[u8]) -> Result<usize, Self::Error> {
         self.last_address = address;
         self.last_val = buf.to_vec();

@@ -21,74 +21,68 @@ impl<I> Device<I> {
     pub const fn new(interface: I) -> Self {
         Self { interface, base_address: 0 }
     }
-    /// A reference to the interface used to communicate with the device
-    pub(crate) fn interface(&mut self) -> &mut I {
-        &mut self.interface
-    }
     pub fn foo(
         &mut self,
     ) -> ::device_driver::RegisterOperation<
         '_,
-        I,
-        u16,
+        Self,
         FooFieldSet,
+        u16,
         ::device_driver::RW,
-    > {
+        (),
+    >
+    where
+        I: ::device_driver::RegisterInterfaceBase<AddressType = u16>,
+    {
         let address = self.base_address + 0;
-        ::device_driver::RegisterOperation::<
-            '_,
-            I,
-            u16,
-            FooFieldSet,
-            ::device_driver::RW,
-        >::new(self.interface(), address as u16, FooFieldSet::new)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u16,
+            FooFieldSet::default,
+        )
     }
-    pub fn bar(&mut self) -> ::device_driver::CommandOperation<'_, I, i32, (), ()> {
+    pub fn bar(&mut self) -> ::device_driver::CommandOperation<'_, Self, i32, (), ()>
+    where
+        I: ::device_driver::CommandInterfaceBase<AddressType = i32>,
+    {
         let address = self.base_address + 0;
-        ::device_driver::CommandOperation::<
-            '_,
-            I,
-            i32,
-            (),
-            (),
-        >::new(self.interface(), address as i32)
+        ::device_driver::CommandOperation::new(self, address as i32)
     }
     pub fn quux(
         &mut self,
-    ) -> ::device_driver::BufferOperation<'_, I, i8, ::device_driver::RW> {
+    ) -> ::device_driver::BufferOperation<'_, Self, i8, ::device_driver::RW>
+    where
+        I: ::device_driver::BufferInterfaceBase<AddressType = i8>,
+    {
         let address = self.base_address + 0;
-        ::device_driver::BufferOperation::<
-            '_,
-            I,
-            i8,
-            ::device_driver::RW,
-        >::new(self.interface(), address as i8)
+        ::device_driver::BufferOperation::new(self, address as i8)
+    }
+}
+impl<I> ::device_driver::Block for Device<I> {
+    type Interface = I;
+    type RegisterAddressType = u16;
+    type CommandAddressType = i32;
+    type BufferAddressType = i8;
+    type RegisterAddressMode = ();
+    fn interface(&mut self) -> &mut Self::Interface {
+        &mut self.interface
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct FooFieldSet {
     /// The internal bits
     bits: [u8; 0],
 }
-impl ::device_driver::Fieldset for FooFieldSet {
+unsafe impl ::device_driver::Fieldset for FooFieldSet {
     const METADATA: ::device_driver::FieldsetMetadata = ::device_driver::FieldsetMetadata::new()
         .with_byte_order(::device_driver::ByteOrder::LE);
-    fn get_inner_buffer(&self) -> &[u8] {
-        &self.bits
-    }
-    fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
-        &mut self.bits
-    }
+    const ZERO: Self = Self { bits: [0; 0] };
 }
-impl FooFieldSet {
-    /// Create a new instance, loaded with all zeroes
-    pub const fn new() -> Self {
-        Self { bits: [0; 0] }
-    }
-}
+impl FooFieldSet {}
 impl Default for FooFieldSet {
     fn default() -> Self {
-        Self::new()
+        <Self as ::device_driver::Fieldset>::ZERO
     }
 }
 impl From<[u8; 0]> for FooFieldSet {

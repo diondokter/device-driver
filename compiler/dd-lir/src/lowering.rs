@@ -86,6 +86,19 @@ fn collect_into_blocks(
         description: description.clone(),
         root: is_root,
         name: name.clone(),
+        register_address_type: device_config
+            .register_address_type
+            .map(|v| v.value)
+            .unwrap_or(Integer::U8),
+        command_address_type: device_config
+            .command_address_type
+            .map(|v| v.value)
+            .unwrap_or(Integer::U8),
+        buffer_address_type: device_config
+            .buffer_address_type
+            .map(|v| v.value)
+            .unwrap_or(Integer::U8),
+        register_address_mode: device_config.register_address_mode.map(|v| v.value),
         methods,
     };
 
@@ -150,15 +163,6 @@ fn get_method(
                 method_type: lir::BlockMethodType::Register {
                     field_set_name: field_set.name().clone(),
                     access: *access,
-                    address_type: device_config
-                        .register_address_type
-                        .ok_or(DynError::new(
-                            format!(
-                                "no register_address_type configured for register {}. This was supposedly already checked in a MIR pass",
-                                name.original()
-                            ),
-                        ))?
-                        .value,
                     reset_value: reset_value.as_ref().map(|rv| {
                         rv.as_array().cloned().ok_or(
                             DynError::new("reset value is not an array while it should have been converted to array a mir pass"),
@@ -204,15 +208,6 @@ fn get_method(
                 method_type: lir::BlockMethodType::Command {
                     field_set_name_in: field_set_in.map(|fs_in| fs_in.name().clone()),
                     field_set_name_out: field_set_out.map(|fs_out| fs_out.name().clone()),
-                    address_type: device_config
-                        .command_address_type
-                        .ok_or(DynError::new(
-                            format!(
-                                "no command_address_type configured for command {}. This was supposedly already checked in a MIR pass",
-                                name.original()
-                            ),
-                        ))?
-                        .value,
                 },
             })
         }
@@ -227,18 +222,7 @@ fn get_method(
             name: name.value.clone(),
             address: address.value,
             repeat: lir::Repeat::None, // Buffers can't be repeated (for now?)
-            method_type: lir::BlockMethodType::Buffer {
-                access: *access,
-                address_type: device_config
-                    .buffer_address_type
-                    .ok_or(DynError::new(
-                        format!(
-                            "no buffer_address_type configured for buffer {}. This was supposedly already checked in a MIR pass",
-                            name.original()
-                        ),
-                    ))?
-                    .value,
-            },
+            method_type: lir::BlockMethodType::Buffer { access: *access },
         }),
         mir::Object::FieldSet(_) => None,
         mir::Object::Enum(_) => None,

@@ -6,11 +6,11 @@ use std::{
 
 use device_driver_common::{
     span::{SpanExt, Spanned},
-    specifiers::{Access, BaseType, ByteOrder, Integer},
+    specifiers::{Access, AddressMode, BaseType, ByteOrder, Integer},
 };
 use logos::Logos;
 
-pub fn lex<'src>(source: &'src str) -> Vec<Spanned<Token<'src>>> {
+pub fn lex(source: &str) -> Vec<Spanned<Token<'_>>> {
     Token::lexer(source)
         .spanned()
         .map(|(token, span)| match token {
@@ -72,7 +72,7 @@ pub enum Token<'src> {
     #[token("BE", |_| ByteOrder::BE)]
     #[token("LE", |_| ByteOrder::LE)]
     ByteOrder(ByteOrder),
-    /// All the base types except fixed integers. Those are [Self::Integer].
+    /// All the base types except fixed integers. Those are [`Self::Integer`].
     #[token("uint", |_| BaseType::Uint)]
     #[token("int", |_| BaseType::Int)]
     #[token("bool", |_| BaseType::Bool)]
@@ -86,6 +86,9 @@ pub enum Token<'src> {
     #[token("i32", |_| Integer::I32)]
     #[token("i64", |_| Integer::I64)]
     Integer(Integer),
+    #[token("mapped", |_| AddressMode::Mapped)]
+    #[token("indexed", |_| AddressMode::Indexed)]
+    AddressMode(AddressMode),
     // Very simple definition without string escaping
     #[regex(r#""[^"]*""#, callback = |lex| lex.slice().strip_prefix('"').unwrap().strip_suffix('"').unwrap())]
     String(&'src str),
@@ -94,7 +97,7 @@ pub enum Token<'src> {
     Error, // Catch-all for errors
 }
 
-impl<'src> Display for Token<'src> {
+impl Display for Token<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Token::DocCommentLine(_) => write!(f, "doc comment"),
@@ -116,10 +119,11 @@ impl<'src> Display for Token<'src> {
             Token::Default => write!(f, "default"),
             Token::CatchAll => write!(f, "catch-all"),
             Token::Num(_) => write!(f, "number"),
-            Token::Access(_) => write!(f, "access-specifier"),
-            Token::ByteOrder(_) => write!(f, "byte-order"),
+            Token::Access(_) => write!(f, "access specifier"),
+            Token::ByteOrder(_) => write!(f, "byte order"),
             Token::BaseType(_) => write!(f, "base type"),
             Token::Integer(_) => write!(f, "integer type"),
+            Token::AddressMode(_) => write!(f, "address mode"),
             Token::String(_) => write!(f, "string"),
             Token::Unexpected(val) => write!(f, "{}", val.escape_debug()),
             Token::Error => write!(f, "ERROR"),
@@ -150,6 +154,7 @@ impl<'src> Token<'src> {
             Token::ByteOrder(val) => val.to_string().into(),
             Token::BaseType(val) => val.to_string().into(),
             Token::Integer(val) => val.to_string().into(),
+            Token::AddressMode(val) => val.to_string().into(),
             Token::Allow => "allow".into(),
             Token::Default => "default".into(),
             Token::CatchAll => "catch-all".into(),
@@ -198,7 +203,7 @@ impl<'src> Token<'src> {
 
     pub fn parse_num<I: ParseIntRadix>(self) -> Result<I, ParseIntRadixError<'src>> {
         let Token::Num(num_slice) = self else {
-            panic!("Token is not a number: `{:?}`", self);
+            panic!("Token is not a number: `{self:?}`");
         };
 
         let pos_num_slice = num_slice.trim_start_matches('-');
@@ -210,7 +215,7 @@ impl<'src> Token<'src> {
         };
 
         if cleaned_num_slice.contains('_') {
-            cleaned_num_slice = cleaned_num_slice.replace("_", "").into();
+            cleaned_num_slice = cleaned_num_slice.replace('_', "").into();
         }
 
         if num_slice.starts_with('-') {

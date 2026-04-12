@@ -22,7 +22,7 @@ impl Target {
         match self {
             Target::Rust => CompileOptions {
                 possible_options: ["defmt-feature"].into(),
-                selected: Default::default(),
+                selected: HashMap::default(),
             },
         }
     }
@@ -40,7 +40,7 @@ impl CompileOptions {
 
     pub fn get<'s>(&'s self, key: &'s str) -> Option<&'s str> {
         assert!(self.possible_options.contains(&key));
-        self.selected.get(&key).map(|s| s.as_str())
+        self.selected.get(&key).map(String::as_str)
     }
 
     #[must_use = "Check bool to see if operation succeeded"]

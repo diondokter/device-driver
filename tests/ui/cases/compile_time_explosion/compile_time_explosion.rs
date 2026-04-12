@@ -21,215 +21,212 @@ impl<I> Device<I> {
     pub const fn new(interface: I) -> Self {
         Self { interface, base_address: 0 }
     }
-    /// A reference to the interface used to communicate with the device
-    pub(crate) fn interface(&mut self) -> &mut I {
-        &mut self.interface
-    }
     ///
     /// Valid index range: 0..100
     pub fn foo_0(
         &mut self,
-        index: usize,
-    ) -> ::device_driver::RegisterOperation<'_, I, u32, Foo, ::device_driver::RW> {
-        let address = {
-            assert!(index < 100);
-            self.base_address + 0 + index as u32 * 1000
-        };
-        ::device_driver::RegisterOperation::<
-            '_,
-            I,
-            u32,
-            Foo,
-            ::device_driver::RW,
-        >::new(self.interface(), address as u32, Foo::new)
+    ) -> ::device_driver::RegisterOperation<
+        '_,
+        Self,
+        Foo,
+        u32,
+        ::device_driver::RW,
+        ::device_driver::ArrayRepeat<100, 1000>,
+    >
+    where
+        I: ::device_driver::RegisterInterfaceBase<AddressType = u32>,
+    {
+        let address = self.base_address + 0;
+        ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
     }
     ///
     /// Valid index range: 0..100
     pub fn foo_1(
         &mut self,
-        index: usize,
-    ) -> ::device_driver::RegisterOperation<'_, I, u32, Foo, ::device_driver::RW> {
-        let address = {
-            assert!(index < 100);
-            self.base_address + 1 + index as u32 * 1000
-        };
-        ::device_driver::RegisterOperation::<
-            '_,
-            I,
-            u32,
-            Foo,
-            ::device_driver::RW,
-        >::new(self.interface(), address as u32, Foo::new)
+    ) -> ::device_driver::RegisterOperation<
+        '_,
+        Self,
+        Foo,
+        u32,
+        ::device_driver::RW,
+        ::device_driver::ArrayRepeat<100, 1000>,
+    >
+    where
+        I: ::device_driver::RegisterInterfaceBase<AddressType = u32>,
+    {
+        let address = self.base_address + 1;
+        ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
     }
     ///
     /// Valid index range: 0..100
     pub fn foo_2(
         &mut self,
-        index: usize,
-    ) -> ::device_driver::RegisterOperation<'_, I, u32, Foo, ::device_driver::RW> {
-        let address = {
-            assert!(index < 100);
-            self.base_address + 2 + index as u32 * 1000
-        };
-        ::device_driver::RegisterOperation::<
-            '_,
-            I,
-            u32,
-            Foo,
-            ::device_driver::RW,
-        >::new(self.interface(), address as u32, Foo::new)
+    ) -> ::device_driver::RegisterOperation<
+        '_,
+        Self,
+        Foo,
+        u32,
+        ::device_driver::RW,
+        ::device_driver::ArrayRepeat<100, 1000>,
+    >
+    where
+        I: ::device_driver::RegisterInterfaceBase<AddressType = u32>,
+    {
+        let address = self.base_address + 2;
+        ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
     }
     ///
     /// Valid index range: 0..100
     pub fn foo_3(
         &mut self,
-        index: usize,
-    ) -> ::device_driver::RegisterOperation<'_, I, u32, Foo, ::device_driver::RW> {
-        let address = {
-            assert!(index < 100);
-            self.base_address + 3 + index as u32 * 1000
-        };
-        ::device_driver::RegisterOperation::<
-            '_,
-            I,
-            u32,
-            Foo,
-            ::device_driver::RW,
-        >::new(self.interface(), address as u32, Foo::new)
+    ) -> ::device_driver::RegisterOperation<
+        '_,
+        Self,
+        Foo,
+        u32,
+        ::device_driver::RW,
+        ::device_driver::ArrayRepeat<100, 1000>,
+    >
+    where
+        I: ::device_driver::RegisterInterfaceBase<AddressType = u32>,
+    {
+        let address = self.base_address + 3;
+        ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
     }
     ///
     /// Valid index range: 0..100
     pub fn foo_4(
         &mut self,
-        index: usize,
-    ) -> ::device_driver::RegisterOperation<'_, I, u32, Foo, ::device_driver::RW> {
-        let address = {
-            assert!(index < 100);
-            self.base_address + 4 + index as u32 * 1000
-        };
-        ::device_driver::RegisterOperation::<
-            '_,
-            I,
-            u32,
-            Foo,
-            ::device_driver::RW,
-        >::new(self.interface(), address as u32, Foo::new)
+    ) -> ::device_driver::RegisterOperation<
+        '_,
+        Self,
+        Foo,
+        u32,
+        ::device_driver::RW,
+        ::device_driver::ArrayRepeat<100, 1000>,
+    >
+    where
+        I: ::device_driver::RegisterInterfaceBase<AddressType = u32>,
+    {
+        let address = self.base_address + 4;
+        ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
     }
     ///
     /// Valid index range: 0..100
     pub fn foo_5(
         &mut self,
-        index: usize,
-    ) -> ::device_driver::RegisterOperation<'_, I, u32, Foo, ::device_driver::RW> {
-        let address = {
-            assert!(index < 100);
-            self.base_address + 5 + index as u32 * 1000
-        };
-        ::device_driver::RegisterOperation::<
-            '_,
-            I,
-            u32,
-            Foo,
-            ::device_driver::RW,
-        >::new(self.interface(), address as u32, Foo::new)
+    ) -> ::device_driver::RegisterOperation<
+        '_,
+        Self,
+        Foo,
+        u32,
+        ::device_driver::RW,
+        ::device_driver::ArrayRepeat<100, 1000>,
+    >
+    where
+        I: ::device_driver::RegisterInterfaceBase<AddressType = u32>,
+    {
+        let address = self.base_address + 5;
+        ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
     }
     ///
     /// Valid index range: 0..100
     pub fn foo_6(
         &mut self,
-        index: usize,
-    ) -> ::device_driver::RegisterOperation<'_, I, u32, Foo, ::device_driver::RW> {
-        let address = {
-            assert!(index < 100);
-            self.base_address + 6 + index as u32 * 1000
-        };
-        ::device_driver::RegisterOperation::<
-            '_,
-            I,
-            u32,
-            Foo,
-            ::device_driver::RW,
-        >::new(self.interface(), address as u32, Foo::new)
+    ) -> ::device_driver::RegisterOperation<
+        '_,
+        Self,
+        Foo,
+        u32,
+        ::device_driver::RW,
+        ::device_driver::ArrayRepeat<100, 1000>,
+    >
+    where
+        I: ::device_driver::RegisterInterfaceBase<AddressType = u32>,
+    {
+        let address = self.base_address + 6;
+        ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
     }
     ///
     /// Valid index range: 0..100
     pub fn foo_7(
         &mut self,
-        index: usize,
-    ) -> ::device_driver::RegisterOperation<'_, I, u32, Foo, ::device_driver::RW> {
-        let address = {
-            assert!(index < 100);
-            self.base_address + 7 + index as u32 * 1000
-        };
-        ::device_driver::RegisterOperation::<
-            '_,
-            I,
-            u32,
-            Foo,
-            ::device_driver::RW,
-        >::new(self.interface(), address as u32, Foo::new)
+    ) -> ::device_driver::RegisterOperation<
+        '_,
+        Self,
+        Foo,
+        u32,
+        ::device_driver::RW,
+        ::device_driver::ArrayRepeat<100, 1000>,
+    >
+    where
+        I: ::device_driver::RegisterInterfaceBase<AddressType = u32>,
+    {
+        let address = self.base_address + 7;
+        ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
     }
     ///
     /// Valid index range: 0..100
     pub fn foo_8(
         &mut self,
-        index: usize,
-    ) -> ::device_driver::RegisterOperation<'_, I, u32, Foo, ::device_driver::RW> {
-        let address = {
-            assert!(index < 100);
-            self.base_address + 8 + index as u32 * 1000
-        };
-        ::device_driver::RegisterOperation::<
-            '_,
-            I,
-            u32,
-            Foo,
-            ::device_driver::RW,
-        >::new(self.interface(), address as u32, Foo::new)
+    ) -> ::device_driver::RegisterOperation<
+        '_,
+        Self,
+        Foo,
+        u32,
+        ::device_driver::RW,
+        ::device_driver::ArrayRepeat<100, 1000>,
+    >
+    where
+        I: ::device_driver::RegisterInterfaceBase<AddressType = u32>,
+    {
+        let address = self.base_address + 8;
+        ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
     }
     ///
     /// Valid index range: 0..100
     pub fn foo_9(
         &mut self,
-        index: usize,
-    ) -> ::device_driver::RegisterOperation<'_, I, u32, Foo, ::device_driver::RW> {
-        let address = {
-            assert!(index < 100);
-            self.base_address + 9 + index as u32 * 1000
-        };
-        ::device_driver::RegisterOperation::<
-            '_,
-            I,
-            u32,
-            Foo,
-            ::device_driver::RW,
-        >::new(self.interface(), address as u32, Foo::new)
+    ) -> ::device_driver::RegisterOperation<
+        '_,
+        Self,
+        Foo,
+        u32,
+        ::device_driver::RW,
+        ::device_driver::ArrayRepeat<100, 1000>,
+    >
+    where
+        I: ::device_driver::RegisterInterfaceBase<AddressType = u32>,
+    {
+        let address = self.base_address + 9;
+        ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
+    }
+}
+impl<I> ::device_driver::Block for Device<I> {
+    type Interface = I;
+    type RegisterAddressType = u32;
+    type CommandAddressType = u8;
+    type BufferAddressType = u8;
+    type RegisterAddressMode = ();
+    fn interface(&mut self) -> &mut Self::Interface {
+        &mut self.interface
     }
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct Foo {
     /// The internal bits
     bits: [u8; 0],
 }
-impl ::device_driver::Fieldset for Foo {
+unsafe impl ::device_driver::Fieldset for Foo {
     const METADATA: ::device_driver::FieldsetMetadata = ::device_driver::FieldsetMetadata::new()
         .with_byte_order(::device_driver::ByteOrder::LE);
-    fn get_inner_buffer(&self) -> &[u8] {
-        &self.bits
-    }
-    fn get_inner_buffer_mut(&mut self) -> &mut [u8] {
-        &mut self.bits
-    }
+    const ZERO: Self = Self { bits: [0; 0] };
 }
-impl Foo {
-    /// Create a new instance, loaded with all zeroes
-    pub const fn new() -> Self {
-        Self { bits: [0; 0] }
-    }
-}
+impl Foo {}
 impl Default for Foo {
     fn default() -> Self {
-        Self::new()
+        <Self as ::device_driver::Fieldset>::ZERO
     }
 }
 impl From<[u8; 0]> for Foo {

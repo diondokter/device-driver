@@ -1,9 +1,4 @@
-#![allow(
-    unused_assignments,
-    reason = "Something going on with the diagnostics derive"
-)]
-
-use std::{borrow::Cow, error::Error, fmt::Debug, fmt::Display, ops::Deref};
+use std::{borrow::Cow, error::Error, fmt::Debug, fmt::Display, fmt::Write};
 
 use annotate_snippets::{Group, Level, Renderer, renderer::DecorStyle};
 
@@ -122,20 +117,20 @@ impl Metadata<'_> {
     }
 }
 
-/// Encode links using OSC8: https://github.com/Alhadis/OSC8-Adoption
+/// Encode links using OSC8: <https://github.com/Alhadis/OSC8-Adoption>
 pub fn encode_ansi_url(link: &str, name: &str) -> String {
     format!("\x1b]8;;{link}\x1b\\{name}\x1b]8;;\x1b\\")
 }
 
-/// Probably not fully compliant, but will work for links generated from [encode_ansi_url]
+/// Probably not fully compliant, but will work for links generated from [`encode_ansi_url`]
 fn strip_ansi_urls(text: &str) -> String {
-    let mut output = String::new();
-
     enum UrlStage {
         None,
         Start,
         End,
     }
+
+    let mut output = String::new();
 
     let mut url_stage = UrlStage::None;
 
@@ -149,7 +144,7 @@ fn strip_ansi_urls(text: &str) -> String {
                 // Split contains <link>\x1b\\<name>
                 if let Some((link, name)) = split.split_once("\x1b\\") {
                     output += name;
-                    output += &format!(" ({link})");
+                    let _ = write!(output, " ({link})");
                     url_stage = UrlStage::End;
                 } else {
                     // Something is unexpected!
@@ -214,9 +209,9 @@ impl Display for DynError {
             write!(f, "{output}")
         } else {
             match (self.message.as_str(), self.source()) {
-                ("", Some(source)) => write!(f, "{}", source),
+                ("", Some(source)) => write!(f, "{source}"),
                 ("", None) => unreachable!(),
-                (message, _) => write!(f, "{}", message),
+                (message, _) => write!(f, "{message}"),
             }
         }
     }
@@ -266,7 +261,7 @@ impl<T, E: ErrorExt> ResultExt<T, E> for Result<T, E> {
     }
 
     fn into_dyn_result(self) -> Result<T, DynError> {
-        self.map_err(|e| e.into_dyn_error())
+        self.map_err(ErrorExt::into_dyn_error)
     }
 }
 
@@ -283,16 +278,13 @@ impl<'s> Message<'s> {
     }
 }
 
-impl<'s> Diagnostic for Message<'s> {
+impl Diagnostic for Message<'_> {
     fn is_error(&self) -> bool {
         true
     }
 
     fn as_report<'a>(&'a self, _source: &'a str, _path: &'a str) -> Vec<Group<'a>> {
-        [Group::with_title(
-            Level::ERROR.primary_title(self.string.deref()),
-        )]
-        .to_vec()
+        [Group::with_title(Level::ERROR.primary_title(&*self.string))].to_vec()
     }
 }
 
