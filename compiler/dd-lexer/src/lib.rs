@@ -10,7 +10,7 @@ use device_driver_common::{
 };
 use logos::Logos;
 
-pub fn lex<'src>(source: &'src str) -> Vec<Spanned<Token<'src>>> {
+pub fn lex(source: &str) -> Vec<Spanned<Token<'_>>> {
     Token::lexer(source)
         .spanned()
         .map(|(token, span)| match token {
@@ -97,7 +97,7 @@ pub enum Token<'src> {
     Error, // Catch-all for errors
 }
 
-impl<'src> Display for Token<'src> {
+impl Display for Token<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Token::DocCommentLine(_) => write!(f, "doc comment"),
@@ -203,7 +203,7 @@ impl<'src> Token<'src> {
 
     pub fn parse_num<I: ParseIntRadix>(self) -> Result<I, ParseIntRadixError<'src>> {
         let Token::Num(num_slice) = self else {
-            panic!("Token is not a number: `{:?}`", self);
+            panic!("Token is not a number: `{self:?}`");
         };
 
         let pos_num_slice = num_slice.trim_start_matches('-');
@@ -215,7 +215,7 @@ impl<'src> Token<'src> {
         };
 
         if cleaned_num_slice.contains('_') {
-            cleaned_num_slice = cleaned_num_slice.replace("_", "").into();
+            cleaned_num_slice = cleaned_num_slice.replace('_', "").into();
         }
 
         if num_slice.starts_with('-') {

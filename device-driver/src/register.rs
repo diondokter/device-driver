@@ -912,8 +912,8 @@ pub struct MultiRegisterOperation<'b, B, AddressType: Address, Fieldsets, Access
     pub(crate) _phantom: PhantomData<Access>,
 }
 
-impl<'b, B, AddressType, FieldSets, Access>
-    MultiRegisterOperation<'b, B, AddressType, FieldSets, Access>
+impl<B, AddressType, FieldSets, Access>
+    MultiRegisterOperation<'_, B, AddressType, FieldSets, Access>
 where
     B: Block,
     B::RegisterAddressMode: AddressMode,
@@ -1043,9 +1043,9 @@ where
     }
 }
 
-impl<'b, B, Fieldsets>
+impl<B, Fieldsets>
     MultiRegisterOperation<
-        'b,
+        '_,
         B,
         <B::Interface as RegisterInterfaceBase>::AddressType,
         Fieldsets,
@@ -1074,9 +1074,9 @@ where
     }
 }
 
-impl<'b, B, Fieldsets>
+impl<B, Fieldsets>
     MultiRegisterOperation<
-        'b,
+        '_,
         B,
         <B::Interface as RegisterInterfaceBase>::AddressType,
         Fieldsets,
@@ -1110,9 +1110,9 @@ where
     }
 }
 
-impl<'b, B, Fieldsets>
+impl<B, Fieldsets>
     MultiRegisterOperation<
-        'b,
+        '_,
         B,
         <B::Interface as RegisterInterfaceBase>::AddressType,
         Fieldsets,
@@ -1191,7 +1191,7 @@ impl<const COUNT: u16, const STRIDE: i32> Repeating for ArrayRepeat<COUNT, STRID
     type Index = usize;
 
     #[track_caller]
-    #[inline(always)]
+    #[inline]
     fn calc_address<AddressType: Address>(start: AddressType, index: Self::Index) -> AddressType {
         assert!(
             index < COUNT as usize,
@@ -1206,7 +1206,7 @@ impl<const COUNT: u16, const STRIDE: i32> ArrayRepeating for ArrayRepeat<COUNT, 
     const STRIDE: i32 = STRIDE;
 
     #[track_caller]
-    #[inline(always)]
+    #[inline]
     fn assert_len_and_index(len: usize, index: Self::Index) {
         assert!(
             index < COUNT as usize,
@@ -1225,7 +1225,7 @@ pub struct EnumRepeat<T, const STRIDE: i32>(PhantomData<T>);
 impl<T: Clone + Into<i32>, const STRIDE: i32> Repeating for EnumRepeat<T, STRIDE> {
     type Index = T;
 
-    #[inline(always)]
+    #[inline]
     fn calc_address<AddressType: Address>(start: AddressType, index: Self::Index) -> AddressType {
         let offset = index.into() * STRIDE;
         start.add(offset)

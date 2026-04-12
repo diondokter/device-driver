@@ -3,7 +3,7 @@
     reason = "Something going on with the diagnostics derive"
 )]
 
-use std::{borrow::Cow, ops::Deref};
+use std::borrow::Cow;
 
 use annotate_snippets::{AnnotationKind, Group, Level, Patch, Snippet};
 use device_driver_common::{
@@ -1423,9 +1423,9 @@ impl Diagnostic for InvalidExpressionType {
                     .element(
                         Snippet::source(source)
                             .path(path)
-                            .patch(Patch::new(self.expression.span.into(), value.deref())),
+                            .patch(Patch::new(self.expression.span.into(), &**value)),
                     ),
-            )
+            );
         }
 
         report
@@ -1479,16 +1479,17 @@ impl Diagnostic for InvalidNodeType {
             Level::ERROR.primary_title("invalid node type").element(
                 Snippet::source(source)
                     .path(path)
-                    .annotation(AnnotationKind::Primary.span(self.node_type.into()).label(
-                        if let Some(parent_node_type) = self.parent_node_type {
-                            format!(
-                                "node type can't be used as a sub-node of a {}",
-                                parent_node_type
-                            )
-                        } else {
-                            "node type can't be used as the root".into()
-                        },
-                    ))
+                    .annotation(
+                        AnnotationKind::Primary.span(self.node_type.into()).label(
+                            if let Some(parent_node_type) = self.parent_node_type {
+                                format!(
+                                    "node type can't be used as a sub-node of a {parent_node_type}",
+                                )
+                            } else {
+                                "node type can't be used as the root".into()
+                            },
+                        ),
+                    )
                     .annotations(self.parent_node_type.map(|pnt| {
                         AnnotationKind::Context
                             .span(pnt.span.into())

@@ -1,4 +1,4 @@
-use std::{fs::DirEntry, path::PathBuf};
+use std::{fmt::Write, fs::DirEntry, path::PathBuf};
 
 use itertools::Itertools;
 
@@ -12,7 +12,11 @@ fn main() {
 
     for test_case in test_cases {
         let test_case = test_case.unwrap();
-        test_cases_module += &format!("#[cfg(test)]\n{}\n", generate_test_function(test_case));
+        let _ = write!(
+            test_cases_module,
+            "#[cfg(test)]\n{}\n",
+            generate_test_function(test_case)
+        );
     }
 
     std::fs::write(

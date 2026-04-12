@@ -1,5 +1,7 @@
 #![doc = include_str!(concat!("../", env!("CARGO_PKG_README")))]
 
+use std::fmt::Write;
+
 use device_driver_diagnostics::{Diagnostics, DynError, ResultExt};
 use itertools::Itertools;
 
@@ -20,7 +22,7 @@ pub fn compile(
     let mut code = device_driver_codegen::codegen(target, &lir, &compile_options);
 
     if diagnostics.has_error() {
-        code += &format!("\n{}\n", target.create_error_message());
+        let _ = write!(code, "\n{}\n", target.create_error_message());
     }
 
     let formatted_code = match format_code(&code) {
