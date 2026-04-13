@@ -55,6 +55,7 @@ unsafe impl ::device_driver::Fieldset for FooFieldSetIn {
 impl FooFieldSetIn {
     /// `23:0` - Read the `value` field.
     ///
+    #[must_use]
     pub fn value(&self) -> u32 {
         let start = 0;
         let end = 23;
