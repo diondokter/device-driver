@@ -106,6 +106,7 @@ unsafe impl ::device_driver::Fieldset for FooWoFieldSet {
 impl FooWoFieldSet {
     /// `15:0` - Read the `value_ro` field.
     ///
+    #[must_use]
     pub fn value_ro(&self) -> u16 {
         let start = 0;
         let end = 15;
@@ -119,6 +120,7 @@ impl FooWoFieldSet {
     }
     /// `31:16` - Read the `value_rw` field.
     ///
+    #[must_use]
     pub fn value_rw(&self) -> i16 {
         let start = 16;
         let end = 31;
@@ -254,6 +256,7 @@ unsafe impl ::device_driver::Fieldset for FooRwFieldSet {
 impl FooRwFieldSet {
     /// `15:0` - Read the `value_ro` field.
     ///
+    #[must_use]
     pub fn value_ro(&self) -> u16 {
         let start = 0;
         let end = 15;
@@ -267,6 +270,7 @@ impl FooRwFieldSet {
     }
     /// `31:16` - Read the `value_rw` field.
     ///
+    #[must_use]
     pub fn value_rw(&self) -> i16 {
         let start = 16;
         let end = 31;
@@ -402,6 +406,7 @@ unsafe impl ::device_driver::Fieldset for FooRoFieldSet {
 impl FooRoFieldSet {
     /// `15:0` - Read the `value_ro` field.
     ///
+    #[must_use]
     pub fn value_ro(&self) -> u16 {
         let start = 0;
         let end = 15;
@@ -415,6 +420,7 @@ impl FooRoFieldSet {
     }
     /// `31:16` - Read the `value_rw` field.
     ///
+    #[must_use]
     pub fn value_rw(&self) -> i16 {
         let start = 16;
         let end = 31;

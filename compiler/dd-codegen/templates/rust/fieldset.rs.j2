@@ -19,6 +19,7 @@ impl {{field_set.name.to_case(Case::Pascal)}} {
             /// `{{field.address_text()}}` - Read the `{{field.name.to_case(Case::Snake)}}` field.
             ///
             {{self::description_to_docstring(field.description)}}
+            #[must_use]
             pub fn {{field.name.to_case(Case::Snake)}}(
                 &self,
                 {% match field.repeat %}

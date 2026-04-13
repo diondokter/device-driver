@@ -11,11 +11,7 @@ pub fn compile(source: &str, chars_per_line: usize, target: TargetArg, options: 
     let options = options.replace("\r\n", " ").replace('\n', " ");
     let mut options = options.split(' ').filter(|s| !s.is_empty());
 
-    loop {
-        let Some(option) = options.next() else {
-            break;
-        };
-
+    while let Some(option) = options.next() {
         let value = if option == "-C" {
             options.next()
         } else if let Some(value) = option.strip_prefix("-C") {

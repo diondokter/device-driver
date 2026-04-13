@@ -69,6 +69,7 @@ impl FooFieldSet {
     ///
     /// \\\"#{
     /// %@&\n
+    #[must_use]
     pub fn value(&self) -> u32 {
         let start = 0;
         let end = 23;
