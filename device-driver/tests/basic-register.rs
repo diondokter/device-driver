@@ -26,7 +26,7 @@ impl RegisterInterface for DeviceInterface {
     fn write_register(
         &mut self,
         address: Self::AddressType,
-        data: &[u8],
+        data: &mut [u8],
         _metadata: &FieldsetMetadata,
     ) -> Result<(), Self::Error> {
         assert_eq!(data.len(), 3);

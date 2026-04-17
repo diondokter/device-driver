@@ -10,7 +10,7 @@ impl RegisterInterface for DeviceInterface {
     fn write_register(
         &mut self,
         _address: Self::AddressType,
-        data: &[u8],
+        data: &mut [u8],
         _metadata: &FieldsetMetadata,
     ) -> Result<(), Self::Error> {
         // Assert data is little endian

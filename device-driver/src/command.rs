@@ -23,7 +23,7 @@ pub trait CommandInterface: CommandInterfaceBase {
     fn dispatch_command(
         &mut self,
         address: Self::AddressType,
-        input: &[u8],
+        input: &mut [u8],
         _input_metadata: &FieldsetMetadata,
         output: &mut [u8],
         _output_metadata: &FieldsetMetadata,
@@ -43,7 +43,7 @@ pub trait AsyncCommandInterface: CommandInterfaceBase {
     async fn dispatch_command(
         &mut self,
         address: Self::AddressType,
-        input: &[u8],
+        input: &mut [u8],
         _input_metadata: &FieldsetMetadata,
         output: &mut [u8],
         _output_metadata: &FieldsetMetadata,
@@ -90,7 +90,7 @@ where
     pub fn dispatch(self) -> Result<(), <B::Interface as CommandInterfaceBase>::Error> {
         self.block.interface().dispatch_command(
             self.address,
-            &[],
+            &mut [],
             &FieldsetMetadata::DEFAULT,
             &mut [],
             &FieldsetMetadata::DEFAULT,
@@ -116,7 +116,7 @@ where
 
         self.block.interface().dispatch_command(
             self.address,
-            in_fields.as_slice(),
+            in_fields.as_slice_mut(),
             &InFieldset::METADATA,
             &mut [],
             &FieldsetMetadata::DEFAULT,
@@ -138,7 +138,7 @@ where
 
         self.block.interface().dispatch_command(
             self.address,
-            &[],
+            &mut [],
             &FieldsetMetadata::DEFAULT,
             out_fields.as_slice_mut(),
             &OutFieldset::METADATA,
@@ -170,7 +170,7 @@ where
 
         self.block.interface().dispatch_command(
             self.address,
-            in_fields.as_slice(),
+            in_fields.as_slice_mut(),
             &InFieldset::METADATA,
             out_fields.as_slice_mut(),
             &OutFieldset::METADATA,
@@ -193,7 +193,7 @@ where
             .interface()
             .dispatch_command(
                 self.address,
-                &[],
+                &mut [],
                 &FieldsetMetadata::DEFAULT,
                 &mut [],
                 &FieldsetMetadata::DEFAULT,
@@ -222,7 +222,7 @@ where
             .interface()
             .dispatch_command(
                 self.address,
-                in_fields.as_slice(),
+                in_fields.as_slice_mut(),
                 &InFieldset::METADATA,
                 &mut [],
                 &FieldsetMetadata::DEFAULT,
@@ -249,7 +249,7 @@ where
             .interface()
             .dispatch_command(
                 self.address,
-                &[],
+                &mut [],
                 &FieldsetMetadata::DEFAULT,
                 out_fields.as_slice_mut(),
                 &OutFieldset::METADATA,
@@ -284,7 +284,7 @@ where
             .interface()
             .dispatch_command(
                 self.address,
-                in_fields.as_slice(),
+                in_fields.as_slice_mut(),
                 &InFieldset::METADATA,
                 out_fields.as_slice_mut(),
                 &OutFieldset::METADATA,

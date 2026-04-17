@@ -24,7 +24,7 @@ pub trait RegisterInterface: RegisterInterfaceBase {
     fn write_register(
         &mut self,
         address: Self::AddressType,
-        data: &[u8],
+        data: &mut [u8],
         _metadata: &FieldsetMetadata,
     ) -> Result<(), Self::Error>;
 
@@ -45,7 +45,7 @@ pub trait AsyncRegisterInterface: RegisterInterfaceBase {
     async fn write_register(
         &mut self,
         address: Self::AddressType,
-        data: &[u8],
+        data: &mut [u8],
         _metadata: &FieldsetMetadata,
     ) -> Result<(), Self::Error>;
 
@@ -221,7 +221,7 @@ where
 
         self.block.interface().write_register(
             self.address,
-            register.as_slice(),
+            register.as_slice_mut(),
             &RegisterFs::METADATA,
         )
     }
@@ -246,7 +246,7 @@ where
 
         self.block.interface().write_register(
             Repeat::calc_address(self.address, index),
-            register.as_slice(),
+            register.as_slice_mut(),
             &RegisterFs::METADATA,
         )
     }
@@ -277,7 +277,7 @@ where
 
         self.block.interface().write_register(
             address,
-            Fieldset::as_slice(&register),
+            register.as_slice_mut(),
             &RegisterFs::METADATA,
         )
     }
@@ -302,7 +302,7 @@ where
         async move {
             self.block
                 .interface()
-                .write_register(self.address, register.as_slice(), &RegisterFs::METADATA)
+                .write_register(self.address, register.as_slice_mut(), &RegisterFs::METADATA)
                 .await
         }
     }
@@ -330,7 +330,7 @@ where
         async move {
             self.block
                 .interface()
-                .write_register(address, register.as_slice(), &RegisterFs::METADATA)
+                .write_register(address, register.as_slice_mut(), &RegisterFs::METADATA)
                 .await
         }
     }
@@ -362,11 +362,7 @@ where
         async move {
             self.block
                 .interface()
-                .write_register(
-                    address,
-                    Fieldset::as_slice(&register),
-                    &RegisterFs::METADATA,
-                )
+                .write_register(address, register.as_slice_mut(), &RegisterFs::METADATA)
                 .await
         }
     }
@@ -760,7 +756,7 @@ where
 
         self.block.interface().write_register(
             address,
-            Fieldset::as_slice(&register),
+            register.as_slice_mut(),
             &RegisterFs::METADATA,
         )
     }
@@ -791,7 +787,7 @@ where
 
             self.block
                 .interface()
-                .write_register(self.address, register.as_slice(), &RegisterFs::METADATA)
+                .write_register(self.address, register.as_slice_mut(), &RegisterFs::METADATA)
                 .await
         }
     }
@@ -824,7 +820,7 @@ where
 
             self.block
                 .interface()
-                .write_register(address, register.as_slice(), &RegisterFs::METADATA)
+                .write_register(address, register.as_slice_mut(), &RegisterFs::METADATA)
                 .await
         }
     }
@@ -862,11 +858,7 @@ where
 
             self.block
                 .interface()
-                .write_register(
-                    address,
-                    Fieldset::as_slice(&register),
-                    &RegisterFs::METADATA,
-                )
+                .write_register(address, register.as_slice_mut(), &RegisterFs::METADATA)
                 .await
         }
     }
@@ -1131,7 +1123,7 @@ where
 
         self.block.interface().write_register(
             self.start_address.unwrap(),
-            self.field_sets.as_slice(),
+            self.field_sets.as_slice_mut(),
             &Fieldsets::METADATA,
         )
     }
@@ -1158,7 +1150,7 @@ where
                 .interface()
                 .write_register(
                     self.start_address.unwrap(),
-                    self.field_sets.as_slice(),
+                    self.field_sets.as_slice_mut(),
                     &Fieldsets::METADATA,
                 )
                 .await
@@ -1205,7 +1197,7 @@ where
 
         self.block.interface().write_register(
             self.start_address.unwrap(),
-            self.field_sets.as_slice(),
+            self.field_sets.as_slice_mut(),
             &Fieldsets::METADATA,
         )
     }
@@ -1240,7 +1232,7 @@ where
             .interface()
             .write_register(
                 self.start_address.unwrap(),
-                self.field_sets.as_slice(),
+                self.field_sets.as_slice_mut(),
                 &Fieldsets::METADATA,
             )
             .await

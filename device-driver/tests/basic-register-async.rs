@@ -11,7 +11,7 @@ impl AsyncRegisterInterface for DeviceInterface {
     async fn write_register(
         &mut self,
         _address: Self::AddressType,
-        _data: &[u8],
+        _data: &mut [u8],
         _metadata: &FieldsetMetadata,
     ) -> Result<(), Self::Error> {
         unimplemented!()

@@ -13,7 +13,7 @@ impl CommandInterface for DeviceInterface {
     fn dispatch_command(
         &mut self,
         address: Self::AddressType,
-        input: &[u8],
+        input: &mut [u8],
         _input_metadata: &FieldsetMetadata,
         output: &mut [u8],
         _output_metadata: &FieldsetMetadata,
