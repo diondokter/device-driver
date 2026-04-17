@@ -1,31 +1,7 @@
-:root {
-    --header-red: #960018;
-    --header-box: #df8191;
-    --header-box-hover: #dd9ea9;
-    --header-box-active: #e7cfd4;
-    --separator-color: #cccccc;
-    --diagnostics-bg: #f3f3f3;
-    --editor-bg: #ffffff;
-    --text-color: #121212;
-
-    color-scheme: light dark;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --header-red: #960018;
-    --header-box: #41121a;
-    --header-box-hover: #46272c;
-    --header-box-active: #372327;
-    --separator-color: #2a2a2a;
-    --diagnostics-bg: #181818;
-    --editor-bg: #1f1f1f;
-    --text-color: #dcdcdc;
-  }
-}
+@import "colors.css";
 
 body {
-    background-color: var(--diagnostics-bg);
+    background-color: var(--bg-shade-2);
     margin: 0px;
     color: var(--text-color);
     font-family: Consolas, sans-serif;
@@ -37,7 +13,7 @@ body {
 
 #editor-container {
     width: 100%;
-    background-color: var(--editor-bg);
+    background-color: var(--bg-shade-1);
     clear: both;
     display: grid;
     grid-template-columns: calc(50% - 2.5px) 5px auto;
@@ -51,7 +27,7 @@ body {
 }
 
 .separator {
-    background-color: var(--separator-color);
+    background-color: var(--bg-shade-3);
     padding: 0px;
     margin: 0px;
     transition-delay: 0.1s;
@@ -60,7 +36,7 @@ body {
 
 .separator:hover {
     transition-delay: 0.2s;
-    background-color: var(--header-red);
+    background-color: var(--theme-shade-1);
 }
 
 
@@ -106,7 +82,7 @@ header {
     display: flex;
     align-items: stretch;
     justify-content: space-around;
-    background-color: var(--header-red);
+    background-color: var(--theme-shade-1);
     color: var(--text-color);
     padding: 5px;
     flex-direction: row;
@@ -115,7 +91,7 @@ header {
 
     .box {
         display: flex;
-        background-color: var(--header-box);
+        background-color: var(--theme-shade-2);
         border-radius: 4px;
         align-items: center;
         justify-content: space-around;
@@ -127,29 +103,29 @@ header {
             border-radius: 4px;
 
             &:hover {
-                background-color: var(--header-box-hover);
+                background-color: var(--theme-shade-3);
             }
 
             &:active {
-                background-color: var(--header-box-active);
+                background-color: var(--theme-shade-4);
             }
         }
 
         textarea {
             resize: none;
-            background-color: var(--header-box-active);
+            background-color: var(--theme-shade-4);
             color: var(--text-color);
             border: none;
             height: 100%;
             outline: none;
 
             &:focus {
-                outline: 2px solid var(--header-box-hover);
+                outline: 2px solid var(--theme-shade-3);
             }
         }
 
         select {
-            background-color: var(--header-box-active);
+            background-color: var(--theme-shade-4);
             color: var(--text-color);
             border: none;
             height: 100%;

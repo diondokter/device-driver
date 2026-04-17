@@ -1,0 +1,71 @@
+@import "colors.css";
+
+body {
+    display: flex;
+    flex-flow: column nowrap;
+    text-align: center;
+    align-content: center;
+    align-items: center;
+    background-color: var(--bg-shade-1);
+    font-family: Consolas, sans-serif;
+    margin: 0;
+
+    >* {
+        width: 100%;
+    }
+
+    @media (min-width:1000px) {
+        >* {
+            width: 85%;
+        }
+    }
+
+    @media (min-width:1200px) {
+        >* {
+            width: 70%;
+        }
+    }
+}
+
+.header {
+    width: 100%;
+    background-color: var(--theme-shade-1);
+
+    .container {
+        padding-left: 20px;
+        /* Space before the first item */
+        padding-right: 20px;
+        /* Space after the last item */
+        display: flex;
+        flex-flow: row wrap;
+        align-content: stretch;
+        align-items: center;
+        gap: 20px;
+        font-size: large;
+
+        h1 {
+            flex-grow: 1;
+            text-align: left;
+            font-size: xx-large;
+            user-select: none;
+        }
+
+        a:link {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        a:visited {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        a:active {
+            text-decoration: underline;
+        }
+    }
+}
