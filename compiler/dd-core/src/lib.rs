@@ -19,7 +19,7 @@ pub fn compile(
     let mir = device_driver_mir::lower_ast(ast, &mut diagnostics)
         .with_message(|| "could not lower AST to MIR")?;
     let lir = device_driver_lir::lower_mir(mir).with_message(|| "could not lower MIR to LIR")?;
-    let mut code = device_driver_codegen::codegen(target, &lir, &compile_options);
+    let mut code = device_driver_codegen::codegen(target, &lir, source, &compile_options);
 
     if diagnostics.has_error() {
         let _ = write!(code, "\n{}\n", target.create_error_message());

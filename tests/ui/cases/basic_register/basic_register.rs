@@ -43,6 +43,31 @@ impl<I> Device<I> {
             FooFieldSet::default,
         )
     }
+    /// The bar register
+    ///
+    /// Reset value: `0x123456`
+    ///
+    /// Valid index range: `0..3`
+    pub fn bar(
+        &mut self,
+    ) -> ::device_driver::RegisterOperation<
+        '_,
+        Self,
+        FooFieldSet,
+        u8,
+        ::device_driver::RO,
+        ::device_driver::ArrayRepeat<3, 1>,
+    >
+    where
+        I: ::device_driver::RegisterInterfaceBase<AddressType = u8>,
+    {
+        let address = self.base_address + 1;
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u8,
+            || FooFieldSet::from([86, 52, 18]),
+        )
+    }
 }
 impl<I> ::device_driver::Block for Device<I> {
     type Interface = I;

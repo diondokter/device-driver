@@ -5,11 +5,17 @@ device Device {
 
     register Foo {
         address: 0,
-
         fields: fieldset FooFieldSet {
             size-bytes: 3,
 
             field value 23:0 -> uint
         }
+    },
+    /// The bar register
+    register Bar[3*1] {
+        address: 1,
+        access: RO,
+        reset: 0x123456,
+        fields: FooFieldSet,
     }
 }

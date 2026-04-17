@@ -1,5 +1,6 @@
 use device_driver_common::{
     identifier::Identifier,
+    span::Spanned,
     specifiers::{Access, AddressMode, AddressRange, ByteOrder, Integer},
 };
 
@@ -54,7 +55,7 @@ pub enum BlockMethodType {
     Register {
         field_set_name: Identifier,
         access: Access,
-        reset_value: Option<Vec<u8>>,
+        reset_value: Option<Spanned<Vec<u8>>>,
     },
     Command {
         field_set_name_in: Option<Identifier>,
