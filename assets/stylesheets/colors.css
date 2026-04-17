@@ -1,4 +1,8 @@
 :root {
+    --text-color-white: #ffffff;
+    --text-color-dark: #121212;
+
+
     --theme-shade-1: #960018;
     --theme-shade-2: #df8191;
     --theme-shade-3: #dd9ea9;
@@ -6,13 +10,16 @@
     --bg-shade-3: #cccccc;
     --bg-shade-2: #f3f3f3;
     --bg-shade-1: #ffffff;
-    --text-color: #121212;
+    --text-color: var(--text-color-dark);
 
     color-scheme: light dark;
 }
 
 @media (prefers-color-scheme: dark) {
     :root {
+        --text-color-white: #e1e1e1;
+        --text-color-dark: #000000;
+
         --theme-shade-1: #960018;
         --theme-shade-2: #41121a;
         --theme-shade-3: #46272c;
@@ -20,6 +27,6 @@
         --bg-shade-3: #2a2a2a;
         --bg-shade-2: #181818;
         --bg-shade-1: #1f1f1f;
-        --text-color: #dcdcdc;
+        --text-color: var(--text-color-white);
     }
 }

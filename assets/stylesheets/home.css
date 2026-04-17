@@ -9,6 +9,7 @@ body {
     background-color: var(--bg-shade-1);
     font-family: Consolas, sans-serif;
     margin: 0;
+    color: var(--text-color);
 
     >* {
         width: 100%;
@@ -30,6 +31,7 @@ body {
 .header {
     width: 100%;
     background-color: var(--theme-shade-1);
+    color: var(--text-color-white);
 
     .container {
         padding-left: 20px;
