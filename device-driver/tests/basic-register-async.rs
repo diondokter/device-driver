@@ -10,18 +10,18 @@ impl RegisterInterfaceBase for DeviceInterface {
 impl AsyncRegisterInterface for DeviceInterface {
     async fn write_register(
         &mut self,
-        _metadata: &FieldsetMetadata,
         _address: Self::AddressType,
-        _data: &[u8],
+        _data: &mut [u8],
+        _metadata: &FieldsetMetadata,
     ) -> Result<(), Self::Error> {
         unimplemented!()
     }
 
     async fn read_register(
         &mut self,
-        _metadata: &FieldsetMetadata,
         _address: Self::AddressType,
         _data: &mut [u8],
+        _metadata: &FieldsetMetadata,
     ) -> Result<(), Self::Error> {
         unimplemented!()
     }

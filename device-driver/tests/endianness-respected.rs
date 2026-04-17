@@ -9,9 +9,9 @@ impl RegisterInterfaceBase for DeviceInterface {
 impl RegisterInterface for DeviceInterface {
     fn write_register(
         &mut self,
-        _metadata: &FieldsetMetadata,
         _address: Self::AddressType,
-        data: &[u8],
+        data: &mut [u8],
+        _metadata: &FieldsetMetadata,
     ) -> Result<(), Self::Error> {
         // Assert data is little endian
         assert_eq!(data, &[0x34, 0x12]);
@@ -21,9 +21,9 @@ impl RegisterInterface for DeviceInterface {
 
     fn read_register(
         &mut self,
-        _metadata: &FieldsetMetadata,
         _address: Self::AddressType,
         data: &mut [u8],
+        _metadata: &FieldsetMetadata,
     ) -> Result<(), Self::Error> {
         data.copy_from_slice(&[0x32, 0x12]);
         Ok(())

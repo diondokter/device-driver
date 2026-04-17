@@ -22,11 +22,11 @@ pub trait CommandInterface: CommandInterfaceBase {
     /// The slices are empty if the respective in or out fields are not specified.
     fn dispatch_command(
         &mut self,
-        _metadata_input: &FieldsetMetadata,
-        _metadata_output: &FieldsetMetadata,
         address: Self::AddressType,
-        input: &[u8],
+        input: &mut [u8],
+        _input_metadata: &FieldsetMetadata,
         output: &mut [u8],
+        _output_metadata: &FieldsetMetadata,
     ) -> Result<(), Self::Error>;
 }
 
@@ -42,11 +42,11 @@ pub trait AsyncCommandInterface: CommandInterfaceBase {
     /// The slices are empty if the respective in or out fields are not specified.
     async fn dispatch_command(
         &mut self,
-        _metadata_input: &FieldsetMetadata,
-        _metadata_output: &FieldsetMetadata,
         address: Self::AddressType,
-        input: &[u8],
+        input: &mut [u8],
+        _input_metadata: &FieldsetMetadata,
         output: &mut [u8],
+        _output_metadata: &FieldsetMetadata,
     ) -> Result<(), Self::Error>;
 }
 
@@ -89,11 +89,11 @@ where
     /// Dispatch the command to the device
     pub fn dispatch(self) -> Result<(), <B::Interface as CommandInterfaceBase>::Error> {
         self.block.interface().dispatch_command(
-            &FieldsetMetadata::DEFAULT,
-            &FieldsetMetadata::DEFAULT,
             self.address,
-            &[],
             &mut [],
+            &FieldsetMetadata::DEFAULT,
+            &mut [],
+            &FieldsetMetadata::DEFAULT,
         )
     }
 }
@@ -115,11 +115,11 @@ where
         f(&mut in_fields);
 
         self.block.interface().dispatch_command(
-            &InFieldset::METADATA,
-            &FieldsetMetadata::DEFAULT,
             self.address,
-            in_fields.as_slice(),
+            in_fields.as_slice_mut(),
+            &InFieldset::METADATA,
             &mut [],
+            &FieldsetMetadata::DEFAULT,
         )
     }
 }
@@ -137,11 +137,11 @@ where
         let mut out_fields = OutFieldset::ZERO;
 
         self.block.interface().dispatch_command(
-            &FieldsetMetadata::DEFAULT,
-            &OutFieldset::METADATA,
             self.address,
-            &[],
+            &mut [],
+            &FieldsetMetadata::DEFAULT,
             out_fields.as_slice_mut(),
+            &OutFieldset::METADATA,
         )?;
 
         Ok(out_fields)
@@ -169,11 +169,11 @@ where
         let mut out_fields = OutFieldset::ZERO;
 
         self.block.interface().dispatch_command(
-            &InFieldset::METADATA,
-            &OutFieldset::METADATA,
             self.address,
-            in_fields.as_slice(),
+            in_fields.as_slice_mut(),
+            &InFieldset::METADATA,
             out_fields.as_slice_mut(),
+            &OutFieldset::METADATA,
         )?;
 
         Ok(out_fields)
@@ -192,11 +192,11 @@ where
         self.block
             .interface()
             .dispatch_command(
-                &FieldsetMetadata::DEFAULT,
-                &FieldsetMetadata::DEFAULT,
                 self.address,
-                &[],
                 &mut [],
+                &FieldsetMetadata::DEFAULT,
+                &mut [],
+                &FieldsetMetadata::DEFAULT,
             )
             .await
     }
@@ -221,11 +221,11 @@ where
         self.block
             .interface()
             .dispatch_command(
-                &InFieldset::METADATA,
-                &FieldsetMetadata::DEFAULT,
                 self.address,
-                in_fields.as_slice(),
+                in_fields.as_slice_mut(),
+                &InFieldset::METADATA,
                 &mut [],
+                &FieldsetMetadata::DEFAULT,
             )
             .await
     }
@@ -248,11 +248,11 @@ where
         self.block
             .interface()
             .dispatch_command(
-                &FieldsetMetadata::DEFAULT,
-                &OutFieldset::METADATA,
                 self.address,
-                &[],
+                &mut [],
+                &FieldsetMetadata::DEFAULT,
                 out_fields.as_slice_mut(),
+                &OutFieldset::METADATA,
             )
             .await?;
 
@@ -283,11 +283,11 @@ where
         self.block
             .interface()
             .dispatch_command(
-                &InFieldset::METADATA,
-                &OutFieldset::METADATA,
                 self.address,
-                in_fields.as_slice(),
+                in_fields.as_slice_mut(),
+                &InFieldset::METADATA,
                 out_fields.as_slice_mut(),
+                &OutFieldset::METADATA,
             )
             .await?;
 

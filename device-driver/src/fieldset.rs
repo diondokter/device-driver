@@ -11,15 +11,6 @@ pub unsafe trait Fieldset: Sized {
     /// Get a zero-initialized instance of the fieldset
     const ZERO: Self;
 
-    /// Get the fieldset as a slice
-    fn as_slice(&self) -> &[u8] {
-        unsafe {
-            core::slice::from_raw_parts(
-                (self as *const Self).cast::<u8>(),
-                core::mem::size_of::<Self>(),
-            )
-        }
-    }
     /// Get the fieldset as a mutable slice
     fn as_slice_mut(&mut self) -> &mut [u8] {
         unsafe {
