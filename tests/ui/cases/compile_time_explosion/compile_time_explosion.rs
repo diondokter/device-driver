@@ -22,7 +22,7 @@ impl<I> Device<I> {
         Self { interface, base_address: 0 }
     }
     ///
-    /// Valid index range: 0..100
+    /// Valid index range: `0..100`
     pub fn foo_0(
         &mut self,
     ) -> ::device_driver::RegisterOperation<
@@ -40,7 +40,7 @@ impl<I> Device<I> {
         ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
     }
     ///
-    /// Valid index range: 0..100
+    /// Valid index range: `0..100`
     pub fn foo_1(
         &mut self,
     ) -> ::device_driver::RegisterOperation<
@@ -58,7 +58,7 @@ impl<I> Device<I> {
         ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
     }
     ///
-    /// Valid index range: 0..100
+    /// Valid index range: `0..100`
     pub fn foo_2(
         &mut self,
     ) -> ::device_driver::RegisterOperation<
@@ -76,7 +76,7 @@ impl<I> Device<I> {
         ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
     }
     ///
-    /// Valid index range: 0..100
+    /// Valid index range: `0..100`
     pub fn foo_3(
         &mut self,
     ) -> ::device_driver::RegisterOperation<
@@ -94,7 +94,7 @@ impl<I> Device<I> {
         ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
     }
     ///
-    /// Valid index range: 0..100
+    /// Valid index range: `0..100`
     pub fn foo_4(
         &mut self,
     ) -> ::device_driver::RegisterOperation<
@@ -112,7 +112,7 @@ impl<I> Device<I> {
         ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
     }
     ///
-    /// Valid index range: 0..100
+    /// Valid index range: `0..100`
     pub fn foo_5(
         &mut self,
     ) -> ::device_driver::RegisterOperation<
@@ -130,7 +130,7 @@ impl<I> Device<I> {
         ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
     }
     ///
-    /// Valid index range: 0..100
+    /// Valid index range: `0..100`
     pub fn foo_6(
         &mut self,
     ) -> ::device_driver::RegisterOperation<
@@ -148,7 +148,7 @@ impl<I> Device<I> {
         ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
     }
     ///
-    /// Valid index range: 0..100
+    /// Valid index range: `0..100`
     pub fn foo_7(
         &mut self,
     ) -> ::device_driver::RegisterOperation<
@@ -166,7 +166,7 @@ impl<I> Device<I> {
         ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
     }
     ///
-    /// Valid index range: 0..100
+    /// Valid index range: `0..100`
     pub fn foo_8(
         &mut self,
     ) -> ::device_driver::RegisterOperation<
@@ -184,7 +184,7 @@ impl<I> Device<I> {
         ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
     }
     ///
-    /// Valid index range: 0..100
+    /// Valid index range: `0..100`
     pub fn foo_9(
         &mut self,
     ) -> ::device_driver::RegisterOperation<

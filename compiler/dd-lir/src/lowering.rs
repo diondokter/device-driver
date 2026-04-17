@@ -3,6 +3,7 @@ use std::ops::Add;
 use convert_case::Case;
 use device_driver_common::{
     identifier::Identifier,
+    span::SpanExt,
     specifiers::{BaseType, Integer, Repeat, RepeatSource},
 };
 use device_driver_diagnostics::{DynError, ResultExt};
@@ -164,8 +165,8 @@ fn get_method(
                     field_set_name: field_set.name().clone(),
                     access: *access,
                     reset_value: reset_value.as_ref().map(|rv| {
-                        rv.as_array().cloned().ok_or(
-                            DynError::new("reset value is not an array while it should have been converted to array a mir pass"),
+                        rv.as_array().cloned().map(|array| array.with_span(rv.span)).ok_or_else(
+                            || DynError::new("reset value is not an array while it should have been converted to array a mir pass"),
                         )
                     })
                     .transpose()?,

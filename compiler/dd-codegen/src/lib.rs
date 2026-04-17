@@ -58,8 +58,15 @@ impl CompileOptions {
     }
 }
 
-pub fn codegen(target: Target, lir_driver: &Driver, compile_options: &CompileOptions) -> String {
+pub fn codegen(
+    target: Target,
+    lir_driver: &Driver,
+    source: &str,
+    compile_options: &CompileOptions,
+) -> String {
     match target {
-        Target::Rust => rust::DeviceTemplateRust::new(lir_driver, compile_options).to_string(),
+        Target::Rust => {
+            rust::DeviceTemplateRust::new(lir_driver, source, compile_options).to_string()
+        }
     }
 }

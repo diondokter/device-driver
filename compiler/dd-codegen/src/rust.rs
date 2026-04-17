@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use askama::Template;
 use convert_case::Case;
 use device_driver_common::{
@@ -5,7 +7,9 @@ use device_driver_common::{
     specifiers::{Access, AddressMode},
 };
 
-use device_driver_lir::model::{BlockMethodType, Driver, Field, FieldConversionMethod, Repeat};
+use device_driver_lir::model::{
+    BlockMethod, BlockMethodType, Driver, Field, FieldConversionMethod, Repeat,
+};
 
 use crate::CompileOptions;
 
@@ -13,19 +17,30 @@ use crate::CompileOptions;
 #[template(path = "rust/device.rs.j2", escape = "none", whitespace = "minimize")]
 pub struct DeviceTemplateRust<'a> {
     driver: &'a Driver,
+    source: &'a str,
     compile_options: &'a CompileOptions,
 }
 
 impl<'a> DeviceTemplateRust<'a> {
-    pub fn new(device: &'a Driver, compile_options: &'a CompileOptions) -> Self {
+    pub fn new(device: &'a Driver, source: &'a str, compile_options: &'a CompileOptions) -> Self {
         Self {
             driver: device,
+            source,
             compile_options,
         }
     }
 
     fn defmt_feature(&self) -> Option<&str> {
         self.compile_options.get("defmt-feature")
+    }
+
+    fn get_reset_value_text(&self, method: &BlockMethod) -> Option<&'a str> {
+        let reset_value = match &method.method_type {
+            BlockMethodType::Register { reset_value, .. } => reset_value.as_ref(),
+            _ => None,
+        }?;
+
+        self.source.get(Range::from(reset_value.span))
     }
 }
 
