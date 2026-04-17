@@ -8,6 +8,7 @@ pub trait VariantNames {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum Integer {
     U8,
     U16,
@@ -147,6 +148,7 @@ impl Integer {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum Access {
     #[default]
     RW,
@@ -189,6 +191,7 @@ impl FromStr for Access {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum ByteOrder {
     #[default]
     LE,
@@ -218,6 +221,7 @@ impl FromStr for ByteOrder {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum BaseType {
     #[default]
     Unspecified,
@@ -358,6 +362,7 @@ impl AddressRange {
 
 /// Type to specify how addresses work
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum AddressMode {
     /// Objects are memory-mapped.
     ///

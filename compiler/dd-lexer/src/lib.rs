@@ -21,6 +21,7 @@ pub fn lex(source: &str) -> Vec<Spanned<Token<'_>>> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Logos)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[logos(skip r"[ \t\r\n]+")] // Skip (common) whitespace
 #[logos(skip(r"//[^\n]*", allow_greedy = true))] // Skip comments
 pub enum Token<'src> {
@@ -176,9 +177,9 @@ impl<'src> Token<'src> {
     }
 
     pub fn formatted_print<'a, I: Iterator<Item = &'a Token<'src>>>(
-        stream: &mut impl std::io::Write,
+        stream: &mut impl std::fmt::Write,
         tokens: I,
-    ) -> std::io::Result<()>
+    ) -> Result<(), std::fmt::Error>
     where
         'src: 'a,
     {
@@ -188,13 +189,23 @@ impl<'src> Token<'src> {
 
             indent += indent_change;
             if newline_before {
-                write!(stream, "\n{:width$}", "", width = indent as usize * 4)?;
+                write!(
+                    stream,
+                    "\n{:width$}",
+                    "",
+                    width = indent.max(0) as usize * 4
+                )?;
             }
 
             write!(stream, "{} ", token.get_human_string())?;
 
             if newline_after {
-                write!(stream, "\n{:width$}", "", width = indent as usize * 4)?;
+                write!(
+                    stream,
+                    "\n{:width$}",
+                    "",
+                    width = indent.max(0) as usize * 4
+                )?;
             }
         }
 

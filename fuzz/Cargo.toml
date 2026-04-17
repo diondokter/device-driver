@@ -1,0 +1,25 @@
+[package]
+name = "device-driver-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+device-driver-diagnostics.workspace = true
+device-driver-mir.workspace = true
+device-driver-lir.workspace = true
+device-driver-codegen.workspace = true
+device-driver-lexer = { workspace = true, features = ["arbitrary"] }
+device-driver-parser.workspace = true
+
+libfuzzer-sys = "0.4"
+
+[[bin]]
+name = "compiler-tokens"
+path = "fuzz_targets/compiler-tokens.rs"
+test = false
+doc = false
+bench = false
