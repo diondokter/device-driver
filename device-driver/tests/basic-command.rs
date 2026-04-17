@@ -12,11 +12,11 @@ impl CommandInterfaceBase for DeviceInterface {
 impl CommandInterface for DeviceInterface {
     fn dispatch_command(
         &mut self,
-        _metadata_input: &FieldsetMetadata,
-        _metadata_output: &FieldsetMetadata,
         address: Self::AddressType,
         input: &[u8],
+        _input_metadata: &FieldsetMetadata,
         output: &mut [u8],
+        _output_metadata: &FieldsetMetadata,
     ) -> Result<(), Self::Error> {
         self.last_command = address;
         self.last_input = input.to_vec();

@@ -25,9 +25,9 @@ impl RegisterInterfaceBase for DeviceInterface {
 impl RegisterInterface for DeviceInterface {
     fn write_register(
         &mut self,
-        _metadata: &FieldsetMetadata,
         address: Self::AddressType,
         data: &[u8],
+        _metadata: &FieldsetMetadata,
     ) -> Result<(), Self::Error> {
         assert_eq!(data.len(), 3);
         self.device_memory[address as usize..][..data.len()].copy_from_slice(data);
@@ -37,9 +37,9 @@ impl RegisterInterface for DeviceInterface {
 
     fn read_register(
         &mut self,
-        _metadata: &FieldsetMetadata,
         address: Self::AddressType,
         data: &mut [u8],
+        _metadata: &FieldsetMetadata,
     ) -> Result<(), Self::Error> {
         assert_eq!(data.len(), 3);
         data.copy_from_slice(&self.device_memory[address as usize..][..data.len()]);
