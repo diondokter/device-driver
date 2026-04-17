@@ -13,6 +13,7 @@ members = [
     "compiler/dd-mir",
     "compiler/dd-parser",
     "compiler/dd-wasm",
+    "fuzz",
     "tests/ui",
 ]
 
@@ -44,6 +45,7 @@ bitvec = { version = "1.0.1", default-features = false }
 syn = "2.0.114"
 pretty_assertions = "1.4.1"
 chumsky = { version = "0.12.0", default-features = false, features = ["std"] }
+arbitrary = { version = "1.4.2", features = ["derive"] }
 
 [profile.release]
 lto = true
