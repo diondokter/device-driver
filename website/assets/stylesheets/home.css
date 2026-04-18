@@ -3,28 +3,16 @@
 body {
     display: flex;
     flex-flow: column nowrap;
-    text-align: center;
     align-content: center;
     align-items: center;
     background-color: var(--bg-shade-1);
     font-family: Consolas, sans-serif;
     margin: 0;
     color: var(--text-color);
+    gap: 10px;
 
     >* {
-        width: 100%;
-    }
-
-    @media (min-width:1000px) {
-        >* {
-            width: 85%;
-        }
-    }
-
-    @media (min-width:1200px) {
-        >* {
-            width: 70%;
-        }
+        width: calc(100vw - clamp(0px, 100vw - (500px + 50vw), 33vw));
     }
 }
 
@@ -68,6 +56,30 @@ body {
 
         a:active {
             text-decoration: underline;
+        }
+    }
+}
+
+hr {
+    margin: 0;
+    border-left: 0;
+    border-right: 0;
+}
+
+.showcase {
+    display: flex;
+    flex-flow: row wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+
+    pre {
+        margin: 0;
+        min-width: 400px;
+        counter-reset: line;
+
+        >* {
+            border-radius: 8px;
         }
     }
 }

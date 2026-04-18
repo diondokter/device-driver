@@ -3,10 +3,10 @@
     "outDir": "./dist/",
     "noImplicitAny": true,
     "sourceMap": true,
-    "module": "es6",
-    "target": "es6",
+    "module": "esnext",
+    "target": "esnext",
     "jsx": "react",
     "allowJs": false,
-    "moduleResolution": "node"
+    "moduleResolution": "bundler",
   }
 }

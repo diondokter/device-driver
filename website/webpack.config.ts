@@ -1,10 +1,15 @@
-const path = require('path');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
-const WasmPackPlugin = require("@wasm-tool/wasm-pack-plugin");
-const CopyWebpackPlugin = require('copy-webpack-plugin');
-const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
+import path from 'node:path';
+import { fileURLToPath } from "url";
+import webpack from "webpack";
+import HtmlWebpackPlugin from 'html-webpack-plugin';
+import WasmPackPlugin from "@wasm-tool/wasm-pack-plugin";
+import CopyWebpackPlugin from 'copy-webpack-plugin';
+import MonacoWebpackPlugin from 'monaco-editor-webpack-plugin';
 
-module.exports = {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const config: webpack.Configuration = {
     entry: {
         home: './pages/home/index.ts',
         playground: './pages/playground/index.ts',
@@ -66,3 +71,5 @@ module.exports = {
         asyncWebAssembly: true
     }
 };
+
+export default config;

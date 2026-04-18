@@ -1,5 +1,5 @@
 import * as device_driver_wasm from '../../pkg';
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
+import * as monaco from 'monaco-editor';
 import * as DDSLMonarch from './ddsl.monarch'
 import * as AU from 'ansi_up';
 
@@ -33,9 +33,9 @@ const DEFAULT_OPTIONS = `-C defmt-feature=defmt`;
 function setup(): PageContext {
     let draggingSetup = setupDragging();
 
-    const diagnostics = document.getElementById('diagnostics');
-    const targetPickerSelect = document.getElementById('target-picker-select') as HTMLSelectElement;
-    const compilerOptionsInput = document.getElementById('compiler-options-input') as HTMLTextAreaElement;
+    const diagnostics = document.getElementById('diagnostics') ?? throwExpression("No diagnostics");
+    const targetPickerSelect = (document.getElementById('target-picker-select') ?? throwExpression("No target-picker-select")) as HTMLSelectElement;
+    const compilerOptionsInput = (document.getElementById('compiler-options-input') ?? throwExpression("No compiler-options-input")) as HTMLTextAreaElement;
 
     let startCode = localStorage.getItem("code-session");
     if (startCode == null) {
@@ -59,7 +59,7 @@ function setup(): PageContext {
     let editors = setup_monaco(startCode, theme);
 
     let recompile = () => {
-        let source = editors.codeEditor.getModel().getValue();
+        let source = (editors.codeEditor.getModel() ?? throwExpression("No code-editor model")).getValue();
         let target = device_driver_wasm.TargetArg[targetPickerSelect.value as keyof typeof device_driver_wasm.TargetArg];
         if (target == undefined) {
             console.error("Got an undefined target_arg: " + targetPickerSelect.value);
@@ -70,7 +70,7 @@ function setup(): PageContext {
         let charsPerLine = elementCharWidth(diagnostics);
 
         let output = compile(source, target, compilerOptionsInput.value, charsPerLine);
-        editors.outputEditor.getModel().setValue(output.generated);
+        (editors.outputEditor.getModel() ?? throwExpression("No output-editor model")).setValue(output.generated);
         diagnostics.innerHTML = output.diagnostics;
 
         localStorage.setItem("code-session", source);
@@ -87,7 +87,7 @@ function setup(): PageContext {
         compilerOptionsInput.addEventListener(event, recompile);
     });
 
-    editors.codeEditor.getModel().onDidChangeContent(recompile);
+    (editors.codeEditor.getModel() ?? throwExpression("No code-editor model")).onDidChangeContent(recompile);
     let reset_timeout: any = null;
     const ro = new ResizeObserver(_ => {
         if (reset_timeout != null) {
@@ -119,14 +119,14 @@ function setup_monaco(start_code: string, theme: Theme): Editors {
         monaco.languages.setLanguageConfiguration('ddsl', DDSLMonarch.config);
     });
 
-    let codeEditor = monaco.editor.create(document.getElementById('code-editor'), {
+    let codeEditor = monaco.editor.create(document.getElementById('code-editor') ?? throwExpression("No code-editor"), {
         value: start_code,
         language: 'ddsl',
         theme: monacoThemeString(theme),
         automaticLayout: true,
     });
 
-    let outputEditor = monaco.editor.create(document.getElementById('output-editor'), {
+    let outputEditor = monaco.editor.create(document.getElementById('output-editor') ?? throwExpression("No output-editor"), {
         value: "",
         language: 'rust',
         theme: monacoThemeString(theme),
@@ -174,7 +174,7 @@ function elementCharWidth(element: Element): number {
     const font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
     const testChar = 'M';
     const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d') ?? throwExpression("No 2d context");
     ctx.font = font;
     const charWidth = ctx.measureText(testChar).width;
     const elementWidth = element.clientWidth;
@@ -198,9 +198,9 @@ function replace_paths_with_links(diagnostics: string): string {
 }
 
 function setupDragging(): DraggingSetup {
-    const horizontalSeparator = document.getElementById("horizontal-separator");
-    const verticalSeparator = document.getElementById("vertical-separator");
-    const editorContainer = document.getElementById("editor-container");
+    const horizontalSeparator = document.getElementById("horizontal-separator") ?? throwExpression("No horizontal-separator");
+    const verticalSeparator = document.getElementById("vertical-separator") ?? throwExpression("No vertical-separator");
+    const editorContainer = document.getElementById("editor-container") ?? throwExpression("No editor-container");
 
     let isDraggingHorizontal = false;
     let offsetHorizontal = 0.5;
@@ -300,4 +300,8 @@ export function reset() {
     page_ctx.editors.codeEditor.setValue(DEFAULT_CODE);
     page_ctx.targetPickerSelect.selectedIndex = 0;
     page_ctx.compilerOptionsInput.value = DEFAULT_OPTIONS;
+}
+
+function throwExpression(errorMessage: string): never {
+    throw new Error(errorMessage);
 }
