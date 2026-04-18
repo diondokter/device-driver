@@ -199,20 +199,24 @@ impl DynError {
             message: message.to_string(),
         }
     }
+
+    pub fn to_report_string(&self) -> String {
+        let mut string = String::new();
+        let report = self.as_report("", "");
+        let output = annotate_snippets::Renderer::styled().render(&report);
+        write!(&mut string, "{output}").unwrap();
+        string
+    }
 }
 
 impl Display for DynError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if f.alternate() {
-            let report = self.as_report("", "");
-            let output = annotate_snippets::Renderer::styled().render(&report);
-            write!(f, "{output}")
-        } else {
-            match (self.message.as_str(), self.source()) {
-                ("", Some(source)) => write!(f, "{source}"),
-                ("", None) => unreachable!(),
-                (message, _) => write!(f, "{message}"),
-            }
+        match (self.message.as_str(), self.source()) {
+            ("", Some(source)) => write!(f, "{source}"),
+            ("", None) => unreachable!(),
+            (message, _) if !f.alternate() => write!(f, "{message}"),
+            (message, None) => write!(f, "{message}"),
+            (message, Some(source)) => write!(f, "{message}\n| {source:#}"),
         }
     }
 }
