@@ -5,7 +5,8 @@ pub mod model;
 
 pub fn lower_mir(manifest: device_driver_mir::model::Manifest) -> Result<model::Driver, DynError> {
     let enums = lowering::transform_enums(&manifest);
-    let field_sets = lowering::transform_field_sets(&manifest);
+    let field_sets = lowering::transform_field_sets(&manifest)
+        .with_message(|| "could not transform fieldsets")?;
     let devices =
         lowering::transform_devices(&manifest).with_message(|| "could not transform devices")?;
 

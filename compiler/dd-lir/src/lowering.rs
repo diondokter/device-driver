@@ -234,12 +234,15 @@ fn get_method(
     Ok(method)
 }
 
-pub fn transform_field_sets(manifest: &mir::Manifest) -> Vec<lir::FieldSet> {
+pub fn transform_field_sets(manifest: &mir::Manifest) -> Result<Vec<lir::FieldSet>, DynError> {
     manifest
         .iter_objects()
         .filter_map(|o| {
             if let Object::FieldSet(fs) = o {
-                Some(transform_field_set(manifest, fs))
+                Some(
+                    transform_field_set(manifest, fs)
+                        .with_message(|| format!("transforming fieldset {}", fs.name.original())),
+                )
             } else {
                 None
             }
@@ -247,111 +250,135 @@ pub fn transform_field_sets(manifest: &mir::Manifest) -> Vec<lir::FieldSet> {
         .collect()
 }
 
-fn transform_field_set(manifest: &mir::Manifest, field_set: &mir::FieldSet) -> lir::FieldSet {
+fn transform_field_set(
+    manifest: &mir::Manifest,
+    field_set: &mir::FieldSet,
+) -> Result<lir::FieldSet, DynError> {
     let fields = field_set
         .fields
         .iter()
         .map(|field| {
-            let mir::Field {
-                description,
-                name,
-                access,
-                base_type,
-                field_conversion,
-                field_address,
-                repeat,
-                span: _,
-            } = field;
-
-            let (base_type, conversion_method) = match (base_type.value, field_conversion) {
-                (BaseType::Unspecified | BaseType::Uint | BaseType::Int, _) => {
-                    unreachable!("Nothing is left unspecified or unsized in the mir passes")
-                }
-                (BaseType::Bool, None) if field_address.len() == 1 => {
-                    ("u8".to_string(), lir::FieldConversionMethod::Bool)
-                }
-                (BaseType::Bool, _) => unreachable!(
-                    "Checked in a MIR pass. Bools can only be 1 bit and have no conversion"
-                ),
-                (BaseType::FixedSize(integer), None) => {
-                    (integer.to_string(), lir::FieldConversionMethod::None)
-                }
-                (BaseType::FixedSize(integer), Some(fc)) => (integer.to_string(), {
-                    let field_bits = field.field_address.len() as u32;
-
-                    let fc_identifier = search_object(manifest, &fc.type_name)
-                        .expect("Object existence checked in MIR pass")
-                        .name()
-                        .clone();
-
-                    // Always use try if that's specified
-                    if fc.fallible {
-                        lir::FieldConversionMethod::TryInto(fc_identifier)
-                    }
-                    // Are we pointing at a potentially infallible enum and do we fulfil the requirements?
-                    else if let Some(mir::Enum {
-                        generation_style: Some(mir::EnumGenerationStyle::InfallibleWithinRange),
-                        size_bits,
-                        ..
-                    }) = manifest
-                        .iter_enums()
-                        .find(|e| e.name.take_ref() == fc.type_name.value)
-                        && field_bits <= size_bits.expect("Size_bits set in an earlier mir pass")
-                    {
-                        // This field is equal or smaller in bits than the infallible enum. So we can do the unsafe into
-                        lir::FieldConversionMethod::UnsafeInto(fc_identifier)
-                    } else {
-                        // Fallback is to use the into trait.
-                        // This is correct because in the field_conversion_valid mir pass we've already exited if we need a try and didn't specify it.
-                        // The only other option is the unsafe into and we've just checked that.
-                        lir::FieldConversionMethod::Into(fc_identifier)
-                    }
-                }),
-            };
-
-            lir::Field {
-                description: description.clone(),
-                name: name.value.clone(),
-                address: field_address.value,
-                base_type,
-                conversion_method,
-                access: *access,
-                repeat: repeat
-                    .as_ref()
-                    .map_or(lir::Repeat::None, |repeat| match &repeat.source {
-                        RepeatSource::Count(c) => lir::Repeat::Count {
-                            count: c.get(),
-                            stride: repeat.stride,
-                        },
-                        RepeatSource::Enum(enum_name) => {
-                            let target_enum = search_object(manifest, enum_name)
-                                .expect("Existence checked in MIR pass")
-                                .as_enum()
-                                .expect("checked in MIR pass");
-                            lir::Repeat::Enum {
-                                enum_name: target_enum.name.value.clone(),
-                                enum_variants: target_enum
-                                    .variants
-                                    .iter()
-                                    .map(|variant| variant.name.value.clone())
-                                    .collect(),
-                                stride: repeat.stride,
-                            }
-                        }
-                    }),
-            }
+            transform_field(manifest, field)
+                .with_message(|| format!("transforming field {}", field.name.original()))
         })
-        .collect();
+        .collect::<Result<_, _>>()
+        .with_message(|| "transforming fields")?;
 
-    lir::FieldSet {
+    Ok(lir::FieldSet {
         description: field_set.description.clone(),
         name: field_set.name.value.clone(),
-        byte_order: field_set
-            .byte_order
-            .expect("Byte order should never be none at this point after the MIR passes"),
+        byte_order: field_set.byte_order.ok_or_else(|| {
+            DynError::new("Byte order should never be none at this point after the MIR passes")
+        })?,
         size_bytes: field_set.size_bytes.value,
         fields,
-    }
+    })
+}
+
+fn transform_field(manifest: &mir::Manifest, field: &mir::Field) -> Result<lir::Field, DynError> {
+    let mir::Field {
+        description,
+        name,
+        access,
+        base_type,
+        field_conversion,
+        field_address,
+        repeat,
+        span: _,
+    } = field;
+
+    let (base_type, conversion_method) = match (base_type.value, field_conversion) {
+        (BaseType::Unspecified | BaseType::Uint | BaseType::Int, _) => {
+            return Err(DynError::new(
+                "base type cannot be left unspecified or unsized after the mir passes",
+            ));
+        }
+        (BaseType::Bool, None) if field_address.len() == 1 => {
+            ("u8".to_string(), lir::FieldConversionMethod::Bool)
+        }
+        (BaseType::Bool, _) => {
+            return Err(DynError::new(
+                "bools can only be 1 bit and have no conversion. Should have been checked in a MIR pass.",
+            ));
+        }
+        (BaseType::FixedSize(integer), None) => {
+            (integer.to_string(), lir::FieldConversionMethod::None)
+        }
+        (BaseType::FixedSize(integer), Some(fc)) => (integer.to_string(), {
+            let field_bits = field.field_address.len() as u32;
+
+            let fc_identifier = search_object(manifest, &fc.type_name)
+                .ok_or_else(|| {
+                    DynError::new(format!(
+                        "{} existence checked in MIR pass",
+                        fc.type_name.original()
+                    ))
+                })?
+                .name()
+                .clone();
+
+            // Always use try if that's specified
+            if fc.fallible {
+                lir::FieldConversionMethod::TryInto(fc_identifier)
+            }
+            // Are we pointing at a potentially infallible enum and do we fulfil the requirements?
+            else if let Some(mir::Enum {
+                generation_style: Some(mir::EnumGenerationStyle::InfallibleWithinRange),
+                size_bits,
+                ..
+            }) = manifest
+                .iter_enums()
+                .find(|e| e.name.take_ref() == fc.type_name.value)
+                && field_bits
+                    <= size_bits.ok_or_else(|| {
+                        DynError::new(format!(
+                            "enum {} size_bits must have been set in an earlier mir pass",
+                            fc.type_name.original()
+                        ))
+                    })?
+            {
+                // This field is equal or smaller in bits than the infallible enum. So we can do the unsafe into
+                lir::FieldConversionMethod::UnsafeInto(fc_identifier)
+            } else {
+                // Fallback is to use the into trait.
+                // This is correct because in the field_conversion_valid mir pass we've already exited if we need a try and didn't specify it.
+                // The only other option is the unsafe into and we've just checked that.
+                lir::FieldConversionMethod::Into(fc_identifier)
+            }
+        }),
+    };
+
+    Ok(lir::Field {
+        description: description.clone(),
+        name: name.value.clone(),
+        address: field_address.value,
+        base_type,
+        conversion_method,
+        access: *access,
+        repeat: repeat
+            .as_ref()
+            .map_or(lir::Repeat::None, |repeat| match &repeat.source {
+                RepeatSource::Count(c) => lir::Repeat::Count {
+                    count: c.get(),
+                    stride: repeat.stride,
+                },
+                RepeatSource::Enum(enum_name) => {
+                    let target_enum = search_object(manifest, enum_name)
+                        .expect("Existence checked in MIR pass")
+                        .as_enum()
+                        .expect("checked in MIR pass");
+                    lir::Repeat::Enum {
+                        enum_name: target_enum.name.value.clone(),
+                        enum_variants: target_enum
+                            .variants
+                            .iter()
+                            .map(|variant| variant.name.value.clone())
+                            .collect(),
+                        stride: repeat.stride,
+                    }
+                }
+            }),
+    })
 }
 
 pub fn transform_enums(manifest: &mir::Manifest) -> Vec<lir::Enum> {

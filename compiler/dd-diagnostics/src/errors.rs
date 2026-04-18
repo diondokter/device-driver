@@ -867,7 +867,11 @@ impl Diagnostic for BoolFieldTooLarge {
                 .secondary_title("a field with a `bool` base type can only be 1 bit large")
                 .element(Snippet::source(source).path(path).patch(Patch::new(
                     self.address.into(),
-                    format!("@{}", self.address_start),
+                    format!("{}:{}", self.address_start, self.address_start),
+                )))
+                .element(Snippet::source(source).path(path).patch(Patch::new(
+                    self.address.into(),
+                    format!("{}", self.address_start),
                 ))),
         ]
         .to_vec()

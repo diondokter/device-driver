@@ -44,7 +44,7 @@ pub fn compile(item: TokenStream) -> TokenStream {
 
     match try_create_device(input) {
         Ok(tokens) => tokens,
-        Err(e) => syn::Error::new(Span::call_site(), e.to_string())
+        Err(e) => syn::Error::new(Span::call_site(), format!("{e:#}"))
             .into_compile_error()
             .into(),
     }

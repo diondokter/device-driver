@@ -76,7 +76,7 @@ pub fn compile(source: &str, chars_per_line: usize, target: TargetArg, options: 
                     .unwrap();
                 (output, diagnostics_string)
             }
-            Err(e) => (String::new(), e.to_string()),
+            Err(e) => (String::new(), e.to_report_string()),
         };
 
     Output {
