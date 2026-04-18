@@ -11,7 +11,7 @@ device_driver::compile!(
                     size-bytes: 1,
 
                     /// X
-                    field value0 1:0 -> bool,
+                    field value0 0 -> bool,
                 }
             },
             register Bar {
