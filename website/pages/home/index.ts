@@ -1,6 +1,6 @@
-import hljs from 'highlight.js';
-import rust from 'highlight.js/lib/languages/rust';
-import 'highlight.js/styles/github-dark.min.css';
+import hljs, { HLJSApi, Language } from 'highlight.js';
+import { ddslLanguage } from './ddsl.highlight.js';
+import 'highlight.js/styles/github-dark-dimmed.min.css';
 
-hljs.registerLanguage('rust', rust);
+hljs.registerLanguage('ddsl', ddslLanguage);
 hljs.highlightAll();

@@ -30,7 +30,7 @@
 
 <div class="showcase">
     <p>DDSL (device-driver specification language) is the way drivers are specified.</p>
-    <pre><code class="language-rust">device Foo {
+    <pre><code class="language-ddsl">device Foo {
     register-address-type: u8,
 
     /// Doc comments get reflected in the output code!
@@ -38,7 +38,7 @@
         address: 0,
         
         fields: fieldset BarFields {
-            size-bits: 8
+            size-bits: 8,
 
             field xena[2*2] 2:0 -> u8 as enum Xena {
                 A: _,
