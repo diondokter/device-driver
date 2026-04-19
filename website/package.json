@@ -1,5 +1,4 @@
 {
-  "type": "module",
   "scripts": {
     "prebuild": "mdbook build ../book",
     "prebuild_prod": "mdbook build ../book",
