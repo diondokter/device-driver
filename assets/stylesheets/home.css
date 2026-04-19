@@ -33,6 +33,7 @@ body {
         align-items: center;
         gap: 20px;
         font-size: large;
+        justify-content: end;
 
         h1 {
             flex-grow: 1;
