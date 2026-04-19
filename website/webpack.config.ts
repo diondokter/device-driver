@@ -28,13 +28,15 @@ const config: webpack.Configuration = {
             filename: 'playground/index.html',
             chunks: ["playground"],
         }),
+        // REMINDER: WasmPackPlugin is cooked. It works when wasm-pack is installed through cargo.
+        // Doesn't work with npm install (which the plugin will install if wasm-pack isn't found).
         new WasmPackPlugin({
             crateDirectory: path.resolve(__dirname, "../compiler/dd-wasm"),
             watchDirectories: [
                 path.resolve(__dirname, "../compiler")
             ],
             outDir: path.resolve(__dirname, "pkg"),
-            outName: "device_driver_wasm"
+            outName: "device_driver_wasm",
         }),
         new CopyWebpackPlugin({
             patterns: [

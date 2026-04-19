@@ -20,8 +20,8 @@ jobs:
         with:
           mdbook-version: 'latest'
         
-      - run: npm install -g wasm-pack
-        working-directory: ./website
+      - name: Install wasm-pack
+        uses: taiki-e/install-action@wasm-pack
 
       - run: npm install
         working-directory: ./website

@@ -1,4 +1,4 @@
-import * as device_driver_wasm from '../../pkg';
+import * as device_driver_wasm from 'device-driver-wasm';
 import * as monaco from 'monaco-editor';
 import * as DDSLMonarch from './ddsl.monarch'
 import * as AU from 'ansi_up';
