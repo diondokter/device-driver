@@ -18,7 +18,7 @@
     </div>
 </header>
 
-<div style="max-width: 700px; text-align: center;">
+<div class="center-text">
     <h1>A toolkit to write better<br />device drivers, faster</h1>
     <p>
         Define your driver using DDSL, a simple custom specification language.<br />
@@ -29,7 +29,24 @@
 <hr />
 
 <div class="showcase">
-    <p>DDSL (device-driver specification language) is the way drivers are specified.</p>
+    <div>
+        <h2>Intro</h2>
+        <p>
+            Define your <em>registers</em>, <em>commands</em> & <em>buffers</em> using the device-driver
+            specification language. These form the user API of the driver.
+        </p>
+        <p>
+            Create <em>fieldsets</em> composed of many <em>fields</em>. Make them impossible to use incorrectly
+            with access control, type conversions & enum-indexed repeats.
+        </p>
+        <p>
+            Use custom <em>enums</em> to represent closed sets. Or define an <em>extern</em> when you want to use more
+            complex types implemented in your own code.
+        </p>
+        <p>
+            Document everything using the /// <em>doc comments</em>.
+        </p>
+    </div>
     <pre><code class="language-ddsl">device Foo {
     register-address-type: u8,
 
@@ -38,16 +55,110 @@
         address: 0,
         
         fields: fieldset BarFields {
-            size-bits: 8,
+            size-bytes: 1,
 
-            field xena[2*2] 2:0 -> u8 as enum Xena {
+            field xena 1:0 -> u8 as enum Xena {
                 A: _,
                 B: _,
-                D: catch-all 5,
-            }
+                C: default 3,
+            },
+            field quux 7:2 -> u8,
         }
     }
-}</code></pre>
+}
+</code></pre>
+</div>
+
+<hr />
+
+<div class="showcase reverse">
+    <pre><code class="nohighlight hljs"><span style="font-weight:bold;color:rgb(255,85,85)">error</span><span style="font-weight:bold">: invalid fieldset reference</span>
+  <span style="font-weight:bold;color:rgb(85,85,255)"> ╭▸ </span>input.ddsl:21:17
+   <span style="font-weight:bold;color:rgb(85,85,255)">│</span>
+<span style="font-weight:bold;color:rgb(85,85,255)"> 5</span> <span style="font-weight:bold;color:rgb(85,85,255)">│</span>     register Bar {
+   <span style="font-weight:bold;color:rgb(85,85,255)">│</span>              <span style="font-weight:bold;color:rgb(85,85,255)">───</span> <span style="font-weight:bold;color:rgb(85,85,255)">reference points to non-fieldset object</span>
+   <span style="font-weight:bold;color:rgb(85,85,255)">‡</span>
+<span style="font-weight:bold;color:rgb(85,85,255)">21</span> <span style="font-weight:bold;color:rgb(85,85,255)">│</span>         fields: Bar
+   <span style="font-weight:bold;color:rgb(85,85,255)">╰╴</span>                <span style="font-weight:bold;color:rgb(255,85,85)">━━━</span> <span style="font-weight:bold;color:rgb(255,85,85)">no fieldset found with this name</span>
+</code></pre>
+
+    <div>
+        <h2>Errors</h2>
+
+        <p>
+            Everything is <em>checked</em> by the compiler for correctness. If not a <em>helpful</em> error message will
+            explain
+            what's wrong.
+        </p>
+    </div>
+</div>
+
+<hr />
+
+<div class="showcase">
+    <div>
+        <h2>Rust API</h2>
+        <p>
+            Use a familiar <em>svd2rust</em>/<em>chiptool</em> inspired API to interact with the driver.
+            Everything can be called both <em>blocking</em> and <em>async</em>.
+        </p>
+        <p>
+            Read, write and modify registers, either per register or in <em>bulk</em>.
+        </p>
+        <p>
+            Commands can be dispatched with optional input and output data.
+        </p>
+        <p>
+            Buffers are written and read with byte slices.
+        </p>
+        <p>
+            Fields can have <em>conversion</em> types so values are always correct.
+        </p>
+        <p>
+            The driver is driven entirely by the functions you call, <em>no runtime</em> requirements.
+            It won't get in your way.
+        </p>
+    </div>
+
+    <pre><code class="language-rust">// Create device instance
+let mut device = MyDevice::new(DeviceInterface::new());
+
+// Write a register
+device.foo().write(|reg| reg.set_value_1(MyEnum::B))?;
+
+// Anything can be used async
+device.foo().read_async().await?;
+
+// Dispatch commands
+device.simple_command().dispatch()?;
+
+// Operate on registers in bulk
+let (foo, bar) = device
+    .multi_read()
+    .with(|d| d.foo().plan())
+    .with(|d| d.bar().plan())
+    .execute()?;
+
+// Write and read buffers
+device.wo_buf().write(&[0, 1, 2, 3])?;
+let len = device.ro_buf().read(&mut buffer)?;
+</code></pre>
+</div>
+
+<hr />
+
+<div class="center-text">
+    <h2>Curious yet?</h2>
+    <p>
+        Continue by reading the tutorials & spec in the <a href="./book/">book</a><br />
+        and playing around in the <a href="./playground">playground</a>.
+    </p>
+    <p>
+        For issues, PRs & discussions, head over to <a href="https://github.com/diondokter/device-driver">github</a>.
+    </p>
+    <p style="color: var(--text-dim);">
+        Copyright © 2020-2026 Dion Dokter & device-driver contributors.
+    </p>
 </div>
 
 </html>
