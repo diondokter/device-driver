@@ -18,10 +18,14 @@ jobs:
       - name: Setup mdBook
         uses: peaceiris/actions-mdbook@v2
         with:
-          mdbook-version: 'latest'
-        
+          mdbook-version: "latest"
+
       - name: Install wasm-pack
         uses: taiki-e/install-action@wasm-pack
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
 
       - run: npm install
         working-directory: ./website
