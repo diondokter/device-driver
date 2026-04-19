@@ -2,7 +2,6 @@
     --text-color-white: #ffffff;
     --text-color-dark: #121212;
 
-
     --theme-shade-1: #960018;
     --theme-shade-2: #df8191;
     --theme-shade-3: #dd9ea9;
@@ -11,6 +10,7 @@
     --bg-shade-2: #f3f3f3;
     --bg-shade-1: #ffffff;
     --text-color: var(--text-color-dark);
+    --text-dim: #808080;
 
     color-scheme: light dark;
 }
@@ -28,5 +28,6 @@
         --bg-shade-2: #181818;
         --bg-shade-1: #1f1f1f;
         --text-color: var(--text-color-white);
+        --text-dim: #808080;
     }
 }
