@@ -1,5 +1,9 @@
 @import "colors.css";
 
+:root {
+    --width: calc(100vw - clamp(40px, 100vw - (500px + 50vw), 33vw));
+}
+
 body {
     display: flex;
     flex-flow: column nowrap;
@@ -13,7 +17,7 @@ body {
     margin-bottom: 10px;
 
     >* {
-        width: calc(100vw - clamp(40px, 100vw - (500px + 50vw), 33vw));
+        width: var(--width);
     }
 }
 
@@ -33,10 +37,21 @@ body {
         align-items: center;
         gap: 20px;
         font-size: large;
-        justify-content: end;
+        justify-content: start;
+
+        .buttons {
+            display: flex;
+            flex-flow: row wrap;
+            align-content: stretch;
+            align-items: center;
+            gap: 20px;
+            justify-content: center;
+            flex-grow: 1;
+
+        }
 
         h1 {
-            flex-grow: 1;
+            flex-grow: 10000;
             text-align: left;
             font-size: xx-large;
             user-select: none;
@@ -93,10 +108,12 @@ hr {
         display: flex;
         flex-direction: column;
         justify-content: center;
+        max-width: var(--width);
 
         code {
             border-radius: 8px;
             min-width: none;
+            max-width: var(--width);
         }
     }
 

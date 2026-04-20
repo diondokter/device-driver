@@ -3,6 +3,7 @@
 
 <head>
     <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>device-driver</title>
     <link rel="stylesheet" href="../assets/stylesheets/home.css">
     <link rel="icon" type="image/png" href="../assets/images/ddsl.png" />
@@ -12,17 +13,20 @@
     <div class="container">
         <img src="../assets/images/ddsl.png" height="64px" />
         <h1>device-driver</h1>
-        <a href="./book/">Book</a>
-        <a href="./playground/">Playground</a>
-        <a href="https://crates.io/crates/device-driver">Crates.io</a>
-        <a href="https://github.com/diondokter/device-driver">GitHub</a>
+        <div class="buttons">
+            <a href="./book/">Book</a>
+            <a href="./playground/">Playground</a>
+            <a href="https://crates.io/crates/device-driver">Crates.io</a>
+            <a href="https://github.com/diondokter/device-driver">GitHub</a>
+        </div>
     </div>
 </header>
 
 <div class="center-text">
     <h1>A toolkit to write better<br />device drivers, faster</h1>
     <p>
-        Define your driver using DDSL, a simple custom specification language.<br />
+        Define your driver using DDSL, a simple custom specification language.</p>
+    <p>
         Then generate Rust code using the compiler or proc macro.
         <p />
 </div>
@@ -151,7 +155,7 @@ let len = device.ro_buf().read(&mut buffer)?;
 <div class="center-text">
     <h2>Curious yet?</h2>
     <p>
-        Continue by reading the tutorials & spec in the <a href="./book/">book</a><br />
+        Continue by reading the tutorials & spec in the <a href="./book/">book</a>
         and playing around in the <a href="./playground">playground</a>.
     </p>
     <p>
