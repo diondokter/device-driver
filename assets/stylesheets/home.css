@@ -112,7 +112,6 @@ hr {
 
         code {
             border-radius: 8px;
-            min-width: none;
             max-width: var(--width);
         }
     }
