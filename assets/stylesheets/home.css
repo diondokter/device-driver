@@ -1,4 +1,6 @@
 @import "colors.css";
+@import url('hljs/github-dark-dimmed.min.css') screen and (prefers-color-scheme: dark);
+@import url('hljs/github-dimmed.min.css') screen and (prefers-color-scheme: light);
 
 :root {
     --width: calc(100vw - clamp(40px, 100vw - (500px + 50vw), 33vw));
