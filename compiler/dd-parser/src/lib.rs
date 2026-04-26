@@ -474,7 +474,7 @@ pub fn node<'tokens, 'src: 'tokens>()
                 ident()
                     .then(
                         just(Token::Colon).ignore_then(choice((
-                            simple_expression().clone(),
+                            simple_expression(),
                             node.clone().map_with(|node, extra| {
                                 Expression::SubNode(Box::new(node)).spanned(extra.span())
                             }),
