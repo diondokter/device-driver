@@ -1,15 +1,26 @@
 use std::{borrow::Cow, fmt::Display, num::NonZeroU32};
 
-use chumsky::{input::ValueInput, prelude::*};
+use chumsky::{
+    IterParser, Parser,
+    error::Rich,
+    extra,
+    input::{Input, MappedInput},
+    prelude::{choice, empty, just, recursive},
+    select,
+};
 use device_driver_common::{
     span::{Span, SpanExt, Spanned},
     specifiers::{Access, AddressMode, BaseType, ByteOrder, Integer},
 };
 use device_driver_diagnostics::{Diagnostics, errors::ParsingError};
-use device_driver_lexer::{ParseIntRadix, ParseIntRadixError, ParseIntRadixErrorKind, Token};
+use device_driver_lexer::Token;
+
+use crate::parse_num::{ParseIntRadix, ParseIntRadixError, ParseIntRadixErrorKind, parse_num};
+
+mod parse_num;
 
 pub fn parse<'src>(tokens: &[Spanned<Token<'src>>], diagnostics: &mut Diagnostics) -> Ast<'src> {
-    let (ast, parse_errs) = parser()
+    let (ast, parse_errs) = node()
         .map_with(|ast, e| (ast, e.span()))
         .parse(
             tokens.map(
@@ -278,10 +289,10 @@ pub struct Ident<'src> {
 }
 
 fn try_num<'tokens, 'src: 'tokens, I: ParseIntRadix>(
-    num_token: Token<'src>,
+    num_str: &'src str,
     span: Span,
-) -> Result<I, Rich<'tokens, Token<'src>, Span>> {
-    match num_token.parse_num::<I>() {
+) -> Result<I, RichErr<'tokens, 'src>> {
+    match parse_num::<I>(num_str) {
         Ok(num) => Ok(num),
         Err(ParseIntRadixError {
             source,
@@ -314,117 +325,160 @@ fn try_num<'tokens, 'src: 'tokens, I: ParseIntRadix>(
     }
 }
 
-pub fn parser<'tokens, 'src: 'tokens, I>()
--> impl Parser<'tokens, I, Node<'src>, extra::Err<Rich<'tokens, Token<'src>, Span>>> + Clone
-where
-    I: ValueInput<'tokens, Token = Token<'src>, Span = Span>,
+type InputType<'tokens, 'src> =
+    MappedInput<'tokens, Token<'src>, Span, &'tokens [Spanned<Token<'src>>]>;
+type RichErr<'tokens, 'src> = Rich<'tokens, Token<'src>, Span>;
+type RichExtra<'tokens, 'src> = extra::Err<RichErr<'tokens, 'src>>;
+
+pub fn ident<'tokens, 'src: 'tokens>()
+-> impl Parser<'tokens, InputType<'tokens, 'src>, Ident<'src>, RichExtra<'tokens, 'src>> + Copy {
+    select! {
+        Token::Ident(val) = e => Ident { val, span: e.span() }
+    }
+    .labelled("identifier")
+}
+
+pub fn doc_comment<'tokens, 'src: 'tokens>()
+-> impl Parser<'tokens, InputType<'tokens, 'src>, Spanned<&'src str>, RichExtra<'tokens, 'src>> + Copy
 {
-    recursive(|node| {
-        let any_ident = select! {
-            Token::Ident(val) = e => Ident { val, span: e.span() }
-        }
-        .labelled("'identifier'");
+    select! {
+        Token::DocCommentLine(val) => val
+    }
+    .map_with(|line, extra| line.spanned(extra.span()))
+    .labelled("doc comment")
+}
 
-        let any_doc_comment = select! {
-            Token::DocCommentLine(val) => val
-        }
-        .map_with(|line, extra| line.spanned(extra.span()))
-        .labelled("'doc comment'");
+pub fn num<'tokens, 'src: 'tokens>()
+-> impl Parser<'tokens, InputType<'tokens, 'src>, &'src str, RichExtra<'tokens, 'src>> + Copy {
+    select! {
+        Token::Num(num) => num
+    }
+    .labelled("number")
+}
 
-        let any_num = select! {
-            num @ Token::Num(_) => num
-        }
-        .labelled("'number'");
+pub fn range<'tokens, 'src: 'tokens>()
+-> impl Parser<'tokens, InputType<'tokens, 'src>, Expression<'src>, RichExtra<'tokens, 'src>> + Copy
+{
+    num()
+        .try_map(try_num::<i128>)
+        .then_ignore(just(Token::Colon))
+        .then(num().try_map(try_num::<i128>))
+        .map(|(end, start)| Expression::AddressRange { end, start })
+        .labelled("range")
+}
 
-        let range = any_num
-            .try_map(try_num::<i128>)
-            .then_ignore(just(Token::Colon))
-            .then(any_num.try_map(try_num::<i128>))
-            .map(|(end, start)| Expression::AddressRange { end, start })
-            .labelled("'range'");
-        let any_base_type = select! { Token::BaseType(bt) => bt }.labelled("'base type'");
-        let any_integer = select! { Token::Integer(i) => i }.labelled("'integer type'");
-        let array_expression = any_num
-            .try_map(try_num::<u128>)
-            .map_with(|num, extra| (num, extra.span()))
-            .separated_by(just(Token::Comma))
-            .allow_trailing()
-            .collect::<Vec<_>>()
-            .validate(|numbers, _, emitter| {
-                match numbers
-                    .into_iter()
-                    .map(|(num, num_span)| {
-                        u8::try_from(num)
-                            .map_err(|_| Rich::custom(num_span, "Value must be a byte"))
-                    })
-                    .collect::<Result<Vec<u8>, _>>()
-                {
-                    Ok(array) => Expression::ByteArray(array),
-                    Err(e) => {
-                        emitter.emit(e);
-                        Expression::Error
-                    }
+pub fn base_type<'tokens, 'src: 'tokens>()
+-> impl Parser<'tokens, InputType<'tokens, 'src>, BaseType, RichExtra<'tokens, 'src>> + Copy {
+    select! { Token::BaseType(bt) => bt }.labelled("base type")
+}
+
+pub fn integer<'tokens, 'src: 'tokens>()
+-> impl Parser<'tokens, InputType<'tokens, 'src>, Integer, RichExtra<'tokens, 'src>> + Copy {
+    select! { Token::Integer(i) => i }.labelled("integer type")
+}
+
+pub fn byte_array<'tokens, 'src: 'tokens>()
+-> impl Parser<'tokens, InputType<'tokens, 'src>, Expression<'src>, RichExtra<'tokens, 'src>> + Copy
+{
+    num()
+        .try_map(try_num::<u128>)
+        .map_with(|num, extra| (num, extra.span()))
+        .separated_by(just(Token::Comma))
+        .allow_trailing()
+        .collect::<Vec<_>>()
+        .validate(|numbers, _, emitter| {
+            match numbers
+                .into_iter()
+                .map(|(num, num_span)| {
+                    u8::try_from(num).map_err(|_| Rich::custom(num_span, "Value must be a byte"))
+                })
+                .collect::<Result<Vec<u8>, _>>()
+            {
+                Ok(array) => Expression::ByteArray(array),
+                Err(e) => {
+                    emitter.emit(e);
+                    Expression::Error
                 }
-            })
-            .delimited_by(just(Token::BracketOpen), just(Token::BracketClose))
-            .labelled("'[bytes]'")
-            .boxed();
+            }
+        })
+        .delimited_by(just(Token::BracketOpen), just(Token::BracketClose))
+        .labelled("[bytes]")
+}
 
-        // Expression without type reference
-        let simple_expression = choice((
-            range,
-            any_base_type.map(Expression::BaseType),
-            any_integer.map(Expression::Integer),
-            any_num.try_map(try_num::<i128>).map(Expression::Number),
-            just(Token::Default)
-                .ignore_then(
-                    any_num
-                        .try_map(try_num::<i128>)
-                        .map(Some)
-                        .or(just(Token::Underscore).map(|_| None)),
-                )
-                .map(Expression::DefaultNumber)
-                .labelled("'default number'"),
-            just(Token::CatchAll)
-                .ignore_then(
-                    any_num
-                        .try_map(try_num::<i128>)
-                        .map(Some)
-                        .or(just(Token::Underscore).map(|_| None)),
-                )
-                .map(Expression::CatchAllNumber)
-                .labelled("'catch-all number'"),
-            array_expression,
-            just(Token::Allow).map(|_| Expression::Allow),
-            select! { Token::Access(val) => val }
-                .map(Expression::Access)
-                .labelled("'access'"),
-            select! { Token::ByteOrder(val) => val }
-                .map(Expression::ByteOrder)
-                .labelled("'byte order'"),
-            just(Token::Underscore).map(|_| Expression::Auto),
-            select! { Token::String(val) => val }
-                .map(Expression::String)
-                .labelled("'string'"),
-            select! { Token::AddressMode(val) => val }
-                .map(Expression::AddressMode)
-                .labelled("'address mode'"),
-        ))
-        .map_with(|expression, extra| expression.spanned(extra.span()))
-        .boxed();
+/// Expression without type reference since that clashes with nodes
+pub fn simple_expression<'tokens, 'src: 'tokens>()
+-> impl Parser<'tokens, InputType<'tokens, 'src>, Spanned<Expression<'src>>, RichExtra<'tokens, 'src>>
++ Copy {
+    choice((
+        range(),
+        base_type().map(Expression::BaseType),
+        integer().map(Expression::Integer),
+        num().try_map(try_num::<i128>).map(Expression::Number),
+        just(Token::Default)
+            .ignore_then(
+                num()
+                    .try_map(try_num::<i128>)
+                    .map(Some)
+                    .or(just(Token::Underscore).map(|_| None)),
+            )
+            .map(Expression::DefaultNumber)
+            .labelled("default number"),
+        just(Token::CatchAll)
+            .ignore_then(
+                num()
+                    .try_map(try_num::<i128>)
+                    .map(Some)
+                    .or(just(Token::Underscore).map(|_| None)),
+            )
+            .map(Expression::CatchAllNumber)
+            .labelled("catch-all number"),
+        byte_array(),
+        just(Token::Allow).map(|_| Expression::Allow),
+        select! { Token::Access(val) => val }
+            .map(Expression::Access)
+            .labelled("access"),
+        select! { Token::ByteOrder(val) => val }
+            .map(Expression::ByteOrder)
+            .labelled("byte order"),
+        just(Token::Underscore).map(|_| Expression::Auto),
+        select! { Token::String(val) => val }
+            .map(Expression::String)
+            .labelled("string"),
+        select! { Token::AddressMode(val) => val }
+            .map(Expression::AddressMode)
+            .labelled("address mode"),
+    ))
+    .map_with(|expression, extra| expression.spanned(extra.span()))
+}
 
-        let property = any_doc_comment
+pub fn repeat<'tokens, 'src: 'tokens>()
+-> impl Parser<'tokens, InputType<'tokens, 'src>, Spanned<Repeat<'src>>, RichExtra<'tokens, 'src>> + Copy
+{
+    num()
+        .try_map(try_num::<NonZeroU32>)
+        .map(RepeatSource::Count)
+        .or(ident().map(RepeatSource::Enum))
+        .then(just(Token::Star).ignore_then(num().try_map(try_num::<i32>)))
+        .delimited_by(just(Token::BracketOpen), just(Token::BracketClose))
+        .map_with(|(source, stride), extra| Repeat { source, stride }.spanned(extra.span()))
+        .labelled("[repeat]")
+}
+
+pub fn node<'tokens, 'src: 'tokens>()
+-> impl Parser<'tokens, InputType<'tokens, 'src>, Node<'src>, RichExtra<'tokens, 'src>> + Clone {
+    recursive(|node| {
+        let property = doc_comment()
             .repeated()
             .collect()
             .then(
-                any_ident
+                ident()
                     .then(
                         just(Token::Colon).ignore_then(choice((
-                            simple_expression.clone(),
+                            simple_expression().clone(),
                             node.clone().map_with(|node, extra| {
                                 Expression::SubNode(Box::new(node)).spanned(extra.span())
                             }),
-                            any_ident
+                            ident()
                                 .map(Expression::TypeReference)
                                 .map_with(|expression, extra| expression.spanned(extra.span())),
                         ))),
@@ -442,29 +496,19 @@ where
                 prop.doc_comments = docs;
                 prop
             })
-            .labelled("'property'")
-            .boxed();
-
-        let repeat = any_num
-            .try_map(try_num::<NonZeroU32>)
-            .map(RepeatSource::Count)
-            .or(any_ident.map(RepeatSource::Enum))
-            .then(just(Token::Star).ignore_then(any_num.try_map(try_num::<i32>)))
-            .delimited_by(just(Token::BracketOpen), just(Token::BracketClose))
-            .map_with(|(source, stride), extra| Repeat { source, stride }.spanned(extra.span()))
-            .labelled("'[repeat]'")
+            .labelled("property")
             .boxed();
 
         let type_conversion = just(Token::As).ignore_then(just(Token::Try).or_not()).then(
             node.clone()
                 .map(|node| TypeConversion::Subnode(Box::new(node)))
-                .or(any_ident.map(TypeConversion::Reference)),
+                .or(ident().map(TypeConversion::Reference)),
         );
         let type_specifier = just(Token::Arrow)
             .ignore_then(
                 choice((
-                    any_base_type,
-                    any_integer.map(BaseType::FixedSize),
+                    base_type(),
+                    integer().map(BaseType::FixedSize),
                     just(Token::Underscore).map(|_| BaseType::Unspecified),
                 ))
                 .map_with(|b, e| b.spanned(e.span())),
@@ -502,15 +546,15 @@ where
             empty().to(Vec::<Spanned<Property<'_>>>::new()).then(nodes),
         ))
         .delimited_by(just(Token::CurlyOpen), just(Token::CurlyClose))
-        .labelled("'node body'");
+        .labelled("node body");
 
-        any_doc_comment
+        doc_comment()
             .repeated()
             .collect()
-            .then(any_ident.labelled("'node type'"))
-            .then(any_ident.labelled("'node name'"))
-            .then(repeat.or_not())
-            .then(simple_expression.repeated().collect::<Vec<_>>())
+            .then(ident().labelled("node type"))
+            .then(ident().labelled("node name"))
+            .then(repeat().or_not())
+            .then(simple_expression().repeated().collect::<Vec<_>>())
             .then(type_specifier.or_not())
             .then(node_body.or_not())
             .map_with(
