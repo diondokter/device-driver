@@ -60,7 +60,7 @@ pub fn gen_docs(output_path: &std::path::Path) -> Result<(), DynError> {
             )
         })?;
     }
-    device_driver_parser::gen_docs::gen_docs(output_path).with_message(|| "gen-docs for parser")?;
+    device_driver_parser::gen_docs::gen_docs(&parser_folder).with_message(|| "gen-docs for parser")?;
 
     Ok(())
 }

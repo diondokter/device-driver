@@ -44,8 +44,9 @@ clap = { version = "4.5.57", features = ["derive"] }
 bitvec = { version = "1.0.1", default-features = false }
 syn = "2.0.114"
 pretty_assertions = "1.4.1"
-chumsky = { version = "0.12.0", default-features = false, features = ["std"] }
+chumsky = { version = "0.13.0", default-features = false, features = ["std"] }
 arbitrary = { version = "1.4.2", features = ["derive"] }
 
-[profile.release]
-lto = true
+[patch.crates-io]
+# https://codeberg.org/zesterer/chumsky/pulls/986
+chumsky = { git = "https://codeberg.org/diondokter/chumsky.git", rev = "ac7fe9b1eebad487679abafb0e0c4d1c082894d0" }
