@@ -1,4 +1,4 @@
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use device_driver_core::Target;
 use device_driver_diagnostics::{DynError, Metadata, ResultExt};
 use std::{io::Write, path::PathBuf, process::ExitCode};
@@ -6,6 +6,21 @@ use std::{io::Write, path::PathBuf, process::ExitCode};
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
+    #[command(subcommand)]
+    command: Command,
+}
+
+#[derive(Subcommand, Debug)]
+enum Command {
+    /// Compile DDSL to the target output
+    Compile(CompileArgs),
+    /// Generate docs
+    #[cfg(feature = "gen-docs")]
+    GenDocs(GenDocsArgs),
+}
+
+#[derive(Parser, Debug)]
+struct CompileArgs {
     /// Path to the input file.
     source_path: PathBuf,
     /// Path to output location. Any existing file is overwritten. If not provided, the output is written to stdout.
@@ -16,12 +31,19 @@ struct Args {
     target: TargetArg,
     /// Compiler options
     #[arg(
-        short = 'C',
-        value_name = "KEY=VALUE", 
-        value_parser = parse_key_val,
-        action = clap::ArgAction::Append,
-    )]
+            short = 'C',
+            value_name = "KEY=VALUE", 
+            value_parser = parse_key_val,
+            action = clap::ArgAction::Append,
+        )]
     c_opts: Option<Vec<(String, String)>>,
+}
+
+#[derive(Parser, Debug)]
+struct GenDocsArgs {
+    /// Path to output folder location
+    #[arg(short = 'o', long = "output", value_name = "DIR")]
+    output_path: PathBuf,
 }
 
 /// Parse a single key-value pair
@@ -44,6 +66,14 @@ fn main() -> ExitCode {
 fn run() -> Result<ExitCode, DynError> {
     let args = Args::parse();
 
+    match args.command {
+        Command::Compile(args) => compile(args),
+        #[cfg(feature = "gen-docs")]
+        Command::GenDocs(args) => gen_docs(args),
+    }
+}
+
+fn compile(args: CompileArgs) -> Result<ExitCode, DynError> {
     let target: Target = args.target.into();
     let mut compile_options = target.get_compile_options();
 
@@ -105,6 +135,11 @@ fn run() -> Result<ExitCode, DynError> {
         })?;
 
     Ok(ExitCode::SUCCESS)
+}
+
+#[cfg(feature = "gen-docs")]
+fn gen_docs(args: GenDocsArgs) -> Result<ExitCode, DynError> {
+    device_driver_core::gen_docs(&args.output_path).map(|()| ExitCode::SUCCESS)
 }
 
 #[derive(clap::ValueEnum, Debug, Clone)]

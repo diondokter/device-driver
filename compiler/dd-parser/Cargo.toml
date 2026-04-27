@@ -14,3 +14,7 @@ device-driver-common.workspace = true
 device-driver-diagnostics.workspace = true
 
 chumsky.workspace = true
+
+[features]
+# Enable doc generation. This outputs diagrams for the parsers. Requires nightly.
+gen-docs = ["chumsky/debug"]

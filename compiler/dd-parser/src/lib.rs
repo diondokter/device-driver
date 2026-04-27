@@ -17,6 +17,8 @@ use device_driver_lexer::Token;
 
 use crate::parse_num::{ParseIntRadix, ParseIntRadixError, ParseIntRadixErrorKind, parse_num};
 
+#[cfg(feature = "gen-docs")]
+pub mod gen_docs;
 mod parse_num;
 
 pub fn parse<'src>(tokens: &[Spanned<Token<'src>>], diagnostics: &mut Diagnostics) -> Ast<'src> {
@@ -325,10 +327,10 @@ fn try_num<'tokens, 'src: 'tokens, I: ParseIntRadix>(
     }
 }
 
-type InputType<'tokens, 'src> =
+pub type InputType<'tokens, 'src> =
     MappedInput<'tokens, Token<'src>, Span, &'tokens [Spanned<Token<'src>>]>;
-type RichErr<'tokens, 'src> = Rich<'tokens, Token<'src>, Span>;
-type RichExtra<'tokens, 'src> = extra::Err<RichErr<'tokens, 'src>>;
+pub type RichErr<'tokens, 'src> = Rich<'tokens, Token<'src>, Span>;
+pub type RichExtra<'tokens, 'src> = extra::Err<RichErr<'tokens, 'src>>;
 
 pub fn ident<'tokens, 'src: 'tokens>()
 -> impl Parser<'tokens, InputType<'tokens, 'src>, Ident<'src>, RichExtra<'tokens, 'src>> + Copy {

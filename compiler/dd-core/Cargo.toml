@@ -32,3 +32,4 @@ pretty_assertions = "1.4.0"
 [features]
 default = ["prettyplease"]
 prettyplease = ["dep:prettyplease", "dep:syn"]
+gen-docs = ["device-driver-parser/gen-docs"]

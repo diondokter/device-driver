@@ -36,6 +36,35 @@ pub fn compile(
     Ok((formatted_code, diagnostics))
 }
 
+#[cfg(feature = "gen-docs")]
+pub fn gen_docs(output_path: &std::path::Path) -> Result<(), DynError> {
+    if !output_path.exists() {
+        std::fs::create_dir_all(output_path).with_message(|| {
+            format!(
+                "creating folder for gen-docs output at {}",
+                output_path.display()
+            )
+        })?
+    }
+
+    if !output_path.is_dir() {
+        return Err(DynError::new("gen-docs output path is not a folder"));
+    }
+
+    let parser_folder = output_path.join("parser");
+    if !parser_folder.exists() {
+        std::fs::create_dir(&parser_folder).with_message(|| {
+            format!(
+                "creating folder for gen-docs parser output at {}",
+                parser_folder.display()
+            )
+        })?;
+    }
+    device_driver_parser::gen_docs::gen_docs(output_path).with_message(|| "gen-docs for parser")?;
+
+    Ok(())
+}
+
 #[cfg(not(feature = "prettyplease"))]
 fn format_code(input: &str) -> Result<String, DynError> {
     use std::io::{Read, Write};

@@ -22,3 +22,7 @@ device-driver-core.workspace = true
 device-driver-diagnostics.workspace = true
 
 clap.workspace = true
+
+[features]
+# Enable the gen-docs command. Requires nightly to build
+gen-docs = ["device-driver-core/gen-docs"]
