@@ -127,6 +127,7 @@ fn convert_reset_value(
     let target_byte_size = size_bits.div_ceil(8) as usize;
 
     match reset_value {
+        ResetValue::Integer(0) => Ok(ResetValue::Array(vec![0; target_byte_size])),
         ResetValue::Integer(int) => {
             // Convert the integer to LE and LSB0
             let mut array = int.to_le_bytes();
@@ -135,6 +136,12 @@ fn convert_reset_value(
             }
 
             let array_view = array.view_bits_mut::<Lsb0>();
+
+            ensure!(
+                array_view.len() >= size_bits as usize,
+                "The reset value is specified as an integer. That integer is 128 bits, but the register is bigger with {size_bits} bits. \
+                The size of the reset value must match the register size, so please specify it in array form."
+            );
 
             // Check if the value is not too big
             ensure!(
