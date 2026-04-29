@@ -76,7 +76,10 @@ fn convert_reset_value(
         ResetValue::Integer(int) => match target_byte_order {
             ByteOrder::LE => {
                 let int_bytes = int.to_le_bytes();
-                let (val, rest) = int_bytes.split_at(size_bytes as usize);
+
+                let (val, rest) = int_bytes
+                    .split_at_checked(size_bytes as usize)
+                    .unwrap_or((&int_bytes, &[]));
 
                 if rest.iter().any(|b| *b != 0) {
                     diagnostics.add(ResetValueIntTooBig {
@@ -90,11 +93,19 @@ fn convert_reset_value(
                     return None;
                 }
 
-                Some(ResetValue::Array(val.to_vec()).with_span(reset_value.span))
+                let mut val = val.to_vec();
+
+                if val.len() < size_bytes as usize {
+                    // Add 0's behind
+                    val.resize(size_bytes as usize, 0);
+                }
+
+                Some(ResetValue::Array(val).with_span(reset_value.span))
             }
             ByteOrder::BE => {
                 let int_bytes = int.to_be_bytes();
-                let (rest, val) = int_bytes.split_at(int_bytes.len() - size_bytes as usize);
+                let (rest, val) =
+                    int_bytes.split_at(int_bytes.len().saturating_sub(size_bytes as usize));
 
                 if rest.iter().any(|b| *b != 0) {
                     diagnostics.add(ResetValueIntTooBig {
@@ -107,7 +118,16 @@ fn convert_reset_value(
                     return None;
                 }
 
-                Some(ResetValue::Array(val.to_vec()).with_span(reset_value.span))
+                let mut val = val.to_vec();
+
+                if val.len() < size_bytes as usize {
+                    // Add 0's in front
+                    let mut new_val = vec![0; size_bytes as usize];
+                    new_val[size_bytes as usize - val.len()..].copy_from_slice(&val);
+                    val = new_val;
+                }
+
+                Some(ResetValue::Array(val).with_span(reset_value.span))
             }
         },
         ResetValue::Array(array) => {
