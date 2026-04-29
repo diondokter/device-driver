@@ -2,10 +2,12 @@
 
 ### Unreleased
 
+### 1.0.9 (29-04-26)
+
 - Fixed panic when using an integer reset value on a register larger than 128 bits.
   Now you get an error telling you to specify the reset value as an array.
 
-### 1.0.8 (06-03-25)
+### 1.0.8 (06-03-26)
 
 - Removed KDL-gen since v2 isn't going to use KDL anymore
 - Output formatting now happens with prettyplease again instead of rustfmt
