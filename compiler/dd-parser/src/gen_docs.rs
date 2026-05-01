@@ -19,6 +19,21 @@ pub fn gen_docs(output_path: &Path) -> Result<(), DynError> {
     .with_message(|| "generating node railroad diagram")?;
     gen_railroad(&output_path.join("repeat.svg"), super::repeat())
         .with_message(|| "generating node railroad diagram")?;
+
+    gen_ebnf(&output_path.join("node.ebnf"), super::node())
+        .with_message(|| "generating node railroad diagram")?;
+    gen_ebnf(&output_path.join("range.ebnf"), super::range())
+        .with_message(|| "generating node railroad diagram")?;
+    gen_ebnf(&output_path.join("byte-array.ebnf"), super::byte_array())
+        .with_message(|| "generating node railroad diagram")?;
+    gen_ebnf(
+        &output_path.join("simple-expression.ebnf"),
+        super::simple_expression(),
+    )
+    .with_message(|| "generating node railroad diagram")?;
+    gen_ebnf(&output_path.join("repeat.ebnf"), super::repeat())
+        .with_message(|| "generating node railroad diagram")?;
+
     Ok(())
 }
 
@@ -27,6 +42,16 @@ fn gen_railroad<'src: 'tokens, 'tokens, O>(
     parser: impl Parser<'tokens, InputType<'tokens, 'src>, O, RichExtra<'tokens, 'src>>,
 ) -> Result<(), DynError> {
     std::fs::write(output_path, parser.debug().to_railroad_svg().to_string())
+        .with_message(|| format!("writing diagram to {}", output_path.display()))?;
+
+    Ok(())
+}
+
+fn gen_ebnf<'src: 'tokens, 'tokens, O>(
+    output_path: &Path,
+    parser: impl Parser<'tokens, InputType<'tokens, 'src>, O, RichExtra<'tokens, 'src>>,
+) -> Result<(), DynError> {
+    std::fs::write(output_path, parser.debug().to_ebnf())
         .with_message(|| format!("writing diagram to {}", output_path.display()))?;
 
     Ok(())
