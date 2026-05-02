@@ -121,15 +121,15 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into_with_dummy_span(),
+            name: "Device".try_into_with_dummy_span().unwrap(),
             device_config: global_config,
             objects: vec![
                 Object::Buffer(Buffer {
-                    name: "MyBuffer".into_with_dummy_span(),
+                    name: "MyBuffer".try_into_with_dummy_span().unwrap(),
                     ..Default::default()
                 }),
                 Object::Buffer(Buffer {
-                    name: "MyBuffer".into_with_dummy_span(),
+                    name: "MyBuffer".try_into_with_dummy_span().unwrap(),
                     ..Default::default()
                 }),
             ],
@@ -151,17 +151,17 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into_with_dummy_span(),
+            name: "Device".try_into_with_dummy_span().unwrap(),
             device_config: global_config,
             objects: vec![Object::FieldSet(FieldSet {
-                name: "Reg".into_with_dummy_span(),
+                name: "Reg".try_into_with_dummy_span().unwrap(),
                 fields: vec![
                     Field {
-                        name: "field".into_with_dummy_span(),
+                        name: "field".try_into_with_dummy_span().unwrap(),
                         ..Default::default()
                     },
                     Field {
-                        name: "field".into_with_dummy_span(),
+                        name: "field".try_into_with_dummy_span().unwrap(),
                         ..Default::default()
                     },
                 ],
@@ -185,17 +185,17 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into_with_dummy_span(),
+            name: "Device".try_into_with_dummy_span().unwrap(),
             device_config: global_config,
             objects: vec![Object::Enum(Enum {
-                name: "Enum".into_with_dummy_span(),
+                name: "Enum".try_into_with_dummy_span().unwrap(),
                 variants: vec![
                     EnumVariant {
-                        name: "Variant".into_with_dummy_span(),
+                        name: "Variant".try_into_with_dummy_span().unwrap(),
                         ..Default::default()
                     },
                     EnumVariant {
-                        name: "Variant".into_with_dummy_span(),
+                        name: "Variant".try_into_with_dummy_span().unwrap(),
                         ..Default::default()
                     },
                 ],

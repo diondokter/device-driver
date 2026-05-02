@@ -141,9 +141,11 @@ impl Identifier {
     }
 }
 
-impl From<&str> for Identifier {
-    fn from(value: &str) -> Self {
-        Identifier::try_parse(value).unwrap()
+impl TryFrom<&str> for Identifier {
+    type Error = Error;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Identifier::try_parse(value)
     }
 }
 

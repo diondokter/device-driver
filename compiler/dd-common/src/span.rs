@@ -216,5 +216,12 @@ pub trait SpanExt {
     {
         self.into().with_dummy_span()
     }
+
+    fn try_into_with_dummy_span<T>(self) -> Result<Spanned<T>, <Self as TryInto<T>>::Error>
+    where
+        Self: TryInto<T>,
+    {
+        self.try_into().map(|val| val.with_dummy_span())
+    }
 }
 impl<T> SpanExt for T {}

@@ -95,13 +95,13 @@ mod tests {
     fn not_too_low() {
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into_with_dummy_span(),
+            name: "Device".try_into_with_dummy_span().unwrap(),
             device_config: DeviceConfig {
                 register_address_type: Some(Integer::I8.with_dummy_span()),
                 ..Default::default()
             },
             objects: vec![Object::Register(Register {
-                name: "MyReg".into_with_dummy_span(),
+                name: "MyReg".try_into_with_dummy_span().unwrap(),
                 address: (-300).with_dummy_span(),
                 ..Default::default()
             })],
@@ -118,13 +118,13 @@ mod tests {
     fn not_too_high() {
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into_with_dummy_span(),
+            name: "Device".try_into_with_dummy_span().unwrap(),
             device_config: DeviceConfig {
                 command_address_type: Some(Integer::U16.with_dummy_span()),
                 ..Default::default()
             },
             objects: vec![Object::Command(Command {
-                name: "MyReg".into_with_dummy_span(),
+                name: "MyReg".try_into_with_dummy_span().unwrap(),
                 address: 128000.with_dummy_span(),
                 ..Default::default()
             })],

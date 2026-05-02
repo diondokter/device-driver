@@ -977,24 +977,24 @@ mod tests {
             objects: vec![
                 Object::Device(Device {
                     description: String::new(),
-                    name: "a".into_with_dummy_span(),
+                    name: "a".try_into_with_dummy_span().unwrap(),
                     device_config: DeviceConfig {
                         ..Default::default()
                     },
                     objects: vec![
                         Object::Extern(Extern {
-                            name: "b".into_with_dummy_span(),
+                            name: "b".try_into_with_dummy_span().unwrap(),
                             ..Default::default()
                         }),
                         Object::Extern(Extern {
-                            name: "c".into_with_dummy_span(),
+                            name: "c".try_into_with_dummy_span().unwrap(),
                             ..Default::default()
                         }),
                     ],
                     span: Span::default(),
                 }),
                 Object::Extern(Extern {
-                    name: "d".into_with_dummy_span(),
+                    name: "d".try_into_with_dummy_span().unwrap(),
                     ..Default::default()
                 }),
             ],
