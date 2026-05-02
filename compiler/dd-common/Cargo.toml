@@ -17,3 +17,6 @@ unicode-ident = "1.0.22"
 
 [features]
 arbitrary = ["dep:arbitrary"]
+
+[lints]
+workspace = true

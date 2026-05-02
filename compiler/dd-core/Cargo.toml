@@ -32,3 +32,6 @@ pretty_assertions = "1.4.0"
 [features]
 default = ["prettyplease"]
 prettyplease = ["dep:prettyplease", "dep:syn"]
+
+[lints]
+workspace = true

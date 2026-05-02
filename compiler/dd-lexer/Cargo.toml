@@ -17,3 +17,6 @@ logos = "0.16.1"
 
 [features]
 arbitrary = ["dep:arbitrary", "device-driver-common/arbitrary"]
+
+[lints]
+workspace = true

@@ -22,3 +22,6 @@ device-driver-core.workspace = true
 device-driver-diagnostics.workspace = true
 
 clap.workspace = true
+
+[lints]
+workspace = true

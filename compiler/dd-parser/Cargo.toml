@@ -14,3 +14,6 @@ device-driver-common.workspace = true
 device-driver-diagnostics.workspace = true
 
 chumsky.workspace = true
+
+[lints]
+workspace = true

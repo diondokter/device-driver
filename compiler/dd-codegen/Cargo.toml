@@ -15,3 +15,6 @@ device-driver-lir.workspace = true
 convert_case.workspace = true
 
 askama = { version = "0.15.4", default-features = false, features = ["derive", "alloc"] }
+
+[lints]
+workspace = true

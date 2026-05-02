@@ -18,3 +18,6 @@ annotate-snippets = "0.12.13"
 
 [dev-dependencies]
 pretty_assertions.workspace = true
+
+[lints]
+workspace = true
