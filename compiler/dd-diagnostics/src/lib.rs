@@ -204,6 +204,7 @@ impl DynError {
         let mut string = String::new();
         let report = self.as_report("", "");
         let output = annotate_snippets::Renderer::styled().render(&report);
+        #[expect(clippy::unwrap_used, reason = "Infallible")]
         write!(&mut string, "{output}").unwrap();
         string
     }
@@ -213,7 +214,10 @@ impl Display for DynError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match (self.message.as_str(), self.source()) {
             ("", Some(source)) => write!(f, "{source}"),
-            ("", None) => unreachable!(),
+            ("", None) => {
+                debug_assert!(false, "unreachable");
+                write!(f, "unreachable")
+            }
             (message, _) if !f.alternate() => write!(f, "{message}"),
             (message, None) => write!(f, "{message}"),
             (message, Some(source)) => write!(f, "{message}\n| {source:#}"),

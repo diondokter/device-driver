@@ -42,7 +42,7 @@ pub fn compile(item: TokenStream) -> TokenStream {
         Err(e) => return e.into_compile_error().into(),
     };
 
-    match try_create_device(input) {
+    match try_compile(input) {
         Ok(tokens) => tokens,
         Err(e) => syn::Error::new(Span::call_site(), format!("{e:#}"))
             .into_compile_error()
@@ -50,7 +50,7 @@ pub fn compile(item: TokenStream) -> TokenStream {
     }
 }
 
-fn try_create_device(input: Input) -> Result<TokenStream, DynError> {
+fn try_compile(input: Input) -> Result<TokenStream, DynError> {
     let (source, source_path) = match input.source {
         Source::Ddsl(source_lit) => (source_lit.value(), source_lit.span().file()),
         Source::Manifest(path) => {

@@ -219,36 +219,42 @@ pub trait Address: Copy + Eq + Display {
 impl Address for u8 {
     const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
+        #[expect(clippy::unwrap_used, reason = "panic is desired behavior on overflow")]
         (self as i32 + val).try_into().unwrap()
     }
 }
 impl Address for u16 {
     const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
+        #[expect(clippy::unwrap_used, reason = "panic is desired behavior on overflow")]
         (self as i32 + val).try_into().unwrap()
     }
 }
 impl Address for u32 {
     const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
+        #[expect(clippy::unwrap_used, reason = "panic is desired behavior on overflow")]
         self.checked_add_signed(val).unwrap()
     }
 }
 impl Address for u64 {
     const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
+        #[expect(clippy::unwrap_used, reason = "panic is desired behavior on overflow")]
         self.checked_add_signed(val as i64).unwrap()
     }
 }
 impl Address for i8 {
     const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
+        #[expect(clippy::unwrap_used, reason = "panic is desired behavior on overflow")]
         (self as i32 + val).try_into().unwrap()
     }
 }
 impl Address for i16 {
     const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
+        #[expect(clippy::unwrap_used, reason = "panic is desired behavior on overflow")]
         (self as i32 + val).try_into().unwrap()
     }
 }
