@@ -45,17 +45,10 @@ impl<'a> DeviceTemplateRust<'a> {
 }
 
 fn description_to_docstring(description: &str) -> String {
-    use std::fmt::Write;
-
     let mut docstring = String::new();
 
     for line in description.lines() {
-        writeln!(
-            &mut docstring,
-            "///{}{line}",
-            if line.starts_with(' ') { "" } else { " " }
-        )
-        .unwrap();
+        docstring += &format!("///{}{line}", if line.starts_with(' ') { "" } else { " " });
     }
 
     docstring

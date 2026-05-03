@@ -46,7 +46,8 @@ pub fn run_passes(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> Res
     let removals = address_types_specified::run_pass(manifest, diagnostics)
         .with_message(|| "could not finish address_types_specified MIR pass")?;
     remove_objects(manifest, removals);
-    let removals = address_types_big_enough::run_pass(manifest, diagnostics);
+    let removals = address_types_big_enough::run_pass(manifest, diagnostics)
+        .with_message(|| "could not finish address_types_big_enough MIR pass")?;
     remove_objects(manifest, removals);
     addresses_non_overlapping::run_pass(manifest, diagnostics);
 

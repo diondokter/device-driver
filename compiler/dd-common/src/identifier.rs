@@ -163,6 +163,12 @@ impl PartialEq for Identifier {
     }
 }
 
+impl Display for Identifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.original())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 pub struct IdentifierRef {
     original: Arc<String>,
@@ -177,6 +183,12 @@ impl IdentifierRef {
 
     pub fn original(&self) -> &str {
         &self.original
+    }
+}
+
+impl Display for IdentifierRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.original())
     }
 }
 

@@ -33,7 +33,7 @@ pub fn find_min_max_addresses<'m>(
     manifest: &'m Manifest,
     device: &'m Device,
     filter: impl Fn(&'m Object) -> bool,
-) -> Option<((i128, &'m Object), (i128, &'m Object))> {
+) -> Result<Option<((i128, &'m Object), (i128, &'m Object))>, DynError> {
     let mut min_address_found = i128::MAX;
     let mut min_obj_found = None;
     let mut max_address_found = i128::MIN;
@@ -48,7 +48,9 @@ pub fn find_min_max_addresses<'m>(
             address_offsets.pop();
         }
 
-        *children_left.last_mut().unwrap() -= 1;
+        *children_left
+            .last_mut()
+            .ok_or_else(|| DynError::new("unexptected no children left"))? -= 1;
 
         if !filter(object) {
             continue;
@@ -82,9 +84,9 @@ pub fn find_min_max_addresses<'m>(
                 }
                 RepeatSource::Enum(enum_name) => {
                     let enum_value = search_object(manifest, &enum_name)
-                        .expect("A mir pass checked this enum exists")
+                        .ok_or_else(|| DynError::new(format!("a mir pass should have checked object `{enum_name}` exists, but it can't be found")))?
                         .as_enum()
-                        .expect("A mir pass checked this is an enum");
+                        .ok_or_else(|| DynError::new(format!("a mir pass should have checked object `{enum_name}` is an enum, but it's not")))?;
 
                     for (discriminant, _) in enum_value.iter_variants_with_discriminant() {
                         let address =
@@ -116,8 +118,15 @@ pub fn find_min_max_addresses<'m>(
         }
     }
 
-    Some((
-        (min_address_found, min_obj_found?),
-        (max_address_found, max_obj_found?),
-    ))
+    let Some(min_obj_found) = min_obj_found else {
+        return Ok(None);
+    };
+    let Some(max_obj_found) = max_obj_found else {
+        return Ok(None);
+    };
+
+    Ok(Some((
+        (min_address_found, min_obj_found),
+        (max_address_found, max_obj_found),
+    )))
 }

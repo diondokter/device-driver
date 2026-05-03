@@ -23,6 +23,3 @@ device-driver-diagnostics.workspace = true
 syn.workspace = true
 
 proc-macro2 = { version = "1.0.101", features = ["span-locations"] }
-
-[lints]
-workspace = true

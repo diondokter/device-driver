@@ -31,6 +31,3 @@ defmt = ["dep:defmt", "embedded-io?/defmt", "embedded-io-async?/defmt"]
 embedded-io-07 = ["dep:embedded-io", "dep:embedded-io-async"]
 
 macros = ["dep:device-driver-macros"]
-
-[lints]
-workspace = true

@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use device_driver_common::{span::Spanned, specifiers::Integer};
-use device_driver_diagnostics::{Diagnostics, errors::AddressOutOfRange};
+use device_driver_diagnostics::{Diagnostics, DynError, ResultExt, errors::AddressOutOfRange};
 
 use crate::{
     find_min_max_addresses,
@@ -9,7 +9,10 @@ use crate::{
 };
 
 /// Checks if the various address types can fully contain the min and max addresses of the types of objects they are for
-pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashSet<UniqueId> {
+pub fn run_pass(
+    manifest: &mut Manifest,
+    diagnostics: &mut Diagnostics,
+) -> Result<HashSet<UniqueId>, DynError> {
     let mut removals = HashSet::new();
 
     for object in manifest.iter_objects() {
@@ -24,7 +27,8 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
             |o| matches!(o, Object::Block(_) | Object::Register(_)),
             diagnostics,
             &mut removals,
-        );
+        )
+        .with_message(|| format!("checking device `{}` registers", device.name))?;
         check_device(
             device.device_config.command_address_type.as_ref(),
             manifest,
@@ -32,7 +36,8 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
             |o| matches!(o, Object::Block(_) | Object::Command(_)),
             diagnostics,
             &mut removals,
-        );
+        )
+        .with_message(|| format!("checking device `{}` commands", device.name))?;
         check_device(
             device.device_config.buffer_address_type.as_ref(),
             manifest,
@@ -40,10 +45,11 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
             |o| matches!(o, Object::Block(_) | Object::Buffer(_)),
             diagnostics,
             &mut removals,
-        );
+        )
+        .with_message(|| format!("checking device `{}` buffers", device.name))?;
     }
 
-    removals
+    Ok(removals)
 }
 
 fn check_device(
@@ -53,15 +59,16 @@ fn check_device(
     filter: impl Fn(&Object) -> bool,
     diagnostics: &mut Diagnostics,
     removals: &mut HashSet<UniqueId>,
-) {
+) -> Result<(), DynError> {
     let Some(address_type) = address_type else {
-        return;
+        return Ok(());
     };
 
     let Some(((min_address, min_obj), (max_address, _))) =
         find_min_max_addresses(manifest, device, filter)
+            .with_message(|| "finding min & max addresses")?
     else {
-        return;
+        return Ok(());
     };
 
     if min_address < address_type.min_value() || max_address > address_type.max_value() {
@@ -78,6 +85,8 @@ fn check_device(
         });
         removals.insert(device.id());
     }
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -110,7 +119,11 @@ mod tests {
         .into();
 
         let mut diagnostics = Diagnostics::new();
-        assert!(!run_pass(&mut start_mir, &mut diagnostics).is_empty());
+        assert!(
+            !run_pass(&mut start_mir, &mut diagnostics)
+                .unwrap()
+                .is_empty()
+        );
         assert!(diagnostics.has_error());
     }
 
@@ -133,7 +146,11 @@ mod tests {
         .into();
 
         let mut diagnostics = Diagnostics::new();
-        assert!(!run_pass(&mut start_mir, &mut diagnostics).is_empty());
+        assert!(
+            !run_pass(&mut start_mir, &mut diagnostics)
+                .unwrap()
+                .is_empty()
+        );
         assert!(diagnostics.has_error());
     }
 }

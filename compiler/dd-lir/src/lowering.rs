@@ -43,7 +43,8 @@ pub fn transform_devices(manifest: &mir::Manifest) -> Result<Vec<lir::Device>, D
             .with_message(|| "could not collect into blocks")?;
 
             Ok(lir::Device {
-                internal_address_type: find_best_internal_address_type(manifest, device),
+                internal_address_type: find_best_internal_address_type(manifest, device)
+                    .with_message(|| "finding best internal address type")?,
                 blocks,
             })
         })
@@ -381,7 +382,7 @@ fn transform_field(manifest: &mir::Manifest, field: &mir::Field) -> Result<lir::
     })
 }
 
-pub fn transform_enums(manifest: &mir::Manifest) -> Vec<lir::Enum> {
+pub fn transform_enums(manifest: &mir::Manifest) -> Result<Vec<lir::Enum>, DynError> {
     manifest.iter_enums().map(|e| {
         let mir::Enum {
             description,
@@ -396,7 +397,7 @@ pub fn transform_enums(manifest: &mir::Manifest) -> Vec<lir::Enum> {
         let base_type = match base_type.value {
             BaseType::FixedSize(integer) => integer.to_string(),
             _ => {
-                panic!("Enum base type should be set to fixed size integer in a mir pass at this point")
+                return Err(DynError::new(format!("enum base type of `{name}` should be set to fixed size integer in a mir pass at this point, but it's a {base_type}")));
             }
         };
 
@@ -420,12 +421,12 @@ pub fn transform_enums(manifest: &mir::Manifest) -> Vec<lir::Enum> {
             })
             .collect();
 
-        lir::Enum {
+        Ok(lir::Enum {
             description: description.clone(),
             name: name.value.clone(),
             base_type,
             variants,
-        }
+        })
     }).collect()
 }
 
@@ -490,8 +491,12 @@ impl<'o> From<&'o mir::Block> for BorrowedBlock<'o> {
     }
 }
 
-fn find_best_internal_address_type(manifest: &mir::Manifest, device: &mir::Device) -> Integer {
+fn find_best_internal_address_type(
+    manifest: &mir::Manifest,
+    device: &mir::Device,
+) -> Result<Integer, DynError> {
     let (min_address_found, max_address_found) = find_min_max_addresses(manifest, device, |_| true)
+        .with_message(|| format!("finding min & max addresses for device `{}`", device.name))?
         .map(|((min, _), (max, _))| (min, max))
         .unwrap_or_default();
 
@@ -508,19 +513,25 @@ fn find_best_internal_address_type(manifest: &mir::Manifest, device: &mir::Devic
 
     if needs_signed {
         match needs_bits {
-            8 => Integer::I8,
-            16 => Integer::I16,
-            32 => Integer::I32,
-            64 => Integer::I64,
-            _ => unreachable!(),
+            8 => Ok(Integer::I8),
+            16 => Ok(Integer::I16),
+            32 => Ok(Integer::I32),
+            64 => Ok(Integer::I64),
+            bits => Err(DynError::new(format!(
+                "device `{}` needs an unexpected amount of signed bits: {bits}",
+                device.name
+            ))),
         }
     } else {
         match needs_bits {
-            8 => Integer::U8,
-            16 => Integer::U16,
-            32 => Integer::U32,
-            64 => Integer::U64,
-            _ => unreachable!(),
+            8 => Ok(Integer::U8),
+            16 => Ok(Integer::U16),
+            32 => Ok(Integer::U32),
+            64 => Ok(Integer::U64),
+            bits => Err(DynError::new(format!(
+                "device `{}` needs an unexpected amount of unsigned bits: {bits}",
+                device.name
+            ))),
         }
     }
 }
