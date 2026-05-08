@@ -57,9 +57,6 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> Resul
             for variant in enum_value.variants.iter_mut() {
                 let variant_id = variant.id_with(e_id.clone());
                 if !seen_ids.insert(variant_id.clone()) {
-                    for id in seen_ids.elements.iter() {
-                        println!("{id:?}");
-                    }
                     let original = seen_ids.get(&e_id).ok_or_else(|| {
                         DynError::new(format!("could not find enum {e_id:?} (field {variant_id})"))
                     })?;
