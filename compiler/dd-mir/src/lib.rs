@@ -2,6 +2,7 @@ use std::num::NonZero;
 
 use device_driver_common::{
     identifier::IdentifierRef,
+    span::SpanExt,
     specifiers::{Repeat, RepeatSource},
 };
 use device_driver_diagnostics::{Diagnostics, DynError};
@@ -57,7 +58,7 @@ pub fn find_min_max_addresses<'m>(
         if let Some(address) = object.address() {
             let repeat = object.repeat().cloned().unwrap_or(Repeat {
                 source: RepeatSource::Count(NonZero::new(1).unwrap()),
-                stride: 0,
+                stride: 0.with_dummy_span(),
             });
 
             let total_address_offsets = address_offsets.iter().sum::<i128>();
@@ -66,7 +67,7 @@ pub fn find_min_max_addresses<'m>(
                 RepeatSource::Count(count) => {
                     let count_0_address = total_address_offsets + address.value;
                     let count_max_address = count_0_address
-                        + (i128::from(count.get().saturating_sub(1)) * repeat.stride);
+                        + (i128::from(count.get().saturating_sub(1)) * repeat.stride.value);
                     let min_address = count_0_address.min(count_max_address);
                     let max_address = count_0_address.max(count_max_address);
 
@@ -87,8 +88,9 @@ pub fn find_min_max_addresses<'m>(
                         .expect("A mir pass checked this is an enum");
 
                     for (discriminant, _) in enum_value.iter_variants_with_discriminant() {
-                        let address =
-                            total_address_offsets + address.value + (discriminant * repeat.stride);
+                        let address = total_address_offsets
+                            + address.value
+                            + (discriminant * repeat.stride.value);
                         if address < min_address_found {
                             min_address_found = address;
                             min_obj_found = Some(object);

@@ -88,19 +88,19 @@ fn find_object_addresses<'m>(
         {
             let repeat = object.repeat().cloned().unwrap_or(Repeat {
                 source: RepeatSource::Count(NonZero::new(1).unwrap()),
-                stride: 0,
+                stride: 0.with_dummy_span(),
             });
 
             let total_address_offsets = address_offsets.iter().sum::<i128>();
 
             // If the stride is 0, everything overlaps. We don't need infinite diagnostics about that,
             // so limit the elements we look at. Otherwise we could OOM
-            let max_elements = if repeat.stride == 0 { 2 } else { usize::MAX };
+            let max_elements = if repeat.stride == 0 { 5 } else { usize::MAX };
 
             match repeat.source {
                 RepeatSource::Count(count) => {
                     for index in (0..i128::from(count.get())).take(max_elements) {
-                        let repeat_offset = index * repeat.stride;
+                        let repeat_offset = index * repeat.stride.value;
                         let address_value = total_address_offsets + address.value + repeat_offset;
 
                         object_addresses.push(ObjectAddress {
@@ -121,7 +121,7 @@ fn find_object_addresses<'m>(
                         .iter_variants_with_discriminant()
                         .take(max_elements)
                     {
-                        let repeat_offset = discriminant * repeat.stride;
+                        let repeat_offset = discriminant * repeat.stride.value;
                         let address_value = total_address_offsets + address.value + repeat_offset;
 
                         object_addresses.push(ObjectAddress {

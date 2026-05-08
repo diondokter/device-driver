@@ -272,7 +272,7 @@ pub struct TypeConversion {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Repeat {
     pub source: RepeatSource,
-    pub stride: i128,
+    pub stride: Spanned<i128>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
