@@ -1,6 +1,6 @@
 #![no_main]
 
-use device_driver_codegen::Target;
+use device_driver_core::Target;
 use libfuzzer_sys::fuzz_target;
 
 // Goal: Don't have panics or ICE's
