@@ -93,9 +93,13 @@ fn find_object_addresses<'m>(
 
             let total_address_offsets = address_offsets.iter().sum::<i128>();
 
+            // If the stride is 0, everything overlaps. We don't need infinite diagnostics about that,
+            // so limit the elements we look at. Otherwise we could OOM
+            let max_elements = if repeat.stride == 0 { 2 } else { usize::MAX };
+
             match repeat.source {
                 RepeatSource::Count(count) => {
-                    for index in 0..i128::from(count.get()) {
+                    for index in (0..i128::from(count.get())).take(max_elements) {
                         let repeat_offset = index * repeat.stride;
                         let address_value = total_address_offsets + address.value + repeat_offset;
 
@@ -113,7 +117,10 @@ fn find_object_addresses<'m>(
                         .as_enum()
                         .expect("A mir pass checked this is an enum");
 
-                    for (discriminant, _) in enum_value.iter_variants_with_discriminant() {
+                    for (discriminant, _) in enum_value
+                        .iter_variants_with_discriminant()
+                        .take(max_elements)
+                    {
                         let repeat_offset = discriminant * repeat.stride;
                         let address_value = total_address_offsets + address.value + repeat_offset;
 
