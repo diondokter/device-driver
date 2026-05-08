@@ -29,7 +29,8 @@ pub fn run_passes(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> Res
     remove_objects(manifest, removals);
     let removals = names_checked::run_pass(manifest, diagnostics);
     remove_objects(manifest, removals);
-    names_unique::run_pass(manifest, diagnostics);
+    names_unique::run_pass(manifest, diagnostics)
+        .with_message(|| "could not finish names_unique MIR pass")?;
     let removals = field_set_refs_valid::run_pass(manifest, diagnostics);
     remove_objects(manifest, removals);
     let removals = enum_values_checked::run_pass(manifest, diagnostics);
