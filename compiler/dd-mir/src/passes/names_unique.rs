@@ -1,9 +1,9 @@
 use crate::model::{LendingIterator, Manifest, Object, Unique};
-use device_driver_diagnostics::{Diagnostics, errors::DuplicateName};
+use device_driver_diagnostics::{Diagnostics, DynError, errors::DuplicateName};
 
 /// Checks if all names are unique to prevent later name collisions.
 /// If there is a collision an error is returned.
-pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
+pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> Result<(), DynError> {
     // NOT A HASHSET!
     // The hash only looks at the original value of the identifier.
     // We need to use Eq to check the uniqueness of both the original and the split words.
@@ -27,6 +27,8 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
 
             // Duplicate name found. Let's add to the name to make it unique again so it can contribute to later passes
             object.name_mut().set_duplicate_id(get_duplicate_id());
+            // We've also 'seen' this duplicate
+            seen_ids.insert(object.id());
         }
 
         if let Object::FieldSet(field_set) = object {
@@ -44,6 +46,8 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
 
                     // Duplicate name found. Let's add to the name to make it unique again so it can contribute to later passes
                     field.name.set_duplicate_id(get_duplicate_id());
+                    // We've also 'seen' this duplicate
+                    seen_ids.insert(field.id_with(fs_id.clone()));
                 }
             }
         }
@@ -53,7 +57,9 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
             for variant in enum_value.variants.iter_mut() {
                 let variant_id = variant.id_with(e_id.clone());
                 if !seen_ids.insert(variant_id.clone()) {
-                    let original = seen_ids.get(&e_id).unwrap();
+                    let original = seen_ids.get(&e_id).ok_or_else(|| {
+                        DynError::new(format!("could not find enum {e_id:?} (field {variant_id})"))
+                    })?;
                     diagnostics.add(DuplicateName {
                         original: original.span(),
                         original_value: original.identifier().clone(),
@@ -63,10 +69,14 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
 
                     // Duplicate name found. Let's add to the name to make it unique again so it can contribute to later passes
                     variant.name.set_duplicate_id(get_duplicate_id());
+                    // We've also 'seen' this duplicate
+                    seen_ids.insert(variant.id_with(e_id.clone()));
                 }
             }
         }
     }
+
+    Ok(())
 }
 
 /// Similar to a hashset in API, but uses the [Eq] trait (and linear scan) instead of [Hash]
@@ -138,7 +148,7 @@ mod tests {
         .into();
 
         let mut diagnostics = Diagnostics::new();
-        run_pass(&mut start_mir, &mut diagnostics);
+        run_pass(&mut start_mir, &mut diagnostics).unwrap();
         assert!(diagnostics.has_error())
     }
 
@@ -172,7 +182,7 @@ mod tests {
         .into();
 
         let mut diagnostics = Diagnostics::new();
-        run_pass(&mut start_mir, &mut diagnostics);
+        run_pass(&mut start_mir, &mut diagnostics).unwrap();
         assert!(diagnostics.has_error())
     }
 
@@ -206,7 +216,7 @@ mod tests {
         .into();
 
         let mut diagnostics = Diagnostics::new();
-        run_pass(&mut start_mir, &mut diagnostics);
+        run_pass(&mut start_mir, &mut diagnostics).unwrap();
         assert!(diagnostics.has_error())
     }
 }

@@ -172,7 +172,7 @@ fn parse_node_to_shape<'src, S: Shape>(
                         IdentifierRef::new(ident.val.into()).with_span(ident.span),
                     ),
                 },
-                stride: node_repeat.stride as i128,
+                stride: (node_repeat.stride.value as i128).with_span(node_repeat.stride.span),
             })
         }
         (_, None) => {}

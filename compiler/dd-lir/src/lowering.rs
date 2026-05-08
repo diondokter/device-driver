@@ -360,7 +360,7 @@ fn transform_field(manifest: &mir::Manifest, field: &mir::Field) -> Result<lir::
             .map_or(lir::Repeat::None, |repeat| match &repeat.source {
                 RepeatSource::Count(c) => lir::Repeat::Count {
                     count: c.get(),
-                    stride: repeat.stride,
+                    stride: repeat.stride.value,
                 },
                 RepeatSource::Enum(enum_name) => {
                     let target_enum = search_object(manifest, enum_name)
@@ -374,7 +374,7 @@ fn transform_field(manifest: &mir::Manifest, field: &mir::Field) -> Result<lir::
                             .iter()
                             .map(|variant| variant.name.value.clone())
                             .collect(),
-                        stride: repeat.stride,
+                        stride: repeat.stride.value,
                     }
                 }
             }),
@@ -436,7 +436,7 @@ fn repeat_to_method_kind(repeat: &Option<Repeat>, manifest: &mir::Manifest) -> l
             stride,
         }) => lir::Repeat::Count {
             count: count.get(),
-            stride: *stride,
+            stride: stride.value,
         },
         Some(Repeat {
             source: RepeatSource::Enum(enum_name),
@@ -453,7 +453,7 @@ fn repeat_to_method_kind(repeat: &Option<Repeat>, manifest: &mir::Manifest) -> l
                     .iter()
                     .map(|variant| variant.name.value.clone())
                     .collect(),
-                stride: *stride,
+                stride: stride.value,
             }
         }
         None => lir::Repeat::None,

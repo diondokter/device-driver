@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 
 use convert_case::Casing;
-use device_driver_common::identifier::Identifier;
 
 use crate::model::{LendingIterator, Manifest, Object, Unique, UniqueId};
 use device_driver_diagnostics::{
@@ -43,9 +42,6 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                 device_name: device.name.span,
                 suggestion: converted_driver_name.clone(),
             });
-            // Change the name already so we get consistent casing further along
-            device.name.value = Identifier::try_parse(converted_driver_name).unwrap();
-            device.name.apply_boundaries(&lenient_pascal_boundaries);
         }
     }
 

@@ -120,7 +120,7 @@ fn get_repeat_iter(manifest: &Manifest, field: &Field) -> (Vec<i128>, bool) {
         match &repeat.source {
             RepeatSource::Count(count) => (
                 (0..i128::from(count.get()))
-                    .map(move |count| count * stride)
+                    .map(move |count| count * stride.value)
                     .collect(),
                 true,
             ),
@@ -130,7 +130,7 @@ fn get_repeat_iter(manifest: &Manifest, field: &Field) -> (Vec<i128>, bool) {
                     .as_enum()
                     .expect("Checked in earlier pass")
                     .iter_variants_with_discriminant()
-                    .map(move |(discriminant, _)| discriminant * stride)
+                    .map(move |(discriminant, _)| discriminant * stride.value)
                     .collect(),
                 true,
             ),
@@ -211,7 +211,7 @@ mod tests {
                     field_address: AddressRange { start: 0, end: 4 }.with_dummy_span(),
                     repeat: Some(Repeat {
                         source: RepeatSource::Count(NonZero::new(3).unwrap()),
-                        stride: 5,
+                        stride: 5.with_dummy_span(),
                     }),
                     ..Default::default()
                 }],
@@ -330,7 +330,7 @@ mod tests {
                         field_address: AddressRange { start: 0, end: 0 }.with_dummy_span(),
                         repeat: Some(Repeat {
                             source: RepeatSource::Count(NonZero::new(6).unwrap()),
-                            stride: 1,
+                            stride: 1.with_dummy_span(),
                         }),
                         ..Default::default()
                     },

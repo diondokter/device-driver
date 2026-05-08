@@ -1928,3 +1928,39 @@ impl Diagnostic for InvalidRepeat {
         .to_vec()
     }
 }
+
+#[derive(Debug)]
+pub struct ZeroStrideRepeat {
+    pub stride: Span,
+}
+
+impl Diagnostic for ZeroStrideRepeat {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        const INFO_TEXT: &str = "a stride of 0 means the address doesn't change. So the repeat is useless and thus rejected";
+
+        [
+            Level::ERROR
+                .primary_title("repeat stride cannot be 0")
+                .element(
+                    Snippet::source(source).path(path).annotation(
+                        AnnotationKind::Primary
+                            .span(self.stride.into())
+                            .label("stride is 0"),
+                    ),
+                ),
+            Level::HELP
+                .secondary_title("change to a non-zero value")
+                .element(
+                    Snippet::source(source)
+                        .path(path)
+                        .patch(Patch::new(self.stride.into(), "1")),
+                ),
+            Group::with_title(Level::INFO.secondary_title(INFO_TEXT)),
+        ]
+        .to_vec()
+    }
+}

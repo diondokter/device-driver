@@ -28,7 +28,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
                                     field_set: field_set.name.span,
                                 });
                                 // Fix the size for now so we can continue using this field later
-                                field.field_address.end = field.field_address.start + 64;
+                                field.field_address.end = field.field_address.start + 63;
                                 continue;
                             }
                         }

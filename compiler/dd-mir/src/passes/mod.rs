@@ -19,6 +19,7 @@ pub mod field_set_refs_valid;
 pub mod names_checked;
 pub mod names_unique;
 pub mod repeat_with_enums_checked;
+pub mod repeat_zero_stride_rejected;
 pub mod reset_values_converted;
 
 pub fn run_passes(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> Result<(), DynError> {
@@ -28,10 +29,13 @@ pub fn run_passes(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> Res
     remove_objects(manifest, removals);
     let removals = names_checked::run_pass(manifest, diagnostics);
     remove_objects(manifest, removals);
-    names_unique::run_pass(manifest, diagnostics);
+    names_unique::run_pass(manifest, diagnostics)
+        .with_message(|| "could not finish names_unique MIR pass")?;
     let removals = field_set_refs_valid::run_pass(manifest, diagnostics);
     remove_objects(manifest, removals);
     let removals = enum_values_checked::run_pass(manifest, diagnostics);
+    remove_objects(manifest, removals);
+    let removals = repeat_zero_stride_rejected::run_pass(manifest, diagnostics);
     remove_objects(manifest, removals);
     repeat_with_enums_checked::run_pass(manifest, diagnostics);
     let removals = extern_values_checked::run_pass(manifest, diagnostics);
