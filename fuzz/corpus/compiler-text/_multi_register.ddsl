@@ -1,0 +1,32 @@
+device MyTestDevice {
+    byte-order: LE,
+    register-address-type: u8,
+    register-address-mode: mapped,
+
+    register Foo {
+        address: 0,
+        fields: fieldset FooFields {
+            size-bytes: 3,
+            field value 23:0 -> uint,
+        }
+    },
+    register Bar {
+        address: 3,
+        fields: fieldset BarFields {
+            size-bytes: 1,
+            field value 7:0 -> uint,
+        }
+    },
+    register FooRepeated[4*3] {
+        address: 4,
+        fields: FooFields,
+    },
+    register Indexed[IndexEnum*3] {
+        address: 16,
+        fields: FooFields,
+    },
+    enum IndexEnum {
+        A: _,
+        B: _,
+    }
+}

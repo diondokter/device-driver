@@ -5,10 +5,26 @@ use libfuzzer_sys::fuzz_target;
 
 // Goal: Don't have panics or ICE's
 fuzz_target!(|source: &str| {
-    if let Err(e) =
-        device_driver_core::compile(source, Target::Rust, Target::Rust.get_compile_options())
-    {
-        println!("======================\n{e:#}\n======================");
-        panic!();
+    match device_driver_core::compile(source, Target::Rust, Target::Rust.get_compile_options()) {
+        Ok((_output, diagnostics)) => {
+            let mut d = String::new();
+            diagnostics
+                .print_to_fmt(
+                    &mut d,
+                    device_driver_core::Metadata {
+                        source,
+                        source_path: "fuzz.ddsl",
+                        term_width: None,
+                        ansi: false,
+                        unicode: false,
+                        anonymized_line_numbers: false,
+                    },
+                )
+                .unwrap();
+        }
+        Err(e) => {
+            println!("======================\n{e:#}\n======================");
+            panic!();
+        }
     }
 });

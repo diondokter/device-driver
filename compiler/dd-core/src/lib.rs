@@ -6,6 +6,7 @@ use device_driver_diagnostics::{Diagnostics, DynError, ResultExt};
 use itertools::Itertools;
 
 pub use device_driver_codegen::{CompileOptions, Target};
+pub use device_driver_diagnostics::Metadata;
 
 pub fn compile(
     source: &str,
