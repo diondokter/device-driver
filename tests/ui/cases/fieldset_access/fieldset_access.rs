@@ -92,6 +92,7 @@ impl<I> ::device_driver::Block for Device<I> {
         &mut self.interface
     }
 }
+#[doc(alias = "foo_woFieldSet")]
 #[derive(Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct FooWoFieldSet {
@@ -242,6 +243,7 @@ impl core::ops::Not for FooWoFieldSet {
         self
     }
 }
+#[doc(alias = "foo_rwFieldSet")]
 #[derive(Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct FooRwFieldSet {
@@ -392,6 +394,7 @@ impl core::ops::Not for FooRwFieldSet {
         self
     }
 }
+#[doc(alias = "foo_roFieldSet")]
 #[derive(Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct FooRoFieldSet {

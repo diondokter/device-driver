@@ -23,6 +23,7 @@ impl<I> Device<I> {
     pub const fn new(interface: I) -> Self {
         Self { interface, base_address: 0 }
     }
+    #[doc(alias = "Foo")]
     pub fn foo(
         &mut self,
     ) -> ::device_driver::RegisterOperation<
@@ -48,6 +49,7 @@ impl<I> Device<I> {
     /// Reset value: `0x123456`
     ///
     /// Valid index range: `0..3`
+    #[doc(alias = "Bar")]
     pub fn bar(
         &mut self,
     ) -> ::device_driver::RegisterOperation<

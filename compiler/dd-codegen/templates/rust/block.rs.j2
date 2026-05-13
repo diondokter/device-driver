@@ -6,6 +6,7 @@
 {% endif %}
 
 {{ self::description_to_docstring(block.description) }}
+{{ self::maybe_doc_alias(block.name, Case::Pascal) }}
 #[derive(Debug)]
 pub struct {{ block.name.to_case(Case::Pascal) }}{{block_generics}} {
     {% if block.root %}
@@ -45,6 +46,7 @@ impl{{block_generics}} {{ block.name.to_case(Case::Pascal) }}{{block_generics}} 
             {% when Repeat::Enum { .. } %}
             {% endwhen %}
         {% endmatch %}
+        {{ self::maybe_doc_alias(method.name, Case::Snake) }}
         pub fn {{ method.name.to_case(Case::Snake) }}(
             &mut self,
             {% if let BlockMethodType::Block { .. } = method.method_type %}

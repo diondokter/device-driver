@@ -21,6 +21,7 @@ impl<I> Device<I> {
     pub const fn new(interface: I) -> Self {
         Self { interface, base_address: 0 }
     }
+    #[doc(alias = "Foo")]
     pub fn foo(
         &mut self,
     ) -> ::device_driver::RegisterOperation<
@@ -41,6 +42,7 @@ impl<I> Device<I> {
             FooFieldSet::default,
         )
     }
+    #[doc(alias = "Bar")]
     pub fn bar(&mut self) -> ::device_driver::CommandOperation<'_, Self, i32, (), ()>
     where
         I: ::device_driver::CommandInterfaceBase<AddressType = i32>,
@@ -48,6 +50,7 @@ impl<I> Device<I> {
         let address = self.base_address + 0;
         ::device_driver::CommandOperation::new(self, address as i32)
     }
+    #[doc(alias = "Quux")]
     pub fn quux(
         &mut self,
     ) -> ::device_driver::BufferOperation<'_, Self, i8, ::device_driver::RW>

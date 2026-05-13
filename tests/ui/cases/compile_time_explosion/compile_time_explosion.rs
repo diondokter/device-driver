@@ -23,6 +23,7 @@ impl<I> Device<I> {
     }
     ///
     /// Valid index range: `0..100`
+    #[doc(alias = "Foo0")]
     pub fn foo_0(
         &mut self,
     ) -> ::device_driver::RegisterOperation<
@@ -41,6 +42,7 @@ impl<I> Device<I> {
     }
     ///
     /// Valid index range: `0..100`
+    #[doc(alias = "Foo1")]
     pub fn foo_1(
         &mut self,
     ) -> ::device_driver::RegisterOperation<
@@ -59,6 +61,7 @@ impl<I> Device<I> {
     }
     ///
     /// Valid index range: `0..100`
+    #[doc(alias = "Foo2")]
     pub fn foo_2(
         &mut self,
     ) -> ::device_driver::RegisterOperation<
@@ -77,6 +80,7 @@ impl<I> Device<I> {
     }
     ///
     /// Valid index range: `0..100`
+    #[doc(alias = "Foo3")]
     pub fn foo_3(
         &mut self,
     ) -> ::device_driver::RegisterOperation<
@@ -95,6 +99,7 @@ impl<I> Device<I> {
     }
     ///
     /// Valid index range: `0..100`
+    #[doc(alias = "Foo4")]
     pub fn foo_4(
         &mut self,
     ) -> ::device_driver::RegisterOperation<
@@ -113,6 +118,7 @@ impl<I> Device<I> {
     }
     ///
     /// Valid index range: `0..100`
+    #[doc(alias = "Foo5")]
     pub fn foo_5(
         &mut self,
     ) -> ::device_driver::RegisterOperation<
@@ -131,6 +137,7 @@ impl<I> Device<I> {
     }
     ///
     /// Valid index range: `0..100`
+    #[doc(alias = "Foo6")]
     pub fn foo_6(
         &mut self,
     ) -> ::device_driver::RegisterOperation<
@@ -149,6 +156,7 @@ impl<I> Device<I> {
     }
     ///
     /// Valid index range: `0..100`
+    #[doc(alias = "Foo7")]
     pub fn foo_7(
         &mut self,
     ) -> ::device_driver::RegisterOperation<
@@ -167,6 +175,7 @@ impl<I> Device<I> {
     }
     ///
     /// Valid index range: `0..100`
+    #[doc(alias = "Foo8")]
     pub fn foo_8(
         &mut self,
     ) -> ::device_driver::RegisterOperation<
@@ -185,6 +194,7 @@ impl<I> Device<I> {
     }
     ///
     /// Valid index range: `0..100`
+    #[doc(alias = "Foo9")]
     pub fn foo_9(
         &mut self,
     ) -> ::device_driver::RegisterOperation<
