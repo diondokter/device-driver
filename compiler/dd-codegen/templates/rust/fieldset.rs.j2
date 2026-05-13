@@ -1,4 +1,5 @@
 {{self::description_to_docstring(field_set.description)}}
+{{ self::maybe_doc_alias(field_set.name, Case::Pascal) }}
 #[derive(Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct {{field_set.name.to_case(Case::Pascal)}} {
@@ -18,7 +19,8 @@ impl {{field_set.name.to_case(Case::Pascal)}} {
         {% if matches!(field.access, Access::RW | Access::RO) %}
             /// `{{field.address_text()}}` - Read the `{{field.name.to_case(Case::Snake)}}` field.
             ///
-            {{self::description_to_docstring(field.description)}}
+            {{ self::description_to_docstring(field.description) }}
+            {{ self::maybe_doc_alias(field.name, Case::Snake) }}
             #[must_use]
             pub fn {{field.name.to_case(Case::Snake)}}(
                 &self,
@@ -70,7 +72,8 @@ impl {{field_set.name.to_case(Case::Pascal)}} {
         {% if matches!(field.access, Access::RW | Access::WO) %}
             /// `{{field.address_text()}}` - Set the `{{field.name.to_case(Case::Snake)}}` field.
             ///
-            {{self::description_to_docstring(field.description)}}
+            {{ self::description_to_docstring(field.description) }}
+            {{ self::maybe_doc_alias(field.name, Case::Snake) }}
             pub fn set_{{field.name.to_case(Case::Snake)}}(
                 &mut self,
                 {% match field.repeat %}

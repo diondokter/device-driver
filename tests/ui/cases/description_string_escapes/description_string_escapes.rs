@@ -22,6 +22,7 @@ impl<I> Device<I> {
         Self { interface, base_address: 0 }
     }
     /// \\\\\\/\/\/\////\/\/;{}'"`'
+    #[doc(alias = "Foo")]
     pub fn foo(
         &mut self,
     ) -> ::device_driver::RegisterOperation<
