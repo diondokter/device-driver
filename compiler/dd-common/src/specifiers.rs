@@ -247,6 +247,14 @@ impl BaseType {
     pub fn is_fixed_size(&self) -> bool {
         matches!(self, Self::FixedSize(..))
     }
+
+    pub fn as_fixed_size(&self) -> Option<Integer> {
+        if let Self::FixedSize(v) = self {
+            Some(*v)
+        } else {
+            None
+        }
+    }
 }
 
 impl Display for BaseType {

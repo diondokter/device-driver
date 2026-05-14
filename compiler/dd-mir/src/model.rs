@@ -16,6 +16,7 @@ pub struct Manifest {
     pub name: Spanned<Identifier>,
     pub config: DeviceConfig,
     pub objects: Vec<Object>,
+    pub span: Span,
 }
 
 impl Manifest {
@@ -222,6 +223,7 @@ impl From<Device> for Manifest {
         Self {
             description: String::new(),
             name: value.name.clone(),
+            span: value.span,
             objects: vec![Object::Device(value)],
             config: DeviceConfig::default(),
         }
@@ -768,6 +770,8 @@ pub struct Extern {
     pub base_type: Spanned<BaseType>,
     /// If true, this extern can be converted infallibly too
     pub supports_infallible: bool,
+    /// The user-specified size of the max value of the base type that should be expected
+    pub size_bits: Option<Spanned<u64>>,
     /// Span of the whole object
     pub span: Span,
 }
@@ -999,6 +1003,7 @@ mod tests {
                 }),
             ],
             config: Default::default(),
+            span: Default::default(),
         };
 
         let names: Vec<_> = manifest
