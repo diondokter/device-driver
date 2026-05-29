@@ -13,14 +13,14 @@ struct Args {
 #[derive(Subcommand, Debug)]
 enum Command {
     /// Compile DDSL to the target output
-    Compile(CompileArgs),
+    Build(BuildArgs),
     /// Generate docs
     #[cfg(feature = "gen-docs")]
     GenDocs(GenDocsArgs),
 }
 
 #[derive(Parser, Debug)]
-struct CompileArgs {
+struct BuildArgs {
     /// Path to the input file.
     source_path: PathBuf,
     /// Path to output location. Any existing file is overwritten. If not provided, the output is written to stdout.
@@ -67,13 +67,13 @@ fn run() -> Result<ExitCode, DynError> {
     let args = Args::parse();
 
     match args.command {
-        Command::Compile(args) => compile(args),
+        Command::Build(args) => build(args),
         #[cfg(feature = "gen-docs")]
         Command::GenDocs(args) => gen_docs(args),
     }
 }
 
-fn compile(args: CompileArgs) -> Result<ExitCode, DynError> {
+fn build(args: BuildArgs) -> Result<ExitCode, DynError> {
     let target: Target = args.target.into();
     let mut compile_options = target.get_compile_options();
 
