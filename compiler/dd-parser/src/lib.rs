@@ -573,7 +573,14 @@ pub fn node<'tokens, 'src: 'tokens>()
             .repeated()
             .collect()
             .then(ident().labelled("node type"))
-            .then(ident().labelled("node name"))
+            .then(
+                ident()
+                    .or(just(Token::Underscore).map_with(|_, extra| Ident {
+                        val: "",
+                        span: extra.span(),
+                    }))
+                    .labelled("node name"),
+            )
             .then(repeat().labelled("repeat").as_non_terminal().or_not())
             .then(
                 simple_expression()
