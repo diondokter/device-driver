@@ -17,6 +17,8 @@ use device_driver_lexer::Token;
 
 use crate::parse_num::{ParseIntRadix, ParseIntRadixError, ParseIntRadixErrorKind, parse_num};
 
+#[cfg(feature = "gen-docs")]
+pub mod gen_docs;
 mod parse_num;
 
 pub fn parse<'src>(tokens: &[Spanned<Token<'src>>], diagnostics: &mut Diagnostics) -> Ast<'src> {
@@ -325,10 +327,10 @@ fn try_num<'tokens, 'src: 'tokens, I: ParseIntRadix>(
     }
 }
 
-type InputType<'tokens, 'src> =
+pub type InputType<'tokens, 'src> =
     MappedInput<'tokens, Token<'src>, Span, &'tokens [Spanned<Token<'src>>]>;
-type RichErr<'tokens, 'src> = Rich<'tokens, Token<'src>, Span>;
-type RichExtra<'tokens, 'src> = extra::Err<RichErr<'tokens, 'src>>;
+pub type RichErr<'tokens, 'src> = Rich<'tokens, Token<'src>, Span>;
+pub type RichExtra<'tokens, 'src> = extra::Err<RichErr<'tokens, 'src>>;
 
 pub fn ident<'tokens, 'src: 'tokens>()
 -> impl Parser<'tokens, InputType<'tokens, 'src>, Ident<'src>, RichExtra<'tokens, 'src>> + Copy {
@@ -336,6 +338,7 @@ pub fn ident<'tokens, 'src: 'tokens>()
         Token::Ident(val) = e => Ident { val, span: e.span() }
     }
     .labelled("identifier")
+    .as_non_terminal()
 }
 
 pub fn doc_comment<'tokens, 'src: 'tokens>()
@@ -346,6 +349,7 @@ pub fn doc_comment<'tokens, 'src: 'tokens>()
     }
     .map_with(|line, extra| line.spanned(extra.span()))
     .labelled("doc comment")
+    .as_non_terminal()
 }
 
 pub fn num<'tokens, 'src: 'tokens>()
@@ -354,6 +358,7 @@ pub fn num<'tokens, 'src: 'tokens>()
         Token::Num(num) => num
     }
     .labelled("number")
+    .as_non_terminal()
 }
 
 pub fn range<'tokens, 'src: 'tokens>()
@@ -369,12 +374,16 @@ pub fn range<'tokens, 'src: 'tokens>()
 
 pub fn base_type<'tokens, 'src: 'tokens>()
 -> impl Parser<'tokens, InputType<'tokens, 'src>, BaseType, RichExtra<'tokens, 'src>> + Copy {
-    select! { Token::BaseType(bt) => bt }.labelled("base type")
+    select! { Token::BaseType(bt) => bt }
+        .labelled("base type")
+        .as_terminal()
 }
 
 pub fn integer<'tokens, 'src: 'tokens>()
 -> impl Parser<'tokens, InputType<'tokens, 'src>, Integer, RichExtra<'tokens, 'src>> + Copy {
-    select! { Token::Integer(i) => i }.labelled("integer type")
+    select! { Token::Integer(i) => i }
+        .labelled("integer type")
+        .as_terminal()
 }
 
 pub fn byte_array<'tokens, 'src: 'tokens>()
@@ -410,7 +419,7 @@ pub fn simple_expression<'tokens, 'src: 'tokens>()
 -> impl Parser<'tokens, InputType<'tokens, 'src>, Spanned<Expression<'src>>, RichExtra<'tokens, 'src>>
 + Copy {
     choice((
-        range(),
+        range().labelled("range").as_non_terminal(),
         base_type().map(Expression::BaseType),
         integer().map(Expression::Integer),
         num().try_map(try_num::<i128>).map(Expression::Number),
@@ -432,21 +441,25 @@ pub fn simple_expression<'tokens, 'src: 'tokens>()
             )
             .map(Expression::CatchAllNumber)
             .labelled("catch-all number"),
-        byte_array(),
+        byte_array().labelled("byte array").as_non_terminal(),
         just(Token::Allow).map(|_| Expression::Allow),
         select! { Token::Access(val) => val }
             .map(Expression::Access)
-            .labelled("access"),
+            .labelled("access")
+            .as_terminal(),
         select! { Token::ByteOrder(val) => val }
             .map(Expression::ByteOrder)
-            .labelled("byte order"),
+            .labelled("byte order")
+            .as_terminal(),
         just(Token::Underscore).map(|_| Expression::Auto),
         select! { Token::String(val) => val }
             .map(Expression::String)
-            .labelled("string"),
+            .labelled("string")
+            .as_non_terminal(),
         select! { Token::AddressMode(val) => val }
             .map(Expression::AddressMode)
-            .labelled("address mode"),
+            .labelled("address mode")
+            .as_terminal(),
     ))
     .map_with(|expression, extra| expression.spanned(extra.span()))
 }
@@ -471,6 +484,8 @@ pub fn repeat<'tokens, 'src: 'tokens>()
 pub fn node<'tokens, 'src: 'tokens>()
 -> impl Parser<'tokens, InputType<'tokens, 'src>, Node<'src>, RichExtra<'tokens, 'src>> + Clone {
     recursive(|node| {
+        let node = node.labelled("node").as_non_terminal();
+
         let property = doc_comment()
             .repeated()
             .collect()
@@ -478,7 +493,9 @@ pub fn node<'tokens, 'src: 'tokens>()
                 ident()
                     .then(
                         just(Token::Colon).ignore_then(choice((
-                            simple_expression(),
+                            simple_expression()
+                                .labelled("simple expression")
+                                .as_non_terminal(),
                             node.clone().map_with(|node, extra| {
                                 Expression::SubNode(Box::new(node)).spanned(extra.span())
                             }),
@@ -557,8 +574,14 @@ pub fn node<'tokens, 'src: 'tokens>()
             .collect()
             .then(ident().labelled("node type"))
             .then(ident().labelled("node name"))
-            .then(repeat().or_not())
-            .then(simple_expression().repeated().collect::<Vec<_>>())
+            .then(repeat().labelled("repeat").as_non_terminal().or_not())
+            .then(
+                simple_expression()
+                    .labelled("simple expression")
+                    .as_non_terminal()
+                    .repeated()
+                    .collect::<Vec<_>>(),
+            )
             .then(type_specifier.or_not())
             .then(node_body.or_not())
             .map_with(
@@ -585,5 +608,6 @@ pub fn node<'tokens, 'src: 'tokens>()
                     }
                 },
             )
+            .labelled("node")
     })
 }
