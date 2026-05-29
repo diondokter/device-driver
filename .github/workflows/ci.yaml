@@ -15,45 +15,45 @@ jobs:
     name: Spell Check with Typos
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout Actions Repository
-      uses: actions/checkout@v4
-    - name: Spell Check Repo
-      uses: crate-ci/typos@v1.31.1
+      - name: Checkout Actions Repository
+        uses: actions/checkout@v6
+      - name: Spell Check Repo
+        uses: crate-ci/typos@v1.47.0
 
   fmt:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - uses: dtolnay/rust-toolchain@stable
-    - run: cargo fmt --all -- --check
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo fmt --all -- --check
 
   test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - uses: dtolnay/rust-toolchain@nightly
-    - name: Install nextest
-      uses: taiki-e/install-action@nextest
-    - run: cargo nextest run
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@nightly
+      - name: Install nextest
+        uses: taiki-e/install-action@nextest
+      - run: cargo nextest run
 
   clippy:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - uses: dtolnay/rust-toolchain@stable
-    - run: cargo clippy --features defmt -- -D warnings
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo clippy --features defmt -- -D warnings
 
   run-cli:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - uses: dtolnay/rust-toolchain@stable
-    - run: cargo run -- build -o generated.rs device-driver/tests/basic-register.ddsl
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo run -- build -o generated.rs device-driver/tests/basic-register.ddsl
 
   fuzz:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
       - uses: cargo-bins/cargo-binstall@main
 
