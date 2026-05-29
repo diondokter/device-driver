@@ -121,7 +121,7 @@ And more! Read the book linked in the readme to find all documentation.
 - Added strict mode conversion. This makes the types require `From<primitive>` instead of `TryFrom<primitive>`.
   But reading the register field is then not a result.
 - Added byte order option to registers so they can be read and stored as little endian. (When not specified, it still defaults to big endian)
-- Added BitAnd, BitOr and BitXor on the register structs. It's not as conistent as I'd like, but it'll be fixed in the next version hopefully.
+- Added BitAnd, BitOr and BitXor on the register structs. It's not as consistent as I'd like, but it'll be fixed in the next version hopefully.
 - Added support for register blocks
 
 ### 0.6.0 (26-05-24)
