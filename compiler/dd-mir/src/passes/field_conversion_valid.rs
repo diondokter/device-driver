@@ -7,15 +7,18 @@ use crate::{
     search_object,
 };
 use device_driver_diagnostics::{
-    Diagnostics,
+    Diagnostics, DynError,
     errors::{
-        DifferentBaseTypes, InvalidConversionType, InvalidInfallibleConversion,
-        ReferencedObjectDoesNotExist,
+        ConversionTypeTooBig, DifferentBaseTypes, InvalidConversionType,
+        InvalidInfallibleConversion, ReferencedObjectDoesNotExist,
     },
 };
 
 /// Checks if fields that have conversion and specified no try to be used, are valid in doing so
-pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashSet<UniqueId> {
+pub fn run_pass(
+    manifest: &mut Manifest,
+    diagnostics: &mut Diagnostics,
+) -> Result<HashSet<UniqueId>, DynError> {
     let mut removals = HashSet::new();
 
     for object in manifest.iter_objects() {
@@ -26,6 +29,26 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
 
                     match target_object {
                         Some(Object::Enum(target_enum)) => {
+                            let target_enum_size = target_enum.size_bits
+                                .ok_or_else(|| DynError::new(
+                                    format!(
+                                        "target enum `{}` size_bits is none. Should've been set in an earlier pass",
+                                        target_enum.name.original()
+                                    )
+                                ))?;
+                            if u64::from(target_enum_size) > field.field_address.len() {
+                                diagnostics.add(ConversionTypeTooBig {
+                                    field: field.name.span,
+                                    field_address: field.field_address.span,
+                                    conversion_type: target_enum.name.span,
+                                    conversion: conversion.type_name.span,
+                                    field_len: field.field_address.len(),
+                                    conversion_len: target_enum_size.into(),
+                                });
+                                removals.insert(field.id_with(field_set.id()));
+                                continue;
+                            }
+
                             if field.base_type != target_enum.base_type {
                                 diagnostics.add(DifferentBaseTypes {
                                     field: field.name.span,
@@ -47,10 +70,11 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                                 {
                                     EnumGenerationStyle::Fallible => {
                                         diagnostics.add(InvalidInfallibleConversion {
+                                            field: field.name.span,
                                             conversion: conversion.type_name.span,
                                             context: vec![
                                                 Cow::from(
-                                                    "Target only supports fallible conversion",
+                                                    "target only supports fallible conversion",
                                                 )
                                                 .with_span(target_enum.name.span),
                                             ],
@@ -68,6 +92,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
 
                                         if field_bits > enum_bits {
                                             diagnostics.add(InvalidInfallibleConversion {
+                                    field: field.name.span,
                                                 conversion: conversion.type_name.span,
                                                 context: vec![
                                                         Cow::from(format!(
@@ -94,6 +119,31 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
                             }
                         }
                         Some(Object::Extern(target_extern)) => {
+                            let target_extern_base_type = target_extern.base_type.value.as_fixed_size()
+                                .ok_or_else(|| DynError::new(
+                                    format!(
+                                        "target extern `{}` does not have a fixed size. Should've been checked in an earlier pass",
+                                        target_extern.name.original()
+                                    )
+                                ))?;
+                            let target_extern_size = target_extern
+                                .size_bits
+                                .map(|v| v.value)
+                                .unwrap_or(u64::from(target_extern_base_type.size_bits()));
+
+                            if target_extern_size > field.field_address.len() {
+                                diagnostics.add(ConversionTypeTooBig {
+                                    field: field.name.span,
+                                    field_address: field.field_address.span,
+                                    conversion_type: target_extern.name.span,
+                                    conversion: conversion.type_name.span,
+                                    field_len: field.field_address.len(),
+                                    conversion_len: target_extern_size,
+                                });
+                                removals.insert(field.id_with(field_set.id()));
+                                continue;
+                            }
+
                             if field.base_type != target_extern.base_type {
                                 diagnostics.add(DifferentBaseTypes {
                                     field: field.name.span,
@@ -108,9 +158,10 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
 
                             if !conversion.fallible && !target_extern.supports_infallible {
                                 diagnostics.add(InvalidInfallibleConversion {
+                                    field: field.name.span,
                                     conversion: conversion.type_name.span,
                                     context: vec![
-                                        Cow::from("Target only supports fallible conversion")
+                                        Cow::from("target only supports fallible conversion")
                                             .with_span(target_extern.name.span),
                                     ],
                                     existing_type_specifier_content: field
@@ -141,5 +192,5 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
         }
     }
 
-    removals
+    Ok(removals)
 }

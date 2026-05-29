@@ -633,6 +633,35 @@ impl Diagnostic for ExternInvalidBaseType {
 }
 
 #[derive(Debug)]
+pub struct ExternInvalidSizeBits {
+    pub extern_name: Span,
+    pub size_bits: Span,
+    pub reason: Cow<'static, str>,
+}
+
+impl Diagnostic for ExternInvalidSizeBits {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [Level::ERROR
+            .primary_title("invalid size-bits value for extern object")
+            .element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(
+                        AnnotationKind::Primary
+                            .span(self.size_bits.into())
+                            .label(&self.reason),
+                    )
+                    .annotation(AnnotationKind::Visible.span(self.extern_name.into())),
+            )]
+        .to_vec()
+    }
+}
+
+#[derive(Debug)]
 pub struct DifferentBaseTypes {
     pub field: Span,
     pub field_base_type: BaseType,
@@ -684,6 +713,7 @@ impl Diagnostic for DifferentBaseTypes {
 // TODO: Split in multiple error types
 #[derive(Debug)]
 pub struct InvalidInfallibleConversion {
+    pub field: Span,
     pub conversion: Span,
     pub context: Vec<Spanned<Cow<'static, str>>>,
     pub existing_type_specifier_content: String,
@@ -710,7 +740,8 @@ impl Diagnostic for InvalidInfallibleConversion {
                             self.context.iter().map(|c| {
                                 AnnotationKind::Context.span(c.span.into()).label(&c.value)
                             }),
-                        ),
+                        )
+                        .annotation(AnnotationKind::Visible.span(self.field.into())),
                 ),
             // TODO: Add patch
             Group::with_title(Level::HELP.secondary_title("mark the conversion fallible")),
@@ -718,6 +749,53 @@ impl Diagnostic for InvalidInfallibleConversion {
                 Level::HELP
                     .secondary_title("make the conversion type support infallible conversion"),
             ),
+        ]
+        .to_vec()
+    }
+}
+
+#[derive(Debug)]
+pub struct ConversionTypeTooBig {
+    pub field: Span,
+    pub field_address: Span,
+    pub conversion_type: Span,
+    pub conversion: Span,
+    pub field_len: u64,
+    pub conversion_len: u64,
+}
+
+impl Diagnostic for ConversionTypeTooBig {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        const INFO_TEXT: &str = "a field can only convert to types of equal length or smaller";
+
+        [
+            Level::ERROR
+                .primary_title("conversion type too big for field")
+                .element(
+                    Snippet::source(source)
+                        .path(path)
+                        .annotation(AnnotationKind::Visible.span(self.field.into()))
+                        .annotation(
+                            AnnotationKind::Primary
+                                .span(self.field_address.into())
+                                .label(format!("field is {} bits", self.field_len)),
+                        )
+                        .annotation(
+                            AnnotationKind::Primary
+                                .span(self.conversion_type.into())
+                                .label(format!("target type is {} bits", self.conversion_len)),
+                        )
+                        .annotation(
+                            AnnotationKind::Context
+                                .span(self.conversion.into())
+                                .label("field specifies a conversion type here"),
+                        ),
+                ),
+            Group::with_title(Level::INFO.secondary_title(INFO_TEXT)),
         ]
         .to_vec()
     }
@@ -1924,6 +2002,42 @@ impl Diagnostic for InvalidRepeat {
                     .path(path)
                     .patch(Patch::new(self.repeat.into(), "")),
             ),
+        ]
+        .to_vec()
+    }
+}
+
+#[derive(Debug)]
+pub struct ZeroStrideRepeat {
+    pub stride: Span,
+}
+
+impl Diagnostic for ZeroStrideRepeat {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        const INFO_TEXT: &str = "a stride of 0 means the address doesn't change. So the repeat is useless and thus rejected";
+
+        [
+            Level::ERROR
+                .primary_title("repeat stride cannot be 0")
+                .element(
+                    Snippet::source(source).path(path).annotation(
+                        AnnotationKind::Primary
+                            .span(self.stride.into())
+                            .label("stride is 0"),
+                    ),
+                ),
+            Level::HELP
+                .secondary_title("change to a non-zero value")
+                .element(
+                    Snippet::source(source)
+                        .path(path)
+                        .patch(Patch::new(self.stride.into(), "1")),
+                ),
+            Group::with_title(Level::INFO.secondary_title(INFO_TEXT)),
         ]
         .to_vec()
     }

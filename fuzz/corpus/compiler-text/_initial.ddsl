@@ -1,0 +1,19 @@
+device Foo {
+    register-address-type: u8,
+
+    /// Doc comments get reflected in the output code!
+    register Bar {
+        address: 0,
+        
+        fields: fieldset BarFields {
+            size-bytes: 1,
+
+            field xena 1:0 -> u8 as enum Xena {
+                A: _,
+                B: _,
+                C: default 3,
+            },
+            field quux 7:2 -> u8,
+        }
+    }
+}

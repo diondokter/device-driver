@@ -77,5 +77,10 @@ It's nice to have examples:
 - [AXP192 Power Management IC](https://github.com/okhsunrog/axp192-dd)
 - [ONSEMI FUSB302B USB-PD PHY](https://github.com/okhsunrog/fusb302b)
 - [iC-Haus iC-MD 48bit quadrature counter](https://github.com/trappitsch/ic-md)
+- [STMicroelectronics LIS2DE12 3-axis accelerometer](https://github.com/leftger/lis2de12)
+- [ISSI IS25LP128F 128Mbit SPI NOR Flash](https://github.com/leftger/is25lp128f)
+- [ON Semiconductor CAT25040 4kbit SPI EEPROM](https://github.com/cesardtamayo/cat25040)
+- [TI BQ27441 Battery Fuel Gauge IC](https://github.com/leftger/bq27441)
+- [TI BQ25887 2-Cell Battery Charger IC](https://github.com/leftger/bq25887)
 
 Feel free to add to this list!

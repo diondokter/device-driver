@@ -21,6 +21,7 @@ impl<I> Device<I> {
     pub const fn new(interface: I) -> Self {
         Self { interface, base_address: 0 }
     }
+    #[doc(alias = "Foo")]
     pub fn foo(
         &mut self,
     ) -> ::device_driver::CommandOperation<'_, Self, u8, FooFieldSetIn, ()>

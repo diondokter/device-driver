@@ -1,4 +1,5 @@
 {{self::description_to_docstring(enum_value.description)}}
+{{ self::maybe_doc_alias(enum_value.name, Case::Pascal) }}
 #[repr({{enum_value.base_type}})]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 {% if let Some(defmt_feature) = defmt_feature() %}
@@ -6,7 +7,8 @@
 {% endif %}
 pub enum {{enum_value.name.to_case(Case::Pascal)}} {
     {% for variant in enum_value.variants %}
-        {{self::description_to_docstring(variant.description)}}
+        {{ self::description_to_docstring(variant.description) }}
+        {{ self::maybe_doc_alias(variant.name, Case::Pascal) }}
         {{variant.name.to_case(Case::Pascal)}} {% if variant.catch_all %} ({{enum_value.base_type}}) {% endif %} = {{variant.discriminant}},
     {% endfor %}
 }

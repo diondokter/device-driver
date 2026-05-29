@@ -101,3 +101,11 @@ fn get_address_mode_const_value(value: &Option<AddressMode>) -> &'static str {
         None => "()",
     }
 }
+
+fn maybe_doc_alias(identifier: &Identifier, case: Case) -> String {
+    if identifier.to_case(case) == identifier.original() {
+        return String::new();
+    }
+
+    format!("#[doc(alias = \"{}\")]", identifier.original())
+}

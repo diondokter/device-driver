@@ -22,7 +22,7 @@ use device_driver_common::{
 use device_driver_diagnostics::{
     Diagnostics,
     errors::{
-        DuplicateProperty, FieldAddressOutOfRange, FieldAddressWrongOrder,
+        DuplicateProperty, ExternInvalidSizeBits, FieldAddressOutOfRange, FieldAddressWrongOrder,
         IgnoredDocCommentOnProperty, InvalidExpressionType, InvalidIdentifier, InvalidNodeType,
         InvalidPropertyName, InvalidRepeat, InvalidShortProperty, InvalidSubnode,
         InvalidTypeConversion, InvalidTypeSpecifier, MissingRequiredProperty, ResetValueNegative,
@@ -140,6 +140,8 @@ fn parse_node_to_shape<'src, S: Shape>(
     let mut sibling_objects = Vec::new();
     let mut error = false;
 
+    *target.span() = node.span;
+
     // Doc comments
 
     *target.doc_comments() = node.doc_comments.iter().map(|c| c.value).join("\n");
@@ -172,7 +174,7 @@ fn parse_node_to_shape<'src, S: Shape>(
                         IdentifierRef::new(ident.val.into()).with_span(ident.span),
                     ),
                 },
-                stride: node_repeat.stride as i128,
+                stride: (node_repeat.stride.value as i128).with_span(node_repeat.stride.span),
             })
         }
         (_, None) => {}
@@ -508,6 +510,8 @@ trait Shape: Default + 'static {
     fn repeat(&mut self) -> Option<&mut Option<Repeat>> {
         None
     }
+
+    fn span(&mut self) -> &mut Span;
 }
 
 struct PropertyInfo<T: ?Sized> {
@@ -724,6 +728,10 @@ impl Shape for Manifest {
     fn push_subnode(&mut self, object: Object) {
         self.objects.push(object);
     }
+
+    fn span(&mut self) -> &mut Span {
+        &mut self.span
+    }
 }
 
 impl Shape for Device {
@@ -853,6 +861,10 @@ impl Shape for Device {
     fn push_subnode(&mut self, object: Object) {
         self.objects.push(object);
     }
+
+    fn span(&mut self) -> &mut Span {
+        &mut self.span
+    }
 }
 
 impl Shape for Block {
@@ -903,6 +915,10 @@ impl Shape for Block {
 
     fn repeat(&mut self) -> Option<&mut Option<Repeat>> {
         Some(&mut self.repeat)
+    }
+
+    fn span(&mut self) -> &mut Span {
+        &mut self.span
     }
 }
 
@@ -1049,6 +1065,10 @@ impl Shape for Register {
     fn repeat(&mut self) -> Option<&mut Option<Repeat>> {
         Some(&mut self.repeat)
     }
+
+    fn span(&mut self) -> &mut Span {
+        &mut self.span
+    }
 }
 
 impl Shape for FieldSet {
@@ -1122,6 +1142,10 @@ impl Shape for FieldSet {
         };
         self.fields.push(field);
     }
+
+    fn span(&mut self) -> &mut Span {
+        &mut self.span
+    }
 }
 
 impl Shape for Extern {
@@ -1136,22 +1160,51 @@ impl Shape for Extern {
     }
 
     fn supported_properties() -> &'static [PropertyInfo<Self>] {
-        static MAP: &[PropertyInfo<Extern>] = &[PropertyInfo {
-            name: PropertyName::Exact("infallible"),
-            allowed_expression_types: Cow::Borrowed(&[Expression::Allow]),
-            multiple_allowed: false,
-            required: false,
-            supports_doc_comments: false,
-            setter: |ext: &mut Extern, _, _, _, _| {
-                ext.supports_infallible = true;
-                false
+        static MAP: &[PropertyInfo<Extern>] = &[
+            PropertyInfo {
+                name: PropertyName::Exact("infallible"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::Allow]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |ext: &mut Extern, _, _, _, _| {
+                    ext.supports_infallible = true;
+                    false
+                },
             },
-        }];
+            PropertyInfo {
+                name: PropertyName::Exact("size-bits"),
+                allowed_expression_types: Cow::Borrowed(&[Expression::Number(8)]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |ext: &mut Extern, property, node, diagnostics, _| match u64::try_from(
+                    property.expression.as_number().unwrap(),
+                ) {
+                    Ok(size_bits) => {
+                        ext.size_bits = Some(size_bits.with_span(property.expression.span));
+                        false
+                    }
+                    _ => {
+                        diagnostics.add(ExternInvalidSizeBits {
+                            extern_name: node.name.span,
+                            size_bits: property.expression.span,
+                            reason: "value must be in the range 0..2^64".into(),
+                        });
+                        true
+                    }
+                },
+            },
+        ];
         MAP
     }
 
     fn base_type(&mut self) -> Option<&mut Spanned<BaseType>> {
         Some(&mut self.base_type)
+    }
+
+    fn span(&mut self) -> &mut Span {
+        &mut self.span
     }
 }
 
@@ -1196,6 +1249,10 @@ impl Shape for Buffer {
             },
         ];
         MAP
+    }
+
+    fn span(&mut self) -> &mut Span {
+        &mut self.span
     }
 }
 
@@ -1258,6 +1315,10 @@ impl Shape for Enum {
 
     fn base_type(&mut self) -> Option<&mut Spanned<BaseType>> {
         Some(&mut self.base_type)
+    }
+
+    fn span(&mut self) -> &mut Span {
+        &mut self.span
     }
 }
 
@@ -1412,6 +1473,10 @@ impl Shape for Command {
     fn repeat(&mut self) -> Option<&mut Option<Repeat>> {
         Some(&mut self.repeat)
     }
+
+    fn span(&mut self) -> &mut Span {
+        &mut self.span
+    }
 }
 
 impl Shape for Field {
@@ -1498,5 +1563,9 @@ impl Shape for Field {
 
     fn repeat(&mut self) -> Option<&mut Option<Repeat>> {
         Some(&mut self.repeat)
+    }
+
+    fn span(&mut self) -> &mut Span {
+        &mut self.span
     }
 }

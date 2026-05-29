@@ -269,7 +269,7 @@ impl<'src> Display for Expression<'src> {
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Repeat<'src> {
     pub source: RepeatSource<'src>,
-    pub stride: i32,
+    pub stride: Spanned<i32>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -471,7 +471,11 @@ pub fn repeat<'tokens, 'src: 'tokens>()
         .try_map(try_num::<NonZeroU32>)
         .map(RepeatSource::Count)
         .or(ident().map(RepeatSource::Enum))
-        .then(just(Token::Star).ignore_then(num().try_map(try_num::<i32>)))
+        .then(just(Token::Star).ignore_then(
+            num().try_map(|num_str, span| {
+                try_num::<i32>(num_str, span).map(|num| num.with_span(span))
+            }),
+        ))
         .delimited_by(just(Token::BracketOpen), just(Token::BracketClose))
         .map_with(|(source, stride), extra| Repeat { source, stride }.spanned(extra.span()))
         .labelled("[repeat]")
