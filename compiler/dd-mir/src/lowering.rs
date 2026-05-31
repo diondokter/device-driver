@@ -23,10 +23,10 @@ use device_driver_diagnostics::{
     Diagnostics,
     errors::{
         DuplicateProperty, ExternInvalidSizeBits, FieldAddressOutOfRange, FieldAddressWrongOrder,
-        IgnoredDocCommentOnProperty, InvalidExpressionType, InvalidIdentifier, InvalidNodeType,
-        InvalidPropertyName, InvalidRepeat, InvalidShortProperty, InvalidSubnode,
-        InvalidTypeConversion, InvalidTypeSpecifier, MissingRequiredProperty, ResetValueNegative,
-        SizeBytesTooLarge, UnknownNodeType,
+        IgnoredDocCommentOnProperty, InvalidAutoIdentifier, InvalidExpressionType,
+        InvalidIdentifier, InvalidNodeType, InvalidPropertyName, InvalidRepeat,
+        InvalidShortProperty, InvalidSubnode, InvalidTypeConversion, InvalidTypeSpecifier,
+        MissingRequiredProperty, ResetValueNegative, SizeBytesTooLarge, UnknownNodeType,
     },
 };
 use device_driver_parser::{Ast, Expression, Ident, Node, Property};
@@ -136,7 +136,7 @@ fn lower_node(
 
 fn parse_node_to_shape<'src, S: Shape>(
     node: &Node<'src>,
-    parent_node_name: Option<Ident>,
+    parent_node_name: Option<Ident<'src>>,
     diagnostics: &mut Diagnostics,
 ) -> Result<(S, Vec<Object>), Vec<Object>> {
     let mut target = S::default();
@@ -151,12 +151,26 @@ fn parse_node_to_shape<'src, S: Shape>(
 
     // Object name
 
-    match (node.name.val, parent_node_name) {
-        ("", Some(parent_node_name)) => {
-            todo!("Assign parent node name to this node's name");
+    match (node.name.is_auto(), parent_node_name) {
+        (true, Some(parent_node_name)) => {
+            match Identifier::try_parse(parent_node_name.val) {
+                Ok(ident) => *target.name() = ident.with_span(node.name.span),
+                Err(_e) => {
+                    // We don't need to emit a diagnostic since the parent will already have a diagnostic.
+                    // Can't continue with this node when there's no name
+                    error = true;
+                }
+            }
         }
-        (name, _) => {
-            match Identifier::try_parse(name) {
+        (true, None) => {
+            diagnostics.add(InvalidAutoIdentifier {
+                auto_identifier: node.name.span,
+            });
+            // Can't continue with this node when there's no name
+            error = true;
+        }
+        (false, _) => {
+            match Identifier::try_parse(node.name.val) {
                 Ok(ident) => *target.name() = ident.with_span(node.name.span),
                 Err(e) => {
                     diagnostics.add(InvalidIdentifier::new(e, node.name.span));
@@ -400,10 +414,7 @@ fn parse_node_to_shape<'src, S: Shape>(
             target_object: &mut target,
             property: &Property {
                 doc_comments: Vec::new(),
-                name: Ident {
-                    val: "",
-                    span: short_property.span,
-                },
+                name: Ident::new("", short_property.span),
                 expression: short_property.clone(),
             }
             .with_span(short_property.span),
@@ -454,7 +465,7 @@ fn parse_node_to_shape<'src, S: Shape>(
             let sub_node_result = lower_node(
                 sub_node,
                 Some(S::NODE_TYPE.with_span(node.node_type.span)),
-                Some(node.name),
+                None,
                 supported_subnodes,
                 diagnostics,
             );
@@ -606,14 +617,8 @@ impl<'a> PartialEq for PropertyName<'a> {
 
 const FIELD_SET_EXAMPLE: Node<'static> = Node {
     doc_comments: Vec::new(),
-    node_type: device_driver_parser::Ident {
-        val: "fieldset",
-        span: Span::empty(),
-    },
-    name: device_driver_parser::Ident {
-        val: "MyFieldSet",
-        span: Span::empty(),
-    },
+    node_type: device_driver_parser::Ident::new_no_span("fieldset"),
+    name: device_driver_parser::Ident::new_no_span("MyFieldSet"),
     repeat: None,
     type_specifier: None,
     properties: Vec::new(),
@@ -1094,10 +1099,9 @@ impl Shape for Register {
                 PropertyInfo {
                     name: PropertyName::Exact("fields"),
                     allowed_expression_types: Cow::Owned(vec![
-                        Expression::TypeReference(device_driver_parser::Ident {
-                            val: "MyFieldset",
-                            span: Span::empty(),
-                        }),
+                        Expression::TypeReference(device_driver_parser::Ident::new_no_span(
+                            "MyFieldset",
+                        )),
                         Expression::SubNode(Box::new(FIELD_SET_EXAMPLE)),
                     ]),
                     multiple_allowed: false,
@@ -1120,6 +1124,7 @@ impl Shape for Register {
                                 let result = lower_node(
                                     sub_node,
                                     Some(NodeType::Register.with_span(node.node_type.span)),
+                                    Some(Ident::new(r.name.original(), r.name.span)),
                                     &[NodeType::FieldSet],
                                     diagnostics,
                                 );
@@ -1492,10 +1497,9 @@ impl Shape for Command {
                 PropertyInfo {
                     name: PropertyName::Exact("fields-in"),
                     allowed_expression_types: Cow::Owned(vec![
-                        Expression::TypeReference(device_driver_parser::Ident {
-                            val: "MyFieldset",
-                            span: Span::empty(),
-                        }),
+                        Expression::TypeReference(device_driver_parser::Ident::new_no_span(
+                            "MyFieldset",
+                        )),
                         Expression::SubNode(Box::new(FIELD_SET_EXAMPLE)),
                     ]),
                     multiple_allowed: false,
@@ -1519,6 +1523,7 @@ impl Shape for Command {
                                 let result = lower_node(
                                     sub_node,
                                     Some(NodeType::Register.with_span(node.node_type.span)),
+                                    Some(Ident::new(command.name.original(), command.name.span)),
                                     &[NodeType::FieldSet],
                                     diagnostics,
                                 );
@@ -1545,10 +1550,9 @@ impl Shape for Command {
                 PropertyInfo {
                     name: PropertyName::Exact("fields-out"),
                     allowed_expression_types: Cow::Owned(vec![
-                        Expression::TypeReference(device_driver_parser::Ident {
-                            val: "MyFieldset",
-                            span: Span::empty(),
-                        }),
+                        Expression::TypeReference(device_driver_parser::Ident::new_no_span(
+                            "MyFieldset",
+                        )),
                         Expression::SubNode(Box::new(FIELD_SET_EXAMPLE)),
                     ]),
                     multiple_allowed: false,
@@ -1572,6 +1576,7 @@ impl Shape for Command {
                                 let result = lower_node(
                                     sub_node,
                                     Some(NodeType::Register.with_span(node.node_type.span)),
+                                    Some(Ident::new(command.name.original(), command.name.span)),
                                     &[NodeType::FieldSet],
                                     diagnostics,
                                 );

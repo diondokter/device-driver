@@ -12,6 +12,7 @@
                 "args": [
                     "run",
                     "--",
+                    "build",
                     "device-driver/tests/basic-register.ddsl"
                 ]
             }

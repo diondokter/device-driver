@@ -288,6 +288,38 @@ impl<'src> Default for RepeatSource<'src> {
 pub struct Ident<'src> {
     pub val: &'src str,
     pub span: Span,
+    is_auto: bool,
+}
+
+impl<'src> Ident<'src> {
+    pub const fn new(val: &'src str, span: Span) -> Self {
+        Self {
+            val,
+            span,
+            is_auto: false,
+        }
+    }
+
+    pub const fn new_no_span(val: &'src str) -> Self {
+        Self {
+            val,
+            span: Span::empty(),
+            is_auto: false,
+        }
+    }
+
+    pub const fn new_auto(span: Span) -> Self {
+        Self {
+            val: "_",
+            span,
+            is_auto: true,
+        }
+    }
+
+    /// Returns true if the identifier was specified using an underscore token
+    pub fn is_auto(&self) -> bool {
+        self.is_auto
+    }
 }
 
 fn try_num<'tokens, 'src: 'tokens, I: ParseIntRadix>(
@@ -332,10 +364,12 @@ pub type InputType<'tokens, 'src> =
 pub type RichErr<'tokens, 'src> = Rich<'tokens, Token<'src>, Span>;
 pub type RichExtra<'tokens, 'src> = extra::Err<RichErr<'tokens, 'src>>;
 
-pub fn ident<'tokens, 'src: 'tokens>()
--> impl Parser<'tokens, InputType<'tokens, 'src>, Ident<'src>, RichExtra<'tokens, 'src>> + Copy {
+pub fn ident<'tokens, 'src: 'tokens>(
+    allow_auto: bool,
+) -> impl Parser<'tokens, InputType<'tokens, 'src>, Ident<'src>, RichExtra<'tokens, 'src>> + Copy {
     select! {
-        Token::Ident(val) = e => Ident { val, span: e.span() }
+        Token::Ident(val) = e => Ident::new(val, e.span()),
+        Token::Underscore = e if allow_auto => Ident::new_auto(e.span()),
     }
     .labelled("identifier")
     .as_non_terminal()
@@ -470,7 +504,7 @@ pub fn repeat<'tokens, 'src: 'tokens>()
     num()
         .try_map(try_num::<NonZeroU32>)
         .map(RepeatSource::Count)
-        .or(ident().map(RepeatSource::Enum))
+        .or(ident(false).map(RepeatSource::Enum))
         .then(just(Token::Star).ignore_then(
             num().try_map(|num_str, span| {
                 try_num::<i32>(num_str, span).map(|num| num.with_span(span))
@@ -490,7 +524,7 @@ pub fn node<'tokens, 'src: 'tokens>()
             .repeated()
             .collect()
             .then(
-                ident()
+                ident(false)
                     .then(
                         just(Token::Colon).ignore_then(choice((
                             simple_expression()
@@ -499,7 +533,7 @@ pub fn node<'tokens, 'src: 'tokens>()
                             node.clone().map_with(|node, extra| {
                                 Expression::SubNode(Box::new(node)).spanned(extra.span())
                             }),
-                            ident()
+                            ident(false)
                                 .map(Expression::TypeReference)
                                 .map_with(|expression, extra| expression.spanned(extra.span())),
                         ))),
@@ -523,7 +557,7 @@ pub fn node<'tokens, 'src: 'tokens>()
         let type_conversion = just(Token::As).ignore_then(just(Token::Try).or_not()).then(
             node.clone()
                 .map(|node| TypeConversion::Subnode(Box::new(node)))
-                .or(ident().map(TypeConversion::Reference)),
+                .or(ident(false).map(TypeConversion::Reference)),
         );
         let type_specifier = just(Token::Arrow)
             .ignore_then(
@@ -572,15 +606,8 @@ pub fn node<'tokens, 'src: 'tokens>()
         doc_comment()
             .repeated()
             .collect()
-            .then(ident().labelled("node type"))
-            .then(
-                ident()
-                    .or(just(Token::Underscore).map_with(|_, extra| Ident {
-                        val: "",
-                        span: extra.span(),
-                    }))
-                    .labelled("node name"),
-            )
+            .then(ident(false).labelled("node type"))
+            .then(ident(true).labelled("node name"))
             .then(repeat().labelled("repeat").as_non_terminal().or_not())
             .then(
                 simple_expression()

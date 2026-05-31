@@ -192,15 +192,15 @@ impl std::error::Error for Error {}
 impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Error::Empty => write!(f, "Identifier is empty"),
-            Error::EmptyAfterSplits => write!(f, "Identifier is empty after word split"),
+            Error::Empty => write!(f, "identifier is empty"),
+            Error::EmptyAfterSplits => write!(f, "identifier is empty after word split"),
             Error::InvalidCharacter {
                 byte_offset,
                 invalid_char,
             } => {
                 write!(
                     f,
-                    "Identifier contains an invalid character at byte offset {byte_offset}: '{invalid_char:?}'"
+                    "identifier contains an invalid character at byte offset {byte_offset}: '{invalid_char:?}'"
                 )
             }
         }
