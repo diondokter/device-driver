@@ -21,13 +21,13 @@ pub enum RuntimeType {
 
 impl RuntimeType {
     pub fn shares_namespace_with(&self, other: RuntimeType) -> bool {
-        match (self, other) {
-            (RuntimeType::All, _) => true,
-            (_, RuntimeType::All) => true,
-            (RuntimeType::Operation, RuntimeType::Operation) => true,
-            (RuntimeType::Type, RuntimeType::Type) => true,
-            _ => false,
-        }
+        matches!(
+            (self, other),
+            (RuntimeType::All, _)
+                | (_, RuntimeType::All)
+                | (RuntimeType::Operation, RuntimeType::Operation)
+                | (RuntimeType::Type, RuntimeType::Type)
+        )
     }
 }
 
@@ -261,8 +261,9 @@ impl<T: IdentifierType> Identifier<T> {
     }
 
     /// Change the type of the identifier to a more specific type
-    pub fn cast<U: IdentifierType + Default>(self) -> Identifier<U>
+    pub fn cast<U>(self) -> Identifier<U>
     where
+        U: IdentifierType + Default,
         U: From<T>,
     {
         // Fine to do since we have the where bound

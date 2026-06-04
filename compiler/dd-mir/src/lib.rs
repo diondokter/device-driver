@@ -26,7 +26,7 @@ pub fn search_object<'o, T: IdentifierType>(
     manifest: &'o Manifest,
     name: &IdentifierRef<T>,
 ) -> Option<&'o Object> {
-    manifest.iter_objects().find(|o| name.is_ref_to(&o.name()))
+    manifest.iter_objects().find(|o| name.is_ref_to(o.name()))
 }
 
 /// Returns None if device has no objects that pass the filter
