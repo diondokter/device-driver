@@ -26,6 +26,7 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
 #[cfg(test)]
 mod tests {
     use device_driver_common::{
+        identifier::Identifier,
         span::{Span, SpanExt},
         specifiers::ByteOrder,
     };
@@ -38,16 +39,20 @@ mod tests {
     fn well_enough_specified() {
         let mut input = Device {
             description: String::new(),
-            name: "Device".into_with_dummy_span(),
+            name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![
                 Object::FieldSet(FieldSet {
-                    name: "MyRegister".into_with_dummy_span(),
+                    name: Identifier::try_parse("MyRegister")
+                        .unwrap()
+                        .with_dummy_span(),
                     size_bytes: 1.with_dummy_span(),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
-                    name: "MyRegister2".into_with_dummy_span(),
+                    name: Identifier::try_parse("MyRegister2")
+                        .unwrap()
+                        .with_dummy_span(),
                     size_bytes: 2.with_dummy_span(),
                     byte_order: Some(ByteOrder::LE),
                     ..Default::default()
@@ -66,10 +71,12 @@ mod tests {
     fn not_enough_specified() {
         let mut input = Device {
             description: String::new(),
-            name: "Device".into_with_dummy_span(),
+            name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
-                name: "MyRegister".into_with_dummy_span(),
+                name: Identifier::try_parse("MyRegister")
+                    .unwrap()
+                    .with_dummy_span(),
                 size_bytes: 2.with_dummy_span(),
                 ..Default::default()
             })],
@@ -91,10 +98,12 @@ mod tests {
 
         let mut input = Device {
             description: String::new(),
-            name: "Device".into_with_dummy_span(),
+            name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
             device_config: global_config,
             objects: vec![Object::FieldSet(FieldSet {
-                name: "MyRegister".into_with_dummy_span(),
+                name: Identifier::try_parse("MyRegister")
+                    .unwrap()
+                    .with_dummy_span(),
                 size_bytes: 2.with_dummy_span(),
                 ..Default::default()
             })],

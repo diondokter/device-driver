@@ -278,7 +278,10 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashS
 
 #[cfg(test)]
 mod tests {
-    use device_driver_common::span::{Span, SpanExt};
+    use device_driver_common::{
+        identifier::{Identifier, Type},
+        span::{Span, SpanExt},
+    };
 
     use crate::model::{Device, Enum, EnumVariant, Object};
 
@@ -288,29 +291,29 @@ mod tests {
     fn enum_values_correct() {
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into_with_dummy_span(),
+            name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new(
                 Default::default(),
-                "MyEnum".into_with_dummy_span(),
+                Identifier::try_parse("MyEnum").unwrap().with_dummy_span(),
                 vec![
                     EnumVariant {
-                        name: "var0".into_with_dummy_span(),
+                        name: Identifier::try_parse("var0").unwrap().with_dummy_span(),
                         value: EnumValue::Specified(1),
                         ..Default::default()
                     },
                     EnumVariant {
-                        name: "var1".into_with_dummy_span(),
+                        name: Identifier::try_parse("var1").unwrap().with_dummy_span(),
                         value: EnumValue::Unspecified,
                         ..Default::default()
                     },
                     EnumVariant {
-                        name: "var2".into_with_dummy_span(),
+                        name: Identifier::try_parse("var2").unwrap().with_dummy_span(),
                         value: EnumValue::Unspecified,
                         ..Default::default()
                     },
                     EnumVariant {
-                        name: "var3".into_with_dummy_span(),
+                        name: Identifier::try_parse("var3").unwrap().with_dummy_span(),
                         value: EnumValue::Specified(0),
                         ..Default::default()
                     },
@@ -325,29 +328,29 @@ mod tests {
 
         let end_mir = Device {
             description: String::new(),
-            name: "Device".into_with_dummy_span(),
+            name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new_with_style(
                 Default::default(),
-                "MyEnum".into_with_dummy_span(),
+                Identifier::try_parse("MyEnum").unwrap().with_dummy_span(),
                 vec![
                     EnumVariant {
-                        name: "var0".into_with_dummy_span(),
+                        name: Identifier::try_parse("var0").unwrap().with_dummy_span(),
                         value: EnumValue::Specified(1),
                         ..Default::default()
                     },
                     EnumVariant {
-                        name: "var1".into_with_dummy_span(),
+                        name: Identifier::try_parse("var1").unwrap().with_dummy_span(),
                         value: EnumValue::Specified(2),
                         ..Default::default()
                     },
                     EnumVariant {
-                        name: "var2".into_with_dummy_span(),
+                        name: Identifier::try_parse("var2").unwrap().with_dummy_span(),
                         value: EnumValue::Specified(3),
                         ..Default::default()
                     },
                     EnumVariant {
-                        name: "var3".into_with_dummy_span(),
+                        name: Identifier::try_parse("var3").unwrap().with_dummy_span(),
                         value: EnumValue::Specified(0),
                         ..Default::default()
                     },
@@ -372,19 +375,19 @@ mod tests {
     fn enum_values_infallible_with_fallback() {
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into_with_dummy_span(),
+            name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new(
                 Default::default(),
-                "MyEnum".into_with_dummy_span(),
+                Identifier::try_parse("MyEnum").unwrap().with_dummy_span(),
                 vec![
                     EnumVariant {
-                        name: "var0".into_with_dummy_span(),
+                        name: Identifier::try_parse("var0").unwrap().with_dummy_span(),
                         value: EnumValue::Unspecified,
                         ..Default::default()
                     },
                     EnumVariant {
-                        name: "var1".into_with_dummy_span(),
+                        name: Identifier::try_parse("var1").unwrap().with_dummy_span(),
                         value: EnumValue::Default(1),
                         ..Default::default()
                     },
@@ -399,19 +402,19 @@ mod tests {
 
         let end_mir = Device {
             description: String::new(),
-            name: "Device".into_with_dummy_span(),
+            name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new_with_style(
                 Default::default(),
-                "MyEnum".into_with_dummy_span(),
+                Identifier::try_parse("MyEnum").unwrap().with_dummy_span(),
                 vec![
                     EnumVariant {
-                        name: "var0".into_with_dummy_span(),
+                        name: Identifier::try_parse("var0").unwrap().with_dummy_span(),
                         value: EnumValue::Specified(0),
                         ..Default::default()
                     },
                     EnumVariant {
-                        name: "var1".into_with_dummy_span(),
+                        name: Identifier::try_parse("var1").unwrap().with_dummy_span(),
                         value: EnumValue::Default(1),
                         ..Default::default()
                     },
@@ -436,13 +439,13 @@ mod tests {
     fn enum_values_fallible() {
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into_with_dummy_span(),
+            name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new(
                 Default::default(),
-                "MyEnum".into_with_dummy_span(),
+                Identifier::try_parse("MyEnum").unwrap().with_dummy_span(),
                 vec![EnumVariant {
-                    name: "var0".into_with_dummy_span(),
+                    name: Identifier::try_parse("var0").unwrap().with_dummy_span(),
                     value: EnumValue::Unspecified,
                     ..Default::default()
                 }],
@@ -456,13 +459,13 @@ mod tests {
 
         let end_mir = Device {
             description: String::new(),
-            name: "Device".into_with_dummy_span(),
+            name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new_with_style(
                 Default::default(),
-                "MyEnum".into_with_dummy_span(),
+                Identifier::try_parse("MyEnum").unwrap().with_dummy_span(),
                 vec![EnumVariant {
-                    name: "var0".into_with_dummy_span(),
+                    name: Identifier::try_parse("var0").unwrap().with_dummy_span(),
                     value: EnumValue::Specified(0),
                     ..Default::default()
                 }],
@@ -486,24 +489,24 @@ mod tests {
     fn enum_values_dont_fit() {
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into_with_dummy_span(),
+            name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new(
                 Default::default(),
-                "MyEnum".into_with_dummy_span(),
+                Identifier::try_parse("MyEnum").unwrap().with_dummy_span(),
                 vec![
                     EnumVariant {
-                        name: "var0".into_with_dummy_span(),
+                        name: Identifier::try_parse("var0").unwrap().with_dummy_span(),
                         value: EnumValue::Unspecified,
                         ..Default::default()
                     },
                     EnumVariant {
-                        name: "var0".into_with_dummy_span(),
+                        name: Identifier::try_parse("var0").unwrap().with_dummy_span(),
                         value: EnumValue::Unspecified,
                         ..Default::default()
                     },
                     EnumVariant {
-                        name: "var0".into_with_dummy_span(),
+                        name: Identifier::try_parse("var0").unwrap().with_dummy_span(),
                         value: EnumValue::Unspecified,
                         ..Default::default()
                     },
@@ -520,26 +523,28 @@ mod tests {
         let removals = run_pass(&mut start_mir, &mut diagnostics);
 
         assert!(diagnostics.has_error());
-        assert!(removals.contains(&UniqueId::new_test("MyEnum".into())));
+        assert!(removals.contains(&UniqueId::new_test(
+            Identifier::<Type>::try_parse("MyEnum").unwrap()
+        )));
     }
 
     #[test]
     fn enum_values_no_duplicates() {
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into_with_dummy_span(),
+            name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
             device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new(
                 Default::default(),
-                "MyEnum".into_with_dummy_span(),
+                Identifier::try_parse("MyEnum").unwrap().with_dummy_span(),
                 vec![
                     EnumVariant {
-                        name: "var0".into_with_dummy_span(),
+                        name: Identifier::try_parse("var0").unwrap().with_dummy_span(),
                         value: EnumValue::Unspecified,
                         ..Default::default()
                     },
                     EnumVariant {
-                        name: "var0".into_with_dummy_span(),
+                        name: Identifier::try_parse("var0").unwrap().with_dummy_span(),
                         value: EnumValue::Specified(0),
                         ..Default::default()
                     },
@@ -557,6 +562,8 @@ mod tests {
 
         assert!(diagnostics.has_error());
         assert_eq!(removals.len(), 1);
-        assert!(removals.contains(&UniqueId::new_test("MyEnum".into())));
+        assert!(removals.contains(&UniqueId::new_test(
+            Identifier::<Type>::try_parse("MyEnum").unwrap()
+        )));
     }
 }

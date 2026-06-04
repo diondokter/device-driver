@@ -2,7 +2,7 @@ use std::ops::Add;
 
 use convert_case::Case;
 use device_driver_common::{
-    identifier::Identifier,
+    identifier::{All, Identifier},
     span::SpanExt,
     specifiers::{BaseType, Integer, Repeat, RepeatSource},
 };
@@ -31,7 +31,8 @@ pub fn transform_devices(manifest: &mir::Manifest) -> Result<Vec<lir::Device>, D
                         },
                         device.name.to_case(Case::Pascal),
                     ),
-                    name: &device.name,
+                    // Cast unchecked is fine here since this is a root block and the identifier is never used as an operation
+                    name: &device.name.value.clone().cast_unchecked(),
                     address_offset: &0,
                     repeat: &None,
                     objects: &device.objects,
@@ -86,7 +87,7 @@ fn collect_into_blocks(
     let new_block = lir::Block {
         description: description.clone(),
         root: is_root,
-        name: name.clone(),
+        name: name.clone().cast(),
         register_address_type: device_config
             .register_address_type
             .map(|v| v.value)
@@ -134,11 +135,11 @@ fn get_method(
 
             Some(lir::BlockMethod {
                 description: description.clone(),
-                name: name.value.clone(),
+                name: name.value.clone().cast(),
                 address: address_offset.value,
                 repeat: repeat_to_method_kind(repeat, manifest),
                 method_type: lir::BlockMethodType::Block {
-                    name: name.value.clone(),
+                    name: name.value.clone().cast(),
                 },
             })
         }
@@ -162,7 +163,7 @@ fn get_method(
                 address: address.value,
                 repeat: repeat_to_method_kind(repeat, manifest),
                 method_type: lir::BlockMethodType::Register {
-                    field_set_name: field_set.name().clone(),
+                    field_set_name: field_set.name().clone().cast_assert(),
                     access: *access,
                     reset_value: reset_value.as_ref().map(|rv| {
                         rv.as_array().cloned().map(|array| array.with_span(rv.span)).ok_or_else(
@@ -207,8 +208,9 @@ fn get_method(
                 address: address.value,
                 repeat: repeat_to_method_kind(repeat, manifest),
                 method_type: lir::BlockMethodType::Command {
-                    field_set_name_in: field_set_in.map(|fs_in| fs_in.name().clone()),
-                    field_set_name_out: field_set_out.map(|fs_out| fs_out.name().clone()),
+                    field_set_name_in: field_set_in.map(|fs_in| fs_in.name().clone().cast_assert()),
+                    field_set_name_out: field_set_out
+                        .map(|fs_out| fs_out.name().clone().cast_assert()),
                 },
             })
         }
@@ -319,7 +321,7 @@ fn transform_field(manifest: &mir::Manifest, field: &mir::Field) -> Result<lir::
 
             // Always use try if that's specified
             if fc.fallible {
-                lir::FieldConversionMethod::TryInto(fc_identifier)
+                lir::FieldConversionMethod::TryInto(fc_identifier.cast_assert())
             }
             // Are we pointing at a potentially infallible enum and do we fulfil the requirements?
             else if let Some(mir::Enum {
@@ -338,12 +340,12 @@ fn transform_field(manifest: &mir::Manifest, field: &mir::Field) -> Result<lir::
                     })?
             {
                 // This field is equal or smaller in bits than the infallible enum. So we can do the unsafe into
-                lir::FieldConversionMethod::UnsafeInto(fc_identifier)
+                lir::FieldConversionMethod::UnsafeInto(fc_identifier.cast_assert())
             } else {
                 // Fallback is to use the into trait.
                 // This is correct because in the field_conversion_valid mir pass we've already exited if we need a try and didn't specify it.
                 // The only other option is the unsafe into and we've just checked that.
-                lir::FieldConversionMethod::Into(fc_identifier)
+                lir::FieldConversionMethod::Into(fc_identifier.cast_assert())
             }
         }),
     };
@@ -460,11 +462,13 @@ fn repeat_to_method_kind(repeat: &Option<Repeat>, manifest: &mir::Manifest) -> l
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct BorrowedBlock<'o> {
     pub description: &'o String,
-    pub name: &'o Identifier,
+    pub name: &'o Identifier<All>,
+    #[expect(unused, reason = "included for completeness")]
     pub address_offset: &'o i128,
+    #[expect(unused, reason = "included for completeness")]
     pub repeat: &'o Option<Repeat>,
     pub objects: &'o [mir::Object],
 }

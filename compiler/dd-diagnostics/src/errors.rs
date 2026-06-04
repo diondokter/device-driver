@@ -7,7 +7,7 @@ use std::borrow::Cow;
 
 use annotate_snippets::{AnnotationKind, Group, Level, Patch, Snippet};
 use device_driver_common::{
-    identifier::{self, Identifier},
+    identifier::{self, Identifier, RuntimeType},
     span::{Span, Spanned},
     specifiers::{BaseType, Integer, NodeType},
 };
@@ -102,9 +102,9 @@ impl Diagnostic for DeviceNameNotPascal {
 #[derive(Debug)]
 pub struct DuplicateName {
     pub original: Span,
-    pub original_value: Identifier,
+    pub original_value: Identifier<RuntimeType>,
     pub duplicate: Span,
-    pub duplicate_value: Identifier,
+    pub duplicate_value: Identifier<RuntimeType>,
 }
 
 impl Diagnostic for DuplicateName {

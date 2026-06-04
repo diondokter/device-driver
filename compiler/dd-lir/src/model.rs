@@ -1,5 +1,5 @@
 use device_driver_common::{
-    identifier::Identifier,
+    identifier::{All, Identifier, Operation, Type},
     span::Spanned,
     specifiers::{Access, AddressMode, AddressRange, ByteOrder, Integer},
 };
@@ -19,7 +19,7 @@ pub struct Block {
     pub description: String,
     /// True for the root (top-level) block
     pub root: bool,
-    pub name: Identifier,
+    pub name: Identifier<Type>,
     pub register_address_type: Integer,
     pub command_address_type: Integer,
     pub buffer_address_type: Integer,
@@ -29,7 +29,7 @@ pub struct Block {
 
 pub struct BlockMethod {
     pub description: String,
-    pub name: Identifier,
+    pub name: Identifier<Operation>,
     pub address: i128,
     pub repeat: Repeat,
     pub method_type: BlockMethodType,
@@ -42,24 +42,24 @@ pub enum Repeat {
         stride: i128,
     },
     Enum {
-        enum_name: Identifier,
-        enum_variants: Vec<Identifier>,
+        enum_name: Identifier<Type>,
+        enum_variants: Vec<Identifier<All>>,
         stride: i128,
     },
 }
 
 pub enum BlockMethodType {
     Block {
-        name: Identifier,
+        name: Identifier<Type>,
     },
     Register {
-        field_set_name: Identifier,
+        field_set_name: Identifier<Type>,
         access: Access,
         reset_value: Option<Spanned<Vec<u8>>>,
     },
     Command {
-        field_set_name_in: Option<Identifier>,
-        field_set_name_out: Option<Identifier>,
+        field_set_name_in: Option<Identifier<Type>>,
+        field_set_name_out: Option<Identifier<Type>>,
     },
     Buffer {
         access: Access,
@@ -69,7 +69,7 @@ pub enum BlockMethodType {
 /// A set of fields, like a register or command in/out
 pub struct FieldSet {
     pub description: String,
-    pub name: Identifier,
+    pub name: Identifier<Type>,
     pub byte_order: ByteOrder,
     pub size_bytes: u32,
     pub fields: Vec<Field>,
@@ -77,7 +77,7 @@ pub struct FieldSet {
 
 pub struct Field {
     pub description: String,
-    pub name: Identifier,
+    pub name: Identifier<All>,
     pub address: AddressRange,
     pub base_type: String,
     pub conversion_method: FieldConversionMethod,
@@ -97,14 +97,14 @@ impl Field {
 
 pub enum FieldConversionMethod {
     None,
-    Into(Identifier),
-    UnsafeInto(Identifier),
-    TryInto(Identifier),
+    Into(Identifier<Type>),
+    UnsafeInto(Identifier<Type>),
+    TryInto(Identifier<Type>),
     Bool,
 }
 
 impl FieldConversionMethod {
-    pub fn conversion_type(&self) -> Option<&Identifier> {
+    pub fn conversion_type(&self) -> Option<&Identifier<Type>> {
         match self {
             FieldConversionMethod::None => None,
             FieldConversionMethod::Into(type_path) => Some(type_path),
@@ -117,7 +117,7 @@ impl FieldConversionMethod {
 
 pub struct Enum {
     pub description: String,
-    pub name: Identifier,
+    pub name: Identifier<Type>,
     pub base_type: String,
     pub variants: Vec<EnumVariant>,
 }
@@ -134,7 +134,7 @@ impl Enum {
 
 pub struct EnumVariant {
     pub description: String,
-    pub name: Identifier,
+    pub name: Identifier<All>,
     pub discriminant: i128,
     pub default: bool,
     pub catch_all: bool,

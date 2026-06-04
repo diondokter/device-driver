@@ -1,0 +1,7 @@
+error: The device driver input has errors that need to be solved!
+   --> overlapping_names.rs:519:1
+    |
+519 | compile_error!("The device driver input has errors that need to be solved!");
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: could not compile `overlapping_names` (bin "overlapping_names") due to 1 previous error

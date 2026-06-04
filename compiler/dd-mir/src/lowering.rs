@@ -12,7 +12,7 @@ use crate::model::{
 };
 use convert_case::Boundary;
 use device_driver_common::{
-    identifier::{Identifier, IdentifierRef},
+    identifier::{All, Identifier, IdentifierRef, IdentifierType, Operation, Type},
     span::{Span, SpanExt, Spanned},
     specifiers::{
         Access, AddressMode, AddressRange, BaseType, ByteOrder, Integer, NodeType, Repeat,
@@ -238,7 +238,7 @@ fn parse_node_to_shape<'src, S: Shape>(
             *conversion_type = type_specifier.conversion.as_ref().and_then(|c| {
                 let reference = match c {
                     device_driver_parser::TypeConversion::Reference(ident) => {
-                        Some(IdentifierRef::new(ident.val.into()).with_span(ident.span))
+                        Some(IdentifierRef::<Type>::new(ident.val.into()).with_span(ident.span))
                     }
                     device_driver_parser::TypeConversion::Subnode(sub_node) => {
                         let sub_node = lower_node(
@@ -252,8 +252,13 @@ fn parse_node_to_shape<'src, S: Shape>(
                         match sub_node {
                             LowerResult::Manifest(_) => unreachable!(),
                             LowerResult::Objects(object, objects) => {
-                                let reference =
-                                    object.name().take_ref().with_span(object.name_span());
+                                let reference = object
+                                    .name()
+                                    .clone()
+                                    // The only allowed subnodes are types, so this should be fine
+                                    .cast_assert()
+                                    .take_ref()
+                                    .with_span(object.name_span());
                                 sibling_objects.push(object);
                                 sibling_objects.extend(objects);
                                 Some(reference)
@@ -506,9 +511,10 @@ fn parse_node_to_shape<'src, S: Shape>(
 
 trait Shape: Default + 'static {
     const NODE_TYPE: NodeType;
+    type NameIdentifierType: IdentifierType + Default;
 
     fn doc_comments(&mut self) -> &mut String;
-    fn name(&mut self) -> &mut Spanned<Identifier>;
+    fn name(&mut self) -> &mut Spanned<Identifier<Self::NameIdentifierType>>;
 
     /// All the supported properties
     fn supported_properties() -> &'static [PropertyInfo<Self>];
@@ -629,12 +635,13 @@ const FIELD_SET_EXAMPLE: Node<'static> = Node {
 
 impl Shape for Manifest {
     const NODE_TYPE: NodeType = NodeType::Manifest;
+    type NameIdentifierType = All;
 
     fn doc_comments(&mut self) -> &mut String {
         &mut self.description
     }
 
-    fn name(&mut self) -> &mut Spanned<Identifier> {
+    fn name(&mut self) -> &mut Spanned<Identifier<Self::NameIdentifierType>> {
         &mut self.name
     }
 
@@ -782,12 +789,13 @@ impl Shape for Manifest {
 
 impl Shape for Device {
     const NODE_TYPE: NodeType = NodeType::Device;
+    type NameIdentifierType = Type;
 
     fn doc_comments(&mut self) -> &mut String {
         &mut self.description
     }
 
-    fn name(&mut self) -> &mut Spanned<Identifier> {
+    fn name(&mut self) -> &mut Spanned<Identifier<Self::NameIdentifierType>> {
         &mut self.name
     }
 
@@ -939,12 +947,13 @@ impl Shape for Device {
 
 impl Shape for Block {
     const NODE_TYPE: NodeType = NodeType::Block;
+    type NameIdentifierType = All;
 
     fn doc_comments(&mut self) -> &mut String {
         &mut self.description
     }
 
-    fn name(&mut self) -> &mut Spanned<Identifier> {
+    fn name(&mut self) -> &mut Spanned<Identifier<Self::NameIdentifierType>> {
         &mut self.name
     }
 
@@ -998,12 +1007,13 @@ impl Shape for Block {
 
 impl Shape for Register {
     const NODE_TYPE: NodeType = NodeType::Register;
+    type NameIdentifierType = Operation;
 
     fn doc_comments(&mut self) -> &mut String {
         &mut self.description
     }
 
-    fn name(&mut self) -> &mut Spanned<Identifier> {
+    fn name(&mut self) -> &mut Spanned<Identifier<Self::NameIdentifierType>> {
         &mut self.name
     }
 
@@ -1131,8 +1141,13 @@ impl Shape for Register {
 
                                 match result {
                                     LowerResult::Objects(fs, fs_siblings) => {
-                                        r.field_set_ref =
-                                            fs.name().take_ref().with_span(fs.name_span());
+                                        r.field_set_ref = fs
+                                            .name()
+                                            .clone()
+                                            // This should always be a fieldset is a Type identifier
+                                            .cast_assert()
+                                            .take_ref()
+                                            .with_span(fs.name_span());
                                         sibling_objects.push(fs);
                                         sibling_objects.extend(fs_siblings);
                                         false
@@ -1165,12 +1180,13 @@ impl Shape for Register {
 
 impl Shape for FieldSet {
     const NODE_TYPE: NodeType = NodeType::FieldSet;
+    type NameIdentifierType = Type;
 
     fn doc_comments(&mut self) -> &mut String {
         &mut self.description
     }
 
-    fn name(&mut self) -> &mut Spanned<Identifier> {
+    fn name(&mut self) -> &mut Spanned<Identifier<Self::NameIdentifierType>> {
         &mut self.name
     }
 
@@ -1254,12 +1270,13 @@ impl Shape for FieldSet {
 
 impl Shape for Extern {
     const NODE_TYPE: NodeType = NodeType::Extern;
+    type NameIdentifierType = Type;
 
     fn doc_comments(&mut self) -> &mut String {
         &mut self.description
     }
 
-    fn name(&mut self) -> &mut Spanned<Identifier> {
+    fn name(&mut self) -> &mut Spanned<Identifier<Self::NameIdentifierType>> {
         &mut self.name
     }
 
@@ -1322,12 +1339,13 @@ impl Shape for Extern {
 
 impl Shape for Buffer {
     const NODE_TYPE: NodeType = NodeType::Buffer;
+    type NameIdentifierType = Operation;
 
     fn doc_comments(&mut self) -> &mut String {
         &mut self.description
     }
 
-    fn name(&mut self) -> &mut Spanned<Identifier> {
+    fn name(&mut self) -> &mut Spanned<Identifier<Self::NameIdentifierType>> {
         &mut self.name
     }
 
@@ -1378,12 +1396,13 @@ impl Shape for Buffer {
 
 impl Shape for Enum {
     const NODE_TYPE: NodeType = NodeType::Enum;
+    type NameIdentifierType = Type;
 
     fn doc_comments(&mut self) -> &mut String {
         &mut self.description
     }
 
-    fn name(&mut self) -> &mut Spanned<Identifier> {
+    fn name(&mut self) -> &mut Spanned<Identifier<Self::NameIdentifierType>> {
         &mut self.name
     }
 
@@ -1449,12 +1468,13 @@ impl Shape for Enum {
 
 impl Shape for Command {
     const NODE_TYPE: NodeType = NodeType::Command;
+    type NameIdentifierType = Operation;
 
     fn doc_comments(&mut self) -> &mut String {
         &mut self.description
     }
 
-    fn name(&mut self) -> &mut Spanned<Identifier> {
+    fn name(&mut self) -> &mut Spanned<Identifier<Self::NameIdentifierType>> {
         &mut self.name
     }
 
@@ -1530,8 +1550,14 @@ impl Shape for Command {
 
                                 match result {
                                     LowerResult::Objects(fs, fs_siblings) => {
-                                        command.field_set_ref_in =
-                                            Some(fs.name().take_ref().with_span(fs.name_span()));
+                                        command.field_set_ref_in = Some(
+                                            fs.name()
+                                                .clone()
+                                                // Always a fieldset, so should be fine
+                                                .cast_assert()
+                                                .take_ref()
+                                                .with_span(fs.name_span()),
+                                        );
                                         sibling_objects.push(fs);
                                         sibling_objects.extend(fs_siblings);
                                         false
@@ -1583,8 +1609,14 @@ impl Shape for Command {
 
                                 match result {
                                     LowerResult::Objects(fs, fs_siblings) => {
-                                        command.field_set_ref_out =
-                                            Some(fs.name().take_ref().with_span(fs.name_span()));
+                                        command.field_set_ref_out = Some(
+                                            fs.name()
+                                                .clone()
+                                                // Always a fieldset, so should be fine
+                                                .cast_assert()
+                                                .take_ref()
+                                                .with_span(fs.name_span()),
+                                        );
                                         sibling_objects.push(fs);
                                         sibling_objects.extend(fs_siblings);
                                         false
@@ -1617,12 +1649,13 @@ impl Shape for Command {
 
 impl Shape for Field {
     const NODE_TYPE: NodeType = NodeType::Field;
+    type NameIdentifierType = All;
 
     fn doc_comments(&mut self) -> &mut String {
         &mut self.description
     }
 
-    fn name(&mut self) -> &mut Spanned<Identifier> {
+    fn name(&mut self) -> &mut Spanned<Identifier<Self::NameIdentifierType>> {
         &mut self.name
     }
 

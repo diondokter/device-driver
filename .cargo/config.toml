@@ -1,0 +1,2 @@
+[alias]
+accept = "run -p device-driver-tests -- --cases tests/ui/cases accept"

@@ -1,6 +1,9 @@
 use std::{fmt::Display, num::NonZeroU32, str::FromStr};
 
-use crate::{identifier::IdentifierRef, span::Spanned};
+use crate::{
+    identifier::{IdentifierRef, Type},
+    span::Spanned,
+};
 
 pub trait VariantNames {
     /// Names of the variants of this enum
@@ -269,24 +272,24 @@ impl Display for BaseType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TypeConversion {
     /// The name of the type we're converting to
-    pub type_name: Spanned<IdentifierRef>,
+    pub type_name: Spanned<IdentifierRef<Type>>,
     /// True when we want to use the fallible interface (like a Result<type, error>)
     pub fallible: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Repeat {
     pub source: RepeatSource,
     pub stride: Spanned<i128>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum RepeatSource {
     Count(NonZeroU32),
-    Enum(Spanned<IdentifierRef>),
+    Enum(Spanned<IdentifierRef<Type>>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

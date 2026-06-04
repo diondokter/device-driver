@@ -1,21 +1,31 @@
-use clap::Command;
+use std::path::{Path, PathBuf};
+
+use clap::{Arg, Command, value_parser};
 use device_driver_core::Target;
 use device_driver_diagnostics::Metadata;
 
 fn main() {
     let matches = Command::new("Tests")
         .subcommand(Command::new("accept").about("Accept all changes and update the output files"))
+        .arg(
+            Arg::new("cases")
+                .short('c')
+                .long("cases")
+                .default_value("./cases")
+                .help("The path to the cases folder")
+                .value_parser(value_parser!(PathBuf)),
+        )
         .get_matches();
 
     match matches.subcommand_name() {
-        Some("accept") => accept(),
+        Some("accept") => accept(matches.get_one::<PathBuf>("cases").unwrap()),
         None => println!("Choose an action to do..."),
         _ => unreachable!(),
     }
 }
 
-fn accept() {
-    let test_cases = std::fs::read_dir("cases").unwrap();
+fn accept(cases_dir: &Path) {
+    let test_cases = std::fs::read_dir(cases_dir).unwrap();
 
     for test_case in test_cases {
         let test_case = test_case.unwrap();
