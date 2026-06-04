@@ -113,7 +113,12 @@ impl Diagnostic for DuplicateName {
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
-        const INFO_TEXT: &str = "no two objects can have the same name. This is true for fields within a field set and variants within an enum";
+        const INFO_TEXT: &str =
+            "names may not collide within their namespace. There are 4 namespaces:
+- Types: a type definition
+- Operations: something you *do* with a driver
+- Fields: unique within a fieldset
+- Enum variants: unique within an enum";
 
         [
             Level::ERROR.primary_title("duplicate name found").element(

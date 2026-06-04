@@ -7,7 +7,11 @@ LL |     device Foo {
 LL |     device Foo {
    |            ^^^ the duplicate: "Foo", after word split: "foo"
    |
-info: no two objects can have the same name. This is true for fields within a field set and variants within an enum
+info: names may not collide within their namespace. There are 4 namespaces:
+      - Types: a type definition
+      - Operations: something you *do* with a driver
+      - Fields: unique within a fieldset
+      - Enum variants: unique within an enum
 
 error: duplicate name found
   --> input.ddsl:23:18
@@ -18,7 +22,11 @@ LL |         register Bar {
 LL |         register Bar {
    |                  ^^^ the duplicate: "Bar", after word split: "bar"
    |
-info: no two objects can have the same name. This is true for fields within a field set and variants within an enum
+info: names may not collide within their namespace. There are 4 namespaces:
+      - Types: a type definition
+      - Operations: something you *do* with a driver
+      - Fields: unique within a fieldset
+      - Enum variants: unique within an enum
 
 error: duplicate name found
   --> input.ddsl:28:50
@@ -29,7 +37,11 @@ LL |                 field quux 7:0 -> u8 as try enum _ { // Enum same name as f
 LL |                 field quux 7:0 -> u8 as try enum _ {
    |                                                  ^ the duplicate: "quux", after word split: "quux"
    |
-info: no two objects can have the same name. This is true for fields within a field set and variants within an enum
+info: names may not collide within their namespace. There are 4 namespaces:
+      - Types: a type definition
+      - Operations: something you *do* with a driver
+      - Fields: unique within a fieldset
+      - Enum variants: unique within an enum
 
 error: duplicate name found
   --> input.ddsl:25:30
@@ -40,7 +52,11 @@ LL |             fields: fieldset _ { // Fieldset same name as register
 LL |             fields: fieldset _ {
    |                              ^ the duplicate: "Bar", after word split: "bar"
    |
-info: no two objects can have the same name. This is true for fields within a field set and variants within an enum
+info: names may not collide within their namespace. There are 4 namespaces:
+      - Types: a type definition
+      - Operations: something you *do* with a driver
+      - Fields: unique within a fieldset
+      - Enum variants: unique within an enum
 
 error: duplicate name found
   --> input.ddsl:41:16
@@ -51,7 +67,11 @@ LL |         block Wheee { // Should overlap with both operations and types
 LL |         buffer Wheee {
    |                ^^^^^ the duplicate: "Wheee", after word split: "wheee"
    |
-info: no two objects can have the same name. This is true for fields within a field set and variants within an enum
+info: names may not collide within their namespace. There are 4 namespaces:
+      - Types: a type definition
+      - Operations: something you *do* with a driver
+      - Fields: unique within a fieldset
+      - Enum variants: unique within an enum
 
 error: duplicate name found
   --> input.ddsl:47:14
@@ -62,5 +82,9 @@ LL |         block Wheee2 { // Should overlap with both operations and types
 LL |         enum Wheee2 {
    |              ^^^^^^ the duplicate: "Wheee2", after word split: "wheee·2"
    |
-info: no two objects can have the same name. This is true for fields within a field set and variants within an enum
+info: names may not collide within their namespace. There are 4 namespaces:
+      - Types: a type definition
+      - Operations: something you *do* with a driver
+      - Fields: unique within a fieldset
+      - Enum variants: unique within an enum
 
