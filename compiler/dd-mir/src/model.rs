@@ -1,19 +1,21 @@
 use std::{fmt::Display, rc::Rc};
 
 use convert_case::Boundary;
+#[cfg(test)]
+use device_driver_common::identifier::IdentifierType;
 use device_driver_common::{
-    identifier::{Identifier, IdentifierRef},
-    span::{Span, Spanned},
+    identifier::{All, Identifier, IdentifierRef, Operation, RuntimeType, Type},
+    span::{Span, SpanExt, Spanned},
     specifiers::{
         Access, AddressMode, AddressRange, BaseType, ByteOrder, Integer, NodeType, Repeat,
         ResetValue, TypeConversion,
     },
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Manifest {
     pub description: String,
-    pub name: Spanned<Identifier>,
+    pub name: Spanned<Identifier<All>>,
     pub config: DeviceConfig,
     pub objects: Vec<Object>,
     pub span: Span,
@@ -222,7 +224,12 @@ impl From<Device> for Manifest {
     fn from(value: Device) -> Self {
         Self {
             description: String::new(),
-            name: value.name.clone(),
+            name: value
+                .name
+                .value
+                .clone()
+                .cast_unchecked()
+                .with_span(value.name.span),
             span: value.span,
             objects: vec![Object::Device(value)],
             config: DeviceConfig::default(),
@@ -230,10 +237,10 @@ impl From<Device> for Manifest {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Device {
     pub description: String,
-    pub name: Spanned<Identifier>,
+    pub name: Spanned<Identifier<Type>>,
     pub device_config: DeviceConfig,
     pub objects: Vec<Object>,
     /// Span of the whole object
@@ -251,7 +258,7 @@ impl Device {
         .map(|(object, _)| object)
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct DeviceConfig {
     /// The id of the device that owns this config. If None, then this is a manifest config
     pub owner: Option<UniqueId>,
@@ -282,7 +289,7 @@ impl DeviceConfig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Object {
     Device(Device),
     Block(Block),
@@ -328,32 +335,32 @@ impl Object {
     }
 
     /// Get a mutable reference to the name of the specific object
-    pub(crate) fn name_mut(&mut self) -> &mut Identifier {
+    pub(crate) fn name_mut(&mut self) -> &mut Identifier<RuntimeType> {
         match self {
-            Object::Device(val) => &mut val.name,
-            Object::Block(val) => &mut val.name,
-            Object::Register(val) => &mut val.name,
-            Object::Command(val) => &mut val.name,
-            Object::Buffer(val) => &mut val.name,
-            Object::FieldSet(val) => &mut val.name,
-            Object::Enum(val) => &mut val.name,
-            Object::Extern(val) => &mut val.name,
-            Object::Field(val) => &mut val.name,
+            Object::Device(val) => val.name.as_runtime_type_mut(),
+            Object::Block(val) => val.name.as_runtime_type_mut(),
+            Object::Register(val) => val.name.as_runtime_type_mut(),
+            Object::Command(val) => val.name.as_runtime_type_mut(),
+            Object::Buffer(val) => val.name.as_runtime_type_mut(),
+            Object::FieldSet(val) => val.name.as_runtime_type_mut(),
+            Object::Enum(val) => val.name.as_runtime_type_mut(),
+            Object::Extern(val) => val.name.as_runtime_type_mut(),
+            Object::Field(val) => val.name.as_runtime_type_mut(),
         }
     }
 
     /// Get a reference to the name of the specific object
-    pub fn name(&self) -> &Identifier {
+    pub fn name(&self) -> &Identifier<RuntimeType> {
         match self {
-            Object::Device(val) => &val.name,
-            Object::Block(val) => &val.name,
-            Object::Register(val) => &val.name,
-            Object::Command(val) => &val.name,
-            Object::Buffer(val) => &val.name,
-            Object::FieldSet(val) => &val.name,
-            Object::Enum(val) => &val.name,
-            Object::Extern(val) => &val.name,
-            Object::Field(val) => &val.name,
+            Object::Device(val) => val.name.as_runtime_type(),
+            Object::Block(val) => val.name.as_runtime_type(),
+            Object::Register(val) => val.name.as_runtime_type(),
+            Object::Command(val) => val.name.as_runtime_type(),
+            Object::Buffer(val) => val.name.as_runtime_type(),
+            Object::FieldSet(val) => val.name.as_runtime_type(),
+            Object::Enum(val) => val.name.as_runtime_type(),
+            Object::Extern(val) => val.name.as_runtime_type(),
+            Object::Field(val) => val.name.as_runtime_type(),
         }
     }
 
@@ -485,7 +492,7 @@ impl Object {
     }
 
     /// Get the fieldset refs of the object. Only returns non-zero for registers and commands
-    pub(crate) fn fieldset_refs(&self) -> Vec<Spanned<IdentifierRef>> {
+    pub(crate) fn fieldset_refs(&self) -> Vec<Spanned<IdentifierRef<Type>>> {
         match self {
             Object::Device(_) => Vec::new(),
             Object::Block(_) => Vec::new(),
@@ -503,10 +510,10 @@ impl Object {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Block {
     pub description: String,
-    pub name: Spanned<Identifier>,
+    pub name: Spanned<Identifier<All>>,
     pub address_offset: Spanned<i128>,
     pub repeat: Option<Repeat>,
     pub objects: Vec<Object>,
@@ -514,24 +521,24 @@ pub struct Block {
     pub span: Span,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Register {
     pub description: String,
-    pub name: Spanned<Identifier>,
+    pub name: Spanned<Identifier<Operation>>,
     pub access: Access,
     pub allow_address_overlap: bool,
     pub address: Spanned<i128>,
     pub reset_value: Option<Spanned<ResetValue>>,
     pub repeat: Option<Repeat>,
-    pub field_set_ref: Spanned<IdentifierRef>,
+    pub field_set_ref: Spanned<IdentifierRef<Type>>,
     /// Span of the whole object
     pub span: Span,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct FieldSet {
     pub description: String,
-    pub name: Spanned<Identifier>,
+    pub name: Spanned<Identifier<Type>>,
     pub size_bytes: Spanned<u32>,
     pub byte_order: Option<ByteOrder>,
     pub allow_bit_overlap: bool,
@@ -546,10 +553,10 @@ impl FieldSet {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Field {
     pub description: String,
-    pub name: Spanned<Identifier>,
+    pub name: Spanned<Identifier<All>>,
     pub access: Access,
     pub base_type: Spanned<BaseType>,
     pub field_conversion: Option<TypeConversion>,
@@ -576,10 +583,10 @@ impl Field {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Enum {
     pub description: String,
-    pub name: Spanned<Identifier>,
+    pub name: Spanned<Identifier<Type>>,
     pub variants: Vec<EnumVariant>,
     pub base_type: Spanned<BaseType>,
     pub size_bits: Option<u32>,
@@ -592,7 +599,7 @@ impl Enum {
     #[must_use]
     pub fn new(
         description: String,
-        name: Spanned<Identifier>,
+        name: Spanned<Identifier<Type>>,
         variants: Vec<EnumVariant>,
         base_type: Spanned<BaseType>,
         size_bits: Option<u32>,
@@ -612,7 +619,7 @@ impl Enum {
     #[cfg(test)]
     pub fn new_with_style(
         description: String,
-        name: Spanned<Identifier>,
+        name: Spanned<Identifier<Type>>,
         variants: Vec<EnumVariant>,
         base_type: Spanned<BaseType>,
         size_bits: Option<u32>,
@@ -690,10 +697,10 @@ impl EnumGenerationStyle {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct EnumVariant {
     pub description: String,
-    pub name: Spanned<Identifier>,
+    pub name: Spanned<Identifier<All>>,
     pub value: EnumValue,
     /// Span of the whole object
     pub span: Span,
@@ -737,35 +744,35 @@ impl EnumValue {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Command {
     pub description: String,
-    pub name: Spanned<Identifier>,
+    pub name: Spanned<Identifier<Operation>>,
     pub address: Spanned<i128>,
     pub allow_address_overlap: bool,
     pub repeat: Option<Repeat>,
 
-    pub field_set_ref_in: Option<Spanned<IdentifierRef>>,
-    pub field_set_ref_out: Option<Spanned<IdentifierRef>>,
+    pub field_set_ref_in: Option<Spanned<IdentifierRef<Type>>>,
+    pub field_set_ref_out: Option<Spanned<IdentifierRef<Type>>>,
 
     /// Span of the whole object
     pub span: Span,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Buffer {
     pub description: String,
-    pub name: Spanned<Identifier>,
+    pub name: Spanned<Identifier<Operation>>,
     pub access: Access,
     pub address: Spanned<i128>,
     /// Span of the whole object
     pub span: Span,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct Extern {
     pub description: String,
-    pub name: Spanned<Identifier>,
+    pub name: Spanned<Identifier<Type>>,
     /// From/into what base type can this extern be converted?
     pub base_type: Spanned<BaseType>,
     /// If true, this extern can be converted infallibly too
@@ -776,18 +783,18 @@ pub struct Extern {
     pub span: Span,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum UniqueId {
     Object {
-        object_name: Spanned<Identifier>,
+        object_name: Spanned<Identifier<RuntimeType>>,
     },
     Field {
         parent_id: Box<UniqueId>,
-        field_name: Spanned<Identifier>,
+        field_name: Spanned<Identifier<RuntimeType>>,
     },
     Variant {
         parent_id: Box<UniqueId>,
-        variant_name: Spanned<Identifier>,
+        variant_name: Spanned<Identifier<RuntimeType>>,
     },
 }
 
@@ -801,7 +808,7 @@ impl UniqueId {
         }
     }
 
-    pub fn identifier(&self) -> &Identifier {
+    pub fn identifier(&self) -> &Identifier<RuntimeType> {
         match self {
             UniqueId::Object { object_name } => object_name,
             UniqueId::Field { field_name, .. } => field_name,
@@ -811,11 +818,11 @@ impl UniqueId {
 
     /// *Only for tests:* Create a new instance with a dummy span.
     #[cfg(test)]
-    pub fn new_test(identifier: Identifier) -> Self {
+    pub fn new_test<T: IdentifierType>(identifier: Identifier<T>) -> Self {
         use device_driver_common::span::SpanExt;
 
         Self::Object {
-            object_name: identifier.with_dummy_span(),
+            object_name: identifier.to_runtime_type().with_dummy_span(),
         }
     }
 }
@@ -862,7 +869,12 @@ macro_rules! impl_unique_object {
 
             fn id(&self) -> UniqueId {
                 UniqueId::Object {
-                    object_name: self.name.clone(),
+                    object_name: self
+                        .name
+                        .value
+                        .clone()
+                        .to_runtime_type()
+                        .with_span(self.name.span),
                 }
             }
 
@@ -872,7 +884,9 @@ macro_rules! impl_unique_object {
 
             fn has_id(&self, id: &UniqueId) -> bool {
                 match id {
-                    UniqueId::Object { object_name } => &self.name == object_name,
+                    UniqueId::Object { object_name } => {
+                        self.name.as_runtime_type() == &object_name.value
+                    }
                     _ => false,
                 }
             }
@@ -899,7 +913,12 @@ impl Unique for Field {
     fn id_with(&self, parent: Self::Metadata) -> UniqueId {
         UniqueId::Field {
             parent_id: Box::new(parent),
-            field_name: self.name.clone(),
+            field_name: self
+                .name
+                .value
+                .clone()
+                .to_runtime_type()
+                .with_span(self.name.span),
         }
     }
 
@@ -918,7 +937,12 @@ impl Unique for EnumVariant {
     fn id_with(&self, parent: Self::Metadata) -> UniqueId {
         UniqueId::Variant {
             parent_id: Box::new(parent),
-            variant_name: self.name.clone(),
+            variant_name: self
+                .name
+                .value
+                .clone()
+                .to_runtime_type()
+                .with_span(self.name.span),
         }
     }
 
@@ -981,24 +1005,24 @@ mod tests {
             objects: vec![
                 Object::Device(Device {
                     description: String::new(),
-                    name: "a".into_with_dummy_span(),
+                    name: Identifier::try_parse("a").unwrap().with_dummy_span(),
                     device_config: DeviceConfig {
                         ..Default::default()
                     },
                     objects: vec![
                         Object::Extern(Extern {
-                            name: "b".into_with_dummy_span(),
+                            name: Identifier::try_parse("b").unwrap().with_dummy_span(),
                             ..Default::default()
                         }),
                         Object::Extern(Extern {
-                            name: "c".into_with_dummy_span(),
+                            name: Identifier::try_parse("c").unwrap().with_dummy_span(),
                             ..Default::default()
                         }),
                     ],
                     span: Span::default(),
                 }),
                 Object::Extern(Extern {
-                    name: "d".into_with_dummy_span(),
+                    name: Identifier::try_parse("d").unwrap().with_dummy_span(),
                     ..Default::default()
                 }),
             ],

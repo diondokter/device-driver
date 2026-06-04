@@ -116,7 +116,10 @@ impl<T: Eq> EqSet<T> {
 #[cfg(test)]
 mod tests {
     use convert_case::Boundary;
-    use device_driver_common::span::{Span, SpanExt};
+    use device_driver_common::{
+        identifier::Identifier,
+        span::{Span, SpanExt},
+    };
 
     use crate::model::{Buffer, Device, DeviceConfig, Enum, EnumVariant, Field, FieldSet, Object};
 
@@ -131,15 +134,15 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into_with_dummy_span(),
+            name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
             device_config: global_config,
             objects: vec![
                 Object::Buffer(Buffer {
-                    name: "MyBuffer".into_with_dummy_span(),
+                    name: Identifier::try_parse("MyBuffer").unwrap().with_dummy_span(),
                     ..Default::default()
                 }),
                 Object::Buffer(Buffer {
-                    name: "MyBuffer".into_with_dummy_span(),
+                    name: Identifier::try_parse("MyBuffer").unwrap().with_dummy_span(),
                     ..Default::default()
                 }),
             ],
@@ -161,17 +164,17 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into_with_dummy_span(),
+            name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
             device_config: global_config,
             objects: vec![Object::FieldSet(FieldSet {
-                name: "Reg".into_with_dummy_span(),
+                name: Identifier::try_parse("Reg").unwrap().with_dummy_span(),
                 fields: vec![
                     Field {
-                        name: "field".into_with_dummy_span(),
+                        name: Identifier::try_parse("field").unwrap().with_dummy_span(),
                         ..Default::default()
                     },
                     Field {
-                        name: "field".into_with_dummy_span(),
+                        name: Identifier::try_parse("field").unwrap().with_dummy_span(),
                         ..Default::default()
                     },
                 ],
@@ -195,17 +198,17 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: "Device".into_with_dummy_span(),
+            name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
             device_config: global_config,
             objects: vec![Object::Enum(Enum {
-                name: "Enum".into_with_dummy_span(),
+                name: Identifier::try_parse("Enum").unwrap().with_dummy_span(),
                 variants: vec![
                     EnumVariant {
-                        name: "Variant".into_with_dummy_span(),
+                        name: Identifier::try_parse("Variant").unwrap().with_dummy_span(),
                         ..Default::default()
                     },
                     EnumVariant {
-                        name: "Variant".into_with_dummy_span(),
+                        name: Identifier::try_parse("Variant").unwrap().with_dummy_span(),
                         ..Default::default()
                     },
                 ],

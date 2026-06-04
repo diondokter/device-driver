@@ -1,0 +1,90 @@
+error: duplicate name found
+  --> input.ddsl:22:12
+   |
+LL |     device Foo {
+   |            --- the original: "Foo", after word split: "foo"
+...
+LL |     device Foo {
+   |            ^^^ the duplicate: "Foo", after word split: "foo"
+   |
+info: names may not collide within their namespace. There are 4 namespaces:
+      - Types: a type definition
+      - Operations: something you *do* with a driver
+      - Fields: unique within a fieldset
+      - Enum variants: unique within an enum
+
+error: duplicate name found
+  --> input.ddsl:23:18
+   |
+LL |         register Bar {
+   |                  --- the original: "Bar", after word split: "bar"
+...
+LL |         register Bar {
+   |                  ^^^ the duplicate: "Bar", after word split: "bar"
+   |
+info: names may not collide within their namespace. There are 4 namespaces:
+      - Types: a type definition
+      - Operations: something you *do* with a driver
+      - Fields: unique within a fieldset
+      - Enum variants: unique within an enum
+
+error: duplicate name found
+  --> input.ddsl:28:50
+   |
+LL |                 field quux 7:0 -> u8 as try enum _ { // Enum same name as field
+   |                                                  - the original: "quux", after word split: "quux"
+...
+LL |                 field quux 7:0 -> u8 as try enum _ {
+   |                                                  ^ the duplicate: "quux", after word split: "quux"
+   |
+info: names may not collide within their namespace. There are 4 namespaces:
+      - Types: a type definition
+      - Operations: something you *do* with a driver
+      - Fields: unique within a fieldset
+      - Enum variants: unique within an enum
+
+error: duplicate name found
+  --> input.ddsl:25:30
+   |
+LL |             fields: fieldset _ { // Fieldset same name as register
+   |                              - the original: "Bar", after word split: "bar"
+...
+LL |             fields: fieldset _ {
+   |                              ^ the duplicate: "Bar", after word split: "bar"
+   |
+info: names may not collide within their namespace. There are 4 namespaces:
+      - Types: a type definition
+      - Operations: something you *do* with a driver
+      - Fields: unique within a fieldset
+      - Enum variants: unique within an enum
+
+error: duplicate name found
+  --> input.ddsl:41:16
+   |
+LL |         block Wheee { // Should overlap with both operations and types
+   |               ----- the original: "Wheee", after word split: "wheee"
+...
+LL |         buffer Wheee {
+   |                ^^^^^ the duplicate: "Wheee", after word split: "wheee"
+   |
+info: names may not collide within their namespace. There are 4 namespaces:
+      - Types: a type definition
+      - Operations: something you *do* with a driver
+      - Fields: unique within a fieldset
+      - Enum variants: unique within an enum
+
+error: duplicate name found
+  --> input.ddsl:47:14
+   |
+LL |         block Wheee2 { // Should overlap with both operations and types
+   |               ------ the original: "Wheee2", after word split: "wheee·2"
+...
+LL |         enum Wheee2 {
+   |              ^^^^^^ the duplicate: "Wheee2", after word split: "wheee·2"
+   |
+info: names may not collide within their namespace. There are 4 namespaces:
+      - Types: a type definition
+      - Operations: something you *do* with a driver
+      - Fields: unique within a fieldset
+      - Enum variants: unique within an enum
+

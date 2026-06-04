@@ -7,7 +7,7 @@ use std::borrow::Cow;
 
 use annotate_snippets::{AnnotationKind, Group, Level, Patch, Snippet};
 use device_driver_common::{
-    identifier::{self, Identifier},
+    identifier::{self, Identifier, RuntimeType},
     span::{Span, Spanned},
     specifiers::{BaseType, Integer, NodeType},
 };
@@ -102,9 +102,9 @@ impl Diagnostic for DeviceNameNotPascal {
 #[derive(Debug)]
 pub struct DuplicateName {
     pub original: Span,
-    pub original_value: Identifier,
+    pub original_value: Identifier<RuntimeType>,
     pub duplicate: Span,
-    pub duplicate_value: Identifier,
+    pub duplicate_value: Identifier<RuntimeType>,
 }
 
 impl Diagnostic for DuplicateName {
@@ -113,7 +113,12 @@ impl Diagnostic for DuplicateName {
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
-        const INFO_TEXT: &str = "no two objects can have the same name. This is true for fields within a field set and variants within an enum";
+        const INFO_TEXT: &str =
+            "names may not collide within their namespace. There are 4 namespaces:
+- Types: a type definition
+- Operations: something you *do* with a driver
+- Fields: unique within a fieldset
+- Enum variants: unique within an enum";
 
         [
             Level::ERROR.primary_title("duplicate name found").element(
@@ -1338,7 +1343,7 @@ impl Diagnostic for InvalidIdentifier {
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
-        const INFO_TEXT: &str = "Identifiers are split into words using the 'word-boundaries'.\n\
+        const INFO_TEXT: &str = "identifiers are split into words using the 'word-boundaries'.\n\
 After the split the first character of the first word must be a unicode XID start character.\n\
 All other characters must be a unicode XID continue character.";
 
@@ -1376,6 +1381,33 @@ All other characters must be a unicode XID continue character.";
             Level::ERROR
                 .primary_title("invalid identifier")
                 .element(Snippet::source(source).path(path).annotation(annotation)),
+            Group::with_title(Level::INFO.secondary_title(INFO_TEXT)),
+        ]
+        .to_vec()
+    }
+}
+
+#[derive(Debug)]
+pub struct InvalidAutoIdentifier {
+    pub auto_identifier: Span,
+}
+
+impl Diagnostic for InvalidAutoIdentifier {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        const INFO_TEXT: &str = "auto identifiers can only be used in places where there's a parent node of which the name can be taken";
+
+        [
+            Level::ERROR.primary_title("invalid identifier").element(
+                Snippet::source(source).path(path).annotation(
+                    AnnotationKind::Primary
+                        .span(self.auto_identifier.into())
+                        .label("auto identifier can't be used here"),
+                ),
+            ),
             Group::with_title(Level::INFO.secondary_title(INFO_TEXT)),
         ]
         .to_vec()

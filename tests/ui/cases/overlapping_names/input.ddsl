@@ -1,0 +1,51 @@
+manifest Foo {
+    register-address-type: u8,
+    buffer-address-type: u8,
+
+    // These should be all fine
+    device Foo {
+        register Bar {
+            address: 0,
+            fields: fieldset _ { // Fieldset same name as register
+                size-bytes: 1,
+
+                field quux 7:0 -> u8 as try enum _ { // Enum same name as field
+                    quux: _,
+                    bar: _,
+                    foo: _,
+                }
+            }
+        },
+    },
+
+    // These duplicates should go wrong
+    device Foo {
+        register Bar {
+            address: 0,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                field quux 7:0 -> u8 as try enum _ {
+                    quux: _,
+                    bar: _,
+                    foo: _,
+                }
+            }
+        }
+    },
+
+    device Blah {
+        block Wheee { // Should overlap with both operations and types
+            address-offset: 0,
+        },
+        buffer Wheee {
+            address: 0,
+        },
+        block Wheee2 { // Should overlap with both operations and types
+            address-offset: 0,
+        },
+        enum Wheee2 {
+            A: _,
+        },
+    }
+}

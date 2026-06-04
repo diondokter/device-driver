@@ -3,7 +3,7 @@ use std::ops::Range;
 use askama::Template;
 use convert_case::Case;
 use device_driver_common::{
-    identifier::Identifier,
+    identifier::{Identifier, IdentifierType, Type},
     specifiers::{Access, AddressMode},
 };
 
@@ -78,14 +78,14 @@ fn get_defmt_fmt_string(field: &Field) -> String {
     )
 }
 
-fn get_command_fieldset_name(fieldset: &Option<Identifier>) -> String {
+fn get_command_fieldset_name(fieldset: &Option<Identifier<Type>>) -> String {
     match fieldset {
         Some(fs) => fs.to_case(Case::Pascal),
         None => "()".into(),
     }
 }
 
-fn get_enum_base_type<'d>(driver: &'d Driver, enum_name: &Identifier) -> &'d str {
+fn get_enum_base_type<'d>(driver: &'d Driver, enum_name: &Identifier<Type>) -> &'d str {
     &driver
         .enums
         .iter()
@@ -102,7 +102,7 @@ fn get_address_mode_const_value(value: &Option<AddressMode>) -> &'static str {
     }
 }
 
-fn maybe_doc_alias(identifier: &Identifier, case: Case) -> String {
+fn maybe_doc_alias<T: IdentifierType>(identifier: &Identifier<T>, case: Case) -> String {
     if identifier.to_case(case) == identifier.original() {
         return String::new();
     }

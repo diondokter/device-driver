@@ -1,7 +1,7 @@
 use std::num::NonZero;
 
 use device_driver_common::{
-    identifier::IdentifierRef,
+    identifier::{IdentifierRef, IdentifierType},
     span::SpanExt,
     specifiers::{Repeat, RepeatSource},
 };
@@ -22,10 +22,11 @@ pub fn lower_ast(ast: Ast, diagnostics: &mut Diagnostics) -> Result<model::Manif
     Ok(mir)
 }
 
-pub fn search_object<'o>(manifest: &'o Manifest, name: &IdentifierRef) -> Option<&'o Object> {
-    manifest
-        .iter_objects()
-        .find(|o| o.name().original() == name.original())
+pub fn search_object<'o, T: IdentifierType>(
+    manifest: &'o Manifest,
+    name: &IdentifierRef<T>,
+) -> Option<&'o Object> {
+    manifest.iter_objects().find(|o| name.is_ref_to(o.name()))
 }
 
 /// Returns None if device has no objects that pass the filter

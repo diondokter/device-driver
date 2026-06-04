@@ -12,7 +12,7 @@ use crate::model::{
 };
 use convert_case::Boundary;
 use device_driver_common::{
-    identifier::{Identifier, IdentifierRef},
+    identifier::{All, Identifier, IdentifierRef, IdentifierType, Operation, Type},
     span::{Span, SpanExt, Spanned},
     specifiers::{
         Access, AddressMode, AddressRange, BaseType, ByteOrder, Integer, NodeType, Repeat,
@@ -23,10 +23,10 @@ use device_driver_diagnostics::{
     Diagnostics,
     errors::{
         DuplicateProperty, ExternInvalidSizeBits, FieldAddressOutOfRange, FieldAddressWrongOrder,
-        IgnoredDocCommentOnProperty, InvalidExpressionType, InvalidIdentifier, InvalidNodeType,
-        InvalidPropertyName, InvalidRepeat, InvalidShortProperty, InvalidSubnode,
-        InvalidTypeConversion, InvalidTypeSpecifier, MissingRequiredProperty, ResetValueNegative,
-        SizeBytesTooLarge, UnknownNodeType,
+        IgnoredDocCommentOnProperty, InvalidAutoIdentifier, InvalidExpressionType,
+        InvalidIdentifier, InvalidNodeType, InvalidPropertyName, InvalidRepeat,
+        InvalidShortProperty, InvalidSubnode, InvalidTypeConversion, InvalidTypeSpecifier,
+        MissingRequiredProperty, ResetValueNegative, SizeBytesTooLarge, UnknownNodeType,
     },
 };
 use device_driver_parser::{Ast, Expression, Ident, Node, Property};
@@ -39,6 +39,7 @@ pub fn lower(ast: Ast, diagnostics: &mut Diagnostics) -> Manifest {
 
     let result = lower_node(
         &root_node,
+        None,
         None,
         &[NodeType::Manifest, NodeType::Device],
         diagnostics,
@@ -64,6 +65,7 @@ enum LowerResult {
 fn lower_node(
     node: &Node,
     parent_node_type: Option<Spanned<NodeType>>,
+    parent_node_name: Option<Ident>,
     allowed_node_types: &[NodeType],
     diagnostics: &mut Diagnostics,
 ) -> LowerResult {
@@ -86,46 +88,46 @@ fn lower_node(
     }
 
     match node_type.value {
-        NodeType::Manifest => match parse_node_to_shape(node, diagnostics) {
+        NodeType::Manifest => match parse_node_to_shape(node, parent_node_name, diagnostics) {
             Ok((val, siblings)) => {
                 assert!(siblings.is_empty(), "Manifest has no siblings");
                 LowerResult::Manifest(val)
             }
             Err(siblings) => LowerResult::Error(siblings),
         },
-        NodeType::Device => match parse_node_to_shape(node, diagnostics) {
+        NodeType::Device => match parse_node_to_shape(node, parent_node_name, diagnostics) {
             Ok((val, siblings)) => LowerResult::Objects(Object::Device(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
-        NodeType::Block => match parse_node_to_shape(node, diagnostics) {
+        NodeType::Block => match parse_node_to_shape(node, parent_node_name, diagnostics) {
             Ok((val, siblings)) => LowerResult::Objects(Object::Block(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
-        NodeType::Register => match parse_node_to_shape(node, diagnostics) {
+        NodeType::Register => match parse_node_to_shape(node, parent_node_name, diagnostics) {
             Ok((val, siblings)) => LowerResult::Objects(Object::Register(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
-        NodeType::Command => match parse_node_to_shape(node, diagnostics) {
+        NodeType::Command => match parse_node_to_shape(node, parent_node_name, diagnostics) {
             Ok((val, siblings)) => LowerResult::Objects(Object::Command(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
-        NodeType::Buffer => match parse_node_to_shape(node, diagnostics) {
+        NodeType::Buffer => match parse_node_to_shape(node, parent_node_name, diagnostics) {
             Ok((val, siblings)) => LowerResult::Objects(Object::Buffer(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
-        NodeType::FieldSet => match parse_node_to_shape(node, diagnostics) {
+        NodeType::FieldSet => match parse_node_to_shape(node, parent_node_name, diagnostics) {
             Ok((val, siblings)) => LowerResult::Objects(Object::FieldSet(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
-        NodeType::Enum => match parse_node_to_shape(node, diagnostics) {
+        NodeType::Enum => match parse_node_to_shape(node, parent_node_name, diagnostics) {
             Ok((val, siblings)) => LowerResult::Objects(Object::Enum(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
-        NodeType::Extern => match parse_node_to_shape(node, diagnostics) {
+        NodeType::Extern => match parse_node_to_shape(node, parent_node_name, diagnostics) {
             Ok((val, siblings)) => LowerResult::Objects(Object::Extern(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
-        NodeType::Field => match parse_node_to_shape(node, diagnostics) {
+        NodeType::Field => match parse_node_to_shape(node, parent_node_name, diagnostics) {
             Ok((val, siblings)) => LowerResult::Objects(Object::Field(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
@@ -134,6 +136,7 @@ fn lower_node(
 
 fn parse_node_to_shape<'src, S: Shape>(
     node: &Node<'src>,
+    parent_node_name: Option<Ident<'src>>,
     diagnostics: &mut Diagnostics,
 ) -> Result<(S, Vec<Object>), Vec<Object>> {
     let mut target = S::default();
@@ -148,12 +151,33 @@ fn parse_node_to_shape<'src, S: Shape>(
 
     // Object name
 
-    match Identifier::try_parse(node.name.val) {
-        Ok(ident) => *target.name() = ident.with_span(node.name.span),
-        Err(e) => {
-            diagnostics.add(InvalidIdentifier::new(e, node.name.span));
+    match (node.name.is_auto(), parent_node_name) {
+        (true, Some(parent_node_name)) => {
+            match Identifier::try_parse(parent_node_name.val) {
+                Ok(ident) => *target.name() = ident.with_span(node.name.span),
+                Err(_e) => {
+                    // We don't need to emit a diagnostic since the parent will already have a diagnostic.
+                    // Can't continue with this node when there's no name
+                    error = true;
+                }
+            }
+        }
+        (true, None) => {
+            diagnostics.add(InvalidAutoIdentifier {
+                auto_identifier: node.name.span,
+            });
             // Can't continue with this node when there's no name
             error = true;
+        }
+        (false, _) => {
+            match Identifier::try_parse(node.name.val) {
+                Ok(ident) => *target.name() = ident.with_span(node.name.span),
+                Err(e) => {
+                    diagnostics.add(InvalidIdentifier::new(e, node.name.span));
+                    // Can't continue with this node when there's no name
+                    error = true;
+                }
+            }
         }
     }
 
@@ -214,12 +238,13 @@ fn parse_node_to_shape<'src, S: Shape>(
             *conversion_type = type_specifier.conversion.as_ref().and_then(|c| {
                 let reference = match c {
                     device_driver_parser::TypeConversion::Reference(ident) => {
-                        Some(IdentifierRef::new(ident.val.into()).with_span(ident.span))
+                        Some(IdentifierRef::<Type>::new(ident.val.into()).with_span(ident.span))
                     }
                     device_driver_parser::TypeConversion::Subnode(sub_node) => {
                         let sub_node = lower_node(
                             sub_node,
                             Some(NodeType::Field.with_span(node.node_type.span)),
+                            Some(node.name),
                             &[NodeType::Enum, NodeType::Extern],
                             diagnostics,
                         );
@@ -227,8 +252,13 @@ fn parse_node_to_shape<'src, S: Shape>(
                         match sub_node {
                             LowerResult::Manifest(_) => unreachable!(),
                             LowerResult::Objects(object, objects) => {
-                                let reference =
-                                    object.name().take_ref().with_span(object.name_span());
+                                let reference = object
+                                    .name()
+                                    .clone()
+                                    // The only allowed subnodes are types, so this should be fine
+                                    .cast_assert()
+                                    .take_ref()
+                                    .with_span(object.name_span());
                                 sibling_objects.push(object);
                                 sibling_objects.extend(objects);
                                 Some(reference)
@@ -330,13 +360,13 @@ fn parse_node_to_shape<'src, S: Shape>(
             continue;
         }
 
-        error |= (property_info.setter)(
-            &mut target,
+        error |= (property_info.setter)(SetterArgs {
+            target_object: &mut target,
             property,
             node,
             diagnostics,
-            &mut sibling_objects,
-        );
+            sibling_objects: &mut sibling_objects,
+        });
 
         if !property_info.multiple_allowed {
             possible_properties.remove(possible_properties.element_offset(property_info).unwrap());
@@ -385,21 +415,18 @@ fn parse_node_to_shape<'src, S: Shape>(
             continue;
         };
 
-        error |= (property_info.setter)(
-            &mut target,
-            &Property {
+        error |= (property_info.setter)(SetterArgs {
+            target_object: &mut target,
+            property: &Property {
                 doc_comments: Vec::new(),
-                name: Ident {
-                    val: "",
-                    span: short_property.span,
-                },
+                name: Ident::new("", short_property.span),
                 expression: short_property.clone(),
             }
             .with_span(short_property.span),
             node,
             diagnostics,
-            &mut sibling_objects,
-        );
+            sibling_objects: &mut sibling_objects,
+        });
 
         if !property_info.multiple_allowed {
             for allowed_expression in property_info.allowed_expression_types.iter() {
@@ -443,6 +470,7 @@ fn parse_node_to_shape<'src, S: Shape>(
             let sub_node_result = lower_node(
                 sub_node,
                 Some(S::NODE_TYPE.with_span(node.node_type.span)),
+                None,
                 supported_subnodes,
                 diagnostics,
             );
@@ -483,9 +511,10 @@ fn parse_node_to_shape<'src, S: Shape>(
 
 trait Shape: Default + 'static {
     const NODE_TYPE: NodeType;
+    type NameIdentifierType: IdentifierType + Default;
 
     fn doc_comments(&mut self) -> &mut String;
-    fn name(&mut self) -> &mut Spanned<Identifier>;
+    fn name(&mut self) -> &mut Spanned<Identifier<Self::NameIdentifierType>>;
 
     /// All the supported properties
     fn supported_properties() -> &'static [PropertyInfo<Self>];
@@ -528,13 +557,7 @@ struct PropertyInfo<T: ?Sized> {
     /// If false, a warning is emitted when the property has doc comments
     supports_doc_comments: bool,
     /// If setter returns true, there's an error
-    setter: fn(
-        &mut T, // self param
-        property: &Spanned<Property<'_>>,
-        node: &Node, // The node that's being parsed
-        diagnostics: &mut Diagnostics,
-        sibling_objects: &mut Vec<Object>,
-    ) -> bool,
+    setter: for<'a, 'src> fn(SetterArgs<'a, 'src, T>) -> bool,
 }
 
 impl<T: ?Sized> Clone for PropertyInfo<T> {
@@ -548,6 +571,17 @@ impl<T: ?Sized> Clone for PropertyInfo<T> {
             setter: self.setter,
         }
     }
+}
+
+struct SetterArgs<'a, 'src, T: ?Sized> {
+    /// The target object that needs a property set
+    target_object: &'a mut T,
+    /// The property that needs to be set
+    property: &'a Spanned<Property<'src>>,
+    /// The node that's being parsed
+    node: &'a Node<'src>,
+    diagnostics: &'a mut Diagnostics,
+    sibling_objects: &'a mut Vec<Object>,
 }
 
 #[derive(Clone, Copy)]
@@ -589,14 +623,8 @@ impl<'a> PartialEq for PropertyName<'a> {
 
 const FIELD_SET_EXAMPLE: Node<'static> = Node {
     doc_comments: Vec::new(),
-    node_type: device_driver_parser::Ident {
-        val: "fieldset",
-        span: Span::empty(),
-    },
-    name: device_driver_parser::Ident {
-        val: "MyFieldSet",
-        span: Span::empty(),
-    },
+    node_type: device_driver_parser::Ident::new_no_span("fieldset"),
+    name: device_driver_parser::Ident::new_no_span("MyFieldSet"),
     repeat: None,
     type_specifier: None,
     properties: Vec::new(),
@@ -607,12 +635,13 @@ const FIELD_SET_EXAMPLE: Node<'static> = Node {
 
 impl Shape for Manifest {
     const NODE_TYPE: NodeType = NodeType::Manifest;
+    type NameIdentifierType = All;
 
     fn doc_comments(&mut self) -> &mut String {
         &mut self.description
     }
 
-    fn name(&mut self) -> &mut Spanned<Identifier> {
+    fn name(&mut self) -> &mut Spanned<Identifier<Self::NameIdentifierType>> {
         &mut self.name
     }
 
@@ -624,7 +653,11 @@ impl Shape for Manifest {
                 multiple_allowed: false,
                 required: false,
                 supports_doc_comments: false,
-                setter: |manifest: &mut Manifest, property, _, _, _| {
+                setter: |SetterArgs {
+                             target_object: manifest,
+                             property,
+                             ..
+                         }| {
                     manifest.config.byte_order = Some(property.expression.as_byte_order().unwrap());
                     false
                 },
@@ -635,7 +668,11 @@ impl Shape for Manifest {
                 multiple_allowed: false,
                 required: false,
                 supports_doc_comments: false,
-                setter: |manifest: &mut Manifest, property, _, _, _| {
+                setter: |SetterArgs {
+                             target_object: manifest,
+                             property,
+                             ..
+                         }| {
                     manifest.config.register_address_type = Some(
                         property
                             .expression
@@ -652,7 +689,11 @@ impl Shape for Manifest {
                 multiple_allowed: false,
                 required: false,
                 supports_doc_comments: false,
-                setter: |manifest: &mut Manifest, property, _, _, _| {
+                setter: |SetterArgs {
+                             target_object: manifest,
+                             property,
+                             ..
+                         }| {
                     manifest.config.command_address_type = Some(
                         property
                             .expression
@@ -669,7 +710,11 @@ impl Shape for Manifest {
                 multiple_allowed: false,
                 required: false,
                 supports_doc_comments: false,
-                setter: |manifest: &mut Manifest, property, _, _, _| {
+                setter: |SetterArgs {
+                             target_object: manifest,
+                             property,
+                             ..
+                         }| {
                     manifest.config.buffer_address_type = Some(
                         property
                             .expression
@@ -686,7 +731,11 @@ impl Shape for Manifest {
                 multiple_allowed: false,
                 required: false,
                 supports_doc_comments: false,
-                setter: |manifest: &mut Manifest, property, _, _, _| {
+                setter: |SetterArgs {
+                             target_object: manifest,
+                             property,
+                             ..
+                         }| {
                     manifest.config.name_word_boundaries = Some(Boundary::defaults_from(
                         property.expression.as_string().unwrap(),
                     ));
@@ -701,7 +750,11 @@ impl Shape for Manifest {
                 multiple_allowed: false,
                 required: false,
                 supports_doc_comments: false,
-                setter: |manifest: &mut Manifest, property, _, _, _| {
+                setter: |SetterArgs {
+                             target_object: manifest,
+                             property,
+                             ..
+                         }| {
                     manifest.config.register_address_mode = Some(
                         property
                             .expression
@@ -736,12 +789,13 @@ impl Shape for Manifest {
 
 impl Shape for Device {
     const NODE_TYPE: NodeType = NodeType::Device;
+    type NameIdentifierType = Type;
 
     fn doc_comments(&mut self) -> &mut String {
         &mut self.description
     }
 
-    fn name(&mut self) -> &mut Spanned<Identifier> {
+    fn name(&mut self) -> &mut Spanned<Identifier<Self::NameIdentifierType>> {
         &mut self.name
     }
 
@@ -753,7 +807,11 @@ impl Shape for Device {
                 multiple_allowed: false,
                 required: false,
                 supports_doc_comments: false,
-                setter: |dev: &mut Device, property, _, _, _| {
+                setter: |SetterArgs {
+                             target_object: dev,
+                             property,
+                             ..
+                         }| {
                     dev.device_config.byte_order =
                         Some(property.expression.as_byte_order().unwrap());
                     false
@@ -765,7 +823,11 @@ impl Shape for Device {
                 multiple_allowed: false,
                 required: false,
                 supports_doc_comments: false,
-                setter: |dev: &mut Device, property, _, _, _| {
+                setter: |SetterArgs {
+                             target_object: dev,
+                             property,
+                             ..
+                         }| {
                     dev.device_config.register_address_type = Some(
                         property
                             .expression
@@ -782,7 +844,11 @@ impl Shape for Device {
                 multiple_allowed: false,
                 required: false,
                 supports_doc_comments: false,
-                setter: |dev: &mut Device, property, _, _, _| {
+                setter: |SetterArgs {
+                             target_object: dev,
+                             property,
+                             ..
+                         }| {
                     dev.device_config.command_address_type = Some(
                         property
                             .expression
@@ -799,7 +865,11 @@ impl Shape for Device {
                 multiple_allowed: false,
                 required: false,
                 supports_doc_comments: false,
-                setter: |dev: &mut Device, property, _, _, _| {
+                setter: |SetterArgs {
+                             target_object: dev,
+                             property,
+                             ..
+                         }| {
                     dev.device_config.buffer_address_type = Some(
                         property
                             .expression
@@ -816,7 +886,11 @@ impl Shape for Device {
                 multiple_allowed: false,
                 required: false,
                 supports_doc_comments: false,
-                setter: |dev: &mut Device, property, _, _, _| {
+                setter: |SetterArgs {
+                             target_object: dev,
+                             property,
+                             ..
+                         }| {
                     dev.device_config.name_word_boundaries = Some(Boundary::defaults_from(
                         property.expression.as_string().unwrap(),
                     ));
@@ -831,7 +905,11 @@ impl Shape for Device {
                 multiple_allowed: false,
                 required: false,
                 supports_doc_comments: false,
-                setter: |device: &mut Device, property, _, _, _| {
+                setter: |SetterArgs {
+                             target_object: device,
+                             property,
+                             ..
+                         }| {
                     device.device_config.register_address_mode = Some(
                         property
                             .expression
@@ -869,12 +947,13 @@ impl Shape for Device {
 
 impl Shape for Block {
     const NODE_TYPE: NodeType = NodeType::Block;
+    type NameIdentifierType = All;
 
     fn doc_comments(&mut self) -> &mut String {
         &mut self.description
     }
 
-    fn name(&mut self) -> &mut Spanned<Identifier> {
+    fn name(&mut self) -> &mut Spanned<Identifier<Self::NameIdentifierType>> {
         &mut self.name
     }
 
@@ -885,7 +964,11 @@ impl Shape for Block {
             multiple_allowed: false,
             required: true,
             supports_doc_comments: false,
-            setter: |block: &mut Block, property, _, _, _| {
+            setter: |SetterArgs {
+                         target_object: block,
+                         property,
+                         ..
+                     }| {
                 block.address_offset = property
                     .expression
                     .as_number()
@@ -924,12 +1007,13 @@ impl Shape for Block {
 
 impl Shape for Register {
     const NODE_TYPE: NodeType = NodeType::Register;
+    type NameIdentifierType = Operation;
 
     fn doc_comments(&mut self) -> &mut String {
         &mut self.description
     }
 
-    fn name(&mut self) -> &mut Spanned<Identifier> {
+    fn name(&mut self) -> &mut Spanned<Identifier<Self::NameIdentifierType>> {
         &mut self.name
     }
 
@@ -942,7 +1026,11 @@ impl Shape for Register {
                     multiple_allowed: false,
                     required: true,
                     supports_doc_comments: false,
-                    setter: |r: &mut Register, property, _, _, _| {
+                    setter: |SetterArgs::<Register> {
+                                 target_object: r,
+                                 property,
+                                 ..
+                             }| {
                         r.address = property
                             .expression
                             .as_number()
@@ -957,7 +1045,11 @@ impl Shape for Register {
                     multiple_allowed: false,
                     required: false,
                     supports_doc_comments: false,
-                    setter: |r: &mut Register, property, _, _, _| {
+                    setter: |SetterArgs::<Register> {
+                                 target_object: r,
+                                 property,
+                                 ..
+                             }| {
                         r.access = property.expression.as_access().unwrap();
                         false
                     },
@@ -968,7 +1060,9 @@ impl Shape for Register {
                     multiple_allowed: false,
                     required: false,
                     supports_doc_comments: false,
-                    setter: |r: &mut Register, _, _, _, _| {
+                    setter: |SetterArgs::<Register> {
+                                 target_object: r, ..
+                             }| {
                         r.allow_address_overlap = true;
                         false
                     },
@@ -982,10 +1076,12 @@ impl Shape for Register {
                     multiple_allowed: false,
                     required: false,
                     supports_doc_comments: false,
-                    setter: |r: &mut Register, property, _, diagnostics, _| match &property
-                        .expression
-                        .value
-                    {
+                    setter: |SetterArgs::<Register> {
+                                 target_object: r,
+                                 property,
+                                 diagnostics,
+                                 ..
+                             }| match &property.expression.value {
                         Expression::Number(num) => match u128::try_from(*num) {
                             Ok(num) => {
                                 r.reset_value = Some(
@@ -1013,16 +1109,21 @@ impl Shape for Register {
                 PropertyInfo {
                     name: PropertyName::Exact("fields"),
                     allowed_expression_types: Cow::Owned(vec![
-                        Expression::TypeReference(device_driver_parser::Ident {
-                            val: "MyFieldset",
-                            span: Span::empty(),
-                        }),
+                        Expression::TypeReference(device_driver_parser::Ident::new_no_span(
+                            "MyFieldset",
+                        )),
                         Expression::SubNode(Box::new(FIELD_SET_EXAMPLE)),
                     ]),
                     multiple_allowed: false,
                     required: true,
                     supports_doc_comments: false,
-                    setter: |r: &mut Register, property, node, diagnostics, sibling_objects| {
+                    setter: |SetterArgs::<Register> {
+                                 target_object: r,
+                                 property,
+                                 node,
+                                 diagnostics,
+                                 sibling_objects,
+                             }| {
                         match &property.expression.value {
                             Expression::TypeReference(ident) => {
                                 r.field_set_ref =
@@ -1033,14 +1134,20 @@ impl Shape for Register {
                                 let result = lower_node(
                                     sub_node,
                                     Some(NodeType::Register.with_span(node.node_type.span)),
+                                    Some(Ident::new(r.name.original(), r.name.span)),
                                     &[NodeType::FieldSet],
                                     diagnostics,
                                 );
 
                                 match result {
                                     LowerResult::Objects(fs, fs_siblings) => {
-                                        r.field_set_ref =
-                                            fs.name().take_ref().with_span(fs.name_span());
+                                        r.field_set_ref = fs
+                                            .name()
+                                            .clone()
+                                            // This should always be a fieldset is a Type identifier
+                                            .cast_assert()
+                                            .take_ref()
+                                            .with_span(fs.name_span());
                                         sibling_objects.push(fs);
                                         sibling_objects.extend(fs_siblings);
                                         false
@@ -1073,12 +1180,13 @@ impl Shape for Register {
 
 impl Shape for FieldSet {
     const NODE_TYPE: NodeType = NodeType::FieldSet;
+    type NameIdentifierType = Type;
 
     fn doc_comments(&mut self) -> &mut String {
         &mut self.description
     }
 
-    fn name(&mut self) -> &mut Spanned<Identifier> {
+    fn name(&mut self) -> &mut Spanned<Identifier<Self::NameIdentifierType>> {
         &mut self.name
     }
 
@@ -1090,7 +1198,13 @@ impl Shape for FieldSet {
                 multiple_allowed: false,
                 required: true,
                 supports_doc_comments: false,
-                setter: |fs: &mut FieldSet, property, fs_node, diagnostics, _| match u32::try_from(
+                setter: |SetterArgs::<FieldSet> {
+                             target_object: fs,
+                             property,
+                             node: fs_node,
+                             diagnostics,
+                             ..
+                         }| match u32::try_from(
                     property.expression.as_number().unwrap(),
                 ) {
                     Ok(size_bytes) if size_bytes <= 0x10_0000 => {
@@ -1112,7 +1226,11 @@ impl Shape for FieldSet {
                 multiple_allowed: false,
                 required: false,
                 supports_doc_comments: false,
-                setter: |fs: &mut FieldSet, property, _, _, _| {
+                setter: |SetterArgs::<FieldSet> {
+                             target_object: fs,
+                             property,
+                             ..
+                         }| {
                     fs.byte_order = Some(property.expression.as_byte_order().unwrap());
                     false
                 },
@@ -1123,7 +1241,9 @@ impl Shape for FieldSet {
                 multiple_allowed: false,
                 required: false,
                 supports_doc_comments: false,
-                setter: |fs: &mut FieldSet, _, _, _, _| {
+                setter: |SetterArgs::<FieldSet> {
+                             target_object: fs, ..
+                         }| {
                     fs.allow_bit_overlap = true;
                     false
                 },
@@ -1150,12 +1270,13 @@ impl Shape for FieldSet {
 
 impl Shape for Extern {
     const NODE_TYPE: NodeType = NodeType::Extern;
+    type NameIdentifierType = Type;
 
     fn doc_comments(&mut self) -> &mut String {
         &mut self.description
     }
 
-    fn name(&mut self) -> &mut Spanned<Identifier> {
+    fn name(&mut self) -> &mut Spanned<Identifier<Self::NameIdentifierType>> {
         &mut self.name
     }
 
@@ -1167,7 +1288,9 @@ impl Shape for Extern {
                 multiple_allowed: false,
                 required: false,
                 supports_doc_comments: false,
-                setter: |ext: &mut Extern, _, _, _, _| {
+                setter: |SetterArgs::<Extern> {
+                             target_object: ext, ..
+                         }| {
                     ext.supports_infallible = true;
                     false
                 },
@@ -1178,7 +1301,13 @@ impl Shape for Extern {
                 multiple_allowed: false,
                 required: false,
                 supports_doc_comments: false,
-                setter: |ext: &mut Extern, property, node, diagnostics, _| match u64::try_from(
+                setter: |SetterArgs::<Extern> {
+                             target_object: ext,
+                             property,
+                             diagnostics,
+                             node,
+                             ..
+                         }| match u64::try_from(
                     property.expression.as_number().unwrap(),
                 ) {
                     Ok(size_bits) => {
@@ -1210,12 +1339,13 @@ impl Shape for Extern {
 
 impl Shape for Buffer {
     const NODE_TYPE: NodeType = NodeType::Buffer;
+    type NameIdentifierType = Operation;
 
     fn doc_comments(&mut self) -> &mut String {
         &mut self.description
     }
 
-    fn name(&mut self) -> &mut Spanned<Identifier> {
+    fn name(&mut self) -> &mut Spanned<Identifier<Self::NameIdentifierType>> {
         &mut self.name
     }
 
@@ -1227,7 +1357,11 @@ impl Shape for Buffer {
                 multiple_allowed: false,
                 required: false,
                 supports_doc_comments: false,
-                setter: |buf: &mut Buffer, property, _, _, _| {
+                setter: |SetterArgs::<Buffer> {
+                             target_object: buf,
+                             property,
+                             ..
+                         }| {
                     buf.access = property.expression.as_access().unwrap();
                     false
                 },
@@ -1238,7 +1372,11 @@ impl Shape for Buffer {
                 multiple_allowed: false,
                 required: true,
                 supports_doc_comments: false,
-                setter: |buf: &mut Buffer, property, _, _, _| {
+                setter: |SetterArgs::<Buffer> {
+                             target_object: buf,
+                             property,
+                             ..
+                         }| {
                     buf.address = property
                         .expression
                         .as_number()
@@ -1258,12 +1396,13 @@ impl Shape for Buffer {
 
 impl Shape for Enum {
     const NODE_TYPE: NodeType = NodeType::Enum;
+    type NameIdentifierType = Type;
 
     fn doc_comments(&mut self) -> &mut String {
         &mut self.description
     }
 
-    fn name(&mut self) -> &mut Spanned<Identifier> {
+    fn name(&mut self) -> &mut Spanned<Identifier<Self::NameIdentifierType>> {
         &mut self.name
     }
 
@@ -1281,7 +1420,12 @@ impl Shape for Enum {
             multiple_allowed: true,
             required: false,
             supports_doc_comments: true,
-            setter: |enum_value: &mut Enum, property, _, diagnostics, _| {
+            setter: |SetterArgs::<Enum> {
+                         target_object: enum_value,
+                         property,
+                         diagnostics,
+                         ..
+                     }| {
                 let identifier = match Identifier::try_parse(property.name.val) {
                     Ok(identifier) => identifier,
                     Err(e) => {
@@ -1324,12 +1468,13 @@ impl Shape for Enum {
 
 impl Shape for Command {
     const NODE_TYPE: NodeType = NodeType::Command;
+    type NameIdentifierType = Operation;
 
     fn doc_comments(&mut self) -> &mut String {
         &mut self.description
     }
 
-    fn name(&mut self) -> &mut Spanned<Identifier> {
+    fn name(&mut self) -> &mut Spanned<Identifier<Self::NameIdentifierType>> {
         &mut self.name
     }
 
@@ -1342,7 +1487,11 @@ impl Shape for Command {
                     multiple_allowed: false,
                     required: true,
                     supports_doc_comments: false,
-                    setter: |command: &mut Command, property, _, _, _| {
+                    setter: |SetterArgs::<Command> {
+                                 target_object: command,
+                                 property,
+                                 ..
+                             }| {
                         command.address = property
                             .expression
                             .as_number()
@@ -1357,7 +1506,10 @@ impl Shape for Command {
                     multiple_allowed: false,
                     required: false,
                     supports_doc_comments: false,
-                    setter: |command: &mut Command, _, _, _, _| {
+                    setter: |SetterArgs::<Command> {
+                                 target_object: command,
+                                 ..
+                             }| {
                         command.allow_address_overlap = true;
                         false
                     },
@@ -1365,20 +1517,21 @@ impl Shape for Command {
                 PropertyInfo {
                     name: PropertyName::Exact("fields-in"),
                     allowed_expression_types: Cow::Owned(vec![
-                        Expression::TypeReference(device_driver_parser::Ident {
-                            val: "MyFieldset",
-                            span: Span::empty(),
-                        }),
+                        Expression::TypeReference(device_driver_parser::Ident::new_no_span(
+                            "MyFieldset",
+                        )),
                         Expression::SubNode(Box::new(FIELD_SET_EXAMPLE)),
                     ]),
                     multiple_allowed: false,
                     required: false,
                     supports_doc_comments: false,
-                    setter: |command: &mut Command,
-                             property,
-                             node,
-                             diagnostics,
-                             sibling_objects| {
+                    setter: |SetterArgs::<Command> {
+                                 target_object: command,
+                                 property,
+                                 node,
+                                 diagnostics,
+                                 sibling_objects,
+                             }| {
                         match &property.expression.value {
                             Expression::TypeReference(ident) => {
                                 command.field_set_ref_in = Some(
@@ -1390,14 +1543,21 @@ impl Shape for Command {
                                 let result = lower_node(
                                     sub_node,
                                     Some(NodeType::Register.with_span(node.node_type.span)),
+                                    Some(Ident::new(command.name.original(), command.name.span)),
                                     &[NodeType::FieldSet],
                                     diagnostics,
                                 );
 
                                 match result {
                                     LowerResult::Objects(fs, fs_siblings) => {
-                                        command.field_set_ref_in =
-                                            Some(fs.name().take_ref().with_span(fs.name_span()));
+                                        command.field_set_ref_in = Some(
+                                            fs.name()
+                                                .clone()
+                                                // Always a fieldset, so should be fine
+                                                .cast_assert()
+                                                .take_ref()
+                                                .with_span(fs.name_span()),
+                                        );
                                         sibling_objects.push(fs);
                                         sibling_objects.extend(fs_siblings);
                                         false
@@ -1416,20 +1576,21 @@ impl Shape for Command {
                 PropertyInfo {
                     name: PropertyName::Exact("fields-out"),
                     allowed_expression_types: Cow::Owned(vec![
-                        Expression::TypeReference(device_driver_parser::Ident {
-                            val: "MyFieldset",
-                            span: Span::empty(),
-                        }),
+                        Expression::TypeReference(device_driver_parser::Ident::new_no_span(
+                            "MyFieldset",
+                        )),
                         Expression::SubNode(Box::new(FIELD_SET_EXAMPLE)),
                     ]),
                     multiple_allowed: false,
                     required: false,
                     supports_doc_comments: false,
-                    setter: |command: &mut Command,
-                             property,
-                             node,
-                             diagnostics,
-                             sibling_objects| {
+                    setter: |SetterArgs::<Command> {
+                                 target_object: command,
+                                 property,
+                                 node,
+                                 diagnostics,
+                                 sibling_objects,
+                             }| {
                         match &property.expression.value {
                             Expression::TypeReference(ident) => {
                                 command.field_set_ref_out = Some(
@@ -1441,14 +1602,21 @@ impl Shape for Command {
                                 let result = lower_node(
                                     sub_node,
                                     Some(NodeType::Register.with_span(node.node_type.span)),
+                                    Some(Ident::new(command.name.original(), command.name.span)),
                                     &[NodeType::FieldSet],
                                     diagnostics,
                                 );
 
                                 match result {
                                     LowerResult::Objects(fs, fs_siblings) => {
-                                        command.field_set_ref_out =
-                                            Some(fs.name().take_ref().with_span(fs.name_span()));
+                                        command.field_set_ref_out = Some(
+                                            fs.name()
+                                                .clone()
+                                                // Always a fieldset, so should be fine
+                                                .cast_assert()
+                                                .take_ref()
+                                                .with_span(fs.name_span()),
+                                        );
                                         sibling_objects.push(fs);
                                         sibling_objects.extend(fs_siblings);
                                         false
@@ -1481,12 +1649,13 @@ impl Shape for Command {
 
 impl Shape for Field {
     const NODE_TYPE: NodeType = NodeType::Field;
+    type NameIdentifierType = All;
 
     fn doc_comments(&mut self) -> &mut String {
         &mut self.description
     }
 
-    fn name(&mut self) -> &mut Spanned<Identifier> {
+    fn name(&mut self) -> &mut Spanned<Identifier<Self::NameIdentifierType>> {
         &mut self.name
     }
 
@@ -1501,7 +1670,12 @@ impl Shape for Field {
                 multiple_allowed: false,
                 required: true,
                 supports_doc_comments: false,
-                setter: |field: &mut Field, property, _, diagnostics, _| {
+                setter: |SetterArgs::<Field> {
+                             target_object: field,
+                             property,
+                             diagnostics,
+                             ..
+                         }| {
                     let u32_range = 0..=u32::MAX as i128;
 
                     field.field_address = match property.expression.value {
@@ -1544,7 +1718,11 @@ impl Shape for Field {
                 multiple_allowed: false,
                 required: false,
                 supports_doc_comments: false,
-                setter: |field: &mut Field, property, _, _, _| {
+                setter: |SetterArgs::<Field> {
+                             target_object: field,
+                             property,
+                             ..
+                         }| {
                     field.access = property.expression.as_access().unwrap();
                     false
                 },
