@@ -522,4 +522,37 @@ mod tests {
     fn default_is_empty() {
         assert!(Identifier::<All>::default().is_empty());
     }
+
+    #[test]
+    fn static_vs_runtime_equals() {
+        assert_eq!(
+            Identifier::<Type>::try_parse("a")
+                .unwrap()
+                .to_runtime_type(),
+            Identifier::try_parse_with_type("a", RuntimeType::Type).unwrap()
+        );
+
+        assert_ne!(
+            Identifier::<Type>::try_parse("a")
+                .unwrap()
+                .to_runtime_type(),
+            Identifier::try_parse_with_type("a", RuntimeType::Operation).unwrap()
+        );
+    }
+
+    #[test]
+    fn all_vs_specific_equals() {
+        assert_eq!(
+            Identifier::<All>::try_parse("a").unwrap().to_runtime_type(),
+            Identifier::<Type>::try_parse("a")
+                .unwrap()
+                .to_runtime_type(),
+        );
+        assert_eq!(
+            Identifier::<All>::try_parse("a").unwrap().to_runtime_type(),
+            Identifier::<Operation>::try_parse("a")
+                .unwrap()
+                .to_runtime_type(),
+        );
+    }
 }
