@@ -6,59 +6,69 @@ use device_driver_common::{
 };
 
 use crate::{
-    model::{Enum, LendingIterator, Manifest, Object, Unique},
+    model::{Enum, LendingIterator, Manifest, Object, Unique, UniqueId},
+    passes::Pass,
     search_object,
 };
 use device_driver_diagnostics::{
-    Diagnostics,
+    Diagnostics, DynError,
     errors::{ReferencedObjectDoesNotExist, RepeatEnumWithCatchAll},
 };
 
 /// Checks if the enums referenced by repeats actually exist
-pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
-    let mut bad_object_repeat = HashSet::new();
-    let mut bad_field_repeat = HashSet::new();
+pub struct RepeatWithEnumsChecked;
 
-    for object in manifest.iter_objects() {
-        if let Some(repeat) = object.repeat().as_ref()
-            && !repeat_is_ok(repeat, manifest, diagnostics)
-        {
-            bad_object_repeat.insert(object.id());
-        }
+impl Pass for RepeatWithEnumsChecked {
+    fn run_pass(
+        manifest: &mut Manifest,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<HashSet<UniqueId>, DynError> {
+        let mut bad_object_repeat = HashSet::new();
+        let mut bad_field_repeat = HashSet::new();
 
-        if let Object::FieldSet(fs) = object {
-            for field in &fs.fields {
-                if let Some(repeat) = field.repeat.as_ref()
-                    && !repeat_is_ok(repeat, manifest, diagnostics)
-                {
-                    bad_field_repeat.insert((object.id(), field.id_with(fs.id())));
+        for object in manifest.iter_objects() {
+            if let Some(repeat) = object.repeat().as_ref()
+                && !repeat_is_ok(repeat, manifest, diagnostics)
+            {
+                bad_object_repeat.insert(object.id());
+            }
+
+            if let Object::FieldSet(fs) = object {
+                for field in &fs.fields {
+                    if let Some(repeat) = field.repeat.as_ref()
+                        && !repeat_is_ok(repeat, manifest, diagnostics)
+                    {
+                        bad_field_repeat.insert((object.id(), field.id_with(fs.id())));
+                    }
                 }
             }
         }
-    }
 
-    // Second pass: Go though all repeats that have a bad enum and replace it with a count of 1.
-    // This way we can still pass them on for further
-    let mut iter = manifest.iter_objects_with_config_mut();
-    while let Some((object, _)) = iter.next() {
-        let id = object.id();
-        if let Some(repeat) = object.repeat_mut()
-            && bad_object_repeat.contains(&id)
-        {
-            repeat.source = RepeatSource::Count(NonZero::new(1).unwrap());
-        }
+        // Second pass: Go though all repeats that have a bad enum and replace it with a count of 1.
+        // This way we can still pass them on for further
+        let mut iter = manifest.iter_objects_with_config_mut();
+        while let Some((object, _)) = iter.next() {
+            let id = object.id();
+            if let Some(repeat) = object.repeat_mut()
+                && bad_object_repeat.contains(&id)
+            {
+                repeat.source = RepeatSource::Count(NonZero::new(1).unwrap());
+            }
 
-        if let Object::FieldSet(fs) = object {
-            let fs_id = fs.id();
-            for field in &mut fs.fields {
-                let field_id = field.id_with(fs_id.clone());
-                if let Some(repeat) = field.repeat.as_mut()
-                    && bad_field_repeat.contains(&(id.clone(), field_id))
-                {
-                    repeat.source = RepeatSource::Count(NonZero::new(1).unwrap());
+            if let Object::FieldSet(fs) = object {
+                let fs_id = fs.id();
+                for field in &mut fs.fields {
+                    let field_id = field.id_with(fs_id.clone());
+                    if let Some(repeat) = field.repeat.as_mut()
+                        && bad_field_repeat.contains(&(id.clone(), field_id))
+                    {
+                        repeat.source = RepeatSource::Count(NonZero::new(1).unwrap());
+                    }
                 }
             }
         }
+
+        Ok(Default::default())
     }
 }
 

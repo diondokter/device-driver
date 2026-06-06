@@ -1,25 +1,39 @@
-use crate::model::{LendingIterator, Manifest};
+use std::collections::HashSet;
+
+use crate::{
+    model::{LendingIterator, Manifest, UniqueId},
+    passes::Pass,
+};
 use device_driver_common::specifiers::ByteOrder;
-use device_driver_diagnostics::{Diagnostics, errors::UnspecifiedByteOrder};
+use device_driver_diagnostics::{Diagnostics, DynError, errors::UnspecifiedByteOrder};
 
 /// Checks if the byte order is set for all registers and commands that need it and fills it out for the ones that aren't specified
-pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
-    let mut iter = manifest.iter_objects_with_config_mut();
-    while let Some((object, config)) = iter.next() {
-        if let Some(fs) = object.as_field_set_mut() {
-            if fs.byte_order.is_none() {
-                fs.byte_order = config.byte_order;
-            }
+pub struct ByteOrderSpecified;
 
-            if fs.size_bytes > 1 && fs.byte_order.is_none() {
-                diagnostics.add(UnspecifiedByteOrder {
-                    fieldset_name: fs.name.span,
-                });
-            }
+impl Pass for ByteOrderSpecified {
+    fn run_pass(
+        manifest: &mut Manifest,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<HashSet<UniqueId>, DynError> {
+        let mut iter = manifest.iter_objects_with_config_mut();
+        while let Some((object, config)) = iter.next() {
+            if let Some(fs) = object.as_field_set_mut() {
+                if fs.byte_order.is_none() {
+                    fs.byte_order = config.byte_order;
+                }
 
-            // Even if not required, fill in a byte order so we can always unwrap it later
-            fs.byte_order.get_or_insert(ByteOrder::LE);
+                if fs.size_bytes > 1 && fs.byte_order.is_none() {
+                    diagnostics.add(UnspecifiedByteOrder {
+                        fieldset_name: fs.name.span,
+                    });
+                }
+
+                // Even if not required, fill in a byte order so we can always unwrap it later
+                fs.byte_order.get_or_insert(ByteOrder::LE);
+            }
         }
+
+        Ok(Default::default())
     }
 }
 
@@ -63,7 +77,7 @@ mod tests {
         .into();
 
         let mut d = Diagnostics::new();
-        run_pass(&mut input, &mut d);
+        ByteOrderSpecified::run_pass(&mut input, &mut d).unwrap();
         assert!(!d.has_error());
     }
 
@@ -85,7 +99,7 @@ mod tests {
         .into();
 
         let mut d = Diagnostics::new();
-        run_pass(&mut input, &mut d);
+        ByteOrderSpecified::run_pass(&mut input, &mut d).unwrap();
         assert!(d.has_error());
     }
 
@@ -112,7 +126,7 @@ mod tests {
         .into();
 
         let mut d = Diagnostics::new();
-        run_pass(&mut input, &mut d);
+        ByteOrderSpecified::run_pass(&mut input, &mut d).unwrap();
         assert!(!d.has_error());
     }
 }

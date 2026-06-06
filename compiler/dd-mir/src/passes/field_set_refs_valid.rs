@@ -2,33 +2,41 @@ use std::collections::HashSet;
 
 use crate::{
     model::{Manifest, Object, Unique, UniqueId},
+    passes::Pass,
     search_object,
 };
-use device_driver_diagnostics::{Diagnostics, errors::InvalidFieldsetRef};
+use device_driver_diagnostics::{Diagnostics, DynError, errors::InvalidFieldsetRef};
 
 /// Checks whether all registers and commands point to existing fieldsets
-pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashSet<UniqueId> {
-    let mut removals = HashSet::new();
+pub struct FieldsetRefsValid;
 
-    for object in manifest.iter_objects() {
-        let fieldset_refs = object.fieldset_refs();
+impl Pass for FieldsetRefsValid {
+    fn run_pass(
+        manifest: &mut Manifest,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<HashSet<UniqueId>, DynError> {
+        let mut removals = HashSet::new();
 
-        for fieldset_ref in fieldset_refs {
-            let pointee = match search_object(manifest, &fieldset_ref) {
-                Some(Object::FieldSet(_)) => continue,
-                Some(found_object) => Some(found_object.name_span()),
-                None => None,
-            };
+        for object in manifest.iter_objects() {
+            let fieldset_refs = object.fieldset_refs();
 
-            diagnostics.add(InvalidFieldsetRef {
-                reference: fieldset_ref.span,
-                pointee,
-            });
+            for fieldset_ref in fieldset_refs {
+                let pointee = match search_object(manifest, &fieldset_ref) {
+                    Some(Object::FieldSet(_)) => continue,
+                    Some(found_object) => Some(found_object.name_span()),
+                    None => None,
+                };
 
-            removals.insert(object.id());
-            break;
+                diagnostics.add(InvalidFieldsetRef {
+                    reference: fieldset_ref.span,
+                    pointee,
+                });
+
+                removals.insert(object.id());
+                break;
+            }
         }
-    }
 
-    removals
+        Ok(removals)
+    }
 }

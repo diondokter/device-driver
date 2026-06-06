@@ -1,23 +1,33 @@
 use std::collections::HashSet;
 
-use crate::model::{Manifest, Unique, UniqueId};
-use device_driver_diagnostics::{Diagnostics, errors::ZeroStrideRepeat};
+use crate::{
+    model::{Manifest, Unique, UniqueId},
+    passes::Pass,
+};
+use device_driver_diagnostics::{Diagnostics, DynError, errors::ZeroStrideRepeat};
 
-pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashSet<UniqueId> {
-    let mut removals = HashSet::new();
+pub struct RepeatZeroStrideRejected;
 
-    for object in manifest.iter_objects() {
-        let Some(repeat) = object.repeat() else {
-            continue;
-        };
+impl Pass for RepeatZeroStrideRejected {
+    fn run_pass(
+        manifest: &mut Manifest,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<HashSet<UniqueId>, DynError> {
+        let mut removals = HashSet::new();
 
-        if repeat.stride == 0 {
-            diagnostics.add(ZeroStrideRepeat {
-                stride: repeat.stride.span,
-            });
-            removals.insert(object.id());
+        for object in manifest.iter_objects() {
+            let Some(repeat) = object.repeat() else {
+                continue;
+            };
+
+            if repeat.stride == 0 {
+                diagnostics.add(ZeroStrideRepeat {
+                    stride: repeat.stride.span,
+                });
+                removals.insert(object.id());
+            }
         }
-    }
 
-    removals
+        Ok(removals)
+    }
 }

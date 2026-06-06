@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use device_driver_common::{
     span::{Span, SpanExt, Spanned},
@@ -6,11 +6,12 @@ use device_driver_common::{
 };
 
 use crate::{
-    model::{FieldSet, LendingIterator, Manifest, Object, Register, Unique},
+    model::{FieldSet, LendingIterator, Manifest, Object, Register, Unique, UniqueId},
+    passes::Pass,
     search_object,
 };
 use device_driver_diagnostics::{
-    Diagnostics,
+    Diagnostics, DynError,
     errors::{ResetValueArrayWrongSize, ResetValueIntTooBig},
 };
 
@@ -20,42 +21,51 @@ use device_driver_diagnostics::{
 /// For the array representation, the rule is that the input must have the same spec as the bit and byte order.
 /// The reset values are left with the specified bit order and byte order.
 ///
-/// This function assumes all register have a valid byte order, and so depends on [`super::byte_order_specified::run_pass`]
+/// This pass assumes all register have a valid byte order, and so depends on [`super::byte_order_specified::run_pass`]
 /// having been run.
-pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
-    let mut new_reset_values = HashMap::new();
+pub struct ResetValuesConverted;
 
-    for object in manifest.iter_objects() {
-        if let Object::Register(reg) = object {
-            let target_field_set = get_target_field_set(reg, manifest);
+impl Pass for ResetValuesConverted {
+    fn run_pass(
+        manifest: &mut Manifest,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<HashSet<UniqueId>, DynError> {
+        let mut new_reset_values = HashMap::new();
 
-            if let Some(reset_value) = reg.reset_value.as_ref() {
-                let new_reset_value = convert_reset_value(
-                    reset_value.clone(),
-                    target_field_set.size_bytes.value,
-                    target_field_set.byte_order.unwrap(),
-                    diagnostics,
-                    reg.name.span,
-                );
-                assert_eq!(
-                    new_reset_values.insert(reg.id(), new_reset_value),
-                    None,
-                    "All names must be unique"
-                );
+        for object in manifest.iter_objects() {
+            if let Object::Register(reg) = object {
+                let target_field_set = get_target_field_set(reg, manifest);
+
+                if let Some(reset_value) = reg.reset_value.as_ref() {
+                    let new_reset_value = convert_reset_value(
+                        reset_value.clone(),
+                        target_field_set.size_bytes.value,
+                        target_field_set.byte_order.unwrap(),
+                        diagnostics,
+                        reg.name.span,
+                    );
+                    assert_eq!(
+                        new_reset_values.insert(reg.id(), new_reset_value),
+                        None,
+                        "All names must be unique"
+                    );
+                }
             }
         }
-    }
 
-    let mut iter = manifest.iter_objects_with_config_mut();
-    while let Some((object, _)) = iter.next() {
-        if let Object::Register(register) = object
-            && let Some(new_reset_value) = new_reset_values.remove(&register.id())
-        {
-            register.reset_value = new_reset_value;
+        let mut iter = manifest.iter_objects_with_config_mut();
+        while let Some((object, _)) = iter.next() {
+            if let Object::Register(register) = object
+                && let Some(new_reset_value) = new_reset_values.remove(&register.id())
+            {
+                register.reset_value = new_reset_value;
+            }
         }
-    }
 
-    assert!(new_reset_values.is_empty());
+        assert!(new_reset_values.is_empty());
+
+        Ok(Default::default())
+    }
 }
 
 fn get_target_field_set<'m>(reg: &Register, manifest: &'m Manifest) -> &'m FieldSet {
