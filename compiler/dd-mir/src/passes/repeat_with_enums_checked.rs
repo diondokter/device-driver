@@ -7,7 +7,7 @@ use device_driver_common::{
 
 use crate::{
     model::{Enum, LendingIterator, Manifest, Object, Unique, UniqueId},
-    passes::Pass,
+    passes::{Assumption, Pass},
     search_object,
 };
 use device_driver_diagnostics::{
@@ -19,6 +19,9 @@ use device_driver_diagnostics::{
 pub struct RepeatWithEnumsChecked;
 
 impl Pass for RepeatWithEnumsChecked {
+    const ASSUMPTIONS_MADE: &[Assumption] = &[];
+    const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
+
     fn run_pass(
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,

@@ -4,7 +4,7 @@ use device_driver_common::specifiers::{AddressRange, RepeatSource};
 
 use crate::{
     model::{Field, FieldSet, Manifest, Unique, UniqueId},
-    passes::Pass,
+    passes::{Assumption, Pass},
     search_object,
 };
 use device_driver_diagnostics::{
@@ -16,6 +16,9 @@ use device_driver_diagnostics::{
 pub struct BitRangesValidated;
 
 impl Pass for BitRangesValidated {
+    const ASSUMPTIONS_MADE: &[Assumption] = &[];
+    const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
+
     fn run_pass(
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,

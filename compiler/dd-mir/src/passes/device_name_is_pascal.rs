@@ -4,7 +4,7 @@ use convert_case::Casing;
 
 use crate::{
     model::{LendingIterator, Manifest, Object, Unique, UniqueId},
-    passes::Pass,
+    passes::{Assumption, Pass},
 };
 use device_driver_diagnostics::{
     Diagnostics, DynError,
@@ -14,6 +14,9 @@ use device_driver_diagnostics::{
 pub struct DeviceNameIsPascal;
 
 impl Pass for DeviceNameIsPascal {
+    const ASSUMPTIONS_MADE: &[Assumption] = &[];
+    const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
+
     fn run_pass(
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,

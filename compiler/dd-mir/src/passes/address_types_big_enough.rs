@@ -6,13 +6,16 @@ use device_driver_diagnostics::{Diagnostics, DynError, errors::AddressOutOfRange
 use crate::{
     find_min_max_addresses,
     model::{Device, Manifest, Object, Unique, UniqueId},
-    passes::Pass,
+    passes::{Assumption, Pass},
 };
 
 /// Checks if the various address types can fully contain the min and max addresses of the types of objects they are for
 pub struct AddressTypesBigEnough;
 
 impl Pass for AddressTypesBigEnough {
+    const ASSUMPTIONS_MADE: &[Assumption] = &[];
+    const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
+
     fn run_pass(
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,

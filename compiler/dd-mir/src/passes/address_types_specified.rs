@@ -4,7 +4,7 @@ use device_driver_diagnostics::{Diagnostics, DynError, errors::AddressTypeUndefi
 
 use crate::{
     model::{Manifest, Object, UniqueId},
-    passes::Pass,
+    passes::{Assumption, Pass},
     search_object,
 };
 
@@ -12,6 +12,9 @@ use crate::{
 pub struct AddressTypesSpecified;
 
 impl Pass for AddressTypesSpecified {
+    const ASSUMPTIONS_MADE: &[Assumption] = &[Assumption::DeviceConfigsOwned];
+    const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
+
     fn run_pass(
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,

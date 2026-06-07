@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::{
     model::{Manifest, Object, Unique, UniqueId},
-    passes::Pass,
+    passes::{Assumption, Pass},
     search_object,
 };
 use device_driver_diagnostics::{Diagnostics, DynError, errors::InvalidFieldsetRef};
@@ -11,6 +11,9 @@ use device_driver_diagnostics::{Diagnostics, DynError, errors::InvalidFieldsetRe
 pub struct FieldsetRefsValid;
 
 impl Pass for FieldsetRefsValid {
+    const ASSUMPTIONS_MADE: &[Assumption] = &[];
+    const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
+
     fn run_pass(
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,

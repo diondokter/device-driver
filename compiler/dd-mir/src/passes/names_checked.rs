@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::{
     model::{LendingIterator, Manifest, Object, Unique, UniqueId},
-    passes::Pass,
+    passes::{Assumption, Pass},
 };
 use device_driver_diagnostics::{Diagnostics, DynError, errors::InvalidIdentifier};
 
@@ -10,6 +10,9 @@ use device_driver_diagnostics::{Diagnostics, DynError, errors::InvalidIdentifier
 pub struct NamesChecked;
 
 impl Pass for NamesChecked {
+    const ASSUMPTIONS_MADE: &[Assumption] = &[];
+    const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
+
     fn run_pass(
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,

@@ -4,13 +4,16 @@ use device_driver_diagnostics::{Diagnostics, DynError};
 
 use crate::{
     model::{LendingIterator, Manifest, Object, Unique, UniqueId},
-    passes::Pass,
+    passes::{Assumption, Pass},
 };
 
 /// Sets the owner of all device configs to the actual owner of it
 pub struct DeviceConfigsOwned;
 
 impl Pass for DeviceConfigsOwned {
+    const ASSUMPTIONS_MADE: &[Assumption] = &[];
+    const ASSUMPTIONS_RELEASED: &[Assumption] = &[Assumption::DeviceConfigsOwned];
+
     fn run_pass(
         manifest: &mut Manifest,
         _diagnostics: &mut Diagnostics,

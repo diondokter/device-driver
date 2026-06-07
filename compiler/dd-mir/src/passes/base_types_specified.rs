@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::{
     model::{LendingIterator, Manifest, Object, UniqueId},
-    passes::Pass,
+    passes::{Assumption, Pass},
 };
 use device_driver_common::specifiers::{BaseType, Integer};
 use device_driver_diagnostics::{Diagnostics, DynError, errors::IntegerFieldSizeTooBig};
@@ -11,6 +11,9 @@ use device_driver_diagnostics::{Diagnostics, DynError, errors::IntegerFieldSizeT
 pub struct BaseTypesSpecified;
 
 impl Pass for BaseTypesSpecified {
+    const ASSUMPTIONS_MADE: &[Assumption] = &[];
+    const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
+
     fn run_pass(
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,

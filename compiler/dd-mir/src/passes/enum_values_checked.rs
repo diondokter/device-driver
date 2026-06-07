@@ -8,7 +8,7 @@ use itertools::Itertools;
 
 use crate::{
     model::{EnumGenerationStyle, EnumValue, LendingIterator, Manifest, Object, Unique, UniqueId},
-    passes::Pass,
+    passes::{Assumption, Pass},
 };
 use device_driver_diagnostics::{
     Diagnostics, DynError,
@@ -23,6 +23,9 @@ use device_driver_diagnostics::{
 pub struct EnumValuesChecked;
 
 impl Pass for EnumValuesChecked {
+    const ASSUMPTIONS_MADE: &[Assumption] = &[];
+    const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
+
     fn run_pass(
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,
