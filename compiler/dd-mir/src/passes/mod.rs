@@ -38,11 +38,9 @@ mod repeat_with_enums_checked;
 mod repeat_zero_stride_rejected;
 mod reset_values_converted;
 
-pub fn run_passes(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> Result<(), DynError> {
-    // TODO: Add assumption tracking
-    // TODO: Add optional randomization using the assumptions
-
-    let passes = [
+// TODO: Make const when possible in a future Rust version
+fn get_default_passes() -> [PassInfo; 18] {
+    [
         PassInfo::get::<DeviceConfigsOwned>(),
         PassInfo::get::<BaseTypesSpecified>(),
         PassInfo::get::<DeviceNameIsPascal>(),
@@ -61,7 +59,16 @@ pub fn run_passes(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> Res
         PassInfo::get::<AddressTypesSpecified>(),
         PassInfo::get::<AddressTypesBigEnough>(),
         PassInfo::get::<AddressesNonOverlapping>(),
-    ];
+    ]
+}
+
+pub fn run_passes(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> Result<(), DynError> {
+    // TODO: Add assumption tracking
+    // TODO: Add optional randomization using the assumptions
+    // - randomize function exists, just need the flag plumbing
+    // - flag should be `-Z randomize-mir-passes`
+    // - this needs a more generalized flag system (currently only codegen has flags)
+    let passes = get_default_passes();
 
     check_assumptions(&passes).with_message(|| "checking mir pass assumptions")?;
 
@@ -88,6 +95,7 @@ enum Assumption {
     DeviceConfigsOwned,
 }
 
+#[derive(Debug, Clone)]
 struct PassInfo {
     assumptions_made: &'static [Assumption],
     assumptions_released: &'static [Assumption],
@@ -132,13 +140,46 @@ fn check_assumptions(passes: &[PassInfo]) -> Result<(), FailedPass> {
             }
         }
 
-        // This pass held, release the asumptions for later passes
+        // This pass held, release the assumptions for later passes
         for released_assumption in pass.assumptions_released {
             released_assumptions.insert(*released_assumption);
         }
     }
 
     Ok(())
+}
+
+fn randomize_passes(passes: &[PassInfo]) -> Vec<PassInfo> {
+    let mut randomized_passes = Vec::new();
+    let mut unused_passes = passes.to_vec();
+    let mut released_assumptions = HashSet::new();
+
+    while !unused_passes.is_empty() {
+        let valid_passes = unused_passes
+            .iter()
+            .filter(|pass| {
+                pass.assumptions_made
+                    .iter()
+                    .all(|made_assumption| released_assumptions.contains(made_assumption))
+            })
+            .collect::<Vec<_>>();
+
+        if valid_passes.is_empty() {
+            panic!("no valid passes left");
+        }
+
+        let chosen_pass = valid_passes[fastrand::usize(0..valid_passes.len())];
+        let chosen_pass_index = unused_passes.element_offset(chosen_pass).unwrap();
+        let chosen_pass = unused_passes.remove(chosen_pass_index);
+
+        for released_assumption in chosen_pass.assumptions_released {
+            released_assumptions.insert(*released_assumption);
+        }
+
+        randomized_passes.push(chosen_pass);
+    }
+
+    randomized_passes
 }
 
 #[derive(Debug)]
@@ -157,3 +198,30 @@ impl Display for FailedPass {
     }
 }
 impl Error for FailedPass {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn check_assumptions_correct() {
+        check_assumptions(&[
+            PassInfo::get::<DeviceConfigsOwned>(),
+            PassInfo::get::<AddressTypesSpecified>(),
+        ])
+        .unwrap();
+        check_assumptions(&[
+            PassInfo::get::<AddressTypesSpecified>(),
+            PassInfo::get::<DeviceConfigsOwned>(),
+        ])
+        .unwrap_err();
+    }
+
+    #[test]
+    fn randomize_ok() {
+        for _ in 0..100 {
+            let passes = randomize_passes(&get_default_passes());
+            check_assumptions(&passes).unwrap();
+        }
+    }
+}

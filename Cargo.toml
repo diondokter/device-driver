@@ -46,3 +46,4 @@ syn = "2.0.114"
 pretty_assertions = "1.4.1"
 chumsky = { version = "0.13.0", default-features = false, features = ["std"] }
 arbitrary = { version = "1.4.2", features = ["derive"] }
+fastrand = "2.4.1"
