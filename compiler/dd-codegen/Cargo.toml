@@ -13,5 +13,6 @@ device-driver-common.workspace = true
 device-driver-lir.workspace = true
 
 convert_case.workspace = true
+clap.workspace = true
 
 askama = { version = "0.15.4", default-features = false, features = ["derive", "alloc"] }

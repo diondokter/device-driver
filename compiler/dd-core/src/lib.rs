@@ -5,14 +5,10 @@ use std::fmt::Write;
 use device_driver_diagnostics::{Diagnostics, DynError, ResultExt};
 use itertools::Itertools;
 
-pub use device_driver_codegen::{CompileOptions, Target};
+pub use device_driver_codegen::{RustCodegenOptions, Target};
 pub use device_driver_diagnostics::Metadata;
 
-pub fn compile(
-    source: &str,
-    target: Target,
-    compile_options: CompileOptions,
-) -> Result<(String, Diagnostics), DynError> {
+pub fn compile(source: &str, target: Target) -> Result<(String, Diagnostics), DynError> {
     let mut diagnostics = Diagnostics::new();
 
     let tokens = device_driver_lexer::lex(source);
@@ -20,7 +16,7 @@ pub fn compile(
     let mir = device_driver_mir::lower_ast(ast, &mut diagnostics)
         .with_message(|| "could not lower AST to MIR")?;
     let lir = device_driver_lir::lower_mir(mir).with_message(|| "could not lower MIR to LIR")?;
-    let mut code = device_driver_codegen::codegen(target, &lir, source, &compile_options);
+    let mut code = device_driver_codegen::codegen(&target, &lir, source);
 
     if diagnostics.has_error() {
         let _ = write!(code, "\n{}\n", target.create_error_message());

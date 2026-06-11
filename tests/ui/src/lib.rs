@@ -17,10 +17,13 @@ pub fn run_test(source_paths: &[&Path], output_path: &Path) {
         let input_extension = source_path.extension().unwrap().display().to_string();
         let (transformed, diagnostics) = match &*input_extension {
             "ddsl" => {
-                let mut compile_options = Target::Rust.get_compile_options();
-                assert!(compile_options.add("defmt-feature", "defmt".into()));
-                let (transformed, diagnostics) =
-                    device_driver_core::compile(&source, Target::Rust, compile_options).unwrap();
+                let (transformed, diagnostics) = device_driver_core::compile(
+                    &source,
+                    Target::Rust(device_driver_core::RustCodegenOptions {
+                        defmt_feature: Some("defmt".into()),
+                    }),
+                )
+                .unwrap();
 
                 let mut diagnostics_output = String::new();
 

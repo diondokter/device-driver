@@ -5,7 +5,7 @@ use libfuzzer_sys::fuzz_target;
 
 // Goal: Don't have panics or ICE's
 fuzz_target!(|source: &str| {
-    match device_driver_core::compile(source, Target::Rust, Target::Rust.get_compile_options()) {
+    match device_driver_core::compile(source, Target::Rust(Default::default())) {
         Ok((_output, diagnostics)) => {
             let mut d = String::new();
             diagnostics

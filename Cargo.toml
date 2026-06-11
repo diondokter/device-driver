@@ -40,7 +40,7 @@ device-driver-parser = { path = "compiler/dd-parser", version = "=2.0.0-alpha.1"
 
 itertools = "0.14.0"
 convert_case = "0.10.0"
-clap = { version = "4.5.57", features = ["derive"] }
+clap = { version = "4.6.1", features = ["derive"] }
 bitvec = { version = "1.0.1", default-features = false }
 syn = "2.0.114"
 pretty_assertions = "1.4.1"

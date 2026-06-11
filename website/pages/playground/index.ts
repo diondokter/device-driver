@@ -28,7 +28,7 @@ const DEFAULT_CODE = `device Foo {
     }
 }
 `
-const DEFAULT_OPTIONS = `-C defmt-feature=defmt`;
+const DEFAULT_OPTIONS = `--defmt-feature=defmt`;
 
 function setup(): PageContext {
     let draggingSetup = setupDragging();
@@ -109,6 +109,7 @@ function setup(): PageContext {
         compilerOptionsInput,
         targetPickerSelect,
         currentTheme: theme,
+        recompile: recompile,
     };
 }
 
@@ -275,6 +276,7 @@ interface PageContext {
     targetPickerSelect: HTMLSelectElement,
     compilerOptionsInput: HTMLTextAreaElement,
     currentTheme: Theme,
+    recompile: () => any,
 }
 
 function onThemeChange(e: MediaQueryListEvent) {
@@ -300,6 +302,7 @@ export function reset() {
     page_ctx.editors.codeEditor.setValue(DEFAULT_CODE);
     page_ctx.targetPickerSelect.selectedIndex = 0;
     page_ctx.compilerOptionsInput.value = DEFAULT_OPTIONS;
+    page_ctx.recompile();
 }
 
 function throwExpression(errorMessage: string): never {
