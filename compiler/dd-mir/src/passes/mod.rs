@@ -43,15 +43,15 @@ mod reset_values_converted;
 fn get_default_passes() -> [PassInfo; 18] {
     [
         PassInfo::get::<DeviceConfigsOwned>(),
+        PassInfo::get::<EnumValuesChecked>(),
+        PassInfo::get::<ExternValuesChecked>(),
         PassInfo::get::<BaseTypesSpecified>(),
         PassInfo::get::<DeviceNameIsPascal>(),
         PassInfo::get::<NamesChecked>(),
         PassInfo::get::<NamesUnique>(),
         PassInfo::get::<FieldsetRefsValid>(),
-        PassInfo::get::<EnumValuesChecked>(),
         PassInfo::get::<RepeatZeroStrideRejected>(),
         PassInfo::get::<RepeatWithEnumsChecked>(),
-        PassInfo::get::<ExternValuesChecked>(),
         PassInfo::get::<FieldConversionValid>(),
         PassInfo::get::<ByteOrderSpecified>(),
         PassInfo::get::<ResetValuesConverted>(),
