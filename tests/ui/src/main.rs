@@ -1,6 +1,5 @@
 use std::path::{Path, PathBuf};
 
-use device_driver_core::{CodegenTarget, CompileOptions};
 use device_driver_diagnostics::Metadata;
 use device_driver_tests::get_compile_options;
 

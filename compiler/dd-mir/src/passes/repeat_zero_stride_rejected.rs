@@ -10,7 +10,7 @@ pub struct RepeatZeroStrideRejected;
 
 impl Pass for RepeatZeroStrideRejected {
     const ASSUMPTIONS_MADE: &[Assumption] = &[];
-    const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
+    const ASSUMPTIONS_RELEASED: &[Assumption] = &[Assumption::RepeatStrideNonZero];
 
     fn run_pass(
         manifest: &mut Manifest,

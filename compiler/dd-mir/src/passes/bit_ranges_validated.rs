@@ -16,7 +16,11 @@ use device_driver_diagnostics::{
 pub struct BitRangesValidated;
 
 impl Pass for BitRangesValidated {
-    const ASSUMPTIONS_MADE: &[Assumption] = &[];
+    const ASSUMPTIONS_MADE: &[Assumption] = &[
+        Assumption::RepeatStrideNonZero,
+        Assumption::RepeatEnumRefValid,
+        Assumption::NamesUnique,
+    ];
     const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
 
     fn run_pass(

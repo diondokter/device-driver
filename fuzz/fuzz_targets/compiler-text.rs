@@ -17,6 +17,7 @@ fuzz_target!(|input: Input<'_>| {
             mir_options: MirOptions {
                 randomize_mir_passes: true,
                 randomize_mir_passes_seed: Some(input.seed),
+                check_assumptions: true,
             },
             target: CodegenTarget::Rust(Default::default()),
         },

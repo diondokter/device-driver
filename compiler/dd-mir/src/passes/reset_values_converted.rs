@@ -26,7 +26,11 @@ use device_driver_diagnostics::{
 pub struct ResetValuesConverted;
 
 impl Pass for ResetValuesConverted {
-    const ASSUMPTIONS_MADE: &[Assumption] = &[];
+    const ASSUMPTIONS_MADE: &[Assumption] = &[
+        Assumption::FieldsetRefsValid,
+        Assumption::ByteOrderSpecified,
+        Assumption::NamesUnique,
+    ];
     const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
 
     fn run_pass(

@@ -45,6 +45,7 @@ pub fn lower_ast(
     Ok(mir)
 }
 
+/// This assumes [passes::Assumption::NamesUnique]
 pub fn search_object<'o, T: IdentifierType>(
     manifest: &'o Manifest,
     name: &IdentifierRef<T>,
@@ -53,6 +54,8 @@ pub fn search_object<'o, T: IdentifierType>(
 }
 
 /// Returns None if device has no objects that pass the filter
+///
+/// This assumes [passes::Assumption::RepeatStrideNonZero], [passes::Assumption::NamesUnique] & [passes::Assumption::RepeatEnumRefValid]
 #[expect(clippy::type_complexity, reason = "I disagree")]
 pub fn find_min_max_addresses<'m>(
     manifest: &'m Manifest,

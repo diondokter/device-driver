@@ -13,7 +13,12 @@ use crate::{
 pub struct AddressTypesBigEnough;
 
 impl Pass for AddressTypesBigEnough {
-    const ASSUMPTIONS_MADE: &[Assumption] = &[];
+    const ASSUMPTIONS_MADE: &[Assumption] = &[
+        Assumption::AddressTypesSpecified,
+        Assumption::RepeatStrideNonZero,
+        Assumption::NamesUnique,
+        Assumption::RepeatEnumRefValid,
+    ];
     const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
 
     fn run_pass(

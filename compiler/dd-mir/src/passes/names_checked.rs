@@ -11,7 +11,7 @@ pub struct NamesChecked;
 
 impl Pass for NamesChecked {
     const ASSUMPTIONS_MADE: &[Assumption] = &[];
-    const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
+    const ASSUMPTIONS_RELEASED: &[Assumption] = &[Assumption::NamesValid];
 
     fn run_pass(
         manifest: &mut Manifest,

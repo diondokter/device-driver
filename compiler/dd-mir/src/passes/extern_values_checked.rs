@@ -14,7 +14,7 @@ pub struct ExternValuesChecked;
 
 impl Pass for ExternValuesChecked {
     const ASSUMPTIONS_MADE: &[Assumption] = &[];
-    const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
+    const ASSUMPTIONS_RELEASED: &[Assumption] = &[Assumption::ExternBaseTypesSpecified];
 
     fn run_pass(
         manifest: &mut Manifest,

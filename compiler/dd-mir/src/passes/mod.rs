@@ -77,7 +77,7 @@ pub fn run_passes(
     };
 
     if options.check_assumptions {
-        check_assumptions(&passes).with_message(|| "checking mir pass assumptions")?;
+        check_assumptions(&passes, true).with_message(|| "checking mir pass assumptions")?;
     }
 
     // Run the passes
@@ -99,12 +99,39 @@ trait Pass {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-enum Assumption {
+pub(crate) enum Assumption {
     DeviceConfigsOwned,
+    FieldsetRefsValid,
+    FieldBaseTypesSpecified,
+    ExternBaseTypesSpecified,
+    EnumBaseTypesSpecified,
+    AddressTypesSpecified,
+    RepeatStrideNonZero,
+    ByteOrderSpecified,
+    RepeatEnumRefValid,
+    NamesUnique,
+    NamesValid,
+
+    _End,
 }
 
 impl Assumption {
-    const ALL_ASSUMPTIONS: &[Assumption] = &[Assumption::DeviceConfigsOwned];
+    const ALL_ASSUMPTIONS: &[Assumption] = &[
+        Assumption::DeviceConfigsOwned,
+        Assumption::FieldsetRefsValid,
+        Assumption::FieldBaseTypesSpecified,
+        Assumption::ExternBaseTypesSpecified,
+        Assumption::EnumBaseTypesSpecified,
+        Assumption::AddressTypesSpecified,
+        Assumption::RepeatStrideNonZero,
+        Assumption::ByteOrderSpecified,
+        Assumption::RepeatEnumRefValid,
+        Assumption::NamesUnique,
+        Assumption::NamesValid,
+    ];
+
+    const _ALL_ASSUMPTIONS_PRESENT_CHECK: () =
+        const { assert!(Self::ALL_ASSUMPTIONS.len() == Self::_End as usize) };
 }
 
 #[derive(Debug, Clone)]
@@ -138,7 +165,7 @@ impl PassInfo {
 
 /// Checks if the assumptions hold for the given pass infos (and their order).
 /// If not, then Err is returned info about the pass that failed.
-fn check_assumptions(passes: &[PassInfo]) -> Result<(), FailedPass> {
+fn check_assumptions(passes: &[PassInfo], check_all_released: bool) -> Result<(), FailedPass> {
     let mut released_assumptions = HashSet::new();
 
     for pass in passes {
@@ -158,12 +185,14 @@ fn check_assumptions(passes: &[PassInfo]) -> Result<(), FailedPass> {
         }
     }
 
-    // Check all possible assumptions have been released
-    for assumption in Assumption::ALL_ASSUMPTIONS {
-        assert!(
-            released_assumptions.contains(assumption),
-            "{assumption:?} hasn't been released"
-        );
+    if check_all_released {
+        // Check all possible assumptions have been released
+        for assumption in Assumption::ALL_ASSUMPTIONS {
+            assert!(
+                released_assumptions.contains(assumption),
+                "{assumption:?} hasn't been released"
+            );
+        }
     }
 
     Ok(())
@@ -229,17 +258,49 @@ impl Error for FailedPass {}
 mod tests {
     use super::*;
 
+    struct IndependentPass;
+    impl Pass for IndependentPass {
+        const ASSUMPTIONS_MADE: &[Assumption] = &[];
+        const ASSUMPTIONS_RELEASED: &[Assumption] = &[Assumption::AddressTypesSpecified];
+
+        fn run_pass(
+            _manifest: &mut Manifest,
+            _diagnostics: &mut Diagnostics,
+        ) -> Result<HashSet<UniqueId>, DynError> {
+            todo!()
+        }
+    }
+
+    struct DependentPass;
+    impl Pass for DependentPass {
+        const ASSUMPTIONS_MADE: &[Assumption] = &[Assumption::AddressTypesSpecified];
+        const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
+
+        fn run_pass(
+            _manifest: &mut Manifest,
+            _diagnostics: &mut Diagnostics,
+        ) -> Result<HashSet<UniqueId>, DynError> {
+            todo!()
+        }
+    }
+
     #[test]
     fn check_assumptions_correct() {
-        check_assumptions(&[
-            PassInfo::get::<DeviceConfigsOwned>(),
-            PassInfo::get::<AddressTypesSpecified>(),
-        ])
+        check_assumptions(
+            &[
+                PassInfo::get::<IndependentPass>(),
+                PassInfo::get::<DependentPass>(),
+            ],
+            false,
+        )
         .unwrap();
-        check_assumptions(&[
-            PassInfo::get::<AddressTypesSpecified>(),
-            PassInfo::get::<DeviceConfigsOwned>(),
-        ])
+        check_assumptions(
+            &[
+                PassInfo::get::<DependentPass>(),
+                PassInfo::get::<IndependentPass>(),
+            ],
+            false,
+        )
         .unwrap_err();
     }
 
@@ -247,7 +308,7 @@ mod tests {
     fn randomize_ok() {
         for i in 0..100 {
             let passes = randomize_passes(&get_default_passes(), Some(i));
-            check_assumptions(&passes).unwrap();
+            check_assumptions(&passes, true).unwrap();
         }
     }
 }

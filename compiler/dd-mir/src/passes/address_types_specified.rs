@@ -12,8 +12,9 @@ use crate::{
 pub struct AddressTypesSpecified;
 
 impl Pass for AddressTypesSpecified {
-    const ASSUMPTIONS_MADE: &[Assumption] = &[Assumption::DeviceConfigsOwned];
-    const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
+    const ASSUMPTIONS_MADE: &[Assumption] =
+        &[Assumption::DeviceConfigsOwned, Assumption::NamesUnique];
+    const ASSUMPTIONS_RELEASED: &[Assumption] = &[Assumption::AddressTypesSpecified];
 
     fn run_pass(
         manifest: &mut Manifest,

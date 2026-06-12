@@ -11,7 +11,7 @@ use device_driver_diagnostics::{Diagnostics, DynError, errors::BoolFieldTooLarge
 pub struct BoolFieldsChecked;
 
 impl Pass for BoolFieldsChecked {
-    const ASSUMPTIONS_MADE: &[Assumption] = &[];
+    const ASSUMPTIONS_MADE: &[Assumption] = &[Assumption::FieldBaseTypesSpecified];
     const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
 
     fn run_pass(

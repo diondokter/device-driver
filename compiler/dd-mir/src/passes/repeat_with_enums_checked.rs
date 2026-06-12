@@ -20,7 +20,8 @@ pub struct RepeatWithEnumsChecked;
 
 impl Pass for RepeatWithEnumsChecked {
     const ASSUMPTIONS_MADE: &[Assumption] = &[];
-    const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
+    const ASSUMPTIONS_RELEASED: &[Assumption] =
+        &[Assumption::RepeatEnumRefValid, Assumption::NamesUnique];
 
     fn run_pass(
         manifest: &mut Manifest,

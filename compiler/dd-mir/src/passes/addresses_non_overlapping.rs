@@ -16,7 +16,11 @@ use device_driver_diagnostics::{Diagnostics, DynError, errors::AddressOverlap};
 pub struct AddressesNonOverlapping;
 
 impl Pass for AddressesNonOverlapping {
-    const ASSUMPTIONS_MADE: &[Assumption] = &[];
+    const ASSUMPTIONS_MADE: &[Assumption] = &[
+        Assumption::RepeatStrideNonZero,
+        Assumption::RepeatEnumRefValid,
+        Assumption::NamesUnique,
+    ];
     const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
 
     fn run_pass(

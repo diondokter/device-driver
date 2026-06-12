@@ -11,8 +11,8 @@ use device_driver_diagnostics::{Diagnostics, DynError, errors::InvalidFieldsetRe
 pub struct FieldsetRefsValid;
 
 impl Pass for FieldsetRefsValid {
-    const ASSUMPTIONS_MADE: &[Assumption] = &[];
-    const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
+    const ASSUMPTIONS_MADE: &[Assumption] = &[Assumption::NamesUnique];
+    const ASSUMPTIONS_RELEASED: &[Assumption] = &[Assumption::FieldsetRefsValid];
 
     fn run_pass(
         manifest: &mut Manifest,

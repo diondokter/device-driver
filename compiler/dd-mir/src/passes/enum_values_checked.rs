@@ -24,7 +24,7 @@ pub struct EnumValuesChecked;
 
 impl Pass for EnumValuesChecked {
     const ASSUMPTIONS_MADE: &[Assumption] = &[];
-    const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
+    const ASSUMPTIONS_RELEASED: &[Assumption] = &[Assumption::EnumBaseTypesSpecified];
 
     fn run_pass(
         manifest: &mut Manifest,

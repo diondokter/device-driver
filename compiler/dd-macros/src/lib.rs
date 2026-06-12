@@ -100,8 +100,7 @@ fn try_create_device(input: Input) -> Result<TokenStream, DynError> {
         .filter(|s| !s.is_empty())
         .map(String::from)
         .collect::<Vec<_>>();
-    let compile_options = MacroCompileOptions::try_parse_from(compile_options)
-        .with_message(|| "parsing compile options")?;
+    let compile_options = MacroCompileOptions::try_parse_from(compile_options).into_dyn_result()?;
     let (output, diagnostics) = device_driver_core::compile(&source, compile_options.into())?;
 
     diagnostics

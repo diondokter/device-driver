@@ -12,7 +12,7 @@ pub struct ByteOrderSpecified;
 
 impl Pass for ByteOrderSpecified {
     const ASSUMPTIONS_MADE: &[Assumption] = &[];
-    const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
+    const ASSUMPTIONS_RELEASED: &[Assumption] = &[Assumption::ByteOrderSpecified];
 
     fn run_pass(
         manifest: &mut Manifest,

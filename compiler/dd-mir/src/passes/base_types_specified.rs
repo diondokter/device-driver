@@ -11,8 +11,11 @@ use device_driver_diagnostics::{Diagnostics, DynError, errors::IntegerFieldSizeT
 pub struct BaseTypesSpecified;
 
 impl Pass for BaseTypesSpecified {
-    const ASSUMPTIONS_MADE: &[Assumption] = &[];
-    const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
+    const ASSUMPTIONS_MADE: &[Assumption] = &[
+        Assumption::ExternBaseTypesSpecified,
+        Assumption::EnumBaseTypesSpecified,
+    ];
+    const ASSUMPTIONS_RELEASED: &[Assumption] = &[Assumption::FieldBaseTypesSpecified];
 
     fn run_pass(
         manifest: &mut Manifest,

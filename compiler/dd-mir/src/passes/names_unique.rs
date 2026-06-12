@@ -11,8 +11,8 @@ use device_driver_diagnostics::{Diagnostics, DynError, errors::DuplicateName};
 pub struct NamesUnique;
 
 impl Pass for NamesUnique {
-    const ASSUMPTIONS_MADE: &[Assumption] = &[];
-    const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
+    const ASSUMPTIONS_MADE: &[Assumption] = &[Assumption::NamesValid];
+    const ASSUMPTIONS_RELEASED: &[Assumption] = &[Assumption::NamesUnique];
 
     fn run_pass(
         manifest: &mut Manifest,
