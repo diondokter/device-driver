@@ -12,7 +12,7 @@ body {
     align-content: center;
     align-items: center;
     background-color: var(--bg-shade-1);
-    font-family: Verdana, sans-serif;
+    font-family: Verdana, "DejaVu Sans", sans-serif;
     margin: 0;
     color: var(--text-color);
     gap: 10px;
