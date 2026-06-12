@@ -15,9 +15,9 @@
     "ts-loader": "^9.5.7",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
-    "webpack": "5.106.2",
-    "webpack-cli": "^7.0.2",
-    "webpack-dev-server": "5.2.3"
+    "webpack": "5.107.2",
+    "webpack-cli": "^7.0.3",
+    "webpack-dev-server": "^5.2.4"
   },
   "dependencies": {
     "ansi_up": "^6.0.6",
