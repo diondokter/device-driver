@@ -4,7 +4,7 @@ body {
     background-color: var(--bg-shade-2);
     margin: 0px;
     color: var(--text-color);
-    font-family: Verdana, sans-serif;
+    font-family: Verdana, "DejaVu Sans", sans-serif;
     display: grid;
     height: 100%;
     grid-template-rows: auto minmax(0, 100%) 33.333%;
