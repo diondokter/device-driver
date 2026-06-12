@@ -6,6 +6,18 @@ use regex::Regex;
 
 pub const OUTPUT_HEADER: &str = include_str!("output_header.txt");
 
+pub fn get_compile_options() -> CompileOptions {
+    CompileOptions {
+        mir_options: device_driver_core::MirOptions {
+            check_assumptions: true,
+            ..Default::default()
+        },
+        target: CodegenTarget::Rust(device_driver_core::RustCodegenOptions {
+            defmt_feature: Some("defmt".into()),
+        }),
+    }
+}
+
 include!(concat!(env!("OUT_DIR"), "/test_cases.rs"));
 
 pub fn run_test(source_paths: &[&Path], output_path: &Path) {
@@ -17,16 +29,8 @@ pub fn run_test(source_paths: &[&Path], output_path: &Path) {
         let input_extension = source_path.extension().unwrap().display().to_string();
         let (transformed, diagnostics) = match &*input_extension {
             "ddsl" => {
-                let (transformed, diagnostics) = device_driver_core::compile(
-                    &source,
-                    CompileOptions {
-                        mir_options: Default::default(),
-                        target: CodegenTarget::Rust(device_driver_core::RustCodegenOptions {
-                            defmt_feature: Some("defmt".into()),
-                        }),
-                    },
-                )
-                .unwrap();
+                let (transformed, diagnostics) =
+                    device_driver_core::compile(&source, get_compile_options()).unwrap();
 
                 let mut diagnostics_output = String::new();
 

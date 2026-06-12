@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use device_driver_core::{CodegenTarget, CompileOptions};
 use device_driver_diagnostics::Metadata;
+use device_driver_tests::get_compile_options;
 
 fn main() {
     let args = std::env::args().skip(1);
@@ -59,16 +60,8 @@ fn accept(cases_dir: &Path) {
             let source_extension = source_path.extension().unwrap().display().to_string();
             let (transformed, diagnostics) = match &*source_extension {
                 "ddsl" => {
-                    let (transformed, diagnostics) = device_driver_core::compile(
-                        &source,
-                        CompileOptions {
-                            mir_options: Default::default(),
-                            target: CodegenTarget::Rust(device_driver_core::RustCodegenOptions {
-                                defmt_feature: Some("defmt".into()),
-                            }),
-                        },
-                    )
-                    .unwrap();
+                    let (transformed, diagnostics) =
+                        device_driver_core::compile(&source, get_compile_options()).unwrap();
                     let mut diagnostics_output = String::new();
 
                     diagnostics

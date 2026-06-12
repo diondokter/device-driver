@@ -68,7 +68,6 @@ pub fn run_passes(
     options: MirOptions,
     diagnostics: &mut Diagnostics,
 ) -> Result<(), DynError> {
-    // TODO: Add assumption tracking
     let passes = get_default_passes();
 
     let passes = if options.randomize_mir_passes {
@@ -77,7 +76,9 @@ pub fn run_passes(
         passes.to_vec()
     };
 
-    check_assumptions(&passes).with_message(|| "checking mir pass assumptions")?;
+    if options.check_assumptions {
+        check_assumptions(&passes).with_message(|| "checking mir pass assumptions")?;
+    }
 
     // Run the passes
     for pass in passes {
@@ -100,6 +101,10 @@ trait Pass {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum Assumption {
     DeviceConfigsOwned,
+}
+
+impl Assumption {
+    const ALL_ASSUMPTIONS: &[Assumption] = &[Assumption::DeviceConfigsOwned];
 }
 
 #[derive(Debug, Clone)]
@@ -151,6 +156,14 @@ fn check_assumptions(passes: &[PassInfo]) -> Result<(), FailedPass> {
         for released_assumption in pass.assumptions_released {
             released_assumptions.insert(*released_assumption);
         }
+    }
+
+    // Check all possible assumptions have been released
+    for assumption in Assumption::ALL_ASSUMPTIONS {
+        assert!(
+            released_assumptions.contains(assumption),
+            "{assumption:?} hasn't been released"
+        );
     }
 
     Ok(())

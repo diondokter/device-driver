@@ -28,6 +28,9 @@ pub struct MirOptions {
     /// Randomize the order of the mir passes
     #[arg(long = "unstable-mir-randomize-passes", global = true)]
     pub randomize_mir_passes: bool,
+    /// Run assumption checks for the passes
+    #[arg(long = "unstable-mir-check-assumptions", global = true)]
+    pub check_assumptions: bool,
 }
 
 pub fn lower_ast(
