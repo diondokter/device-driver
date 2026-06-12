@@ -15,3 +15,5 @@ device-driver-parser.workspace = true
 
 convert_case.workspace = true
 itertools.workspace = true
+fastrand.workspace = true
+clap.workspace = true

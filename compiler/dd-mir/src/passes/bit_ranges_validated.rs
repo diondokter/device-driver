@@ -4,27 +4,42 @@ use device_driver_common::specifiers::{AddressRange, RepeatSource};
 
 use crate::{
     model::{Field, FieldSet, Manifest, Unique, UniqueId},
+    passes::{Assumption, Pass},
     search_object,
 };
 use device_driver_diagnostics::{
-    Diagnostics,
+    Diagnostics, DynError,
     errors::{FieldAddressExceedsFieldsetSize, FieldAddressNegative, OverlappingFields},
 };
 
 /// Validate that the bit ranges of fields fall within the max size and don't have overlap if they're not allowed
-pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashSet<UniqueId> {
-    let mut removals = HashSet::new();
+pub struct BitRangesValidated;
 
-    for object in manifest.iter_objects() {
-        if let Some(field_set) = object.as_field_set() {
-            validate_len(field_set, manifest, diagnostics, &mut removals);
-            if !field_set.allow_bit_overlap {
-                validate_overlap(field_set, manifest, diagnostics);
+impl Pass for BitRangesValidated {
+    const ASSUMPTIONS_MADE: &[Assumption] = &[
+        Assumption::RepeatStrideNonZero,
+        Assumption::RepeatEnumRefValid,
+        Assumption::NamesUnique,
+    ];
+    const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
+
+    fn run_pass(
+        manifest: &mut Manifest,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<HashSet<UniqueId>, DynError> {
+        let mut removals = HashSet::new();
+
+        for object in manifest.iter_objects() {
+            if let Some(field_set) = object.as_field_set() {
+                validate_len(field_set, manifest, diagnostics, &mut removals);
+                if !field_set.allow_bit_overlap {
+                    validate_overlap(field_set, manifest, diagnostics);
+                }
             }
         }
-    }
 
-    removals
+        Ok(removals)
+    }
 }
 
 fn validate_len(
@@ -175,7 +190,7 @@ mod tests {
         .into();
 
         let mut diagnostics = Diagnostics::new();
-        run_pass(&mut start_mir, &mut diagnostics);
+        BitRangesValidated::run_pass(&mut start_mir, &mut diagnostics).unwrap();
         assert!(!diagnostics.has_error());
 
         let mut start_mir = Device {
@@ -197,7 +212,7 @@ mod tests {
         .into();
 
         let mut diagnostics = Diagnostics::new();
-        run_pass(&mut start_mir, &mut diagnostics);
+        BitRangesValidated::run_pass(&mut start_mir, &mut diagnostics).unwrap();
         assert!(diagnostics.has_error());
 
         let mut start_mir = Device {
@@ -223,7 +238,7 @@ mod tests {
         .into();
 
         let mut diagnostics = Diagnostics::new();
-        run_pass(&mut start_mir, &mut diagnostics);
+        BitRangesValidated::run_pass(&mut start_mir, &mut diagnostics).unwrap();
         assert!(diagnostics.has_error());
     }
 
@@ -257,7 +272,7 @@ mod tests {
         .into();
 
         let mut diagnostics = Diagnostics::new();
-        run_pass(&mut start_mir, &mut diagnostics);
+        BitRangesValidated::run_pass(&mut start_mir, &mut diagnostics).unwrap();
         assert!(!diagnostics.has_error());
 
         let mut start_mir = Device {
@@ -289,7 +304,7 @@ mod tests {
         .into();
 
         let mut diagnostics = Diagnostics::new();
-        run_pass(&mut start_mir, &mut diagnostics);
+        BitRangesValidated::run_pass(&mut start_mir, &mut diagnostics).unwrap();
         assert!(!diagnostics.has_error());
 
         let mut start_mir = Device {
@@ -320,7 +335,7 @@ mod tests {
         .into();
 
         let mut diagnostics = Diagnostics::new();
-        run_pass(&mut start_mir, &mut diagnostics);
+        BitRangesValidated::run_pass(&mut start_mir, &mut diagnostics).unwrap();
         assert!(!diagnostics.has_error());
         assert!(!diagnostics.is_empty());
 
@@ -356,7 +371,7 @@ mod tests {
         .into();
 
         let mut diagnostics = Diagnostics::new();
-        run_pass(&mut start_mir, &mut diagnostics);
+        BitRangesValidated::run_pass(&mut start_mir, &mut diagnostics).unwrap();
         assert!(!diagnostics.has_error());
         assert!(!diagnostics.is_empty());
     }

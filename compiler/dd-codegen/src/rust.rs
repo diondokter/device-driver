@@ -1,37 +1,51 @@
 use std::ops::Range;
 
 use askama::Template;
+use clap::Parser;
 use convert_case::Case;
 use device_driver_common::{
     identifier::{Identifier, IdentifierType, Type},
     specifiers::{Access, AddressMode},
 };
-
 use device_driver_lir::model::{
     BlockMethod, BlockMethodType, Driver, Field, FieldConversionMethod, Repeat,
 };
 
-use crate::CompileOptions;
+#[derive(Parser, Debug, Clone, Default)]
+#[command(no_binary_name = true)]
+pub struct RustCodegenOptions {
+    /// When specified, defmt implementations will be generated using this cfg feature flag
+    #[arg(
+        long = "rust-defmt-feature",
+        value_name = "FEATURE",
+        require_equals = true
+    )]
+    pub defmt_feature: Option<String>,
+}
 
 #[derive(Template)]
 #[template(path = "rust/device.rs.j2", escape = "none", whitespace = "minimize")]
 pub struct DeviceTemplateRust<'a> {
     driver: &'a Driver,
     source: &'a str,
-    compile_options: &'a CompileOptions,
+    codegen_options: &'a RustCodegenOptions,
 }
 
 impl<'a> DeviceTemplateRust<'a> {
-    pub fn new(device: &'a Driver, source: &'a str, compile_options: &'a CompileOptions) -> Self {
+    pub fn new(
+        device: &'a Driver,
+        source: &'a str,
+        codegen_options: &'a RustCodegenOptions,
+    ) -> Self {
         Self {
             driver: device,
             source,
-            compile_options,
+            codegen_options,
         }
     }
 
     fn defmt_feature(&self) -> Option<&str> {
-        self.compile_options.get("defmt-feature")
+        self.codegen_options.defmt_feature.as_deref()
     }
 
     fn get_reset_value_text(&self, method: &BlockMethod) -> Option<&'a str> {

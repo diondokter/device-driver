@@ -22,9 +22,10 @@ device-driver-lexer.workspace = true
 device-driver-parser.workspace = true
 
 itertools.workspace = true
+clap.workspace = true
+syn = { workspace = true, optional = true }
 
 prettyplease = { version = "0.2.37", optional = true }
-syn = { workspace = true, optional = true }
 
 [dev-dependencies]
 pretty_assertions = "1.4.0"

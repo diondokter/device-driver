@@ -1,110 +1,314 @@
-use std::collections::HashSet;
+use std::{any::type_name, collections::HashSet, error::Error, fmt::Display};
 
-use crate::model::{LendingIterator, Manifest, Object, Unique, UniqueId};
+use crate::{
+    MirOptions,
+    model::{Manifest, UniqueId},
+    passes::{
+        address_types_big_enough::AddressTypesBigEnough,
+        address_types_specified::AddressTypesSpecified,
+        addresses_non_overlapping::AddressesNonOverlapping,
+        base_types_specified::BaseTypesSpecified, bit_ranges_validated::BitRangesValidated,
+        bool_fields_checked::BoolFieldsChecked, byte_order_specified::ByteOrderSpecified,
+        device_configs_owned::DeviceConfigsOwned, device_name_is_pascal::DeviceNameIsPascal,
+        enum_values_checked::EnumValuesChecked, extern_values_checked::ExternValuesChecked,
+        field_conversion_valid::FieldConversionValid, field_set_refs_valid::FieldsetRefsValid,
+        names_checked::NamesChecked, names_unique::NamesUnique,
+        repeat_with_enums_checked::RepeatWithEnumsChecked,
+        repeat_zero_stride_rejected::RepeatZeroStrideRejected,
+        reset_values_converted::ResetValuesConverted,
+    },
+};
 use device_driver_diagnostics::{Diagnostics, DynError, ResultExt};
 
-pub mod address_types_big_enough;
-pub mod address_types_specified;
-pub mod addresses_non_overlapping;
-pub mod base_types_specified;
-pub mod bit_ranges_validated;
-pub mod bool_fields_checked;
-pub mod byte_order_specified;
-pub mod device_configs_owned;
-pub mod device_name_is_pascal;
-pub mod enum_values_checked;
-pub mod extern_values_checked;
-pub mod field_conversion_valid;
-pub mod field_set_refs_valid;
-pub mod names_checked;
-pub mod names_unique;
-pub mod repeat_with_enums_checked;
-pub mod repeat_zero_stride_rejected;
-pub mod reset_values_converted;
+mod address_types_big_enough;
+mod address_types_specified;
+mod addresses_non_overlapping;
+mod base_types_specified;
+mod bit_ranges_validated;
+mod bool_fields_checked;
+mod byte_order_specified;
+mod device_configs_owned;
+mod device_name_is_pascal;
+mod enum_values_checked;
+mod extern_values_checked;
+mod field_conversion_valid;
+mod field_set_refs_valid;
+mod names_checked;
+mod names_unique;
+mod repeat_with_enums_checked;
+mod repeat_zero_stride_rejected;
+mod reset_values_converted;
 
-pub fn run_passes(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> Result<(), DynError> {
-    device_configs_owned::run_pass(manifest);
-    base_types_specified::run_pass(manifest, diagnostics);
-    let removals = device_name_is_pascal::run_pass(manifest, diagnostics);
-    remove_objects(manifest, removals);
-    let removals = names_checked::run_pass(manifest, diagnostics);
-    remove_objects(manifest, removals);
-    names_unique::run_pass(manifest, diagnostics)
-        .with_message(|| "could not finish names_unique MIR pass")?;
-    let removals = field_set_refs_valid::run_pass(manifest, diagnostics);
-    remove_objects(manifest, removals);
-    let removals = enum_values_checked::run_pass(manifest, diagnostics);
-    remove_objects(manifest, removals);
-    let removals = repeat_zero_stride_rejected::run_pass(manifest, diagnostics);
-    remove_objects(manifest, removals);
-    repeat_with_enums_checked::run_pass(manifest, diagnostics);
-    let removals = extern_values_checked::run_pass(manifest, diagnostics);
-    remove_objects(manifest, removals);
-    let removals = field_conversion_valid::run_pass(manifest, diagnostics)
-        .with_message(|| "could not finish field_conversion_valid MIR pass")?;
-    remove_objects(manifest, removals);
-    byte_order_specified::run_pass(manifest, diagnostics);
-    reset_values_converted::run_pass(manifest, diagnostics);
-    bool_fields_checked::run_pass(manifest, diagnostics);
-    let removals = bit_ranges_validated::run_pass(manifest, diagnostics);
-    remove_objects(manifest, removals);
-    let removals = address_types_specified::run_pass(manifest, diagnostics)
-        .with_message(|| "could not finish address_types_specified MIR pass")?;
-    remove_objects(manifest, removals);
-    let removals = address_types_big_enough::run_pass(manifest, diagnostics);
-    remove_objects(manifest, removals);
-    addresses_non_overlapping::run_pass(manifest, diagnostics);
+// TODO: Make const when possible in a future Rust version
+fn get_default_passes() -> [PassInfo; 18] {
+    [
+        PassInfo::get::<DeviceConfigsOwned>(),
+        PassInfo::get::<EnumValuesChecked>(),
+        PassInfo::get::<ExternValuesChecked>(),
+        PassInfo::get::<BaseTypesSpecified>(),
+        PassInfo::get::<DeviceNameIsPascal>(),
+        PassInfo::get::<NamesChecked>(),
+        PassInfo::get::<NamesUnique>(),
+        PassInfo::get::<FieldsetRefsValid>(),
+        PassInfo::get::<RepeatZeroStrideRejected>(),
+        PassInfo::get::<RepeatWithEnumsChecked>(),
+        PassInfo::get::<FieldConversionValid>(),
+        PassInfo::get::<ByteOrderSpecified>(),
+        PassInfo::get::<ResetValuesConverted>(),
+        PassInfo::get::<BoolFieldsChecked>(),
+        PassInfo::get::<BitRangesValidated>(),
+        PassInfo::get::<AddressTypesSpecified>(),
+        PassInfo::get::<AddressTypesBigEnough>(),
+        PassInfo::get::<AddressesNonOverlapping>(),
+    ]
+}
+
+pub fn run_passes(
+    manifest: &mut Manifest,
+    options: MirOptions,
+    diagnostics: &mut Diagnostics,
+) -> Result<(), DynError> {
+    let passes = get_default_passes();
+
+    let passes = if options.randomize_mir_passes {
+        randomize_passes(&passes, options.randomize_mir_passes_seed)
+    } else {
+        passes.to_vec()
+    };
+
+    if options.check_assumptions {
+        check_assumptions(&passes, true).with_message(|| "checking mir pass assumptions")?;
+    }
+
+    // Run the passes
+    for pass in passes {
+        (pass.pass)(manifest, diagnostics)?;
+    }
 
     Ok(())
 }
 
-fn remove_objects(manifest: &mut Manifest, mut removals: HashSet<UniqueId>) {
-    fn try_remove_from_vec(objects: &mut Vec<Object>, removals: &mut HashSet<UniqueId>) {
-        removals.retain(|removal| {
-            if let Some((index, _)) = objects
-                .iter()
-                .enumerate()
-                .find(|(_, obj)| obj.has_id(removal))
-            {
-                objects.remove(index);
-                false
-            } else {
-                // Find a field
-                for fs in objects.iter_mut().filter_map(|o| o.as_field_set_mut()) {
-                    let fs_id = fs.id();
-                    for field_index in 0..fs.fields.len() {
-                        if fs.fields[field_index].has_id_with(fs_id.clone(), removal) {
-                            fs.fields.remove(field_index);
-                            return false;
-                        }
-                    }
-                }
+trait Pass {
+    const ASSUMPTIONS_MADE: &[Assumption];
+    const ASSUMPTIONS_RELEASED: &[Assumption];
 
-                true
+    fn run_pass(
+        manifest: &mut Manifest,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<HashSet<UniqueId>, DynError>;
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) enum Assumption {
+    DeviceConfigsOwned,
+    FieldsetRefsValid,
+    FieldBaseTypesSpecified,
+    ExternBaseTypesSpecified,
+    EnumBaseTypesSpecified,
+    AddressTypesSpecified,
+    RepeatStrideNonZero,
+    ByteOrderSpecified,
+    RepeatEnumRefValid,
+    NamesUnique,
+    NamesValid,
+
+    _End,
+}
+
+impl Assumption {
+    const ALL_ASSUMPTIONS: &[Assumption] = &[
+        Assumption::DeviceConfigsOwned,
+        Assumption::FieldsetRefsValid,
+        Assumption::FieldBaseTypesSpecified,
+        Assumption::ExternBaseTypesSpecified,
+        Assumption::EnumBaseTypesSpecified,
+        Assumption::AddressTypesSpecified,
+        Assumption::RepeatStrideNonZero,
+        Assumption::ByteOrderSpecified,
+        Assumption::RepeatEnumRefValid,
+        Assumption::NamesUnique,
+        Assumption::NamesValid,
+    ];
+
+    const _ALL_ASSUMPTIONS_PRESENT_CHECK: () =
+        const { assert!(Self::ALL_ASSUMPTIONS.len() == Self::_End as usize) };
+}
+
+#[derive(Debug, Clone)]
+struct PassInfo {
+    assumptions_made: &'static [Assumption],
+    assumptions_released: &'static [Assumption],
+    pass: fn(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> Result<(), DynError>,
+    name: &'static str,
+}
+
+impl PassInfo {
+    fn get<P: Pass>() -> Self {
+        Self {
+            assumptions_made: P::ASSUMPTIONS_MADE,
+            assumptions_released: P::ASSUMPTIONS_RELEASED,
+            pass: Self::run_pass::<P>,
+            name: type_name::<P>(),
+        }
+    }
+
+    fn run_pass<P: Pass>(
+        manifest: &mut Manifest,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<(), DynError> {
+        let removals = P::run_pass(manifest, diagnostics)
+            .with_message(|| format!("could not finish {} MIR pass", type_name::<P>()))?;
+        crate::remove_objects(manifest, removals);
+        Ok(())
+    }
+}
+
+/// Checks if the assumptions hold for the given pass infos (and their order).
+/// If not, then Err is returned info about the pass that failed.
+fn check_assumptions(passes: &[PassInfo], check_all_released: bool) -> Result<(), FailedPass> {
+    let mut released_assumptions = HashSet::new();
+
+    for pass in passes {
+        // Check if all assumptions made are released
+        for made_assumption in pass.assumptions_made {
+            if !released_assumptions.contains(made_assumption) {
+                return Err(FailedPass {
+                    pass_name: pass.name,
+                    unheld_assumption: *made_assumption,
+                });
             }
-        });
+        }
+
+        // This pass held, release the assumptions for later passes
+        for released_assumption in pass.assumptions_released {
+            released_assumptions.insert(*released_assumption);
+        }
     }
 
-    if removals.is_empty() {
-        return;
+    if check_all_released {
+        // Check all possible assumptions have been released
+        for assumption in Assumption::ALL_ASSUMPTIONS {
+            assert!(
+                released_assumptions.contains(assumption),
+                "{assumption:?} hasn't been released"
+            );
+        }
     }
 
-    try_remove_from_vec(&mut manifest.objects, &mut removals);
+    Ok(())
+}
 
-    if removals.is_empty() {
-        return;
+fn randomize_passes(passes: &[PassInfo], seed: Option<u64>) -> Vec<PassInfo> {
+    let mut rng = if let Some(seed) = seed {
+        fastrand::Rng::with_seed(seed)
+    } else {
+        fastrand::Rng::new()
+    };
+
+    let mut randomized_passes = Vec::new();
+    let mut unused_passes = passes.to_vec();
+    let mut released_assumptions = HashSet::new();
+
+    while !unused_passes.is_empty() {
+        let valid_passes = unused_passes
+            .iter()
+            .filter(|pass| {
+                pass.assumptions_made
+                    .iter()
+                    .all(|made_assumption| released_assumptions.contains(made_assumption))
+            })
+            .collect::<Vec<_>>();
+
+        if valid_passes.is_empty() {
+            panic!("no valid passes left");
+        }
+
+        let chosen_pass = valid_passes[rng.usize(0..valid_passes.len())];
+        let chosen_pass_index = unused_passes.element_offset(chosen_pass).unwrap();
+        let chosen_pass = unused_passes.remove(chosen_pass_index);
+
+        for released_assumption in chosen_pass.assumptions_released {
+            released_assumptions.insert(*released_assumption);
+        }
+
+        randomized_passes.push(chosen_pass);
     }
 
-    let mut iter = manifest.iter_objects_with_config_mut();
-    while let Some((object, _)) = iter.next() {
-        let Some(child_objects) = object.child_objects_vec() else {
-            continue;
-        };
+    randomized_passes
+}
 
-        try_remove_from_vec(child_objects, &mut removals);
+#[derive(Debug)]
+struct FailedPass {
+    pass_name: &'static str,
+    unheld_assumption: Assumption,
+}
 
-        if removals.is_empty() {
-            return;
+impl Display for FailedPass {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "pass `{}` makes assumption `{:?}`, but that assumption hasn't been released yet",
+            self.pass_name, self.unheld_assumption
+        )
+    }
+}
+impl Error for FailedPass {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct IndependentPass;
+    impl Pass for IndependentPass {
+        const ASSUMPTIONS_MADE: &[Assumption] = &[];
+        const ASSUMPTIONS_RELEASED: &[Assumption] = &[Assumption::AddressTypesSpecified];
+
+        fn run_pass(
+            _manifest: &mut Manifest,
+            _diagnostics: &mut Diagnostics,
+        ) -> Result<HashSet<UniqueId>, DynError> {
+            todo!()
+        }
+    }
+
+    struct DependentPass;
+    impl Pass for DependentPass {
+        const ASSUMPTIONS_MADE: &[Assumption] = &[Assumption::AddressTypesSpecified];
+        const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
+
+        fn run_pass(
+            _manifest: &mut Manifest,
+            _diagnostics: &mut Diagnostics,
+        ) -> Result<HashSet<UniqueId>, DynError> {
+            todo!()
+        }
+    }
+
+    #[test]
+    fn check_assumptions_correct() {
+        check_assumptions(
+            &[
+                PassInfo::get::<IndependentPass>(),
+                PassInfo::get::<DependentPass>(),
+            ],
+            false,
+        )
+        .unwrap();
+        check_assumptions(
+            &[
+                PassInfo::get::<DependentPass>(),
+                PassInfo::get::<IndependentPass>(),
+            ],
+            false,
+        )
+        .unwrap_err();
+    }
+
+    #[test]
+    fn randomize_ok() {
+        for i in 0..100 {
+            let passes = randomize_passes(&get_default_passes(), Some(i));
+            check_assumptions(&passes, true).unwrap();
         }
     }
 }

@@ -10,6 +10,7 @@ cargo-fuzz = true
 [dependencies]
 device-driver-core.workspace = true
 
+arbitrary = { version = "1.4.2", features = ["derive"] }
 libfuzzer-sys = "0.4"
 
 [[bin]]

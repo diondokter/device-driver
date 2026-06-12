@@ -1,26 +1,27 @@
 use std::path::{Path, PathBuf};
 
-use clap::{Arg, Command, value_parser};
-use device_driver_core::Target;
 use device_driver_diagnostics::Metadata;
+use device_driver_tests::get_compile_options;
 
 fn main() {
-    let matches = Command::new("Tests")
-        .subcommand(Command::new("accept").about("Accept all changes and update the output files"))
-        .arg(
-            Arg::new("cases")
-                .short('c')
-                .long("cases")
-                .default_value("./cases")
-                .help("The path to the cases folder")
-                .value_parser(value_parser!(PathBuf)),
-        )
-        .get_matches();
+    let args = std::env::args().skip(1);
 
-    match matches.subcommand_name() {
-        Some("accept") => accept(matches.get_one::<PathBuf>("cases").unwrap()),
-        None => println!("Choose an action to do..."),
-        _ => unreachable!(),
+    let mut accept_flag = false;
+    let mut cases_path = "./cases".to_owned();
+
+    for arg in args {
+        match arg.as_str() {
+            path if cases_path.is_empty() => cases_path = path.into(),
+            "accept" => accept_flag = true,
+            "-c" | "--cases" => cases_path = "".into(),
+            unknown => panic!("unknown arg: {unknown}"),
+        }
+    }
+
+    assert!(!cases_path.is_empty(), "missing path for the cases option");
+
+    if accept_flag {
+        accept(&PathBuf::from(cases_path))
     }
 }
 
@@ -58,11 +59,8 @@ fn accept(cases_dir: &Path) {
             let source_extension = source_path.extension().unwrap().display().to_string();
             let (transformed, diagnostics) = match &*source_extension {
                 "ddsl" => {
-                    let mut compile_options = Target::Rust.get_compile_options();
-                    assert!(compile_options.add("defmt-feature", "defmt".into()));
                     let (transformed, diagnostics) =
-                        device_driver_core::compile(&source, Target::Rust, compile_options)
-                            .unwrap();
+                        device_driver_core::compile(&source, get_compile_options()).unwrap();
                     let mut diagnostics_output = String::new();
 
                     diagnostics

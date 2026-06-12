@@ -1,29 +1,43 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-use crate::model::{LendingIterator, Manifest, Object};
+use crate::{
+    model::{LendingIterator, Manifest, Object, UniqueId},
+    passes::{Assumption, Pass},
+};
 use device_driver_common::specifiers::{BaseType, Integer};
-use device_driver_diagnostics::{Diagnostics, errors::IntegerFieldSizeTooBig};
+use device_driver_diagnostics::{Diagnostics, DynError, errors::IntegerFieldSizeTooBig};
 
 /// Turn all unspecified base types into either bools or uints based on the size of the field
-pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
-    // Collect base types of all objects since we can't later in the pass because of the mut borrow of manifest
-    let base_types = manifest
-        .iter_objects()
-        .filter_map(|object| match object {
-            Object::Enum(e) => Some((e.name.take_ref(), e.base_type)),
-            Object::Extern(e) => Some((e.name.take_ref(), e.base_type)),
-            _ => None,
-        })
-        .collect::<HashMap<_, _>>();
+pub struct BaseTypesSpecified;
 
-    let mut iter = manifest.iter_objects_with_config_mut();
-    while let Some((object, _)) = iter.next() {
-        if let Some(field_set) = object.as_field_set_mut() {
-            for field in &mut field_set.fields {
-                loop {
-                    let size_bits = field.field_address.len();
-                    field.base_type.value =
-                        match field.base_type.value {
+impl Pass for BaseTypesSpecified {
+    const ASSUMPTIONS_MADE: &[Assumption] = &[
+        Assumption::ExternBaseTypesSpecified,
+        Assumption::EnumBaseTypesSpecified,
+    ];
+    const ASSUMPTIONS_RELEASED: &[Assumption] = &[Assumption::FieldBaseTypesSpecified];
+
+    fn run_pass(
+        manifest: &mut Manifest,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<HashSet<UniqueId>, DynError> {
+        // Collect base types of all objects since we can't later in the pass because of the mut borrow of manifest
+        let base_types = manifest
+            .iter_objects()
+            .filter_map(|object| match object {
+                Object::Enum(e) => Some((e.name.take_ref(), e.base_type)),
+                Object::Extern(e) => Some((e.name.take_ref(), e.base_type)),
+                _ => None,
+            })
+            .collect::<HashMap<_, _>>();
+
+        let mut iter = manifest.iter_objects_with_config_mut();
+        while let Some((object, _)) = iter.next() {
+            if let Some(field_set) = object.as_field_set_mut() {
+                for field in &mut field_set.fields {
+                    loop {
+                        let size_bits = field.field_address.len();
+                        field.base_type.value = match field.base_type.value {
                             BaseType::Unspecified => {
                                 match field.field_conversion.as_ref().and_then(|conversion| {
                                     base_types.get(&conversion.type_name.value)
@@ -75,8 +89,11 @@ pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
                             }
                             BaseType::FixedSize(_) => break,
                         }
+                    }
                 }
             }
         }
+
+        Ok(Default::default())
     }
 }

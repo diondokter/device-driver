@@ -1,49 +1,65 @@
 use std::collections::HashSet;
 
 use device_driver_common::{span::Spanned, specifiers::Integer};
-use device_driver_diagnostics::{Diagnostics, errors::AddressOutOfRange};
+use device_driver_diagnostics::{Diagnostics, DynError, errors::AddressOutOfRange};
 
 use crate::{
     find_min_max_addresses,
     model::{Device, Manifest, Object, Unique, UniqueId},
+    passes::{Assumption, Pass},
 };
 
 /// Checks if the various address types can fully contain the min and max addresses of the types of objects they are for
-pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashSet<UniqueId> {
-    let mut removals = HashSet::new();
+pub struct AddressTypesBigEnough;
 
-    for object in manifest.iter_objects() {
-        let Object::Device(device) = object else {
-            continue;
-        };
+impl Pass for AddressTypesBigEnough {
+    const ASSUMPTIONS_MADE: &[Assumption] = &[
+        Assumption::AddressTypesSpecified,
+        Assumption::RepeatStrideNonZero,
+        Assumption::NamesUnique,
+        Assumption::RepeatEnumRefValid,
+    ];
+    const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
 
-        check_device(
-            device.device_config.register_address_type.as_ref(),
-            manifest,
-            device,
-            |o| matches!(o, Object::Block(_) | Object::Register(_)),
-            diagnostics,
-            &mut removals,
-        );
-        check_device(
-            device.device_config.command_address_type.as_ref(),
-            manifest,
-            device,
-            |o| matches!(o, Object::Block(_) | Object::Command(_)),
-            diagnostics,
-            &mut removals,
-        );
-        check_device(
-            device.device_config.buffer_address_type.as_ref(),
-            manifest,
-            device,
-            |o| matches!(o, Object::Block(_) | Object::Buffer(_)),
-            diagnostics,
-            &mut removals,
-        );
+    fn run_pass(
+        manifest: &mut Manifest,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<HashSet<UniqueId>, DynError> {
+        let mut removals = HashSet::new();
+
+        for object in manifest.iter_objects() {
+            let Object::Device(device) = object else {
+                continue;
+            };
+
+            check_device(
+                device.device_config.register_address_type.as_ref(),
+                manifest,
+                device,
+                |o| matches!(o, Object::Block(_) | Object::Register(_)),
+                diagnostics,
+                &mut removals,
+            );
+            check_device(
+                device.device_config.command_address_type.as_ref(),
+                manifest,
+                device,
+                |o| matches!(o, Object::Block(_) | Object::Command(_)),
+                diagnostics,
+                &mut removals,
+            );
+            check_device(
+                device.device_config.buffer_address_type.as_ref(),
+                manifest,
+                device,
+                |o| matches!(o, Object::Block(_) | Object::Buffer(_)),
+                diagnostics,
+                &mut removals,
+            );
+        }
+
+        Ok(removals)
     }
-
-    removals
 }
 
 fn check_device(
@@ -111,7 +127,11 @@ mod tests {
         .into();
 
         let mut diagnostics = Diagnostics::new();
-        assert!(!run_pass(&mut start_mir, &mut diagnostics).is_empty());
+        assert!(
+            !AddressTypesBigEnough::run_pass(&mut start_mir, &mut diagnostics)
+                .unwrap()
+                .is_empty()
+        );
         assert!(diagnostics.has_error());
     }
 
@@ -134,7 +154,11 @@ mod tests {
         .into();
 
         let mut diagnostics = Diagnostics::new();
-        assert!(!run_pass(&mut start_mir, &mut diagnostics).is_empty());
+        assert!(
+            !AddressTypesBigEnough::run_pass(&mut start_mir, &mut diagnostics)
+                .unwrap()
+                .is_empty()
+        );
         assert!(diagnostics.has_error());
     }
 }

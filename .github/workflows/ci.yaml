@@ -48,7 +48,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo run -- build -o generated.rs device-driver/tests/basic-register.ddsl
+      - run: cargo run -- build rust -o generated.rs -s device-driver/tests/basic-register.ddsl
 
   fuzz:
     runs-on: ubuntu-latest

@@ -48,9 +48,7 @@ impl RegisterInterface for DeviceInterface {
 }
 
 device_driver::compile!(
-    options: [
-        "defmt-feature=defmt"
-    ],
+    options: "--rust-defmt-feature=defmt",
     ddsl: "
         device MyTestDevice {
             byte-order: LE,

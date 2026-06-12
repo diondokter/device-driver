@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use device_driver_core::Target;
+use device_driver_core::CompileOptions;
 use device_driver_diagnostics::{DynError, Metadata, ResultExt};
 use std::{io::Write, path::PathBuf, process::ExitCode};
 
@@ -22,21 +22,13 @@ enum Command {
 #[derive(Parser, Debug)]
 struct BuildArgs {
     /// Path to the input file.
-    source_path: PathBuf,
+    #[arg(short = 's', long = "source", value_name = "FILE", global = true)]
+    source_path: Option<PathBuf>,
     /// Path to output location. Any existing file is overwritten. If not provided, the output is written to stdout.
-    #[arg(short = 'o', long = "output", value_name = "FILE")]
+    #[arg(short = 'o', long = "output", value_name = "FILE", global = true)]
     output_path: Option<PathBuf>,
-    /// Type of generated output
-    #[arg(short = 't', long = "target", default_value = "rust")]
-    target: TargetArg,
-    /// Compiler options
-    #[arg(
-            short = 'C',
-            value_name = "KEY=VALUE", 
-            value_parser = parse_key_val,
-            action = clap::ArgAction::Append,
-        )]
-    c_opts: Option<Vec<(String, String)>>,
+    #[command(flatten)]
+    options: CompileOptions,
 }
 
 #[derive(Parser, Debug)]
@@ -44,13 +36,6 @@ struct GenDocsArgs {
     /// Path to output folder location
     #[arg(short = 'o', long = "output", value_name = "DIR")]
     output_path: PathBuf,
-}
-
-/// Parse a single key-value pair
-fn parse_key_val(s: &str) -> Result<(String, String), &'static str> {
-    s.split_once('=')
-        .map(|(k, v)| (k.to_string(), v.to_string()))
-        .ok_or("no `=` found`")
 }
 
 fn main() -> ExitCode {
@@ -74,23 +59,14 @@ fn run() -> Result<ExitCode, DynError> {
 }
 
 fn build(args: BuildArgs) -> Result<ExitCode, DynError> {
-    let target: Target = args.target.into();
-    let mut compile_options = target.get_compile_options();
+    let Some(source_path) = args.source_path else {
+        return Err(DynError::new("no source path provided"));
+    };
 
-    for (key, value) in args.c_opts.unwrap_or_default() {
-        if !compile_options.add(&key, value) {
-            return Err(DynError::new(format!("Unknown compiler flag: `{key}`")));
-        }
-    }
+    let source = std::fs::read_to_string(&source_path)
+        .with_message(|| format!("Failed to open input file at: {:?}", source_path.display()))?;
 
-    let source = std::fs::read_to_string(&args.source_path).with_message(|| {
-        format!(
-            "Failed to open input file at: {:?}",
-            args.source_path.display()
-        )
-    })?;
-
-    let (output, diagnostics) = device_driver_core::compile(&source, target, compile_options)
+    let (output, diagnostics) = device_driver_core::compile(&source, args.options)
         .with_message(|| "internal compilation error")?;
 
     let diagnostics_has_error = diagnostics.has_error();
@@ -100,7 +76,7 @@ fn build(args: BuildArgs) -> Result<ExitCode, DynError> {
             std::io::stderr().lock(),
             Metadata {
                 source: &source,
-                source_path: &args.source_path.display().to_string(),
+                source_path: &source_path.display().to_string(),
                 term_width: None,
                 ansi: true,
                 unicode: true,
@@ -143,14 +119,6 @@ fn gen_docs(args: GenDocsArgs) -> Result<ExitCode, DynError> {
 }
 
 #[derive(clap::ValueEnum, Debug, Clone)]
-pub enum TargetArg {
+pub enum TargetKind {
     Rust,
-}
-
-impl From<TargetArg> for Target {
-    fn from(value: TargetArg) -> Self {
-        match value {
-            TargetArg::Rust => Self::Rust,
-        }
-    }
 }

@@ -1,5 +1,6 @@
-use std::num::NonZero;
+use std::{collections::HashSet, num::NonZero};
 
+use clap::Parser;
 use device_driver_common::{
     identifier::{IdentifierRef, IdentifierType},
     span::SpanExt,
@@ -8,20 +9,43 @@ use device_driver_common::{
 use device_driver_diagnostics::{Diagnostics, DynError};
 use device_driver_parser::Ast;
 
-use crate::model::{Device, Manifest, Object};
+use crate::model::{Device, LendingIterator, Manifest, Object, Unique, UniqueId};
 
 mod lowering;
 pub mod model;
 pub(crate) mod passes;
 
-pub fn lower_ast(ast: Ast, diagnostics: &mut Diagnostics) -> Result<model::Manifest, DynError> {
+#[derive(Parser, Debug, Clone, Default)]
+#[command(no_binary_name = true)]
+pub struct MirOptions {
+    /// The seed to use for randomization. If not specified, a random seed is used
+    #[arg(
+        long = "unstable-mir-randomize-seed",
+        require_equals = true,
+        global = true
+    )]
+    pub randomize_mir_passes_seed: Option<u64>,
+    /// Randomize the order of the mir passes
+    #[arg(long = "unstable-mir-randomize-passes", global = true)]
+    pub randomize_mir_passes: bool,
+    /// Run assumption checks for the passes
+    #[arg(long = "unstable-mir-check-assumptions", global = true)]
+    pub check_assumptions: bool,
+}
+
+pub fn lower_ast(
+    ast: Ast,
+    options: MirOptions,
+    diagnostics: &mut Diagnostics,
+) -> Result<model::Manifest, DynError> {
     let mut mir = lowering::lower(ast, diagnostics);
 
-    passes::run_passes(&mut mir, diagnostics)?;
+    passes::run_passes(&mut mir, options, diagnostics)?;
 
     Ok(mir)
 }
 
+/// This assumes [passes::Assumption::NamesUnique]
 pub fn search_object<'o, T: IdentifierType>(
     manifest: &'o Manifest,
     name: &IdentifierRef<T>,
@@ -30,6 +54,8 @@ pub fn search_object<'o, T: IdentifierType>(
 }
 
 /// Returns None if device has no objects that pass the filter
+///
+/// This assumes [passes::Assumption::RepeatStrideNonZero], [passes::Assumption::NamesUnique] & [passes::Assumption::RepeatEnumRefValid]
 #[expect(clippy::type_complexity, reason = "I disagree")]
 pub fn find_min_max_addresses<'m>(
     manifest: &'m Manifest,
@@ -123,4 +149,55 @@ pub fn find_min_max_addresses<'m>(
         (min_address_found, min_obj_found?),
         (max_address_found, max_obj_found?),
     ))
+}
+
+fn remove_objects(manifest: &mut Manifest, mut removals: HashSet<UniqueId>) {
+    fn try_remove_from_vec(objects: &mut Vec<Object>, removals: &mut HashSet<UniqueId>) {
+        removals.retain(|removal| {
+            if let Some((index, _)) = objects
+                .iter()
+                .enumerate()
+                .find(|(_, obj)| obj.has_id(removal))
+            {
+                objects.remove(index);
+                false
+            } else {
+                // Find a field
+                for fs in objects.iter_mut().filter_map(|o| o.as_field_set_mut()) {
+                    let fs_id = fs.id();
+                    for field_index in 0..fs.fields.len() {
+                        if fs.fields[field_index].has_id_with(fs_id.clone(), removal) {
+                            fs.fields.remove(field_index);
+                            return false;
+                        }
+                    }
+                }
+
+                true
+            }
+        });
+    }
+
+    if removals.is_empty() {
+        return;
+    }
+
+    try_remove_from_vec(&mut manifest.objects, &mut removals);
+
+    if removals.is_empty() {
+        return;
+    }
+
+    let mut iter = manifest.iter_objects_with_config_mut();
+    while let Some((object, _)) = iter.next() {
+        let Some(child_objects) = object.child_objects_vec() else {
+            continue;
+        };
+
+        try_remove_from_vec(child_objects, &mut removals);
+
+        if removals.is_empty() {
+            return;
+        }
+    }
 }

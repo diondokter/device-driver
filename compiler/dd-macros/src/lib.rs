@@ -6,11 +6,12 @@ use std::{
     path::PathBuf,
 };
 
-use device_driver_core::{CompileOptions, Target};
+use clap::Parser;
+use device_driver_core::{CodegenTarget, CompileOptions, MirOptions, RustCodegenOptions};
 use device_driver_diagnostics::{DynError, Metadata, ResultExt};
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use syn::{LitStr, Token, bracketed, punctuated::Punctuated};
+use syn::{LitStr, Token};
 
 /// Macro to implement the device driver.
 ///
@@ -20,7 +21,7 @@ use syn::{LitStr, Token, bracketed, punctuated::Punctuated};
 /// ```rust,ignore
 /// # use device_driver_macros::create_device;
 /// compile!(
-///     options: [],
+///     options: "",
 ///     manifest: "path/to/manifest/file.ddsl"
 /// );
 /// ```
@@ -29,7 +30,7 @@ use syn::{LitStr, Token, bracketed, punctuated::Punctuated};
 /// ```rust,ignore
 /// # use device_driver_macros::create_device;
 /// compile!(
-///     options: [],
+///     options: "",
 ///     ddsl: "
 ///         // DDSL input
 ///     "
@@ -47,6 +48,24 @@ pub fn compile(item: TokenStream) -> TokenStream {
         Err(e) => syn::Error::new(Span::call_site(), format!("{e:#}"))
             .into_compile_error()
             .into(),
+    }
+}
+
+#[derive(Parser, Debug, Clone)]
+#[command(no_binary_name = true)]
+struct MacroCompileOptions {
+    #[command(flatten)]
+    pub mir_options: MirOptions,
+    #[command(flatten)]
+    pub rust_codegen_options: RustCodegenOptions,
+}
+
+impl From<MacroCompileOptions> for CompileOptions {
+    fn from(value: MacroCompileOptions) -> Self {
+        Self {
+            mir_options: value.mir_options,
+            target: CodegenTarget::Rust(value.rust_codegen_options),
+        }
     }
 }
 
@@ -73,8 +92,16 @@ fn try_create_device(input: Input) -> Result<TokenStream, DynError> {
         }
     };
 
-    let (output, diagnostics) =
-        device_driver_core::compile(&source, Target::Rust, input.compile_options)?;
+    let compile_options = input
+        .compile_options
+        .map(|str| str.value())
+        .unwrap_or_default()
+        .split(' ')
+        .filter(|s| !s.is_empty())
+        .map(String::from)
+        .collect::<Vec<_>>();
+    let compile_options = MacroCompileOptions::try_parse_from(compile_options).into_dyn_result()?;
+    let (output, diagnostics) = device_driver_core::compile(&source, compile_options.into())?;
 
     diagnostics
         .print_to(
@@ -102,7 +129,7 @@ enum Source {
 
 struct Input {
     source: Source,
-    compile_options: CompileOptions,
+    compile_options: Option<LitStr>,
 }
 
 impl syn::parse::Parse for Input {
@@ -126,46 +153,17 @@ impl syn::parse::Parse for Input {
             {
                 return Ok(Input {
                     source,
-                    compile_options: compile_options
-                        .unwrap_or_else(|| Target::Rust.get_compile_options()),
+                    compile_options,
                 });
             }
 
             let look = input.lookahead1();
 
             if compile_options.is_none() && look.peek(kw::options) {
-                let compile_options = compile_options.insert(Target::Rust.get_compile_options());
-
                 input.parse::<kw::options>()?;
                 input.parse::<syn::Token![:]>()?;
 
-                let content;
-                bracketed!(content in input);
-                let options = Punctuated::<LitStr, syn::Token![,]>::parse_terminated(&content)?;
-
-                for option in options {
-                    let option_value = option.value();
-                    let Some((key, value)) = option_value.split_once('=') else {
-                        return Err(syn::Error::new_spanned(
-                            option,
-                            "Compile option must be in format: <key>=<value>",
-                        ));
-                    };
-
-                    if !compile_options.add(key, value.to_string()) {
-                        return Err(syn::Error::new_spanned(
-                            option,
-                            if compile_options.possible_options().contains(&key) {
-                                "Duplicate option".into()
-                            } else {
-                                format!(
-                                    "Compile option not expected. Expected one of these keys: {}",
-                                    compile_options.possible_options().join(", ")
-                                )
-                            },
-                        ));
-                    }
-                }
+                compile_options = Some(input.parse()?);
             } else if source.is_none() && look.peek(kw::ddsl) {
                 input.parse::<kw::ddsl>()?;
                 input.parse::<syn::Token![:]>()?;

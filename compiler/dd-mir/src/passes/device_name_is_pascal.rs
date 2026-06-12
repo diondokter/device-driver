@@ -2,48 +2,61 @@ use std::collections::HashSet;
 
 use convert_case::Casing;
 
-use crate::model::{LendingIterator, Manifest, Object, Unique, UniqueId};
+use crate::{
+    model::{LendingIterator, Manifest, Object, Unique, UniqueId},
+    passes::{Assumption, Pass},
+};
 use device_driver_diagnostics::{
-    Diagnostics,
+    Diagnostics, DynError,
     errors::{DeviceNameNotPascal, InvalidIdentifier},
 };
 
-pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashSet<UniqueId> {
-    let mut removals = HashSet::new();
+pub struct DeviceNameIsPascal;
 
-    let mut iter = manifest.iter_objects_with_config_mut();
-    while let Some((object, _)) = iter.next() {
-        let Object::Device(device) = object else {
-            continue;
-        };
+impl Pass for DeviceNameIsPascal {
+    const ASSUMPTIONS_MADE: &[Assumption] = &[];
+    const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
 
-        let lenient_pascal_boundaries =
-            convert_case::Boundary::defaults_from("aA:AAa:_:-: :a1:A1:1A");
-        let lenient_pascal_case = convert_case::Case::Custom {
-            boundaries: &lenient_pascal_boundaries,
-            pattern: convert_case::Pattern::Capital,
-            delim: "",
-        };
+    fn run_pass(
+        manifest: &mut Manifest,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<HashSet<UniqueId>, DynError> {
+        let mut removals = HashSet::new();
 
-        if let Err(e) = device
-            .name
-            .apply_boundaries(&lenient_pascal_boundaries)
-            .check_validity()
-        {
-            diagnostics.add(InvalidIdentifier::new(e, device.name.span));
-            removals.insert(device.id());
-            continue;
+        let mut iter = manifest.iter_objects_with_config_mut();
+        while let Some((object, _)) = iter.next() {
+            let Object::Device(device) = object else {
+                continue;
+            };
+
+            let lenient_pascal_boundaries =
+                convert_case::Boundary::defaults_from("aA:AAa:_:-: :a1:A1:1A");
+            let lenient_pascal_case = convert_case::Case::Custom {
+                boundaries: &lenient_pascal_boundaries,
+                pattern: convert_case::Pattern::Capital,
+                delim: "",
+            };
+
+            if let Err(e) = device
+                .name
+                .apply_boundaries(&lenient_pascal_boundaries)
+                .check_validity()
+            {
+                diagnostics.add(InvalidIdentifier::new(e, device.name.span));
+                removals.insert(device.id());
+                continue;
+            }
+
+            let converted_driver_name = &device.name.original().to_case(lenient_pascal_case);
+
+            if device.name.value.original() != converted_driver_name {
+                diagnostics.add(DeviceNameNotPascal {
+                    device_name: device.name.span,
+                    suggestion: converted_driver_name.clone(),
+                });
+            }
         }
 
-        let converted_driver_name = &device.name.original().to_case(lenient_pascal_case);
-
-        if device.name.value.original() != converted_driver_name {
-            diagnostics.add(DeviceNameNotPascal {
-                device_name: device.name.span,
-                suggestion: converted_driver_name.clone(),
-            });
-        }
+        Ok(removals)
     }
-
-    removals
 }

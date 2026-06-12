@@ -1,84 +1,100 @@
-use crate::model::{LendingIterator, Manifest, Object, Unique};
+use std::collections::HashSet;
+
+use crate::{
+    model::{LendingIterator, Manifest, Object, Unique, UniqueId},
+    passes::{Assumption, Pass},
+};
 use device_driver_diagnostics::{Diagnostics, DynError, errors::DuplicateName};
 
 /// Checks if all names are unique to prevent later name collisions.
 /// If there is a collision an error is returned.
-pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> Result<(), DynError> {
-    // NOT A HASHSET!
-    // The hash only looks at the original value of the identifier.
-    // We need to use Eq to check the uniqueness of both the original and the split words.
-    let mut seen_ids = EqSet::new();
-    let mut duplicate_id = 0u32;
-    let mut get_duplicate_id = || {
-        duplicate_id = duplicate_id.wrapping_add(1);
-        duplicate_id
-    };
+pub struct NamesUnique;
 
-    let mut iter = manifest.iter_objects_with_config_mut();
-    while let Some((object, _)) = iter.next() {
-        if !seen_ids.insert(object.id()) {
-            let original = seen_ids.get(&object.id()).unwrap();
-            diagnostics.add(DuplicateName {
-                original: original.span(),
-                original_value: original.identifier().clone(),
-                duplicate: object.id().span(),
-                duplicate_value: object.id().identifier().clone(),
-            });
+impl Pass for NamesUnique {
+    const ASSUMPTIONS_MADE: &[Assumption] = &[Assumption::NamesValid];
+    const ASSUMPTIONS_RELEASED: &[Assumption] = &[Assumption::NamesUnique];
 
-            // Duplicate name found. Let's add to the name to make it unique again so it can contribute to later passes
-            object.name_mut().set_duplicate_id(get_duplicate_id());
-            // We've also 'seen' this duplicate
-            seen_ids.insert(object.id());
-        }
+    fn run_pass(
+        manifest: &mut Manifest,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<HashSet<UniqueId>, DynError> {
+        // NOT A HASHSET!
+        // The hash only looks at the original value of the identifier.
+        // We need to use Eq to check the uniqueness of both the original and the split words.
+        let mut seen_ids = EqSet::new();
+        let mut duplicate_id = 0u32;
+        let mut get_duplicate_id = || {
+            duplicate_id = duplicate_id.wrapping_add(1);
+            duplicate_id
+        };
 
-        if let Object::FieldSet(field_set) = object {
-            let fs_id = field_set.id();
-            for field in field_set.fields.iter_mut() {
-                let field_id = field.id_with(fs_id.clone());
-                if !seen_ids.insert(field_id.clone()) {
-                    let original = seen_ids.get(&field_id).unwrap();
-                    diagnostics.add(DuplicateName {
-                        original: original.span(),
-                        original_value: original.identifier().clone(),
-                        duplicate: field_id.span(),
-                        duplicate_value: field_id.identifier().clone(),
-                    });
+        let mut iter = manifest.iter_objects_with_config_mut();
+        while let Some((object, _)) = iter.next() {
+            if !seen_ids.insert(object.id()) {
+                let original = seen_ids.get(&object.id()).unwrap();
+                diagnostics.add(DuplicateName {
+                    original: original.span(),
+                    original_value: original.identifier().clone(),
+                    duplicate: object.id().span(),
+                    duplicate_value: object.id().identifier().clone(),
+                });
 
-                    // Duplicate name found. Let's add to the name to make it unique again so it can contribute to later passes
-                    field.name.set_duplicate_id(get_duplicate_id());
-                    // We've also 'seen' this duplicate
-                    seen_ids.insert(field.id_with(fs_id.clone()));
+                // Duplicate name found. Let's add to the name to make it unique again so it can contribute to later passes
+                object.name_mut().set_duplicate_id(get_duplicate_id());
+                // We've also 'seen' this duplicate
+                seen_ids.insert(object.id());
+            }
+
+            if let Object::FieldSet(field_set) = object {
+                let fs_id = field_set.id();
+                for field in field_set.fields.iter_mut() {
+                    let field_id = field.id_with(fs_id.clone());
+                    if !seen_ids.insert(field_id.clone()) {
+                        let original = seen_ids.get(&field_id).unwrap();
+                        diagnostics.add(DuplicateName {
+                            original: original.span(),
+                            original_value: original.identifier().clone(),
+                            duplicate: field_id.span(),
+                            duplicate_value: field_id.identifier().clone(),
+                        });
+
+                        // Duplicate name found. Let's add to the name to make it unique again so it can contribute to later passes
+                        field.name.set_duplicate_id(get_duplicate_id());
+                        // We've also 'seen' this duplicate
+                        seen_ids.insert(field.id_with(fs_id.clone()));
+                    }
+                }
+            }
+
+            if let Object::Enum(enum_value) = object {
+                let e_id = enum_value.id();
+                for variant in enum_value.variants.iter_mut() {
+                    let variant_id = variant.id_with(e_id.clone());
+                    if !seen_ids.insert(variant_id.clone()) {
+                        let original = seen_ids.get(&e_id).ok_or_else(|| {
+                            DynError::new(format!(
+                                "could not find enum {e_id:?} (field {variant_id})"
+                            ))
+                        })?;
+                        diagnostics.add(DuplicateName {
+                            original: original.span(),
+                            original_value: original.identifier().clone(),
+                            duplicate: variant_id.span(),
+                            duplicate_value: variant_id.identifier().clone(),
+                        });
+
+                        // Duplicate name found. Let's add to the name to make it unique again so it can contribute to later passes
+                        variant.name.set_duplicate_id(get_duplicate_id());
+                        // We've also 'seen' this duplicate
+                        seen_ids.insert(variant.id_with(e_id.clone()));
+                    }
                 }
             }
         }
 
-        if let Object::Enum(enum_value) = object {
-            let e_id = enum_value.id();
-            for variant in enum_value.variants.iter_mut() {
-                let variant_id = variant.id_with(e_id.clone());
-                if !seen_ids.insert(variant_id.clone()) {
-                    let original = seen_ids.get(&e_id).ok_or_else(|| {
-                        DynError::new(format!("could not find enum {e_id:?} (field {variant_id})"))
-                    })?;
-                    diagnostics.add(DuplicateName {
-                        original: original.span(),
-                        original_value: original.identifier().clone(),
-                        duplicate: variant_id.span(),
-                        duplicate_value: variant_id.identifier().clone(),
-                    });
-
-                    // Duplicate name found. Let's add to the name to make it unique again so it can contribute to later passes
-                    variant.name.set_duplicate_id(get_duplicate_id());
-                    // We've also 'seen' this duplicate
-                    seen_ids.insert(variant.id_with(e_id.clone()));
-                }
-            }
-        }
+        Ok(Default::default())
     }
-
-    Ok(())
 }
-
 /// Similar to a hashset in API, but uses the [Eq] trait (and linear scan) instead of [Hash]
 #[derive(Debug)]
 struct EqSet<T: Eq> {
@@ -151,7 +167,7 @@ mod tests {
         .into();
 
         let mut diagnostics = Diagnostics::new();
-        run_pass(&mut start_mir, &mut diagnostics).unwrap();
+        NamesUnique::run_pass(&mut start_mir, &mut diagnostics).unwrap();
         assert!(diagnostics.has_error())
     }
 
@@ -185,7 +201,7 @@ mod tests {
         .into();
 
         let mut diagnostics = Diagnostics::new();
-        run_pass(&mut start_mir, &mut diagnostics).unwrap();
+        NamesUnique::run_pass(&mut start_mir, &mut diagnostics).unwrap();
         assert!(diagnostics.has_error())
     }
 
@@ -219,7 +235,7 @@ mod tests {
         .into();
 
         let mut diagnostics = Diagnostics::new();
-        run_pass(&mut start_mir, &mut diagnostics).unwrap();
+        NamesUnique::run_pass(&mut start_mir, &mut diagnostics).unwrap();
         assert!(diagnostics.has_error())
     }
 }

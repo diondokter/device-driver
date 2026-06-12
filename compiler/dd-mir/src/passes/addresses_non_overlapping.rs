@@ -1,4 +1,4 @@
-use std::num::NonZero;
+use std::{collections::HashSet, num::NonZero};
 
 use device_driver_common::{
     span::{SpanExt, Spanned},
@@ -7,25 +7,42 @@ use device_driver_common::{
 
 use crate::{
     model::{Device, Manifest, Object, Unique, UniqueId},
+    passes::{Assumption, Pass},
     search_object,
 };
-use device_driver_diagnostics::{Diagnostics, errors::AddressOverlap};
+use device_driver_diagnostics::{Diagnostics, DynError, errors::AddressOverlap};
 
 /// Checks if object addresses aren't overlapping when not allowed
-pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) {
-    for (device, _) in manifest.iter_devices_with_config() {
-        let register_addresses = find_object_addresses(manifest, device, |o| {
-            matches!(o, Object::Block(_) | Object::Register(_))
-        });
-        check_for_overlap(&register_addresses, diagnostics);
-        let command_addresses = find_object_addresses(manifest, device, |o| {
-            matches!(o, Object::Block(_) | Object::Command(_))
-        });
-        check_for_overlap(&command_addresses, diagnostics);
-        let buffer_addresses = find_object_addresses(manifest, device, |o| {
-            matches!(o, Object::Block(_) | Object::Buffer(_))
-        });
-        check_for_overlap(&buffer_addresses, diagnostics);
+pub struct AddressesNonOverlapping;
+
+impl Pass for AddressesNonOverlapping {
+    const ASSUMPTIONS_MADE: &[Assumption] = &[
+        Assumption::RepeatStrideNonZero,
+        Assumption::RepeatEnumRefValid,
+        Assumption::NamesUnique,
+    ];
+    const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
+
+    fn run_pass(
+        manifest: &mut Manifest,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<HashSet<UniqueId>, DynError> {
+        for (device, _) in manifest.iter_devices_with_config() {
+            let register_addresses = find_object_addresses(manifest, device, |o| {
+                matches!(o, Object::Block(_) | Object::Register(_))
+            });
+            check_for_overlap(&register_addresses, diagnostics);
+            let command_addresses = find_object_addresses(manifest, device, |o| {
+                matches!(o, Object::Block(_) | Object::Command(_))
+            });
+            check_for_overlap(&command_addresses, diagnostics);
+            let buffer_addresses = find_object_addresses(manifest, device, |o| {
+                matches!(o, Object::Block(_) | Object::Buffer(_))
+            });
+            check_for_overlap(&buffer_addresses, diagnostics);
+        }
+
+        Ok(Default::default())
     }
 }
 

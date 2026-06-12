@@ -6,11 +6,12 @@ use device_driver_common::{
 };
 use itertools::Itertools;
 
-use crate::model::{
-    EnumGenerationStyle, EnumValue, LendingIterator, Manifest, Object, Unique, UniqueId,
+use crate::{
+    model::{EnumGenerationStyle, EnumValue, LendingIterator, Manifest, Object, Unique, UniqueId},
+    passes::{Assumption, Pass},
 };
 use device_driver_diagnostics::{
-    Diagnostics,
+    Diagnostics, DynError,
     errors::{
         DuplicateVariantValue, EmptyEnum, EnumBadBasetype, EnumMultipleCatchalls,
         EnumMultipleDefaults, EnumNoAutoBaseTypeSelected, EnumSizeBitsBiggerThanBaseType,
@@ -19,263 +20,272 @@ use device_driver_diagnostics::{
 };
 
 /// Checks if enums are fully specified and determines the generation style
-pub fn run_pass(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> HashSet<UniqueId> {
-    let mut removals = HashSet::new();
+pub struct EnumValuesChecked;
 
-    let mut iter = manifest.iter_objects_with_config_mut();
-    while let Some((object, _)) = iter.next() {
-        let Object::Enum(enum_value) = object else {
-            continue;
-        };
+impl Pass for EnumValuesChecked {
+    const ASSUMPTIONS_MADE: &[Assumption] = &[];
+    const ASSUMPTIONS_RELEASED: &[Assumption] = &[Assumption::EnumBaseTypesSpecified];
 
-        if enum_value.variants.is_empty() {
-            diagnostics.add(EmptyEnum {
-                enum_node: enum_value.span,
-            });
-            removals.insert(enum_value.id());
-            continue;
-        }
+    fn run_pass(
+        manifest: &mut Manifest,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<HashSet<UniqueId>, DynError> {
+        let mut removals = HashSet::new();
 
-        // Record all variant values
-        let e_id = enum_value.id();
-        let seen_values = enum_value
-            .iter_variants_with_discriminant_mut()
-            .map(|(discriminant, variant)| {
-                if variant.value.specified_discriminant().is_none() {
-                    variant.value.specify(discriminant);
-                }
-                (discriminant, (variant.id_with(e_id.clone()), variant.span))
-            })
-            .collect_vec();
+        let mut iter = manifest.iter_objects_with_config_mut();
+        while let Some((object, _)) = iter.next() {
+            let Object::Enum(enum_value) = object else {
+                continue;
+            };
 
-        let mut seen_values_map = HashMap::<i128, Vec<(&UniqueId, Span)>>::new();
-        for (variant_value, (variant_id, span)) in &seen_values {
-            seen_values_map
-                .entry(*variant_value)
-                .or_default()
-                .push((variant_id, *span));
-        }
-        for (value, variants) in seen_values_map
-            .into_iter()
-            .sorted_unstable_by_key(|(value, _)| *value)
-        {
-            if variants.len() > 1 {
-                diagnostics.add(DuplicateVariantValue {
-                    duplicates: variants.iter().map(|(_, span)| *span).collect(),
-                    value,
-                });
-                removals.insert(enum_value.id());
-            }
-        }
-
-        let (seen_min, (_, seen_min_span)) = seen_values
-            .iter()
-            .min_by_key(|(val, _)| val)
-            .expect("Enums must not be empty");
-        let (seen_max, _) = seen_values
-            .iter()
-            .max_by_key(|(val, _)| val)
-            .expect("Enums must not be empty");
-
-        let base_type_integer = match enum_value.base_type.value {
-            BaseType::Unspecified => Integer::find_smallest(
-                *seen_min,
-                *seen_max,
-                enum_value.size_bits.unwrap_or_default().into(),
-            ),
-            BaseType::Bool => {
-                diagnostics.add(EnumBadBasetype {
-                    enum_name: enum_value.name.span,
-                    base_type: enum_value.base_type.span,
-                    info: "all enums must have an integer as base type",
-                    context: vec![],
+            if enum_value.variants.is_empty() {
+                diagnostics.add(EmptyEnum {
+                    enum_node: enum_value.span,
                 });
                 removals.insert(enum_value.id());
                 continue;
             }
-            BaseType::Uint => {
-                let integer = Integer::find_smallest(
+
+            // Record all variant values
+            let e_id = enum_value.id();
+            let seen_values = enum_value
+                .iter_variants_with_discriminant_mut()
+                .map(|(discriminant, variant)| {
+                    if variant.value.specified_discriminant().is_none() {
+                        variant.value.specify(discriminant);
+                    }
+                    (discriminant, (variant.id_with(e_id.clone()), variant.span))
+                })
+                .collect_vec();
+
+            let mut seen_values_map = HashMap::<i128, Vec<(&UniqueId, Span)>>::new();
+            for (variant_value, (variant_id, span)) in &seen_values {
+                seen_values_map
+                    .entry(*variant_value)
+                    .or_default()
+                    .push((variant_id, *span));
+            }
+            for (value, variants) in seen_values_map
+                .into_iter()
+                .sorted_unstable_by_key(|(value, _)| *value)
+            {
+                if variants.len() > 1 {
+                    diagnostics.add(DuplicateVariantValue {
+                        duplicates: variants.iter().map(|(_, span)| *span).collect(),
+                        value,
+                    });
+                    removals.insert(enum_value.id());
+                }
+            }
+
+            let (seen_min, (_, seen_min_span)) = seen_values
+                .iter()
+                .min_by_key(|(val, _)| val)
+                .expect("Enums must not be empty");
+            let (seen_max, _) = seen_values
+                .iter()
+                .max_by_key(|(val, _)| val)
+                .expect("Enums must not be empty");
+
+            let base_type_integer = match enum_value.base_type.value {
+                BaseType::Unspecified => Integer::find_smallest(
                     *seen_min,
                     *seen_max,
                     enum_value.size_bits.unwrap_or_default().into(),
-                );
-
-                if integer.is_some_and(|i| i.is_signed()) {
-                    // TODO: Make separate error type (same as below)
+                ),
+                BaseType::Bool => {
                     diagnostics.add(EnumBadBasetype {
+                        enum_name: enum_value.name.span,
+                        base_type: enum_value.base_type.span,
+                        info: "all enums must have an integer as base type",
+                        context: vec![],
+                    });
+                    removals.insert(enum_value.id());
+                    continue;
+                }
+                BaseType::Uint => {
+                    let integer = Integer::find_smallest(
+                        *seen_min,
+                        *seen_max,
+                        enum_value.size_bits.unwrap_or_default().into(),
+                    );
+
+                    if integer.is_some_and(|i| i.is_signed()) {
+                        // TODO: Make separate error type (same as below)
+                        diagnostics.add(EnumBadBasetype {
                         enum_name: enum_value.name.span,
                         base_type: enum_value.base_type.span,
                         info: "enums must use a signed integer when any variant has a negative value",
                         context: vec![format!("variant with negative value: {seen_min}").with_span(*seen_min_span)],
                     });
-                    removals.insert(enum_value.id());
-                    continue;
-                }
+                        removals.insert(enum_value.id());
+                        continue;
+                    }
 
-                integer
-            }
-            BaseType::Int => Integer::find_smallest(
-                (*seen_min).min(-1),
-                *seen_max,
-                enum_value.size_bits.unwrap_or_default().into(),
-            ),
-            BaseType::FixedSize(integer) => {
-                if enum_value.size_bits.unwrap_or_default() > integer.size_bits() {
-                    diagnostics.add(EnumSizeBitsBiggerThanBaseType {
-                        enum_name: enum_value.name.span,
-                        base_type: enum_value.base_type.span,
-                        enum_size_bits: enum_value.size_bits.unwrap_or_default(),
-                        base_type_size_bits: integer.size_bits(),
-                    });
-                    removals.insert(enum_value.id());
-                    continue;
+                    integer
                 }
+                BaseType::Int => Integer::find_smallest(
+                    (*seen_min).min(-1),
+                    *seen_max,
+                    enum_value.size_bits.unwrap_or_default().into(),
+                ),
+                BaseType::FixedSize(integer) => {
+                    if enum_value.size_bits.unwrap_or_default() > integer.size_bits() {
+                        diagnostics.add(EnumSizeBitsBiggerThanBaseType {
+                            enum_name: enum_value.name.span,
+                            base_type: enum_value.base_type.span,
+                            enum_size_bits: enum_value.size_bits.unwrap_or_default(),
+                            base_type_size_bits: integer.size_bits(),
+                        });
+                        removals.insert(enum_value.id());
+                        continue;
+                    }
 
-                if !integer.is_signed() && seen_min.is_negative() {
-                    // TODO: Make separate error type (same as above)
-                    diagnostics.add(EnumBadBasetype {
+                    if !integer.is_signed() && seen_min.is_negative() {
+                        // TODO: Make separate error type (same as above)
+                        diagnostics.add(EnumBadBasetype {
                         enum_name: enum_value.name.span,
                         base_type: enum_value.base_type.span,
                         info: "enums must use a signed integer when any variant has a negative value",
                         context: vec![format!("variant with negative value: {seen_min}").with_span(*seen_min_span)],
                     });
-                    removals.insert(enum_value.id());
-                    continue;
-                }
-
-                Some(integer)
-            }
-        };
-
-        let Some(base_type_integer) = base_type_integer else {
-            diagnostics.add(EnumNoAutoBaseTypeSelected {
-                enum_name: enum_value.name.span,
-            });
-            removals.insert(enum_value.id());
-            continue;
-        };
-
-        let size_bits = match enum_value.size_bits {
-            None => base_type_integer
-                .bits_required(*seen_min, *seen_max)
-                .min(base_type_integer.size_bits()),
-            Some(size_bits) => size_bits,
-        };
-
-        enum_value.base_type.value = BaseType::FixedSize(base_type_integer);
-        enum_value.size_bits = Some(size_bits);
-
-        let all_values = if base_type_integer.is_signed() {
-            let max = (1 << size_bits) / 2;
-            -max..=max - 1
-        } else {
-            0..=(1 << size_bits) - 1
-        };
-
-        // Check if all bits are covered or if there's a fallback variant
-        let has_fallback = enum_value
-            .variants
-            .iter()
-            .any(|v| matches!(v.value, EnumValue::Default(_) | EnumValue::CatchAll(_)));
-        let has_bits_covered = all_values
-            .clone()
-            .all(|val| seen_values.iter().any(|(seen_val, _)| val == *seen_val));
-
-        enum_value.generation_style = Some(match (has_fallback, has_bits_covered) {
-            (true, _) => EnumGenerationStyle::Fallback,
-            (false, true) => EnumGenerationStyle::InfallibleWithinRange,
-            (false, false) => EnumGenerationStyle::Fallible,
-        });
-
-        // Check if the enum has variants that fall outside of the available bits
-        let too_high_values = seen_values
-            .iter()
-            .filter(|(val, _)| val > all_values.end())
-            .map(|(_, (_, span))| *span)
-            .collect::<Vec<_>>();
-        let too_low_values = seen_values
-            .iter()
-            .filter(|(val, _)| val < all_values.start())
-            .map(|(_, (_, span))| *span)
-            .collect::<Vec<_>>();
-
-        if !too_high_values.is_empty() {
-            diagnostics.add(VariantValuesTooHigh {
-                variant_names: too_high_values,
-                enum_name: enum_value.name.span,
-                max_value: *all_values.end(),
-                size_bits,
-            });
-            removals.insert(enum_value.id());
-            continue;
-        }
-        if !too_low_values.is_empty() {
-            diagnostics.add(VariantValuesTooLow {
-                variant_names: too_low_values,
-                enum_name: enum_value.name.span,
-                min_value: *all_values.start(),
-                size_bits,
-            });
-            removals.insert(enum_value.id());
-            continue;
-        }
-
-        // Check whether the enum has more than one default
-        let default_variants = enum_value
-            .variants
-            .iter()
-            .filter(|v| v.value.is_default())
-            .map(|v| v.span)
-            .collect::<Vec<_>>();
-
-        if default_variants.len() > 1 {
-            diagnostics.add(EnumMultipleDefaults {
-                variant_names: default_variants,
-                enum_name: enum_value.name.span,
-            });
-
-            // Set all but the first default to unspecified. This aids keeping the generated code available
-            let mut defaults_seen = 0;
-            for variant in &mut enum_value.variants {
-                if variant.value.is_default() {
-                    if defaults_seen != 0 {
-                        variant.value = EnumValue::Unspecified;
+                        removals.insert(enum_value.id());
+                        continue;
                     }
-                    defaults_seen += 1;
+
+                    Some(integer)
                 }
-            }
-        }
+            };
 
-        // Check whether the enum has more than one catch all
-        let catch_all_variants = enum_value
-            .variants
-            .iter()
-            .filter(|v| v.value.is_catch_all())
-            .map(|v| v.span)
-            .collect::<Vec<_>>();
+            let Some(base_type_integer) = base_type_integer else {
+                diagnostics.add(EnumNoAutoBaseTypeSelected {
+                    enum_name: enum_value.name.span,
+                });
+                removals.insert(enum_value.id());
+                continue;
+            };
 
-        if catch_all_variants.len() > 1 {
-            diagnostics.add(EnumMultipleCatchalls {
-                variant_names: catch_all_variants,
-                enum_name: enum_value.name.span,
+            let size_bits = match enum_value.size_bits {
+                None => base_type_integer
+                    .bits_required(*seen_min, *seen_max)
+                    .min(base_type_integer.size_bits()),
+                Some(size_bits) => size_bits,
+            };
+
+            enum_value.base_type.value = BaseType::FixedSize(base_type_integer);
+            enum_value.size_bits = Some(size_bits);
+
+            let all_values = if base_type_integer.is_signed() {
+                let max = (1 << size_bits) / 2;
+                -max..=max - 1
+            } else {
+                0..=(1 << size_bits) - 1
+            };
+
+            // Check if all bits are covered or if there's a fallback variant
+            let has_fallback = enum_value
+                .variants
+                .iter()
+                .any(|v| matches!(v.value, EnumValue::Default(_) | EnumValue::CatchAll(_)));
+            let has_bits_covered = all_values
+                .clone()
+                .all(|val| seen_values.iter().any(|(seen_val, _)| val == *seen_val));
+
+            enum_value.generation_style = Some(match (has_fallback, has_bits_covered) {
+                (true, _) => EnumGenerationStyle::Fallback,
+                (false, true) => EnumGenerationStyle::InfallibleWithinRange,
+                (false, false) => EnumGenerationStyle::Fallible,
             });
 
-            // Set all but the first catch-all to unspecified. This aids keeping the generated code available
-            let mut catch_alls_seen = 0;
-            for variant in &mut enum_value.variants {
-                if variant.value.is_catch_all() {
-                    if catch_alls_seen != 0 {
-                        variant.value = EnumValue::Unspecified;
+            // Check if the enum has variants that fall outside of the available bits
+            let too_high_values = seen_values
+                .iter()
+                .filter(|(val, _)| val > all_values.end())
+                .map(|(_, (_, span))| *span)
+                .collect::<Vec<_>>();
+            let too_low_values = seen_values
+                .iter()
+                .filter(|(val, _)| val < all_values.start())
+                .map(|(_, (_, span))| *span)
+                .collect::<Vec<_>>();
+
+            if !too_high_values.is_empty() {
+                diagnostics.add(VariantValuesTooHigh {
+                    variant_names: too_high_values,
+                    enum_name: enum_value.name.span,
+                    max_value: *all_values.end(),
+                    size_bits,
+                });
+                removals.insert(enum_value.id());
+                continue;
+            }
+            if !too_low_values.is_empty() {
+                diagnostics.add(VariantValuesTooLow {
+                    variant_names: too_low_values,
+                    enum_name: enum_value.name.span,
+                    min_value: *all_values.start(),
+                    size_bits,
+                });
+                removals.insert(enum_value.id());
+                continue;
+            }
+
+            // Check whether the enum has more than one default
+            let default_variants = enum_value
+                .variants
+                .iter()
+                .filter(|v| v.value.is_default())
+                .map(|v| v.span)
+                .collect::<Vec<_>>();
+
+            if default_variants.len() > 1 {
+                diagnostics.add(EnumMultipleDefaults {
+                    variant_names: default_variants,
+                    enum_name: enum_value.name.span,
+                });
+
+                // Set all but the first default to unspecified. This aids keeping the generated code available
+                let mut defaults_seen = 0;
+                for variant in &mut enum_value.variants {
+                    if variant.value.is_default() {
+                        if defaults_seen != 0 {
+                            variant.value = EnumValue::Unspecified;
+                        }
+                        defaults_seen += 1;
                     }
-                    catch_alls_seen += 1;
+                }
+            }
+
+            // Check whether the enum has more than one catch all
+            let catch_all_variants = enum_value
+                .variants
+                .iter()
+                .filter(|v| v.value.is_catch_all())
+                .map(|v| v.span)
+                .collect::<Vec<_>>();
+
+            if catch_all_variants.len() > 1 {
+                diagnostics.add(EnumMultipleCatchalls {
+                    variant_names: catch_all_variants,
+                    enum_name: enum_value.name.span,
+                });
+
+                // Set all but the first catch-all to unspecified. This aids keeping the generated code available
+                let mut catch_alls_seen = 0;
+                for variant in &mut enum_value.variants {
+                    if variant.value.is_catch_all() {
+                        if catch_alls_seen != 0 {
+                            variant.value = EnumValue::Unspecified;
+                        }
+                        catch_alls_seen += 1;
+                    }
                 }
             }
         }
+
+        Ok(removals)
     }
-
-    removals
 }
-
 #[cfg(test)]
 mod tests {
     use device_driver_common::{
@@ -365,7 +375,7 @@ mod tests {
         .into();
 
         let mut diagnostics = Diagnostics::new();
-        run_pass(&mut start_mir, &mut diagnostics);
+        EnumValuesChecked::run_pass(&mut start_mir, &mut diagnostics).unwrap();
 
         assert!(!diagnostics.has_error());
         assert_eq!(start_mir, end_mir);
@@ -429,7 +439,7 @@ mod tests {
         .into();
 
         let mut diagnostics = Diagnostics::new();
-        run_pass(&mut start_mir, &mut diagnostics);
+        EnumValuesChecked::run_pass(&mut start_mir, &mut diagnostics).unwrap();
 
         assert!(!diagnostics.has_error());
         assert_eq!(start_mir, end_mir);
@@ -479,7 +489,7 @@ mod tests {
         .into();
 
         let mut diagnostics = Diagnostics::new();
-        run_pass(&mut start_mir, &mut diagnostics);
+        EnumValuesChecked::run_pass(&mut start_mir, &mut diagnostics).unwrap();
 
         assert!(!diagnostics.has_error());
         assert_eq!(start_mir, end_mir);
@@ -520,7 +530,7 @@ mod tests {
         .into();
 
         let mut diagnostics = Diagnostics::new();
-        let removals = run_pass(&mut start_mir, &mut diagnostics);
+        let removals = EnumValuesChecked::run_pass(&mut start_mir, &mut diagnostics).unwrap();
 
         assert!(diagnostics.has_error());
         assert!(removals.contains(&UniqueId::new_test(
@@ -558,7 +568,7 @@ mod tests {
         .into();
 
         let mut diagnostics = Diagnostics::new();
-        let removals = run_pass(&mut start_mir, &mut diagnostics);
+        let removals = EnumValuesChecked::run_pass(&mut start_mir, &mut diagnostics).unwrap();
 
         assert!(diagnostics.has_error());
         assert_eq!(removals.len(), 1);
