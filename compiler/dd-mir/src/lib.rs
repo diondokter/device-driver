@@ -1,5 +1,6 @@
 use std::{collections::HashSet, num::NonZero};
 
+use clap::Parser;
 use device_driver_common::{
     identifier::{IdentifierRef, IdentifierType},
     span::SpanExt,
@@ -14,10 +15,29 @@ mod lowering;
 pub mod model;
 pub(crate) mod passes;
 
-pub fn lower_ast(ast: Ast, diagnostics: &mut Diagnostics) -> Result<model::Manifest, DynError> {
+#[derive(Parser, Debug, Clone, Default)]
+#[command(no_binary_name = true)]
+pub struct MirOptions {
+    /// The seed to use for randomization. If not specified, a random seed is used
+    #[arg(
+        long = "unstable-mir-randomize-seed",
+        require_equals = true,
+        global = true
+    )]
+    pub randomize_mir_passes_seed: Option<u64>,
+    /// Randomize the order of the mir passes
+    #[arg(long = "unstable-mir-randomize-passes", global = true)]
+    pub randomize_mir_passes: bool,
+}
+
+pub fn lower_ast(
+    ast: Ast,
+    options: MirOptions,
+    diagnostics: &mut Diagnostics,
+) -> Result<model::Manifest, DynError> {
     let mut mir = lowering::lower(ast, diagnostics);
 
-    passes::run_passes(&mut mir, diagnostics)?;
+    passes::run_passes(&mut mir, options, diagnostics)?;
 
     Ok(mir)
 }

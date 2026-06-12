@@ -1,6 +1,7 @@
 use std::{any::type_name, collections::HashSet, error::Error, fmt::Display};
 
 use crate::{
+    MirOptions,
     model::{Manifest, UniqueId},
     passes::{
         address_types_big_enough::AddressTypesBigEnough,
@@ -62,13 +63,19 @@ fn get_default_passes() -> [PassInfo; 18] {
     ]
 }
 
-pub fn run_passes(manifest: &mut Manifest, diagnostics: &mut Diagnostics) -> Result<(), DynError> {
+pub fn run_passes(
+    manifest: &mut Manifest,
+    options: MirOptions,
+    diagnostics: &mut Diagnostics,
+) -> Result<(), DynError> {
     // TODO: Add assumption tracking
-    // TODO: Add optional randomization using the assumptions
-    // - randomize function exists, just need the flag plumbing
-    // - flag should be `-Z randomize-mir-passes`
-    // - this needs a more generalized flag system (currently only codegen has flags)
     let passes = get_default_passes();
+
+    let passes = if options.randomize_mir_passes {
+        randomize_passes(&passes, options.randomize_mir_passes_seed)
+    } else {
+        passes.to_vec()
+    };
 
     check_assumptions(&passes).with_message(|| "checking mir pass assumptions")?;
 
@@ -149,7 +156,13 @@ fn check_assumptions(passes: &[PassInfo]) -> Result<(), FailedPass> {
     Ok(())
 }
 
-fn randomize_passes(passes: &[PassInfo]) -> Vec<PassInfo> {
+fn randomize_passes(passes: &[PassInfo], seed: Option<u64>) -> Vec<PassInfo> {
+    let mut rng = if let Some(seed) = seed {
+        fastrand::Rng::with_seed(seed)
+    } else {
+        fastrand::Rng::new()
+    };
+
     let mut randomized_passes = Vec::new();
     let mut unused_passes = passes.to_vec();
     let mut released_assumptions = HashSet::new();
@@ -168,7 +181,7 @@ fn randomize_passes(passes: &[PassInfo]) -> Vec<PassInfo> {
             panic!("no valid passes left");
         }
 
-        let chosen_pass = valid_passes[fastrand::usize(0..valid_passes.len())];
+        let chosen_pass = valid_passes[rng.usize(0..valid_passes.len())];
         let chosen_pass_index = unused_passes.element_offset(chosen_pass).unwrap();
         let chosen_pass = unused_passes.remove(chosen_pass_index);
 
@@ -219,8 +232,8 @@ mod tests {
 
     #[test]
     fn randomize_ok() {
-        for _ in 0..100 {
-            let passes = randomize_passes(&get_default_passes());
+        for i in 0..100 {
+            let passes = randomize_passes(&get_default_passes(), Some(i));
             check_assumptions(&passes).unwrap();
         }
     }

@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use device_driver_core::Target;
+use device_driver_core::CompileOptions;
 use device_driver_diagnostics::{DynError, Metadata, ResultExt};
 use std::{io::Write, path::PathBuf, process::ExitCode};
 
@@ -27,9 +27,8 @@ struct BuildArgs {
     /// Path to output location. Any existing file is overwritten. If not provided, the output is written to stdout.
     #[arg(short = 'o', long = "output", value_name = "FILE", global = true)]
     output_path: Option<PathBuf>,
-    /// Type of generated output
-    #[command(subcommand)]
-    target: Target,
+    #[command(flatten)]
+    options: CompileOptions,
 }
 
 #[derive(Parser, Debug)]
@@ -60,8 +59,6 @@ fn run() -> Result<ExitCode, DynError> {
 }
 
 fn build(args: BuildArgs) -> Result<ExitCode, DynError> {
-    let target = args.target;
-
     let Some(source_path) = args.source_path else {
         return Err(DynError::new("no source path provided"));
     };
@@ -69,7 +66,7 @@ fn build(args: BuildArgs) -> Result<ExitCode, DynError> {
     let source = std::fs::read_to_string(&source_path)
         .with_message(|| format!("Failed to open input file at: {:?}", source_path.display()))?;
 
-    let (output, diagnostics) = device_driver_core::compile(&source, target)
+    let (output, diagnostics) = device_driver_core::compile(&source, args.options)
         .with_message(|| "internal compilation error")?;
 
     let diagnostics_has_error = diagnostics.has_error();

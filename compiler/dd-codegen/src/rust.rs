@@ -15,7 +15,11 @@ use device_driver_lir::model::{
 #[command(no_binary_name = true)]
 pub struct RustCodegenOptions {
     /// When specified, defmt implementations will be generated using this cfg feature flag
-    #[arg(long = "defmt-feature", value_name = "FEATURE", require_equals = true)]
+    #[arg(
+        long = "rust-defmt-feature",
+        value_name = "FEATURE",
+        require_equals = true
+    )]
     pub defmt_feature: Option<String>,
 }
 

@@ -1,32 +1,47 @@
 use clap::Parser;
-use device_driver_core::{RustCodegenOptions, Target};
+use device_driver_core::{CodegenTarget, CompileOptions, MirOptions, RustCodegenOptions};
 use device_driver_diagnostics::{Metadata, ResultExt};
 use wasm_bindgen::prelude::*;
 
 extern crate wasm_bindgen;
+
+#[derive(Parser, Debug, Clone)]
+#[command(no_binary_name = true)]
+struct RustCompileOptions {
+    #[command(flatten)]
+    pub mir_options: MirOptions,
+    #[command(flatten)]
+    pub rust_codegen_options: RustCodegenOptions,
+}
+
+impl From<RustCompileOptions> for CompileOptions {
+    fn from(value: RustCompileOptions) -> Self {
+        Self {
+            mir_options: value.mir_options,
+            target: CodegenTarget::Rust(value.rust_codegen_options),
+        }
+    }
+}
 
 #[wasm_bindgen]
 pub fn compile(source: &str, chars_per_line: usize, target: TargetArg, options: &str) -> Output {
     let options = options.replace("\r\n", " ").replace('\n', " ");
     let options = options.split(' ').filter(|s| !s.is_empty());
 
-    let target = match target {
-        TargetArg::Rust => {
-            let codegen_options = match RustCodegenOptions::try_parse_from(options) {
-                Ok(codegen_options) => codegen_options,
-                Err(e) => {
-                    return Output {
-                        code: String::new(),
-                        diagnostics: e.to_string(),
-                    };
-                }
-            };
-
-            Target::Rust(codegen_options)
+    let compile_options = match target {
+        TargetArg::Rust => match RustCompileOptions::try_parse_from(options) {
+            Ok(codegen_options) => codegen_options,
+            Err(e) => {
+                return Output {
+                    code: String::new(),
+                    diagnostics: e.render().ansi().to_string(),
+                };
+            }
         }
+        .into(),
     };
 
-    let (output, diagnostics_string) = match device_driver_core::compile(source, target)
+    let (output, diagnostics_string) = match device_driver_core::compile(source, compile_options)
         .with_message(|| "internal compiler error")
     {
         Ok((output, diagnostics)) => {

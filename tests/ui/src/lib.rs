@@ -1,6 +1,6 @@
 use std::{path::Path, sync::LazyLock};
 
-use device_driver_core::Target;
+use device_driver_core::{CodegenTarget, CompileOptions};
 use device_driver_diagnostics::Metadata;
 use regex::Regex;
 
@@ -19,9 +19,12 @@ pub fn run_test(source_paths: &[&Path], output_path: &Path) {
             "ddsl" => {
                 let (transformed, diagnostics) = device_driver_core::compile(
                     &source,
-                    Target::Rust(device_driver_core::RustCodegenOptions {
-                        defmt_feature: Some("defmt".into()),
-                    }),
+                    CompileOptions {
+                        mir_options: Default::default(),
+                        target: CodegenTarget::Rust(device_driver_core::RustCodegenOptions {
+                            defmt_feature: Some("defmt".into()),
+                        }),
+                    },
                 )
                 .unwrap();
 

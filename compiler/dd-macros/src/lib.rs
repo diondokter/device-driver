@@ -7,7 +7,7 @@ use std::{
 };
 
 use clap::Parser;
-use device_driver_core::{RustCodegenOptions, Target};
+use device_driver_core::{CodegenTarget, CompileOptions, MirOptions, RustCodegenOptions};
 use device_driver_diagnostics::{DynError, Metadata, ResultExt};
 use proc_macro::TokenStream;
 use proc_macro2::Span;
@@ -51,6 +51,24 @@ pub fn compile(item: TokenStream) -> TokenStream {
     }
 }
 
+#[derive(Parser, Debug, Clone)]
+#[command(no_binary_name = true)]
+struct MacroCompileOptions {
+    #[command(flatten)]
+    pub mir_options: MirOptions,
+    #[command(flatten)]
+    pub rust_codegen_options: RustCodegenOptions,
+}
+
+impl From<MacroCompileOptions> for CompileOptions {
+    fn from(value: MacroCompileOptions) -> Self {
+        Self {
+            mir_options: value.mir_options,
+            target: CodegenTarget::Rust(value.rust_codegen_options),
+        }
+    }
+}
+
 fn try_create_device(input: Input) -> Result<TokenStream, DynError> {
     let (source, source_path) = match input.source {
         Source::Ddsl(source_lit) => (source_lit.value(), source_lit.span().file()),
@@ -82,10 +100,9 @@ fn try_create_device(input: Input) -> Result<TokenStream, DynError> {
         .filter(|s| !s.is_empty())
         .map(String::from)
         .collect::<Vec<_>>();
-    let codegen_options = RustCodegenOptions::try_parse_from(compile_options)
+    let compile_options = MacroCompileOptions::try_parse_from(compile_options)
         .with_message(|| "parsing compile options")?;
-    let (output, diagnostics) =
-        device_driver_core::compile(&source, Target::Rust(codegen_options))?;
+    let (output, diagnostics) = device_driver_core::compile(&source, compile_options.into())?;
 
     diagnostics
         .print_to(

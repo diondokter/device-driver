@@ -28,7 +28,7 @@ const DEFAULT_CODE = `device Foo {
     }
 }
 `
-const DEFAULT_OPTIONS = `--defmt-feature=defmt`;
+const DEFAULT_OPTIONS = `--rust-defmt-feature=defmt`;
 
 function setup(): PageContext {
     let draggingSetup = setupDragging();
