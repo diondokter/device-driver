@@ -24,7 +24,7 @@ impl Target {
 pub fn codegen(target: &Target, lir_driver: &Driver, source: &str) -> String {
     match target {
         Target::Rust(codegen_options) => {
-            rust::DeviceTemplateRust::new(lir_driver, source, codegen_options).to_string()
+            rust::DriverTemplateRust::new(lir_driver, source, codegen_options).to_string()
         }
     }
 }

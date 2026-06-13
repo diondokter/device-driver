@@ -24,14 +24,14 @@ pub struct RustCodegenOptions {
 }
 
 #[derive(Template)]
-#[template(path = "rust/device.rs.j2", escape = "none", whitespace = "minimize")]
-pub struct DeviceTemplateRust<'a> {
+#[template(path = "rust/driver.rs.j2", escape = "none", whitespace = "minimize")]
+pub struct DriverTemplateRust<'a> {
     driver: &'a Driver,
     source: &'a str,
     codegen_options: &'a RustCodegenOptions,
 }
 
-impl<'a> DeviceTemplateRust<'a> {
+impl<'a> DriverTemplateRust<'a> {
     pub fn new(
         device: &'a Driver,
         source: &'a str,
