@@ -1,5 +1,7 @@
 use clap::Parser;
-use device_driver_core::{CodegenTarget, CompileOptions, MirOptions, RustCodegenOptions};
+use device_driver_core::{
+    CodegenTarget, CompileOptions, GeneralOptions, MirOptions, RustCodegenOptions,
+};
 use device_driver_diagnostics::{Metadata, ResultExt};
 use wasm_bindgen::prelude::*;
 
@@ -9,6 +11,8 @@ extern crate wasm_bindgen;
 #[command(no_binary_name = true)]
 struct RustCompileOptions {
     #[command(flatten)]
+    pub general_options: GeneralOptions,
+    #[command(flatten)]
     pub mir_options: MirOptions,
     #[command(flatten)]
     pub rust_codegen_options: RustCodegenOptions,
@@ -17,6 +21,7 @@ struct RustCompileOptions {
 impl From<RustCompileOptions> for CompileOptions {
     fn from(value: RustCompileOptions) -> Self {
         Self {
+            general_options: value.general_options,
             mir_options: value.mir_options,
             target: CodegenTarget::Rust(value.rust_codegen_options),
         }
