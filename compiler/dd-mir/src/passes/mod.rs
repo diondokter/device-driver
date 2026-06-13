@@ -65,7 +65,7 @@ fn get_default_passes() -> [PassInfo; 18] {
 
 pub fn run_passes(
     manifest: &mut Manifest,
-    options: MirOptions,
+    options: &MirOptions,
     diagnostics: &mut Diagnostics,
 ) -> Result<(), DynError> {
     let passes = get_default_passes();

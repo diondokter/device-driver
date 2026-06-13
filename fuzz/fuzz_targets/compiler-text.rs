@@ -1,6 +1,6 @@
 #![no_main]
 
-use device_driver_core::{CodegenTarget, CompileOptions, MirOptions};
+use device_driver_core::{CodegenTarget, CompileOptions, GeneralOptions, MirOptions};
 use libfuzzer_sys::fuzz_target;
 
 #[derive(Debug, arbitrary::Arbitrary)]
@@ -14,6 +14,7 @@ fuzz_target!(|input: Input<'_>| {
     match device_driver_core::compile(
         input.source,
         CompileOptions {
+            general_options: GeneralOptions::default(),
             mir_options: MirOptions {
                 randomize_mir_passes: true,
                 randomize_mir_passes_seed: Some(input.seed),

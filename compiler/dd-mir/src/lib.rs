@@ -22,7 +22,8 @@ pub struct MirOptions {
     #[arg(
         long = "unstable-mir-randomize-seed",
         require_equals = true,
-        global = true
+        global = true,
+        value_name = "SEED"
     )]
     pub randomize_mir_passes_seed: Option<u64>,
     /// Randomize the order of the mir passes
@@ -35,7 +36,7 @@ pub struct MirOptions {
 
 pub fn lower_ast(
     ast: Ast,
-    options: MirOptions,
+    options: &MirOptions,
     diagnostics: &mut Diagnostics,
 ) -> Result<model::Manifest, DynError> {
     let mut mir = lowering::lower(ast, diagnostics);

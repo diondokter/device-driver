@@ -1,5 +1,6 @@
 use clap::Subcommand;
 use device_driver_lir::model::Driver;
+use itertools::Itertools;
 
 pub use crate::rust::RustCodegenOptions;
 
@@ -19,12 +20,19 @@ impl Target {
             }
         }
     }
+
+    /// Converts the multiline text to comments that work for the target
+    pub fn to_comments(&self, text: &str) -> String {
+        match self {
+            Target::Rust(_) => text.lines().map(|line| format!("// {line}")).join("\n"),
+        }
+    }
 }
 
 pub fn codegen(target: &Target, lir_driver: &Driver, source: &str) -> String {
     match target {
         Target::Rust(codegen_options) => {
-            rust::DeviceTemplateRust::new(lir_driver, source, codegen_options).to_string()
+            rust::DriverTemplateRust::new(lir_driver, source, codegen_options).to_string()
         }
     }
 }

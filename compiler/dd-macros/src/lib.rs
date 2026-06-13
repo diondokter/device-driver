@@ -7,7 +7,9 @@ use std::{
 };
 
 use clap::Parser;
-use device_driver_core::{CodegenTarget, CompileOptions, MirOptions, RustCodegenOptions};
+use device_driver_core::{
+    CodegenTarget, CompileOptions, GeneralOptions, MirOptions, RustCodegenOptions,
+};
 use device_driver_diagnostics::{DynError, Metadata, ResultExt};
 use proc_macro::TokenStream;
 use proc_macro2::Span;
@@ -55,6 +57,8 @@ pub fn compile(item: TokenStream) -> TokenStream {
 #[command(no_binary_name = true)]
 struct MacroCompileOptions {
     #[command(flatten)]
+    pub general_options: GeneralOptions,
+    #[command(flatten)]
     pub mir_options: MirOptions,
     #[command(flatten)]
     pub rust_codegen_options: RustCodegenOptions,
@@ -63,6 +67,7 @@ struct MacroCompileOptions {
 impl From<MacroCompileOptions> for CompileOptions {
     fn from(value: MacroCompileOptions) -> Self {
         Self {
+            general_options: value.general_options,
             mir_options: value.mir_options,
             target: CodegenTarget::Rust(value.rust_codegen_options),
         }
