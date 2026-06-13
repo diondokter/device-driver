@@ -24,7 +24,7 @@ pub fn compile(source: &str, options: CompileOptions) -> Result<(String, Diagnos
 
     let tokens = device_driver_lexer::lex(source);
     let ast = device_driver_parser::parse(&tokens, &mut diagnostics);
-    let mir = device_driver_mir::lower_ast(ast, options.mir_options, &mut diagnostics)
+    let mir = device_driver_mir::lower_ast(ast, &options.mir_options, &mut diagnostics)
         .with_message(|| "could not lower AST to MIR")?;
     let lir = device_driver_lir::lower_mir(mir).with_message(|| "could not lower MIR to LIR")?;
     let mut code = device_driver_codegen::codegen(&options.target, &lir, source);
@@ -33,6 +33,7 @@ pub fn compile(source: &str, options: CompileOptions) -> Result<(String, Diagnos
         let _ = write!(code, "\n{}\n", options.target.create_error_message());
     }
 
+    // TODO: Make formatting dependent on the target. Right now it's just Rust
     let formatted_code = match format_code(&code) {
         Ok(formatted_code) => formatted_code,
         Err(e) => format!(
@@ -40,6 +41,22 @@ pub fn compile(source: &str, options: CompileOptions) -> Result<(String, Diagnos
             e.to_string().lines().map(|e| format!("// {e}")).join("\n")
         ),
     };
+
+    let preamble = options.target.to_comments(&format!(
+        "This code was generated using device-driver `{}`,
+a tool distributed under {} by {}
+This version was built for {} using {}
+
+For more information about device-driver, visit the website: {}",
+        built_info::PKG_VERSION,
+        built_info::PKG_LICENSE,
+        built_info::PKG_AUTHORS,
+        built_info::TARGET,
+        built_info::RUSTC_VERSION,
+        built_info::PKG_HOMEPAGE,
+    ));
+
+    let formatted_code = preamble + "\n\n" + &formatted_code;
 
     Ok((formatted_code, diagnostics))
 }
@@ -145,4 +162,9 @@ fn format_code(input: &str) -> Result<String, DynError> {
 #[cfg(feature = "prettyplease")]
 fn format_code(input: &str) -> Result<String, syn::Error> {
     Ok(prettyplease::unparse(&syn::parse_file(input)?))
+}
+
+pub mod built_info {
+    // The file has been placed there by the build script.
+    include!(concat!(env!("OUT_DIR"), "/built.rs"));
 }

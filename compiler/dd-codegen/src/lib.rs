@@ -1,5 +1,6 @@
 use clap::Subcommand;
 use device_driver_lir::model::Driver;
+use itertools::Itertools;
 
 pub use crate::rust::RustCodegenOptions;
 
@@ -17,6 +18,13 @@ impl Target {
             Target::Rust(_) => {
                 "compile_error!(\"The device driver input has errors that need to be solved!\");"
             }
+        }
+    }
+
+    /// Converts the multiline text to comments that work for the target
+    pub fn to_comments(&self, text: &str) -> String {
+        match self {
+            Target::Rust(_) => text.lines().map(|line| format!("// {line}")).join("\n"),
         }
     }
 }
