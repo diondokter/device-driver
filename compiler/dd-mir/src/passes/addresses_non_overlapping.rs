@@ -75,9 +75,6 @@ fn check_for_overlap(addresses: &[ObjectAddress], diagnostics: &mut Diagnostics)
             let check_address_start = check_address.address.value;
             let check_address_end = check_address_start + check_address.size.value as i128;
 
-            diagnostics.add(DynError::new(format!(
-                "{address_start}..{address_end} - {check_address_start}..{check_address_end}"
-            )));
             if let Some(overlap_point) = overlap_point(
                 address_start,
                 address_end,
