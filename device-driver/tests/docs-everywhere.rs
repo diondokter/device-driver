@@ -3,7 +3,7 @@
 #![deny(missing_docs)]
 
 device_driver::compile!(
-    ddsl: "
+    unstable_ddsl: "
         device MyTestDevice {
             register-address-type: u8,
             command-address-type: u8,

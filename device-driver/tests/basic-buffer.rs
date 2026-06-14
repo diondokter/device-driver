@@ -31,7 +31,7 @@ impl BufferInterface for DeviceInterface {
 }
 
 device_driver::compile!(
-    ddsl: "
+    unstable_ddsl: "
         device MyTestDevice {
             byte-order: LE,
             buffer-address-type: u8,

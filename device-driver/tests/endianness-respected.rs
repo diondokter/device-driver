@@ -31,7 +31,7 @@ impl RegisterInterface for DeviceInterface {
 }
 
 device_driver::compile!(
-    ddsl: "
+    unstable_ddsl: "
         device MyTestDevice {
             register-address-type: u8,
 
