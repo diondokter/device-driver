@@ -1,7 +1,7 @@
 use device_driver::{FieldsetMetadata, RegisterInterface, RegisterInterfaceBase};
 
 device_driver::compile!(
-    ddsl: "
+    unstable_ddsl: "
         device MyTestDevice {
             byte-order: LE,
             register-address-type: u8,

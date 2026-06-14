@@ -28,12 +28,12 @@ use syn::{LitStr, Token};
 /// );
 /// ```
 ///
-/// Inline ddsl (not recommended, only used for testing):
+/// Inline ddsl (only used for testing):
 /// ```rust,ignore
 /// # use device_driver_macros::create_device;
 /// compile!(
 ///     options: "",
-///     ddsl: "
+///     unstable_ddsl: "
 ///         // DDSL input
 ///     "
 /// );
@@ -169,8 +169,8 @@ impl syn::parse::Parse for Input {
                 input.parse::<syn::Token![:]>()?;
 
                 compile_options = Some(input.parse()?);
-            } else if source.is_none() && look.peek(kw::ddsl) {
-                input.parse::<kw::ddsl>()?;
+            } else if source.is_none() && look.peek(kw::unstable_ddsl) {
+                input.parse::<kw::unstable_ddsl>()?;
                 input.parse::<syn::Token![:]>()?;
 
                 source = Some(Source::Ddsl(input.parse()?));
@@ -188,6 +188,6 @@ impl syn::parse::Parse for Input {
 
 mod kw {
     syn::custom_keyword!(options);
-    syn::custom_keyword!(ddsl);
+    syn::custom_keyword!(unstable_ddsl);
     syn::custom_keyword!(manifest);
 }

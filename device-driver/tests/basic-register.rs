@@ -49,7 +49,7 @@ impl RegisterInterface for DeviceInterface {
 
 device_driver::compile!(
     options: "--rust-defmt-feature=defmt",
-    ddsl: "
+    unstable_ddsl: "
         device MyTestDevice {
             byte-order: LE,
             register-address-type: u8,

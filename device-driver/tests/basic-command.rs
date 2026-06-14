@@ -28,7 +28,7 @@ impl CommandInterface for DeviceInterface {
 }
 
 device_driver::compile!(
-    ddsl: "
+    unstable_ddsl: "
         device MyTestDevice {
             byte-order: LE,
             command-address-type: u8,
