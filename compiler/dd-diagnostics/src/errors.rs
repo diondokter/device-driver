@@ -1251,9 +1251,11 @@ pub struct AddressOverlap {
     pub address: i128,
     pub object_1: Span,
     pub object_1_address: Span,
+    pub object_1_size: Span,
     pub repeat_offset_1: Option<i128>,
     pub object_2: Span,
     pub object_2_address: Span,
+    pub object_2_size: Span,
     pub repeat_offset_2: Option<i128>,
 }
 
@@ -1264,7 +1266,7 @@ impl Diagnostic for AddressOverlap {
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         let object_1_message = format!(
-            "object overlaps with other object{}",
+            "object 1 overlaps with other object 2{}",
             if let Some(repeat_offset) = self.repeat_offset_1 {
                 format!(" at repeat offset {repeat_offset}")
             } else {
@@ -1272,7 +1274,7 @@ impl Diagnostic for AddressOverlap {
             }
         );
         let object_2_message = format!(
-            "object overlaps with other object{}",
+            "object 2 overlaps with other object 1{}",
             if let Some(repeat_offset) = self.repeat_offset_2 {
                 format!(" at repeat offset {repeat_offset}")
             } else {
@@ -1300,7 +1302,14 @@ impl Diagnostic for AddressOverlap {
                         .annotation(
                             AnnotationKind::Context
                                 .span(self.object_1_address.into())
-                                .label("address set here"),
+                                .label("address 1 set here"),
+                        )
+                        .annotations(
+                            (!self.object_1_size.is_empty()).then_some(
+                                AnnotationKind::Context
+                                    .span(self.object_1_size.into())
+                                    .label("size 1 set here"),
+                            ),
                         ), // TODO: Add context annotation for where the repeat is defined
                 )
                 .element(
@@ -1314,7 +1323,14 @@ impl Diagnostic for AddressOverlap {
                         .annotation(
                             AnnotationKind::Context
                                 .span(self.object_2_address.into())
-                                .label("address set here"),
+                                .label("address 2 set here"),
+                        )
+                        .annotations(
+                            (!self.object_2_size.is_empty()).then_some(
+                                AnnotationKind::Context
+                                    .span(self.object_2_size.into())
+                                    .label("size 2 set here"),
+                            ),
                         ), // TODO: Add context annotation for where the repeat is defined
                 ),
             // TODO: Add patch

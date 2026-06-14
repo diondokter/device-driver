@@ -253,6 +253,7 @@ impl Device {
             children: &self.objects,
             parent: None,
             collection_object_returned: false,
+            // Note: We can't give the config from here because there might be a config in the manifest we don't know about
             current_device_config: Rc::new(DeviceConfig::default()),
         }
         .map(|(object, _)| object)
