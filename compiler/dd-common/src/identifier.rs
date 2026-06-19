@@ -3,7 +3,7 @@ use std::{
     sync::Arc,
 };
 
-use convert_case::{Boundary, Case, Pattern};
+use convert_case::{Boundary, Case, Casing, Pattern};
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -179,6 +179,14 @@ impl<T: IdentifierType> Identifier<T> {
 
         if self.words().iter().all(String::is_empty) {
             return Err(Error::EmptyAfterSplits);
+        }
+
+        let converted = self.to_case(Case::Pascal);
+        if !converted.is_case(Case::Pascal) {
+            return Err(Error::CannotConvert {
+                case_name: "Pascal",
+                example: converted,
+            });
         }
 
         Ok(())
@@ -376,13 +384,17 @@ impl<T: IdentifierType> PartialEq for IdentifierRef<T> {
 }
 impl<T: IdentifierType> Eq for IdentifierRef<T> {}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
     Empty,
     EmptyAfterSplits,
     InvalidCharacter {
         byte_offset: usize,
         invalid_char: char,
+    },
+    CannotConvert {
+        case_name: &'static str,
+        example: String,
     },
 }
 
@@ -399,6 +411,12 @@ impl Display for Error {
                 write!(
                     f,
                     "identifier contains an invalid character at byte offset {byte_offset}: '{invalid_char:?}'"
+                )
+            }
+            Error::CannotConvert { case_name, example } => {
+                write!(
+                    f,
+                    "cannot change the casing of the identifier. Identifier is `{example}` when converted to {case_name} case, but that's not correct casing"
                 )
             }
         }

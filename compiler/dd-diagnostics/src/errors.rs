@@ -1361,9 +1361,12 @@ impl Diagnostic for InvalidIdentifier {
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         const INFO_TEXT: &str = "identifiers are split into words using the 'word-boundaries'.\n\
 After the split the first character of the first word must be a unicode XID start character.\n\
-All other characters must be a unicode XID continue character.";
+All other characters must be a unicode XID continue character.\n\
+\n\
+Identifiers must also be able to be converted to different casings. That means the split words must not contain `-` or `_`,\n\
+which in practice means the word-boundaries should always include those characters.";
 
-        let annotation = match self.error {
+        let annotation = match &self.error {
             identifier::Error::Empty => AnnotationKind::Primary
                 .span(self.identifier.into())
                 .label("identifier is empty"),
@@ -1391,6 +1394,9 @@ All other characters must be a unicode XID continue character.";
                     "`{character}` (or `{}`) is not a valid character",
                     character.escape_unicode()
                 )),
+            e @ identifier::Error::CannotConvert { .. } => AnnotationKind::Primary
+                .span(self.identifier.into())
+                .label(e.to_string()),
         };
 
         [
