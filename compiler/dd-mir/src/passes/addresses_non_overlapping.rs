@@ -182,6 +182,20 @@ fn find_object_addresses<'m>(
                         });
                     }
                 }
+                RepeatSource::Range { end, start } => {
+                    for index in (start..=end).take(max_elements) {
+                        let repeat_offset = index * repeat.stride.value;
+                        let address_value = total_address_offsets + address.value + repeat_offset;
+
+                        object_addresses.push(ObjectAddress {
+                            id: object.id(),
+                            address: address_value.with_span(address.span),
+                            size,
+                            repeat_offset: object.repeat().map(|_| repeat_offset),
+                            allow_overlap: object.allow_address_overlap(),
+                        });
+                    }
+                }
                 RepeatSource::Enum(enum_name) => {
                     let enum_value = search_object(manifest, &enum_name)
                         .expect("A mir pass checked this enum exists")

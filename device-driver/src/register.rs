@@ -1264,43 +1264,84 @@ impl NotRepeating for () {}
 )]
 #[doc(hidden)]
 pub trait ArrayRepeating: Repeating {
-    const COUNT: u16;
+    const COUNT: usize;
     const STRIDE: i32;
 
     fn assert_len_and_index(len: usize, index: Self::Index);
 }
 
 #[doc(hidden)]
-pub struct ArrayRepeat<const COUNT: u16, const STRIDE: i32>;
-impl<const COUNT: u16, const STRIDE: i32> Repeating for ArrayRepeat<COUNT, STRIDE> {
+pub struct ArrayRepeat<const COUNT: usize, const STRIDE: i32>;
+impl<const COUNT: usize, const STRIDE: i32> Repeating for ArrayRepeat<COUNT, STRIDE> {
     type Index = usize;
 
     #[track_caller]
     #[inline]
     fn calc_address<AddressType: Address>(start: AddressType, index: Self::Index) -> AddressType {
         assert!(
-            index < COUNT as usize,
+            index < COUNT,
             "Index out of range: {index} (array len: {COUNT})"
         );
         let offset = index as i32 * STRIDE;
         start.add(offset)
     }
 }
-impl<const COUNT: u16, const STRIDE: i32> ArrayRepeating for ArrayRepeat<COUNT, STRIDE> {
-    const COUNT: u16 = COUNT;
+impl<const COUNT: usize, const STRIDE: i32> ArrayRepeating for ArrayRepeat<COUNT, STRIDE> {
+    const COUNT: usize = COUNT;
     const STRIDE: i32 = STRIDE;
 
     #[track_caller]
     #[inline]
     fn assert_len_and_index(len: usize, index: Self::Index) {
         assert!(
-            index < COUNT as usize,
+            index < COUNT,
             "index out of range: {index} (array len: {COUNT})"
         );
         assert!(
-            len + index <= COUNT as usize,
+            len + index <= COUNT,
             "array too long. Requested {len}, max len remaining at requested index is {}",
-            COUNT as usize - index,
+            COUNT - index,
+        );
+    }
+}
+
+#[doc(hidden)]
+pub struct RangeRepeat<const END: usize, const START: usize, const STRIDE: i32>;
+impl<const END: usize, const START: usize, const STRIDE: i32> Repeating
+    for RangeRepeat<END, START, STRIDE>
+{
+    type Index = usize;
+
+    #[track_caller]
+    #[inline]
+    fn calc_address<AddressType: Address>(start: AddressType, index: Self::Index) -> AddressType {
+        assert!(
+            index <= (END - START),
+            "Index out of range: {index} (array len: {})",
+            (END - START)
+        );
+        let offset = (START as i32 + index as i32) * STRIDE;
+        start.add(offset)
+    }
+}
+impl<const END: usize, const START: usize, const STRIDE: i32> ArrayRepeating
+    for RangeRepeat<END, START, STRIDE>
+{
+    const COUNT: usize = (END - START);
+    const STRIDE: i32 = STRIDE;
+
+    #[track_caller]
+    #[inline]
+    fn assert_len_and_index(len: usize, index: Self::Index) {
+        assert!(
+            index < Self::COUNT,
+            "index out of range: {index} (array len: {})",
+            Self::COUNT
+        );
+        assert!(
+            len + index <= Self::COUNT,
+            "array too long. Requested {len}, max len remaining at requested index is {}",
+            Self::COUNT - index,
         );
     }
 }

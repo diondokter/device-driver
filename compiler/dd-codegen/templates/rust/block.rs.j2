@@ -43,6 +43,9 @@ impl{{block_generics}} {{ block.name.to_case(Case::Pascal) }}{{block_generics}} 
             {% when Repeat::Count { count, .. } %}
             ///
             /// Valid index range: `0..{{count}}`
+            {% when Repeat::Range { end, start, .. } %}
+            ///
+            /// Valid index range: `0..={{end-start}}` which maps to the range `{{start}}..={{end}}`
             {% when Repeat::Enum { .. } %}
             {% endwhen %}
         {% endmatch %}
@@ -53,6 +56,7 @@ impl{{block_generics}} {{ block.name.to_case(Case::Pascal) }}{{block_generics}} 
             {% match method.repeat %}
                 {% when Repeat::None %}
                 {% when Repeat::Count { .. } %} index: usize
+                {% when Repeat::Range { .. } %} index: usize
                 {% when Repeat::Enum { enum_name, .. } %} index: {{enum_name.to_case(Case::Pascal)}}
             {% endmatch %}
             {% endif %}
@@ -69,6 +73,7 @@ impl{{block_generics}} {{ block.name.to_case(Case::Pascal) }}{{block_generics}} 
                 {% match method.repeat %}
                     {% when Repeat::None %} ()
                     {% when Repeat::Count { count, stride } %} ::device_driver::ArrayRepeat<{{count}}, {{stride}}>
+                    {% when Repeat::Range { end, start, stride } %} ::device_driver::RangeRepeat<{{end}}, {{start}}, {{stride}}>
                     {% when Repeat::Enum { enum_name, stride, .. } %} ::device_driver::EnumRepeat<{{enum_name.to_case(Case::Pascal)}}, {{stride}}>
                 {% endmatch %}
             > where I: ::device_driver::RegisterInterfaceBase<AddressType = {{block.register_address_type}}>
@@ -96,6 +101,11 @@ impl{{block_generics}} {{ block.name.to_case(Case::Pascal) }}{{block_generics}} 
                     let address = {
                         assert!(index < {{count}});
                         self.base_address + {{method.address}} + index as {{device.internal_address_type}} * {{stride}}
+                    };
+                {% when Repeat::Range { end, start, stride } %}
+                    let address = {
+                        assert!(index <= ({{end}} - {{start}}));
+                        self.base_address + {{method.address}} + ({{start}} + index as {{device.internal_address_type}}) * {{stride}}
                     };
                 {% when Repeat::Enum { enum_name, stride, .. } %}
                     let address = self.base_address + {{method.address}} + {{self::get_enum_base_type(driver, &enum_name)}}::from(index) as {{device.internal_address_type}} * {{stride}};

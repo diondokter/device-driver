@@ -109,6 +109,23 @@ pub fn find_min_max_addresses<'m>(
                         max_obj_found = Some(object);
                     }
                 }
+                RepeatSource::Range { end, start } => {
+                    let base_address = total_address_offsets + address.value;
+                    let count_start_address = base_address + (start * repeat.stride.value);
+                    let count_end_address = base_address + (end * repeat.stride.value);
+                    let min_address = count_start_address.min(count_end_address);
+                    let max_address = count_start_address.max(count_end_address);
+
+                    if min_address < min_address_found {
+                        min_address_found = min_address;
+                        min_obj_found = Some(object);
+                    }
+
+                    if max_address > max_address_found {
+                        max_address_found = max_address;
+                        max_obj_found = Some(object);
+                    }
+                }
                 RepeatSource::Enum(enum_name) => {
                     let enum_value = search_object(manifest, &enum_name)
                         .expect("A mir pass checked this enum exists")

@@ -1,5 +1,5 @@
 #![allow(async_fn_in_trait)]
-#![cfg_attr(not(test), no_std)]
+// #![cfg_attr(not(test), no_std)]
 #![warn(missing_docs)]
 #![doc = include_str!(concat!("../", env!("CARGO_PKG_README")))]
 
@@ -205,13 +205,13 @@ impl ReadCapability for RW {}
 
 #[doc(hidden)]
 #[cfg(feature = "defmt")]
-pub trait Address: Copy + Eq + Display + defmt::Format {
+pub trait Address: Copy + Eq + Display + Debug + defmt::Format {
     const ZERO: Self;
     fn add(self, val: i32) -> Self;
 }
 #[doc(hidden)]
 #[cfg(not(feature = "defmt"))]
-pub trait Address: Copy + Eq + Display {
+pub trait Address: Copy + Eq + Display + Debug {
     const ZERO: Self;
     fn add(self, val: i32) -> Self;
 }

@@ -30,6 +30,7 @@ impl RegisterInterface for DeviceInterface {
         _metadata: &FieldsetMetadata,
     ) -> Result<(), Self::Error> {
         assert_eq!(data.len(), 3);
+        println!("{address}");
         self.device_memory[address as usize..][..data.len()].copy_from_slice(data);
 
         Ok(())
@@ -67,7 +68,12 @@ device_driver::compile!(
                 }
             },
             /// This is the Foo register
-            register FooRepeated[4*3] {
+            register FooRepeated[4::3] {
+                address: 3,
+                fields: FooFields,
+            },
+            /// This is the Foo register
+            register FooRangeRepeated[9:4:3] {
                 address: 3,
                 fields: FooFields,
             }
@@ -114,6 +120,13 @@ fn test_repeated_too_large_index() {
 }
 
 #[test]
+#[should_panic]
+fn test_range_repeated_too_large_index() {
+    let mut device = MyTestDevice::new(DeviceInterface::new());
+    device.foo_range_repeated().plan_at(6);
+}
+
+#[test]
 fn test_repeated_read_modify_write() {
     let mut device = MyTestDevice::new(DeviceInterface::new());
     device
@@ -127,6 +140,24 @@ fn test_repeated_read_modify_write() {
 
     assert_eq!(
         &device.interface.device_memory[9..12],
+        &[(0x39 << 1) + 1, 0x30 << 1, 0xFF]
+    );
+}
+
+#[test]
+fn test_range_repeated_read_modify_write() {
+    let mut device = MyTestDevice::new(DeviceInterface::new());
+    device
+        .foo_range_repeated()
+        .modify_at(2, |reg| {
+            reg.set_value_0(true);
+            reg.set_value_1(12345);
+            reg.set_value_2(-1);
+        })
+        .unwrap();
+
+    assert_eq!(
+        &device.interface.device_memory[21..24],
         &[(0x39 << 1) + 1, 0x30 << 1, 0xFF]
     );
 }

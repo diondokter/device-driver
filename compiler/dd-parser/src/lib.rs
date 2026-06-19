@@ -163,6 +163,14 @@ pub enum Expression<'src> {
 }
 
 impl<'src> Expression<'src> {
+    pub fn as_range(&self) -> Option<(i128, i128)> {
+        if let Self::AddressRange { end, start } = self {
+            Some((*end, *start))
+        } else {
+            None
+        }
+    }
+
     pub fn as_byte_order(&self) -> Option<ByteOrder> {
         if let Self::ByteOrder(v) = self {
             Some(*v)
@@ -275,6 +283,7 @@ pub struct Repeat<'src> {
 #[derive(Debug, Clone, Copy)]
 pub enum RepeatSource<'src> {
     Count(NonZeroU32),
+    Range { end: i128, start: i128 },
     Enum(Ident<'src>),
 }
 
@@ -501,18 +510,23 @@ pub fn simple_expression<'tokens, 'src: 'tokens>()
 pub fn repeat<'tokens, 'src: 'tokens>()
 -> impl Parser<'tokens, InputType<'tokens, 'src>, Spanned<Repeat<'src>>, RichExtra<'tokens, 'src>> + Copy
 {
-    num()
-        .try_map(try_num::<NonZeroU32>)
-        .map(RepeatSource::Count)
-        .or(ident(false).map(RepeatSource::Enum))
-        .then(just(Token::Star).ignore_then(
-            num().try_map(|num_str, span| {
-                try_num::<i32>(num_str, span).map(|num| num.with_span(span))
-            }),
-        ))
-        .delimited_by(just(Token::BracketOpen), just(Token::BracketClose))
-        .map_with(|(source, stride), extra| Repeat { source, stride }.spanned(extra.span()))
-        .labelled("[repeat]")
+    choice((
+        range().map(|expr| RepeatSource::Range {
+            end: expr.as_range().unwrap().0,
+            start: expr.as_range().unwrap().1,
+        }),
+        num()
+            .then_ignore(just(Token::Colon))
+            .try_map(try_num::<NonZeroU32>)
+            .map(RepeatSource::Count),
+        ident(false).map(RepeatSource::Enum),
+    ))
+    .then(just(Token::Colon).ignore_then(
+        num().try_map(|num_str, span| try_num::<i32>(num_str, span).map(|num| num.with_span(span))),
+    ))
+    .delimited_by(just(Token::BracketOpen), just(Token::BracketClose))
+    .map_with(|(source, stride), extra| Repeat { source, stride }.spanned(extra.span()))
+    .labelled("[repeat]")
 }
 
 pub fn node<'tokens, 'src: 'tokens>()

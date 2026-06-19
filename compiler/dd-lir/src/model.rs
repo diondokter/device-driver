@@ -41,6 +41,11 @@ pub enum Repeat {
         count: u32,
         stride: i128,
     },
+    Range {
+        end: i128,
+        start: i128,
+        stride: i128,
+    },
     Enum {
         enum_name: Identifier<Type>,
         enum_variants: Vec<Identifier<All>>,
