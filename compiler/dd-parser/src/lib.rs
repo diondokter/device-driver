@@ -283,7 +283,6 @@ pub struct Repeat<'src> {
 #[derive(Debug, Clone, Copy)]
 pub enum RepeatSource<'src> {
     Count(NonZeroU32),
-    Range { end: i128, start: i128 },
     Enum(Ident<'src>),
 }
 
@@ -511,10 +510,6 @@ pub fn repeat<'tokens, 'src: 'tokens>()
 -> impl Parser<'tokens, InputType<'tokens, 'src>, Spanned<Repeat<'src>>, RichExtra<'tokens, 'src>> + Copy
 {
     choice((
-        range().map(|expr| RepeatSource::Range {
-            end: expr.as_range().unwrap().0,
-            start: expr.as_range().unwrap().1,
-        }),
         num()
             .try_map(try_num::<NonZeroU32>)
             .map(RepeatSource::Count),

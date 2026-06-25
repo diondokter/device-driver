@@ -76,32 +76,6 @@ impl<I> Device<I> {
             || FooFieldSet::from([86, 52, 18]),
         )
     }
-    /// The Quux register
-    ///
-    /// Reset value: `0x123456`
-    ///
-    /// Valid index range: `0..=5` which maps to the range `5..=10`
-    #[doc(alias = "Quux")]
-    pub fn quux(
-        &mut self,
-    ) -> ::device_driver::RegisterOperation<
-        '_,
-        Self,
-        FooFieldSet,
-        u8,
-        ::device_driver::RO,
-        ::device_driver::RangeRepeat<10, 5, 1>,
-    >
-    where
-        I: ::device_driver::RegisterInterfaceBase<AddressType = u8>,
-    {
-        let address = self.base_address + 10;
-        ::device_driver::RegisterOperation::new(
-            self,
-            address as u8,
-            || FooFieldSet::from([86, 52, 18]),
-        )
-    }
 }
 impl<I> ::device_driver::Block for Device<I> {
     type Interface = I;

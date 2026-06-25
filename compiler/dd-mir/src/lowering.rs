@@ -194,9 +194,6 @@ fn parse_node_to_shape<'src, S: Shape>(
             *target_repeat = Some(Repeat {
                 source: match node_repeat.source {
                     device_driver_parser::RepeatSource::Count(count) => RepeatSource::Count(count),
-                    device_driver_parser::RepeatSource::Range { end, start } => {
-                        RepeatSource::Range { end, start }
-                    }
                     device_driver_parser::RepeatSource::Enum(ident) => RepeatSource::Enum(
                         IdentifierRef::new(ident.val.into()).with_span(ident.span),
                     ),

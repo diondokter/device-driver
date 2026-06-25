@@ -27,7 +27,6 @@ impl {{field_set.name.to_case(Case::Pascal)}} {
                 {% match field.repeat %}
                     {% when Repeat::None %}
                     {% when Repeat::Count { .. } %} index: usize
-                    {% when Repeat::Range { .. } %} index: usize
                     {% when Repeat::Enum { enum_name, .. } %} index: {{enum_name.to_case(Case::Pascal)}}
                 {% endmatch %}
             ) -> 
@@ -45,10 +44,6 @@ impl {{field_set.name.to_case(Case::Pascal)}} {
                     {% when Repeat::Count { count, stride } %}
                     assert!(index < {{count}});
                     let start = {{field.address.start}} + index * {{stride}};
-                    let end = start + {{field.address.len()}};
-                    {% when Repeat::Range { end, start, stride } %}
-                    assert!(index < ({{end}}-{{start}}));
-                    let start = {{field.address.start}} + ({{start}} + index) * {{stride}};
                     let end = start + {{field.address.len()}};
                     {% when Repeat::Enum { enum_name, stride, .. } %}
                     let start = {{field.address.start}} + {{self::get_enum_base_type(driver, &enum_name)}}::from(index) as usize * {{stride}};
@@ -84,7 +79,6 @@ impl {{field_set.name.to_case(Case::Pascal)}} {
                 {% match field.repeat %}
                     {% when Repeat::None %}
                     {% when Repeat::Count { .. } %} index: usize,
-                    {% when Repeat::Range { .. } %} index: usize,
                     {% when Repeat::Enum { enum_name, .. } %} index: {{enum_name.to_case(Case::Pascal)}},
                 {% endmatch %}
                 value: {% match field.conversion_method %}
@@ -102,10 +96,6 @@ impl {{field_set.name.to_case(Case::Pascal)}} {
                     {% when Repeat::Count { count, stride } %}
                     assert!(index < {{count}});
                     let start = {{field.address.start}} + index * {{stride}};
-                    let end = start + {{field.address.len()}};
-                    {% when Repeat::Range { end, start, stride } %}
-                    assert!(index < ({{end}}-{{start}}));
-                    let start = {{field.address.start}} + ({{start}} + index) * {{stride}};
                     let end = start + {{field.address.len()}};
                     {% when Repeat::Enum { enum_name, stride, .. } %}
                     let start = {{field.address.start}} + {{self::get_enum_base_type(driver, &enum_name)}}::from(index) as usize * {{stride}};
@@ -160,10 +150,6 @@ impl core::fmt::Debug for {{field_set.name.to_case(Case::Pascal)}} {
                         {% for index in 0..*count %}
                             d.field("{{field.name.to_case(Case::Snake)}}[{{index}}]", &self.{{field.name.to_case(Case::Snake)}}({{index}}));
                         {% endfor %}
-                    {% when Repeat::Range { end, start, .. } %}
-                        {% for index in 0..=(*end-*start) %}
-                            d.field("{{field.name.to_case(Case::Snake)}}[{{index}}]", &self.{{field.name.to_case(Case::Snake)}}({{index}}));
-                        {% endfor %}
                     {% when Repeat::Enum { enum_name, enum_variants, .. } %}
                         {% for variant in enum_variants %}
                             d.field("{{field.name.to_case(Case::Snake)}}[{{variant.to_case(Case::Pascal)}}]", &self.{{field.name.to_case(Case::Snake)}}({{enum_name.to_case(Case::Pascal)}}::{{variant.to_case(Case::Pascal)}}));
@@ -188,10 +174,6 @@ impl defmt::Format for {{field_set.name.to_case(Case::Pascal)}} {
                         defmt::write!(f, "{{self::get_defmt_fmt_string(field)}}", &self.{{field.name.to_case(Case::Snake)}}());
                     {% when Repeat::Count { count, .. } %}
                         {% for index in 0..*count %}
-                            defmt::write!(f, "{{self::get_defmt_fmt_string(field)}}[{{index}}]", &self.{{field.name.to_case(Case::Snake)}}({{index}}));
-                        {% endfor %}
-                    {% when Repeat::Range { end, start, .. } %}
-                        {% for index in 0..=(*end-*start) %}
                             defmt::write!(f, "{{self::get_defmt_fmt_string(field)}}[{{index}}]", &self.{{field.name.to_case(Case::Snake)}}({{index}}));
                         {% endfor %}
                     {% when Repeat::Enum { enum_name, enum_variants, .. } %}

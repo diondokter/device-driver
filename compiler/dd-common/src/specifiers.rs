@@ -289,7 +289,6 @@ pub struct Repeat {
 #[derive(Debug, Clone, PartialEq)]
 pub enum RepeatSource {
     Count(NonZeroU32),
-    Range { end: i128, start: i128 },
     Enum(Spanned<IdentifierRef<Type>>),
 }
 

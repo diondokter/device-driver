@@ -419,14 +419,6 @@ fn repeat_to_method_kind(repeat: &Option<Repeat>, manifest: &mir::Manifest) -> l
             stride: stride.value,
         },
         Some(Repeat {
-            source: RepeatSource::Range { end, start },
-            stride,
-        }) => lir::Repeat::Range {
-            end: *end,
-            start: *start,
-            stride: stride.value,
-        },
-        Some(Repeat {
             source: RepeatSource::Enum(enum_name),
             stride,
         }) => {

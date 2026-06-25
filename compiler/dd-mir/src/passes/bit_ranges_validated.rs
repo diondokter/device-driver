@@ -139,12 +139,6 @@ fn get_repeat_iter(manifest: &Manifest, field: &Field) -> (Vec<i128>, bool) {
                     .collect(),
                 true,
             ),
-            RepeatSource::Range { end, start } => (
-                (*start..=*end)
-                    .map(move |count| count * stride.value)
-                    .collect(),
-                true,
-            ),
             RepeatSource::Enum(enum_name) => (
                 search_object(manifest, enum_name)
                     .expect("Checked in earlier pass")
