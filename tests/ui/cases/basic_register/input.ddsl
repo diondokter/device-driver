@@ -12,14 +12,14 @@ device Device {
         }
     },
     /// The bar register
-    register Bar[3::1] {
+    register Bar[3 stride 1] {
         address: 1,
         access: RO,
         reset: 0x123456,
         fields: FooFieldSet,
     },
     /// The Quux register
-    register Quux[10:5:1] {
+    register Quux[10:5 stride 1] {
         address: 10,
         access: RO,
         reset: 0x123456,

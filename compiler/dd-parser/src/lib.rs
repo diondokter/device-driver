@@ -516,12 +516,11 @@ pub fn repeat<'tokens, 'src: 'tokens>()
             start: expr.as_range().unwrap().1,
         }),
         num()
-            .then_ignore(just(Token::Colon))
             .try_map(try_num::<NonZeroU32>)
             .map(RepeatSource::Count),
         ident(false).map(RepeatSource::Enum),
     ))
-    .then(just(Token::Colon).ignore_then(
+    .then(just(Token::Stride).ignore_then(
         num().try_map(|num_str, span| try_num::<i32>(num_str, span).map(|num| num.with_span(span))),
     ))
     .delimited_by(just(Token::BracketOpen), just(Token::BracketClose))

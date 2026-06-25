@@ -68,12 +68,12 @@ device_driver::compile!(
                 }
             },
             /// This is the Foo register
-            register FooRepeated[4::3] {
+            register FooRepeated[4 stride 3] {
                 address: 3,
                 fields: FooFields,
             },
             /// This is the Foo register
-            register FooRangeRepeated[9:4:3] {
+            register FooRangeRepeated[9:4 stride 3] {
                 address: 3,
                 fields: FooFields,
             }

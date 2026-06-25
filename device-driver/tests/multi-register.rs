@@ -66,11 +66,11 @@ device_driver::compile!(
                     field value 7:0 -> uint,
                 }
             },
-            register FooRepeated[4::3] {
+            register FooRepeated[4 stride 3] {
                 address: 4,
                 fields: FooFields,
             },
-            register Indexed[IndexEnum:3] {
+            register Indexed[IndexEnum stride 3] {
                 address: 16,
                 fields: FooFields,
             },

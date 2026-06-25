@@ -57,6 +57,8 @@ pub enum Token<'src> {
     Default,
     #[token("catch-all")]
     CatchAll,
+    #[token("stride")]
+    Stride,
     #[regex(r"-?[0-9][_0-9]*")] // Decimal
     #[regex(r"-?0b[_0-1]+")] // Binary, octal & hex
     #[regex(r"-?0o[_0-7]+")] // Binary, octal & hex
@@ -115,6 +117,7 @@ impl Display for Token<'_> {
             Token::Allow => write!(f, "allow"),
             Token::Default => write!(f, "default"),
             Token::CatchAll => write!(f, "catch-all"),
+            Token::Stride => write!(f, "stride"),
             Token::Num(_) => write!(f, "number"),
             Token::Access(_) => write!(f, "access specifier"),
             Token::ByteOrder(_) => write!(f, "byte order"),
@@ -155,6 +158,7 @@ impl<'src> Token<'src> {
             Token::Allow => "allow".into(),
             Token::Default => "default".into(),
             Token::CatchAll => "catch-all".into(),
+            Token::Stride => "stride".into(),
             Token::Unexpected(raw) => format!("!{raw}").into(),
             Token::Error => "UNEXPECTED".into(),
             Token::String(val) => format!("\"{val}\"").into(),
