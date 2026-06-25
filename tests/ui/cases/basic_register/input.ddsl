@@ -12,10 +12,10 @@ device Device {
         }
     },
     /// The bar register
-    register Bar[3*1] {
+    register Bar[3 stride 1] {
         address: 1,
         access: RO,
         reset: 0x123456,
         fields: FooFieldSet,
-    }
+    },
 }

@@ -30,6 +30,7 @@ impl RegisterInterface for DeviceInterface {
         _metadata: &FieldsetMetadata,
     ) -> Result<(), Self::Error> {
         assert_eq!(data.len(), 3);
+        println!("{address}");
         self.device_memory[address as usize..][..data.len()].copy_from_slice(data);
 
         Ok(())
@@ -67,10 +68,10 @@ device_driver::compile!(
                 }
             },
             /// This is the Foo register
-            register FooRepeated[4*3] {
+            register FooRepeated[4 stride 3] {
                 address: 3,
                 fields: FooFields,
-            }
+            },
         }
     "
 );

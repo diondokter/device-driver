@@ -357,29 +357,7 @@ fn transform_field(manifest: &mir::Manifest, field: &mir::Field) -> Result<lir::
         base_type,
         conversion_method,
         access: *access,
-        repeat: repeat
-            .as_ref()
-            .map_or(lir::Repeat::None, |repeat| match &repeat.source {
-                RepeatSource::Count(c) => lir::Repeat::Count {
-                    count: c.get(),
-                    stride: repeat.stride.value,
-                },
-                RepeatSource::Enum(enum_name) => {
-                    let target_enum = search_object(manifest, enum_name)
-                        .expect("Existence checked in MIR pass")
-                        .as_enum()
-                        .expect("checked in MIR pass");
-                    lir::Repeat::Enum {
-                        enum_name: target_enum.name.value.clone(),
-                        enum_variants: target_enum
-                            .variants
-                            .iter()
-                            .map(|variant| variant.name.value.clone())
-                            .collect(),
-                        stride: repeat.stride.value,
-                    }
-                }
-            }),
+        repeat: repeat_to_method_kind(repeat, manifest),
     })
 }
 

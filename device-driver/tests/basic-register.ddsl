@@ -15,7 +15,7 @@ device MyTestDevice {
         }
     },
     /// This is the Foo register
-    register FooRepeated[4*3] {
+    register FooRepeated[4 stride 3] {
         address: 3,
         fields: FooFields,
     }
