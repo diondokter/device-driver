@@ -12,7 +12,7 @@
       - [Cli]()
       - [Rust macro]()
     - [Language]()
-      - [Tokens & AST]()
+      - [Tokens & AST](./v2/tokens_ast.md)
       - [Manifest]()
       - [Device]()
       - [Block]()

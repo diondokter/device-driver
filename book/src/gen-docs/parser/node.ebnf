@@ -1,0 +1,12 @@
+def_1 ::= ((((({ doc comment } identifier) identifier) [ repeat ]) { simple expression }) [ (Arrow (base type
+  | integer type
+  | Underscore)) [ (As [ Try ]) (node
+  | identifier) ] ]) [ (CurlyOpen (({ ({ doc comment } (identifier (Colon (simple expression
+    | node
+    | identifier)))) [Comma]} Comma) { node [Comma]}
+  | { ({ doc comment } (identifier (Colon (simple expression
+    | node
+    | identifier)))) [Comma]} <unknown: chumsky::primitive::Empty>
+  | <unknown: chumsky::primitive::Empty> { node [Comma]})) CurlyClose ];
+
+def_1

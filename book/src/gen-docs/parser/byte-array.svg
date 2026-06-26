@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="railroad" viewBox="0 0 388 164">
+<style type="text/css">
+svg.railroad {
+background-color: hsl(30, 20%, 95%);
+background-size: 15px 15px;
+background-image: linear-gradient(to right, rgba(30, 30, 30, .05) 1px, transparent 1px),
+		  linear-gradient(to bottom, rgba(30, 30, 30, .05) 1px, transparent 1px);
+}
+
+svg.railroad rect.railroad_canvas {
+stroke-width: 0px;
+fill: none;
+}
+
+svg.railroad path {
+stroke-width: 3px;
+stroke: black;
+fill: none;
+}
+
+svg.railroad .debug {
+stroke-width: 1px;
+stroke: red;
+}
+
+svg.railroad text {
+font: 14px monospace;
+text-anchor: middle;
+}
+
+svg.railroad .nonterminal text {
+font-weight: bold;
+}
+
+svg.railroad text.comment {
+font: italic 12px monospace;
+}
+
+svg.railroad rect {
+stroke-width: 3px;
+stroke: black;
+fill:hsl(-290, 70%, 90%);
+}
+
+svg.railroad g.labeledbox &gt; rect {
+stroke-width: 1px;
+stroke: grey;
+stroke-dasharray: 5px;
+fill:rgba(90, 90, 150, .1);
+}
+</style>
+<rect width="100%" height="100%" class="railroad_canvas"/>
+<g class="sequence">
+<g class="verticalgrid">
+<g class="labeledbox">
+<rect x="10" y="10" height="144" width="368"/>
+<path d=" M 10 95 h 8 m 352 0 h 8"/>
+<g class="nonterminal">
+<rect x="18" y="18" height="22" width="76"/>
+<text x="56" y="34">
+[bytes]</text>
+</g>
+<g class="sequence">
+<g class="sequence">
+<g class="terminal">
+<rect x="18" y="84" height="22" width="108" rx="10" ry="10"/>
+<text x="72" y="100">
+BracketOpen</text>
+</g>
+<g class="repeat">
+<path d=" M 136 95 h 12 m 84 0 h 12 m -12 0 a 12 12 0 0 1 12 12 v 16 a 12 12 0 0 1 -12 12 m -60 0 h -24 a 12 12 0 0 1 -12 -12 v -16 a 12 12 0 0 1 12 -12"/>
+<g class="terminal">
+<rect x="172" y="124" height="22" width="60" rx="10" ry="10"/>
+<text x="202" y="140">
+Comma</text>
+</g>
+<g class="labeledbox">
+<rect x="148" y="48" height="66" width="84"/>
+<path d=" M 148 95 h 8 m 68 0 h 8"/>
+<text class="comment" x="189" y="71">
+filtered</text>
+<g class="nonterminal">
+<rect x="156" y="84" height="22" width="68"/>
+<text x="190" y="100">
+number</text>
+</g>
+</g>
+</g>
+<path d=" M 126 95 h 10"/>
+</g>
+<g class="terminal">
+<rect x="254" y="84" height="22" width="116" rx="10" ry="10"/>
+<text x="312" y="100">
+BracketClose</text>
+</g>
+<path d=" M 244 95 h 10"/>
+</g>
+</g>
+</g>
+</g>
+</svg>

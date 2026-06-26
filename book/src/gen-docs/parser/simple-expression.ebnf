@@ -1,0 +1,15 @@
+range
+  | base type
+  | integer type
+  | number
+  | Default (number
+    | Underscore)
+  | CatchAll (number
+    | Underscore)
+  | byte array
+  | Allow
+  | access
+  | byte order
+  | Underscore
+  | string
+  | address mode
