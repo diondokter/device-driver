@@ -33,10 +33,6 @@ pub enum Token<'src> {
     BracketOpen,
     #[token("]")]
     BracketClose,
-    #[token("<")]
-    AngleOpen,
-    #[token(">")]
-    AngleClose,
     #[token(",")]
     Comma,
     #[token(":")]
@@ -60,9 +56,9 @@ pub enum Token<'src> {
     #[token("stride")]
     Stride,
     #[regex(r"-?[0-9][_0-9]*")] // Decimal
-    #[regex(r"-?0b[_0-1]+")] // Binary, octal & hex
-    #[regex(r"-?0o[_0-7]+")] // Binary, octal & hex
-    #[regex(r"-?0x[_0-9a-fA-F]+")] // Binary, octal & hex
+    #[regex(r"-?0b[_0-1]+")] // Binary
+    #[regex(r"-?0o[_0-7]+")] // Octal
+    #[regex(r"-?0x[_0-9a-fA-F]+")] // Hex
     Num(&'src str),
     #[token("RW", |_| Access::RW)]
     #[token("RO", |_| Access::RO)]
@@ -105,8 +101,6 @@ impl Display for Token<'_> {
             Token::CurlyClose => write!(f, "}}"),
             Token::BracketOpen => write!(f, "["),
             Token::BracketClose => write!(f, "]"),
-            Token::AngleOpen => write!(f, "<"),
-            Token::AngleClose => write!(f, ">"),
             Token::Colon => write!(f, ":"),
             Token::Underscore => write!(f, "_"),
             Token::Comma => write!(f, ","),
@@ -140,8 +134,6 @@ impl<'src> Token<'src> {
             Token::CurlyClose => "}".into(),
             Token::BracketOpen => "[".into(),
             Token::BracketClose => "]".into(),
-            Token::AngleOpen => "<".into(),
-            Token::AngleClose => ">".into(),
             Token::Colon => ":".into(),
             Token::Underscore => "_".into(),
             Token::Comma => ",".into(),
