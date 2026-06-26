@@ -7,3 +7,4 @@ title = "device-driver-book"
 [output.html]
 git-repository-url = "https://github.com/diondokter/device-driver"
 git-repository-icon = "fas-code"
+additional-js = ["ddsl.highlight.js"]
