@@ -3,10 +3,29 @@
 [Preface](./preface.md)
 
 ---
-- [v2]()
-  - [TODO]()
+- [V2]()
+  - [Intro](./v2/intro.md)
+  - [Tutorial TMP108]() # simple registers
+  - [Tutorial S2-LP]() # registers, commands and buffers
+  - [Reference]()
+    - [Compilation]()
+      - [Cli]()
+      - [Rust macro]()
+    - [Language]()
+      - [Tokens & AST]()
+      - [Manifest]()
+      - [Device]()
+      - [Block]()
+      - [Register]()
+      - [Command]()
+      - [Buffer]()
+      - [Fieldset]()
+      - [Enum]()
+      - [Extern]()
+    - [Runtime]()
+      - [Rust]()
 
-- [v1]()
+- [V1]()
   - [Intro](./v1/intro.md)
   - [Using the macro](./v1/using-the-macro.md)
   - [Using the cli](./v1/using-the-cli.md)
@@ -26,4 +45,4 @@
 
 # Addendum
 
-- [Memory](./memory.md)
+[Memory](./memory.md)

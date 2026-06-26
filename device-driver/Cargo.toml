@@ -26,8 +26,10 @@ rand = "0.9"
 device-driver = { path = ".", features = ["embedded-io-07"] }
 
 [features]
-default = ["macros"]
+# Enable compiling your DDSL with a macro 
+macros = ["dep:device-driver-macros"]
+
+#
 defmt = ["dep:defmt", "embedded-io?/defmt", "embedded-io-async?/defmt"]
 embedded-io-07 = ["dep:embedded-io", "dep:embedded-io-async"]
 
-macros = ["dep:device-driver-macros"]

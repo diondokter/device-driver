@@ -3,43 +3,55 @@
 > [!IMPORTANT]
 > We deserve better drivers. Rust has shown that we don't need to stick to old principles and that we as an industry can do better.
 
-Device-driver is a Rust toolkit that generates safe, documented interfaces for hardware devices, handling bit-packed registers and device commands through an expressive macro DSL or config file.
+Device-driver is a toolkit written in Rust that generates safe, documented interfaces for hardware devices, handling bit-packed registers and device commands through an expressive custom language.
 
 While the Rust language provides many opportunities to improve the way we write drivers, it doesn't mean those are easy to use. There are two issues:
 1. Creating good datastructures to represent the driver is hard
-2. Writing the definitions by hand takes a lot of thankless work
+2. Writing the definitions along with all its boilerplate takes a lot of thankless work
 
 By using this toolkit, you get both 1 and 2 solved.
 
-Number one is solved by getting the datastructures as part of this toolkit which has seen over 5 years of iteration and improvements. The second issue is solved by using code generation so you only need to manually take care of the things that make your driver unique.
+Number one is solved by getting the datastructures as part of this toolkit which has seen over 6 years of iteration and improvements. The second issue is solved by using code generation so you only need to take care of the things that make your driver unique.
 
 Together, this delivers a really tight and precise way of authoring your device driver:
 
-```rust
-device_driver::create_device!(
-    device_name: MyDevice,
-    dsl: {
-        config {
-            type RegisterAddressType = u8;
-        }
-        /// This is the Foo register
-        register Foo {
-            const ADDRESS = 0;
-            const SIZE_BITS = 8;
+```ddsl
+// device.ddsl
+
+device MyDevice {
+    register-address-type: u8,
+
+    /// This is the Foo register
+    register Foo {
+        address: 0,
+        fields: fieldset _ {
+            size-bytes: 1,
 
             /// This is a bool at bit 0!
-            value0: bool = 0,
+            field value0 0 -> bool,
             /// Integrated enum generation
-            value1: int as enum GeneratedEnum {
-              A,
-              /// Variant B
-              B,
-              C = default,
-            } = 1..4,
+            field value1 3:1 -> _ as enum GeneratedEnum {
+                A: _,
+                /// Variant B
+                B: _,
+                C: default _,
+            },
             /// This is a 4-bit integer
-            value2: uint = 4..8,
-        },
-    }
+            field value2 7:4 -> uint,
+        }
+    },
+}
+```
+
+```rust
+// Generate and include
+// `ddc build rust -s device.ddsl -o device.rs --rust-defmt-feature=defmt`
+include!("device.rs");
+
+// Or use the macro to compile at build-time
+device_driver::compile!(
+    options: "--rust-defmt-feature=defmt", // Target options
+    manifest: "device.ddsl" // Link to definition
 );
 
 let mut device = MyDevice::new(device_interface);
@@ -62,13 +74,16 @@ To help you do less of the boring work and to create a higher quality driver at 
 
 These goals are met by:
 - Using a dense and precise input language
-- Having many options to deal with byte and bit ordering
-- Having analysis steps to decrease the chance of common mistakes
+- Having many options to deal with memory layout
+- Having analysis steps and great error reporting to decrease the chance of common mistakes
 - Separating the interface to the device from the definitions
 - Allowing you to put docs on pretty much anything
 
 ## How to continue
 
 Simply read the rest of the book!
+
+If you're new, head over to one of the tutorial sections.
+If you're looking for a language detail, go see one of the reference sections.
 
 Looking at existing drivers and examples can also be very helpful.
