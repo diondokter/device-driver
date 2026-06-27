@@ -1,0 +1,4 @@
+(Arrow (base type
+  | integer type
+  | Underscore)) [ (As [ Try ]) (node
+  | identifier) ]

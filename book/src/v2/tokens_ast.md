@@ -40,6 +40,11 @@ These are valid tokens in the language:
 | AddressMode          | `mapped` / `indexed`                                        |               |
 | String               | `r#""[^"]*""#`                                              | `"my string"` |
 
+The tokens are lexed using [logos](https://crates.io/crates/logos).
+The regexes are processed by the Rust Regex crate.
+
+Direct tokens have priority over regexed tokens.
+
 ## Abstract syntax tree
 
 The implementation of the parser can be found at `compiler\dd-parser`.
@@ -52,42 +57,57 @@ and is known to not be 100% correct/complete. Contributions there are encouraged
 
 ### Node
 
-TODO: Improve parsing of properties & subnodes so that it looks ok
-TODO: Split up the node parser into more subparsers:
-- [ ] Type specifier
-- [ ] Node body
-  - [ ] Property
-
 ![node](../gen-docs/parser/node.svg)
 ```
 {{#include ../gen-docs/parser/node.ebnf}}
 ```
 
-## Repeat
+### Repeat
 
 ![repeat](../gen-docs/parser/repeat.svg)
 ```
 {{#include ../gen-docs/parser/repeat.ebnf}}
 ```
 
-## Range
+### Simple expression
+
+![simple-expression](../gen-docs/parser/simple-expression.svg)
+```
+{{#include ../gen-docs/parser/simple-expression.ebnf}}
+```
+
+### Type-specifier
+
+![type-specifier](../gen-docs/parser/type-specifier.svg)
+```
+{{#include ../gen-docs/parser/type-specifier.ebnf}}
+```
+
+### Node-body
+
+![node-body](../gen-docs/parser/node-body.svg)
+```
+{{#include ../gen-docs/parser/node-body.ebnf}}
+```
+
+### Property
+
+![property](../gen-docs/parser/property.svg)
+```
+{{#include ../gen-docs/parser/property.ebnf}}
+```
+
+### Range
 
 ![range](../gen-docs/parser/range.svg)
 ```
 {{#include ../gen-docs/parser/range.ebnf}}
 ```
 
-## Byte array
+### Byte array
 
 ![byte-array](../gen-docs/parser/byte-array.svg)
 ```
 {{#include ../gen-docs/parser/byte-array.ebnf}}
-```
-
-## Simple expression
-
-![simple-expression](../gen-docs/parser/simple-expression.svg)
-```
-{{#include ../gen-docs/parser/simple-expression.ebnf}}
 ```
 

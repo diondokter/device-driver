@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="railroad" viewBox="0 0 600 165">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="railroad" viewBox="0 0 584 121">
 <style type="text/css">
 svg.railroad {
 background-color: hsl(30, 20%, 95%);
@@ -53,8 +53,8 @@ fill:rgba(90, 90, 150, .1);
 <g class="sequence">
 <g class="verticalgrid">
 <g class="labeledbox">
-<rect x="10" y="10" height="145" width="580"/>
-<path d=" M 10 95 h 8 m 564 0 h 8"/>
+<rect x="10" y="10" height="101" width="564"/>
+<path d=" M 10 59 h 8 m 548 0 h 8"/>
 <g class="nonterminal">
 <rect x="18" y="18" height="22" width="84"/>
 <text x="60" y="34">
@@ -63,61 +63,49 @@ fill:rgba(90, 90, 150, .1);
 <g class="sequence">
 <g class="sequence">
 <g class="terminal">
-<rect x="18" y="84" height="22" width="108" rx="10" ry="10"/>
-<text x="72" y="100">
+<rect x="18" y="48" height="22" width="108" rx="10" ry="10"/>
+<text x="72" y="64">
 BracketOpen</text>
 </g>
 <g class="sequence">
 <g class="choice">
-<path d=" M 136 95 h 24 m 84 0 h 40"/>
-<g class="labeledbox">
-<rect x="160" y="48" height="66" width="84"/>
-<path d=" M 160 95 h 8 m 68 0 h 8"/>
-<text class="comment" x="201" y="71">
-filtered</text>
-<g class="nonterminal">
-<rect x="168" y="84" height="22" width="68"/>
-<text x="202" y="100">
+<path d=" M 136 59 h 24 m 68 0 h 56 m -25 0 l -5 -5 m 0 10 l 5 -5 m 25 0"/>
+<g class="terminal">
+<rect x="160" y="48" height="22" width="68" rx="10" ry="10"/>
+<text x="194" y="64">
 number</text>
 </g>
-</g>
-<path d=" M 136 95 a 12 12 0 0 1 12 12 v 17 m 124 0 v -17 a 12 12 0 0 1 12 -12"/>
-<path d=" M 148 124 v 0 a 12 12 0 0 0 12 12 m 100 0 h 0 a 12 12 0 0 0 12 -12 v 0"/>
+<path d=" M 136 59 a 12 12 0 0 1 12 12 v 9 m 124 0 v -9 a 12 12 0 0 1 12 -12"/>
+<path d=" M 148 80 v 0 a 12 12 0 0 0 12 12 m 100 0 h 0 a 12 12 0 0 0 12 -12 v 0"/>
 <g class="nonterminal">
-<rect x="160" y="125" height="22" width="100"/>
-<text x="210" y="141">
+<rect x="160" y="81" height="22" width="100"/>
+<text x="210" y="97">
 identifier</text>
 </g>
 </g>
 <g class="sequence">
 <g class="terminal">
-<rect x="294" y="84" height="22" width="68" rx="10" ry="10"/>
-<text x="328" y="100">
+<rect x="294" y="48" height="22" width="68" rx="10" ry="10"/>
+<text x="328" y="64">
 Stride</text>
 </g>
-<g class="labeledbox">
-<rect x="372" y="48" height="66" width="84"/>
-<path d=" M 372 95 h 8 m 68 0 h 8"/>
-<text class="comment" x="413" y="71">
-filtered</text>
-<g class="nonterminal">
-<rect x="380" y="84" height="22" width="68"/>
-<text x="414" y="100">
+<g class="terminal">
+<rect x="372" y="48" height="22" width="68" rx="10" ry="10"/>
+<text x="406" y="64">
 number</text>
 </g>
+<path d=" M 362 59 h 10"/>
 </g>
-<path d=" M 362 95 h 10"/>
+<path d=" M 284 59 h 10"/>
 </g>
-<path d=" M 284 95 h 10"/>
-</g>
-<path d=" M 126 95 h 10"/>
+<path d=" M 126 59 h 10"/>
 </g>
 <g class="terminal">
-<rect x="466" y="84" height="22" width="116" rx="10" ry="10"/>
-<text x="524" y="100">
+<rect x="450" y="48" height="22" width="116" rx="10" ry="10"/>
+<text x="508" y="64">
 BracketClose</text>
 </g>
-<path d=" M 456 95 h 10"/>
+<path d=" M 440 59 h 10"/>
 </g>
 </g>
 </g>
