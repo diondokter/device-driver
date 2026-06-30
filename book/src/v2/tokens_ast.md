@@ -65,11 +65,32 @@ Their sizes are mostly implementation details, with the exception of numbers par
 {{#include ../gen-docs/parser/node.ebnf}}
 ```
 
+Examples:
+```ddsl
+register Foo {
+    address: 0,
+}
+```
+```ddsl
+field Foo 7:0 RW -> _
+```
+
+Specific node types will have restrictions on what is and is not allowed or required.
+More about that can be found in the reference chapters for those node types as that's part of the MIR and not the AST.
+
 ### Repeat
 
 ![repeat](../gen-docs/parser/repeat.svg)
 ```
 {{#include ../gen-docs/parser/repeat.ebnf}}
+```
+
+Examples:
+```ddsl
+[4 stride 2]
+```
+```ddsl
+[Foo stride 2]
 ```
 
 ### Simple-expression
@@ -86,11 +107,32 @@ Their sizes are mostly implementation details, with the exception of numbers par
 {{#include ../gen-docs/parser/type-specifier.ebnf}}
 ```
 
+Examples:
+```ddsl
+-> u8 as try Foo
+```
+```ddsl
+-> bool
+```
+```ddsl
+-> _ as enum Foo { }
+```
+
 ### Node-body
 
 ![node-body](../gen-docs/parser/node-body.svg)
 ```
 {{#include ../gen-docs/parser/node-body.ebnf}}
+```
+
+Example:
+```ddsl
+{
+    property: _,
+    register Node {
+
+    },
+}
 ```
 
 ### Property
@@ -100,11 +142,25 @@ Their sizes are mostly implementation details, with the exception of numbers par
 {{#include ../gen-docs/parser/property.ebnf}}
 ```
 
+Examples:
+```ddsl
+/// Docs
+prop1: Foo
+```
+```ddsl
+prop2: 7:0
+```
+
 ### Range
 
 ![range](../gen-docs/parser/range.svg)
 ```
 {{#include ../gen-docs/parser/range.ebnf}}
+```
+
+Example:
+```ddsl
+7:0
 ```
 
 ### Byte array
@@ -114,3 +170,7 @@ Their sizes are mostly implementation details, with the exception of numbers par
 {{#include ../gen-docs/parser/byte-array.ebnf}}
 ```
 
+Example:
+```ddsl
+[0, 1, 2, 3, 4]
+```
