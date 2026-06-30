@@ -163,7 +163,7 @@ Example:
 7:0
 ```
 
-### Byte array
+### Byte-array
 
 ![byte-array](../gen-docs/parser/byte-array.svg)
 ```

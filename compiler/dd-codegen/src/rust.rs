@@ -12,7 +12,7 @@ use device_driver_lir::model::{
 };
 
 #[derive(Parser, Debug, Clone, Default)]
-#[command(no_binary_name = true)]
+#[command(no_binary_name = true, bin_name = "")]
 pub struct RustCodegenOptions {
     /// When specified, defmt implementations will be generated using this cfg feature flag
     #[arg(

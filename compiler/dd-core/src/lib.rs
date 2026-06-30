@@ -11,7 +11,7 @@ pub use device_driver_diagnostics::Metadata;
 pub use device_driver_mir::MirOptions;
 
 #[derive(Parser, Debug, Clone)]
-#[command(no_binary_name = true)]
+#[command(no_binary_name = true, bin_name = "")]
 pub struct CompileOptions {
     #[command(flatten)]
     pub general_options: GeneralOptions,
@@ -86,18 +86,12 @@ For more information about device-driver, visit the website: {}",
 
 #[cfg(feature = "gen-docs")]
 pub fn gen_docs(output_path: &std::path::Path) -> Result<(), DynError> {
-    if !output_path.exists() {
-        std::fs::create_dir_all(output_path).with_message(|| {
-            format!(
-                "creating folder for gen-docs output at {}",
-                output_path.display()
-            )
-        })?
-    }
-
-    if !output_path.is_dir() {
-        return Err(DynError::new("gen-docs output path is not a folder"));
-    }
+    std::fs::create_dir_all(output_path).with_message(|| {
+        format!(
+            "creating folder for gen-docs output at {}",
+            output_path.display()
+        )
+    })?;
 
     let parser_folder = output_path.join("parser");
     if !parser_folder.exists() {
