@@ -1,1 +1,1 @@
-(number Colon) number
+(Num<i128> Colon) Num<i128>

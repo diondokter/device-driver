@@ -374,13 +374,16 @@ pub type RichExtra<'tokens, 'src> = extra::Err<RichErr<'tokens, 'src>>;
 
 pub fn ident<'tokens, 'src: 'tokens>(
     allow_auto: bool,
-) -> impl Parser<'tokens, InputType<'tokens, 'src>, Ident<'src>, RichExtra<'tokens, 'src>> + Copy {
+) -> impl Parser<'tokens, InputType<'tokens, 'src>, Ident<'src>, RichExtra<'tokens, 'src>> + Clone {
     select! {
         Token::Ident(val) = e => Ident::new(val, e.span()),
         Token::Underscore = e if allow_auto => Ident::new_auto(e.span()),
     }
-    .labelled("identifier")
-    .as_non_terminal()
+    .labelled(format!(
+        "Ident{}",
+        if allow_auto { "|Underscore" } else { "" }
+    ))
+    .as_terminal()
 }
 
 pub fn doc_comment<'tokens, 'src: 'tokens>()
@@ -390,22 +393,26 @@ pub fn doc_comment<'tokens, 'src: 'tokens>()
         Token::DocCommentLine(val) => val
     }
     .map_with(|line, extra| line.spanned(extra.span()))
-    .labelled("doc comment")
-    .as_non_terminal()
+    .labelled("DocCommentLine")
+    .as_terminal()
 }
 
 pub fn num<'tokens, 'src: 'tokens, I: ParseIntRadix>()
--> impl Parser<'tokens, InputType<'tokens, 'src>, I, RichExtra<'tokens, 'src>> + Copy {
+-> impl Parser<'tokens, InputType<'tokens, 'src>, I, RichExtra<'tokens, 'src>> + Clone {
     select! {
         Token::Num(num) => num
     }
     .try_map(try_num::<I>)
-    .labelled("number")
+    .labelled(format!(
+        "Num<{}>",
+        // Get the type name of the integer, excluding module path
+        std::any::type_name::<I>().split("::").last().unwrap()
+    ))
     .as_terminal()
 }
 
 pub fn range<'tokens, 'src: 'tokens>()
--> impl Parser<'tokens, InputType<'tokens, 'src>, Expression<'src>, RichExtra<'tokens, 'src>> + Copy
+-> impl Parser<'tokens, InputType<'tokens, 'src>, Expression<'src>, RichExtra<'tokens, 'src>> + Clone
 {
     num::<i128>()
         .then_ignore(just(Token::Colon))
@@ -417,48 +424,33 @@ pub fn range<'tokens, 'src: 'tokens>()
 pub fn base_type<'tokens, 'src: 'tokens>()
 -> impl Parser<'tokens, InputType<'tokens, 'src>, BaseType, RichExtra<'tokens, 'src>> + Copy {
     select! { Token::BaseType(bt) => bt }
-        .labelled("base type")
+        .labelled("BaseType")
         .as_terminal()
 }
 
 pub fn integer<'tokens, 'src: 'tokens>()
 -> impl Parser<'tokens, InputType<'tokens, 'src>, Integer, RichExtra<'tokens, 'src>> + Copy {
     select! { Token::Integer(i) => i }
-        .labelled("integer type")
+        .labelled("Integer")
         .as_terminal()
 }
 
 pub fn byte_array<'tokens, 'src: 'tokens>()
--> impl Parser<'tokens, InputType<'tokens, 'src>, Expression<'src>, RichExtra<'tokens, 'src>> + Copy
+-> impl Parser<'tokens, InputType<'tokens, 'src>, Expression<'src>, RichExtra<'tokens, 'src>> + Clone
 {
-    num::<u128>()
-        .map_with(|num, extra| (num, extra.span()))
+    num::<u8>()
         .separated_by(just(Token::Comma))
-        .allow_trailing()
         .collect::<Vec<_>>()
-        .validate(|numbers, _, emitter| {
-            match numbers
-                .into_iter()
-                .map(|(num, num_span)| {
-                    u8::try_from(num).map_err(|_| Rich::custom(num_span, "Value must be a byte"))
-                })
-                .collect::<Result<Vec<u8>, _>>()
-            {
-                Ok(array) => Expression::ByteArray(array),
-                Err(e) => {
-                    emitter.emit(e);
-                    Expression::Error
-                }
-            }
-        })
+        .map(|array| Expression::ByteArray(array))
+        .then_ignore(just(Token::Comma).or_not())
         .delimited_by(just(Token::BracketOpen), just(Token::BracketClose))
-        .labelled("[bytes]")
+        .labelled("byte-array")
 }
 
 /// Expression without type reference since that clashes with nodes
 pub fn simple_expression<'tokens, 'src: 'tokens>()
 -> impl Parser<'tokens, InputType<'tokens, 'src>, Spanned<Expression<'src>>, RichExtra<'tokens, 'src>>
-+ Copy {
++ Clone {
     choice((
         range().labelled("range").as_non_terminal(),
         base_type().map(Expression::BaseType),
@@ -471,7 +463,7 @@ pub fn simple_expression<'tokens, 'src: 'tokens>()
                     .or(just(Token::Underscore).map(|_| None)),
             )
             .map(Expression::DefaultNumber)
-            .labelled("default number"),
+            .labelled("default-number"),
         just(Token::CatchAll)
             .ignore_then(
                 num::<i128>()
@@ -479,33 +471,34 @@ pub fn simple_expression<'tokens, 'src: 'tokens>()
                     .or(just(Token::Underscore).map(|_| None)),
             )
             .map(Expression::CatchAllNumber)
-            .labelled("catch-all number"),
-        byte_array().labelled("byte array").as_non_terminal(),
+            .labelled("catch-all-number"),
+        byte_array().labelled("byte-array").as_non_terminal(),
         just(Token::Allow).map(|_| Expression::Allow),
         select! { Token::Access(val) => val }
             .map(Expression::Access)
-            .labelled("access")
+            .labelled("Access")
             .as_terminal(),
         select! { Token::ByteOrder(val) => val }
             .map(Expression::ByteOrder)
-            .labelled("byte order")
+            .labelled("ByteOrder")
             .as_terminal(),
         just(Token::Underscore).map(|_| Expression::Auto),
         select! { Token::String(val) => val }
             .map(Expression::String)
-            .labelled("string")
-            .as_non_terminal(),
+            .labelled("String")
+            .as_terminal(),
         select! { Token::AddressMode(val) => val }
             .map(Expression::AddressMode)
-            .labelled("address mode")
+            .labelled("AddressMode")
             .as_terminal(),
     ))
     .map_with(|expression, extra| expression.spanned(extra.span()))
+    .labelled("simple-expression")
 }
 
 pub fn repeat<'tokens, 'src: 'tokens>()
--> impl Parser<'tokens, InputType<'tokens, 'src>, Spanned<Repeat<'src>>, RichExtra<'tokens, 'src>> + Copy
-{
+-> impl Parser<'tokens, InputType<'tokens, 'src>, Spanned<Repeat<'src>>, RichExtra<'tokens, 'src>>
++ Clone {
     choice((
         num::<NonZeroU32>().map(RepeatSource::Count),
         ident(false).map(RepeatSource::Enum),
@@ -516,7 +509,7 @@ pub fn repeat<'tokens, 'src: 'tokens>()
     )
     .delimited_by(just(Token::BracketOpen), just(Token::BracketClose))
     .map_with(|(source, stride), extra| Repeat { source, stride }.spanned(extra.span()))
-    .labelled("[repeat]")
+    .labelled("repeat")
 }
 
 pub fn property<'tokens, 'src: 'tokens, 'node>(
@@ -531,7 +524,7 @@ pub fn property<'tokens, 'src: 'tokens, 'node>(
                 .then(
                     just(Token::Colon).ignore_then(choice((
                         simple_expression()
-                            .labelled("simple expression")
+                            .labelled("simple-expression")
                             .as_non_terminal(),
                         node.clone()
                             .map_with(|node, extra| {
@@ -593,6 +586,7 @@ pub fn type_specifier<'tokens, 'src: 'tokens>(
             conversion: conversion.map(|(_, conversion)| conversion),
         })
         .map_with(|ts, e| ts.spanned(e.span()))
+        .labelled("type-specifier")
 }
 
 pub fn node_body<'tokens, 'src: 'tokens>(
@@ -645,12 +639,12 @@ pub fn node<'tokens, 'src: 'tokens>()
         doc_comment()
             .repeated()
             .collect()
-            .then(ident(false).labelled("node type"))
-            .then(ident(true).labelled("node name"))
+            .then(ident(false).labelled("node-type"))
+            .then(ident(true).labelled("node-name"))
             .then(repeat().labelled("repeat").as_non_terminal().or_not())
             .then(
                 simple_expression()
-                    .labelled("simple expression")
+                    .labelled("simple-expression")
                     .as_non_terminal()
                     .repeated()
                     .collect::<Vec<_>>(),

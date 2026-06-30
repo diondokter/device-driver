@@ -1,2 +1,2 @@
-(BracketOpen ((number
-  | identifier) (Stride number))) BracketClose
+(BracketOpen ((Num<NonZero<u32>>
+  | Ident) (Stride Num<i32>))) BracketClose

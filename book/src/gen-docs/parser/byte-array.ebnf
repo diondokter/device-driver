@@ -1,1 +1,1 @@
-(BracketOpen { number [Comma]}) BracketClose
+(BracketOpen ({ Num<u8> [Comma]} [ Comma ])) BracketClose
