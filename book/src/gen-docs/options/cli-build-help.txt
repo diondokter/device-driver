@@ -11,7 +11,7 @@ Options:
   -o, --output <FILE>
           Path to output location. Any existing file is overwritten. If not provided, the output is written to stdout
 
-      --unstable-ui_test_mode
+      --unstable-ui-test-mode
           Improves reproducibility across versions
 
       --unstable-mir-randomize-seed=<SEED>

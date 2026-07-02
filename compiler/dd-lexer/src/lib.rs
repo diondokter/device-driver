@@ -16,6 +16,7 @@ pub fn lex(source: &str) -> Vec<Spanned<Token<'_>>> {
         .collect()
 }
 
+// Don't forget to update the book when tokens are added, changed or removed!
 #[derive(Debug, Clone, Copy, PartialEq, Logos)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[logos(skip r"[ \t\r\n]+")] // Skip (common) whitespace

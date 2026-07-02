@@ -14,12 +14,13 @@ struct Args {
 enum Command {
     /// Compile DDSL to the target output
     Build(BuildArgs),
-    /// Generate docs
+    /// Generate docs about the compiler
     #[cfg(feature = "gen-docs")]
     GenDocs(GenDocsArgs),
 }
 
 #[derive(Parser, Debug)]
+#[command(no_binary_name = true, bin_name = "")]
 struct BuildArgs {
     /// Path to the input file.
     #[arg(short = 's', long = "source", value_name = "FILE", global = true)]
@@ -32,6 +33,7 @@ struct BuildArgs {
 }
 
 #[derive(Parser, Debug)]
+#[command(no_binary_name = true, bin_name = "")]
 struct GenDocsArgs {
     /// Path to output folder location
     #[arg(short = 'o', long = "output", value_name = "DIR")]
@@ -128,7 +130,12 @@ fn gen_docs(args: GenDocsArgs) -> Result<ExitCode, DynError> {
         cli_folder.join("cli-build-help.txt"),
         BuildArgs::command().render_long_help().to_string(),
     )
-    .with_message(|| "writing cli-build-help")?;
+    .with_message(|| "writing cli-gen_docs-help")?;
+    std::fs::write(
+        cli_folder.join("cli-gen_docs-help.txt"),
+        GenDocsArgs::command().render_long_help().to_string(),
+    )
+    .with_message(|| "writing cli-gen_docs-help")?;
     std::fs::write(
         cli_folder.join("compile-help.txt"),
         device_driver_core::CompileOptions::command()

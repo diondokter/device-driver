@@ -25,7 +25,7 @@ pub struct CompileOptions {
 #[command(no_binary_name = true)]
 pub struct GeneralOptions {
     /// Improves reproducibility across versions
-    #[arg(long = "unstable-ui_test_mode", global = true)]
+    #[arg(long = "unstable-ui-test-mode", global = true)]
     pub ui_test_mode: bool,
 }
 

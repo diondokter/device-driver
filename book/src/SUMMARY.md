@@ -8,11 +8,9 @@
   - [Tutorial TMP108]() # simple registers
   - [Tutorial S2-LP]() # registers, commands and buffers
   - [Reference]()
-    - [Compilation]()
-      - [Cli]()
-      - [Rust macro]()
+    - [Compilation](./v2/reference-compilation.md)
     - [Language]()
-      - [Tokens & AST](./v2/tokens_ast.md)
+      - [Tokens & AST](./v2/reference-language-tokens_ast.md)
       - [Manifest]()
       - [Device]()
       - [Block]()

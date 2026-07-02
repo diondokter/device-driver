@@ -49,6 +49,7 @@ pub fn parse<'src>(tokens: &[Spanned<Token<'src>>], diagnostics: &mut Diagnostic
     .unwrap_or_default()
 }
 
+// Don't forget to update the book when parsers are added, changed or removed!
 #[derive(Debug, Default)]
 pub struct Ast<'src> {
     pub root_node: Option<Node<'src>>,
