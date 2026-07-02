@@ -1,0 +1,3 @@
+def_1 ::= ((((({ DocCommentLine } Ident) Ident|Underscore) [ repeat ]) { simple-expression }) [ type-specifier ]) [ node-body ];
+
+def_1

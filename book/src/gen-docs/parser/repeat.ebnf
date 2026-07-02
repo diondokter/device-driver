@@ -1,0 +1,2 @@
+(BracketOpen ((Num<NonZero<u32>>
+  | Ident) (Stride Num<i32>))) BracketClose

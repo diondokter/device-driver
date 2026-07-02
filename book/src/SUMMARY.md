@@ -3,10 +3,27 @@
 [Preface](./preface.md)
 
 ---
-- [v2]()
-  - [TODO]()
+- [V2]()
+  - [Intro](./v2/intro.md)
+  - [Tutorial TMP108]() # simple registers
+  - [Tutorial S2-LP]() # registers, commands and buffers
+  - [Reference]()
+    - [Compilation](./v2/reference-compilation.md)
+    - [Language]()
+      - [Tokens & AST](./v2/reference-language-tokens_ast.md)
+      - [Manifest]()
+      - [Device]()
+      - [Block]()
+      - [Register]()
+      - [Command]()
+      - [Buffer]()
+      - [Fieldset]()
+      - [Enum]()
+      - [Extern]()
+    - [Runtime]()
+      - [Rust]()
 
-- [v1]()
+- [V1]()
   - [Intro](./v1/intro.md)
   - [Using the macro](./v1/using-the-macro.md)
   - [Using the cli](./v1/using-the-cli.md)
