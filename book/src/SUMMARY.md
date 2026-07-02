@@ -43,4 +43,4 @@
 
 # Addendum
 
-[Memory](./memory.md)
+- [Memory](./memory.md)
