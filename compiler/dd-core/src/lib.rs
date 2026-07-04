@@ -105,6 +105,18 @@ pub fn gen_docs(output_path: &std::path::Path) -> Result<(), DynError> {
     device_driver_parser::gen_docs::gen_docs(&parser_folder)
         .with_message(|| "gen-docs for parser")?;
 
+    let mir_shapes_folder = output_path.join("mir-shapes");
+    if !mir_shapes_folder.exists() {
+        std::fs::create_dir(&mir_shapes_folder).with_message(|| {
+            format!(
+                "creating folder for gen-docs mir-shapes output at {}",
+                mir_shapes_folder.display()
+            )
+        })?;
+    }
+    device_driver_mir::gen_docs(&mir_shapes_folder)
+        .with_message(|| "gen-docs for mir shapes")?;
+
     Ok(())
 }
 
