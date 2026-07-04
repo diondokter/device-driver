@@ -9,7 +9,7 @@
   - [Tutorial S2-LP]() # registers, commands and buffers
   - [Reference]()
     - [Compilation](./v2/reference-compilation.md)
-    - [Language]()
+    - [Language](./v2/reference-language.md)
       - [Tokens & AST](./v2/reference-language-tokens_ast.md)
       - [Manifest](./v2/reference-language-manifest.md)
       - [Device](./v2/reference-language-device.md)
