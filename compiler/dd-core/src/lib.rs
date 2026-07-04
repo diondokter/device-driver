@@ -114,8 +114,7 @@ pub fn gen_docs(output_path: &std::path::Path) -> Result<(), DynError> {
             )
         })?;
     }
-    device_driver_mir::gen_docs(&mir_shapes_folder)
-        .with_message(|| "gen-docs for mir shapes")?;
+    device_driver_mir::gen_docs(&mir_shapes_folder).with_message(|| "gen-docs for mir shapes")?;
 
     Ok(())
 }
