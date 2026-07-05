@@ -13,53 +13,69 @@
 ## Long properties
 These properties are specified in the node body.
 ### byte-order
-> todo: description
-
+Sets the global default byte order used by fieldsets. This can be overridden per device and fieldset.
+#### Info
 - required: `no`
 - multiple allowed: `no`
 - supports doc comments: `no`
 #### Allowed expression types
-- byte order: `LE`
+- `byte order` => `LE`
 ### register-address-type
-> todo: description
-
+Sets the global type used to address the registers for all devices. This can be overridden per device.
+#### Info
 - required: `no`
 - multiple allowed: `no`
 - supports doc comments: `no`
 #### Allowed expression types
-- integer type: `i32`
+- `integer type` => `i32`
 ### command-address-type
-> todo: description
-
+Sets the global type used to address the commands for all devices. This can be overridden per device.
+#### Info
 - required: `no`
 - multiple allowed: `no`
 - supports doc comments: `no`
 #### Allowed expression types
-- integer type: `i32`
+- `integer type` => `i32`
 ### buffer-address-type
-> todo: description
-
+Sets the global type used to address the buffers for all devices. This can be overridden per device.
+#### Info
 - required: `no`
 - multiple allowed: `no`
 - supports doc comments: `no`
 #### Allowed expression types
-- integer type: `i32`
+- `integer type` => `i32`
 ### word-boundaries
-> todo: description
+Sets the global word splitting rules for all objects. This can be overridden per device.
 
+This option exists to aid in copying names from the datasheet. Those names are often not proper names for types and operations.
+So by setting the rules, the compiler can split identifiers into good proper words and then convert them to the required casing.
+The splitting is done with `convert_case` using their [`string representation`](https://docs.rs/convert_case/0.10.0/convert_case/enum.Boundary.html#method.defaults_from) for boundaries.
+
+In short, place a colon (`:`) between every boundary. Then each boundary follows the expressed pattern.
+For example `aB` will split words when a lower case letter is followed by an upper case letter.
+Some symbols are also allowed as boundary, like `-` & `_`.
+
+If not specified, this uses a reasonable default for splitting.
+#### Info
 - required: `no`
 - multiple allowed: `no`
 - supports doc comments: `no`
 #### Allowed expression types
-- string: `"bD:0B:_"`
+- `string` => `"bD:0B:_"`
 ### register-address-mode
-> todo: description
+Sets the global address mode for registers. This can be overridden per device.
 
+When specified, the registers are assumed to share an address space:
+- With the `mapped` option, that address space is a memory-mapped space where if register `A` has address `X` and is `Y` bytes big, then register `B` (if it exists) will have the address `X+Y`.
+- With the `indexed` option, that address space has one register per number where if object `A` has address `X`, then object `B` (if it exists) will have the address `X+1`.
+
+If this value is specified, then it permits multi-register reads and writes.
+#### Info
 - required: `no`
 - multiple allowed: `no`
 - supports doc comments: `no`
 #### Allowed expression types
-- address mode: `mapped`
+- `address mode` => `mapped`
 ## Possible subnodes
 Subnodes of the following types are allowed in the node body.
 - [device]

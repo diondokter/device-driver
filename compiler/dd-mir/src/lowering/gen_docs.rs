@@ -145,7 +145,10 @@ fn write_properties<S: Shape>(
         };
 
         writeln!(doc, "### {name}").into_dyn_result()?;
-        writeln!(doc, "> todo: description\n").into_dyn_result()?;
+        for description_line in property.description.lines() {
+            writeln!(doc, "{description_line}").into_dyn_result()?;
+        }
+        writeln!(doc, "#### Info").into_dyn_result()?;
         writeln!(doc, "- required: `{}`", bool_to_yes_no(property.required)).into_dyn_result()?;
         writeln!(
             doc,
@@ -161,7 +164,7 @@ fn write_properties<S: Shape>(
         .into_dyn_result()?;
         writeln!(doc, "#### Allowed expression types").into_dyn_result()?;
         for t in property.allowed_expression_types.iter() {
-            writeln!(doc, "- {}: `{}`", t, t.get_human_string()).into_dyn_result()?;
+            writeln!(doc, "- `{}` => `{}`", t, t.get_human_string()).into_dyn_result()?;
         }
     }
 

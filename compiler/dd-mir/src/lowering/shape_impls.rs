@@ -51,6 +51,7 @@ impl Shape for Manifest {
         static MAP: &[PropertyInfo<Manifest>] = &[
             PropertyInfo {
                 name: PropertyName::Exact("byte-order"),
+                description: "Sets the global default byte order used by fieldsets. This can be overridden per device and fieldset.",
                 allowed_expression_types: Cow::Borrowed(&[Expression::ByteOrder(ByteOrder::LE)]),
                 multiple_allowed: false,
                 required: false,
@@ -66,6 +67,7 @@ impl Shape for Manifest {
             },
             PropertyInfo {
                 name: PropertyName::Exact("register-address-type"),
+                description: "Sets the global type used to address the registers for all devices. This can be overridden per device.",
                 allowed_expression_types: Cow::Borrowed(&[Expression::Integer(Integer::I32)]),
                 multiple_allowed: false,
                 required: false,
@@ -87,6 +89,7 @@ impl Shape for Manifest {
             },
             PropertyInfo {
                 name: PropertyName::Exact("command-address-type"),
+                description: "Sets the global type used to address the commands for all devices. This can be overridden per device.",
                 allowed_expression_types: Cow::Borrowed(&[Expression::Integer(Integer::I32)]),
                 multiple_allowed: false,
                 required: false,
@@ -108,6 +111,7 @@ impl Shape for Manifest {
             },
             PropertyInfo {
                 name: PropertyName::Exact("buffer-address-type"),
+                description: "Sets the global type used to address the buffers for all devices. This can be overridden per device.",
                 allowed_expression_types: Cow::Borrowed(&[Expression::Integer(Integer::I32)]),
                 multiple_allowed: false,
                 required: false,
@@ -129,6 +133,18 @@ impl Shape for Manifest {
             },
             PropertyInfo {
                 name: PropertyName::Exact("word-boundaries"),
+                description: "\
+Sets the global word splitting rules for all objects. This can be overridden per device.
+
+This option exists to aid in copying names from the datasheet. Those names are often not proper names for types and operations.
+So by setting the rules, the compiler can split identifiers into good proper words and then convert them to the required casing.
+The splitting is done with `convert_case` using their [`string representation`](https://docs.rs/convert_case/0.10.0/convert_case/enum.Boundary.html#method.defaults_from) for boundaries.
+
+In short, place a colon (`:`) between every boundary. Then each boundary follows the expressed pattern.
+For example `aB` will split words when a lower case letter is followed by an upper case letter.
+Some symbols are also allowed as boundary, like `-` & `_`.
+
+If not specified, this uses a reasonable default for splitting.",
                 allowed_expression_types: Cow::Borrowed(&[Expression::String("bD:0B:_")]),
                 multiple_allowed: false,
                 required: false,
@@ -146,6 +162,14 @@ impl Shape for Manifest {
             },
             PropertyInfo {
                 name: PropertyName::Exact("register-address-mode"),
+                description: "\
+Sets the global address mode for registers. This can be overridden per device.
+
+When specified, the registers are assumed to share an address space:
+- With the `mapped` option, that address space is a memory-mapped space where if register `A` has address `X` and is `Y` bytes big, then register `B` (if it exists) will have the address `X+Y`.
+- With the `indexed` option, that address space has one register per number where if object `A` has address `X`, then object `B` (if it exists) will have the address `X+1`.
+
+If this value is specified, then it permits multi-register reads and writes.",
                 allowed_expression_types: Cow::Borrowed(&[Expression::AddressMode(
                     AddressMode::Mapped,
                 )]),
@@ -205,6 +229,7 @@ impl Shape for Device {
         static MAP: &[PropertyInfo<Device>] = &[
             PropertyInfo {
                 name: PropertyName::Exact("byte-order"),
+                description: "Sets the default byte order used by fieldsets in this device. This can be overridden per fieldset.",
                 allowed_expression_types: Cow::Borrowed(&[Expression::ByteOrder(ByteOrder::LE)]),
                 multiple_allowed: false,
                 required: false,
@@ -221,6 +246,7 @@ impl Shape for Device {
             },
             PropertyInfo {
                 name: PropertyName::Exact("register-address-type"),
+                description: "Sets the type used to address the registers in this device.",
                 allowed_expression_types: Cow::Borrowed(&[Expression::Integer(Integer::I32)]),
                 multiple_allowed: false,
                 required: false,
@@ -242,6 +268,7 @@ impl Shape for Device {
             },
             PropertyInfo {
                 name: PropertyName::Exact("command-address-type"),
+                description: "Sets the type used to address the commands in this device.",
                 allowed_expression_types: Cow::Borrowed(&[Expression::Integer(Integer::I32)]),
                 multiple_allowed: false,
                 required: false,
@@ -263,6 +290,7 @@ impl Shape for Device {
             },
             PropertyInfo {
                 name: PropertyName::Exact("buffer-address-type"),
+                description: "Sets the type used to address the buffers in this device.",
                 allowed_expression_types: Cow::Borrowed(&[Expression::Integer(Integer::I32)]),
                 multiple_allowed: false,
                 required: false,
@@ -284,6 +312,18 @@ impl Shape for Device {
             },
             PropertyInfo {
                 name: PropertyName::Exact("word-boundaries"),
+                description: "\
+Sets the word splitting rules for all objects defined in the device.
+
+This option exists to aid in copying names from the datasheet. Those names are often not proper names for types and operations.
+So by setting the rules, the compiler can split identifiers into good proper words and then convert them to the required casing.
+The splitting is done with `convert_case` using their [`string representation`](https://docs.rs/convert_case/0.10.0/convert_case/enum.Boundary.html#method.defaults_from) for boundaries.
+
+In short, place a colon (`:`) between every boundary. Then each boundary follows the expressed pattern.
+For example `aB` will split words when a lower case letter is followed by an upper case letter.
+Some symbols are also allowed as boundary, like `-` & `_`.
+
+If not specified, this uses a reasonable default for splitting.",
                 allowed_expression_types: Cow::Borrowed(&[Expression::String("bD:0B:_")]),
                 multiple_allowed: false,
                 required: false,
@@ -301,6 +341,14 @@ impl Shape for Device {
             },
             PropertyInfo {
                 name: PropertyName::Exact("register-address-mode"),
+                description: "\
+Sets the address mode for registers in this device.
+
+When specified, the registers are assumed to share an address space:
+- With the `mapped` option, that address space is a memory-mapped space where if register `A` has address `X` and is `Y` bytes big, then register `B` (if it exists) will have the address `X+Y`.
+- With the `indexed` option, that address space has one register per number where if object `A` has address `X`, then object `B` (if it exists) will have the address `X+1`.
+
+If this value is specified, then it permits multi-register reads and writes.",
                 allowed_expression_types: Cow::Borrowed(&[Expression::AddressMode(
                     AddressMode::Mapped,
                 )]),
@@ -362,6 +410,10 @@ impl Shape for Block {
     fn supported_properties() -> &'static [PropertyInfo<Self>] {
         static MAP: &[PropertyInfo<Block>] = &[PropertyInfo {
             name: PropertyName::Exact("address-offset"),
+            description: "\
+Defines the address offset of this block. All objects in the block are relative to the block.
+For example, a block with an address offset of 10 which has a register at address 5, will have defined the register at address 15.
+If this is not desired, then keep the address offset at 0.",
             allowed_expression_types: Cow::Borrowed(&[Expression::Number(0)]),
             multiple_allowed: false,
             required: true,
@@ -424,6 +476,7 @@ impl Shape for Register {
             [
                 PropertyInfo {
                     name: PropertyName::Exact("address"),
+                    description: "The address of the register.",
                     allowed_expression_types: Cow::Borrowed(&[Expression::Number(0)]),
                     multiple_allowed: false,
                     required: true,
@@ -443,6 +496,7 @@ impl Shape for Register {
                 },
                 PropertyInfo {
                     name: PropertyName::Exact("access"),
+                    description: "Limits how the register can be accessed. If not specified, the access is `RW`.",
                     allowed_expression_types: Cow::Borrowed(&[Expression::Access(Access::RW)]),
                     multiple_allowed: false,
                     required: false,
@@ -458,6 +512,7 @@ impl Shape for Register {
                 },
                 PropertyInfo {
                     name: PropertyName::Exact("address-overlap"),
+                    description: "Allows addresses to overlap with other registers. This is not allowed by default to prevent copy-paste mistakes.",
                     allowed_expression_types: Cow::Borrowed(&[Expression::Allow]),
                     multiple_allowed: false,
                     required: false,
@@ -471,6 +526,12 @@ impl Shape for Register {
                 },
                 PropertyInfo {
                     name: PropertyName::Exact("reset"),
+                    description: "\
+Defines the reset value of the register. When performing a write operation, this value loaded in by default.
+
+The value can be expressed in two ways:
+- Byte array: No byte order changes are done. The array will be loaded into the fieldset as is.
+- Integer: Will be converted to a byte array with the specified byte order.",
                     allowed_expression_types: Cow::Owned(vec![
                         Expression::ByteArray(vec![12, 34]),
                         Expression::Number(1234),
@@ -510,6 +571,7 @@ impl Shape for Register {
                 },
                 PropertyInfo {
                     name: PropertyName::Exact("fields"),
+                    description: "The fieldset that represents the data of the register. This can be a reference to an existing fieldset or a completely new inline fieldset.",
                     allowed_expression_types: Cow::Owned(vec![
                         Expression::TypeReference(device_driver_parser::Ident::new_no_span(
                             "MyFieldset",
@@ -596,6 +658,7 @@ impl Shape for FieldSet {
         static MAP: &[PropertyInfo<FieldSet>] = &[
             PropertyInfo {
                 name: PropertyName::Exact("size-bytes"),
+                description: "The size of the fieldset in number of bytes.",
                 allowed_expression_types: Cow::Borrowed(&[Expression::Number(8)]),
                 multiple_allowed: false,
                 required: true,
@@ -624,6 +687,7 @@ impl Shape for FieldSet {
             },
             PropertyInfo {
                 name: PropertyName::Exact("byte-order"),
+                description: "The byte order of the fieldset data.",
                 allowed_expression_types: Cow::Borrowed(&[Expression::ByteOrder(ByteOrder::LE)]),
                 multiple_allowed: false,
                 required: false,
@@ -639,6 +703,7 @@ impl Shape for FieldSet {
             },
             PropertyInfo {
                 name: PropertyName::Exact("bit-overlap"),
+                description: "Allows fields to overlap. This is not allowed by default to prevent copy-paste mistakes.",
                 allowed_expression_types: Cow::Borrowed(&[Expression::Allow]),
                 multiple_allowed: false,
                 required: false,
@@ -686,6 +751,7 @@ impl Shape for Extern {
         static MAP: &[PropertyInfo<Extern>] = &[
             PropertyInfo {
                 name: PropertyName::Exact("infallible"),
+                description: "Allows this type to be infallably converted to.",
                 allowed_expression_types: Cow::Borrowed(&[Expression::Allow]),
                 multiple_allowed: false,
                 required: false,
@@ -699,6 +765,7 @@ impl Shape for Extern {
             },
             PropertyInfo {
                 name: PropertyName::Exact("size-bits"),
+                description: "The size of the type in bits.",
                 allowed_expression_types: Cow::Borrowed(&[Expression::Number(8)]),
                 multiple_allowed: false,
                 required: false,
@@ -755,6 +822,7 @@ impl Shape for Buffer {
         static MAP: &[PropertyInfo<Buffer>] = &[
             PropertyInfo {
                 name: PropertyName::Exact("access"),
+                description: "Limits how the buffer can be accessed. If not specified, the access is `RW`.",
                 allowed_expression_types: Cow::Borrowed(&[Expression::Access(Access::RW)]),
                 multiple_allowed: false,
                 required: false,
@@ -770,6 +838,7 @@ impl Shape for Buffer {
             },
             PropertyInfo {
                 name: PropertyName::Exact("address"),
+                description: "The address of the buffer",
                 allowed_expression_types: Cow::Borrowed(&[Expression::Number(0)]),
                 multiple_allowed: false,
                 required: true,
@@ -811,6 +880,7 @@ impl Shape for Enum {
     fn supported_properties() -> &'static [PropertyInfo<Self>] {
         static MAP: &[PropertyInfo<Enum>] = &[PropertyInfo {
             name: PropertyName::Any,
+            description: "Defines a variant for the enum. The name of the property becomes the variant name.",
             allowed_expression_types: Cow::Borrowed(&[
                 Expression::Auto,
                 Expression::Number(0),
@@ -885,6 +955,7 @@ impl Shape for Command {
             [
                 PropertyInfo {
                     name: PropertyName::Exact("address"),
+                    description: "The address of the command",
                     allowed_expression_types: Cow::Borrowed(&[Expression::Number(0)]),
                     multiple_allowed: false,
                     required: true,
@@ -904,6 +975,7 @@ impl Shape for Command {
                 },
                 PropertyInfo {
                     name: PropertyName::Exact("address-overlap"),
+                    description: "Allows addresses to overlap with other commands. This is not allowed by default to prevent copy-paste mistakes.",
                     allowed_expression_types: Cow::Borrowed(&[Expression::Allow]),
                     multiple_allowed: false,
                     required: false,
@@ -918,6 +990,7 @@ impl Shape for Command {
                 },
                 PropertyInfo {
                     name: PropertyName::Exact("fields-in"),
+                    description: "The fieldset that represents the input data of the command. This can be a reference to an existing fieldset or a completely new inline fieldset.",
                     allowed_expression_types: Cow::Owned(vec![
                         Expression::TypeReference(device_driver_parser::Ident::new_no_span(
                             "MyFieldset",
@@ -977,6 +1050,7 @@ impl Shape for Command {
                 },
                 PropertyInfo {
                     name: PropertyName::Exact("fields-out"),
+                    description: "The fieldset that represents the output data of the command. This can be a reference to an existing fieldset or a completely new inline fieldset.",
                     allowed_expression_types: Cow::Owned(vec![
                         Expression::TypeReference(device_driver_parser::Ident::new_no_span(
                             "MyFieldset",
@@ -1065,6 +1139,7 @@ impl Shape for Field {
         static MAP: &[PropertyInfo<Field>] = &[
             PropertyInfo {
                 name: PropertyName::Short("address"),
+                description: "The bit address of the field within the fieldset",
                 allowed_expression_types: Cow::Borrowed(&[
                     Expression::Number(0),
                     Expression::AddressRange { end: 8, start: 0 },
@@ -1116,6 +1191,7 @@ impl Shape for Field {
             },
             PropertyInfo {
                 name: PropertyName::Short("access"),
+                description: "Limits how the field can be accessed. If not specified, the access is `RW`.",
                 allowed_expression_types: Cow::Borrowed(&[Expression::Access(Access::RW)]),
                 multiple_allowed: false,
                 required: false,

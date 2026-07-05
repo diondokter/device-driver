@@ -13,18 +13,18 @@
 ## Long properties
 These properties are specified in the node body.
 ### access
-> todo: description
-
+Limits how the buffer can be accessed. If not specified, the access is `RW`.
+#### Info
 - required: `no`
 - multiple allowed: `no`
 - supports doc comments: `no`
 #### Allowed expression types
-- access specifier: `RW`
+- `access specifier` => `RW`
 ### address
-> todo: description
-
+The address of the buffer
+#### Info
 - required: `yes`
 - multiple allowed: `no`
 - supports doc comments: `no`
 #### Allowed expression types
-- number: `0`
+- `number` => `0`

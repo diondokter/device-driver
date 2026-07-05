@@ -13,18 +13,18 @@
 ## Long properties
 These properties are specified in the node body.
 ### infallible
-> todo: description
-
+Allows this type to be infallably converted to.
+#### Info
 - required: `no`
 - multiple allowed: `no`
 - supports doc comments: `no`
 #### Allowed expression types
-- allow: `allow`
+- `allow` => `allow`
 ### size-bits
-> todo: description
-
+The size of the type in bits.
+#### Info
 - required: `no`
 - multiple allowed: `no`
 - supports doc comments: `no`
 #### Allowed expression types
-- number: `8`
+- `number` => `8`

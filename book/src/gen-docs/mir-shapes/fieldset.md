@@ -13,29 +13,29 @@
 ## Long properties
 These properties are specified in the node body.
 ### size-bytes
-> todo: description
-
+The size of the fieldset in number of bytes.
+#### Info
 - required: `yes`
 - multiple allowed: `no`
 - supports doc comments: `no`
 #### Allowed expression types
-- number: `8`
+- `number` => `8`
 ### byte-order
-> todo: description
-
+The byte order of the fieldset data.
+#### Info
 - required: `no`
 - multiple allowed: `no`
 - supports doc comments: `no`
 #### Allowed expression types
-- byte order: `LE`
+- `byte order` => `LE`
 ### bit-overlap
-> todo: description
-
+Allows fields to overlap. This is not allowed by default to prevent copy-paste mistakes.
+#### Info
 - required: `no`
 - multiple allowed: `no`
 - supports doc comments: `no`
 #### Allowed expression types
-- allow: `allow`
+- `allow` => `allow`
 ## Possible subnodes
 Subnodes of the following types are allowed in the node body.
 - [field]

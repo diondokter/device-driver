@@ -540,6 +540,7 @@ trait Shape: Default + 'static {
 
 struct PropertyInfo<T: ?Sized> {
     name: PropertyName<'static>,
+    description: &'static str,
     /// The types of expressions that are supported.
     /// Comparison is done using discriminants only.
     /// The values of the expressions are used for suggestions in diagnostics.
@@ -559,6 +560,7 @@ impl<T: ?Sized> Clone for PropertyInfo<T> {
     fn clone(&self) -> Self {
         Self {
             name: self.name,
+            description: self.description,
             allowed_expression_types: self.allowed_expression_types.clone(),
             multiple_allowed: self.multiple_allowed,
             required: self.required,
