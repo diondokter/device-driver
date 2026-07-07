@@ -47,15 +47,20 @@
     <div>
         <h2>Intro</h2>
         <p>
-            Define your <em>registers</em>, <em>commands</em> & <em>buffers</em> using the device-driver
+            Define your <em><a href="book/v2/reference-language-register.html">registers</a></em>,
+            <em><a href="book/v2/reference-language-command.html">commands</a></em> &
+            <em><a href="book/v2/reference-language-buffer.html">buffers</a></em> using the device-driver
             specification language. These form the user API of the driver.
         </p>
         <p>
-            Create <em>fieldsets</em> composed of many <em>fields</em>. Make them impossible to use incorrectly
+            Create <em><a href="book/v2/reference-language-fieldset.html">fieldsets</a></em> composed of many
+            <em><a href="book/v2/reference-language-field.html">fields</a></em>. Make them impossible to use
+            incorrectly
             with access control, type conversions & enum-indexed repeats.
         </p>
         <p>
-            Use custom <em>enums</em> to represent closed sets. Or define an <em>extern</em> when you want to use more
+            Use custom <em><a href="book/v2/reference-language-enum.html">enums</a></em> to represent closed sets. Or
+            define an <em><a href="book/v2/reference-language-extern.html">extern</a></em> when you want to use more
             complex types implemented in your own code.
         </p>
         <p>
@@ -127,7 +132,8 @@
             Buffers are written and read with byte slices.
         </p>
         <p>
-            Fields can have <em>conversion</em> types so values are always correct.
+            Fields can have <em><a href="/book/v2/reference-language-tokens_ast.html#type-specifier">conversion</a></em>
+            types so values are always correct.
         </p>
         <p>
             The driver is driven entirely by the functions you call, <em>no runtime</em> requirements.
