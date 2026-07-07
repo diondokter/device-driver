@@ -1,5 +1,20 @@
-## Shape
-> todo: example
+## Example
+
+```ddsl
+/// doc comment line
+block Example {
+    address-offset: 0,
+
+    block node,
+    register node,
+    command node,
+    buffer node,
+    fieldset node,
+    enum node,
+    extern node,
+}
+```
+## Table
 
 | Property | Value |
 | --- | --- |

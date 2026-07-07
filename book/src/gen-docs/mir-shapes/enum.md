@@ -1,5 +1,13 @@
-## Shape
-> todo: example
+## Example
+
+```ddsl
+/// doc comment line
+enum Example -> uint {
+    /// doc comment line
+    Any: _,
+}
+```
+## Table
 
 | Property | Value |
 | --- | --- |

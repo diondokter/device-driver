@@ -1,5 +1,10 @@
-## Shape
-> todo: example
+## Example
+
+```ddsl
+/// doc comment line
+field Example 8:0 RW -> uint as try Foo
+```
+## Table
 
 | Property | Value |
 | --- | --- |
@@ -19,8 +24,8 @@ The bit address of the field within the fieldset
 - multiple allowed: `no`
 - supports doc comments: `no`
 #### Allowed expression types
-- `number` => `0`
 - `range` => `8:0`
+- `number` => `0`
 ### access
 Limits how the field can be accessed. If not specified, the access is `RW`.
 #### Info

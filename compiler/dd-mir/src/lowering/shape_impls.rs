@@ -1141,8 +1141,8 @@ impl Shape for Field {
                 name: PropertyName::Short("address"),
                 description: "The bit address of the field within the fieldset",
                 allowed_expression_types: Cow::Borrowed(&[
-                    Expression::Number(0),
                     Expression::AddressRange { end: 8, start: 0 },
+                    Expression::Number(0),
                 ]),
                 multiple_allowed: false,
                 required: true,

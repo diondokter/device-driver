@@ -1,5 +1,13 @@
-## Shape
-> todo: example
+## Example
+
+```ddsl
+/// doc comment line
+extern Example -> uint {
+    infallible: allow,
+    size-bits: 8,
+}
+```
+## Table
 
 | Property | Value |
 | --- | --- |

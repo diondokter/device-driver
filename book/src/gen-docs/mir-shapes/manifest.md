@@ -1,5 +1,22 @@
-## Shape
-> todo: example
+## Example
+
+```ddsl
+/// doc comment line
+manifest Example {
+    byte-order: LE,
+    register-address-type: i32,
+    command-address-type: i32,
+    buffer-address-type: i32,
+    word-boundaries: "bD:0B:_",
+    register-address-mode: mapped,
+
+    device node,
+    fieldset node,
+    enum node,
+    extern node,
+}
+```
+## Table
 
 | Property | Value |
 | --- | --- |

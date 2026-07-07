@@ -80,7 +80,7 @@ impl<'src> Display for Node<'src> {
         write!(f, "{indentation}{} {}", self.node_type.val, self.name.val,)?;
 
         for expression in self.short_properties.iter() {
-            write!(f, " {expression}")?;
+            write!(f, " {}", expression.get_human_string())?;
         }
 
         if let Some(type_specifier) = self.type_specifier.as_ref() {
@@ -105,11 +105,19 @@ impl<'src> Display for Node<'src> {
             writeln!(f, " {{")?;
 
             for property in self.properties.iter() {
+                for doc_comment in property.doc_comments.iter() {
+                    writeln!(f, "{indentation}    ///{}", doc_comment)?;
+                }
                 writeln!(
                     f,
                     "{indentation}    {}: {},",
-                    property.name.val, property.expression
+                    property.name.val,
+                    property.expression.get_human_string()
                 )?;
+            }
+
+            if !self.properties.is_empty() && !self.sub_nodes.is_empty() {
+                writeln!(f, "{indentation}",)?;
             }
 
             for node in self.sub_nodes.iter() {

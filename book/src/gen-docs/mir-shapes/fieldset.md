@@ -1,5 +1,16 @@
-## Shape
-> todo: example
+## Example
+
+```ddsl
+/// doc comment line
+fieldset Example {
+    size-bytes: 8,
+    byte-order: LE,
+    bit-overlap: allow,
+
+    field node,
+}
+```
+## Table
 
 | Property | Value |
 | --- | --- |

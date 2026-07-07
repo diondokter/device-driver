@@ -1,5 +1,13 @@
-## Shape
-> todo: example
+## Example
+
+```ddsl
+/// doc comment line
+buffer Example {
+    access: RW,
+    address: 0,
+}
+```
+## Table
 
 | Property | Value |
 | --- | --- |

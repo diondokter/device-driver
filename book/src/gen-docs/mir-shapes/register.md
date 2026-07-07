@@ -1,5 +1,16 @@
-## Shape
-> todo: example
+## Example
+
+```ddsl
+/// doc comment line
+register Example {
+    address: 0,
+    access: RW,
+    address-overlap: allow,
+    reset: [12, 34],
+    fields: MyFieldset,
+}
+```
+## Table
 
 | Property | Value |
 | --- | --- |

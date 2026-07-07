@@ -1,7 +1,12 @@
-use std::{fmt::Write, fs, path::Path};
+use std::{fmt::Write, fs, num::NonZero, path::Path};
 
-use device_driver_common::identifier::IdentifierType;
+use device_driver_common::{
+    identifier::IdentifierType,
+    span::{Span, SpanExt},
+    specifiers::{BaseType, VariantNames},
+};
 use device_driver_diagnostics::{DynError, ResultExt};
+use device_driver_parser::{Ident, Node, Property, Repeat, TypeSpecifier};
 
 use crate::{
     lowering::{PropertyInfo, PropertyName, Shape},
@@ -38,9 +43,12 @@ fn gen_doc<S: Shape>(folder: &Path) -> Result<(), DynError> {
         .filter(|p| matches!(p.name, PropertyName::Exact(_) | PropertyName::Any))
         .collect::<Vec<_>>();
 
-    writeln!(doc, "## Shape").into_dyn_result()?;
+    writeln!(doc, "## Example\n").into_dyn_result()?;
+    writeln!(doc, "```ddsl").into_dyn_result()?;
+    writeln!(doc, "{}", generate_shape_example::<S>()).into_dyn_result()?;
+    writeln!(doc, "```").into_dyn_result()?;
 
-    writeln!(doc, "> todo: example\n").into_dyn_result()?;
+    writeln!(doc, "## Table\n").into_dyn_result()?;
 
     writeln!(doc, "| Property | Value |").into_dyn_result()?;
     writeln!(doc, "| --- | --- |").into_dyn_result()?;
@@ -169,4 +177,85 @@ fn write_properties<S: Shape>(
     }
 
     Ok(())
+}
+
+fn generate_shape_example<S: Shape>() -> Node<'static> {
+    let mut shape = S::default();
+
+    Node {
+        doc_comments: vec![" doc comment line".with_dummy_span()],
+        node_type: Ident::new_no_span(S::NODE_TYPE.name()),
+        name: Ident::new_no_span("Example"),
+        repeat: shape.repeat().map(|_| {
+            Repeat {
+                source: device_driver_parser::RepeatSource::Count(NonZero::new(8).unwrap()),
+                stride: 4.with_dummy_span(),
+            }
+            .with_dummy_span()
+        }),
+        type_specifier: shape.base_type().is_some().then(|| {
+            TypeSpecifier {
+                base_type: BaseType::Uint.with_dummy_span(),
+                use_try: true,
+                conversion: shape.conversion_type().map(|_| {
+                    device_driver_parser::TypeConversion::Reference(Ident::new_no_span("Foo"))
+                }),
+            }
+            .with_dummy_span()
+        }),
+        short_properties: S::supported_properties()
+            .iter()
+            .filter_map(|p| {
+                p.name
+                    .as_short()
+                    .map(|_| p.allowed_expression_types[0].clone().with_dummy_span())
+            })
+            .collect(),
+        properties: S::supported_properties()
+            .iter()
+            .filter_map(|p| match p.name {
+                PropertyName::Exact(name) => Some(
+                    Property {
+                        doc_comments: p
+                            .supports_doc_comments
+                            .then_some(" doc comment line".with_dummy_span())
+                            .into_iter()
+                            .collect(),
+                        name: Ident::new_no_span(name),
+                        expression: p.allowed_expression_types[0].clone().with_dummy_span(),
+                    }
+                    .with_dummy_span(),
+                ),
+                PropertyName::Any => Some(
+                    Property {
+                        doc_comments: p
+                            .supports_doc_comments
+                            .then_some(" doc comment line".with_dummy_span())
+                            .into_iter()
+                            .collect(),
+                        name: Ident::new_no_span("Any"),
+                        expression: p.allowed_expression_types[0].clone().with_dummy_span(),
+                    }
+                    .with_dummy_span(),
+                ),
+                PropertyName::Short(_) => None,
+            })
+            .collect(),
+        sub_nodes: S::supported_subnodes()
+            .unwrap_or_default()
+            .iter()
+            .map(|node_type| Node {
+                doc_comments: Vec::new(),
+                node_type: Ident::new_no_span(node_type.name()),
+                name: Ident::new_no_span("node"),
+                repeat: None,
+                type_specifier: None,
+                short_properties: Vec::new(),
+                properties: Vec::new(),
+                sub_nodes: Vec::new(),
+                span: Span::empty(),
+            })
+            .collect(),
+        span: Span::empty(),
+    }
 }
