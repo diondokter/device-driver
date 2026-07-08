@@ -20,8 +20,8 @@
     - [Extern](./v2/language-extern.md)
     - [Field](./v2/language-field.md)
   - [Compilation](./v2/compilation.md)
-  - [Runtime]()
-    - [Rust]()
+  - [Runtime](./v2/runtime.md)
+    - [Rust](./v2/runtime-rust.md)
 
 - [V1]()
   - [Intro](./v1/intro.md)
