@@ -23,4 +23,4 @@ let bar = reg.bar()?;
 
 {{#include ../gen-docs/mir-shapes/field.md}}
 
-[fieldset]: ./reference-language-fieldset.md
+[fieldset]: ./language-fieldset.md

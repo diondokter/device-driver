@@ -14,4 +14,4 @@ An enum with a default value will collapse the value into the default if the val
 
 {{#include ../gen-docs/mir-shapes/enum.md}}
 
-[field]: ./reference-language-field.md
+[field]: ./language-field.md

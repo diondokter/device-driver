@@ -23,11 +23,11 @@ let (foo, bar) = device
 
 {{#include ../gen-docs/mir-shapes/device.md}}
 
-[manifest]: ./reference-language-manifest.md
-[block]: ./reference-language-block.md
-[register]: ./reference-language-register.md
-[command]: ./reference-language-command.md
-[buffer]: ./reference-language-buffer.md
-[fieldset]: ./reference-language-fieldset.md
-[enum]: ./reference-language-enum.md
-[extern]: ./reference-language-extern.md
+[manifest]: ./language-manifest.md
+[block]: ./language-block.md
+[register]: ./language-register.md
+[command]: ./language-command.md
+[buffer]: ./language-buffer.md
+[fieldset]: ./language-fieldset.md
+[enum]: ./language-enum.md
+[extern]: ./language-extern.md

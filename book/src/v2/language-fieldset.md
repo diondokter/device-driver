@@ -30,6 +30,6 @@ let lowest_byte_inverted = all_ones ^ lowest_byte_set;
 
 {{#include ../gen-docs/mir-shapes/fieldset.md}}
 
-[field]: ./reference-language-field.md
-[register]: ./reference-language-register.md
-[command]: ./reference-language-command.md
+[field]: ./language-field.md
+[register]: ./language-register.md
+[command]: ./language-command.md
