@@ -7,7 +7,6 @@
   - [Intro](./v2/intro.md)
   - [Tutorial TMP108]() # simple registers
   - [Tutorial S2-LP]() # registers, commands and buffers
-  - [Compilation](./v2/compilation.md)
   - [Language](./v2/language.md)
     - [Tokens & AST](./v2/language-tokens_ast.md)
     - [Manifest](./v2/language-manifest.md)
@@ -20,6 +19,7 @@
     - [Enum](./v2/language-enum.md)
     - [Extern](./v2/language-extern.md)
     - [Field](./v2/language-field.md)
+  - [Compilation](./v2/compilation.md)
   - [Runtime]()
     - [Rust]()
 

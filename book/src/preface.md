@@ -53,10 +53,10 @@ If you're new, then the most recent version is recommended.
 
 The book has sections on usage, tutorials and language specs.
 
-The addendums contain mostly provide useful background information.
+The addendums contain useful background information.
 
 > [!CAUTION]
-> It's hard to keep book like this up-to-date with reality. Small errors might creep in despite my best effort.
+> It's hard to keep a book like this up-to-date with reality. Small errors might creep in despite my best effort.
 > If you do find something out of place, missing or simply wrong, please open an issue or PR, even if it's just for a typo! I'd really appreciate it and helps out everyone.
 
 ## Known drivers using the toolkit:

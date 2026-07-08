@@ -58,7 +58,7 @@ let mut device = MyDevice::new(device_interface);
 device.foo().write(|reg| reg.set_value_1(GeneratedEnum::B)).unwrap();
 ```
 
-Instantly we get a nice and familiar API that is well documented. There's a bunch more features to discover like using YAML as the input and a bunch of analysis steps, so read on!
+Instantly we get a nice and familiar API that is well documented.
 
 ## The goal
 
