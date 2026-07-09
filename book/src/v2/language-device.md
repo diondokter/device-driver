@@ -12,10 +12,10 @@ let mut device = MyDevice::new(DeviceInterface::new());
 // Use the operations defined on the device
 device.foo().read()?;
 
-// When supported, start multi-operations on the device (or any block)
+// When supported, start bulk operations on the device (or any block)
 use device_driver::Block; // Must import trait
 let (foo, bar) = device
-    .multi_read()
+    .bulk_read()
     .with(|d| d.foo().plan())
     .with(|d| d.bar().plan())
     .execute()?;

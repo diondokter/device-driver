@@ -155,7 +155,7 @@ device.simple_command().dispatch()?;
 
 // Operate on registers in bulk
 let (foo, bar) = device
-    .multi_read()
+    .bulk_read()
     .with(|d| d.foo().plan())
     .with(|d| d.bar().plan())
     .execute()?;

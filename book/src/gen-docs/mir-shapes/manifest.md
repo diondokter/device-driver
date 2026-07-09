@@ -86,7 +86,7 @@ When specified, the registers are assumed to share an address space:
 - With the `mapped` option, that address space is a memory-mapped space where if register `A` has address `X` and is `Y` bytes big, then register `B` (if it exists) will have the address `X+Y`.
 - With the `indexed` option, that address space has one register per number where if object `A` has address `X`, then object `B` (if it exists) will have the address `X+1`.
 
-If this value is specified, then it permits multi-register reads and writes.
+If this value is specified, then it permits bulk register reads and writes.
 #### Info
 - required: `no`
 - multiple allowed: `no`

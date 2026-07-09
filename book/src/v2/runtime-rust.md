@@ -55,7 +55,7 @@ When available, bulk operations must be planned. Start a bulk operation by calli
 ```rust
 let (foo, bar) = device
     // Start a bulk read
-    .multi_read()
+    .bulk_read()
     // Plan to read the foo register
     .with(|d| d.foo().plan())
     // Plan to read the bar register after that
