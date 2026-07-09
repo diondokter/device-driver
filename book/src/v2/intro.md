@@ -87,3 +87,22 @@ If you're new, head over to one of the tutorial sections.
 If you're looking for a language detail, go see one of the reference sections.
 
 Looking at existing drivers and examples can also be very helpful.
+
+## Future plans
+
+There are many more features this toolkit wishes to support.
+To get an up-to-date overview, check out the [issue tracker](https://github.com/diondokter/device-driver/issues).
+
+Zooming out, the plans can be summarized to:
+- LSP support for DDSL
+- Output to typst/pdf/html for auto docs
+- Add support for other languages like C/C++/Zig/TinyGo/MicroPython
+- A simple general programming language in DDSL
+  - Allow interface definitions
+  - Allow simple routines to be implemented in DDSL (for init, sleep, read data)
+  - Allow the implemention of statemachines
+- Support mixed read-write transactions
+- Add string/byte array base types
+- Add templates
+
+If you feel strongly about any of this and have ideas/suggestions, feel free to reach out on the appropriate issues or in the matrix chat room.

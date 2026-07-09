@@ -4,7 +4,17 @@ language = "en"
 src = "src"
 title = "device-driver-book"
 
+[rust]
+edition = "2024"
+
 [output.html]
 git-repository-url = "https://github.com/diondokter/device-driver"
 git-repository-icon = "fas-code"
 additional-js = ["ddsl.highlight.js"]
+
+[output.html.playground]
+editable = false         # allows editing the source code
+copyable = true          # include the copy button for copying code snippets
+copy-js = true           # includes the JavaScript for the code editor
+line-numbers = false     # displays line numbers for editable code
+runnable = false         # displays a run button for rust code

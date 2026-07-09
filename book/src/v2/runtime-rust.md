@@ -65,4 +65,11 @@ let (foo, bar) = device
 ```
 The runtime checks if the plan is allowed. Registers must follow each other up according to the address mode rules.
 
-Bulk operations are possible for repeated registers too.
+Bulk operations are possible for repeated registers too:
+```rust
+device.foo().write_array_at(0, |[a, b, c]| {
+    a.set_bar(1);
+    b.set_bar(2);
+    c.set_bar(3);
+})?;
+```
