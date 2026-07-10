@@ -457,6 +457,13 @@ impl From<Quux> for u8 {
         }
     }
 }
+impl ::device_driver::EnumIndex for Quux {
+    #[track_caller]
+    fn index(&self) -> i32 {
+        let index = u8::from(*self);
+        index.try_into().unwrap()
+    }
+}
 #[doc(alias = "quux")]
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
@@ -494,6 +501,13 @@ impl From<QuuxDup3> for u8 {
         }
     }
 }
+impl ::device_driver::EnumIndex for QuuxDup3 {
+    #[track_caller]
+    fn index(&self) -> i32 {
+        let index = u8::from(*self);
+        index.try_into().unwrap()
+    }
+}
 #[doc(alias = "Wheee2")]
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
@@ -520,6 +534,13 @@ impl From<Wheee2Dup6> for u8 {
         match val {
             Wheee2Dup6::A => 0,
         }
+    }
+}
+impl ::device_driver::EnumIndex for Wheee2Dup6 {
+    #[track_caller]
+    fn index(&self) -> i32 {
+        let index = u8::from(*self);
+        index.try_into().unwrap()
     }
 }
 compile_error!("The device driver input has errors that need to be solved!");
