@@ -72,6 +72,16 @@ device_driver::compile!(
                 address: 3,
                 fields: FooFields,
             },
+
+            enum Bar -> u8 {
+                A: _,
+                B: _,
+            },
+            /// This is the Foo register
+            register FooEnumRepeated[Bar stride 3] {
+                address: 100,
+                fields: FooFields,
+            },
         }
     "
 );

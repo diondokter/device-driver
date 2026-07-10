@@ -1347,13 +1347,18 @@ impl<const END: usize, const START: usize, const STRIDE: i32> ArrayRepeating
 }
 
 #[doc(hidden)]
-pub struct EnumRepeat<T, const STRIDE: i32>(PhantomData<T>);
-impl<T: Clone + Into<i32>, const STRIDE: i32> Repeating for EnumRepeat<T, STRIDE> {
+pub trait EnumIndex {
+    fn index(&self) -> i32;
+}
+
+#[doc(hidden)]
+pub struct EnumRepeat<T: Clone + EnumIndex, const STRIDE: i32>(PhantomData<T>);
+impl<T: Clone + EnumIndex, const STRIDE: i32> Repeating for EnumRepeat<T, STRIDE> {
     type Index = T;
 
     #[inline]
     fn calc_address<AddressType: Address>(start: AddressType, index: Self::Index) -> AddressType {
-        let offset = index.into() * STRIDE;
+        let offset = index.index() * STRIDE;
         start.add(offset)
     }
 }
