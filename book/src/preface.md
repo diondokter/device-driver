@@ -82,5 +82,6 @@ It's nice to have examples:
 - [ON Semiconductor CAT25040 4kbit SPI EEPROM](https://github.com/cesardtamayo/cat25040)
 - [TI BQ27441 Battery Fuel Gauge IC](https://github.com/leftger/bq27441)
 - [TI BQ25887 2-Cell Battery Charger IC](https://github.com/leftger/bq25887)
+- [TI ADC Bus Expanders](https://github.com/activexray/ti-adc-expander)
 
 Feel free to add to this list!
