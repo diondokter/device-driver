@@ -22,6 +22,8 @@
   - [Compilation](./v2/compilation.md)
   - [Runtime](./v2/runtime.md)
     - [Rust](./v2/runtime-rust.md)
+  - [API]()
+    - [Rust](./v2/api-rust.md)
 
 - [V1]()
   - [Intro](./v1/intro.md)
