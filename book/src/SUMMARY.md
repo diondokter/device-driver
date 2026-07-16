@@ -5,7 +5,7 @@
 ---
 - [V2]()
   - [Intro](./v2/intro.md)
-  - [Tutorial TMP108]() # simple registers
+  - [Tutorial YM3812 (OPL2)](./v2/tutorial-ym3812.md) # simple registers
   - [Tutorial S2-LP]() # registers, commands and buffers
   - [Language](./v2/language.md)
     - [Tokens & AST](./v2/language-tokens_ast.md)
