@@ -100,7 +100,7 @@ Zooming out, the plans can be summarized to:
 - A simple general programming language in DDSL
   - Allow interface definitions
   - Allow simple routines to be implemented in DDSL (for init, sleep, read data)
-  - Allow the implemention of statemachines
+  - Allow the implementation of statemachines
 - Support mixed read-write transactions
 - Add string/byte array base types
 - Add templates

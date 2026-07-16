@@ -1,5 +1,5 @@
 #![allow(async_fn_in_trait)]
-// #![cfg_attr(not(test), no_std)]
+#![cfg_attr(not(test), no_std)]
 #![warn(missing_docs)]
 #![doc = include_str!(concat!("../", env!("CARGO_PKG_README")))]
 

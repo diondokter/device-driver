@@ -5,7 +5,7 @@ It consists of only a few building blocks: Nodes, properties and expressions.
 
 ## Node
 
-The [node](./language-tokens_ast.html#node) is the foundation. A ddsl file must have one root node and everything else must be defined in it. A node defines an object and in many cases these terms are interchangable. (It's a node in the AST and an object in the MIR)
+The [node](./language-tokens_ast.html#node) is the foundation. A ddsl file must have one root node and everything else must be defined in it. A node defines an object and in many cases these terms are interchangeable. (It's a node in the AST and an object in the MIR)
 
 Nodes have a node type and a name. Additionally a node may have a [repeat](./language-tokens_ast.html#repeat) specifier, ['short' properties](./language-tokens_ast.html#simple-expression) and a [type specifier](./language-tokens_ast.html#type-specifier) outside of the node body and ['long' properties](language-tokens_ast.html#property) and subnodes in the [node body](./language-tokens_ast.html#node-body).
 
