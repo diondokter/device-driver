@@ -32,6 +32,14 @@ pub enum Bar { ... }
 > [!TIP]
 > To easily inspect the generated code, visit the [playground](https://device-driver.com/playground)!
 
+> [!CAUTION]
+> The callable API is bigger than the public documented API. Use it at your own risk!
+> Private/unstable APIs contain `#[doc(hidden)]` attributes and are meant for internal use only.
+>
+> If you're unsure, feel free to create an issue or to ask about it in the chat room.
+> 
+> _TODO: Do a pass over this_
+
 ## Operations
 
 All operations generate functions that return the various `Operation` types. Consult the rust docs for the exact available API:
