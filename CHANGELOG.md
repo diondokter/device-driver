@@ -2,19 +2,12 @@
 
 ### Unreleased
 
-- Internal numbers are now `i128` instead of `i64`. This also added room to add the `U64` integer as available address type option
-- Fixed regression introduced in 1.0.5 where an enum that has both a default and a catch-all would use the default value when converted from a number instead the catch-all like is documented
-- Added KDL input support, but not stable yet. Only use experimentally for now.
-- FieldSets don't know about reset values anymore. This can now be accessed through the RegisterOperation you can obtain from the device struct.
-- FieldSets & Enums can no longer have the same name as another object (since they're full objects of their own now)
-- FieldSets are no longer defined in a submodule `field_sets`. They're now put in the same root as the reset of the generated code.
-- Removed the 'read_all_registers' functions and the accompanying enums
-- Updated `convert_case` to 0.8
-- Updated `defmt` to 1.0.1. The crate feature is now called `defmt` instead of `defmt-03`
-- device-driver-generation is renamed to device-driver-compiler
-- device-driver-cli's bin is renamed to `ddc`
-- Changed the cli/ddc arguments
-- Repeats can use enums now instead of a count
+- V2 of device-driver
+  - Full changelog to come
+
+### 1.0.9 (29-04-26)
+
+- Fixed panic when using an integer reset value on a register larger than 128 bits. Now you get an error telling you to specify the reset value as an array.
 
 ### 1.0.8 (06-03-25)
 
