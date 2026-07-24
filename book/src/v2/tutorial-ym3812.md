@@ -225,6 +225,55 @@ field foo 0 -> _ as try enum _ { }
 
 #### Channel settings
 
+There are 3 registers per channel we need to be able to program.
+These control the frequency, whether they're on or off and how the two operators are connected.
+
+We could define each individually and that'd work ok. But we're in the business of providing the best API to our users as possible. So we're going to combine two powerful features: [`repeats`](./language-tokens_ast.md#repeat) and [`blocks`](./language-block.md).
+
+##### Repeats
+
+A repeat can be used to, well, repeat an object multiple times. It's kind of like an array, so much so that the syntax looks like it too.
+
+We can define a repeat using brackets, like this:
+```ddsl
+register foo[4 stride 2] { ... }
+```
+Here we've defined a register that is repeated four times. And with each repeat, the address is incremented by two. So if the start address is 10, then this register is present on addresses 10, 12, 14 and 16.
+
+Repeats can use enums too instead of a length:
+```ddsl
+enum bar { a: 2, b: 3, c: 5, d: 7 },
+register foo[bar stride 2] { ... }
+```
+
+This is incredibly useful for when there are gaps in the index.
+The stride is a multiplier on the values of the enum.
+
+##### Blocks
+
+A block is an object that groups subobjects together. And that's very useful in our case because we can group the channel settings together.
+
+```ddsl
+block foo {
+    address-offset: 10,
+
+    register bar {
+        address: 10,
+        // ...
+    },
+    register quux {
+        address: 11,
+        // ...
+    }
+}
+```
+Here we see registers `bar` and `quux` are part of block `foo`.
+Important to know is that the block can specify an address offset which is then added to all child objects. So in reality `bar` and `quux` have addresses 20 and 21. It's up to you to decide what makes sense. You can always set the offset to 0 if you want to use the global addresses.
+
+##### Combined
+
+todo
+
 #### Operator settings
 
 ### Rust crate
