@@ -288,7 +288,7 @@ where
     /// If no reset value is specified for this register, this function is the same as [`Self::write_with_zero`].
     #[track_caller]
     pub fn write_async(
-        &mut self,
+        self,
         f: impl FnOnce(&mut RegisterFs),
     ) -> impl Future<Output = Result<(), <B::Interface as RegisterInterfaceBase>::Error>>
     where
@@ -313,7 +313,7 @@ where
     /// If no reset value is specified for this register, this function is the same as [`Self::write_with_zero_at_async`].
     #[track_caller]
     pub fn write_at_async(
-        &mut self,
+        self,
         index: Repeat::Index,
         f: impl FnOnce(&mut RegisterFs),
     ) -> impl Future<Output = Result<(), <B::Interface as RegisterInterfaceBase>::Error>>
@@ -341,7 +341,7 @@ where
     /// If no reset value is specified for this register, this function is the same as [`Self::write_array_with_zero_at_async`].
     #[track_caller]
     pub fn write_array_at_async<const N: usize>(
-        &mut self,
+        self,
         index: Repeat::Index,
         f: impl FnOnce(&mut [RegisterFs; N]),
     ) -> impl Future<Output = Result<(), <B::Interface as RegisterInterfaceBase>::Error>>
@@ -449,7 +449,7 @@ where
     /// The closure is given the write object initialized to all zero.
     #[track_caller]
     pub fn write_with_zero_async(
-        &mut self,
+        self,
         f: impl FnOnce(&mut RegisterFs),
     ) -> impl Future<Output = Result<(), <B::Interface as RegisterInterfaceBase>::Error>>
     where
@@ -473,7 +473,7 @@ where
     /// The closure is given the write object initialized to all zero.
     #[track_caller]
     pub fn write_with_zero_at_async(
-        &mut self,
+        self,
         index: Repeat::Index,
         f: impl FnOnce(&mut RegisterFs),
     ) -> impl Future<Output = Result<(), <B::Interface as RegisterInterfaceBase>::Error>>
@@ -500,7 +500,7 @@ where
     /// The closure is given the write object initialized to all zero.
     #[track_caller]
     pub fn write_array_with_zero_at_async<const N: usize>(
-        &mut self,
+        self,
         index: Repeat::Index,
         f: impl FnOnce(&mut [RegisterFs; N]),
     ) -> impl Future<Output = Result<(), <B::Interface as RegisterInterfaceBase>::Error>>
@@ -592,7 +592,7 @@ where
     /// Read the register from the device
     #[track_caller]
     pub fn read_async(
-        &mut self,
+        self,
     ) -> impl Future<Output = Result<RegisterFs, <B::Interface as RegisterInterfaceBase>::Error>>
     where
         Repeat: NotRepeating,
@@ -612,7 +612,7 @@ where
 
     /// Read the register from the device at a given index
     pub fn read_at_async(
-        &mut self,
+        self,
         index: Repeat::Index,
     ) -> impl Future<Output = Result<RegisterFs, <B::Interface as RegisterInterfaceBase>::Error>>
     where
@@ -635,7 +635,7 @@ where
 
     /// Read an array of registers from the device at a given index and length
     pub fn read_array_at_async<const N: usize>(
-        &mut self,
+        self,
         index: Repeat::Index,
     ) -> impl Future<Output = Result<[RegisterFs; N], <B::Interface as RegisterInterfaceBase>::Error>>
     where
@@ -767,7 +767,7 @@ where
     /// The result is then written back to the device.
     #[track_caller]
     pub fn modify_async(
-        &mut self,
+        self,
         f: impl FnOnce(&mut RegisterFs),
     ) -> impl Future<Output = Result<(), <B::Interface as RegisterInterfaceBase>::Error>>
     where
@@ -798,7 +798,7 @@ where
     /// The result is then written back to the device.
     #[track_caller]
     pub fn modify_at_async(
-        &mut self,
+        self,
         index: Repeat::Index,
         f: impl FnOnce(&mut RegisterFs),
     ) -> impl Future<Output = Result<(), <B::Interface as RegisterInterfaceBase>::Error>>
@@ -831,7 +831,7 @@ where
     /// The result is then written back to the device.
     #[track_caller]
     pub fn modify_array_at_async<const N: usize>(
-        &mut self,
+        self,
         index: Repeat::Index,
         f: impl FnOnce(&mut [RegisterFs; N]),
     ) -> impl Future<Output = Result<(), <B::Interface as RegisterInterfaceBase>::Error>>
