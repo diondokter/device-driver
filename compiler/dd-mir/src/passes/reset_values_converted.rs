@@ -18,7 +18,7 @@ use device_driver_diagnostics::{
 /// Checks if the reset values of registers are valid.
 /// Also converts integer values to the array representation using the correct bit and byte order.
 ///
-/// For the array representation, the rule is that the input must have the same spec as the bit and byte order.
+/// For the array representation, the rule is that the input must have the same spec as the byte order.
 /// The reset values are left with the specified bit order and byte order.
 ///
 /// This pass assumes all register have a valid byte order, and so depends on [`super::byte_order_specified::run_pass`]

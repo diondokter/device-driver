@@ -4,7 +4,7 @@ use device_driver_diagnostics::{DynError, Metadata, ResultExt};
 use std::{io::Write, path::PathBuf, process::ExitCode};
 
 #[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
+#[command(version, about, long_about = None, bin_name("ddc"))]
 struct Args {
     #[command(subcommand)]
     command: Command,
@@ -14,12 +14,13 @@ struct Args {
 enum Command {
     /// Compile DDSL to the target output
     Build(BuildArgs),
-    /// Generate docs
+    /// Generate docs about the compiler
     #[cfg(feature = "gen-docs")]
     GenDocs(GenDocsArgs),
 }
 
 #[derive(Parser, Debug)]
+#[command(no_binary_name = true, bin_name = "")]
 struct BuildArgs {
     /// Path to the input file.
     #[arg(short = 's', long = "source", value_name = "FILE", global = true)]
@@ -32,6 +33,7 @@ struct BuildArgs {
 }
 
 #[derive(Parser, Debug)]
+#[command(no_binary_name = true, bin_name = "")]
 struct GenDocsArgs {
     /// Path to output folder location
     #[arg(short = 'o', long = "output", value_name = "DIR")]
@@ -115,6 +117,40 @@ fn build(args: BuildArgs) -> Result<ExitCode, DynError> {
 
 #[cfg(feature = "gen-docs")]
 fn gen_docs(args: GenDocsArgs) -> Result<ExitCode, DynError> {
+    use clap::CommandFactory;
+
+    let cli_folder = args.output_path.join("options");
+    std::fs::create_dir_all(&cli_folder).with_message(|| "creating options folder")?;
+    std::fs::write(
+        cli_folder.join("cli-help.txt"),
+        Args::command().render_long_help().to_string(),
+    )
+    .with_message(|| "writing cli-help file")?;
+    std::fs::write(
+        cli_folder.join("cli-build-help.txt"),
+        BuildArgs::command().render_long_help().to_string(),
+    )
+    .with_message(|| "writing cli-gen_docs-help")?;
+    std::fs::write(
+        cli_folder.join("cli-gen_docs-help.txt"),
+        GenDocsArgs::command().render_long_help().to_string(),
+    )
+    .with_message(|| "writing cli-gen_docs-help")?;
+    std::fs::write(
+        cli_folder.join("compile-help.txt"),
+        device_driver_core::CompileOptions::command()
+            .render_long_help()
+            .to_string(),
+    )
+    .with_message(|| "writing compile-help")?;
+    std::fs::write(
+        cli_folder.join("rust-help.txt"),
+        device_driver_core::RustCodegenOptions::command()
+            .render_long_help()
+            .to_string(),
+    )
+    .with_message(|| "writing rust-help")?;
+
     device_driver_core::gen_docs(&args.output_path).map(|()| ExitCode::SUCCESS)
 }
 

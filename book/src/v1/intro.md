@@ -62,7 +62,7 @@ To help you do less of the boring work and to create a higher quality driver at 
 
 These goals are met by:
 - Using a dense and precise input language
-- Having many options do deal with byte and bit ordering
+- Having many options to deal with byte and bit ordering
 - Having analysis steps to decrease the chance of common mistakes
 - Separating the interface to the device from the definitions
 - Allowing you to put docs on pretty much anything

@@ -39,13 +39,13 @@ pub trait Block: Sized {
     /// With it you can do out-of-band operations that aren't defined in the generated code.
     fn interface(&mut self) -> &mut Self::Interface;
 
-    /// Start a multi-read transaction
+    /// Start a bulk-read transaction
     ///
-    /// You can chain reads by calling [`register::MultiRegisterOperation::with`].
-    /// Once chained, call [`register::MultiRegisterOperation::execute`] to perform the read.
-    fn multi_read(
+    /// You can chain reads by calling [`register::BulkRegisterOperation::with`].
+    /// Once chained, call [`register::BulkRegisterOperation::execute`] to perform the read.
+    fn bulk_read(
         &mut self,
-    ) -> register::MultiRegisterOperation<
+    ) -> register::BulkRegisterOperation<
         '_,
         Self,
         <Self::Interface as RegisterInterfaceBase>::AddressType,
@@ -56,7 +56,7 @@ pub trait Block: Sized {
         Self::Interface: RegisterInterfaceBase,
         Self::RegisterAddressMode: AddressMode,
     {
-        register::MultiRegisterOperation {
+        register::BulkRegisterOperation {
             block: self,
             start_address: None,
             next_address: None,
@@ -65,13 +65,13 @@ pub trait Block: Sized {
         }
     }
 
-    /// Start a multi-write transaction
+    /// Start a bulk-write transaction
     ///
-    /// You can chain writes by calling [`register::MultiRegisterOperation::with`].
-    /// Once chained, call [`register::MultiRegisterOperation::execute`] to perform the read.
-    fn multi_write(
+    /// You can chain writes by calling [`register::BulkRegisterOperation::with`].
+    /// Once chained, call [`register::BulkRegisterOperation::execute`] to perform the read.
+    fn bulk_write(
         &mut self,
-    ) -> register::MultiRegisterOperation<
+    ) -> register::BulkRegisterOperation<
         '_,
         Self,
         <Self::Interface as RegisterInterfaceBase>::AddressType,
@@ -82,7 +82,7 @@ pub trait Block: Sized {
         Self::Interface: RegisterInterfaceBase,
         Self::RegisterAddressMode: AddressMode,
     {
-        register::MultiRegisterOperation {
+        register::BulkRegisterOperation {
             block: self,
             start_address: None,
             next_address: None,
@@ -91,13 +91,13 @@ pub trait Block: Sized {
         }
     }
 
-    /// Start a multi-modify transaction
+    /// Start a bulk-modify transaction
     ///
-    /// You can chain modifies by calling [`register::MultiRegisterOperation::with`].
-    /// Once chained, call [`register::MultiRegisterOperation::execute`] to perform the read.
-    fn multi_modify(
+    /// You can chain modifies by calling [`register::BulkRegisterOperation::with`].
+    /// Once chained, call [`register::BulkRegisterOperation::execute`] to perform the read.
+    fn bulk_modify(
         &mut self,
-    ) -> register::MultiRegisterOperation<
+    ) -> register::BulkRegisterOperation<
         '_,
         Self,
         <Self::Interface as RegisterInterfaceBase>::AddressType,
@@ -108,7 +108,7 @@ pub trait Block: Sized {
         Self::Interface: RegisterInterfaceBase,
         Self::RegisterAddressMode: AddressMode,
     {
-        register::MultiRegisterOperation {
+        register::BulkRegisterOperation {
             block: self,
             start_address: None,
             next_address: None,
@@ -266,7 +266,7 @@ impl Address for i64 {
 }
 
 #[diagnostic::on_unimplemented(
-    message = "no `register-address-mode` is specified in the driver, so multi-register operations are not possible",
+    message = "no `register-address-mode` is specified in the driver, so bulk register operations are not possible",
     label = "not supported for this driver",
     note = "if you are the author of the driver, specify `register-address-mode` in the device config to enable this feature if the device supports it",
     note = "not all devices support this feature"
