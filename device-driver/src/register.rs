@@ -208,7 +208,7 @@ where
     /// If no reset value is specified for this register, this function is the same as [`Self::write_with_zero`].
     #[track_caller]
     pub fn write(
-        &mut self,
+        self,
         f: impl FnOnce(&mut RegisterFs),
     ) -> Result<(), <B::Interface as RegisterInterfaceBase>::Error>
     where
@@ -232,7 +232,7 @@ where
     /// If no reset value is specified for this register, this function is the same as [`Self::write_with_zero_at`].
     #[track_caller]
     pub fn write_at(
-        &mut self,
+        self,
         index: Repeat::Index,
         f: impl FnOnce(&mut RegisterFs),
     ) -> Result<(), <B::Interface as RegisterInterfaceBase>::Error>
@@ -257,7 +257,7 @@ where
     /// If no reset value is specified for this register, this function is the same as [`Self::write_array_with_zero_at`].
     #[track_caller]
     pub fn write_array_at<const N: usize>(
-        &mut self,
+        self,
         index: Repeat::Index,
         f: impl FnOnce(&mut [RegisterFs; N]),
     ) -> Result<(), <B::Interface as RegisterInterfaceBase>::Error>
@@ -372,7 +372,7 @@ where
     /// The closure is given the write object initialized to all zero.
     #[track_caller]
     pub fn write_with_zero(
-        &mut self,
+        self,
         f: impl FnOnce(&mut RegisterFs),
     ) -> Result<(), <B::Interface as RegisterInterfaceBase>::Error>
     where
@@ -395,7 +395,7 @@ where
     /// The closure is given the write object initialized to all zero.
     #[track_caller]
     pub fn write_with_zero_at(
-        &mut self,
+        self,
         index: Repeat::Index,
         f: impl FnOnce(&mut RegisterFs),
     ) -> Result<(), <B::Interface as RegisterInterfaceBase>::Error>
@@ -419,7 +419,7 @@ where
     /// The closure is given the write object initialized to all zero.
     #[track_caller]
     pub fn write_array_with_zero_at<const N: usize>(
-        &mut self,
+        self,
         index: Repeat::Index,
         f: impl FnOnce(&mut [RegisterFs; N]),
     ) -> Result<(), <B::Interface as RegisterInterfaceBase>::Error>
@@ -528,7 +528,7 @@ where
 
     /// Read the register from the device
     #[track_caller]
-    pub fn read(&mut self) -> Result<RegisterFs, <B::Interface as RegisterInterfaceBase>::Error>
+    pub fn read(self) -> Result<RegisterFs, <B::Interface as RegisterInterfaceBase>::Error>
     where
         Repeat: NotRepeating,
         B::Interface: RegisterInterface,
@@ -545,7 +545,7 @@ where
     /// Read the register from the device at a given index
     #[track_caller]
     pub fn read_at(
-        &mut self,
+        self,
         index: Repeat::Index,
     ) -> Result<RegisterFs, <B::Interface as RegisterInterfaceBase>::Error>
     where
@@ -568,7 +568,7 @@ where
     /// Read an array of registers from the device at a given index and length
     #[track_caller]
     pub fn read_array_at<const N: usize>(
-        &mut self,
+        self,
         index: Repeat::Index,
     ) -> Result<[RegisterFs; N], <B::Interface as RegisterInterfaceBase>::Error>
     where
@@ -665,7 +665,7 @@ where
     /// The result is then written back to the device.
     #[track_caller]
     pub fn modify(
-        &mut self,
+        self,
         f: impl FnOnce(&mut RegisterFs),
     ) -> Result<(), <B::Interface as RegisterInterfaceBase>::Error>
     where
@@ -696,7 +696,7 @@ where
     /// The result is then written back to the device.
     #[track_caller]
     pub fn modify_at(
-        &mut self,
+        self,
         index: Repeat::Index,
         f: impl FnOnce(&mut RegisterFs),
     ) -> Result<(), <B::Interface as RegisterInterfaceBase>::Error>
@@ -729,7 +729,7 @@ where
     /// The result is then written back to the device.
     #[track_caller]
     pub fn modify_array_at<const N: usize>(
-        &mut self,
+        self,
         index: Repeat::Index,
         f: impl FnOnce(&mut [RegisterFs; N]),
     ) -> Result<(), <B::Interface as RegisterInterfaceBase>::Error>
