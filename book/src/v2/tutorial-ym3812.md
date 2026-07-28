@@ -272,7 +272,75 @@ Important to know is that the block can specify an address offset which is then 
 
 ##### Combined
 
-todo
+For the driver we're writing, we could do a repeat on every channel register.
+But instead let's do the repeat on a block and put all channels settings in that block.
+That way it's nice and organized. Here's how it could be moddeled (with some added comments for explanations):
+
+```ddsl
+enum Channel {
+    C1: _, // Use auto assignment. This starts at 0
+    C2: _, // This variant is auto-assigned value 1
+    C3: _, // 2
+    C4: _,
+    C5: _,
+    C6: _,
+    C7: _,
+    C8: _,
+    C9: _,
+},
+
+// Create the block with the channel enum as the repeat
+// Each channel should offset the registers by 1, so we pick a stride of 1
+block ChannelGeneralSettings[Channel stride 1] {
+    // Let's not add a block offset so we can keep using the global addresses
+    // That simply makes most sense in this case
+    address-offset: 0,
+
+    register channel_settings0 {
+        address: 0xA0,
+        fields: fieldset _ {
+            size-bytes: 1,
+            field frequency_number_lsb 7:0,
+        }
+    },
+    register channel_settings1 {
+        address: 0xB0,
+        fields: fieldset _ {
+            size-bytes: 1,
+            /// Channel is voiced when set, silent when clear.
+            field key_on 5,
+            /// Octave (0-7). 0 is lowest, 7 is highest.
+            field block_number 4:2,
+            field frequency_number_high 1:0,
+        }
+    },
+    register channel_settings2 {
+        address: 0xC0,
+        fields: fieldset _ {
+            size-bytes: 1,
+            /// Feedback strength.  If all three bits are set to
+            /// zero, no feedback is present.  With values 1-7,
+            /// operator 1 will send a portion of its output back
+            /// into itself.  1 is the least amount of feedback,
+            /// 7 is the most.
+            field feedback 3:1,
+            field synthesis_type 0 -> _ as
+                /// How the operators interact.
+                /// Complex sounds are more easily created
+                /// if the algorithm is set to FrequencyModulation.
+                enum SynthesisType {
+                    /// Operator 1 modulates operator 2.
+                    /// In this case, operator 2 is the only one producing sound.
+                    FrequencyModulation: 0b0,
+                    /// Both operators produce sound directly.
+                    AdditiveSynthesis: 0b1,
+                },
+        }
+    },
+},
+```
+
+Note how the `SynthesisType` has doc comments on a newline. That's how you add a description to inline objects.
 
 #### Operator settings
 
