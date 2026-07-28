@@ -1,8 +1,12 @@
-# Device driver toolkit #![no_std] [![crates.io](https://img.shields.io/crates/v/device-driver.svg)](https://crates.io/crates/device-driver) [![Documentation](https://docs.rs/device-driver/badge.svg)](https://docs.rs/device-driver)
+# Device driver toolkit #![no_std]
+[![crates.io](https://img.shields.io/crates/v/device-driver.svg)](https://crates.io/crates/device-driver)
+[![crates.io](https://img.shields.io/crates/d/device-driver.svg)](https://crates.io/crates/device-driver)
+[![Documentation](https://docs.rs/device-driver/badge.svg)](https://docs.rs/device-driver)
+[![matrix](https://img.shields.io/matrix/device-driver:matrix.org)](https://matrix.to/#/#device-driver:matrix.org)
 
 > A toolkit to write better device drivers, faster.
 
-Read [the book](https://diondokter.github.io/device-driver/) to learn about how to use the project to build your own device drivers.
+Head over to [the website](https://device-driver.com/) to learn about how to use the project to build your own device drivers.
 
 ## Versions
 
@@ -19,8 +23,10 @@ This toolkit consists of these parts:
   - `device-driver-cli`: The source for the `ddc` binary, the traditional compiler executable for DDSL.
   - `device-driver-macros`: The compiler in Rust macro form.
   - `device-driver-wasm`: The compiler in wasm-bindgen form.
+  - The rest are crates that make up parts of the compiler, split up to improve compile times.
 - `website`: The source of the [device-driver.com](https://device-driver.com) website.
 - `tests`: A suite of tests that presents input files and compares the known output with the generated output.
+- `book`: The mdbook with docs hosted on the website.
 
 Of these, only the `device-driver` and `device-driver-cli` crates are considered public.
 
