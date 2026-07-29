@@ -289,9 +289,11 @@ enum Channel {
     C9: _,
 },
 
-// Create the block with the channel enum as the repeat
-// Each channel should offset the registers by 1, so we pick a stride of 1
 block ChannelGeneralSettings[Channel stride 1] {
+    //                      ^^^^^^^^^^^^^^^^^^
+    // Create the block with the channel enum as the repeat
+    // Each channel should offset the registers by 1, so we pick a stride of 1
+
     // Let's not add a block offset so we can keep using the global addresses
     // That simply makes most sense in this case
     address-offset: 0,
@@ -343,6 +345,88 @@ block ChannelGeneralSettings[Channel stride 1] {
 Note how the `SynthesisType` has doc comments on a newline. That's how you add a description to inline objects.
 
 #### Operator settings
+
+The way the operator settings are done, is a little crazy on this chip. Even the documentation we have calls that out!
+
+Remember, every channel has two operators.
+
+```txt
+{{#include ../assets/adlib_sb.txt:138:149}}
+```
+
+The channels have gaps in them and the second operator is always the first operator plus 3.
+
+So, let's use the same trick with the block and repeat again:
+
+```ddsl
+/// Enum to select the channel for the operator settings block
+enum ChannelOperators {
+    C1: 0x00,
+    C2: 0x01,
+    C3: 0x02,
+    C4: 0x08,
+    C5: 0x09,
+    C6: 0x0A,
+    C7: 0x10,
+    C8: 0x11,
+    C9: 0x12,
+},
+/// Each channel has two operators
+enum Operator {
+    O1: 0,
+    O2: 1, // We could pick 3 (stride 1) or 1 (stride 3)
+           // But this makes most logical sense
+},
+```
+
+Then we use these to create the block with the operator registers.
+I'll omit the register details since those clutter the code for this example.
+
+Different from the channel settings is that we need to have two repeats.
+To be consistent, we'll use the channel repeat on the block and then for each register we'll have a repeat to select the operator for that channel.
+
+```ddsl
+/// Block containing all operator settings for a channel
+block ChannelOperatorSettings[ChannelOperators stride 1] {
+    //                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    address-offset: 0,
+
+    register operator_settings0[Operator stride 3] {
+        //                     ^^^^^^^^^^^^^^^^^^^
+        address: 0x20,
+        fields: fieldset _ {
+            // ...
+        }
+    },
+    register operator_settings1[Operator stride 3] {
+        address: 0x40,
+        fields: fieldset _ {
+            // ...
+        }
+    },
+    register operator_settings2[Operator stride 3] {
+        address: 0x60,
+        fields: fieldset _ {
+            // ...
+        }
+    },
+    register operator_settings3[Operator stride 3] {
+        address: 0x80,
+        fields: fieldset _ {
+            // ...
+        }
+    },
+    register operator_settings4[Operator stride 3] {
+        address: 0xE0,
+        fields: fieldset _ {
+            // ...
+        }
+    },
+},
+```
+
+And that's it for the DDSL code! We can now actually start using it.
 
 ### Rust crate
 
