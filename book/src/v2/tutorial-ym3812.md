@@ -430,11 +430,268 @@ And that's it for the DDSL code! We can now actually start using it.
 
 ### Rust crate
 
-#### Setting up dependencies
+Let's turn this all into a driver we can use from Rust!
+
+The best way to do it, is to make it into its own crate. We want to make it usable for embedded use, so we'll make it no-std and to make it portable, we'll use the embedded-hal traits.
+
+#### Setting up the crate
+
+We can make a crate using cargo:
+
+```sh
+cargo new ym3812 --lib
+cd ym3812
+```
+
+There's two styles in which we can architect the crate:
+- Using the device-driver compile macro
+  - This is the easiest way to use device-driver and makes sense during development
+  - Downside is that the device-driver compiler becomes a dependency
+- Using the cli to generate rust code ahead of time
+  - When you're done with your driver and ready to publish, you might want to convert your crate to this style
+  - Downside is that it's a little more setup and your generated rust code can be out of sync with your ddsl
+
+For this tutorial, we'll set up for using the compile macro.
+
+Now that we've got our crate, we should a couple of things:
+- Place our ddsl file in the crate root. Let's call it `ym3812.ddsl`, but you can call it anything.
+- Add the required dependencies:
+  ```sh
+  # The macros feature enables the compile macro
+  cargo add device-driver --features macros
+  cargo add embedded-hal
+  # Only required for async drivers
+  cargo add embedded-hal-async
+  ``` 
+- Add a build script. This will make sure the crate will be recompiled when the ddsl is changed:
+  ```rust
+  fn main() {
+      println!("cargo:rebuild-if-changed=ym3812.ddsl");
+  }
+  ```
 
 #### Using the macro
 
+Typically I like to make a separate module to put the driver definitions in and call it something like `ll` for low-level.
+So let's do that!
+
+```rust
+// lib.rs
+
+mod ll;
+```
+
+To compile the ddsl code, simply use the compile macro:
+```rust
+// ll.rs
+
+device_driver::compile!(
+    manifest: "ym3812.ddsl",
+);
+```
+
+This will put all of the generated code at the site of the macro call.
+
+
 #### Creating the interface
+
+Device-driver doesn't know how to talk with the device, so we need to teach it that.
+With Rust we've got traits for it!
+
+Every type of operation has its own traits. We've only defined registers, so we only need to implement the `RegisterInterface` and/or `AsyncRegisterInterface` for the interface type we're going to make.
+
+If the blocking version is implemented, then blocking register reads and writes will be supported. Same with the async version. For this tutorial we'll only implement the async version.
+
+Our interface is just a struct, so let's create it with all the IO it needs:
+```rust
+// ll.rs
+
+use embedded_hal::digital::OutputPin;
+use embedded_hal_async::{delay::DelayNs, spi::SpiBus};
+
+/// Our hardware interface with the chip using the shift register that
+/// is present on the opl2 audio board by Maarten Janssen
+pub struct ShiftInterface<SPI, A, L, R, D>
+where
+    SPI: SpiBus,
+    A: OutputPin,
+    L: OutputPin,
+    R: OutputPin,
+    D: DelayNs,
+{
+    /// The spi interface we use to drive the shift register
+    spi: SPI,
+    /// The pin connected to the A0 input
+    address_pin: A,
+    /// The pin connected to the latch input of the shift register
+    latch_pin: L,
+    /// The pin connected to the reset input
+    reset_pin: R,
+    /// Some kind of delay provider
+    delay: D,
+    /// A copy of all the registers in memory.
+    ///
+    /// We need this because we can't read the OPL registers.
+    /// By keeping track of this ourselves, we can still present
+    /// a read/write interface which is useful for modifying registers.
+    registers: [u8; u8::MAX as usize],
+}
+```
+
+Now that we have our shift interface, we can start implementing the traits we need.
+First off is the base trait that defines address type and the error type. The address type must be the same as the one we set up in the ddsl code.
+
+```rust
+// ll.rs
+
+use device_driver::RegisterInterfaceBase;
+
+#[derive(Debug)]
+pub enum InterfaceError {
+    AddressPinError,
+    LatchPinError,
+    ResetPinError,
+    CommunicationError,
+}
+
+impl<SPI: SpiBus, A: OutputPin, L: OutputPin, R: OutputPin, D: DelayNs> RegisterInterfaceBase
+    for ShiftInterface<SPI, A, L, R, D>
+{
+    type Error = InterfaceError;
+    type AddressType = u8;
+}
+```
+
+Now we're ready to implement the main trait. This will look very different for almost evey device. The requirements here have been discussed earlier in the tutorial.
+
+Normally devices have sections in their datasheets about how the communication with the device work.
+
+```rust
+// ll.rs
+
+impl<SPI: SpiBus, A: OutputPin, L: OutputPin, R: OutputPin, D: DelayNs> AsyncRegisterInterface
+    for ShiftInterface<SPI, A, L, R, D>
+{
+    async fn write_register(
+        &mut self,
+        address: Self::AddressType,
+        data: &mut [u8],
+        _metadata: &device_driver::FieldsetMetadata,
+    ) -> Result<(), Self::Error> {
+        // We know we've always got one byte since all registers are that size
+        let byte = data[0];
+
+        // Save in internal data store
+        self.registers[address as usize] = byte;
+
+        // Send the address
+        self.address_pin
+            .set_low()
+            .map_err(|_| Self::Error::AddressPinError)?;
+
+        self.spi
+            .write(&[address])
+            .await
+            .map_err(|_| Self::Error::CommunicationError)?;
+
+        // Apply the shift latch
+        self.latch_pin
+            .set_low()
+            .map_err(|_| Self::Error::LatchPinError)?;
+        self.delay.delay_us(1).await;
+        self.latch_pin
+            .set_high()
+            .map_err(|_| Self::Error::LatchPinError)?;
+        self.delay.delay_us(4).await;
+
+        // Send the data
+        self.address_pin
+            .set_high()
+            .map_err(|_| Self::Error::AddressPinError)?;
+
+        self.spi
+            .write(&[byte])
+            .await
+            .map_err(|_| Self::Error::CommunicationError)?;
+
+        // Apply the shift latch
+        self.latch_pin
+            .set_low()
+            .map_err(|_| Self::Error::LatchPinError)?;
+        self.delay.delay_us(1).await;
+        self.latch_pin
+            .set_high()
+            .map_err(|_| Self::Error::LatchPinError)?;
+        self.delay.delay_us(23).await;
+
+        Ok(())
+    }
+
+    async fn read_register(
+        &mut self,
+        address: Self::AddressType,
+        data: &mut [u8],
+        _metadata: &device_driver::FieldsetMetadata,
+    ) -> Result<(), Self::Error> {
+        data[0] = self.registers[address as usize];
+        Ok(())
+    }
+}
+```
+
+Let's add some convenience methods too for construction and resetting the device.
+
+```rust
+// ll.rs
+
+impl<SPI: SpiBus, A: OutputPin, L: OutputPin, R: OutputPin, D: DelayNs>
+    ShiftInterface<SPI, A, L, R, D>
+{
+    pub const fn new(spi: SPI, address_pin: A, latch_pin: L, reset_pin: R, delay: D) -> Self {
+        Self {
+            spi,
+            address_pin,
+            latch_pin,
+            reset_pin,
+            delay,
+            registers: [0; _],
+        }
+    }
+
+    pub async fn reset(&mut self) -> Result<(), InterfaceError> {
+        // Set the pins to the default level
+        self.latch_pin
+            .set_high()
+            .map_err(|_| InterfaceError::LatchPinError)?;
+        self.reset_pin
+            .set_high()
+            .map_err(|_| InterfaceError::ResetPinError)?;
+        self.address_pin
+            .set_low()
+            .map_err(|_| InterfaceError::AddressPinError)?;
+
+        // Make a reset cycle
+        self.reset_pin
+            .set_low()
+            .map_err(|_| InterfaceError::ResetPinError)?;
+        self.delay.delay_ms(1).await;
+        self.reset_pin
+            .set_high()
+            .map_err(|_| InterfaceError::ResetPinError)?;
+
+        // Reset the internal registers
+        self.registers = [0x00; 0xFF];
+        self.write_register(0x00, &mut [0x00; 0xFF], &FieldsetMetadata::DEFAULT)
+            .await?;
+
+        Ok(())
+    }
+}
+```
+
+#### High level
+
+#### Adding defmt support
 
 ## Using the driver
 
