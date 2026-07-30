@@ -274,7 +274,7 @@ Important to know is that the block can specify an address offset which is then 
 
 For the driver we're writing, we could do a repeat on every channel register.
 But instead let's do the repeat on a block and put all channels settings in that block.
-That way it's nice and organized. Here's how it could be moddeled (with some added comments for explanations):
+That way it's nice and organized. Here's how it could be modeled (with some added comments for explanations):
 
 ```ddsl
 enum Channel {
@@ -562,7 +562,7 @@ impl<SPI: SpiBus, A: OutputPin, L: OutputPin, R: OutputPin, D: DelayNs> Register
 }
 ```
 
-Now we're ready to implement the main trait. This will look very different for almost evey device. The requirements here have been discussed earlier in the tutorial.
+Now we're ready to implement the main trait. This will look very different for almost every device. The requirements here have been discussed earlier in the tutorial.
 
 Normally devices have sections in their datasheets about how the communication with the device work.
 
