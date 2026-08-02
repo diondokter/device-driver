@@ -16,6 +16,11 @@ pub trait RegisterInterfaceBase {
     type AddressType: Address;
 }
 
+impl<T: RegisterInterfaceBase> RegisterInterfaceBase for &mut T {
+    type Error = T::Error;
+    type AddressType = T::AddressType;
+}
+
 /// A trait to represent the interface to the device.
 ///
 /// This is called to write to and read from registers.
@@ -37,6 +42,26 @@ pub trait RegisterInterface: RegisterInterfaceBase {
     ) -> Result<(), Self::Error>;
 }
 
+impl<T: RegisterInterface> RegisterInterface for &mut T {
+    fn write_register(
+        &mut self,
+        address: Self::AddressType,
+        data: &mut [u8],
+        metadata: &FieldsetMetadata,
+    ) -> Result<(), Self::Error> {
+        (*self).write_register(address, data, metadata)
+    }
+
+    fn read_register(
+        &mut self,
+        address: Self::AddressType,
+        data: &mut [u8],
+        metadata: &FieldsetMetadata,
+    ) -> Result<(), Self::Error> {
+        (*self).read_register(address, data, metadata)
+    }
+}
+
 /// A trait to represent the interface to the device.
 ///
 /// This is called to asynchronously write to and read from registers.
@@ -56,6 +81,26 @@ pub trait AsyncRegisterInterface: RegisterInterfaceBase {
         data: &mut [u8],
         _metadata: &FieldsetMetadata,
     ) -> Result<(), Self::Error>;
+}
+
+impl<T: AsyncRegisterInterface> AsyncRegisterInterface for &mut T {
+    fn write_register(
+        &mut self,
+        address: Self::AddressType,
+        data: &mut [u8],
+        metadata: &FieldsetMetadata,
+    ) -> impl Future<Output = Result<(), Self::Error>> {
+        (*self).write_register(address, data, metadata)
+    }
+
+    fn read_register(
+        &mut self,
+        address: Self::AddressType,
+        data: &mut [u8],
+        metadata: &FieldsetMetadata,
+    ) -> impl Future<Output = Result<(), Self::Error>> {
+        (*self).read_register(address, data, metadata)
+    }
 }
 
 /// Object that performs actions on the device in the context of a register
