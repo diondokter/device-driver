@@ -22,17 +22,21 @@ extern Example -> uint {
 These properties are specified in the node body.
 ### infallible
 Allows this type to be infallably converted to.
+```ddsl
+// allow
+infallible: allow
+```
 #### Info
 - required: `no`
 - multiple allowed: `no`
 - supports doc comments: `no`
-#### Allowed expression types
-- `allow` => `allow`
 ### size-bits
 The size of the type in bits.
+```ddsl
+// number
+size-bits: 8
+```
 #### Info
 - required: `no`
 - multiple allowed: `no`
 - supports doc comments: `no`
-#### Allowed expression types
-- `number` => `8`

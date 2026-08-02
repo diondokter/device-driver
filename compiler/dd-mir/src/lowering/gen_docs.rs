@@ -7,6 +7,7 @@ use device_driver_common::{
 };
 use device_driver_diagnostics::{DynError, ResultExt};
 use device_driver_parser::{Ident, Node, Property, Repeat, TypeSpecifier};
+use itertools::Itertools;
 
 use crate::{
     lowering::{PropertyInfo, PropertyName, Shape},
@@ -156,6 +157,16 @@ fn write_properties<S: Shape>(
         for description_line in property.description.lines() {
             writeln!(doc, "{description_line}").into_dyn_result()?;
         }
+        writeln!(
+            doc,
+            "```ddsl\n{}\n```",
+            property
+                .allowed_expression_types
+                .iter()
+                .map(|expr| format!("// {}\n{name}: {}", expr, expr.get_human_string()))
+                .join(",\n")
+        )
+        .into_dyn_result()?;
         writeln!(doc, "#### Info").into_dyn_result()?;
         writeln!(doc, "- required: `{}`", bool_to_yes_no(property.required)).into_dyn_result()?;
         writeln!(
@@ -170,10 +181,6 @@ fn write_properties<S: Shape>(
             bool_to_yes_no(property.supports_doc_comments)
         )
         .into_dyn_result()?;
-        writeln!(doc, "#### Allowed expression types").into_dyn_result()?;
-        for t in property.allowed_expression_types.iter() {
-            writeln!(doc, "- `{}` => `{}`", t, t.get_human_string()).into_dyn_result()?;
-        }
     }
 
     Ok(())

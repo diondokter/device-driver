@@ -34,36 +34,44 @@ device Example {
 These properties are specified in the node body.
 ### byte-order
 Sets the default byte order used by fieldsets in this device. This can be overridden per fieldset.
+```ddsl
+// byte order
+byte-order: LE
+```
 #### Info
 - required: `no`
 - multiple allowed: `no`
 - supports doc comments: `no`
-#### Allowed expression types
-- `byte order` => `LE`
 ### register-address-type
 Sets the type used to address the registers in this device.
+```ddsl
+// integer type
+register-address-type: i32
+```
 #### Info
 - required: `no`
 - multiple allowed: `no`
 - supports doc comments: `no`
-#### Allowed expression types
-- `integer type` => `i32`
 ### command-address-type
 Sets the type used to address the commands in this device.
+```ddsl
+// integer type
+command-address-type: i32
+```
 #### Info
 - required: `no`
 - multiple allowed: `no`
 - supports doc comments: `no`
-#### Allowed expression types
-- `integer type` => `i32`
 ### buffer-address-type
 Sets the type used to address the buffers in this device.
+```ddsl
+// integer type
+buffer-address-type: i32
+```
 #### Info
 - required: `no`
 - multiple allowed: `no`
 - supports doc comments: `no`
-#### Allowed expression types
-- `integer type` => `i32`
 ### word-boundaries
 Sets the word splitting rules for all objects defined in the device.
 
@@ -76,12 +84,14 @@ For example `aB` will split words when a lower case letter is followed by an upp
 Some symbols are also allowed as boundary, like `-` & `_`.
 
 If not specified, this uses a reasonable default for splitting.
+```ddsl
+// string
+word-boundaries: "bD:0B:_"
+```
 #### Info
 - required: `no`
 - multiple allowed: `no`
 - supports doc comments: `no`
-#### Allowed expression types
-- `string` => `"bD:0B:_"`
 ### register-address-mode
 Sets the address mode for registers in this device.
 
@@ -90,12 +100,14 @@ When specified, the registers are assumed to share an address space:
 - With the `indexed` option, that address space has one register per number where if object `A` has address `X`, then object `B` (if it exists) will have the address `X+1`.
 
 If this value is specified, then it permits bulk register reads and writes.
+```ddsl
+// address mode
+register-address-mode: mapped
+```
 #### Info
 - required: `no`
 - multiple allowed: `no`
 - supports doc comments: `no`
-#### Allowed expression types
-- `address mode` => `mapped`
 ## Possible subnodes
 Subnodes of the following types are allowed in the node body.
 - [block]

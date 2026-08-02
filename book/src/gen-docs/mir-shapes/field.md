@@ -19,18 +19,23 @@ field Example 8:0 RW -> uint as try Foo
 These properties are specified inline in the node definition and are used without name.
 ### address
 The bit address of the field within the fieldset
+```ddsl
+// range
+address: 8:0,
+// number
+address: 0
+```
 #### Info
 - required: `yes`
 - multiple allowed: `no`
 - supports doc comments: `no`
-#### Allowed expression types
-- `range` => `8:0`
-- `number` => `0`
 ### access
 Limits how the field can be accessed. If not specified, the access is `RW`.
+```ddsl
+// access specifier
+access: RW
+```
 #### Info
 - required: `no`
 - multiple allowed: `no`
 - supports doc comments: `no`
-#### Allowed expression types
-- `access specifier` => `RW`

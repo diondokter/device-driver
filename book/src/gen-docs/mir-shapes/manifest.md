@@ -31,36 +31,44 @@ manifest Example {
 These properties are specified in the node body.
 ### byte-order
 Sets the global default byte order used by fieldsets. This can be overridden per device and fieldset.
+```ddsl
+// byte order
+byte-order: LE
+```
 #### Info
 - required: `no`
 - multiple allowed: `no`
 - supports doc comments: `no`
-#### Allowed expression types
-- `byte order` => `LE`
 ### register-address-type
 Sets the global type used to address the registers for all devices. This can be overridden per device.
+```ddsl
+// integer type
+register-address-type: i32
+```
 #### Info
 - required: `no`
 - multiple allowed: `no`
 - supports doc comments: `no`
-#### Allowed expression types
-- `integer type` => `i32`
 ### command-address-type
 Sets the global type used to address the commands for all devices. This can be overridden per device.
+```ddsl
+// integer type
+command-address-type: i32
+```
 #### Info
 - required: `no`
 - multiple allowed: `no`
 - supports doc comments: `no`
-#### Allowed expression types
-- `integer type` => `i32`
 ### buffer-address-type
 Sets the global type used to address the buffers for all devices. This can be overridden per device.
+```ddsl
+// integer type
+buffer-address-type: i32
+```
 #### Info
 - required: `no`
 - multiple allowed: `no`
 - supports doc comments: `no`
-#### Allowed expression types
-- `integer type` => `i32`
 ### word-boundaries
 Sets the global word splitting rules for all objects. This can be overridden per device.
 
@@ -73,12 +81,14 @@ For example `aB` will split words when a lower case letter is followed by an upp
 Some symbols are also allowed as boundary, like `-` & `_`.
 
 If not specified, this uses a reasonable default for splitting.
+```ddsl
+// string
+word-boundaries: "bD:0B:_"
+```
 #### Info
 - required: `no`
 - multiple allowed: `no`
 - supports doc comments: `no`
-#### Allowed expression types
-- `string` => `"bD:0B:_"`
 ### register-address-mode
 Sets the global address mode for registers. This can be overridden per device.
 
@@ -87,12 +97,14 @@ When specified, the registers are assumed to share an address space:
 - With the `indexed` option, that address space has one register per number where if object `A` has address `X`, then object `B` (if it exists) will have the address `X+1`.
 
 If this value is specified, then it permits bulk register reads and writes.
+```ddsl
+// address mode
+register-address-mode: mapped
+```
 #### Info
 - required: `no`
 - multiple allowed: `no`
 - supports doc comments: `no`
-#### Allowed expression types
-- `address mode` => `mapped`
 ## Possible subnodes
 Subnodes of the following types are allowed in the node body.
 - [device]

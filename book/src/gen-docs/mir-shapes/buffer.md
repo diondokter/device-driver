@@ -22,17 +22,21 @@ buffer Example {
 These properties are specified in the node body.
 ### access
 Limits how the buffer can be accessed. If not specified, the access is `RW`.
+```ddsl
+// access specifier
+access: RW
+```
 #### Info
 - required: `no`
 - multiple allowed: `no`
 - supports doc comments: `no`
-#### Allowed expression types
-- `access specifier` => `RW`
 ### address
 The address of the buffer
+```ddsl
+// number
+address: 0
+```
 #### Info
 - required: `yes`
 - multiple allowed: `no`
 - supports doc comments: `no`
-#### Allowed expression types
-- `number` => `0`

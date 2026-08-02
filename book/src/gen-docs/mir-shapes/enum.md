@@ -22,14 +22,21 @@ enum Example -> uint {
 These properties are specified in the node body.
 ### *any name*
 Defines a variant for the enum. The name of the property becomes the variant name.
+```ddsl
+// auto
+*any name*: _,
+// number
+*any name*: 0,
+// default number
+*any name*: default 0,
+// default auto
+*any name*: default _,
+// catch-all number
+*any name*: catch-all 0,
+// catch-all auto
+*any name*: catch-all _
+```
 #### Info
 - required: `no`
 - multiple allowed: `yes`
 - supports doc comments: `yes`
-#### Allowed expression types
-- `auto` => `_`
-- `number` => `0`
-- `default number` => `default 0`
-- `default auto` => `default _`
-- `catch-all number` => `catch-all 0`
-- `catch-all auto` => `catch-all _`
