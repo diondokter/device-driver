@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-544cc7d4.js";
+            window.path_to_searchindex_js = "../searchindex-09934aac.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-ca5e7c95.js"></script>
@@ -226,53 +226,51 @@ command Example {
 <p>These properties are specified in the node body.</p>
 <h3 id="address"><a class="header" href="#address">address</a></h3>
 <p>The address of the command</p>
+<pre><code class="language-ddsl">// number
+address: 0
+</code></pre>
 <h4 id="info"><a class="header" href="#info">Info</a></h4>
 <ul>
 <li>required: <code>yes</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
-<h4 id="allowed-expression-types"><a class="header" href="#allowed-expression-types">Allowed expression types</a></h4>
-<ul>
-<li><code>number</code> =&gt; <code>0</code></li>
-</ul>
 <h3 id="address-overlap"><a class="header" href="#address-overlap">address-overlap</a></h3>
 <p>Allows addresses to overlap with other commands. This is not allowed by default to prevent copy-paste mistakes.</p>
+<pre><code class="language-ddsl">// allow
+address-overlap: allow
+</code></pre>
 <h4 id="info-1"><a class="header" href="#info-1">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
-<h4 id="allowed-expression-types-1"><a class="header" href="#allowed-expression-types-1">Allowed expression types</a></h4>
-<ul>
-<li><code>allow</code> =&gt; <code>allow</code></li>
-</ul>
 <h3 id="fields-in"><a class="header" href="#fields-in">fields-in</a></h3>
 <p>The fieldset that represents the input data of the command. This can be a reference to an existing fieldset or a completely new inline fieldset.</p>
+<pre><code class="language-ddsl">// type reference
+fields-in: MyFieldset,
+// sub node
+fields-in: fieldset MyFieldSet
+</code></pre>
 <h4 id="info-2"><a class="header" href="#info-2">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
-<h4 id="allowed-expression-types-2"><a class="header" href="#allowed-expression-types-2">Allowed expression types</a></h4>
-<ul>
-<li><code>type reference</code> =&gt; <code>MyFieldset</code></li>
-<li><code>sub node</code> =&gt; <code>fieldset MyFieldSet</code></li>
-</ul>
 <h3 id="fields-out"><a class="header" href="#fields-out">fields-out</a></h3>
 <p>The fieldset that represents the output data of the command. This can be a reference to an existing fieldset or a completely new inline fieldset.</p>
+<pre><code class="language-ddsl">// type reference
+fields-out: MyFieldset,
+// sub node
+fields-out: fieldset MyFieldSet
+</code></pre>
 <h4 id="info-3"><a class="header" href="#info-3">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
-</ul>
-<h4 id="allowed-expression-types-3"><a class="header" href="#allowed-expression-types-3">Allowed expression types</a></h4>
-<ul>
-<li><code>type reference</code> =&gt; <code>MyFieldset</code></li>
-<li><code>sub node</code> =&gt; <code>fieldset MyFieldSet</code></li>
 </ul>
 
                     </main>

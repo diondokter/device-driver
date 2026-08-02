@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-544cc7d4.js";
+            window.path_to_searchindex_js = "../searchindex-09934aac.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-ca5e7c95.js"></script>
@@ -234,51 +234,47 @@ device Example {
 <p>These properties are specified in the node body.</p>
 <h3 id="byte-order"><a class="header" href="#byte-order">byte-order</a></h3>
 <p>Sets the default byte order used by fieldsets in this device. This can be overridden per fieldset.</p>
+<pre><code class="language-ddsl">// byte order
+byte-order: LE
+</code></pre>
 <h4 id="info"><a class="header" href="#info">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
-<h4 id="allowed-expression-types"><a class="header" href="#allowed-expression-types">Allowed expression types</a></h4>
-<ul>
-<li><code>byte order</code> =&gt; <code>LE</code></li>
-</ul>
 <h3 id="register-address-type"><a class="header" href="#register-address-type">register-address-type</a></h3>
 <p>Sets the type used to address the registers in this device.</p>
+<pre><code class="language-ddsl">// integer type
+register-address-type: i32
+</code></pre>
 <h4 id="info-1"><a class="header" href="#info-1">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
-<h4 id="allowed-expression-types-1"><a class="header" href="#allowed-expression-types-1">Allowed expression types</a></h4>
-<ul>
-<li><code>integer type</code> =&gt; <code>i32</code></li>
-</ul>
 <h3 id="command-address-type"><a class="header" href="#command-address-type">command-address-type</a></h3>
 <p>Sets the type used to address the commands in this device.</p>
+<pre><code class="language-ddsl">// integer type
+command-address-type: i32
+</code></pre>
 <h4 id="info-2"><a class="header" href="#info-2">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
-<h4 id="allowed-expression-types-2"><a class="header" href="#allowed-expression-types-2">Allowed expression types</a></h4>
-<ul>
-<li><code>integer type</code> =&gt; <code>i32</code></li>
-</ul>
 <h3 id="buffer-address-type"><a class="header" href="#buffer-address-type">buffer-address-type</a></h3>
 <p>Sets the type used to address the buffers in this device.</p>
+<pre><code class="language-ddsl">// integer type
+buffer-address-type: i32
+</code></pre>
 <h4 id="info-3"><a class="header" href="#info-3">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
-</ul>
-<h4 id="allowed-expression-types-3"><a class="header" href="#allowed-expression-types-3">Allowed expression types</a></h4>
-<ul>
-<li><code>integer type</code> =&gt; <code>i32</code></li>
 </ul>
 <h3 id="word-boundaries"><a class="header" href="#word-boundaries">word-boundaries</a></h3>
 <p>Sets the word splitting rules for all objects defined in the device.</p>
@@ -289,15 +285,14 @@ The splitting is done with <code>convert_case</code> using their <a href="https:
 For example <code>aB</code> will split words when a lower case letter is followed by an upper case letter.
 Some symbols are also allowed as boundary, like <code>-</code> &amp; <code>_</code>.</p>
 <p>If not specified, this uses a reasonable default for splitting.</p>
+<pre><code class="language-ddsl">// string
+word-boundaries: "bD:0B:_"
+</code></pre>
 <h4 id="info-4"><a class="header" href="#info-4">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
-</ul>
-<h4 id="allowed-expression-types-4"><a class="header" href="#allowed-expression-types-4">Allowed expression types</a></h4>
-<ul>
-<li><code>string</code> =&gt; <code>"bD:0B:_"</code></li>
 </ul>
 <h3 id="register-address-mode"><a class="header" href="#register-address-mode">register-address-mode</a></h3>
 <p>Sets the address mode for registers in this device.</p>
@@ -307,15 +302,14 @@ Some symbols are also allowed as boundary, like <code>-</code> &amp; <code>_</co
 <li>With the <code>indexed</code> option, that address space has one register per number where if object <code>A</code> has address <code>X</code>, then object <code>B</code> (if it exists) will have the address <code>X+1</code>.</li>
 </ul>
 <p>If this value is specified, then it permits bulk register reads and writes.</p>
+<pre><code class="language-ddsl">// address mode
+register-address-mode: mapped
+</code></pre>
 <h4 id="info-5"><a class="header" href="#info-5">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
-</ul>
-<h4 id="allowed-expression-types-5"><a class="header" href="#allowed-expression-types-5">Allowed expression types</a></h4>
-<ul>
-<li><code>address mode</code> =&gt; <code>mapped</code></li>
 </ul>
 <h2 id="possible-subnodes"><a class="header" href="#possible-subnodes">Possible subnodes</a></h2>
 <p>Subnodes of the following types are allowed in the node body.</p>

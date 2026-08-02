@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-544cc7d4.js";
+            window.path_to_searchindex_js = "../searchindex-09934aac.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-ca5e7c95.js"></script>
@@ -216,39 +216,36 @@ register Example {
 <p>These properties are specified in the node body.</p>
 <h3 id="address"><a class="header" href="#address">address</a></h3>
 <p>The address of the register.</p>
+<pre><code class="language-ddsl">// number
+address: 0
+</code></pre>
 <h4 id="info"><a class="header" href="#info">Info</a></h4>
 <ul>
 <li>required: <code>yes</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
-<h4 id="allowed-expression-types"><a class="header" href="#allowed-expression-types">Allowed expression types</a></h4>
-<ul>
-<li><code>number</code> =&gt; <code>0</code></li>
-</ul>
 <h3 id="access"><a class="header" href="#access">access</a></h3>
 <p>Limits how the register can be accessed. If not specified, the access is <code>RW</code>.</p>
+<pre><code class="language-ddsl">// access specifier
+access: RW
+</code></pre>
 <h4 id="info-1"><a class="header" href="#info-1">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
-<h4 id="allowed-expression-types-1"><a class="header" href="#allowed-expression-types-1">Allowed expression types</a></h4>
-<ul>
-<li><code>access specifier</code> =&gt; <code>RW</code></li>
-</ul>
 <h3 id="address-overlap"><a class="header" href="#address-overlap">address-overlap</a></h3>
 <p>Allows addresses to overlap with other registers. This is not allowed by default to prevent copy-paste mistakes.</p>
+<pre><code class="language-ddsl">// allow
+address-overlap: allow
+</code></pre>
 <h4 id="info-2"><a class="header" href="#info-2">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
-</ul>
-<h4 id="allowed-expression-types-2"><a class="header" href="#allowed-expression-types-2">Allowed expression types</a></h4>
-<ul>
-<li><code>allow</code> =&gt; <code>allow</code></li>
 </ul>
 <h3 id="reset"><a class="header" href="#reset">reset</a></h3>
 <p>Defines the reset value of the register. When performing a write operation, this value loaded in by default.</p>
@@ -257,29 +254,29 @@ register Example {
 <li>Byte array: No byte order changes are done. The array will be loaded into the fieldset as is.</li>
 <li>Integer: Will be converted to a byte array with the specified byte order.</li>
 </ul>
+<pre><code class="language-ddsl">// [bytes]
+reset: [12, 34],
+// number
+reset: 1234
+</code></pre>
 <h4 id="info-3"><a class="header" href="#info-3">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
-<h4 id="allowed-expression-types-3"><a class="header" href="#allowed-expression-types-3">Allowed expression types</a></h4>
-<ul>
-<li><code>[bytes]</code> =&gt; <code>[12, 34]</code></li>
-<li><code>number</code> =&gt; <code>1234</code></li>
-</ul>
 <h3 id="fields"><a class="header" href="#fields">fields</a></h3>
 <p>The fieldset that represents the data of the register. This can be a reference to an existing fieldset or a completely new inline fieldset.</p>
+<pre><code class="language-ddsl">// type reference
+fields: MyFieldset,
+// sub node
+fields: fieldset MyFieldSet
+</code></pre>
 <h4 id="info-4"><a class="header" href="#info-4">Info</a></h4>
 <ul>
 <li>required: <code>yes</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
-</ul>
-<h4 id="allowed-expression-types-4"><a class="header" href="#allowed-expression-types-4">Allowed expression types</a></h4>
-<ul>
-<li><code>type reference</code> =&gt; <code>MyFieldset</code></li>
-<li><code>sub node</code> =&gt; <code>fieldset MyFieldSet</code></li>
 </ul>
 
                     </main>

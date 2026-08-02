@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-544cc7d4.js";
+            window.path_to_searchindex_js = "../searchindex-09934aac.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-ca5e7c95.js"></script>
@@ -213,20 +213,24 @@ enum Example -&gt; uint {
 <p>These properties are specified in the node body.</p>
 <h3 id="any-name"><a class="header" href="#any-name"><em>any name</em></a></h3>
 <p>Defines a variant for the enum. The name of the property becomes the variant name.</p>
+<pre><code class="language-ddsl">// auto
+*any name*: _,
+// number
+*any name*: 0,
+// default number
+*any name*: default 0,
+// default auto
+*any name*: default _,
+// catch-all number
+*any name*: catch-all 0,
+// catch-all auto
+*any name*: catch-all _
+</code></pre>
 <h4 id="info"><a class="header" href="#info">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>yes</code></li>
 <li>supports doc comments: <code>yes</code></li>
-</ul>
-<h4 id="allowed-expression-types"><a class="header" href="#allowed-expression-types">Allowed expression types</a></h4>
-<ul>
-<li><code>auto</code> =&gt; <code>_</code></li>
-<li><code>number</code> =&gt; <code>0</code></li>
-<li><code>default number</code> =&gt; <code>default 0</code></li>
-<li><code>default auto</code> =&gt; <code>default _</code></li>
-<li><code>catch-all number</code> =&gt; <code>catch-all 0</code></li>
-<li><code>catch-all auto</code> =&gt; <code>catch-all _</code></li>
 </ul>
 
                     </main>

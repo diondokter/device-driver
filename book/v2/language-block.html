@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-544cc7d4.js";
+            window.path_to_searchindex_js = "../searchindex-09934aac.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-ca5e7c95.js"></script>
@@ -230,15 +230,14 @@ block Example {
 <p>Defines the address offset of this block. All objects in the block are relative to the block.
 For example, a block with an address offset of 10 which has a register at address 5, will have defined the register at address 15.
 If this is not desired, then keep the address offset at 0.</p>
+<pre><code class="language-ddsl">// number
+address-offset: 0
+</code></pre>
 <h4 id="info"><a class="header" href="#info">Info</a></h4>
 <ul>
 <li>required: <code>yes</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
-</ul>
-<h4 id="allowed-expression-types"><a class="header" href="#allowed-expression-types">Allowed expression types</a></h4>
-<ul>
-<li><code>number</code> =&gt; <code>0</code></li>
 </ul>
 <h2 id="possible-subnodes"><a class="header" href="#possible-subnodes">Possible subnodes</a></h2>
 <p>Subnodes of the following types are allowed in the node body.</p>

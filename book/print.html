@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-544cc7d4.js";
+            window.path_to_searchindex_js = "searchindex-09934aac.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-ca5e7c95.js"></script>
@@ -1419,51 +1419,47 @@ manifest Example {
 <p>These properties are specified in the node body.</p>
 <h3 id="byte-order"><a class="header" href="#byte-order">byte-order</a></h3>
 <p>Sets the global default byte order used by fieldsets. This can be overridden per device and fieldset.</p>
+<pre><code class="language-ddsl">// byte order
+byte-order: LE
+</code></pre>
 <h4 id="info"><a class="header" href="#info">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
-<h4 id="allowed-expression-types"><a class="header" href="#allowed-expression-types">Allowed expression types</a></h4>
-<ul>
-<li><code>byte order</code> =&gt; <code>LE</code></li>
-</ul>
 <h3 id="register-address-type"><a class="header" href="#register-address-type">register-address-type</a></h3>
 <p>Sets the global type used to address the registers for all devices. This can be overridden per device.</p>
+<pre><code class="language-ddsl">// integer type
+register-address-type: i32
+</code></pre>
 <h4 id="info-1"><a class="header" href="#info-1">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
-<h4 id="allowed-expression-types-1"><a class="header" href="#allowed-expression-types-1">Allowed expression types</a></h4>
-<ul>
-<li><code>integer type</code> =&gt; <code>i32</code></li>
-</ul>
 <h3 id="command-address-type"><a class="header" href="#command-address-type">command-address-type</a></h3>
 <p>Sets the global type used to address the commands for all devices. This can be overridden per device.</p>
+<pre><code class="language-ddsl">// integer type
+command-address-type: i32
+</code></pre>
 <h4 id="info-2"><a class="header" href="#info-2">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
-<h4 id="allowed-expression-types-2"><a class="header" href="#allowed-expression-types-2">Allowed expression types</a></h4>
-<ul>
-<li><code>integer type</code> =&gt; <code>i32</code></li>
-</ul>
 <h3 id="buffer-address-type"><a class="header" href="#buffer-address-type">buffer-address-type</a></h3>
 <p>Sets the global type used to address the buffers for all devices. This can be overridden per device.</p>
+<pre><code class="language-ddsl">// integer type
+buffer-address-type: i32
+</code></pre>
 <h4 id="info-3"><a class="header" href="#info-3">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
-</ul>
-<h4 id="allowed-expression-types-3"><a class="header" href="#allowed-expression-types-3">Allowed expression types</a></h4>
-<ul>
-<li><code>integer type</code> =&gt; <code>i32</code></li>
 </ul>
 <h3 id="word-boundaries"><a class="header" href="#word-boundaries">word-boundaries</a></h3>
 <p>Sets the global word splitting rules for all objects. This can be overridden per device.</p>
@@ -1474,15 +1470,14 @@ The splitting is done with <code>convert_case</code> using their <a href="https:
 For example <code>aB</code> will split words when a lower case letter is followed by an upper case letter.
 Some symbols are also allowed as boundary, like <code>-</code> &amp; <code>_</code>.</p>
 <p>If not specified, this uses a reasonable default for splitting.</p>
+<pre><code class="language-ddsl">// string
+word-boundaries: "bD:0B:_"
+</code></pre>
 <h4 id="info-4"><a class="header" href="#info-4">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
-</ul>
-<h4 id="allowed-expression-types-4"><a class="header" href="#allowed-expression-types-4">Allowed expression types</a></h4>
-<ul>
-<li><code>string</code> =&gt; <code>"bD:0B:_"</code></li>
 </ul>
 <h3 id="register-address-mode"><a class="header" href="#register-address-mode">register-address-mode</a></h3>
 <p>Sets the global address mode for registers. This can be overridden per device.</p>
@@ -1492,15 +1487,14 @@ Some symbols are also allowed as boundary, like <code>-</code> &amp; <code>_</co
 <li>With the <code>indexed</code> option, that address space has one register per number where if object <code>A</code> has address <code>X</code>, then object <code>B</code> (if it exists) will have the address <code>X+1</code>.</li>
 </ul>
 <p>If this value is specified, then it permits bulk register reads and writes.</p>
+<pre><code class="language-ddsl">// address mode
+register-address-mode: mapped
+</code></pre>
 <h4 id="info-5"><a class="header" href="#info-5">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
-</ul>
-<h4 id="allowed-expression-types-5"><a class="header" href="#allowed-expression-types-5">Allowed expression types</a></h4>
-<ul>
-<li><code>address mode</code> =&gt; <code>mapped</code></li>
 </ul>
 <h2 id="possible-subnodes"><a class="header" href="#possible-subnodes">Possible subnodes</a></h2>
 <p>Subnodes of the following types are allowed in the node body.</p>
@@ -1568,51 +1562,47 @@ device Example {
 <p>These properties are specified in the node body.</p>
 <h3 id="byte-order-1"><a class="header" href="#byte-order-1">byte-order</a></h3>
 <p>Sets the default byte order used by fieldsets in this device. This can be overridden per fieldset.</p>
+<pre><code class="language-ddsl">// byte order
+byte-order: LE
+</code></pre>
 <h4 id="info-6"><a class="header" href="#info-6">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
-<h4 id="allowed-expression-types-6"><a class="header" href="#allowed-expression-types-6">Allowed expression types</a></h4>
-<ul>
-<li><code>byte order</code> =&gt; <code>LE</code></li>
-</ul>
 <h3 id="register-address-type-1"><a class="header" href="#register-address-type-1">register-address-type</a></h3>
 <p>Sets the type used to address the registers in this device.</p>
+<pre><code class="language-ddsl">// integer type
+register-address-type: i32
+</code></pre>
 <h4 id="info-1-1"><a class="header" href="#info-1-1">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
-<h4 id="allowed-expression-types-1-1"><a class="header" href="#allowed-expression-types-1-1">Allowed expression types</a></h4>
-<ul>
-<li><code>integer type</code> =&gt; <code>i32</code></li>
-</ul>
 <h3 id="command-address-type-1"><a class="header" href="#command-address-type-1">command-address-type</a></h3>
 <p>Sets the type used to address the commands in this device.</p>
+<pre><code class="language-ddsl">// integer type
+command-address-type: i32
+</code></pre>
 <h4 id="info-2-1"><a class="header" href="#info-2-1">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
-<h4 id="allowed-expression-types-2-1"><a class="header" href="#allowed-expression-types-2-1">Allowed expression types</a></h4>
-<ul>
-<li><code>integer type</code> =&gt; <code>i32</code></li>
-</ul>
 <h3 id="buffer-address-type-1"><a class="header" href="#buffer-address-type-1">buffer-address-type</a></h3>
 <p>Sets the type used to address the buffers in this device.</p>
+<pre><code class="language-ddsl">// integer type
+buffer-address-type: i32
+</code></pre>
 <h4 id="info-3-1"><a class="header" href="#info-3-1">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
-</ul>
-<h4 id="allowed-expression-types-3-1"><a class="header" href="#allowed-expression-types-3-1">Allowed expression types</a></h4>
-<ul>
-<li><code>integer type</code> =&gt; <code>i32</code></li>
 </ul>
 <h3 id="word-boundaries-1"><a class="header" href="#word-boundaries-1">word-boundaries</a></h3>
 <p>Sets the word splitting rules for all objects defined in the device.</p>
@@ -1623,15 +1613,14 @@ The splitting is done with <code>convert_case</code> using their <a href="https:
 For example <code>aB</code> will split words when a lower case letter is followed by an upper case letter.
 Some symbols are also allowed as boundary, like <code>-</code> &amp; <code>_</code>.</p>
 <p>If not specified, this uses a reasonable default for splitting.</p>
+<pre><code class="language-ddsl">// string
+word-boundaries: "bD:0B:_"
+</code></pre>
 <h4 id="info-4-1"><a class="header" href="#info-4-1">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
-</ul>
-<h4 id="allowed-expression-types-4-1"><a class="header" href="#allowed-expression-types-4-1">Allowed expression types</a></h4>
-<ul>
-<li><code>string</code> =&gt; <code>"bD:0B:_"</code></li>
 </ul>
 <h3 id="register-address-mode-1"><a class="header" href="#register-address-mode-1">register-address-mode</a></h3>
 <p>Sets the address mode for registers in this device.</p>
@@ -1641,15 +1630,14 @@ Some symbols are also allowed as boundary, like <code>-</code> &amp; <code>_</co
 <li>With the <code>indexed</code> option, that address space has one register per number where if object <code>A</code> has address <code>X</code>, then object <code>B</code> (if it exists) will have the address <code>X+1</code>.</li>
 </ul>
 <p>If this value is specified, then it permits bulk register reads and writes.</p>
+<pre><code class="language-ddsl">// address mode
+register-address-mode: mapped
+</code></pre>
 <h4 id="info-5-1"><a class="header" href="#info-5-1">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
-</ul>
-<h4 id="allowed-expression-types-5-1"><a class="header" href="#allowed-expression-types-5-1">Allowed expression types</a></h4>
-<ul>
-<li><code>address mode</code> =&gt; <code>mapped</code></li>
 </ul>
 <h2 id="possible-subnodes-1"><a class="header" href="#possible-subnodes-1">Possible subnodes</a></h2>
 <p>Subnodes of the following types are allowed in the node body.</p>
@@ -1716,15 +1704,14 @@ block Example {
 <p>Defines the address offset of this block. All objects in the block are relative to the block.
 For example, a block with an address offset of 10 which has a register at address 5, will have defined the register at address 15.
 If this is not desired, then keep the address offset at 0.</p>
+<pre><code class="language-ddsl">// number
+address-offset: 0
+</code></pre>
 <h4 id="info-7"><a class="header" href="#info-7">Info</a></h4>
 <ul>
 <li>required: <code>yes</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
-</ul>
-<h4 id="allowed-expression-types-7"><a class="header" href="#allowed-expression-types-7">Allowed expression types</a></h4>
-<ul>
-<li><code>number</code> =&gt; <code>0</code></li>
 </ul>
 <h2 id="possible-subnodes-2"><a class="header" href="#possible-subnodes-2">Possible subnodes</a></h2>
 <p>Subnodes of the following types are allowed in the node body.</p>
@@ -1777,39 +1764,36 @@ register Example {
 <p>These properties are specified in the node body.</p>
 <h3 id="address"><a class="header" href="#address">address</a></h3>
 <p>The address of the register.</p>
+<pre><code class="language-ddsl">// number
+address: 0
+</code></pre>
 <h4 id="info-8"><a class="header" href="#info-8">Info</a></h4>
 <ul>
 <li>required: <code>yes</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
-<h4 id="allowed-expression-types-8"><a class="header" href="#allowed-expression-types-8">Allowed expression types</a></h4>
-<ul>
-<li><code>number</code> =&gt; <code>0</code></li>
-</ul>
 <h3 id="access"><a class="header" href="#access">access</a></h3>
 <p>Limits how the register can be accessed. If not specified, the access is <code>RW</code>.</p>
+<pre><code class="language-ddsl">// access specifier
+access: RW
+</code></pre>
 <h4 id="info-1-2"><a class="header" href="#info-1-2">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
-<h4 id="allowed-expression-types-1-2"><a class="header" href="#allowed-expression-types-1-2">Allowed expression types</a></h4>
-<ul>
-<li><code>access specifier</code> =&gt; <code>RW</code></li>
-</ul>
 <h3 id="address-overlap"><a class="header" href="#address-overlap">address-overlap</a></h3>
 <p>Allows addresses to overlap with other registers. This is not allowed by default to prevent copy-paste mistakes.</p>
+<pre><code class="language-ddsl">// allow
+address-overlap: allow
+</code></pre>
 <h4 id="info-2-2"><a class="header" href="#info-2-2">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
-</ul>
-<h4 id="allowed-expression-types-2-2"><a class="header" href="#allowed-expression-types-2-2">Allowed expression types</a></h4>
-<ul>
-<li><code>allow</code> =&gt; <code>allow</code></li>
 </ul>
 <h3 id="reset"><a class="header" href="#reset">reset</a></h3>
 <p>Defines the reset value of the register. When performing a write operation, this value loaded in by default.</p>
@@ -1818,29 +1802,29 @@ register Example {
 <li>Byte array: No byte order changes are done. The array will be loaded into the fieldset as is.</li>
 <li>Integer: Will be converted to a byte array with the specified byte order.</li>
 </ul>
+<pre><code class="language-ddsl">// [bytes]
+reset: [12, 34],
+// number
+reset: 1234
+</code></pre>
 <h4 id="info-3-2"><a class="header" href="#info-3-2">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
-<h4 id="allowed-expression-types-3-2"><a class="header" href="#allowed-expression-types-3-2">Allowed expression types</a></h4>
-<ul>
-<li><code>[bytes]</code> =&gt; <code>[12, 34]</code></li>
-<li><code>number</code> =&gt; <code>1234</code></li>
-</ul>
 <h3 id="fields"><a class="header" href="#fields">fields</a></h3>
 <p>The fieldset that represents the data of the register. This can be a reference to an existing fieldset or a completely new inline fieldset.</p>
+<pre><code class="language-ddsl">// type reference
+fields: MyFieldset,
+// sub node
+fields: fieldset MyFieldSet
+</code></pre>
 <h4 id="info-4-2"><a class="header" href="#info-4-2">Info</a></h4>
 <ul>
 <li>required: <code>yes</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
-</ul>
-<h4 id="allowed-expression-types-4-2"><a class="header" href="#allowed-expression-types-4-2">Allowed expression types</a></h4>
-<ul>
-<li><code>type reference</code> =&gt; <code>MyFieldset</code></li>
-<li><code>sub node</code> =&gt; <code>fieldset MyFieldSet</code></li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="command"><a class="header" href="#command">Command</a></h1>
@@ -1892,53 +1876,51 @@ command Example {
 <p>These properties are specified in the node body.</p>
 <h3 id="address-1"><a class="header" href="#address-1">address</a></h3>
 <p>The address of the command</p>
+<pre><code class="language-ddsl">// number
+address: 0
+</code></pre>
 <h4 id="info-9"><a class="header" href="#info-9">Info</a></h4>
 <ul>
 <li>required: <code>yes</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
-<h4 id="allowed-expression-types-9"><a class="header" href="#allowed-expression-types-9">Allowed expression types</a></h4>
-<ul>
-<li><code>number</code> =&gt; <code>0</code></li>
-</ul>
 <h3 id="address-overlap-1"><a class="header" href="#address-overlap-1">address-overlap</a></h3>
 <p>Allows addresses to overlap with other commands. This is not allowed by default to prevent copy-paste mistakes.</p>
+<pre><code class="language-ddsl">// allow
+address-overlap: allow
+</code></pre>
 <h4 id="info-1-3"><a class="header" href="#info-1-3">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
-<h4 id="allowed-expression-types-1-3"><a class="header" href="#allowed-expression-types-1-3">Allowed expression types</a></h4>
-<ul>
-<li><code>allow</code> =&gt; <code>allow</code></li>
-</ul>
 <h3 id="fields-in"><a class="header" href="#fields-in">fields-in</a></h3>
 <p>The fieldset that represents the input data of the command. This can be a reference to an existing fieldset or a completely new inline fieldset.</p>
+<pre><code class="language-ddsl">// type reference
+fields-in: MyFieldset,
+// sub node
+fields-in: fieldset MyFieldSet
+</code></pre>
 <h4 id="info-2-3"><a class="header" href="#info-2-3">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
-<h4 id="allowed-expression-types-2-3"><a class="header" href="#allowed-expression-types-2-3">Allowed expression types</a></h4>
-<ul>
-<li><code>type reference</code> =&gt; <code>MyFieldset</code></li>
-<li><code>sub node</code> =&gt; <code>fieldset MyFieldSet</code></li>
-</ul>
 <h3 id="fields-out"><a class="header" href="#fields-out">fields-out</a></h3>
 <p>The fieldset that represents the output data of the command. This can be a reference to an existing fieldset or a completely new inline fieldset.</p>
+<pre><code class="language-ddsl">// type reference
+fields-out: MyFieldset,
+// sub node
+fields-out: fieldset MyFieldSet
+</code></pre>
 <h4 id="info-3-3"><a class="header" href="#info-3-3">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
-</ul>
-<h4 id="allowed-expression-types-3-3"><a class="header" href="#allowed-expression-types-3-3">Allowed expression types</a></h4>
-<ul>
-<li><code>type reference</code> =&gt; <code>MyFieldset</code></li>
-<li><code>sub node</code> =&gt; <code>fieldset MyFieldSet</code></li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="buffer"><a class="header" href="#buffer">Buffer</a></h1>
@@ -1979,27 +1961,25 @@ buffer Example {
 <p>These properties are specified in the node body.</p>
 <h3 id="access-1"><a class="header" href="#access-1">access</a></h3>
 <p>Limits how the buffer can be accessed. If not specified, the access is <code>RW</code>.</p>
+<pre><code class="language-ddsl">// access specifier
+access: RW
+</code></pre>
 <h4 id="info-10"><a class="header" href="#info-10">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
-<h4 id="allowed-expression-types-10"><a class="header" href="#allowed-expression-types-10">Allowed expression types</a></h4>
-<ul>
-<li><code>access specifier</code> =&gt; <code>RW</code></li>
-</ul>
 <h3 id="address-2"><a class="header" href="#address-2">address</a></h3>
 <p>The address of the buffer</p>
+<pre><code class="language-ddsl">// number
+address: 0
+</code></pre>
 <h4 id="info-1-4"><a class="header" href="#info-1-4">Info</a></h4>
 <ul>
 <li>required: <code>yes</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
-</ul>
-<h4 id="allowed-expression-types-1-4"><a class="header" href="#allowed-expression-types-1-4">Allowed expression types</a></h4>
-<ul>
-<li><code>number</code> =&gt; <code>0</code></li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="fieldset"><a class="header" href="#fieldset">Fieldset</a></h1>
@@ -2053,39 +2033,36 @@ fieldset Example {
 <p>These properties are specified in the node body.</p>
 <h3 id="size-bytes"><a class="header" href="#size-bytes">size-bytes</a></h3>
 <p>The size of the fieldset in number of bytes.</p>
+<pre><code class="language-ddsl">// number
+size-bytes: 8
+</code></pre>
 <h4 id="info-11"><a class="header" href="#info-11">Info</a></h4>
 <ul>
 <li>required: <code>yes</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
-<h4 id="allowed-expression-types-11"><a class="header" href="#allowed-expression-types-11">Allowed expression types</a></h4>
-<ul>
-<li><code>number</code> =&gt; <code>8</code></li>
-</ul>
 <h3 id="byte-order-2"><a class="header" href="#byte-order-2">byte-order</a></h3>
 <p>The byte order of the fieldset data.</p>
+<pre><code class="language-ddsl">// byte order
+byte-order: LE
+</code></pre>
 <h4 id="info-1-5"><a class="header" href="#info-1-5">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
-<h4 id="allowed-expression-types-1-5"><a class="header" href="#allowed-expression-types-1-5">Allowed expression types</a></h4>
-<ul>
-<li><code>byte order</code> =&gt; <code>LE</code></li>
-</ul>
 <h3 id="bit-overlap"><a class="header" href="#bit-overlap">bit-overlap</a></h3>
 <p>Allows fields to overlap. This is not allowed by default to prevent copy-paste mistakes.</p>
+<pre><code class="language-ddsl">// allow
+bit-overlap: allow
+</code></pre>
 <h4 id="info-2-4"><a class="header" href="#info-2-4">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
-</ul>
-<h4 id="allowed-expression-types-2-4"><a class="header" href="#allowed-expression-types-2-4">Allowed expression types</a></h4>
-<ul>
-<li><code>allow</code> =&gt; <code>allow</code></li>
 </ul>
 <h2 id="possible-subnodes-3"><a class="header" href="#possible-subnodes-3">Possible subnodes</a></h2>
 <p>Subnodes of the following types are allowed in the node body.</p>
@@ -2129,20 +2106,24 @@ enum Example -&gt; uint {
 <p>These properties are specified in the node body.</p>
 <h3 id="any-name"><a class="header" href="#any-name"><em>any name</em></a></h3>
 <p>Defines a variant for the enum. The name of the property becomes the variant name.</p>
+<pre><code class="language-ddsl">// auto
+*any name*: _,
+// number
+*any name*: 0,
+// default number
+*any name*: default 0,
+// default auto
+*any name*: default _,
+// catch-all number
+*any name*: catch-all 0,
+// catch-all auto
+*any name*: catch-all _
+</code></pre>
 <h4 id="info-12"><a class="header" href="#info-12">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>yes</code></li>
 <li>supports doc comments: <code>yes</code></li>
-</ul>
-<h4 id="allowed-expression-types-12"><a class="header" href="#allowed-expression-types-12">Allowed expression types</a></h4>
-<ul>
-<li><code>auto</code> =&gt; <code>_</code></li>
-<li><code>number</code> =&gt; <code>0</code></li>
-<li><code>default number</code> =&gt; <code>default 0</code></li>
-<li><code>default auto</code> =&gt; <code>default _</code></li>
-<li><code>catch-all number</code> =&gt; <code>catch-all 0</code></li>
-<li><code>catch-all auto</code> =&gt; <code>catch-all _</code></li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="extern"><a class="header" href="#extern">Extern</a></h1>
@@ -2177,27 +2158,25 @@ extern Example -&gt; uint {
 <p>These properties are specified in the node body.</p>
 <h3 id="infallible"><a class="header" href="#infallible">infallible</a></h3>
 <p>Allows this type to be infallably converted to.</p>
+<pre><code class="language-ddsl">// allow
+infallible: allow
+</code></pre>
 <h4 id="info-13"><a class="header" href="#info-13">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
-<h4 id="allowed-expression-types-13"><a class="header" href="#allowed-expression-types-13">Allowed expression types</a></h4>
-<ul>
-<li><code>allow</code> =&gt; <code>allow</code></li>
-</ul>
 <h3 id="size-bits"><a class="header" href="#size-bits">size-bits</a></h3>
 <p>The size of the type in bits.</p>
+<pre><code class="language-ddsl">// number
+size-bits: 8
+</code></pre>
 <h4 id="info-1-6"><a class="header" href="#info-1-6">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
-</ul>
-<h4 id="allowed-expression-types-1-6"><a class="header" href="#allowed-expression-types-1-6">Allowed expression types</a></h4>
-<ul>
-<li><code>number</code> =&gt; <code>8</code></li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="field"><a class="header" href="#field">Field</a></h1>
@@ -2240,28 +2219,27 @@ field Example 8:0 RW -&gt; uint as try Foo
 <p>These properties are specified inline in the node definition and are used without name.</p>
 <h3 id="address-3"><a class="header" href="#address-3">address</a></h3>
 <p>The bit address of the field within the fieldset</p>
+<pre><code class="language-ddsl">// range
+address: 8:0,
+// number
+address: 0
+</code></pre>
 <h4 id="info-14"><a class="header" href="#info-14">Info</a></h4>
 <ul>
 <li>required: <code>yes</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
-<h4 id="allowed-expression-types-14"><a class="header" href="#allowed-expression-types-14">Allowed expression types</a></h4>
-<ul>
-<li><code>range</code> =&gt; <code>8:0</code></li>
-<li><code>number</code> =&gt; <code>0</code></li>
-</ul>
 <h3 id="access-2"><a class="header" href="#access-2">access</a></h3>
 <p>Limits how the field can be accessed. If not specified, the access is <code>RW</code>.</p>
+<pre><code class="language-ddsl">// access specifier
+access: RW
+</code></pre>
 <h4 id="info-1-7"><a class="header" href="#info-1-7">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
-</ul>
-<h4 id="allowed-expression-types-1-7"><a class="header" href="#allowed-expression-types-1-7">Allowed expression types</a></h4>
-<ul>
-<li><code>access specifier</code> =&gt; <code>RW</code></li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="compilation"><a class="header" href="#compilation">Compilation</a></h1>
