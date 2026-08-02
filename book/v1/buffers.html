@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-ba301190.js";
+            window.path_to_searchindex_js = "../searchindex-d043f034.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-cce5e38a.js"></script>
+        <script src="../toc-ca5e7c95.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -182,14 +182,11 @@
 It’s quite a simple construct and thus is limited in configuration options.</p>
 <p>It is accessed as a function on the block it’s part of. The function returns a <a href="https://docs.rs/device-driver/latest/device_driver/struct.BufferOperation.html">BufferOperation</a> which can be used to read and write from/to the buffer. This operation type also implements the <a href="https://crates.io/crates/embedded-io">embedded-io</a> traits.</p>
 <p>Example usage:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let mut device = MyDevice::new(DeviceInterface::new());
+<pre><code class="language-rust">let mut device = MyDevice::new(DeviceInterface::new());
 
 device.foo().write_all(&amp;[0, 1, 2, 3]).unwrap();
 let mut buffer = [0; 8];
-let len = device.bar().read(&amp;mut buffer).unwrap();
-<span class="boring">}</span></code></pre>
+let len = device.bar().read(&amp;mut buffer).unwrap();</code></pre>
 <p>Below are minimal and full examples of how buffers can be defined.</p>
 <ul>
 <li><a href="#buffers">Buffers</a>
@@ -214,17 +211,11 @@ let len = device.bar().read(&amp;mut buffer).unwrap();
 </ul>
 <h2 id="dsl"><a class="header" href="#dsl">DSL</a></h2>
 <p>Minimal:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>buffer Foo = 5,
-<span class="boring">}</span></code></pre>
+<pre><code class="language-rust">buffer Foo = 5,</code></pre>
 <p>Full:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>/// A foo buffer
+<pre><code class="language-rust">/// A foo buffer
 #[cfg(bar)]
-buffer Foo: WO = 5,
-<span class="boring">}</span></code></pre>
+buffer Foo: WO = 5,</code></pre>
 <h2 id="manifest"><a class="header" href="#manifest">Manifest</a></h2>
 <p>Minimal:</p>
 <pre><code class="language-json">"Foo": {
@@ -319,6 +310,7 @@ Multiple attributes get concatenated with a newline (just like normal Rust does)
         <script src="../book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
+        <script src="../ddsl-67bc1e3d.highlight.js"></script>
 
 
 

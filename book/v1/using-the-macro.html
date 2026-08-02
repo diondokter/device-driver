@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-ba301190.js";
+            window.path_to_searchindex_js = "../searchindex-d043f034.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-cce5e38a.js"></script>
+        <script src="../toc-ca5e7c95.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -182,15 +182,12 @@
 <p>The macro can be used in two forms.</p>
 <h2 id="inline-dsl"><a class="header" href="#inline-dsl">Inline DSL</a></h2>
 <p>The first form is for writing the register definitions using the DSL right in the source of your project.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>device_driver::create_device!(
+<pre><code class="language-rust">device_driver::create_device!(
     device_name: MyTestDevice,
     dsl: {
         // DSL code goes here
     }
-)
-<span class="boring">}</span></code></pre>
+)</code></pre>
 <p>It consists of two parts:</p>
 <ul>
 <li><code>device_name</code>: This will be the name of the root block that will take ownership of the device interface.
@@ -207,13 +204,10 @@ appropriate for a low level layer. For example: ‘Registers’ or ‘LowLevel�
 <p>Using the DSL in this way allows for nice error messages and keeps the definitions close to your code.</p>
 <h2 id="manifest-file"><a class="header" href="#manifest-file">Manifest file</a></h2>
 <p>The second form uses an external manifest file.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>device_driver::create_device!(
+<pre><code class="language-rust">device_driver::create_device!(
     device_name: MyTestDevice,
     manifest: "driver-manifest.yaml"
-)
-<span class="boring">}</span></code></pre>
+)</code></pre>
 <p>You can provide an absolute path or a relative path to the file. If it’s relative, then the base path is the value of the <a href="https://doc.rust-lang.org/cargo/reference/environment-variables.html"><code>CARGO_MANIFEST_DIR</code> environment variable</a>. This is the same directory as your <code>Cargo.toml</code> is in.</p>
 <p>The extension of the file determines which parser is used.</p>
 <p>The options are:</p>
@@ -322,6 +316,7 @@ appropriate for a low level layer. For example: ‘Registers’ or ‘LowLevel�
         <script src="../book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
+        <script src="../ddsl-67bc1e3d.highlight.js"></script>
 
 
 

@@ -1,0 +1,15 @@
+range
+  | BaseType
+  | Integer
+  | Num<i128>
+  | Default (Num<i128>
+    | Underscore)
+  | CatchAll (Num<i128>
+    | Underscore)
+  | byte-array
+  | Allow
+  | Access
+  | ByteOrder
+  | Underscore
+  | String
+  | AddressMode

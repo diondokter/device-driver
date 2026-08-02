@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-ba301190.js";
+            window.path_to_searchindex_js = "../searchindex-d043f034.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-cce5e38a.js"></script>
+        <script src="../toc-ca5e7c95.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -188,16 +188,13 @@ The only difference with other blocks is that it takes ownership of the interfac
 <p>It is accessed as a function on the parent block it’s part of.</p>
 <p>All objects are generated globally so child objects still need a globally unique name and are not generated in a module.</p>
 <p>Example usage:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// MyDevice is the root block
+<pre><code class="language-rust">// MyDevice is the root block
 let mut device = MyDevice::new(DeviceInterface::new());
 
 let mut child_block = device.foo();
 child_block.bar().dispatch().unwrap();
 // Or in one go
-device.foo().bar().dispatch().unwrap();
-<span class="boring">}</span></code></pre>
+device.foo().bar().dispatch().unwrap();</code></pre>
 <p>Below are minimal and full examples of how blocks can be defined.
 There’s one child object defined as example.</p>
 <ul>
@@ -224,16 +221,11 @@ There’s one child object defined as example.</p>
 </ul>
 <h2 id="dsl"><a class="header" href="#dsl">DSL</a></h2>
 <p>Minimal:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>block Foo {
+<pre><code class="language-rust">block Foo {
     buffer Bar = 0,
-}
-<span class="boring">}</span></code></pre>
+}</code></pre>
 <p>Full:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>/// Block description
+<pre><code class="language-rust">/// Block description
 #[cfg(not(blah))]
 block Foo {
     const ADDRESS_OFFSET = 10;
@@ -243,8 +235,7 @@ block Foo {
     };
 
     buffer Bar = 0,
-}
-<span class="boring">}</span></code></pre>
+}</code></pre>
 <h2 id="manifest"><a class="header" href="#manifest">Manifest</a></h2>
 <p>Minimal:</p>
 <pre><code class="language-json">"Foo": {
@@ -363,6 +354,7 @@ Multiple attributes get concatenated with a newline (just like normal Rust does)
         <script src="../book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
+        <script src="../ddsl-67bc1e3d.highlight.js"></script>
 
 
 

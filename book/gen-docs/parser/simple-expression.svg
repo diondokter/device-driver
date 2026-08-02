@@ -1,0 +1,212 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="railroad" viewBox="0 0 342 640">
+<style type="text/css">
+svg.railroad {
+background-color: hsl(30, 20%, 95%);
+background-size: 15px 15px;
+background-image: linear-gradient(to right, rgba(30, 30, 30, .05) 1px, transparent 1px),
+		  linear-gradient(to bottom, rgba(30, 30, 30, .05) 1px, transparent 1px);
+}
+
+svg.railroad rect.railroad_canvas {
+stroke-width: 0px;
+fill: none;
+}
+
+svg.railroad path {
+stroke-width: 3px;
+stroke: black;
+fill: none;
+}
+
+svg.railroad .debug {
+stroke-width: 1px;
+stroke: red;
+}
+
+svg.railroad text {
+font: 14px monospace;
+text-anchor: middle;
+}
+
+svg.railroad .nonterminal text {
+font-weight: bold;
+}
+
+svg.railroad text.comment {
+font: italic 12px monospace;
+}
+
+svg.railroad rect {
+stroke-width: 3px;
+stroke: black;
+fill:hsl(-290, 70%, 90%);
+}
+
+svg.railroad g.labeledbox &gt; rect {
+stroke-width: 1px;
+stroke: grey;
+stroke-dasharray: 5px;
+fill:rgba(90, 90, 150, .1);
+}
+</style>
+<rect width="100%" height="100%" class="railroad_canvas"/>
+<g class="sequence">
+<g class="verticalgrid">
+<g class="labeledbox">
+<rect x="10" y="10" height="620" width="322"/>
+<path d=" M 10 59 h 8 m 306 0 h 8"/>
+<g class="nonterminal">
+<rect x="18" y="18" height="22" width="156"/>
+<text x="96" y="34">
+simple-expression</text>
+</g>
+<g class="choice">
+<path d=" M 18 59 h 24 m 60 0 h 222 m -108 0 l -5 -5 m 0 10 l 5 -5 m 108 0"/>
+<g class="nonterminal">
+<rect x="42" y="48" height="22" width="60"/>
+<text x="72" y="64">
+range</text>
+</g>
+<path d=" M 18 59 a 12 12 0 0 1 12 12 v 9 m 282 0 v -9 a 12 12 0 0 1 12 -12"/>
+<path d=" M 30 80 v 33 m 282 0 v -33"/>
+<path d=" M 30 113 v 33 m 282 0 v -33"/>
+<path d=" M 30 146 v 33 m 282 0 v -33"/>
+<path d=" M 30 216 v 74 m 0 -34 l -5 -5 m 10 0 l -5 5 m 0 34 m 282 0 v -74 m 0 40 l -5 5 m 10 0 l -5 -5 m 0 -40"/>
+<path d=" M 30 327 v 74 m 0 -34 l -5 -5 m 10 0 l -5 5 m 0 34 m 282 0 v -74 m 0 40 l -5 5 m 10 0 l -5 -5 m 0 -40"/>
+<path d=" M 30 401 v 33 m 282 0 v -33"/>
+<path d=" M 30 434 v 33 m 282 0 v -33"/>
+<path d=" M 30 467 v 33 m 282 0 v -33"/>
+<path d=" M 30 500 v 33 m 282 0 v -33"/>
+<path d=" M 30 533 v 33 m 282 0 v -33"/>
+<path d=" M 30 566 v 33 m 282 0 v -33"/>
+<path d=" M 30 80 v 0 a 12 12 0 0 0 12 12 m 84 0 h 174 m -84 0 l -5 -5 m 0 10 l 5 -5 m 84 0 a 12 12 0 0 0 12 -12 v 0"/>
+<g class="terminal">
+<rect x="42" y="81" height="22" width="84" rx="10" ry="10"/>
+<text x="84" y="97">
+BaseType</text>
+</g>
+<path d=" M 30 113 v 0 a 12 12 0 0 0 12 12 m 76 0 h 182 m -88 0 l -5 -5 m 0 10 l 5 -5 m 88 0 a 12 12 0 0 0 12 -12 v 0"/>
+<g class="terminal">
+<rect x="42" y="114" height="22" width="76" rx="10" ry="10"/>
+<text x="80" y="130">
+Integer</text>
+</g>
+<path d=" M 30 146 v 0 a 12 12 0 0 0 12 12 m 92 0 h 166 m -80 0 l -5 -5 m 0 10 l 5 -5 m 80 0 a 12 12 0 0 0 12 -12 v 0"/>
+<g class="terminal">
+<rect x="42" y="147" height="22" width="92" rx="10" ry="10"/>
+<text x="88" y="163">
+Num&lt;i128&gt;</text>
+</g>
+<path d=" M 30 179 v 37 a 12 12 0 0 0 12 12 m 250 0 h 8 a 12 12 0 0 0 12 -12 v -37"/>
+<g class="labeledbox">
+<rect x="42" y="179" height="101" width="250"/>
+<path d=" M 42 228 h 8 m 234 0 h 8"/>
+<g class="nonterminal">
+<rect x="50" y="187" height="22" width="132"/>
+<text x="116" y="203">
+default-number</text>
+</g>
+<g class="sequence">
+<g class="terminal">
+<rect x="50" y="217" height="22" width="76" rx="10" ry="10"/>
+<text x="88" y="233">
+Default</text>
+</g>
+<g class="choice">
+<path d=" M 136 228 h 24 m 92 0 h 32"/>
+<g class="terminal">
+<rect x="160" y="217" height="22" width="92" rx="10" ry="10"/>
+<text x="206" y="233">
+Num&lt;i128&gt;</text>
+</g>
+<path d=" M 136 228 a 12 12 0 0 1 12 12 v 9 m 124 0 v -9 a 12 12 0 0 1 12 -12"/>
+<path d=" M 148 249 v 0 a 12 12 0 0 0 12 12 m 100 0 h 0 a 12 12 0 0 0 12 -12 v 0"/>
+<g class="terminal">
+<rect x="160" y="250" height="22" width="100" rx="10" ry="10"/>
+<text x="210" y="266">
+Underscore</text>
+</g>
+</g>
+<path d=" M 126 228 h 10"/>
+</g>
+</g>
+<path d=" M 30 290 v 37 a 12 12 0 0 0 12 12 m 258 0 h 0 a 12 12 0 0 0 12 -12 v -37"/>
+<g class="labeledbox">
+<rect x="42" y="290" height="101" width="258"/>
+<path d=" M 42 339 h 8 m 242 0 h 8"/>
+<g class="nonterminal">
+<rect x="50" y="298" height="22" width="148"/>
+<text x="124" y="314">
+catch-all-number</text>
+</g>
+<g class="sequence">
+<g class="terminal">
+<rect x="50" y="328" height="22" width="84" rx="10" ry="10"/>
+<text x="92" y="344">
+CatchAll</text>
+</g>
+<g class="choice">
+<path d=" M 144 339 h 24 m 92 0 h 32"/>
+<g class="terminal">
+<rect x="168" y="328" height="22" width="92" rx="10" ry="10"/>
+<text x="214" y="344">
+Num&lt;i128&gt;</text>
+</g>
+<path d=" M 144 339 a 12 12 0 0 1 12 12 v 9 m 124 0 v -9 a 12 12 0 0 1 12 -12"/>
+<path d=" M 156 360 v 0 a 12 12 0 0 0 12 12 m 100 0 h 0 a 12 12 0 0 0 12 -12 v 0"/>
+<g class="terminal">
+<rect x="168" y="361" height="22" width="100" rx="10" ry="10"/>
+<text x="218" y="377">
+Underscore</text>
+</g>
+</g>
+<path d=" M 134 339 h 10"/>
+</g>
+</g>
+<path d=" M 30 401 v 0 a 12 12 0 0 0 12 12 m 100 0 h 158 m -76 0 l -5 -5 m 0 10 l 5 -5 m 76 0 a 12 12 0 0 0 12 -12 v 0"/>
+<g class="nonterminal">
+<rect x="42" y="402" height="22" width="100"/>
+<text x="92" y="418">
+byte-array</text>
+</g>
+<path d=" M 30 434 v 0 a 12 12 0 0 0 12 12 m 60 0 h 198 m -96 0 l -5 -5 m 0 10 l 5 -5 m 96 0 a 12 12 0 0 0 12 -12 v 0"/>
+<g class="terminal">
+<rect x="42" y="435" height="22" width="60" rx="10" ry="10"/>
+<text x="72" y="451">
+Allow</text>
+</g>
+<path d=" M 30 467 v 0 a 12 12 0 0 0 12 12 m 68 0 h 190 m -92 0 l -5 -5 m 0 10 l 5 -5 m 92 0 a 12 12 0 0 0 12 -12 v 0"/>
+<g class="terminal">
+<rect x="42" y="468" height="22" width="68" rx="10" ry="10"/>
+<text x="76" y="484">
+Access</text>
+</g>
+<path d=" M 30 500 v 0 a 12 12 0 0 0 12 12 m 92 0 h 166 m -80 0 l -5 -5 m 0 10 l 5 -5 m 80 0 a 12 12 0 0 0 12 -12 v 0"/>
+<g class="terminal">
+<rect x="42" y="501" height="22" width="92" rx="10" ry="10"/>
+<text x="88" y="517">
+ByteOrder</text>
+</g>
+<path d=" M 30 533 v 0 a 12 12 0 0 0 12 12 m 100 0 h 158 m -76 0 l -5 -5 m 0 10 l 5 -5 m 76 0 a 12 12 0 0 0 12 -12 v 0"/>
+<g class="terminal">
+<rect x="42" y="534" height="22" width="100" rx="10" ry="10"/>
+<text x="92" y="550">
+Underscore</text>
+</g>
+<path d=" M 30 566 v 0 a 12 12 0 0 0 12 12 m 68 0 h 190 m -92 0 l -5 -5 m 0 10 l 5 -5 m 92 0 a 12 12 0 0 0 12 -12 v 0"/>
+<g class="terminal">
+<rect x="42" y="567" height="22" width="68" rx="10" ry="10"/>
+<text x="76" y="583">
+String</text>
+</g>
+<path d=" M 30 599 v 0 a 12 12 0 0 0 12 12 m 108 0 h 150 m -72 0 l -5 -5 m 0 10 l 5 -5 m 72 0 a 12 12 0 0 0 12 -12 v 0"/>
+<g class="terminal">
+<rect x="42" y="600" height="22" width="108" rx="10" ry="10"/>
+<text x="96" y="616">
+AddressMode</text>
+</g>
+</g>
+</g>
+</g>
+</g>
+</svg>

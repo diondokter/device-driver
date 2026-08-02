@@ -1,0 +1,3 @@
+{ DocCommentLine } (Ident (Colon (simple-expression
+  | node
+  | Ident)))

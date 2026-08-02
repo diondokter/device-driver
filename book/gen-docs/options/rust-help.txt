@@ -1,0 +1,8 @@
+Usage: [OPTIONS]
+
+Options:
+      --rust-defmt-feature=<FEATURE>
+          When specified, defmt implementations will be generated using this cfg feature flag
+
+  -h, --help
+          Print help

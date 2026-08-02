@@ -35,10 +35,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-ba301190.js";
+            window.path_to_searchindex_js = "searchindex-d043f034.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-cce5e38a.js"></script>
+        <script src="toc-ca5e7c95.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -183,10 +183,34 @@
 <p>A toolkit to write better device drivers, faster.</p>
 </blockquote>
 <p>This book aims to guide you to write your own device drivers using the device-driver toolkit.
-It is not a replacement of the <a href="https://docs.rs/device-driver">docs</a> though. The documentation describes all the small details while this book is concerned with more big-picture concepts and the description of the DSL and manifest (JSON, YAML and TOML) inputs.</p>
+For runtime docs, visit <a href="https://docs.rs/device-driver">docs.rs</a>.</p>
+<p>Device-driver uses a small custom language named DDSL (device driver specification language) as its input. It’s made so creating drivers is direct, easy and to-the-point.</p>
+<p>Example of a DDSL register:</p>
+<pre><code class="language-ddsl">register SYNT {
+    address: 0x05,
+    reset: 0x42162762,
+    fields: fieldset _ {
+        size-bytes: 4,
+        byte-order: BE,
+        
+        /// Set the charge pump current according to the XTAL frequency
+        /// (see Table 37. Table 34).
+        field PLL_CP_ISEL 31:29 -&gt; uint,
+        /// Synthesizer band select. This parameter selects the out-of loop
+        /// divide factor of the synthesizer:
+        /// - false: 4, band select factor for high band
+        /// - true: 8, band select factor for middle band
+        /// (see Section 5.3.1 RF channel frequency settings).
+        field BS 28 -&gt; bool,
+        /// The PLL programmable divider
+        /// (see Section 5.3.1 RF channel frequent settings).           
+        field SYNT 27:0 -&gt; uint
+    }
+}
+</code></pre>
 <blockquote class="blockquote-tag blockquote-tag-note">
 <p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
-<p>Definitions are important!<br>The name <code>device-driver</code> consists of two parts:</p>
+<p>The name <code>device-driver</code> consists of two parts:</p>
 <ul>
 <li><code>driver</code>: Code to enable the use of hardware.</li>
 <li><code>device</code>: A chip or peripheral you can talk to over a bus.</li>
@@ -199,55 +223,28 @@ It is not a replacement of the <a href="https://docs.rs/device-driver">docs</a> 
 </ul>
 <p>The driver is usable in any no-std context and can be made to work with the <code>embedded-hal</code> crate or any custom interfaces.</p>
 </blockquote>
-<p>(In theory this toolkit can be used for memory-mapped peripherals too, but there are likely better crates to use for that like <code>svd2rust</code> and <code>chiptool</code>. The major difference is that this toolkit assumes device interfaces to be fallible.)</p>
-<details>
-  <summary>Sneak peak of yaml register definition</summary>
-<pre><code class="language-yaml">SYNT:
-  type: register
-  address: 0x05
-  size_bits: 32
-  reset_value: 0x42162762
-  fields:
-    PLL_CP_ISEL:
-      base: uint
-      start: 29
-      end: 32
-      description: Set the charge pump current according to the XTAL frequency (see Table 37. Table 34).
-    BS:
-      base: bool
-      start: 28
-      description: |
-        Synthesizer band select. This parameter selects the out-of loop
-        divide factor of the synthesizer:
-        - false: 4, band select factor for high band
-        - true: 8, band select factor for middle band
-        (see Section 5.3.1 RF channel frequency settings).
-    SYNT:
-      base: uint
-      start: 0
-      end: 28
-      description: The PLL programmable divider (see Section 5.3.1 RF channel frequency settings).
-</code></pre>
-</details>
 <h2 id="book-overview"><a class="header" href="#book-overview">Book overview:</a></h2>
-<ul>
-<li>The intro chapter describes the goal of the toolkit, what it does for you and why you may want to use it instead of writing the driver manually.</li>
-<li>After the intro are chapters about how to generate and then import the driver code into your project. This can be done during compilation through a proc-macro or ahead of time with the CLI and <code>include!</code>.</li>
-<li>Next is a chapter about creating a driver interface where you’ll see how to implement the right traits so the generated driver can talk with your device.</li>
-<li>Then the actual definition of the driver is covered. These chapters teach what options there are for defining registers, commands, buffers and more using either the DSL or a manifest language like YAML.</li>
-</ul>
-<p>The addendum contains more things that mostly provide useful background information.</p>
+<p>The book contains documentation for multiple versions.
+Go to the version you’re using and continue to read there.
+If you’re new, then the most recent version is recommended.</p>
+<p>The book has sections on usage, tutorials and language specs.</p>
+<p>The addendums contain useful background information.</p>
 <blockquote class="blockquote-tag blockquote-tag-caution">
 <p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M4.47.22A.749.749 0 0 1 5 0h6c.199 0 .389.079.53.22l4.25 4.25c.141.14.22.331.22.53v6a.749.749 0 0 1-.22.53l-4.25 4.25A.749.749 0 0 1 11 16H5a.749.749 0 0 1-.53-.22L.22 11.53A.749.749 0 0 1 0 11V5c0-.199.079-.389.22-.53Zm.84 1.28L1.5 5.31v5.38l3.81 3.81h5.38l3.81-3.81V5.31L10.69 1.5ZM8 4a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 4Zm0 8a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Caution</p>
-<p>It’s hard to keep book like this up-to-date with reality. Small errors might creep in despite my best effort.<br>If you do find something out of place, missing or simply wrong, please open an issue, even if it’s just for a typo! I’d really appreciate it and helps out everyone.</p>
+<p>It’s hard to keep a book like this up-to-date with reality. Small errors might creep in despite my best effort.
+If you do find something out of place, missing or simply wrong, please open an issue or PR, even if it’s just for a typo! I’d really appreciate it and helps out everyone.</p>
 </blockquote>
 <h2 id="known-drivers-using-the-toolkit"><a class="header" href="#known-drivers-using-the-toolkit">Known drivers using the toolkit:</a></h2>
 <p>It’s nice to have examples:</p>
+<p>V2:</p>
+<ul>
+<li>None yet</li>
+</ul>
+<p>V1:</p>
 <ul>
 <li><a href="https://github.com/diondokter/s2lp">S2-LP radio</a></li>
 <li><a href="https://github.com/thermigo/npm1300-rs">Nordic nPM1300 Power Management IC</a></li>
 <li><a href="https://github.com/tactile-eng/iqs323-driver">iqs323 inductive/capacitive sensing controller</a></li>
-<li><a href="https://github.com/LeFrenchPOC/vcnl36825t-rs">VCNL36825T proximity sensor</a></li>
 <li><a href="https://github.com/okhsunrog/axp192-dd">AXP192 Power Management IC</a></li>
 <li><a href="https://github.com/okhsunrog/fusb302b">ONSEMI FUSB302B USB-PD PHY</a></li>
 <li><a href="https://github.com/trappitsch/ic-md">iC-Haus iC-MD 48bit quadrature counter</a></li>
@@ -265,7 +262,7 @@ It is not a replacement of the <a href="https://docs.rs/device-driver">docs</a> 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
 
-                            <a rel="next prefetch" href="v1/intro.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="v2/intro.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -276,7 +273,7 @@ It is not a replacement of the <a href="https://docs.rs/device-driver">docs</a> 
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
 
-                    <a rel="next prefetch" href="v1/intro.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="v2/intro.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
@@ -305,6 +302,7 @@ It is not a replacement of the <a href="https://docs.rs/device-driver">docs</a> 
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
+        <script src="ddsl-67bc1e3d.highlight.js"></script>
 
 
 

@@ -1,0 +1,8 @@
+Usage: --output <DIR>
+
+Options:
+  -o, --output <DIR>
+          Path to output folder location
+
+  -h, --help
+          Print help

@@ -11,6 +11,7 @@
     --bg-shade-1: #ffffff;
     --text-color: var(--text-color-dark);
     --text-dim: #808080;
+    --text-theme: #960018;
 
     color-scheme: light dark;
 }
@@ -29,5 +30,6 @@
         --bg-shade-1: #1f1f1f;
         --text-color: var(--text-color-white);
         --text-dim: #808080;
+        --text-theme: #df8191;
     }
 }

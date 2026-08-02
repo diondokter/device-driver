@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-ba301190.js";
+            window.path_to_searchindex_js = "../searchindex-d043f034.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-cce5e38a.js"></script>
+        <script src="../toc-ca5e7c95.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -210,9 +210,7 @@
 </ul>
 <h2 id="dsl"><a class="header" href="#dsl">DSL</a></h2>
 <p>Minimal:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>register Foo {
+<pre><code class="language-rust">register Foo {
     const ADDRESS = 3;
     const SIZE_BITS = 16;
 
@@ -220,12 +218,9 @@
 },
 ref Bar = register Foo {
     const ADDRESS = 5;
-},
-<span class="boring">}</span></code></pre>
+},</code></pre>
 <p>Full:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>register Foo {
+<pre><code class="language-rust">register Foo {
     const ADDRESS = 3;
     const SIZE_BITS = 16;
 
@@ -235,8 +230,7 @@ ref Bar = register Foo {
 #[cfg(feature = "bar-enabled")]
 ref Bar = register Foo {
     const ADDRESS = 5;
-},
-<span class="boring">}</span></code></pre>
+},</code></pre>
 <h2 id="manifest"><a class="header" href="#manifest">Manifest</a></h2>
 <p>Minimal:</p>
 <pre><code class="language-json">"Foo": {
@@ -361,6 +355,7 @@ Multiple attributes get concatenated with a newline (just like normal Rust does)
         <script src="../book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
+        <script src="../ddsl-67bc1e3d.highlight.js"></script>
 
 
 

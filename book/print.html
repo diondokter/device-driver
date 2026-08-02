@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-ba301190.js";
+            window.path_to_searchindex_js = "searchindex-d043f034.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-cce5e38a.js"></script>
+        <script src="toc-ca5e7c95.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -184,10 +184,34 @@
 <p>A toolkit to write better device drivers, faster.</p>
 </blockquote>
 <p>This book aims to guide you to write your own device drivers using the device-driver toolkit.
-It is not a replacement of the <a href="https://docs.rs/device-driver">docs</a> though. The documentation describes all the small details while this book is concerned with more big-picture concepts and the description of the DSL and manifest (JSON, YAML and TOML) inputs.</p>
+For runtime docs, visit <a href="https://docs.rs/device-driver">docs.rs</a>.</p>
+<p>Device-driver uses a small custom language named DDSL (device driver specification language) as its input. It’s made so creating drivers is direct, easy and to-the-point.</p>
+<p>Example of a DDSL register:</p>
+<pre><code class="language-ddsl">register SYNT {
+    address: 0x05,
+    reset: 0x42162762,
+    fields: fieldset _ {
+        size-bytes: 4,
+        byte-order: BE,
+        
+        /// Set the charge pump current according to the XTAL frequency
+        /// (see Table 37. Table 34).
+        field PLL_CP_ISEL 31:29 -&gt; uint,
+        /// Synthesizer band select. This parameter selects the out-of loop
+        /// divide factor of the synthesizer:
+        /// - false: 4, band select factor for high band
+        /// - true: 8, band select factor for middle band
+        /// (see Section 5.3.1 RF channel frequency settings).
+        field BS 28 -&gt; bool,
+        /// The PLL programmable divider
+        /// (see Section 5.3.1 RF channel frequent settings).           
+        field SYNT 27:0 -&gt; uint
+    }
+}
+</code></pre>
 <blockquote class="blockquote-tag blockquote-tag-note">
 <p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
-<p>Definitions are important!<br>The name <code>device-driver</code> consists of two parts:</p>
+<p>The name <code>device-driver</code> consists of two parts:</p>
 <ul>
 <li><code>driver</code>: Code to enable the use of hardware.</li>
 <li><code>device</code>: A chip or peripheral you can talk to over a bus.</li>
@@ -200,55 +224,28 @@ It is not a replacement of the <a href="https://docs.rs/device-driver">docs</a> 
 </ul>
 <p>The driver is usable in any no-std context and can be made to work with the <code>embedded-hal</code> crate or any custom interfaces.</p>
 </blockquote>
-<p>(In theory this toolkit can be used for memory-mapped peripherals too, but there are likely better crates to use for that like <code>svd2rust</code> and <code>chiptool</code>. The major difference is that this toolkit assumes device interfaces to be fallible.)</p>
-<details>
-  <summary>Sneak peak of yaml register definition</summary>
-<pre><code class="language-yaml">SYNT:
-  type: register
-  address: 0x05
-  size_bits: 32
-  reset_value: 0x42162762
-  fields:
-    PLL_CP_ISEL:
-      base: uint
-      start: 29
-      end: 32
-      description: Set the charge pump current according to the XTAL frequency (see Table 37. Table 34).
-    BS:
-      base: bool
-      start: 28
-      description: |
-        Synthesizer band select. This parameter selects the out-of loop
-        divide factor of the synthesizer:
-        - false: 4, band select factor for high band
-        - true: 8, band select factor for middle band
-        (see Section 5.3.1 RF channel frequency settings).
-    SYNT:
-      base: uint
-      start: 0
-      end: 28
-      description: The PLL programmable divider (see Section 5.3.1 RF channel frequency settings).
-</code></pre>
-</details>
 <h2 id="book-overview"><a class="header" href="#book-overview">Book overview:</a></h2>
-<ul>
-<li>The intro chapter describes the goal of the toolkit, what it does for you and why you may want to use it instead of writing the driver manually.</li>
-<li>After the intro are chapters about how to generate and then import the driver code into your project. This can be done during compilation through a proc-macro or ahead of time with the CLI and <code>include!</code>.</li>
-<li>Next is a chapter about creating a driver interface where you’ll see how to implement the right traits so the generated driver can talk with your device.</li>
-<li>Then the actual definition of the driver is covered. These chapters teach what options there are for defining registers, commands, buffers and more using either the DSL or a manifest language like YAML.</li>
-</ul>
-<p>The addendum contains more things that mostly provide useful background information.</p>
+<p>The book contains documentation for multiple versions.
+Go to the version you’re using and continue to read there.
+If you’re new, then the most recent version is recommended.</p>
+<p>The book has sections on usage, tutorials and language specs.</p>
+<p>The addendums contain useful background information.</p>
 <blockquote class="blockquote-tag blockquote-tag-caution">
 <p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M4.47.22A.749.749 0 0 1 5 0h6c.199 0 .389.079.53.22l4.25 4.25c.141.14.22.331.22.53v6a.749.749 0 0 1-.22.53l-4.25 4.25A.749.749 0 0 1 11 16H5a.749.749 0 0 1-.53-.22L.22 11.53A.749.749 0 0 1 0 11V5c0-.199.079-.389.22-.53Zm.84 1.28L1.5 5.31v5.38l3.81 3.81h5.38l3.81-3.81V5.31L10.69 1.5ZM8 4a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 4Zm0 8a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Caution</p>
-<p>It’s hard to keep book like this up-to-date with reality. Small errors might creep in despite my best effort.<br>If you do find something out of place, missing or simply wrong, please open an issue, even if it’s just for a typo! I’d really appreciate it and helps out everyone.</p>
+<p>It’s hard to keep a book like this up-to-date with reality. Small errors might creep in despite my best effort.
+If you do find something out of place, missing or simply wrong, please open an issue or PR, even if it’s just for a typo! I’d really appreciate it and helps out everyone.</p>
 </blockquote>
 <h2 id="known-drivers-using-the-toolkit"><a class="header" href="#known-drivers-using-the-toolkit">Known drivers using the toolkit:</a></h2>
 <p>It’s nice to have examples:</p>
+<p>V2:</p>
+<ul>
+<li>None yet</li>
+</ul>
+<p>V1:</p>
 <ul>
 <li><a href="https://github.com/diondokter/s2lp">S2-LP radio</a></li>
 <li><a href="https://github.com/thermigo/npm1300-rs">Nordic nPM1300 Power Management IC</a></li>
 <li><a href="https://github.com/tactile-eng/iqs323-driver">iqs323 inductive/capacitive sensing controller</a></li>
-<li><a href="https://github.com/LeFrenchPOC/vcnl36825t-rs">VCNL36825T proximity sensor</a></li>
 <li><a href="https://github.com/okhsunrog/axp192-dd">AXP192 Power Management IC</a></li>
 <li><a href="https://github.com/okhsunrog/fusb302b">ONSEMI FUSB302B USB-PD PHY</a></li>
 <li><a href="https://github.com/trappitsch/ic-md">iC-Haus iC-MD 48bit quadrature counter</a></li>
@@ -266,6 +263,2274 @@ It is not a replacement of the <a href="https://docs.rs/device-driver">docs</a> 
 <p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v9.5A1.75 1.75 0 0 1 14.25 13H8.06l-2.573 2.573A1.458 1.458 0 0 1 3 14.543V13H1.75A1.75 1.75 0 0 1 0 11.25Zm1.75-.25a.25.25 0 0 0-.25.25v9.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h6.5a.25.25 0 0 0 .25-.25v-9.5a.25.25 0 0 0-.25-.25Zm7 2.25v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Important</p>
 <p>We deserve better drivers. Rust has shown that we don’t need to stick to old principles and that we as an industry can do better.</p>
 </blockquote>
+<p>Device-driver is a toolkit written in Rust that generates safe, documented interfaces for hardware devices, handling bit-packed registers and device commands through an expressive custom language.</p>
+<p>While the Rust language provides many opportunities to improve the way we write drivers, it doesn’t mean those are easy to use. There are two issues:</p>
+<ol>
+<li>Creating good datastructures to represent the driver is hard</li>
+<li>Writing the definitions along with all its boilerplate takes a lot of thankless work</li>
+</ol>
+<p>By using this toolkit, you get both 1 and 2 solved.</p>
+<p>Number one is solved by getting the datastructures as part of this toolkit which has seen over 6 years of iteration and improvements. The second issue is solved by using code generation so you only need to take care of the things that make your driver unique.</p>
+<p>Together, this delivers a really tight and precise way of authoring your device driver:</p>
+<pre><code class="language-ddsl">// device.ddsl
+
+device MyDevice {
+    register-address-type: u8,
+
+    /// This is the Foo register
+    register Foo {
+        address: 0,
+        fields: fieldset _ {
+            size-bytes: 1,
+
+            /// This is a bool at bit 0!
+            field value0 0 -&gt; bool,
+            /// Integrated enum generation
+            field value1 3:1 -&gt; _ as enum GeneratedEnum {
+                A: _,
+                /// Variant B
+                B: _,
+                C: default _,
+            },
+            /// This is a 4-bit integer
+            field value2 7:4 -&gt; uint,
+        }
+    },
+}
+</code></pre>
+<pre><code class="language-rust">// Generate and include
+// `ddc build rust -s device.ddsl -o device.rs --rust-defmt-feature=defmt`
+include!("device.rs");
+
+// Or use the macro to compile at build-time
+device_driver::compile!(
+    options: "--rust-defmt-feature=defmt", // Target options
+    manifest: "device.ddsl" // Link to definition
+);
+
+let mut device = MyDevice::new(device_interface);
+device.foo().write(|reg| reg.set_value_1(GeneratedEnum::B)).unwrap();</code></pre>
+<p>Instantly we get a nice and familiar API that is well documented.</p>
+<h2 id="the-goal"><a class="header" href="#the-goal">The goal</a></h2>
+<p>When you’re writing a driver, you just want to implement it and be done with it. Most of the time developing a driver is boring and repetitive.</p>
+<p>To help you do less of the boring work and to create a higher quality driver at the same time, the goals are:</p>
+<ol>
+<li>Get a great driver for minimal effort</li>
+<li>Get a driver that is correct and hard to misuse
+<ul>
+<li>(assuming the input spec is correct)</li>
+</ul>
+</li>
+<li>Get a driver that is well documented
+<ul>
+<li>(assuming the input spec gives docs)</li>
+</ul>
+</li>
+</ol>
+<p>These goals are met by:</p>
+<ul>
+<li>Using a dense and precise input language</li>
+<li>Having many options to deal with memory layout</li>
+<li>Having analysis steps and great error reporting to decrease the chance of common mistakes</li>
+<li>Separating the interface to the device from the definitions</li>
+<li>Allowing you to put docs on pretty much anything</li>
+</ul>
+<h2 id="how-to-continue"><a class="header" href="#how-to-continue">How to continue</a></h2>
+<p>Simply read the rest of the book!</p>
+<p>If you’re new, head over to one of the tutorial sections.
+If you’re looking for a language detail, go see one of the reference sections.</p>
+<p>Looking at existing drivers and examples can also be very helpful.</p>
+<h2 id="future-plans"><a class="header" href="#future-plans">Future plans</a></h2>
+<p>There are many more features this toolkit wishes to support.
+To get an up-to-date overview, check out the <a href="https://github.com/diondokter/device-driver/issues">issue tracker</a>.</p>
+<p>Zooming out, the plans can be summarized to:</p>
+<ul>
+<li>LSP support for DDSL</li>
+<li>Output to typst/pdf/html for auto docs</li>
+<li>Add support for other languages like C/C++/Zig/TinyGo/MicroPython</li>
+<li>A simple general programming language in DDSL
+<ul>
+<li>Allow interface definitions</li>
+<li>Allow simple routines to be implemented in DDSL (for init, sleep, read data)</li>
+<li>Allow the implementation of statemachines</li>
+</ul>
+</li>
+<li>Support mixed read-write transactions</li>
+<li>Add string/byte array base types</li>
+<li>Add templates</li>
+</ul>
+<p>If you feel strongly about any of this and have ideas/suggestions, feel free to reach out on the appropriate issues or in the matrix chat room.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="tutorial-ym3812-opl2"><a class="header" href="#tutorial-ym3812-opl2">Tutorial YM3812 (OPL2)</a></h1>
+<p>This is a simple introduction tutorial for people new to device-driver.
+It covers the basics of registers, blocks, interfaces and repeats.</p>
+<h2 id="background"><a class="header" href="#background">Background</a></h2>
+<p>It’s hard to make computer make sounds and music. Or at least, it used to. The early personal computers of the late 70’s and early 80’s either couldn’t make sounds or only had a little PC speaker, the one that beeps when you boot a computer.</p>
+<p>Later on, mostly for games, companies started creating more capable sound cards. You could plug them in your PC like you do a graphics card.</p>
+<p>The chip we’re going to look at, the OPL2, is a famous chip from that time. It can’t play samples and only has 9 channels with which to make sounds. But those channels can all be configured individually with two operators which can perform ‘FM synthesis’.</p>
+<p>The OPL2 could be found on two sound cards: The AdLib from 1987 and the Sound Blaster from 1989.</p>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="assets/AdLib_Music_Synthesizer_Card.jpg" alt="AdLib music synthesizer card"><span class="img-wrapper"><img src="assets/AdLib_Music_Synthesizer_Card.jpg" alt="AdLib music synthesizer card"></span></label></p>
+<p>Want to know what computers sounded like back then? Then listen to this video. The OPL2 is the third variant shown, starting at 3:08.</p>
+<iframe width="100%" style="aspect-ratio: 16 / 9;" src="https://www.youtube-nocookie.com/embed/Fr-84mjV3CI?si=Dt2D8GgQDl_A_y-C" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen=""></iframe>
+<h2 id="examining-the-hardware"><a class="header" href="#examining-the-hardware">Examining the hardware</a></h2>
+<h3 id="finding-docs"><a class="header" href="#finding-docs">Finding docs</a></h3>
+<p>First we need to know what we’re dealing with and find some documentation for the chip. This isn’t as easy as with modern chips, but luckily this chip is and was liked by hobbyists. There’s a website dedicated to OPL hardware: <a href="https://www.oplx.com/opl2.htm">oplx.com</a>.</p>
+<p>On it we can find the following text file: <a href="assets/adlib_sb.txt">adlib_sb.txt</a>.
+It’s from someone in 1992 noticing people don’t have good docs and deciding he would fix that. So thank you Jeffrey S. Lee for the early open source spirit!</p>
+<p>This document is made for people using soundblaster cards in their PCs. But I don’t have such a card and even if I did, it wouldn’t fit. Instead I have an earlier version of <a href="https://www.tindie.com/products/cheerful/opl2-audio-board/">this board</a>. Instead of having a parallel interface, there’s a shift register so we can use SPI to communicate with the board.</p>
+<p>Now that we have all the resources we need, we can get started!</p>
+<h3 id="how-does-the-chip-work"><a class="header" href="#how-does-the-chip-work">How does the chip work?</a></h3>
+<p>The OPL2 can’t make audio like we’re used to today. Modern audio devices can play samples that resemble the audio waves in the air which the device tries to recreate.</p>
+<p>But these old devices aren’t capable of that, it was simply too advanced. Instead the OPL2 have multiple operators that can only make the following simple wave forms:</p>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="assets/YM3812_waveforms_numbered.png" alt="YM3812_waveforms_numbered"><span class="img-wrapper"><img src="assets/YM3812_waveforms_numbered.png" alt="YM3812_waveforms_numbered"></span></label></p>
+<p>Later iterations of the OPL have more wave forms.</p>
+<p>Luckily there’s all kinds of settings with which to edit these wave forms to make them more interesting. This tutorial isn’t about that though, so if you want to know more, this website has a nice overview and audio samples: <a href="https://cosmodoc.org/topics/adlib-functions/">cosmodoc.org/topics/adlib-functions</a>.</p>
+<blockquote class="blockquote-tag blockquote-tag-important">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v9.5A1.75 1.75 0 0 1 14.25 13H8.06l-2.573 2.573A1.458 1.458 0 0 1 3 14.543V13H1.75A1.75 1.75 0 0 1 0 11.25Zm1.75-.25a.25.25 0 0 0-.25.25v9.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h6.5a.25.25 0 0 0 .25-.25v-9.5a.25.25 0 0 0-.25-.25Zm7 2.25v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Important</p>
+<p>For us what’s most important to know now is that this chip has 9 channels with 2 operators each. Those channels can output the additive result of those 2 operators or they can be used for <a href="https://en.wikipedia.org/wiki/Frequency_modulation_synthesis">FM synthesis</a>.</p>
+</blockquote>
+<h3 id="register-layout"><a class="header" href="#register-layout">Register layout</a></h3>
+<p>The documentation we found helpfully lays out an overview of all registers:</p>
+<pre><code class="language-txt">   Address      Function
+   -------      ----------------------------------------------------
+     01         Test LSI / Enable waveform control
+     02         Timer 1 data
+     03         Timer 2 data
+     04         Timer control flags
+     08         Speech synthesis mode / Keyboard split note select
+   20..35       Amp Mod / Vibrato / EG type / Key Scaling / Multiple
+   40..55       Key scaling level / Operator output level
+   60..75       Attack Rate / Decay Rate
+   80..95       Sustain Level / Release Rate
+   A0..A8       Frequency (low 8 bits)
+   B0..B8       Key On / Octave / Frequency (high 2 bits)
+     BD         AM depth / Vibrato depth / Rhythm control
+   C0..C8       Feedback strength / Connection type
+   E0..F5       Wave Select
+</code></pre>
+<p>We can notice there are three kinds of registers:</p>
+<ol>
+<li>Single registers</li>
+<li>Repeated registers 0..=8</li>
+<li>Repeated registers 0..=21 (0x15)</li>
+</ol>
+<p>The single registers are for global settings. The 9 repeated registers are one for each channel, which makes sense. But the registers that are repeated 22 times? Well, that’s where the chip is a little weird. These are for the operators, except there are only 18 operators in total (2 per channel).</p>
+<p>When we read on in the documentation we find this table:</p>
+<pre><code class="language-txt">The groupings of twenty-two registers (20-35, 40-55, etc.) have an odd
+order due to the use of two operators for each FM voice.  The following
+table shows the offsets within each group of registers for each operator.
+
+
+   Channel        1   2   3   4   5   6   7   8   9
+   Operator 1    00  01  02  08  09  0A  10  11  12
+   Operator 2    03  04  05  0B  0C  0D  13  14  15
+
+Thus, the addresses of the attack/decay bytes for channel 3 are 62 for
+the first operator, and 65 for the second.  (The address of the second
+operator is always the address of the first operator plus three).
+</code></pre>
+<p>This is annoying, but we’ll have to deal with it.</p>
+<h3 id="the-interface"><a class="header" href="#the-interface">The interface</a></h3>
+<p>The board I have with the shift register doesn’t really spell out how to use it. But you can look at the code the author provided to see what has to happen.</p>
+<p>Basically we have 4 relevant pins to use when writing data to the chip (through the shift register):</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>name</th><th>function</th></tr>
+</thead>
+<tbody>
+<tr><td>Data</td><td>The bit value we’re shifting in</td></tr>
+<tr><td>Shift</td><td>The clock signal. When transitioning from low to high, the value of the Data pin is shifted in.</td></tr>
+<tr><td>Latch</td><td>When the latch is pulled low for 1us, the shifted in data is applied to the parallel bus.</td></tr>
+<tr><td>A0</td><td>When low, the data on the bus is seen as the address. When high the data on the bus is seen as register data.</td></tr>
+</tbody>
+</table>
+</div>
+<p>First the address needs to be written, then you must wait 4us, then the data needs to be written and then you must wait 23us.</p>
+<h2 id="writing-the-driver"><a class="header" href="#writing-the-driver">Writing the driver</a></h2>
+<h3 id="ddsl"><a class="header" href="#ddsl">DDSL</a></h3>
+<p>First we create a file named <code>ym3812.ddsl</code> (or something else to your liking). Then we write the basic setup:</p>
+<pre><code class="language-ddsl">device Ym3812 {
+    register-address-type: u8,
+}
+</code></pre>
+<p>With this we’ve told the compiler there’s a <a href="#device"><code>device</code></a> and that it uses <code>u8</code> as the address type for registers. Luckily that’s all the settings we need already out of the way, so we can continue with writing the registers.</p>
+<h4 id="global-registers"><a class="header" href="#global-registers">Global registers</a></h4>
+<p>Let’s start simple and do the global registers first.
+There’s no good names given to these registers, so we’ll have to be a bit creative ourselves.</p>
+<p>The docs for the first register is here:</p>
+<pre><code class="language-txt">Byte 01 - This byte is normally used to test the LSI device.  All bits
+          should normally be zero.  Bit 5, if enabled, allows the FM 
+          chips to control the waveform of each operator.
+
+             7     6     5     4     3     2     1     0
+          +-----+-----+-----+-----+-----+-----+-----+-----+
+          |   unused  | WS  |            unused           |
+          +-----+-----+-----+-----+-----+-----+-----+-----+
+</code></pre>
+<p>We can notice it’s located at address 1, is 1 byte in size and only uses bit 5.</p>
+<p>In device-driver, this data is encoded with two objects: a <a href="#register"><code>register</code></a> and a <a href="#fieldset"><code>fieldset</code></a>. The fieldset describes the data of the register and the register describes how it relates to the device.</p>
+<p>Let’s define them in ddsl:</p>
+<pre><code class="language-ddsl">/// Register containing the Waveform Select Enable and some test fields
+register Enable_waveform_control {
+    address: 0x01,
+    fields: Enable_waveform_control,
+},
+fieldset Enable_waveform_control {
+    size-bytes: 1,
+    /// If clear, all channels will use normal sine wave.
+    /// If set, register E0-F5 (Waveform Select) contents will be used.
+    field WS 5 -&gt; bool,
+}
+</code></pre>
+<p>As you can see, we’ve defined the objects and put some doc comments on them too.
+The generated code will contain those docs as well, so they’re visible in your code editor.</p>
+<p>The register and fieldset use the same name. This is allowed and they don’t clash.
+That’s because there’s separate <a href="#namespacing">namespacing</a> for operations and types.
+However, having to define two objects for every device register is a bit bloated. To help with that, we can define the fieldset inline in the fields property of the register:</p>
+<pre><code class="language-ddsl">/// Register containing the Waveform Select Enable and some test fields
+register Enable_waveform_control {
+    address: 0x01,
+    fields: fieldset _ {
+        size-bytes: 1,
+        /// If clear, all channels will use normal sine wave.
+        /// If set, register E0-F5 (Waveform Select) contents will be used.
+        field WS 5,
+    },
+},
+</code></pre>
+<p>That’s much more concise! There are two additional change you may notice that use two different <code>auto</code> features:</p>
+<ol>
+<li>We don’t specify the fieldset name and use an underscore. When defining inline types, this can be used so the type takes on the name of the node it’s being defined in.</li>
+<li>We don’t specify the field is a bool anymore. This is the same as if we wrote <code>field WS 5 -&gt; _</code>. There are some rules about what the so-called base type of the field will become (in order):
+<ul>
+<li>If the field contains a conversion (we’ll see that later in the tutorial), it will take on the base type of the conversion target.</li>
+<li>If the field is 1 bit in size, it will become a <code>bool</code>.</li>
+<li>If the field is multiple bits, it will becoma a <code>uint</code>. (The <code>uint</code> will then become the smallest sized integer that fits the number of bits. So a <code>uint</code> with 11 bits becomes a <code>u16</code>)</li>
+</ul>
+</li>
+</ol>
+<p>Alright, next register:</p>
+<pre><code class="language-txt">Byte 02 - Timer 1 Data.  If Timer 1 is enabled, the value in this 
+          register will be incremented until it overflows.  Upon
+          overflow, the sound card will signal a TIMER interrupt
+          (INT 08) and set bits 7 and 6 in its status byte.  The
+          value for this timer is incremented every eighty (80)
+          microseconds.
+</code></pre>
+<p>This one is more boring, so let’s just define it:</p>
+<pre><code class="language-ddsl">register Timer_1_Data {
+    address: 0x02,
+    fields: fieldset _ {
+        size-bytes: 1,
+        field value 7:0,
+    }
+},
+</code></pre>
+<p><code>7:0</code> is the bit range. It’s high to low and it’s an inclusive range. Again we don’t specify the base type of the value field,
+so it’ll become a u8 in this case.</p>
+<p>Let’s skip some of the registers that you should be able to define yourself already and go to the last global register that uses some new features:</p>
+<pre><code class="language-txt">Byte BD - Amplitude Modulation Depth / Vibrato Depth / Rhythm
+
+        7     6     5     4     3     2     1     0
+     +-----+-----+-----+-----+-----+-----+-----+-----+
+     | AM  | Vib | Rhy | BD  | SD  | TOM | Top | HH  |
+     | Dep | Dep | Ena |     |     |     | Cym |     |
+     +-----+-----+-----+-----+-----+-----+-----+-----+
+
+          bit 7 - Set:    AM depth is 4.8dB
+                  Clear:  AM depth is 1 dB
+          bit 6 - Set:    Vibrato depth is 14 cent
+                  Clear:  Vibrato depth is 7 cent
+          bit 5 - Set:    Rhythm enabled  (6 melodic voices) 
+                  Clear:  Rhythm disabled (9 melodic voices)
+          bit 4 - Bass drum on/off
+          bit 3 - Snare drum on/off
+          bit 2 - Tom tom on/off
+          bit 1 - Cymbal on/off
+          bit 0 - Hi Hat on/off
+</code></pre>
+<p>All these fields <em>could</em> be bools. But that would be confusing for the fields that aren’t simple on/off fields.
+The other fields encode a <em>value</em> that’s distinct from true/false. So ideally we encode those values in a way so the user of our driver knows what they mean without looking at the documentation.</p>
+<p>Luckily we can do that using <a href="#enum"><code>enum</code></a>s! And once again, we can define and use them inline.</p>
+<pre><code class="language-ddsl">register rhythm_settings {
+    address: 0xBD,
+    fields: fieldset _ {
+        size-bytes: 1,
+        /// Tremolo (Amplitude Vibrato) Depth.
+        field tremolo_depth 7 -&gt; _ as enum _ {
+            /// 1.0dB
+            Low: 0b0,
+            /// 4.8dB
+            High: 0b1,
+        },
+        /// Frequency Vibrato Depth. A "cent" is 1/100 of a semi-tone.
+        field vibrato_depth 6 -&gt; _ as enum _ {
+            /// 7 cents
+            Low: 0b0,
+            /// 14 cents
+            High: 0b1,
+        },
+        field instrument_mode 5 -&gt; _ as enum _ {
+            Melodic: 0b0,
+            Percussion: 0b1,
+        },
+        field bass_drum_on 4,
+        field snare_drum_on 3,
+        field tom_tom_on 2,
+        field cymbal_on 1,
+        field hi_hat_on 0,
+    }
+}
+</code></pre>
+<p>The first three fields use the optional conversion syntax of the <a href="#type-specifier">type specifier</a>. The enums will have the same names as the fields.</p>
+<p>Here we can use <code>infallible</code> conversion, which is always recommended when possible. But there exist situations where the enum can’t cover all possible bit patterns, at which point <code>fallible</code> conversion must be used. That would look like this:</p>
+<pre><code class="language-ddsl">field foo 0 -&gt; _ as try enum _ { }
+//                  +++
+</code></pre>
+<h4 id="channel-settings"><a class="header" href="#channel-settings">Channel settings</a></h4>
+<p>There are 3 registers per channel we need to be able to program.
+These control the frequency, whether they’re on or off and how the two operators are connected.</p>
+<p>We could define each individually and that’d work ok. But we’re in the business of providing the best API to our users as possible. So we’re going to combine two powerful features: <a href="#repeat"><code>repeats</code></a> and <a href="#block"><code>blocks</code></a>.</p>
+<h5 id="repeats"><a class="header" href="#repeats">Repeats</a></h5>
+<p>A repeat can be used to, well, repeat an object multiple times. It’s kind of like an array, so much so that the syntax looks like it too.</p>
+<p>We can define a repeat using brackets, like this:</p>
+<pre><code class="language-ddsl">register foo[4 stride 2] { ... }
+</code></pre>
+<p>Here we’ve defined a register that is repeated four times. And with each repeat, the address is incremented by two. So if the start address is 10, then this register is present on addresses 10, 12, 14 and 16.</p>
+<p>Repeats can use enums too instead of a length:</p>
+<pre><code class="language-ddsl">enum bar { a: 2, b: 3, c: 5, d: 7 },
+register foo[bar stride 2] { ... }
+</code></pre>
+<p>This is incredibly useful for when there are gaps in the index.
+The stride is a multiplier on the values of the enum.</p>
+<h5 id="blocks"><a class="header" href="#blocks">Blocks</a></h5>
+<p>A block is an object that groups subobjects together. And that’s very useful in our case because we can group the channel settings together.</p>
+<pre><code class="language-ddsl">block foo {
+    address-offset: 10,
+
+    register bar {
+        address: 10,
+        // ...
+    },
+    register quux {
+        address: 11,
+        // ...
+    }
+}
+</code></pre>
+<p>Here we see registers <code>bar</code> and <code>quux</code> are part of block <code>foo</code>.
+Important to know is that the block can specify an address offset which is then added to all child objects. So in reality <code>bar</code> and <code>quux</code> have addresses 20 and 21. It’s up to you to decide what makes sense. You can always set the offset to 0 if you want to use the global addresses.</p>
+<h5 id="combined"><a class="header" href="#combined">Combined</a></h5>
+<p>For the driver we’re writing, we could do a repeat on every channel register.
+But instead let’s do the repeat on a block and put all channels settings in that block.
+That way it’s nice and organized. Here’s how it could be modeled (with some added comments for explanations):</p>
+<pre><code class="language-ddsl">enum Channel {
+    C1: _, // Use auto assignment. This starts at 0
+    C2: _, // This variant is auto-assigned value 1
+    C3: _, // 2
+    C4: _,
+    C5: _,
+    C6: _,
+    C7: _,
+    C8: _,
+    C9: _,
+},
+
+block ChannelGeneralSettings[Channel stride 1] {
+    //                      ^^^^^^^^^^^^^^^^^^
+    // Create the block with the channel enum as the repeat
+    // Each channel should offset the registers by 1, so we pick a stride of 1
+
+    // Let's not add a block offset so we can keep using the global addresses
+    // That simply makes most sense in this case
+    address-offset: 0,
+
+    register channel_settings0 {
+        address: 0xA0,
+        fields: fieldset _ {
+            size-bytes: 1,
+            field frequency_number_lsb 7:0,
+        }
+    },
+    register channel_settings1 {
+        address: 0xB0,
+        fields: fieldset _ {
+            size-bytes: 1,
+            /// Channel is voiced when set, silent when clear.
+            field key_on 5,
+            /// Octave (0-7). 0 is lowest, 7 is highest.
+            field block_number 4:2,
+            field frequency_number_high 1:0,
+        }
+    },
+    register channel_settings2 {
+        address: 0xC0,
+        fields: fieldset _ {
+            size-bytes: 1,
+            /// Feedback strength.  If all three bits are set to
+            /// zero, no feedback is present.  With values 1-7,
+            /// operator 1 will send a portion of its output back
+            /// into itself.  1 is the least amount of feedback,
+            /// 7 is the most.
+            field feedback 3:1,
+            field synthesis_type 0 -&gt; _ as
+                /// How the operators interact.
+                /// Complex sounds are more easily created
+                /// if the algorithm is set to FrequencyModulation.
+                enum SynthesisType {
+                    /// Operator 1 modulates operator 2.
+                    /// In this case, operator 2 is the only one producing sound.
+                    FrequencyModulation: 0b0,
+                    /// Both operators produce sound directly.
+                    AdditiveSynthesis: 0b1,
+                },
+        }
+    },
+},
+</code></pre>
+<p>Note how the <code>SynthesisType</code> has doc comments on a newline. That’s how you add a description to inline objects.</p>
+<h4 id="operator-settings"><a class="header" href="#operator-settings">Operator settings</a></h4>
+<p>The way the operator settings are done, is a little crazy on this chip. Even the documentation we have calls that out!</p>
+<p>Remember, every channel has two operators.</p>
+<pre><code class="language-txt">The groupings of twenty-two registers (20-35, 40-55, etc.) have an odd
+order due to the use of two operators for each FM voice.  The following
+table shows the offsets within each group of registers for each operator.
+
+
+   Channel        1   2   3   4   5   6   7   8   9
+   Operator 1    00  01  02  08  09  0A  10  11  12
+   Operator 2    03  04  05  0B  0C  0D  13  14  15
+
+Thus, the addresses of the attack/decay bytes for channel 3 are 62 for
+the first operator, and 65 for the second.  (The address of the second
+operator is always the address of the first operator plus three).
+</code></pre>
+<p>The channels have gaps in them and the second operator is always the first operator plus 3.</p>
+<p>So, let’s use the same trick with the block and repeat again:</p>
+<pre><code class="language-ddsl">/// Enum to select the channel for the operator settings block
+enum ChannelOperators {
+    C1: 0x00,
+    C2: 0x01,
+    C3: 0x02,
+    C4: 0x08,
+    C5: 0x09,
+    C6: 0x0A,
+    C7: 0x10,
+    C8: 0x11,
+    C9: 0x12,
+},
+/// Each channel has two operators
+enum Operator {
+    O1: 0,
+    O2: 1, // We could pick 3 (stride 1) or 1 (stride 3)
+           // But this makes most logical sense
+},
+</code></pre>
+<p>Then we use these to create the block with the operator registers.
+I’ll omit the register details since those clutter the code for this example.</p>
+<p>Different from the channel settings is that we need to have two repeats.
+To be consistent, we’ll use the channel repeat on the block and then for each register we’ll have a repeat to select the operator for that channel.</p>
+<pre><code class="language-ddsl">/// Block containing all operator settings for a channel
+block ChannelOperatorSettings[ChannelOperators stride 1] {
+    //                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    address-offset: 0,
+
+    register operator_settings0[Operator stride 3] {
+        //                     ^^^^^^^^^^^^^^^^^^^
+        address: 0x20,
+        fields: fieldset _ {
+            // ...
+        }
+    },
+    register operator_settings1[Operator stride 3] {
+        address: 0x40,
+        fields: fieldset _ {
+            // ...
+        }
+    },
+    register operator_settings2[Operator stride 3] {
+        address: 0x60,
+        fields: fieldset _ {
+            // ...
+        }
+    },
+    register operator_settings3[Operator stride 3] {
+        address: 0x80,
+        fields: fieldset _ {
+            // ...
+        }
+    },
+    register operator_settings4[Operator stride 3] {
+        address: 0xE0,
+        fields: fieldset _ {
+            // ...
+        }
+    },
+},
+</code></pre>
+<p>And that’s it for the DDSL code! We can now actually start using it.</p>
+<h3 id="rust-crate"><a class="header" href="#rust-crate">Rust crate</a></h3>
+<p>Let’s turn this all into a driver we can use from Rust!</p>
+<p>The best way to do it, is to make it into its own crate. We want to make it usable for embedded use, so we’ll make it no-std and to make it portable, we’ll use the embedded-hal traits.</p>
+<h4 id="setting-up-the-crate"><a class="header" href="#setting-up-the-crate">Setting up the crate</a></h4>
+<p>We can make a crate using cargo:</p>
+<pre><code class="language-sh">cargo new ym3812 --lib
+cd ym3812
+</code></pre>
+<p>There’s two styles in which we can architect the crate:</p>
+<ul>
+<li>Using the device-driver compile macro
+<ul>
+<li>This is the easiest way to use device-driver and makes sense during development</li>
+<li>Downside is that the device-driver compiler becomes a dependency</li>
+</ul>
+</li>
+<li>Using the cli to generate rust code ahead of time
+<ul>
+<li>When you’re done with your driver and ready to publish, you might want to convert your crate to this style</li>
+<li>Downside is that it’s a little more setup and your generated rust code can be out of sync with your ddsl</li>
+</ul>
+</li>
+</ul>
+<p>For this tutorial, we’ll set up for using the compile macro.</p>
+<p>Now that we’ve got our crate, we should a couple of things:</p>
+<ul>
+<li>Place our ddsl file in the crate root. Let’s call it <code>ym3812.ddsl</code>, but you can call it anything.</li>
+<li>Add the required dependencies:
+<pre><code class="language-sh"># The macros feature enables the compile macro
+cargo add device-driver --features macros
+cargo add embedded-hal
+# Only required for async drivers
+cargo add embedded-hal-async
+</code></pre>
+</li>
+<li>Add a build script. This will make sure the crate will be recompiled when the ddsl is changed:
+<pre><code class="language-rust">fn main() {
+    println!("cargo:rebuild-if-changed=ym3812.ddsl");
+}</code></pre>
+</li>
+</ul>
+<h4 id="using-the-macro"><a class="header" href="#using-the-macro">Using the macro</a></h4>
+<p>Typically I like to make a separate module to put the driver definitions in and call it something like <code>ll</code> for low-level.
+So let’s do that!</p>
+<pre><code class="language-rust">// lib.rs
+
+mod ll;</code></pre>
+<p>To compile the ddsl code, simply use the compile macro:</p>
+<pre><code class="language-rust">// ll.rs
+
+device_driver::compile!(
+    manifest: "ym3812.ddsl",
+);</code></pre>
+<p>This will put all of the generated code at the site of the macro call.</p>
+<h4 id="creating-the-interface"><a class="header" href="#creating-the-interface">Creating the interface</a></h4>
+<p>Device-driver doesn’t know how to talk with the device, so we need to teach it that.
+With Rust we’ve got traits for it!</p>
+<p>Every type of operation has its own traits. We’ve only defined registers, so we only need to implement the <code>RegisterInterface</code> and/or <code>AsyncRegisterInterface</code> for the interface type we’re going to make.</p>
+<p>If the blocking version is implemented, then blocking register reads and writes will be supported. Same with the async version. For this tutorial we’ll only implement the async version.</p>
+<p>Our interface is just a struct, so let’s create it with all the IO it needs:</p>
+<pre><code class="language-rust">// ll.rs
+
+use embedded_hal::digital::OutputPin;
+use embedded_hal_async::{delay::DelayNs, spi::SpiBus};
+
+/// Our hardware interface with the chip using the shift register that
+/// is present on the opl2 audio board by Maarten Janssen
+pub struct ShiftInterface&lt;SPI, A, L, R, D&gt;
+where
+    SPI: SpiBus,
+    A: OutputPin,
+    L: OutputPin,
+    R: OutputPin,
+    D: DelayNs,
+{
+    /// The spi interface we use to drive the shift register
+    spi: SPI,
+    /// The pin connected to the A0 input
+    address_pin: A,
+    /// The pin connected to the latch input of the shift register
+    latch_pin: L,
+    /// The pin connected to the reset input
+    reset_pin: R,
+    /// Some kind of delay provider
+    delay: D,
+    /// A copy of all the registers in memory.
+    ///
+    /// We need this because we can't read the OPL registers.
+    /// By keeping track of this ourselves, we can still present
+    /// a read/write interface which is useful for modifying registers.
+    registers: [u8; u8::MAX as usize],
+}</code></pre>
+<p>Now that we have our shift interface, we can start implementing the traits we need.
+First off is the base trait that defines address type and the error type. The address type must be the same as the one we set up in the ddsl code.</p>
+<pre><code class="language-rust">// ll.rs
+
+use device_driver::RegisterInterfaceBase;
+
+#[derive(Debug)]
+pub enum InterfaceError {
+    AddressPinError,
+    LatchPinError,
+    ResetPinError,
+    CommunicationError,
+}
+
+impl&lt;SPI: SpiBus, A: OutputPin, L: OutputPin, R: OutputPin, D: DelayNs&gt; RegisterInterfaceBase
+    for ShiftInterface&lt;SPI, A, L, R, D&gt;
+{
+    type Error = InterfaceError;
+    type AddressType = u8;
+}</code></pre>
+<p>Now we’re ready to implement the main trait. This will look very different for almost every device. The requirements here have been discussed earlier in the tutorial.</p>
+<p>Normally devices have sections in their datasheets about how the communication with the device work.</p>
+<pre><code class="language-rust">// ll.rs
+
+impl&lt;SPI: SpiBus, A: OutputPin, L: OutputPin, R: OutputPin, D: DelayNs&gt; AsyncRegisterInterface
+    for ShiftInterface&lt;SPI, A, L, R, D&gt;
+{
+    async fn write_register(
+        &amp;mut self,
+        address: Self::AddressType,
+        data: &amp;mut [u8],
+        _metadata: &amp;device_driver::FieldsetMetadata,
+    ) -&gt; Result&lt;(), Self::Error&gt; {
+        // We know we've always got one byte since all registers are that size
+        let byte = data[0];
+
+        // Save in internal data store
+        self.registers[address as usize] = byte;
+
+        // Send the address
+        self.address_pin
+            .set_low()
+            .map_err(|_| Self::Error::AddressPinError)?;
+
+        self.spi
+            .write(&amp;[address])
+            .await
+            .map_err(|_| Self::Error::CommunicationError)?;
+
+        // Apply the shift latch
+        self.latch_pin
+            .set_low()
+            .map_err(|_| Self::Error::LatchPinError)?;
+        self.delay.delay_us(1).await;
+        self.latch_pin
+            .set_high()
+            .map_err(|_| Self::Error::LatchPinError)?;
+        self.delay.delay_us(4).await;
+
+        // Send the data
+        self.address_pin
+            .set_high()
+            .map_err(|_| Self::Error::AddressPinError)?;
+
+        self.spi
+            .write(&amp;[byte])
+            .await
+            .map_err(|_| Self::Error::CommunicationError)?;
+
+        // Apply the shift latch
+        self.latch_pin
+            .set_low()
+            .map_err(|_| Self::Error::LatchPinError)?;
+        self.delay.delay_us(1).await;
+        self.latch_pin
+            .set_high()
+            .map_err(|_| Self::Error::LatchPinError)?;
+        self.delay.delay_us(23).await;
+
+        Ok(())
+    }
+
+    async fn read_register(
+        &amp;mut self,
+        address: Self::AddressType,
+        data: &amp;mut [u8],
+        _metadata: &amp;device_driver::FieldsetMetadata,
+    ) -&gt; Result&lt;(), Self::Error&gt; {
+        data[0] = self.registers[address as usize];
+        Ok(())
+    }
+}</code></pre>
+<p>Let’s add some convenience methods too for construction and resetting the device.</p>
+<pre><code class="language-rust">// ll.rs
+
+impl&lt;SPI: SpiBus, A: OutputPin, L: OutputPin, R: OutputPin, D: DelayNs&gt;
+    ShiftInterface&lt;SPI, A, L, R, D&gt;
+{
+    pub const fn new(spi: SPI, address_pin: A, latch_pin: L, reset_pin: R, delay: D) -&gt; Self {
+        Self {
+            spi,
+            address_pin,
+            latch_pin,
+            reset_pin,
+            delay,
+            registers: [0; _],
+        }
+    }
+
+    pub async fn reset(&amp;mut self) -&gt; Result&lt;(), InterfaceError&gt; {
+        // Set the pins to the default level
+        self.latch_pin
+            .set_high()
+            .map_err(|_| InterfaceError::LatchPinError)?;
+        self.reset_pin
+            .set_high()
+            .map_err(|_| InterfaceError::ResetPinError)?;
+        self.address_pin
+            .set_low()
+            .map_err(|_| InterfaceError::AddressPinError)?;
+
+        // Make a reset cycle
+        self.reset_pin
+            .set_low()
+            .map_err(|_| InterfaceError::ResetPinError)?;
+        self.delay.delay_ms(1).await;
+        self.reset_pin
+            .set_high()
+            .map_err(|_| InterfaceError::ResetPinError)?;
+
+        // Reset the internal registers
+        self.registers = [0x00; 0xFF];
+        self.write_register(0x00, &amp;mut [0x00; 0xFF], &amp;FieldsetMetadata::DEFAULT)
+            .await?;
+
+        Ok(())
+    }
+}</code></pre>
+<p>With that we’ve done all the setup we need!</p>
+<h2 id="using-the-driver"><a class="header" href="#using-the-driver">Using the driver</a></h2>
+<p>Let’s create an instance of the driver and explore how we can now use it.</p>
+<pre><code class="language-rust">// Create an instance of the interface we need to talk with the chip
+// Get your SPI and gpio from your HAL
+let interface = ShiftInterface::new(
+    Spi::new_txonly(p.SPI1, p.PB3, p.PB5, p.DMA1_CH1, Irqs, config),
+    Output::new(p.PB14, Level::Low, Speed::VeryHigh),
+    Output::new(p.PC4, Level::Low, Speed::VeryHigh),
+    Output::new(p.PD1, Level::Low, Speed::VeryHigh),
+    embassy_time::Delay,
+);
+
+// Create the driver
+let mut ym3812 = Ym3812::new(interface);
+// Access the interface to call its reset function
+ym3812.interface().reset().await?;</code></pre>
+<p>Now we know the device is in a good state (reset) and ready to use.</p>
+<h3 id="example-from-docs"><a class="header" href="#example-from-docs">Example from docs</a></h3>
+<p>Let’s make a sound, that’s the entire point after all.
+Again, the guide helps us!</p>
+<pre><code class="language-txt"> |                              Making a Sound
+ | 
+ |   Many people have asked me, upon reading this document, what the proper
+ |   register values should be to make a simple sound.  Well, here they are.
+ | 
+ |   First, clear out all of the registers by setting all of them to zero.
+ |   This is the quick-and-dirty method of resetting the sound card, but it
+ |   works.  Note that if you wish to use different waveforms, you must then
+ |   turn on bit 5 of register 1.  (This reset need be done only once, at the
+ |   start of the program, and optionally when the program exits, just to 
+ |   make sure that your program doesn't leave any notes on when it exits.)
+ |
+ |   Now, set the following registers to the indicated value:
+ |
+ |     REGISTER     VALUE     DESCRIPTION
+ |        20          01      Set the modulator's multiple to 1
+ |        40          10      Set the modulator's level to about 40 dB
+ |        60          F0      Modulator attack:  quick;   decay:   long
+ |        80          77      Modulator sustain: medium;  release: medium
+ |        A0          98      Set voice frequency's LSB (it'll be a D#)
+ |        23          01      Set the carrier's multiple to 1
+ |        43          00      Set the carrier to maximum volume (about 47 dB)
+ |        63          F0      Carrier attack:  quick;   decay:   long
+ |        83          77      Carrier sustain: medium;  release: medium
+ |        B0          31      Turn the voice on; set the octave and freq MSB
+ |
+ |   To turn the voice off, set register B0h to 11h (or, in fact, any value 
+ |   which leaves bit 5 clear).  It's generally preferable, of course, to
+ |   induce a delay before doing so.
+</code></pre>
+<p>So, let’s replicate that using our new driver.
+With device-driver we’re not fiddling with bits manually, but use named methods. But since our source is specified in addresses and bits, we’ll need to work backwards.</p>
+<pre><code class="language-rust">ym3812.enable_waveform_control()
+    .write_async(|w| w.set_ws(true))
+    .await
+    .unwrap();
+
+let mut operator_settings = ym3812.channel_operator_settings(ChannelOperators::C1);
+
+// Set operator 1 settings
+
+operator_settings
+    .operator_settings_0()
+    .write_at_async(Operator::O1, |reg| {
+        reg.set_modulator_frequency_multiple(ModulatorFrequencyMultiple::AtSpecified)
+    })
+    .await?;
+operator_settings
+    .operator_settings_1()
+    .write_at_async(Operator::O1, |reg| {
+        reg.set_output_level(0x10);
+    })
+    .await?;
+operator_settings
+    .operator_settings_2()
+    .write_at_async(Operator::O1, |reg| {
+        reg.set_attack_rate(15);
+        reg.set_decay_rate(0);
+    })
+    .await?;
+operator_settings
+    .operator_settings_3()
+    .write_at_async(Operator::O1, |reg| {
+        reg.set_sustain_level(7);
+        reg.set_release_rate(7);
+    })
+    .await?;
+
+// Set operator 2 settings
+
+operator_settings
+    .operator_settings_0()
+    .write_at_async(Operator::O2, |reg| {
+        reg.set_modulator_frequency_multiple(ModulatorFrequencyMultiple::AtSpecified)
+    })
+    .await?;
+operator_settings
+    .operator_settings_1()
+    .write_at_async(Operator::O2, |reg| {
+        reg.set_output_level(0);
+    })
+    .await?;
+operator_settings
+    .operator_settings_2()
+    .write_at_async(Operator::O2, |reg| {
+        reg.set_attack_rate(15);
+        reg.set_decay_rate(0);
+    })
+    .await?;
+operator_settings
+    .operator_settings_3()
+    .write_at_async(Operator::O2, |reg| {
+        reg.set_sustain_level(7);
+        reg.set_release_rate(7);
+    })
+    .await?;
+
+// Set channel settings
+
+let mut channel = ym3812.channel_general_settings(Channel::C1);
+
+channel
+    .channel_settings_0()
+    .write_async(|reg| reg.set_frequency_number_lsb(0x98))
+    .await?;
+channel
+    .channel_settings_1()
+    .write_async(|reg| {
+        reg.set_key_on(true);
+        reg.set_frequency_number_high(1);
+        reg.set_block_number(4);
+    })
+    .await?;
+
+ym3812.interface().delay.delay_ms(1000).await;
+
+ym3812.channel_general_settings(Channel::C1)
+    .channel_settings_1()
+    .modify_async(|reg| {
+        reg.set_key_on(false);
+    })
+    .await?;</code></pre>
+<p>Cool, let’s check if this actually works:</p>
+<p><audio controls="" src="../assets/OPL_beep.mp3" preload="metadata" style="width: 100%;"></audio></p>
+<p>It does!</p>
+<p>We’ve got a working driver. Now the world, or at least this device, is our oyster.
+From here you can extend your driver as you like. Setting each register every time is bothersome, so you might want to create some rust functions that take an instrument and set all the registers required for that instrument.</p>
+<p>If you want to make music, you’ll need to drive that too yourself, so you’ll want to make some sort of sequencer.</p>
+<p>Exactly how you structure that is up to you. Generally I’ve found it good practise to view the driver as we have now as a ‘low level’ driver which we can wrap with a ‘high level’ driver. That’s similar to how a PAC and HAL relate on microcontrollers.</p>
+<p>In the future, device-driver hopes to offer some more high level features. You’ll have to stay tuned for that and/or peruse the issue tracker on github. Suggestions are always welcome too!</p>
+<p>If you want to see how I tackled that, take a look here: https://github.com/diondokter/ym3812/</p>
+<p>If things are unclear or could be improved for this tutorial, please send PRs, open issues or hit me up in the chatroom!</p>
+<p>I’ll leave you with the song that’s played by the example through my terrible hacked up sequencer I made 6 years ago:</p>
+<p><audio controls="" src="../assets/OPL_mission_impossible.mp3" preload="metadata" style="width: 100%;"></audio></p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="language"><a class="header" href="#language">Language</a></h1>
+<p>Device-driver uses a simple, custom, declarative language called DDSL (device-driver specification language).
+It consists of only a few building blocks: Nodes, properties and expressions.</p>
+<h2 id="node"><a class="header" href="#node">Node</a></h2>
+<p>The <a href="#node-1">node</a> is the foundation. A ddsl file must have one root node and everything else must be defined in it. A node defines an object and in many cases these terms are interchangeable. (It’s a node in the AST and an object in the MIR)</p>
+<p>Nodes have a node type and a name. Additionally a node may have a <a href="#repeat">repeat</a> specifier, <a href="#simple-expression">‘short’ properties</a> and a <a href="#type-specifier">type specifier</a> outside of the node body and <a href="#property">‘long’ properties</a> and subnodes in the <a href="#node-body">node body</a>.</p>
+<pre><code class="language-ddsl">type name[repeat] &lt;expressions&gt; -&gt; &lt;type specifier&gt; {
+    // Inside the curly's is the node body
+
+    // Long properties are named expressions
+    long-property-name: &lt;expression&gt;,
+
+    subnode-type subnode-name // ...
+}
+</code></pre>
+<p>The node type determines the final shape of the node that’s accepted.
+There are a couple of defined node types:</p>
+<ul>
+<li><a href="#manifest">Manifest</a></li>
+<li><a href="#device">Device</a></li>
+<li><a href="#block">Block</a></li>
+<li><a href="#register">Register</a></li>
+<li><a href="#command">Command</a></li>
+<li><a href="#buffer">Buffer</a></li>
+<li><a href="#fieldset">Fieldset</a></li>
+<li><a href="#enum">Enum</a></li>
+<li><a href="#extern">Extern</a></li>
+<li><a href="#field">Field</a></li>
+</ul>
+<p>Any node type not on this list is rejected by the compiler.</p>
+<h2 id="properties"><a class="header" href="#properties">Properties</a></h2>
+<p>Properties come in two forms: ‘short’ and ‘long’.</p>
+<h3 id="short"><a class="header" href="#short">Short</a></h3>
+<p>Short properties are anonymous <a href="#simple-expression">(simple) expressions</a> that appear between the node name and the type specifier, outside the node body. This makes them limited as the type of the expression determines what they mean.</p>
+<p>In practice, short properties are mostly used for fields where compact notation is important.</p>
+<h3 id="long"><a class="header" href="#long">Long</a></h3>
+<p>A <a href="#property">long property</a> is a named expression in the node body. The name and the expression are separated by a colon. They need to be written before any subnode in a node body.</p>
+<p>The name of the property determines what the expression is used for. For all node types except enums, the name must match one of the defined properties for that node type. In enums, however, properties are used to define the enum variants and can take any name.</p>
+<h2 id="namespacing"><a class="header" href="#namespacing">Namespacing</a></h2>
+<p>In DDSL there’s one global namespace that all* objects are part of. However, not all names will clash.</p>
+<p>There are two buckets a name can be categorized into:</p>
+<ul>
+<li>Operation</li>
+<li>Type</li>
+</ul>
+<p>An operation is something that’s <em>done</em> with a driver. Every operation becomes a method you can call on a device/block.</p>
+<p>Meanwhile a type is a data definition or collection of operations and these become structs and enums in the generated code.</p>
+<p>As an example, a register “Foo” is allowed to define a fieldset “Foo”. The register is an operation and the fieldset is a type.</p>
+<p>Operations:</p>
+<ul>
+<li>Manifest</li>
+<li>Block</li>
+<li>Register</li>
+<li>Command</li>
+<li>Buffer</li>
+</ul>
+<p>Types:</p>
+<ul>
+<li>Manifest</li>
+<li>Device</li>
+<li>Block</li>
+<li>Fieldset</li>
+<li>Enum</li>
+<li>Extern</li>
+</ul>
+<p>Notice how manifests and blocks are part of both.</p>
+<p>*: Enum variants and fields are sort of objects, but they are namespaced within their defining enum/fieldset.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="tokens--ast"><a class="header" href="#tokens--ast">Tokens &amp; AST</a></h1>
+<p>The language is first lexed into tokens, out of which an abstract syntax tree (AST) is parsed.</p>
+<h2 id="tokens"><a class="header" href="#tokens">Tokens</a></h2>
+<p>The implementation of the lexer can be found at <code>compiler\dd-lexer</code>.</p>
+<p>These are valid tokens in the language:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Name</th><th>Pattern</th><th>Example</th></tr>
+</thead>
+<tbody>
+<tr><td>Whitespace (skipped)</td><td><code>r"[ \t\r\n]+"</code></td><td><code> </code></td></tr>
+<tr><td>Comments (skipped)</td><td><code>r"//[^\n]*"</code></td><td><code>// ...</code></td></tr>
+<tr><td>DocCommentLine</td><td><code>r"///[^\n]*"</code></td><td><code>/// ...</code></td></tr>
+<tr><td>Ident</td><td><code>r"\p{XID_Start}[\p{XID_Continue}-]*"</code></td><td><code>Foo-bar</code></td></tr>
+<tr><td>CurlyOpen</td><td><code>{</code></td><td></td></tr>
+<tr><td>CurlyClose</td><td><code>}</code></td><td></td></tr>
+<tr><td>BracketOpen</td><td><code>[</code></td><td></td></tr>
+<tr><td>BracketClose</td><td><code>]</code></td><td></td></tr>
+<tr><td>Comma</td><td><code>,</code></td><td></td></tr>
+<tr><td>Colon</td><td><code>:</code></td><td></td></tr>
+<tr><td>Underscore</td><td><code>_</code></td><td></td></tr>
+<tr><td>Arrow</td><td><code>-&gt;</code></td><td></td></tr>
+<tr><td>Star</td><td><code>*</code></td><td></td></tr>
+<tr><td>Try</td><td><code>try</code></td><td></td></tr>
+<tr><td>As</td><td><code>as</code></td><td></td></tr>
+<tr><td>Allow</td><td><code>allow</code></td><td></td></tr>
+<tr><td>Default</td><td><code>default</code></td><td></td></tr>
+<tr><td>CatchAll</td><td><code>catch-all</code></td><td></td></tr>
+<tr><td>Stride</td><td><code>stride</code></td><td></td></tr>
+<tr><td>Num</td><td><code>r"-?[0-9][_0-9]*"</code> (decimal)</td><td><code>01_23</code></td></tr>
+<tr><td>Num</td><td><code>r"-?0b[_0-1]+"</code> (binary)</td><td><code>0b11_00</code></td></tr>
+<tr><td>Num</td><td><code>r"-?0o[_0-7]+"</code> (octal)</td><td><code>0o01_23</code></td></tr>
+<tr><td>Num</td><td><code>r"-?0x[_0-9a-fA-F]+"</code> (hexadecimal)</td><td><code>0xAA_bb</code></td></tr>
+<tr><td>Access</td><td><code>RW</code> / <code>RO</code> / <code>WO</code></td><td></td></tr>
+<tr><td>ByteOrder</td><td><code>BE</code> / <code>LE</code></td><td></td></tr>
+<tr><td>BaseType</td><td><code>uint</code> / <code>int</code> / <code>bool</code></td><td></td></tr>
+<tr><td>Integer</td><td><code>u8</code> / <code>u16</code> / <code>u32</code> / <code>u64</code> / <code>i8</code> / <code>i16</code> / <code>i32</code> / <code>i64</code></td><td></td></tr>
+<tr><td>AddressMode</td><td><code>mapped</code> / <code>indexed</code></td><td></td></tr>
+<tr><td>String</td><td><code>r#""[^"]*""#</code></td><td><code>"my string"</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>The tokens are lexed using <a href="https://crates.io/crates/logos">logos</a>.
+The regexes are processed by the Rust Regex crate.</p>
+<p>Direct tokens have priority over regexed tokens.</p>
+<h2 id="abstract-syntax-tree"><a class="header" href="#abstract-syntax-tree">Abstract syntax tree</a></h2>
+<p>The implementation of the parser can be found at <code>compiler\dd-parser</code>.</p>
+<p>The tokens are parsed through multiple sub-parsers into nodes.
+The AST is one node acting as the root.</p>
+<p>The railroad diagrams and ebnf are generated by <a href="https://crates.io/crates/chumsky">chumsky</a>
+and is known to not be 100% correct/complete. Contributions there are encouraged!</p>
+<p>The parsed numbers are parsed into a specific type of integer which is displayed in the diagrams.
+Their sizes are mostly implementation details, with the exception of numbers parsed as bytes.</p>
+<h3 id="node-1"><a class="header" href="#node-1">Node</a></h3>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="gen-docs/parser/node.svg" alt="node"><span class="img-wrapper"><img src="gen-docs/parser/node.svg" alt="node"></span></label></p>
+<pre><code>def_1 ::= ((((({ DocCommentLine } Ident) Ident|Underscore) [ repeat ]) { simple-expression }) [ type-specifier ]) [ node-body ];
+
+def_1
+</code></pre>
+<p>Examples:</p>
+<pre><code class="language-ddsl">register Foo {
+    address: 0,
+}
+</code></pre>
+<pre><code class="language-ddsl">field Foo 7:0 RW -&gt; _
+</code></pre>
+<p>Specific node types will have restrictions on what is and is not allowed or required.
+More about that can be found in the reference chapters for those node types as that’s part of the MIR and not the AST.</p>
+<h3 id="repeat"><a class="header" href="#repeat">Repeat</a></h3>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="gen-docs/parser/repeat.svg" alt="repeat"><span class="img-wrapper"><img src="gen-docs/parser/repeat.svg" alt="repeat"></span></label></p>
+<pre><code>(BracketOpen ((Num&lt;NonZero&lt;u32&gt;&gt;
+  | Ident) (Stride Num&lt;i32&gt;))) BracketClose
+</code></pre>
+<p>Examples:</p>
+<pre><code class="language-ddsl">[4 stride 2]
+</code></pre>
+<pre><code class="language-ddsl">[Foo stride 2]
+</code></pre>
+<h3 id="simple-expression"><a class="header" href="#simple-expression">Simple-expression</a></h3>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="gen-docs/parser/simple-expression.svg" alt="simple-expression"><span class="img-wrapper"><img src="gen-docs/parser/simple-expression.svg" alt="simple-expression"></span></label></p>
+<pre><code>range
+  | BaseType
+  | Integer
+  | Num&lt;i128&gt;
+  | Default (Num&lt;i128&gt;
+    | Underscore)
+  | CatchAll (Num&lt;i128&gt;
+    | Underscore)
+  | byte-array
+  | Allow
+  | Access
+  | ByteOrder
+  | Underscore
+  | String
+  | AddressMode
+</code></pre>
+<h3 id="type-specifier"><a class="header" href="#type-specifier">Type-specifier</a></h3>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="gen-docs/parser/type-specifier.svg" alt="type-specifier"><span class="img-wrapper"><img src="gen-docs/parser/type-specifier.svg" alt="type-specifier"></span></label></p>
+<pre><code>(Arrow (BaseType
+  | Integer
+  | Underscore)) [ (As [ Try ]) (node
+  | Ident) ]
+</code></pre>
+<p>Examples:</p>
+<pre><code class="language-ddsl">-&gt; u8 as try Foo
+</code></pre>
+<pre><code class="language-ddsl">-&gt; bool
+</code></pre>
+<pre><code class="language-ddsl">-&gt; _ as enum Foo { }
+</code></pre>
+<h3 id="node-body"><a class="header" href="#node-body">Node-body</a></h3>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="gen-docs/parser/node-body.svg" alt="node-body"><span class="img-wrapper"><img src="gen-docs/parser/node-body.svg" alt="node-body"></span></label></p>
+<pre><code>(CurlyOpen [ (({ property [Comma]} Comma) { node [Comma]}
+  | { property [Comma]}
+  | { node [Comma]}) [ Comma ] ]) CurlyClose
+</code></pre>
+<p>Example:</p>
+<pre><code class="language-ddsl">{
+    property: _,
+    register Node {
+
+    },
+}
+</code></pre>
+<h3 id="property"><a class="header" href="#property">Property</a></h3>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="gen-docs/parser/property.svg" alt="property"><span class="img-wrapper"><img src="gen-docs/parser/property.svg" alt="property"></span></label></p>
+<pre><code>{ DocCommentLine } (Ident (Colon (simple-expression
+  | node
+  | Ident)))
+</code></pre>
+<p>Examples:</p>
+<pre><code class="language-ddsl">/// Docs
+prop1: Foo
+</code></pre>
+<pre><code class="language-ddsl">prop2: 7:0
+</code></pre>
+<h3 id="range"><a class="header" href="#range">Range</a></h3>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="gen-docs/parser/range.svg" alt="range"><span class="img-wrapper"><img src="gen-docs/parser/range.svg" alt="range"></span></label></p>
+<pre><code>(Num&lt;i128&gt; Colon) Num&lt;i128&gt;
+</code></pre>
+<p>Example:</p>
+<pre><code class="language-ddsl">7:0
+</code></pre>
+<h3 id="byte-array"><a class="header" href="#byte-array">Byte-array</a></h3>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="gen-docs/parser/byte-array.svg" alt="byte-array"><span class="img-wrapper"><img src="gen-docs/parser/byte-array.svg" alt="byte-array"></span></label></p>
+<pre><code>(BracketOpen ({ Num&lt;u8&gt; [Comma]} [ Comma ])) BracketClose
+</code></pre>
+<p>Example:</p>
+<pre><code class="language-ddsl">[0, 1, 2, 3, 4]
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="manifest"><a class="header" href="#manifest">Manifest</a></h1>
+<p>The manifest is the root of a driver and is the input to the compiler.
+All objects that make up the driver are defined in it.</p>
+<p>To save on boilerplate, if you only have one <a href="#device">device</a> in your driver, you can forego specifying the manifest and just have a device as the root object.</p>
+<p>All config variables present on devices are available here too and serve as the default config for all devices. Devices can then override them again.</p>
+<h2 id="example"><a class="header" href="#example">Example</a></h2>
+<pre><code class="language-ddsl">/// doc comment line
+manifest Example {
+    byte-order: LE,
+    register-address-type: i32,
+    command-address-type: i32,
+    buffer-address-type: i32,
+    word-boundaries: "bD:0B:_",
+    register-address-mode: mapped,
+
+    device node,
+    fieldset node,
+    enum node,
+    extern node,
+}
+</code></pre>
+<h2 id="table"><a class="header" href="#table">Table</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Property</th><th>Value</th></tr>
+</thead>
+<tbody>
+<tr><td>Identifier namespace</td><td><code>All</code></td></tr>
+<tr><td>Supports repeat</td><td><code>no</code></td></tr>
+<tr><td>Supports basetype</td><td><code>no</code></td></tr>
+<tr><td>Supports conversion type</td><td><code>no</code></td></tr>
+<tr><td>Supports short properties</td><td><code>no</code></td></tr>
+<tr><td>Supports properties</td><td><code>yes</code>, see below</td></tr>
+<tr><td>Supports subnodes</td><td><code>yes</code>, see below</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="long-properties"><a class="header" href="#long-properties">Long properties</a></h2>
+<p>These properties are specified in the node body.</p>
+<h3 id="byte-order"><a class="header" href="#byte-order">byte-order</a></h3>
+<p>Sets the global default byte order used by fieldsets. This can be overridden per device and fieldset.</p>
+<h4 id="info"><a class="header" href="#info">Info</a></h4>
+<ul>
+<li>required: <code>no</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h4 id="allowed-expression-types"><a class="header" href="#allowed-expression-types">Allowed expression types</a></h4>
+<ul>
+<li><code>byte order</code> =&gt; <code>LE</code></li>
+</ul>
+<h3 id="register-address-type"><a class="header" href="#register-address-type">register-address-type</a></h3>
+<p>Sets the global type used to address the registers for all devices. This can be overridden per device.</p>
+<h4 id="info-1"><a class="header" href="#info-1">Info</a></h4>
+<ul>
+<li>required: <code>no</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h4 id="allowed-expression-types-1"><a class="header" href="#allowed-expression-types-1">Allowed expression types</a></h4>
+<ul>
+<li><code>integer type</code> =&gt; <code>i32</code></li>
+</ul>
+<h3 id="command-address-type"><a class="header" href="#command-address-type">command-address-type</a></h3>
+<p>Sets the global type used to address the commands for all devices. This can be overridden per device.</p>
+<h4 id="info-2"><a class="header" href="#info-2">Info</a></h4>
+<ul>
+<li>required: <code>no</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h4 id="allowed-expression-types-2"><a class="header" href="#allowed-expression-types-2">Allowed expression types</a></h4>
+<ul>
+<li><code>integer type</code> =&gt; <code>i32</code></li>
+</ul>
+<h3 id="buffer-address-type"><a class="header" href="#buffer-address-type">buffer-address-type</a></h3>
+<p>Sets the global type used to address the buffers for all devices. This can be overridden per device.</p>
+<h4 id="info-3"><a class="header" href="#info-3">Info</a></h4>
+<ul>
+<li>required: <code>no</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h4 id="allowed-expression-types-3"><a class="header" href="#allowed-expression-types-3">Allowed expression types</a></h4>
+<ul>
+<li><code>integer type</code> =&gt; <code>i32</code></li>
+</ul>
+<h3 id="word-boundaries"><a class="header" href="#word-boundaries">word-boundaries</a></h3>
+<p>Sets the global word splitting rules for all objects. This can be overridden per device.</p>
+<p>This option exists to aid in copying names from the datasheet. Those names are often not proper names for types and operations.
+So by setting the rules, the compiler can split identifiers into good proper words and then convert them to the required casing.
+The splitting is done with <code>convert_case</code> using their <a href="https://docs.rs/convert_case/0.10.0/convert_case/enum.Boundary.html#method.defaults_from"><code>string representation</code></a> for boundaries.</p>
+<p>In short, place a colon (<code>:</code>) between every boundary. Then each boundary follows the expressed pattern.
+For example <code>aB</code> will split words when a lower case letter is followed by an upper case letter.
+Some symbols are also allowed as boundary, like <code>-</code> &amp; <code>_</code>.</p>
+<p>If not specified, this uses a reasonable default for splitting.</p>
+<h4 id="info-4"><a class="header" href="#info-4">Info</a></h4>
+<ul>
+<li>required: <code>no</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h4 id="allowed-expression-types-4"><a class="header" href="#allowed-expression-types-4">Allowed expression types</a></h4>
+<ul>
+<li><code>string</code> =&gt; <code>"bD:0B:_"</code></li>
+</ul>
+<h3 id="register-address-mode"><a class="header" href="#register-address-mode">register-address-mode</a></h3>
+<p>Sets the global address mode for registers. This can be overridden per device.</p>
+<p>When specified, the registers are assumed to share an address space:</p>
+<ul>
+<li>With the <code>mapped</code> option, that address space is a memory-mapped space where if register <code>A</code> has address <code>X</code> and is <code>Y</code> bytes big, then register <code>B</code> (if it exists) will have the address <code>X+Y</code>.</li>
+<li>With the <code>indexed</code> option, that address space has one register per number where if object <code>A</code> has address <code>X</code>, then object <code>B</code> (if it exists) will have the address <code>X+1</code>.</li>
+</ul>
+<p>If this value is specified, then it permits bulk register reads and writes.</p>
+<h4 id="info-5"><a class="header" href="#info-5">Info</a></h4>
+<ul>
+<li>required: <code>no</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h4 id="allowed-expression-types-5"><a class="header" href="#allowed-expression-types-5">Allowed expression types</a></h4>
+<ul>
+<li><code>address mode</code> =&gt; <code>mapped</code></li>
+</ul>
+<h2 id="possible-subnodes"><a class="header" href="#possible-subnodes">Possible subnodes</a></h2>
+<p>Subnodes of the following types are allowed in the node body.</p>
+<ul>
+<li><a href="#device">device</a></li>
+<li><a href="#fieldset">fieldset</a></li>
+<li><a href="#enum">enum</a></li>
+<li><a href="#extern">extern</a></li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="device"><a class="header" href="#device">Device</a></h1>
+<p>A device models the target of the driver (typically a chip you can reach over e.g. SPI). A <a href="#manifest">manifest</a> can contain multiple devices. A driver will typically contain at least one device.</p>
+<p>A device is spiritually the same as a <a href="#block">block</a>, except it can set some configs and serves as the root of the blocks.</p>
+<p>Example usage:</p>
+<pre><code class="language-rust">// Create a device by giving it ownership of a compatible interface
+let mut device = MyDevice::new(DeviceInterface::new());
+
+// Use the operations defined on the device
+device.foo().read()?;
+
+// When supported, start bulk operations on the device (or any block)
+use device_driver::Block; // Must import trait
+let (foo, bar) = device
+    .bulk_read()
+    .with(|d| d.foo().plan())
+    .with(|d| d.bar().plan())
+    .execute()?;</code></pre>
+<h2 id="example-1"><a class="header" href="#example-1">Example</a></h2>
+<pre><code class="language-ddsl">/// doc comment line
+device Example {
+    byte-order: LE,
+    register-address-type: i32,
+    command-address-type: i32,
+    buffer-address-type: i32,
+    word-boundaries: "bD:0B:_",
+    register-address-mode: mapped,
+
+    block node,
+    register node,
+    command node,
+    buffer node,
+    fieldset node,
+    enum node,
+    extern node,
+}
+</code></pre>
+<h2 id="table-1"><a class="header" href="#table-1">Table</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Property</th><th>Value</th></tr>
+</thead>
+<tbody>
+<tr><td>Identifier namespace</td><td><code>Type</code></td></tr>
+<tr><td>Supports repeat</td><td><code>no</code></td></tr>
+<tr><td>Supports basetype</td><td><code>no</code></td></tr>
+<tr><td>Supports conversion type</td><td><code>no</code></td></tr>
+<tr><td>Supports short properties</td><td><code>no</code></td></tr>
+<tr><td>Supports properties</td><td><code>yes</code>, see below</td></tr>
+<tr><td>Supports subnodes</td><td><code>yes</code>, see below</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="long-properties-1"><a class="header" href="#long-properties-1">Long properties</a></h2>
+<p>These properties are specified in the node body.</p>
+<h3 id="byte-order-1"><a class="header" href="#byte-order-1">byte-order</a></h3>
+<p>Sets the default byte order used by fieldsets in this device. This can be overridden per fieldset.</p>
+<h4 id="info-6"><a class="header" href="#info-6">Info</a></h4>
+<ul>
+<li>required: <code>no</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h4 id="allowed-expression-types-6"><a class="header" href="#allowed-expression-types-6">Allowed expression types</a></h4>
+<ul>
+<li><code>byte order</code> =&gt; <code>LE</code></li>
+</ul>
+<h3 id="register-address-type-1"><a class="header" href="#register-address-type-1">register-address-type</a></h3>
+<p>Sets the type used to address the registers in this device.</p>
+<h4 id="info-1-1"><a class="header" href="#info-1-1">Info</a></h4>
+<ul>
+<li>required: <code>no</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h4 id="allowed-expression-types-1-1"><a class="header" href="#allowed-expression-types-1-1">Allowed expression types</a></h4>
+<ul>
+<li><code>integer type</code> =&gt; <code>i32</code></li>
+</ul>
+<h3 id="command-address-type-1"><a class="header" href="#command-address-type-1">command-address-type</a></h3>
+<p>Sets the type used to address the commands in this device.</p>
+<h4 id="info-2-1"><a class="header" href="#info-2-1">Info</a></h4>
+<ul>
+<li>required: <code>no</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h4 id="allowed-expression-types-2-1"><a class="header" href="#allowed-expression-types-2-1">Allowed expression types</a></h4>
+<ul>
+<li><code>integer type</code> =&gt; <code>i32</code></li>
+</ul>
+<h3 id="buffer-address-type-1"><a class="header" href="#buffer-address-type-1">buffer-address-type</a></h3>
+<p>Sets the type used to address the buffers in this device.</p>
+<h4 id="info-3-1"><a class="header" href="#info-3-1">Info</a></h4>
+<ul>
+<li>required: <code>no</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h4 id="allowed-expression-types-3-1"><a class="header" href="#allowed-expression-types-3-1">Allowed expression types</a></h4>
+<ul>
+<li><code>integer type</code> =&gt; <code>i32</code></li>
+</ul>
+<h3 id="word-boundaries-1"><a class="header" href="#word-boundaries-1">word-boundaries</a></h3>
+<p>Sets the word splitting rules for all objects defined in the device.</p>
+<p>This option exists to aid in copying names from the datasheet. Those names are often not proper names for types and operations.
+So by setting the rules, the compiler can split identifiers into good proper words and then convert them to the required casing.
+The splitting is done with <code>convert_case</code> using their <a href="https://docs.rs/convert_case/0.10.0/convert_case/enum.Boundary.html#method.defaults_from"><code>string representation</code></a> for boundaries.</p>
+<p>In short, place a colon (<code>:</code>) between every boundary. Then each boundary follows the expressed pattern.
+For example <code>aB</code> will split words when a lower case letter is followed by an upper case letter.
+Some symbols are also allowed as boundary, like <code>-</code> &amp; <code>_</code>.</p>
+<p>If not specified, this uses a reasonable default for splitting.</p>
+<h4 id="info-4-1"><a class="header" href="#info-4-1">Info</a></h4>
+<ul>
+<li>required: <code>no</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h4 id="allowed-expression-types-4-1"><a class="header" href="#allowed-expression-types-4-1">Allowed expression types</a></h4>
+<ul>
+<li><code>string</code> =&gt; <code>"bD:0B:_"</code></li>
+</ul>
+<h3 id="register-address-mode-1"><a class="header" href="#register-address-mode-1">register-address-mode</a></h3>
+<p>Sets the address mode for registers in this device.</p>
+<p>When specified, the registers are assumed to share an address space:</p>
+<ul>
+<li>With the <code>mapped</code> option, that address space is a memory-mapped space where if register <code>A</code> has address <code>X</code> and is <code>Y</code> bytes big, then register <code>B</code> (if it exists) will have the address <code>X+Y</code>.</li>
+<li>With the <code>indexed</code> option, that address space has one register per number where if object <code>A</code> has address <code>X</code>, then object <code>B</code> (if it exists) will have the address <code>X+1</code>.</li>
+</ul>
+<p>If this value is specified, then it permits bulk register reads and writes.</p>
+<h4 id="info-5-1"><a class="header" href="#info-5-1">Info</a></h4>
+<ul>
+<li>required: <code>no</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h4 id="allowed-expression-types-5-1"><a class="header" href="#allowed-expression-types-5-1">Allowed expression types</a></h4>
+<ul>
+<li><code>address mode</code> =&gt; <code>mapped</code></li>
+</ul>
+<h2 id="possible-subnodes-1"><a class="header" href="#possible-subnodes-1">Possible subnodes</a></h2>
+<p>Subnodes of the following types are allowed in the node body.</p>
+<ul>
+<li><a href="#block">block</a></li>
+<li><a href="#register">register</a></li>
+<li><a href="#command">command</a></li>
+<li><a href="#buffer">buffer</a></li>
+<li><a href="#fieldset">fieldset</a></li>
+<li><a href="#enum">enum</a></li>
+<li><a href="#extern">extern</a></li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="block"><a class="header" href="#block">Block</a></h1>
+<p>A block helps with grouping objects in your driver and is ultimately a collection of other objects. This can be great to e.g. logically pool related registers together or to repeat them en masse.</p>
+<p>Blocks have an address offset which is applied to all child objects. Keep the offset at 0 if you want to use the global addresses for the sub objects.</p>
+<p>Blocks are accessed as an operation on the parent block or device it’s part of.</p>
+<p>All objects are generated globally so child objects still need a globally unique name and are not generated in a module.</p>
+<p>Example usage:</p>
+<pre><code class="language-rust">// MyDevice is the root block
+let mut device = MyDevice::new(DeviceInterface::new());
+
+// Foo is a block
+let mut foo = device.foo();
+// Access any operation defined on the block
+foo.bar().dispatch()?;
+
+// Or in one go
+device.foo().bar().dispatch()?;</code></pre>
+<h2 id="example-2"><a class="header" href="#example-2">Example</a></h2>
+<pre><code class="language-ddsl">/// doc comment line
+block Example {
+    address-offset: 0,
+
+    block node,
+    register node,
+    command node,
+    buffer node,
+    fieldset node,
+    enum node,
+    extern node,
+}
+</code></pre>
+<h2 id="table-2"><a class="header" href="#table-2">Table</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Property</th><th>Value</th></tr>
+</thead>
+<tbody>
+<tr><td>Identifier namespace</td><td><code>All</code></td></tr>
+<tr><td>Supports repeat</td><td><code>yes</code></td></tr>
+<tr><td>Supports basetype</td><td><code>no</code></td></tr>
+<tr><td>Supports conversion type</td><td><code>no</code></td></tr>
+<tr><td>Supports short properties</td><td><code>no</code></td></tr>
+<tr><td>Supports properties</td><td><code>yes</code>, see below</td></tr>
+<tr><td>Supports subnodes</td><td><code>yes</code>, see below</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="long-properties-2"><a class="header" href="#long-properties-2">Long properties</a></h2>
+<p>These properties are specified in the node body.</p>
+<h3 id="address-offset"><a class="header" href="#address-offset">address-offset</a></h3>
+<p>Defines the address offset of this block. All objects in the block are relative to the block.
+For example, a block with an address offset of 10 which has a register at address 5, will have defined the register at address 15.
+If this is not desired, then keep the address offset at 0.</p>
+<h4 id="info-7"><a class="header" href="#info-7">Info</a></h4>
+<ul>
+<li>required: <code>yes</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h4 id="allowed-expression-types-7"><a class="header" href="#allowed-expression-types-7">Allowed expression types</a></h4>
+<ul>
+<li><code>number</code> =&gt; <code>0</code></li>
+</ul>
+<h2 id="possible-subnodes-2"><a class="header" href="#possible-subnodes-2">Possible subnodes</a></h2>
+<p>Subnodes of the following types are allowed in the node body.</p>
+<ul>
+<li><a href="#block">block</a></li>
+<li><a href="#register">register</a></li>
+<li><a href="#command">command</a></li>
+<li><a href="#buffer">buffer</a></li>
+<li><a href="#fieldset">fieldset</a></li>
+<li><a href="#enum">enum</a></li>
+<li><a href="#extern">extern</a></li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="register"><a class="header" href="#register">Register</a></h1>
+<p>A register is a singular piece of addressable memory stored on the device that can be written and/or read.</p>
+<p>It defines an operation on the block it’s part of. Register functionality is implemented in the runtime through the <a href="https://docs.rs/device-driver/latest/device_driver/struct.RegisterOperation.html"><code>RegisterOperation</code></a> which can be used to read/write/modify the register.</p>
+<p>Example usage:</p>
+<pre><code class="language-rust">let mut device = MyDevice::new(DeviceInterface::new());
+
+device.foo().write(|reg| reg.set_bar(12345))?;
+assert_eq!(device.foo().read()?.bar(), 12345);</code></pre>
+<h2 id="example-3"><a class="header" href="#example-3">Example</a></h2>
+<pre><code class="language-ddsl">/// doc comment line
+register Example {
+    address: 0,
+    access: RW,
+    address-overlap: allow,
+    reset: [12, 34],
+    fields: MyFieldset,
+}
+</code></pre>
+<h2 id="table-3"><a class="header" href="#table-3">Table</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Property</th><th>Value</th></tr>
+</thead>
+<tbody>
+<tr><td>Identifier namespace</td><td><code>Operation</code></td></tr>
+<tr><td>Supports repeat</td><td><code>yes</code></td></tr>
+<tr><td>Supports basetype</td><td><code>no</code></td></tr>
+<tr><td>Supports conversion type</td><td><code>no</code></td></tr>
+<tr><td>Supports short properties</td><td><code>no</code></td></tr>
+<tr><td>Supports properties</td><td><code>yes</code>, see below</td></tr>
+<tr><td>Supports subnodes</td><td><code>no</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="long-properties-3"><a class="header" href="#long-properties-3">Long properties</a></h2>
+<p>These properties are specified in the node body.</p>
+<h3 id="address"><a class="header" href="#address">address</a></h3>
+<p>The address of the register.</p>
+<h4 id="info-8"><a class="header" href="#info-8">Info</a></h4>
+<ul>
+<li>required: <code>yes</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h4 id="allowed-expression-types-8"><a class="header" href="#allowed-expression-types-8">Allowed expression types</a></h4>
+<ul>
+<li><code>number</code> =&gt; <code>0</code></li>
+</ul>
+<h3 id="access"><a class="header" href="#access">access</a></h3>
+<p>Limits how the register can be accessed. If not specified, the access is <code>RW</code>.</p>
+<h4 id="info-1-2"><a class="header" href="#info-1-2">Info</a></h4>
+<ul>
+<li>required: <code>no</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h4 id="allowed-expression-types-1-2"><a class="header" href="#allowed-expression-types-1-2">Allowed expression types</a></h4>
+<ul>
+<li><code>access specifier</code> =&gt; <code>RW</code></li>
+</ul>
+<h3 id="address-overlap"><a class="header" href="#address-overlap">address-overlap</a></h3>
+<p>Allows addresses to overlap with other registers. This is not allowed by default to prevent copy-paste mistakes.</p>
+<h4 id="info-2-2"><a class="header" href="#info-2-2">Info</a></h4>
+<ul>
+<li>required: <code>no</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h4 id="allowed-expression-types-2-2"><a class="header" href="#allowed-expression-types-2-2">Allowed expression types</a></h4>
+<ul>
+<li><code>allow</code> =&gt; <code>allow</code></li>
+</ul>
+<h3 id="reset"><a class="header" href="#reset">reset</a></h3>
+<p>Defines the reset value of the register. When performing a write operation, this value loaded in by default.</p>
+<p>The value can be expressed in two ways:</p>
+<ul>
+<li>Byte array: No byte order changes are done. The array will be loaded into the fieldset as is.</li>
+<li>Integer: Will be converted to a byte array with the specified byte order.</li>
+</ul>
+<h4 id="info-3-2"><a class="header" href="#info-3-2">Info</a></h4>
+<ul>
+<li>required: <code>no</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h4 id="allowed-expression-types-3-2"><a class="header" href="#allowed-expression-types-3-2">Allowed expression types</a></h4>
+<ul>
+<li><code>[bytes]</code> =&gt; <code>[12, 34]</code></li>
+<li><code>number</code> =&gt; <code>1234</code></li>
+</ul>
+<h3 id="fields"><a class="header" href="#fields">fields</a></h3>
+<p>The fieldset that represents the data of the register. This can be a reference to an existing fieldset or a completely new inline fieldset.</p>
+<h4 id="info-4-2"><a class="header" href="#info-4-2">Info</a></h4>
+<ul>
+<li>required: <code>yes</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h4 id="allowed-expression-types-4-2"><a class="header" href="#allowed-expression-types-4-2">Allowed expression types</a></h4>
+<ul>
+<li><code>type reference</code> =&gt; <code>MyFieldset</code></li>
+<li><code>sub node</code> =&gt; <code>fieldset MyFieldSet</code></li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="command"><a class="header" href="#command">Command</a></h1>
+<p>A command is a call to do something. This can be to e.g. change the chip state, do an RPC-like call or to start a radio transmission.</p>
+<p>It defines an operation on the block it’s part of. Command functionality is implemented in the runtime through the <a href="https://docs.rs/device-driver/latest/device_driver/struct.CommandOperation.html"><code>CommandOperation</code></a> which can be used to dispatch the command.</p>
+<blockquote class="blockquote-tag blockquote-tag-tip">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M8 1.5c-2.363 0-4 1.69-4 3.75 0 .984.424 1.625.984 2.304l.214.253c.223.264.47.556.673.848.284.411.537.896.621 1.49a.75.75 0 0 1-1.484.211c-.04-.282-.163-.547-.37-.847a8.456 8.456 0 0 0-.542-.68c-.084-.1-.173-.205-.268-.32C3.201 7.75 2.5 6.766 2.5 5.25 2.5 2.31 4.863 0 8 0s5.5 2.31 5.5 5.25c0 1.516-.701 2.5-1.328 3.259-.095.115-.184.22-.268.319-.207.245-.383.453-.541.681-.208.3-.33.565-.37.847a.751.751 0 0 1-1.485-.212c.084-.593.337-1.078.621-1.489.203-.292.45-.584.673-.848.075-.088.147-.173.213-.253.561-.679.985-1.32.985-2.304 0-2.06-1.637-3.75-4-3.75ZM5.75 12h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1 0-1.5ZM6 15.25a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75Z"></path></svg>Tip</p>
+<p>While registers could be modelled as a command, this would be spiritually wrong.
+A device is supposed to <em>do</em> something when a command is dispatched.
+It can do something on its own or based the input data. And when the action is done there may be an output.</p>
+<p>Examples would be starting radio transmission or putting the device to sleep.</p>
+</blockquote>
+<p>Example usage:</p>
+<pre><code class="language-rust">let mut device = MyDevice::new(DeviceInterface::new());
+
+// Dispatch the foo command
+device.foo().dispatch()?;
+
+// Commands carry data when in and/or out fields are specified
+let result = device.bar().dispatch(|data| data.set_val(1234))?;
+assert_eq!(result.quux(), true);</code></pre>
+<h2 id="example-4"><a class="header" href="#example-4">Example</a></h2>
+<pre><code class="language-ddsl">/// doc comment line
+command Example {
+    address: 0,
+    address-overlap: allow,
+    fields-in: MyFieldset,
+    fields-out: MyFieldset,
+}
+</code></pre>
+<h2 id="table-4"><a class="header" href="#table-4">Table</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Property</th><th>Value</th></tr>
+</thead>
+<tbody>
+<tr><td>Identifier namespace</td><td><code>Operation</code></td></tr>
+<tr><td>Supports repeat</td><td><code>yes</code></td></tr>
+<tr><td>Supports basetype</td><td><code>no</code></td></tr>
+<tr><td>Supports conversion type</td><td><code>no</code></td></tr>
+<tr><td>Supports short properties</td><td><code>no</code></td></tr>
+<tr><td>Supports properties</td><td><code>yes</code>, see below</td></tr>
+<tr><td>Supports subnodes</td><td><code>no</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="long-properties-4"><a class="header" href="#long-properties-4">Long properties</a></h2>
+<p>These properties are specified in the node body.</p>
+<h3 id="address-1"><a class="header" href="#address-1">address</a></h3>
+<p>The address of the command</p>
+<h4 id="info-9"><a class="header" href="#info-9">Info</a></h4>
+<ul>
+<li>required: <code>yes</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h4 id="allowed-expression-types-9"><a class="header" href="#allowed-expression-types-9">Allowed expression types</a></h4>
+<ul>
+<li><code>number</code> =&gt; <code>0</code></li>
+</ul>
+<h3 id="address-overlap-1"><a class="header" href="#address-overlap-1">address-overlap</a></h3>
+<p>Allows addresses to overlap with other commands. This is not allowed by default to prevent copy-paste mistakes.</p>
+<h4 id="info-1-3"><a class="header" href="#info-1-3">Info</a></h4>
+<ul>
+<li>required: <code>no</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h4 id="allowed-expression-types-1-3"><a class="header" href="#allowed-expression-types-1-3">Allowed expression types</a></h4>
+<ul>
+<li><code>allow</code> =&gt; <code>allow</code></li>
+</ul>
+<h3 id="fields-in"><a class="header" href="#fields-in">fields-in</a></h3>
+<p>The fieldset that represents the input data of the command. This can be a reference to an existing fieldset or a completely new inline fieldset.</p>
+<h4 id="info-2-3"><a class="header" href="#info-2-3">Info</a></h4>
+<ul>
+<li>required: <code>no</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h4 id="allowed-expression-types-2-3"><a class="header" href="#allowed-expression-types-2-3">Allowed expression types</a></h4>
+<ul>
+<li><code>type reference</code> =&gt; <code>MyFieldset</code></li>
+<li><code>sub node</code> =&gt; <code>fieldset MyFieldSet</code></li>
+</ul>
+<h3 id="fields-out"><a class="header" href="#fields-out">fields-out</a></h3>
+<p>The fieldset that represents the output data of the command. This can be a reference to an existing fieldset or a completely new inline fieldset.</p>
+<h4 id="info-3-3"><a class="header" href="#info-3-3">Info</a></h4>
+<ul>
+<li>required: <code>no</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h4 id="allowed-expression-types-3-3"><a class="header" href="#allowed-expression-types-3-3">Allowed expression types</a></h4>
+<ul>
+<li><code>type reference</code> =&gt; <code>MyFieldset</code></li>
+<li><code>sub node</code> =&gt; <code>fieldset MyFieldSet</code></li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="buffer"><a class="header" href="#buffer">Buffer</a></h1>
+<p>Buffers are used to represent a stream of bytes on a device. This could for example be a fifo on a radio.
+It’s quite a simple construct and thus is limited in configuration options.</p>
+<p>It defines an operation on the block it’s part of. Buffer functionality is implemented in the runtime through the <a href="https://docs.rs/device-driver/latest/device_driver/struct.BufferOperation.html">BufferOperation</a> which can be used to read and write from/to the buffer. This operation type also implements the <a href="https://crates.io/crates/embedded-io">embedded-io</a> traits when the cargo feature is activated on the runtime.</p>
+<p>Example usage:</p>
+<pre><code class="language-rust">let mut device = MyDevice::new(DeviceInterface::new());
+
+device.foo().write_all(&amp;[0, 1, 2, 3]).unwrap();
+let mut buffer = [0; 8];
+let len = device.bar().read(&amp;mut buffer).unwrap();</code></pre>
+<h2 id="example-5"><a class="header" href="#example-5">Example</a></h2>
+<pre><code class="language-ddsl">/// doc comment line
+buffer Example {
+    access: RW,
+    address: 0,
+}
+</code></pre>
+<h2 id="table-5"><a class="header" href="#table-5">Table</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Property</th><th>Value</th></tr>
+</thead>
+<tbody>
+<tr><td>Identifier namespace</td><td><code>Operation</code></td></tr>
+<tr><td>Supports repeat</td><td><code>no</code></td></tr>
+<tr><td>Supports basetype</td><td><code>no</code></td></tr>
+<tr><td>Supports conversion type</td><td><code>no</code></td></tr>
+<tr><td>Supports short properties</td><td><code>no</code></td></tr>
+<tr><td>Supports properties</td><td><code>yes</code>, see below</td></tr>
+<tr><td>Supports subnodes</td><td><code>no</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="long-properties-5"><a class="header" href="#long-properties-5">Long properties</a></h2>
+<p>These properties are specified in the node body.</p>
+<h3 id="access-1"><a class="header" href="#access-1">access</a></h3>
+<p>Limits how the buffer can be accessed. If not specified, the access is <code>RW</code>.</p>
+<h4 id="info-10"><a class="header" href="#info-10">Info</a></h4>
+<ul>
+<li>required: <code>no</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h4 id="allowed-expression-types-10"><a class="header" href="#allowed-expression-types-10">Allowed expression types</a></h4>
+<ul>
+<li><code>access specifier</code> =&gt; <code>RW</code></li>
+</ul>
+<h3 id="address-2"><a class="header" href="#address-2">address</a></h3>
+<p>The address of the buffer</p>
+<h4 id="info-1-4"><a class="header" href="#info-1-4">Info</a></h4>
+<ul>
+<li>required: <code>yes</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h4 id="allowed-expression-types-1-4"><a class="header" href="#allowed-expression-types-1-4">Allowed expression types</a></h4>
+<ul>
+<li><code>number</code> =&gt; <code>0</code></li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="fieldset"><a class="header" href="#fieldset">Fieldset</a></h1>
+<p>A fieldset is a collection of <a href="#field">field</a>s that make up the data of a <a href="#register">register</a>, <a href="#command">command</a> input or command output.</p>
+<p>Each fieldset defines a type where each of the fields are accessible through operations with the names of the fields.</p>
+<blockquote class="blockquote-tag blockquote-tag-note">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
+<p>As a user you should not have to construct your fieldsets manually in normal use. But it’s available to you for special cases.</p>
+</blockquote>
+<p>Example usage:</p>
+<pre><code class="language-rust">use device_driver::Fieldset;
+
+let mut reg = MyFieldSet::ZERO;
+reg.set_foo(1234);
+let foo = reg.foo();</code></pre>
+<p>Fieldsets also implement all bitwise operators for easier manipulation. These operations are done on <em>all</em> underlying bits, even ones that are not part of a <a href="#field">field</a>.</p>
+<p>There’s also an <code>Into</code> and <code>From</code> implementation to byte arrays of the same size of the fieldset.
+All possible bitpatterns are legal.</p>
+<p>Example usage:</p>
+<pre><code class="language-rust">let all_ones = !MyFieldSet::from([0x00, 0x00]);
+let lowest_byte_set = MyFieldSet::from([0xFF, 0x00]);
+let lowest_byte_inverted = all_ones ^ lowest_byte_set;</code></pre>
+<h2 id="example-6"><a class="header" href="#example-6">Example</a></h2>
+<pre><code class="language-ddsl">/// doc comment line
+fieldset Example {
+    size-bytes: 8,
+    byte-order: LE,
+    bit-overlap: allow,
+
+    field node,
+}
+</code></pre>
+<h2 id="table-6"><a class="header" href="#table-6">Table</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Property</th><th>Value</th></tr>
+</thead>
+<tbody>
+<tr><td>Identifier namespace</td><td><code>Type</code></td></tr>
+<tr><td>Supports repeat</td><td><code>no</code></td></tr>
+<tr><td>Supports basetype</td><td><code>no</code></td></tr>
+<tr><td>Supports conversion type</td><td><code>no</code></td></tr>
+<tr><td>Supports short properties</td><td><code>no</code></td></tr>
+<tr><td>Supports properties</td><td><code>yes</code>, see below</td></tr>
+<tr><td>Supports subnodes</td><td><code>yes</code>, see below</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="long-properties-6"><a class="header" href="#long-properties-6">Long properties</a></h2>
+<p>These properties are specified in the node body.</p>
+<h3 id="size-bytes"><a class="header" href="#size-bytes">size-bytes</a></h3>
+<p>The size of the fieldset in number of bytes.</p>
+<h4 id="info-11"><a class="header" href="#info-11">Info</a></h4>
+<ul>
+<li>required: <code>yes</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h4 id="allowed-expression-types-11"><a class="header" href="#allowed-expression-types-11">Allowed expression types</a></h4>
+<ul>
+<li><code>number</code> =&gt; <code>8</code></li>
+</ul>
+<h3 id="byte-order-2"><a class="header" href="#byte-order-2">byte-order</a></h3>
+<p>The byte order of the fieldset data.</p>
+<h4 id="info-1-5"><a class="header" href="#info-1-5">Info</a></h4>
+<ul>
+<li>required: <code>no</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h4 id="allowed-expression-types-1-5"><a class="header" href="#allowed-expression-types-1-5">Allowed expression types</a></h4>
+<ul>
+<li><code>byte order</code> =&gt; <code>LE</code></li>
+</ul>
+<h3 id="bit-overlap"><a class="header" href="#bit-overlap">bit-overlap</a></h3>
+<p>Allows fields to overlap. This is not allowed by default to prevent copy-paste mistakes.</p>
+<h4 id="info-2-4"><a class="header" href="#info-2-4">Info</a></h4>
+<ul>
+<li>required: <code>no</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h4 id="allowed-expression-types-2-4"><a class="header" href="#allowed-expression-types-2-4">Allowed expression types</a></h4>
+<ul>
+<li><code>allow</code> =&gt; <code>allow</code></li>
+</ul>
+<h2 id="possible-subnodes-3"><a class="header" href="#possible-subnodes-3">Possible subnodes</a></h2>
+<p>Subnodes of the following types are allowed in the node body.</p>
+<ul>
+<li><a href="#field">field</a></li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="enum"><a class="header" href="#enum">Enum</a></h1>
+<p>Enums work similarly to enums in most languages (like C &amp; Rust) and generates a native enum as the output.</p>
+<p>Each property in the node body defines a variant and at least one must be defined.
+When a variant doesn’t specify a number value, it will be incremented by one from the previous variant or be zero when it’s the first variant.</p>
+<p>The bit size of the enum is automatically determined based on the variants of the enum and the base type.
+Any <a href="#field">field</a> that uses the enum as conversion type must have the same base type as the enum.</p>
+<p>An enum that covers all bit patterns for its bit size can be used for infallible conversion. This is possible by having a variant for each bit pattern or by having a default or catch-all variant.</p>
+<p>An enum with a default value will collapse the value into the default if the value is not expressed by any other variant. A catch-all catches the value and retains it. You should prefer using a default value and only use catch-all when you require reflexivity.</p>
+<h2 id="example-7"><a class="header" href="#example-7">Example</a></h2>
+<pre><code class="language-ddsl">/// doc comment line
+enum Example -&gt; uint {
+    /// doc comment line
+    Any: _,
+}
+</code></pre>
+<h2 id="table-7"><a class="header" href="#table-7">Table</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Property</th><th>Value</th></tr>
+</thead>
+<tbody>
+<tr><td>Identifier namespace</td><td><code>Type</code></td></tr>
+<tr><td>Supports repeat</td><td><code>no</code></td></tr>
+<tr><td>Supports basetype</td><td><code>yes</code></td></tr>
+<tr><td>Supports conversion type</td><td><code>no</code></td></tr>
+<tr><td>Supports short properties</td><td><code>no</code></td></tr>
+<tr><td>Supports properties</td><td><code>yes</code>, see below</td></tr>
+<tr><td>Supports subnodes</td><td><code>no</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="long-properties-7"><a class="header" href="#long-properties-7">Long properties</a></h2>
+<p>These properties are specified in the node body.</p>
+<h3 id="any-name"><a class="header" href="#any-name"><em>any name</em></a></h3>
+<p>Defines a variant for the enum. The name of the property becomes the variant name.</p>
+<h4 id="info-12"><a class="header" href="#info-12">Info</a></h4>
+<ul>
+<li>required: <code>no</code></li>
+<li>multiple allowed: <code>yes</code></li>
+<li>supports doc comments: <code>yes</code></li>
+</ul>
+<h4 id="allowed-expression-types-12"><a class="header" href="#allowed-expression-types-12">Allowed expression types</a></h4>
+<ul>
+<li><code>auto</code> =&gt; <code>_</code></li>
+<li><code>number</code> =&gt; <code>0</code></li>
+<li><code>default number</code> =&gt; <code>default 0</code></li>
+<li><code>default auto</code> =&gt; <code>default _</code></li>
+<li><code>catch-all number</code> =&gt; <code>catch-all 0</code></li>
+<li><code>catch-all auto</code> =&gt; <code>catch-all _</code></li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="extern"><a class="header" href="#extern">Extern</a></h1>
+<p>An extern allows users to provide their own custom types and use them as conversion types.</p>
+<p>The extern must be available to the generated code with the name directly. No namespacing is applied.</p>
+<p>By default extern types can only used fallibly and will have the bit size of the base type.</p>
+<h2 id="example-8"><a class="header" href="#example-8">Example</a></h2>
+<pre><code class="language-ddsl">/// doc comment line
+extern Example -&gt; uint {
+    infallible: allow,
+    size-bits: 8,
+}
+</code></pre>
+<h2 id="table-8"><a class="header" href="#table-8">Table</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Property</th><th>Value</th></tr>
+</thead>
+<tbody>
+<tr><td>Identifier namespace</td><td><code>Type</code></td></tr>
+<tr><td>Supports repeat</td><td><code>no</code></td></tr>
+<tr><td>Supports basetype</td><td><code>yes</code></td></tr>
+<tr><td>Supports conversion type</td><td><code>no</code></td></tr>
+<tr><td>Supports short properties</td><td><code>no</code></td></tr>
+<tr><td>Supports properties</td><td><code>yes</code>, see below</td></tr>
+<tr><td>Supports subnodes</td><td><code>no</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="long-properties-8"><a class="header" href="#long-properties-8">Long properties</a></h2>
+<p>These properties are specified in the node body.</p>
+<h3 id="infallible"><a class="header" href="#infallible">infallible</a></h3>
+<p>Allows this type to be infallably converted to.</p>
+<h4 id="info-13"><a class="header" href="#info-13">Info</a></h4>
+<ul>
+<li>required: <code>no</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h4 id="allowed-expression-types-13"><a class="header" href="#allowed-expression-types-13">Allowed expression types</a></h4>
+<ul>
+<li><code>allow</code> =&gt; <code>allow</code></li>
+</ul>
+<h3 id="size-bits"><a class="header" href="#size-bits">size-bits</a></h3>
+<p>The size of the type in bits.</p>
+<h4 id="info-1-6"><a class="header" href="#info-1-6">Info</a></h4>
+<ul>
+<li>required: <code>no</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h4 id="allowed-expression-types-1-6"><a class="header" href="#allowed-expression-types-1-6">Allowed expression types</a></h4>
+<ul>
+<li><code>number</code> =&gt; <code>8</code></li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="field"><a class="header" href="#field">Field</a></h1>
+<p>A field is a slice of bits within a <a href="#fieldset">fieldset</a>.</p>
+<p>Each field must specify their bit address and can be limited in access (RW, RO or WO).
+All fields must also specify a base type, which is a type that can be converted to and from a bit slice.</p>
+<p>This <em>raw</em> type is not always desired, and so those types can be converted to enums and externs.
+The <code>try</code> keyword here will mark the conversion as ‘fallible’ and is often required when the conversion can fail.</p>
+<p>Interaction with the fields from code is done through setters and getters.</p>
+<p>Example usage:</p>
+<pre><code class="language-rust">let mut reg = MyFieldSet::ZERO;
+
+reg.set_foo(1234);
+let foo = reg.foo();
+
+reg.set_bar(MyEnum::A);
+let bar = reg.bar()?;</code></pre>
+<h2 id="example-9"><a class="header" href="#example-9">Example</a></h2>
+<pre><code class="language-ddsl">/// doc comment line
+field Example 8:0 RW -&gt; uint as try Foo
+</code></pre>
+<h2 id="table-9"><a class="header" href="#table-9">Table</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Property</th><th>Value</th></tr>
+</thead>
+<tbody>
+<tr><td>Identifier namespace</td><td><code>All</code></td></tr>
+<tr><td>Supports repeat</td><td><code>yes</code></td></tr>
+<tr><td>Supports basetype</td><td><code>yes</code></td></tr>
+<tr><td>Supports conversion type</td><td><code>yes</code></td></tr>
+<tr><td>Supports short properties</td><td><code>yes</code>, see below</td></tr>
+<tr><td>Supports properties</td><td><code>no</code></td></tr>
+<tr><td>Supports subnodes</td><td><code>no</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="short-properties"><a class="header" href="#short-properties">Short properties</a></h2>
+<p>These properties are specified inline in the node definition and are used without name.</p>
+<h3 id="address-3"><a class="header" href="#address-3">address</a></h3>
+<p>The bit address of the field within the fieldset</p>
+<h4 id="info-14"><a class="header" href="#info-14">Info</a></h4>
+<ul>
+<li>required: <code>yes</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h4 id="allowed-expression-types-14"><a class="header" href="#allowed-expression-types-14">Allowed expression types</a></h4>
+<ul>
+<li><code>range</code> =&gt; <code>8:0</code></li>
+<li><code>number</code> =&gt; <code>0</code></li>
+</ul>
+<h3 id="access-2"><a class="header" href="#access-2">access</a></h3>
+<p>Limits how the field can be accessed. If not specified, the access is <code>RW</code>.</p>
+<h4 id="info-1-7"><a class="header" href="#info-1-7">Info</a></h4>
+<ul>
+<li>required: <code>no</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h4 id="allowed-expression-types-1-7"><a class="header" href="#allowed-expression-types-1-7">Allowed expression types</a></h4>
+<ul>
+<li><code>access specifier</code> =&gt; <code>RW</code></li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="compilation"><a class="header" href="#compilation">Compilation</a></h1>
+<p>Drivers written with device-driver need to be compiled.</p>
+<p>There are multiple ways to compile a ddsl manifest:</p>
+<ul>
+<li>CLI, using the <code>ddc</code> command</li>
+<li>Rust proc-macro</li>
+<li>Playground on the website</li>
+</ul>
+<p>All of these share the same build options. Those are laid out below.
+Some ways of compiling have some options preselected. Check the tool specific chapters for that.</p>
+<h2 id="build-options"><a class="header" href="#build-options">Build options</a></h2>
+<p>Build options are split in three:</p>
+<ul>
+<li>General</li>
+<li>Target specific</li>
+<li>Tool specific</li>
+</ul>
+<p>The options are parsed using <a href="https://crates.io/crates/clap">clap</a>. For detailed help, use <code>--help</code> as an argument and clap will show the help text that’s shown below.</p>
+<p>Any argument that starts with <code>unstable</code> is exempt from semver and thus should not be relied upon unless the version of device-driver is pinned. Their behavior and names may change at any point or the option might be removed too.</p>
+<h3 id="general"><a class="header" href="#general">General</a></h3>
+<p>The general build options are available everywhere and change how the compiler acts.</p>
+<p>The Rust compile <em>macro</em> always uses the Rust target, and so there these options don’t have a rust subcommand and include the Rust target options.</p>
+<pre><code>Usage: [OPTIONS] &lt;COMMAND&gt;
+
+Commands:
+  rust  Generate Rust code
+  help  Print this message or the help of the given subcommand(s)
+
+Options:
+      --unstable-ui-test-mode
+          Improves reproducibility across versions
+
+      --unstable-mir-randomize-seed=&lt;SEED&gt;
+          The seed to use for randomization. If not specified, a random seed is used
+
+      --unstable-mir-randomize-passes
+          Randomize the order of the mir passes
+
+      --unstable-mir-check-assumptions
+          Run assumption checks for the passes
+
+  -h, --help
+          Print help
+</code></pre>
+<h3 id="target---rust"><a class="header" href="#target---rust">Target - Rust</a></h3>
+<p>All Rust target specific features start with <code>--rust</code>.</p>
+<pre><code>Usage: [OPTIONS]
+
+Options:
+      --rust-defmt-feature=&lt;FEATURE&gt;
+          When specified, defmt implementations will be generated using this cfg feature flag
+
+  -h, --help
+          Print help
+</code></pre>
+<h3 id="tool---cli"><a class="header" href="#tool---cli">Tool - CLI</a></h3>
+<p>The cli can be installed using:</p>
+<pre><code class="language-sh">cargo install device-driver-cli
+</code></pre>
+<p>In the future more methods of distribution may become available. (If you have experience with this, help is very much wanted!)</p>
+<p>Once installed, you can use the compiler using the <code>ddc</code> command (device-driver compiler):</p>
+<pre><code class="language-sh">ddc --help
+</code></pre>
+<h4 id="commands"><a class="header" href="#commands">Commands</a></h4>
+<pre><code>The command line compiler for the device-driver toolkit
+
+Usage: ddc &lt;COMMAND&gt;
+
+Commands:
+  build     Compile DDSL to the target output
+  gen-docs  Generate docs about the compiler
+  help      Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help
+          Print help
+
+  -V, --version
+          Print version
+</code></pre>
+<h5 id="build"><a class="header" href="#build">Build</a></h5>
+<p>The build command is the primary command for users and needs additional information about input and output. The rest of the options are those from the <a href="#general">general</a> section.</p>
+<pre><code>Usage: [OPTIONS] &lt;COMMAND&gt;
+
+Commands:
+  rust  Generate Rust code
+  help  Print this message or the help of the given subcommand(s)
+
+Options:
+  -s, --source &lt;FILE&gt;
+          Path to the input file
+
+  -o, --output &lt;FILE&gt;
+          Path to output location. Any existing file is overwritten. If not provided, the output is written to stdout
+
+      --unstable-ui-test-mode
+          Improves reproducibility across versions
+
+      --unstable-mir-randomize-seed=&lt;SEED&gt;
+          The seed to use for randomization. If not specified, a random seed is used
+
+      --unstable-mir-randomize-passes
+          Randomize the order of the mir passes
+
+      --unstable-mir-check-assumptions
+          Run assumption checks for the passes
+
+  -h, --help
+          Print help
+</code></pre>
+<h5 id="gen-docs"><a class="header" href="#gen-docs">Gen-docs</a></h5>
+<p>Generates documentation that is used by this book about the compiler from the source.
+This command is only available when the CLI is compiled with the <code>gen-docs</code> feature flag.</p>
+<p>It’s not quite intended for normal use.
+The output is unstable.</p>
+<pre><code>Usage: --output &lt;DIR&gt;
+
+Options:
+  -o, --output &lt;DIR&gt;
+          Path to output folder location
+
+  -h, --help
+          Print help
+</code></pre>
+<h3 id="tool---rust-proc-macro"><a class="header" href="#tool---rust-proc-macro">Tool - Rust proc-macro</a></h3>
+<p>To ease the compilation flow for Rust projects, a proc-macro is available.
+When the <code>macros</code> feature is activated on the rust runtime <code>device-driver</code> crate, the macro will be exported.</p>
+<pre><code class="language-rust">device_driver::compile!(
+    options: "--rust-defmt-feature=defmt",
+    manifest: "path/to/manifest.ddsl",
+);</code></pre>
+<p>With the options field you can pass the options described above, with the exception that the <code>rust</code> command is already given. (It would not make sense to compile to something other than Rust in a proc-macro.) Use <code>--help</code> there to see all the specific details.</p>
+<p>The generated code is then emitted by the proc-macro and so the driver will be in the place where the macro is called.</p>
+<p>For better UX, it’s recommended to add the manifest file to the build.rs:</p>
+<pre><code class="language-rust">fn main() {
+    println!("cargo:rebuild-if-changed=path/to/manifest.ddsl");
+}</code></pre>
+<blockquote class="blockquote-tag blockquote-tag-important">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v9.5A1.75 1.75 0 0 1 14.25 13H8.06l-2.573 2.573A1.458 1.458 0 0 1 3 14.543V13H1.75A1.75 1.75 0 0 1 0 11.25Zm1.75-.25a.25.25 0 0 0-.25.25v9.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h6.5a.25.25 0 0 0 .25-.25v-9.5a.25.25 0 0 0-.25-.25Zm7 2.25v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Important</p>
+<p>Enabling the macro causes the crate to pull in the compiler as a dependency which increases compile times. It’s not huge, but it’s definitely present.</p>
+</blockquote>
+<h3 id="tool---playground"><a class="header" href="#tool---playground">Tool - Playground</a></h3>
+<p>For the playground, go to <a href="https://device-driver.com/playground">https://device-driver.com/playground</a>.</p>
+<p>The playground supports all targets and there’s a text field where the options can be specified.
+Using <code>--help</code> there works and will cause the help text to be printed to the bottom diagnistics panel.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="runtime"><a class="header" href="#runtime">Runtime</a></h1>
+<p>Device-driver intentionally doesn’t generate <em>all</em> code for a driver. The code depends on a small runtime.</p>
+<p>The runtime is responsible for defining all the operations (e.g. register reads/writes), the interfaces and the bit manipulation routines.</p>
+<p>Each compilation target has its own runtime (or doesn’t have any runtime in some cases). See the other chapters for more information about specific targets.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="rust-runtime"><a class="header" href="#rust-runtime">Rust runtime</a></h1>
+<p>The runtime for rust is the crate called <a href="https://crates.io/crates/device-driver"><code>device-driver</code></a> and is available on crates.io.</p>
+<p>Any rust driver should include the crate as a dependency in the <code>Cargo.toml</code>.</p>
+<p>The documentation can be found on <a href="https://docs.rs/device-driver/latest/device_driver/">docs.rs</a>.</p>
+<h2 id="operations"><a class="header" href="#operations">Operations</a></h2>
+<p>The generated Rust code will make use of the various operation types. These are the main engine of getting your driver to do something.</p>
+<p>An operation takes data from the driver and turns them into action. For example, the register operation is used when interacting with registers:</p>
+<pre><code class="language-rust">let mut device = MyDevice::new(interface);
+
+// Get a register operation from the device
+// This borrows the interface from the device
+let mut operation = device.foo_register();
+
+// Now use the operation, for example to read
+let foo_fieldset = operation.read()?;
+// Or to write
+operation.write(|reg| reg.set_bar(12))?;
+
+// Typically though, the operation is used transparently as it's cleaner
+device.foo_register().read()?;</code></pre>
+<p>There are a bunch of different functions you can call on the operations. Check them out in the documentation.</p>
+<h2 id="interfaces"><a class="header" href="#interfaces">Interfaces</a></h2>
+<p>Driver definition and interface definition decoupled.</p>
+<p>Currently you define the driver in the DDSL code and the interface in Rust. Hopefully in the future the interfaces can be defined in DDSL too.</p>
+<p>An interface determines <em>how</em> we talk with the device.</p>
+<p>The interface always needs to be passed in when a driver instance is created. Depending on what traits are implemented on the interface object, different operation functions are able to be called.</p>
+<p>There are different traits for each of the operation types.</p>
+<p>For example, if the interface implements the register interface trait, then register operations can read and write. But only the blocking functions will work. For async functions there’s the async register interface trait.</p>
+<p>So if you find something is not able to be called, check the trait implementations of your interface.</p>
+<h2 id="bulk-operations"><a class="header" href="#bulk-operations">Bulk operations</a></h2>
+<p>Bulk operations are available for registers when the <a href="#register-address-mode"><code>register-address-mode</code></a> is set.</p>
+<p>When available, bulk operations must be planned. Start a bulk operation by calling one of the multi-functions on the device (or any block):</p>
+<pre><code class="language-rust">let (foo, bar) = device
+    // Start a bulk read
+    .bulk_read()
+    // Plan to read the foo register
+    .with(|d| d.foo().plan())
+    // Plan to read the bar register after that
+    .with(|d| d.bar().plan())
+    // Perform the bulk read
+    .execute()?;</code></pre>
+<p>The runtime checks if the plan is allowed. Registers must follow each other up according to the address mode rules.</p>
+<p>Bulk operations are possible for repeated registers too:</p>
+<pre><code class="language-rust">device.foo().write_array_at(0, |[a, b, c]| {
+    a.set_bar(1);
+    b.set_bar(2);
+    c.set_bar(3);
+})?;</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="rust-api"><a class="header" href="#rust-api">Rust API</a></h1>
+<p>The generated driver API follows the device/block layout of the driver specified in the DDSL source. The <a href="#namespacing">namespacing</a> rules are also important to keep in mind.</p>
+<p>Any object with the <code>type</code> namespace will generate a struct definition. Any object with the <code>operation</code> namespace will generate a method on a device or block.</p>
+<pre><code class="language-ddsl">device Foo {
+    register Bar { ... }
+}
+</code></pre>
+<p>This source will generate the following shape of Rust code:</p>
+<pre><code class="language-rust">pub struct Foo { ... }
+impl Foo {
+    pub fn bar() -&gt; RegisterOperation { ... }
+}</code></pre>
+<p>Even though it’s possible to define types like enums inside a device, in the generated code they’re always global:</p>
+<pre><code class="language-ddsl">device Foo {
+    enum Bar { ... }
+}
+</code></pre>
+<pre><code class="language-rust">pub struct Foo { ... }
+pub enum Bar { ... }</code></pre>
+<blockquote class="blockquote-tag blockquote-tag-tip">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M8 1.5c-2.363 0-4 1.69-4 3.75 0 .984.424 1.625.984 2.304l.214.253c.223.264.47.556.673.848.284.411.537.896.621 1.49a.75.75 0 0 1-1.484.211c-.04-.282-.163-.547-.37-.847a8.456 8.456 0 0 0-.542-.68c-.084-.1-.173-.205-.268-.32C3.201 7.75 2.5 6.766 2.5 5.25 2.5 2.31 4.863 0 8 0s5.5 2.31 5.5 5.25c0 1.516-.701 2.5-1.328 3.259-.095.115-.184.22-.268.319-.207.245-.383.453-.541.681-.208.3-.33.565-.37.847a.751.751 0 0 1-1.485-.212c.084-.593.337-1.078.621-1.489.203-.292.45-.584.673-.848.075-.088.147-.173.213-.253.561-.679.985-1.32.985-2.304 0-2.06-1.637-3.75-4-3.75ZM5.75 12h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1 0-1.5ZM6 15.25a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75Z"></path></svg>Tip</p>
+<p>To easily inspect the generated code, visit the <a href="https://device-driver.com/playground">playground</a>!</p>
+</blockquote>
+<blockquote class="blockquote-tag blockquote-tag-caution">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M4.47.22A.749.749 0 0 1 5 0h6c.199 0 .389.079.53.22l4.25 4.25c.141.14.22.331.22.53v6a.749.749 0 0 1-.22.53l-4.25 4.25A.749.749 0 0 1 11 16H5a.749.749 0 0 1-.53-.22L.22 11.53A.749.749 0 0 1 0 11V5c0-.199.079-.389.22-.53Zm.84 1.28L1.5 5.31v5.38l3.81 3.81h5.38l3.81-3.81V5.31L10.69 1.5ZM8 4a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 4Zm0 8a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Caution</p>
+<p>The callable API is bigger than the public documented API. Use it at your own risk!
+Private/unstable APIs contain <code>#[doc(hidden)]</code> attributes and are meant for internal use only.</p>
+<p>If you’re unsure, feel free to create an issue or to ask about it in the chat room.</p>
+<p><em>TODO: Do a pass over this</em></p>
+</blockquote>
+<h2 id="operations-1"><a class="header" href="#operations-1">Operations</a></h2>
+<p>All operations generate functions that return the various <code>Operation</code> types. Consult the rust docs for the exact available API:</p>
+<ul>
+<li><a href="https://docs.rs/device-driver/latest/device_driver/struct.RegisterOperation.html"><code>RegisterOperation</code></a></li>
+<li><a href="https://docs.rs/device-driver/latest/device_driver/struct.CommandOperation.html"><code>CommandOperation</code></a></li>
+<li><a href="https://docs.rs/device-driver/latest/device_driver/struct.BufferOperation.html"><code>BufferOperation</code></a></li>
+</ul>
+<h2 id="devicesblocks"><a class="header" href="#devicesblocks">Devices/blocks</a></h2>
+<p>Devices and blocks are very similar to each other in that they can both contain operations.</p>
+<p>A device, however, is the root block. As such it always has an address-offset of 0 and can be constructed with an owned interface value.</p>
+<p><em>TODO: Describe how to init a device once <a href="https://github.com/diondokter/device-driver/issues/183">#183</a> is resolved</em></p>
+<p>Both types implement the <a href="https://docs.rs/device-driver/latest/device_driver/trait.Block.html"><code>Block</code></a> trait, which exposes the interface for cases where you need raw access to it and which allows you to start bulk operations.</p>
+<blockquote class="blockquote-tag blockquote-tag-important">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v9.5A1.75 1.75 0 0 1 14.25 13H8.06l-2.573 2.573A1.458 1.458 0 0 1 3 14.543V13H1.75A1.75 1.75 0 0 1 0 11.25Zm1.75-.25a.25.25 0 0 0-.25.25v9.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h6.5a.25.25 0 0 0 .25-.25v-9.5a.25.25 0 0 0-.25-.25Zm7 2.25v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Important</p>
+<p>A bulk operation only has access to the device/block it was started on. If the bulk op needs access to the full device, that means you should probably start it on the device.</p>
+</blockquote>
+<h2 id="fieldsets"><a class="header" href="#fieldsets">Fieldsets</a></h2>
+<p>Fieldsets are generated as structs that have the same byte size as specified in the DDSL source.</p>
+<p>Each field in a fieldset gets a getter function if the field can be read and a setter function if the field can be written. The getter uses the name of the field and the setter uses the name too, except it prepends it with <code>set_</code>.</p>
+<p><em>TODO: Update text above once <a href="https://github.com/diondokter/device-driver/issues/183">#183</a> is resolved</em></p>
+<p>The <a href="https://docs.rs/device-driver/latest/device_driver/trait.Fieldset.html">Fieldset</a> trait is implemented on all fieldsets which exposes some runtime metadata and a constant <code>ZERO</code> init value.</p>
+<p>Fieldsets also implement <code>Into</code> &amp; <code>From</code> for <code>[u8; N]</code>, so they can be converted into byte arrays or constructed from byte arrays, as well as the <code>Default</code> trait which initializes a fieldset with all bits set to zero.</p>
+<p>Fieldsets can be formatted using the <code>Debug</code> implementation or with the <code>defmt::Format</code> implementation if the appropriate rust compiler option flag is active.</p>
+<p>Lastly, the <code>And</code>, <code>Or</code>, <code>Xor</code> and <code>Not</code> operator traits are implemented on the fieldsets which do bitwise operations on all of the bits of the fieldsets (including unused bits).</p>
+<h2 id="enums"><a class="header" href="#enums">Enums</a></h2>
+<p>Enum objects generate into normal Rust enums. They take on the repr of the used base type and implement <code>Into</code> &amp; <code>(Try)From</code> to the base type. <code>TryFrom</code> is always implemented and <code>From</code> is only implemented when all bit patterns of the base type are covered or if the enum contains a default or catch-all.</p>
+<p>If the enum has a default variant, then it will implement the <code>Default</code> trait that defaults to the marked variant.</p>
+<p>Enums can be formatted using the <code>Debug</code> implementation or with the <code>defmt::Format</code> implementation if the appropriate rust compiler option flag is active.</p>
+<h2 id="externs"><a class="header" href="#externs">Externs</a></h2>
+<p>Extern types are not generated, but they are required to implement <code>Into</code> &amp; <code>(Try)From</code> to their base type since those are used by the generated code.</p>
+<p>If the extern allows <a href="#infallible"><code>infallible</code></a> conversion, it’s expected the <code>From</code> trait is implemented.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="intro-1"><a class="header" href="#intro-1">Intro</a></h1>
+<blockquote class="blockquote-tag blockquote-tag-important">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v9.5A1.75 1.75 0 0 1 14.25 13H8.06l-2.573 2.573A1.458 1.458 0 0 1 3 14.543V13H1.75A1.75 1.75 0 0 1 0 11.25Zm1.75-.25a.25.25 0 0 0-.25.25v9.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h6.5a.25.25 0 0 0 .25-.25v-9.5a.25.25 0 0 0-.25-.25Zm7 2.25v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Important</p>
+<p>We deserve better drivers. Rust has shown that we don’t need to stick to old principles and that we as an industry can do better.</p>
+</blockquote>
 <p>Device-driver is a Rust toolkit that generates safe, documented interfaces for hardware devices, handling bit-packed registers and device commands through an expressive macro DSL or config file.</p>
 <p>While the Rust language provides many opportunities to improve the way we write drivers, it doesn’t mean those are easy to use. There are two issues:</p>
 <ol>
@@ -275,9 +2540,7 @@ It is not a replacement of the <a href="https://docs.rs/device-driver">docs</a> 
 <p>By using this toolkit, you get both 1 and 2 solved.</p>
 <p>Number one is solved by getting the datastructures as part of this toolkit which has seen over 5 years of iteration and improvements. The second issue is solved by using code generation so you only need to manually take care of the things that make your driver unique.</p>
 <p>Together, this delivers a really tight and precise way of authoring your device driver:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>device_driver::create_device!(
+<pre><code class="language-rust">device_driver::create_device!(
     device_name: MyDevice,
     dsl: {
         config {
@@ -304,10 +2567,9 @@ It is not a replacement of the <a href="https://docs.rs/device-driver">docs</a> 
 );
 
 let mut device = MyDevice::new(device_interface);
-device.foo().write(|reg| reg.set_value_1(GeneratedEnum::B)).unwrap();
-<span class="boring">}</span></code></pre>
+device.foo().write(|reg| reg.set_value_1(GeneratedEnum::B)).unwrap();</code></pre>
 <p>Instantly we get a nice and familiar API that is well documented. There’s a bunch more features to discover like using YAML as the input and a bunch of analysis steps, so read on!</p>
-<h2 id="the-goal"><a class="header" href="#the-goal">The goal</a></h2>
+<h2 id="the-goal-1"><a class="header" href="#the-goal-1">The goal</a></h2>
 <p>When you’re writing a driver, you just want to implement it and be done with it. Most of the time developing a driver is boring and repetitive.</p>
 <p>To help you do less of the boring work and to create a higher quality driver at the same time, the goals are:</p>
 <ol>
@@ -326,29 +2588,26 @@ device.foo().write(|reg| reg.set_value_1(GeneratedEnum::B)).unwrap();
 <p>These goals are met by:</p>
 <ul>
 <li>Using a dense and precise input language</li>
-<li>Having many options do deal with byte and bit ordering</li>
+<li>Having many options to deal with byte and bit ordering</li>
 <li>Having analysis steps to decrease the chance of common mistakes</li>
 <li>Separating the interface to the device from the definitions</li>
 <li>Allowing you to put docs on pretty much anything</li>
 </ul>
-<h2 id="how-to-continue"><a class="header" href="#how-to-continue">How to continue</a></h2>
+<h2 id="how-to-continue-1"><a class="header" href="#how-to-continue-1">How to continue</a></h2>
 <p>Simply read the rest of the book!</p>
 <p>Looking at existing drivers and examples can also be very helpful.</p>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="using-the-macro"><a class="header" href="#using-the-macro">Using the macro</a></h1>
+<h1 id="using-the-macro-1"><a class="header" href="#using-the-macro-1">Using the macro</a></h1>
 <p>The macro is the main way of generating a driver. It is defined in the <code>device-driver-macros</code> crate which is re-exported in the <code>device-driver</code> crate by default. You don’t have import the macros crate yourself.</p>
 <p>The macro can be used in two forms.</p>
 <h2 id="inline-dsl"><a class="header" href="#inline-dsl">Inline DSL</a></h2>
 <p>The first form is for writing the register definitions using the DSL right in the source of your project.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>device_driver::create_device!(
+<pre><code class="language-rust">device_driver::create_device!(
     device_name: MyTestDevice,
     dsl: {
         // DSL code goes here
     }
-)
-<span class="boring">}</span></code></pre>
+)</code></pre>
 <p>It consists of two parts:</p>
 <ul>
 <li><code>device_name</code>: This will be the name of the root block that will take ownership of the device interface.
@@ -365,13 +2624,10 @@ appropriate for a low level layer. For example: ‘Registers’ or ‘LowLevel�
 <p>Using the DSL in this way allows for nice error messages and keeps the definitions close to your code.</p>
 <h2 id="manifest-file"><a class="header" href="#manifest-file">Manifest file</a></h2>
 <p>The second form uses an external manifest file.</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>device_driver::create_device!(
+<pre><code class="language-rust">device_driver::create_device!(
     device_name: MyTestDevice,
     manifest: "driver-manifest.yaml"
-)
-<span class="boring">}</span></code></pre>
+)</code></pre>
 <p>You can provide an absolute path or a relative path to the file. If it’s relative, then the base path is the value of the <a href="https://doc.rust-lang.org/cargo/reference/environment-variables.html"><code>CARGO_MANIFEST_DIR</code> environment variable</a>. This is the same directory as your <code>Cargo.toml</code> is in.</p>
 <p>The extension of the file determines which parser is used.</p>
 <p>The options are:</p>
@@ -465,21 +2721,16 @@ appropriate for a low level layer. For example: ‘Registers’ or ‘LowLevel�
 <p>The device-driver crate and the generated code don’t know anything about how to talk to your device. This means we need to teach it about the interface it has!</p>
 </blockquote>
 <p>Let’s first create our device:</p>
-<pre class="playground"><code class="language-rust no_run"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>device_driver::create_device!(
+<pre><code class="language-rust no_run">device_driver::create_device!(
     device_name: MyDevice,
     dsl: {
         // ...
     }
-);
-<span class="boring">}</span></code></pre>
+);</code></pre>
 <p>This generates a top-level block <code>MyDevice</code> which has a <code>new</code> function that takes ownership of an interface.
 We have to create our own interface type that we can pass into it. This type will implement the logic to communicate with the device.</p>
 <p>In this example, let’s assume a register ‘foo’ was defined and see what happens:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>/// Our interface struct that owns the bus.
+<pre><code class="language-rust">/// Our interface struct that owns the bus.
 pub struct MyDeviceInterface&lt;BUS&gt; {
     pub bus: BUS,
 }
@@ -499,8 +2750,7 @@ fn try_out() {
     //
     // note: the following trait bounds were not satisfied:
     //       `DeviceInterface: RegisterInterface`
-}
-<span class="boring">}</span></code></pre>
+}</code></pre>
 <p>This example doesn’t compile and outputs an error. Luckily the compiler tells us what’s wrong. The problem is that we provided a device interface that doesn’t provide a way to read or write registers, but we ask the driver to read a register.</p>
 <p>The error tells us the device interface should implement the <code>RegisterInterface</code> trait.</p>
 <blockquote class="blockquote-tag blockquote-tag-important">
@@ -510,9 +2760,7 @@ fn try_out() {
 </blockquote>
 <p>Of each of the traits there is an async version too. When implemented the async versions of the operations can be used. They’ve got the same name as the normal operations, except they end with <code>_async</code>. The register <code>.read()</code> then becomes <code>.read_async()</code>.</p>
 <p>Let’s make our example complete by implementing the <code>RegisterInterface</code>:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>pub struct MyDeviceI2cInterface&lt;BUS&gt; {
+<pre><code class="language-rust">pub struct MyDeviceI2cInterface&lt;BUS&gt; {
     pub bus: BUS,
 }
 
@@ -542,8 +2790,7 @@ async fn try_out_async() {
     let mut my_device = MyDevice::new(interface);
 
     let _ = my_device.foo().read_async().await;
-}
-<span class="boring">}</span></code></pre>
+}</code></pre>
 <p>We’ve now covered how to create an interface type and implement the interface trait you need on it.</p>
 <p>Some chips can have multiple interfaces, like both SPI and I2C or SPI and QSPI. You can choose to support them in one type or make separate types for them.</p>
 <blockquote class="blockquote-tag blockquote-tag-tip">
@@ -586,7 +2833,7 @@ A ‘ref’ object copies another object and allows to override some values like
 <li><a href="#global-config">Global config</a>
 <ul>
 <li><a href="#dsl">DSL</a></li>
-<li><a href="#manifest">Manifest</a></li>
+<li><a href="#manifest-1">Manifest</a></li>
 <li><a href="#required">Required</a>
 <ul>
 <li><a href="#register_address_type"><code>register_address_type</code></a></li>
@@ -613,9 +2860,7 @@ A ‘ref’ object copies another object and allows to override some values like
 </li>
 </ul>
 <h2 id="dsl"><a class="header" href="#dsl">DSL</a></h2>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>config {
+<pre><code class="language-rust">config {
     type DefaultRegisterAccess = RW;
     type DefaultFieldAccess = RW;
     type DefaultBufferAccess = RW;
@@ -630,9 +2875,8 @@ A ‘ref’ object copies another object and allows to override some values like
         LowerDigit, Acronym,
     ];
     type DefmtFeature = "my-feature";
-}
-<span class="boring">}</span></code></pre>
-<h2 id="manifest"><a class="header" href="#manifest">Manifest</a></h2>
+}</code></pre>
+<h2 id="manifest-1"><a class="header" href="#manifest-1">Manifest</a></h2>
 <blockquote class="blockquote-tag blockquote-tag-note">
 <p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
 <p>Example is written in json, but works for yaml and toml too when literally translated.</p>
@@ -713,23 +2957,20 @@ This allows you, the driver author, to optionally include defmt support.</p>
 <p>A register is a piece of addressable memory stored on the device.</p>
 <p>It is accessed as a function on the block it’s part of. The function returns a <a href="https://docs.rs/device-driver/latest/device_driver/struct.RegisterOperation.html"><code>RegisterOperation</code></a> which can be used to read/write/modify the register.</p>
 <p>Example usage:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let mut device = MyDevice::new(DeviceInterface::new());
+<pre><code class="language-rust">let mut device = MyDevice::new(DeviceInterface::new());
 
 device.foo().write(|reg| reg.set_bar(12345)).unwrap();
-assert_eq!(device.foo().read().unwrap().bar(), 12345);
-<span class="boring">}</span></code></pre>
+assert_eq!(device.foo().read().unwrap().bar(), 12345);</code></pre>
 <p>Below are minimal and full examples of how registers can be defined.
 Only one field is shown, but more can be added. Details about the fields can be read in their own chapter.</p>
 <ul>
 <li><a href="#registers">Registers</a>
 <ul>
 <li><a href="#dsl-1">DSL</a></li>
-<li><a href="#manifest-1">Manifest</a></li>
+<li><a href="#manifest-2">Manifest</a></li>
 <li><a href="#required-1">Required</a>
 <ul>
-<li><a href="#address"><code>address</code></a></li>
+<li><a href="#address-4"><code>address</code></a></li>
 <li><a href="#size_bits"><code>size_bits</code></a></li>
 <li><a href="#type-manifest-only"><code>type</code> (manifest only)</a></li>
 </ul>
@@ -738,11 +2979,11 @@ Only one field is shown, but more can be added. Details about the fields can be 
 <ul>
 <li><a href="#cfg-or-cfg"><code>cfg</code> or <code>#[cfg(...)]</code></a></li>
 <li><a href="#description-or-doc--"><code>description</code> or <code>#[doc = ""]</code></a></li>
-<li><a href="#access"><code>access</code></a></li>
+<li><a href="#access-3"><code>access</code></a></li>
 <li><a href="#byte_order"><code>byte_order</code></a></li>
 <li><a href="#bit_order"><code>bit_order</code></a></li>
 <li><a href="#reset_value"><code>reset_value</code></a></li>
-<li><a href="#repeat"><code>repeat</code></a></li>
+<li><a href="#repeat-1"><code>repeat</code></a></li>
 <li><a href="#allow_bit_overlap"><code>allow_bit_overlap</code></a></li>
 <li><a href="#allow_address_overlap"><code>allow_address_overlap</code></a></li>
 <li><a href="#fields-manifest-only"><code>fields</code> (manifest only)</a></li>
@@ -753,19 +2994,14 @@ Only one field is shown, but more can be added. Details about the fields can be 
 </ul>
 <h2 id="dsl-1"><a class="header" href="#dsl-1">DSL</a></h2>
 <p>Minimal:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>register Foo {
+<pre><code class="language-rust">register Foo {
     const ADDRESS = 3;
     const SIZE_BITS = 16;
 
     value: uint = 0..16,
-}
-<span class="boring">}</span></code></pre>
+}</code></pre>
 <p>Full:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>/// Register docs
+<pre><code class="language-rust">/// Register docs
 #[cfg(feature = "bar")]
 register Foo {
     type Access = WO;
@@ -782,13 +3018,12 @@ register Foo {
     const ALLOW_ADDRESS_OVERLAP = false;
 
     value: uint = 0..16,
-}
-<span class="boring">}</span></code></pre>
+}</code></pre>
 <blockquote class="blockquote-tag blockquote-tag-tip">
 <p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M8 1.5c-2.363 0-4 1.69-4 3.75 0 .984.424 1.625.984 2.304l.214.253c.223.264.47.556.673.848.284.411.537.896.621 1.49a.75.75 0 0 1-1.484.211c-.04-.282-.163-.547-.37-.847a8.456 8.456 0 0 0-.542-.68c-.084-.1-.173-.205-.268-.32C3.201 7.75 2.5 6.766 2.5 5.25 2.5 2.31 4.863 0 8 0s5.5 2.31 5.5 5.25c0 1.516-.701 2.5-1.328 3.259-.095.115-.184.22-.268.319-.207.245-.383.453-.541.681-.208.3-.33.565-.37.847a.751.751 0 0 1-1.485-.212c.084-.593.337-1.078.621-1.489.203-.292.45-.584.673-.848.075-.088.147-.173.213-.253.561-.679.985-1.32.985-2.304 0-2.06-1.637-3.75-4-3.75ZM5.75 12h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1 0-1.5ZM6 15.25a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75Z"></path></svg>Tip</p>
 <p><code>type</code> or <code>const</code>, which one is it?<br>It’s <code>type</code> if it’s overriding a global config and <code>const</code> if it’s not.</p>
 </blockquote>
-<h2 id="manifest-1"><a class="header" href="#manifest-1">Manifest</a></h2>
+<h2 id="manifest-2"><a class="header" href="#manifest-2">Manifest</a></h2>
 <blockquote class="blockquote-tag blockquote-tag-note">
 <p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
 <p>The biggest differences with the DSL are the additional <code>type</code> field to specify which type of object this is and the <code>fields</code> field that houses all fields.</p>
@@ -834,7 +3069,7 @@ register Foo {
 }
 </code></pre>
 <h2 id="required-1"><a class="header" href="#required-1">Required</a></h2>
-<h3 id="address"><a class="header" href="#address"><code>address</code></a></h3>
+<h3 id="address-4"><a class="header" href="#address-4"><code>address</code></a></h3>
 <p>The address of the register.</p>
 <p>Integer value that must fit in the given address type in the global config and can be negative.</p>
 <h3 id="size_bits"><a class="header" href="#size_bits"><code>size_bits</code></a></h3>
@@ -859,7 +3094,7 @@ The string only defines the inner part: <code>#[cfg(foo)]</code> = <code>"cfg": 
 Multiple attributes get concatenated with a newline (just like normal Rust does).</p>
 <p>For the manifest, this is a string.</p>
 <p>The description is added as normal doc comments to the generated code. So it supports markdown and all other features you’re used to. The description is used on the generated register struct and on the function to access the register.</p>
-<h3 id="access"><a class="header" href="#access"><code>access</code></a></h3>
+<h3 id="access-3"><a class="header" href="#access-3"><code>access</code></a></h3>
 <p>Overrides the default register access.</p>
 <p>Options are: <code>RW</code>, <code>ReadWrite</code>, <code>WO</code>, <code>WriteOnly</code>, <code>RO</code>, <code>ReadOnly</code>.<br>They are written ‘as is’ in the DSL and as a string in the manifest.</p>
 <p>Anything that is not <code>ReadWrite</code> will limit the functions you can call for the registers. <code>.write</code> is only available when the register has write access, <code>.read</code> only when the register has read access and <code>.modify</code> only when the register has full access.</p>
@@ -884,7 +3119,7 @@ It does not affect the <code>access</code> specified on the fields.</p>
 <p>When specified as an array, this must be formatted as the bytes that are returned by the <code>RegisterInterface</code> implementation. This means that when the register has little endian byte order, the reset value number <code>0x1234</code> would be encoded as <code>[0x34, 0x12]</code> in the array form.<br>The same concern is there for the bit order.</p>
 </blockquote>
 <p>It is used in the <code>.write</code> function. To reset a register to the default value, it’d look like <code>.write(|_|())</code>. When a zero value is desired instead of the default, you can use the <code>.write_with_zero</code> function instead.</p>
-<h3 id="repeat"><a class="header" href="#repeat"><code>repeat</code></a></h3>
+<h3 id="repeat-1"><a class="header" href="#repeat-1"><code>repeat</code></a></h3>
 <p>Repeat the register a number of times at different addresses.</p>
 <p>It is specified with two fields:</p>
 <ul>
@@ -905,19 +3140,16 @@ This calculation is also done for any repeat addresses.</p>
 <p>The fields of the register.</p>
 <p>A map where the keys are the names of the fields. All values must be fields.</p>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="commands"><a class="header" href="#commands">Commands</a></h1>
+<h1 id="commands-1"><a class="header" href="#commands-1">Commands</a></h1>
 <p>A command is a call to do something. This can be to e.g. change the chip state, do an RPC-like call or to start a radio transmission.</p>
 <p>It is accessed as a function on the block it’s part of. The function returns a <a href="https://docs.rs/device-driver/latest/device_driver/struct.CommandOperation.html"><code>CommandOperation</code></a> which can be used to dispatch the command.</p>
 <p>Example usage:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let mut device = MyDevice::new(DeviceInterface::new());
+<pre><code class="language-rust">let mut device = MyDevice::new(DeviceInterface::new());
 
 device.foo().dispatch().unwrap();
 // Commands can carry data too
 let result = device.bar().dispatch(|data| data.set_val(1234)).unwrap();
-assert_eq!(result.xeno(), true);
-<span class="boring">}</span></code></pre>
+assert_eq!(result.xeno(), true);</code></pre>
 <p>Below are minimal and full examples of how commands can be defined.
 Only one field is shown, but more can be added. Details about the fields can be read in their own chapter.</p>
 <blockquote class="blockquote-tag blockquote-tag-note">
@@ -929,13 +3161,13 @@ Only one field is shown, but more can be added. Details about the fields can be 
 </ul>
 </blockquote>
 <ul>
-<li><a href="#commands">Commands</a>
+<li><a href="#commands-1">Commands</a>
 <ul>
 <li><a href="#dsl-2">DSL</a></li>
-<li><a href="#manifest-2">Manifest</a></li>
+<li><a href="#manifest-3">Manifest</a></li>
 <li><a href="#required-2">Required</a>
 <ul>
-<li><a href="#address-1"><code>address</code></a></li>
+<li><a href="#address-5"><code>address</code></a></li>
 <li><a href="#size_bits_in--size_bits_out"><code>size_bits_in</code> &amp; <code>size_bits_out</code></a></li>
 <li><a href="#type-manifest-only-1"><code>type</code> (manifest only)</a></li>
 </ul>
@@ -946,7 +3178,7 @@ Only one field is shown, but more can be added. Details about the fields can be 
 <li><a href="#description-or-doc---1"><code>description</code> or <code>#[doc = ""]</code></a></li>
 <li><a href="#byte_order-1"><code>byte_order</code></a></li>
 <li><a href="#bit_order-1"><code>bit_order</code></a></li>
-<li><a href="#repeat-1"><code>repeat</code></a></li>
+<li><a href="#repeat-2"><code>repeat</code></a></li>
 <li><a href="#allow_bit_overlap-1"><code>allow_bit_overlap</code></a></li>
 <li><a href="#allow_address_overlap-1"><code>allow_address_overlap</code></a></li>
 <li><a href="#in-dsl-or-fields_in-manifest"><code>in</code> (dsl) or <code>fields_in</code> (manifest)</a></li>
@@ -958,14 +3190,9 @@ Only one field is shown, but more can be added. Details about the fields can be 
 </ul>
 <h2 id="dsl-2"><a class="header" href="#dsl-2">DSL</a></h2>
 <p>Minimal without fields (with address 5):</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>command Foo = 5,
-<span class="boring">}</span></code></pre>
+<pre><code class="language-rust">command Foo = 5,</code></pre>
 <p>Minimal with in and out fields:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>command Foo {
+<pre><code class="language-rust">command Foo {
     const ADDRESS = 5;
     const SIZE_BITS_IN = 8;
     const SIZE_BITS_OUT = 16;
@@ -976,12 +3203,9 @@ Only one field is shown, but more can be added. Details about the fields can be 
     out {
         value: uint = 0..16,
     }
-},
-<span class="boring">}</span></code></pre>
+},</code></pre>
 <p>Full:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>/// Foo docs
+<pre><code class="language-rust">/// Foo docs
 #[cfg(feature = "blah")]
 command Foo {
     type ByteOrder = LE;
@@ -1002,13 +3226,12 @@ command Foo {
     out {
         value: uint = 0..16,
     }
-},
-<span class="boring">}</span></code></pre>
+},</code></pre>
 <blockquote class="blockquote-tag blockquote-tag-tip">
 <p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M8 1.5c-2.363 0-4 1.69-4 3.75 0 .984.424 1.625.984 2.304l.214.253c.223.264.47.556.673.848.284.411.537.896.621 1.49a.75.75 0 0 1-1.484.211c-.04-.282-.163-.547-.37-.847a8.456 8.456 0 0 0-.542-.68c-.084-.1-.173-.205-.268-.32C3.201 7.75 2.5 6.766 2.5 5.25 2.5 2.31 4.863 0 8 0s5.5 2.31 5.5 5.25c0 1.516-.701 2.5-1.328 3.259-.095.115-.184.22-.268.319-.207.245-.383.453-.541.681-.208.3-.33.565-.37.847a.751.751 0 0 1-1.485-.212c.084-.593.337-1.078.621-1.489.203-.292.45-.584.673-.848.075-.088.147-.173.213-.253.561-.679.985-1.32.985-2.304 0-2.06-1.637-3.75-4-3.75ZM5.75 12h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1 0-1.5ZM6 15.25a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75Z"></path></svg>Tip</p>
 <p><code>type</code> or <code>const</code>, which one is it?<br>It’s <code>type</code> if it’s overriding a global config and <code>const</code> if it’s not.</p>
 </blockquote>
-<h2 id="manifest-2"><a class="header" href="#manifest-2">Manifest</a></h2>
+<h2 id="manifest-3"><a class="header" href="#manifest-3">Manifest</a></h2>
 <blockquote class="blockquote-tag blockquote-tag-note">
 <p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
 <p>The biggest difference with the DSL is the additional <code>type</code> field to specify which type of object this is and the absence of the super short hand.</p>
@@ -1074,7 +3297,7 @@ command Foo {
 }
 </code></pre>
 <h2 id="required-2"><a class="header" href="#required-2">Required</a></h2>
-<h3 id="address-1"><a class="header" href="#address-1"><code>address</code></a></h3>
+<h3 id="address-5"><a class="header" href="#address-5"><code>address</code></a></h3>
 <p>The address of the command.</p>
 <p>Integer value that must fit in the given address type in the global config and can be negative.</p>
 <h3 id="size_bits_in--size_bits_out"><a class="header" href="#size_bits_in--size_bits_out"><code>size_bits_in</code> &amp; <code>size_bits_out</code></a></h3>
@@ -1109,7 +3332,7 @@ Multiple attributes get concatenated with a newline (just like normal Rust does)
 <p>Overrides the default bit order. If the global config does not define it, it’s <code>LSB0</code>.</p>
 <p>Options are: <code>LSB0</code>, <code>MSB0</code>.<br>They are written ‘as is’ in the DSL and as a string in the manifest.</p>
 <p>The value is applied to both the input and output fieldsets.</p>
-<h3 id="repeat-1"><a class="header" href="#repeat-1"><code>repeat</code></a></h3>
+<h3 id="repeat-2"><a class="header" href="#repeat-2"><code>repeat</code></a></h3>
 <p>Repeat the command a number of times at different addresses.</p>
 <p>It is specified with two fields:</p>
 <ul>
@@ -1148,25 +3371,19 @@ This calculation is also done for any repeat addresses.</p>
 <p>As a user you should not have to construct your field sets manually in normal use. But it’s available to you for special cases in the generated <code>field_sets</code> module.</p>
 </blockquote>
 <p>Example usage:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use field_sets::MyFieldSet;
+<pre><code class="language-rust">use field_sets::MyFieldSet;
 
 let mut reg = MyFieldSet::new();
 reg.set_foo(1234);
-let foo = reg.foo();
-<span class="boring">}</span></code></pre>
+let foo = reg.foo();</code></pre>
 <p>Field sets also implement all bitwise operators for easier manipulation. These operations are done on <em>all</em> underlying bits, even ones that are not part of a field.</p>
 <p>There’s also an <code>Into</code> and <code>From</code> implementation to the smallest byte array that can fit the entire field set.</p>
 <p>Example usage:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use field_sets::MyFieldSet;
+<pre><code class="language-rust">use field_sets::MyFieldSet;
 
 let all_ones = !MyFieldSet::new_zero();
 let lowest_byte_set = MyFieldSet::from([0xFF, 0x00]);
-let lowest_byte_inverted = all_ones ^ lowest_byte_set;
-<span class="boring">}</span></code></pre>
+let lowest_byte_inverted = all_ones ^ lowest_byte_set;</code></pre>
 <p>Below are minimal and full examples of how fields can be defined. There are three major variants:</p>
 <ul>
 <li>Base type</li>
@@ -1178,7 +3395,7 @@ let lowest_byte_inverted = all_ones ^ lowest_byte_set;
 <li><a href="#field-sets">Field sets</a>
 <ul>
 <li><a href="#dsl-3">DSL</a></li>
-<li><a href="#manifest-3">Manifest</a></li>
+<li><a href="#manifest-4">Manifest</a></li>
 <li><a href="#required-3">Required</a>
 <ul>
 <li><a href="#base"><code>base</code></a></li>
@@ -1189,7 +3406,7 @@ let lowest_byte_inverted = all_ones ^ lowest_byte_set;
 <ul>
 <li><a href="#cfg-or-cfg-2"><code>cfg</code> or <code>#[cfg(...)]</code></a></li>
 <li><a href="#description-or-doc---2"><code>description</code> or <code>#[doc = ""]</code></a></li>
-<li><a href="#access-1"><code>access</code></a></li>
+<li><a href="#access-4"><code>access</code></a></li>
 <li><a href="#conversion">Conversion</a>
 <ul>
 <li><a href="#to-existing-type">To existing type</a></li>
@@ -1203,37 +3420,25 @@ let lowest_byte_inverted = all_ones ^ lowest_byte_set;
 </ul>
 <h2 id="dsl-3"><a class="header" href="#dsl-3">DSL</a></h2>
 <p>Simple (base type only):</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>foo: uint = 0..5,
+<pre><code class="language-rust">foo: uint = 0..5,
 bar: bool = 5,
-zoof: int = 6..=20,
-<span class="boring">}</span></code></pre>
+zoof: int = 6..=20,</code></pre>
 <p>With attributes and access specifier:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>/// Field comment!
+<pre><code class="language-rust">/// Field comment!
 #[cfg(blah)]
-foo: WO uint = 0..5,
-<span class="boring">}</span></code></pre>
+foo: WO uint = 0..5,</code></pre>
 <p>With conversion to custom type:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>foo: uint as crate::MyCustomType = 0..16,
-bar: int as try crate::MyCustomType2 = 16..32,
-<span class="boring">}</span></code></pre>
+<pre><code class="language-rust">foo: uint as crate::MyCustomType = 0..16,
+bar: int as try crate::MyCustomType2 = 16..32,</code></pre>
 <p>With conversion to generated enum:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>foo: uint as enum GeneratedEnum {
+<pre><code class="language-rust">foo: uint as enum GeneratedEnum {
     A,
     B = 5,
     /// Default value
     C = default,
     D = catch_all,
-} = 0..8,
-<span class="boring">}</span></code></pre>
-<h2 id="manifest-3"><a class="header" href="#manifest-3">Manifest</a></h2>
+} = 0..8,</code></pre>
+<h2 id="manifest-4"><a class="header" href="#manifest-4">Manifest</a></h2>
 <p>Simple (base type only) (json):</p>
 <pre><code class="language-json">{
   "foo": { 
@@ -1348,7 +3553,7 @@ The string only defines the inner part: <code>#[cfg(foo)]</code> = <code>"cfg": 
 Multiple attributes get concatenated with a newline (just like normal Rust does).</p>
 <p>For the manifest, this is a string.</p>
 <p>The description is added as normal doc comments to the generated code. So it supports markdown and all other features you’re used to. The description is used on the generated field getter and setter.</p>
-<h3 id="access-1"><a class="header" href="#access-1"><code>access</code></a></h3>
+<h3 id="access-4"><a class="header" href="#access-4"><code>access</code></a></h3>
 <p>Overrides the default field access.</p>
 <p>Options are: <code>RW</code>, <code>ReadWrite</code>, <code>WO</code>, <code>WriteOnly</code>, <code>RO</code>, <code>ReadOnly</code>.<br>They are written ‘as is’ in the DSL and as a string in the manifest.</p>
 <p>If the specified access can do read, a getter is generated with the name of the field. If the specified access do write, a setter is generated with the <code>set_</code> prefix followed by the name of the field.</p>
@@ -1375,15 +3580,12 @@ To be able to still use extern crates and absolute paths this isn’t done when 
 <h4 id="to-generated-enum"><a class="header" href="#to-generated-enum">To generated enum</a></h4>
 <p>Instead of a custom type, the toolkit can also generate an enum inline.</p>
 <p>In the DSL the format for <code>&lt;TARGET&gt;</code> is:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>enum Foo {
+<pre><code class="language-rust">enum Foo {
     A,
     B = 5, // Also supports bit and hex specification
     /// Comment
     C
-}
-<span class="boring">}</span></code></pre>
+}</code></pre>
 <p>The enum is written pretty much as a normal Rust enum including setting the value of every variant and writing docs on every variant. In this example, the number value of <code>C</code> would be 6.</p>
 <p>The generated enum will have the same docs as the field (if any).</p>
 <p>In the manifest, the same enum would be specified like so:</p>
@@ -1441,23 +3643,20 @@ To be able to still use extern crates and absolute paths this isn’t done when 
 It’s quite a simple construct and thus is limited in configuration options.</p>
 <p>It is accessed as a function on the block it’s part of. The function returns a <a href="https://docs.rs/device-driver/latest/device_driver/struct.BufferOperation.html">BufferOperation</a> which can be used to read and write from/to the buffer. This operation type also implements the <a href="https://crates.io/crates/embedded-io">embedded-io</a> traits.</p>
 <p>Example usage:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>let mut device = MyDevice::new(DeviceInterface::new());
+<pre><code class="language-rust">let mut device = MyDevice::new(DeviceInterface::new());
 
 device.foo().write_all(&amp;[0, 1, 2, 3]).unwrap();
 let mut buffer = [0; 8];
-let len = device.bar().read(&amp;mut buffer).unwrap();
-<span class="boring">}</span></code></pre>
+let len = device.bar().read(&amp;mut buffer).unwrap();</code></pre>
 <p>Below are minimal and full examples of how buffers can be defined.</p>
 <ul>
 <li><a href="#buffers">Buffers</a>
 <ul>
 <li><a href="#dsl-4">DSL</a></li>
-<li><a href="#manifest-4">Manifest</a></li>
+<li><a href="#manifest-5">Manifest</a></li>
 <li><a href="#required-4">Required</a>
 <ul>
-<li><a href="#address-2"><code>address</code></a></li>
+<li><a href="#address-6"><code>address</code></a></li>
 <li><a href="#type-manifest-only-2"><code>type</code> (manifest only)</a></li>
 </ul>
 </li>
@@ -1465,7 +3664,7 @@ let len = device.bar().read(&amp;mut buffer).unwrap();
 <ul>
 <li><a href="#cfg-or-cfg-3"><code>cfg</code> or <code>#[cfg(...)]</code></a></li>
 <li><a href="#description-or-doc---3"><code>description</code> or <code>#[doc = ""]</code></a></li>
-<li><a href="#access-2"><code>access</code></a></li>
+<li><a href="#access-5"><code>access</code></a></li>
 </ul>
 </li>
 </ul>
@@ -1473,18 +3672,12 @@ let len = device.bar().read(&amp;mut buffer).unwrap();
 </ul>
 <h2 id="dsl-4"><a class="header" href="#dsl-4">DSL</a></h2>
 <p>Minimal:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>buffer Foo = 5,
-<span class="boring">}</span></code></pre>
+<pre><code class="language-rust">buffer Foo = 5,</code></pre>
 <p>Full:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>/// A foo buffer
+<pre><code class="language-rust">/// A foo buffer
 #[cfg(bar)]
-buffer Foo: WO = 5,
-<span class="boring">}</span></code></pre>
-<h2 id="manifest-4"><a class="header" href="#manifest-4">Manifest</a></h2>
+buffer Foo: WO = 5,</code></pre>
+<h2 id="manifest-5"><a class="header" href="#manifest-5">Manifest</a></h2>
 <p>Minimal:</p>
 <pre><code class="language-json">"Foo": {
     "type": "buffer",
@@ -1501,7 +3694,7 @@ buffer Foo: WO = 5,
 },
 </code></pre>
 <h2 id="required-4"><a class="header" href="#required-4">Required</a></h2>
-<h3 id="address-2"><a class="header" href="#address-2"><code>address</code></a></h3>
+<h3 id="address-6"><a class="header" href="#address-6"><code>address</code></a></h3>
 <p>The address of the buffer.</p>
 <p>Integer value that must fit in the given address type in the global config and can be negative.</p>
 <h3 id="type-manifest-only-2"><a class="header" href="#type-manifest-only-2"><code>type</code> (manifest only)</a></h3>
@@ -1523,11 +3716,11 @@ The string only defines the inner part: <code>#[cfg(foo)]</code> = <code>"cfg": 
 Multiple attributes get concatenated with a newline (just like normal Rust does).</p>
 <p>For the manifest, this is a string.</p>
 <p>The description is added as normal doc comments to the generated code. So it supports markdown and all other features you’re used to. The description is used on the generated buffer struct and on the function to access the buffer.</p>
-<h3 id="access-2"><a class="header" href="#access-2"><code>access</code></a></h3>
+<h3 id="access-5"><a class="header" href="#access-5"><code>access</code></a></h3>
 <p>Overrides the default buffer access.</p>
 <p>Options are: <code>RW</code>, <code>ReadWrite</code>, <code>WO</code>, <code>WriteOnly</code>, <code>RO</code>, <code>ReadOnly</code>.<br>They are written ‘as is’ in the DSL and as a string in the manifest.</p>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="blocks"><a class="header" href="#blocks">Blocks</a></h1>
+<h1 id="blocks-1"><a class="header" href="#blocks-1">Blocks</a></h1>
 <p>A block is a collection of other objects. This can be great to e.g. pool related objects together.</p>
 <p>Blocks have their own address offset which is applied to all child objects. With this repeated and ref blocks are supported and can be used to great effect.</p>
 <blockquote class="blockquote-tag blockquote-tag-tip">
@@ -1538,23 +3731,20 @@ The only difference with other blocks is that it takes ownership of the interfac
 <p>It is accessed as a function on the parent block it’s part of.</p>
 <p>All objects are generated globally so child objects still need a globally unique name and are not generated in a module.</p>
 <p>Example usage:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>// MyDevice is the root block
+<pre><code class="language-rust">// MyDevice is the root block
 let mut device = MyDevice::new(DeviceInterface::new());
 
 let mut child_block = device.foo();
 child_block.bar().dispatch().unwrap();
 // Or in one go
-device.foo().bar().dispatch().unwrap();
-<span class="boring">}</span></code></pre>
+device.foo().bar().dispatch().unwrap();</code></pre>
 <p>Below are minimal and full examples of how blocks can be defined.
 There’s one child object defined as example.</p>
 <ul>
-<li><a href="#blocks">Blocks</a>
+<li><a href="#blocks-1">Blocks</a>
 <ul>
 <li><a href="#dsl-5">DSL</a></li>
-<li><a href="#manifest-5">Manifest</a></li>
+<li><a href="#manifest-6">Manifest</a></li>
 <li><a href="#required-5">Required</a>
 <ul>
 <li><a href="#type-manifest-only-3"><code>type</code> (manifest only)</a></li>
@@ -1565,7 +3755,7 @@ There’s one child object defined as example.</p>
 <li><a href="#cfg-or-cfg-4"><code>cfg</code> or <code>#[cfg(...)]</code></a></li>
 <li><a href="#description-or-doc---4"><code>description</code> or <code>#[doc = ""]</code></a></li>
 <li><a href="#address_offset"><code>address_offset</code></a></li>
-<li><a href="#repeat-2"><code>repeat</code></a></li>
+<li><a href="#repeat-3"><code>repeat</code></a></li>
 <li><a href="#objects-manifest-only"><code>objects</code> (manifest only)</a></li>
 </ul>
 </li>
@@ -1574,16 +3764,11 @@ There’s one child object defined as example.</p>
 </ul>
 <h2 id="dsl-5"><a class="header" href="#dsl-5">DSL</a></h2>
 <p>Minimal:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>block Foo {
+<pre><code class="language-rust">block Foo {
     buffer Bar = 0,
-}
-<span class="boring">}</span></code></pre>
+}</code></pre>
 <p>Full:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>/// Block description
+<pre><code class="language-rust">/// Block description
 #[cfg(not(blah))]
 block Foo {
     const ADDRESS_OFFSET = 10;
@@ -1593,9 +3778,8 @@ block Foo {
     };
 
     buffer Bar = 0,
-}
-<span class="boring">}</span></code></pre>
-<h2 id="manifest-5"><a class="header" href="#manifest-5">Manifest</a></h2>
+}</code></pre>
+<h2 id="manifest-6"><a class="header" href="#manifest-6">Manifest</a></h2>
 <p>Minimal:</p>
 <pre><code class="language-json">"Foo": {
     "type": "block",
@@ -1649,7 +3833,7 @@ Multiple attributes get concatenated with a newline (just like normal Rust does)
 <p>The address offset used for all child objects specified as a signed integer.</p>
 <p>The offset is applied to all addresses of the children. So when the offset is 5 and a child specifies address 7, then the actual used address will be 12.</p>
 <p>If the offset is not specified, it is default 0.</p>
-<h3 id="repeat-2"><a class="header" href="#repeat-2"><code>repeat</code></a></h3>
+<h3 id="repeat-3"><a class="header" href="#repeat-3"><code>repeat</code></a></h3>
 <p>Repeat the block a number of times at different address offsets.</p>
 <p>It is specified with two fields:</p>
 <ul>
@@ -1676,7 +3860,7 @@ Multiple attributes get concatenated with a newline (just like normal Rust does)
 <li><a href="#refs">Refs</a>
 <ul>
 <li><a href="#dsl-6">DSL</a></li>
-<li><a href="#manifest-6">Manifest</a></li>
+<li><a href="#manifest-7">Manifest</a></li>
 <li><a href="#required-6">Required</a>
 <ul>
 <li><a href="#target-manifest-only"><code>target</code> (manifest only)</a></li>
@@ -1695,9 +3879,7 @@ Multiple attributes get concatenated with a newline (just like normal Rust does)
 </ul>
 <h2 id="dsl-6"><a class="header" href="#dsl-6">DSL</a></h2>
 <p>Minimal:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>register Foo {
+<pre><code class="language-rust">register Foo {
     const ADDRESS = 3;
     const SIZE_BITS = 16;
 
@@ -1705,12 +3887,9 @@ Multiple attributes get concatenated with a newline (just like normal Rust does)
 },
 ref Bar = register Foo {
     const ADDRESS = 5;
-},
-<span class="boring">}</span></code></pre>
+},</code></pre>
 <p>Full:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>register Foo {
+<pre><code class="language-rust">register Foo {
     const ADDRESS = 3;
     const SIZE_BITS = 16;
 
@@ -1720,9 +3899,8 @@ ref Bar = register Foo {
 #[cfg(feature = "bar-enabled")]
 ref Bar = register Foo {
     const ADDRESS = 5;
-},
-<span class="boring">}</span></code></pre>
-<h2 id="manifest-6"><a class="header" href="#manifest-6">Manifest</a></h2>
+},</code></pre>
+<h2 id="manifest-7"><a class="header" href="#manifest-7">Manifest</a></h2>
 <p>Minimal:</p>
 <pre><code class="language-json">"Foo": {
     "type": "register",
@@ -2197,7 +4375,7 @@ confusion ensues.</p>
 <ul>
 <li><a href="#concepts">Concepts</a>
 <ul>
-<li><a href="#byte-order">Byte order</a></li>
+<li><a href="#byte-order-3">Byte order</a></li>
 <li><a href="#bit-order">Bit order</a></li>
 <li><a href="#together">Together</a></li>
 </ul>
@@ -2213,7 +4391,7 @@ confusion ensues.</p>
 </li>
 </ul>
 <h2 id="concepts"><a class="header" href="#concepts">Concepts</a></h2>
-<h3 id="byte-order"><a class="header" href="#byte-order">Byte order</a></h3>
+<h3 id="byte-order-3"><a class="header" href="#byte-order-3">Byte order</a></h3>
 <p>Also known as endianness. It describes what the first byte is in an array of bytes.
 There are two options generally:</p>
 <ul>
@@ -2233,6 +4411,10 @@ There are two options generally:</p>
 </li>
 </ul>
 <h3 id="bit-order"><a class="header" href="#bit-order">Bit order</a></h3>
+<blockquote class="blockquote-tag blockquote-tag-note">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
+<p>V2 doesn’t support changing the bit order and is always LSB0. If you do encounter the rare MSB0 device, then swap the bits manually in the interface or let the hardware peripheral do it for you if possible</p>
+</blockquote>
 <p>There is also order on the bit level. We get to decide which bit is the smallest of the 8 in a byte.
 There’s two options:</p>
 <ul>
@@ -2352,17 +4534,26 @@ SDO: -------------------------------x===x===x===x===x===x===x===x===x---
 <li>Thus this is <strong>Least Significant Bit 0 (LSB0)</strong></li>
 </ul>
 <p>And so we get our register definition:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>register OutX {
+<pre><code class="language-ddsl">// V2 DDSL
+register OutX {
+    address: 0x68,
+    fields: fieldset _ {
+        size-bytes: 2,
+        byte-order: LE,
+
+        field value 15:0 -&gt; int,
+    }
+}
+</code></pre>
+<pre><code class="language-rust">// V1 DSL
+register OutX {
     const ADDRESS = 0x68; // Including bit for multi-register ops
     const SIZE_BITS = 16;
     type ByteOrder = LE;
     type BitOrder = LSB0;
 
     value: int = 0..16,
-}
-<span class="boring">}</span></code></pre>
+}</code></pre>
 <h3 id="example-s2-lp---multi-register-be-lsb0"><a class="header" href="#example-s2-lp---multi-register-be-lsb0">Example s2-lp - Multi-register BE, LSB0</a></h3>
 <p>This is a radio chip and just like the LIS3DH can combine multiple registers in one read/write.</p>
 <p>In the datasheet we find the registers:</p>
@@ -2402,9 +4593,21 @@ MOSI: ---x===x===x===x===x===x===x===x===x===x===x===x===x===x===x===x===x===x==
 <li>The 0th bit is the last/least significant one</li>
 <li>Thus this is <strong>Least Significant Bit 0 (LSB0)</strong></li>
 </ul>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>register OutX {
+<pre><code class="language-ddsl">// V2 DDSL
+register OutX {
+    address: 0x05,
+    fields: fieldset _ {
+        size-bytes: 4,
+        byte-order: BE,
+
+        field synt 27:0 -&gt; uint,
+        field bs 28 -&gt; bool,
+        field pll_cp_isel 31:29 -&gt; uint
+    }
+}
+</code></pre>
+<pre><code class="language-rust">// V1 DSL
+register OutX {
     const ADDRESS = 0x05;
     const SIZE_BITS = 32;
     type ByteOrder = BE;
@@ -2413,8 +4616,7 @@ MOSI: ---x===x===x===x===x===x===x===x===x===x===x===x===x===x===x===x===x===x==
     synt: uint = 0..=27,
     bs: bool = 28,
     pll_cp_isel: uint = 29..=31
-}
-<span class="boring">}</span></code></pre>
+}</code></pre>
 <h3 id="example-dw1000---single-register-le-lsb0"><a class="header" href="#example-dw1000---single-register-le-lsb0">Example DW1000 - Single-register LE, LSB0</a></h3>
 <p>This chip doesn’t have multi register reads, but it does have registers bigger than a byte.
 So even a single register must take care of byte ordering.</p>
@@ -2440,9 +4642,22 @@ So even a single register must take care of byte ordering.</p>
 </ul>
 </li>
 </ul>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>register DevId {
+<pre><code class="language-ddsl">// V2 DDSL
+register DevId {
+    address: 0x00,
+    fields: fieldset _ {
+        size-bytes: 4,
+        byte-order: LE,
+
+        field r_id_tag 31:16 -&gt; uint,
+        field model 15:8 -&gt; uint,
+        field ver 7:4 -&gt; uint,
+        field rev 3:0 -&gt; uint
+    }
+}
+</code></pre>
+<pre><code class="language-rust">// V1 DSL
+register DevId {
     const ADDRESS = 0x00;
     const SIZE_BITS = 32;
     type ByteOrder = LE;
@@ -2452,8 +4667,7 @@ So even a single register must take care of byte ordering.</p>
     model: uint = 8..16,
     ver: uint = 4..8,
     rev: uint = 0..4
-}
-<span class="boring">}</span></code></pre>
+}</code></pre>
 
                     </main>
 
@@ -2494,6 +4708,7 @@ So even a single register must take care of byte ordering.</p>
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
+        <script src="ddsl-67bc1e3d.highlight.js"></script>
 
         <script>
         window.addEventListener('load', function() {

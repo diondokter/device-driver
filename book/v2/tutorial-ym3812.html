@@ -1,0 +1,1033 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Tutorial YM3812 (OPL2) - device-driver-book</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="../favicon-8114d1fc.png">
+        <link rel="stylesheet" href="../css/variables-8adf115d.css">
+        <link rel="stylesheet" href="../css/general-e96d0476.css">
+        <link rel="stylesheet" href="../css/chrome-d279d366.css">
+        <link rel="stylesheet" href="../css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="../highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="../tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="../ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "../searchindex-d043f034.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc-ca5e7c95.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">device-driver-book</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/diondokter/device-driver" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M392.8 1.2c-17-4.9-34.7 5-39.6 22l-128 448c-4.9 17 5 34.7 22 39.6s34.7-5 39.6-22l128-448c4.9-17-5-34.7-22-39.6zm80.6 120.1c-12.5 12.5-12.5 32.8 0 45.3L562.7 256l-89.4 89.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0l112-112c12.5-12.5 12.5-32.8 0-45.3l-112-112c-12.5-12.5-32.8-12.5-45.3 0zm-306.7 0c-12.5-12.5-32.8-12.5-45.3 0l-112 112c-12.5 12.5-12.5 32.8 0 45.3l112 112c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L77.3 256l89.4-89.4c12.5-12.5 12.5-32.8 0-45.3z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="tutorial-ym3812-opl2"><a class="header" href="#tutorial-ym3812-opl2">Tutorial YM3812 (OPL2)</a></h1>
+<p>This is a simple introduction tutorial for people new to device-driver.
+It covers the basics of registers, blocks, interfaces and repeats.</p>
+<h2 id="background"><a class="header" href="#background">Background</a></h2>
+<p>It’s hard to make computer make sounds and music. Or at least, it used to. The early personal computers of the late 70’s and early 80’s either couldn’t make sounds or only had a little PC speaker, the one that beeps when you boot a computer.</p>
+<p>Later on, mostly for games, companies started creating more capable sound cards. You could plug them in your PC like you do a graphics card.</p>
+<p>The chip we’re going to look at, the OPL2, is a famous chip from that time. It can’t play samples and only has 9 channels with which to make sounds. But those channels can all be configured individually with two operators which can perform ‘FM synthesis’.</p>
+<p>The OPL2 could be found on two sound cards: The AdLib from 1987 and the Sound Blaster from 1989.</p>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="../assets/AdLib_Music_Synthesizer_Card.jpg" alt="AdLib music synthesizer card"><span class="img-wrapper"><img src="../assets/AdLib_Music_Synthesizer_Card.jpg" alt="AdLib music synthesizer card"></span></label></p>
+<p>Want to know what computers sounded like back then? Then listen to this video. The OPL2 is the third variant shown, starting at 3:08.</p>
+<iframe width="100%" style="aspect-ratio: 16 / 9;" src="https://www.youtube-nocookie.com/embed/Fr-84mjV3CI?si=Dt2D8GgQDl_A_y-C" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen=""></iframe>
+<h2 id="examining-the-hardware"><a class="header" href="#examining-the-hardware">Examining the hardware</a></h2>
+<h3 id="finding-docs"><a class="header" href="#finding-docs">Finding docs</a></h3>
+<p>First we need to know what we’re dealing with and find some documentation for the chip. This isn’t as easy as with modern chips, but luckily this chip is and was liked by hobbyists. There’s a website dedicated to OPL hardware: <a href="https://www.oplx.com/opl2.htm">oplx.com</a>.</p>
+<p>On it we can find the following text file: <a href="../assets/adlib_sb.txt">adlib_sb.txt</a>.
+It’s from someone in 1992 noticing people don’t have good docs and deciding he would fix that. So thank you Jeffrey S. Lee for the early open source spirit!</p>
+<p>This document is made for people using soundblaster cards in their PCs. But I don’t have such a card and even if I did, it wouldn’t fit. Instead I have an earlier version of <a href="https://www.tindie.com/products/cheerful/opl2-audio-board/">this board</a>. Instead of having a parallel interface, there’s a shift register so we can use SPI to communicate with the board.</p>
+<p>Now that we have all the resources we need, we can get started!</p>
+<h3 id="how-does-the-chip-work"><a class="header" href="#how-does-the-chip-work">How does the chip work?</a></h3>
+<p>The OPL2 can’t make audio like we’re used to today. Modern audio devices can play samples that resemble the audio waves in the air which the device tries to recreate.</p>
+<p>But these old devices aren’t capable of that, it was simply too advanced. Instead the OPL2 have multiple operators that can only make the following simple wave forms:</p>
+<p><label class="checkbox-label"><input class="checkbox-img" type="checkbox"><img src="../assets/YM3812_waveforms_numbered.png" alt="YM3812_waveforms_numbered"><span class="img-wrapper"><img src="../assets/YM3812_waveforms_numbered.png" alt="YM3812_waveforms_numbered"></span></label></p>
+<p>Later iterations of the OPL have more wave forms.</p>
+<p>Luckily there’s all kinds of settings with which to edit these wave forms to make them more interesting. This tutorial isn’t about that though, so if you want to know more, this website has a nice overview and audio samples: <a href="https://cosmodoc.org/topics/adlib-functions/">cosmodoc.org/topics/adlib-functions</a>.</p>
+<blockquote class="blockquote-tag blockquote-tag-important">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v9.5A1.75 1.75 0 0 1 14.25 13H8.06l-2.573 2.573A1.458 1.458 0 0 1 3 14.543V13H1.75A1.75 1.75 0 0 1 0 11.25Zm1.75-.25a.25.25 0 0 0-.25.25v9.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h6.5a.25.25 0 0 0 .25-.25v-9.5a.25.25 0 0 0-.25-.25Zm7 2.25v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Important</p>
+<p>For us what’s most important to know now is that this chip has 9 channels with 2 operators each. Those channels can output the additive result of those 2 operators or they can be used for <a href="https://en.wikipedia.org/wiki/Frequency_modulation_synthesis">FM synthesis</a>.</p>
+</blockquote>
+<h3 id="register-layout"><a class="header" href="#register-layout">Register layout</a></h3>
+<p>The documentation we found helpfully lays out an overview of all registers:</p>
+<pre><code class="language-txt">   Address      Function
+   -------      ----------------------------------------------------
+     01         Test LSI / Enable waveform control
+     02         Timer 1 data
+     03         Timer 2 data
+     04         Timer control flags
+     08         Speech synthesis mode / Keyboard split note select
+   20..35       Amp Mod / Vibrato / EG type / Key Scaling / Multiple
+   40..55       Key scaling level / Operator output level
+   60..75       Attack Rate / Decay Rate
+   80..95       Sustain Level / Release Rate
+   A0..A8       Frequency (low 8 bits)
+   B0..B8       Key On / Octave / Frequency (high 2 bits)
+     BD         AM depth / Vibrato depth / Rhythm control
+   C0..C8       Feedback strength / Connection type
+   E0..F5       Wave Select
+</code></pre>
+<p>We can notice there are three kinds of registers:</p>
+<ol>
+<li>Single registers</li>
+<li>Repeated registers 0..=8</li>
+<li>Repeated registers 0..=21 (0x15)</li>
+</ol>
+<p>The single registers are for global settings. The 9 repeated registers are one for each channel, which makes sense. But the registers that are repeated 22 times? Well, that’s where the chip is a little weird. These are for the operators, except there are only 18 operators in total (2 per channel).</p>
+<p>When we read on in the documentation we find this table:</p>
+<pre><code class="language-txt">The groupings of twenty-two registers (20-35, 40-55, etc.) have an odd
+order due to the use of two operators for each FM voice.  The following
+table shows the offsets within each group of registers for each operator.
+
+
+   Channel        1   2   3   4   5   6   7   8   9
+   Operator 1    00  01  02  08  09  0A  10  11  12
+   Operator 2    03  04  05  0B  0C  0D  13  14  15
+
+Thus, the addresses of the attack/decay bytes for channel 3 are 62 for
+the first operator, and 65 for the second.  (The address of the second
+operator is always the address of the first operator plus three).
+</code></pre>
+<p>This is annoying, but we’ll have to deal with it.</p>
+<h3 id="the-interface"><a class="header" href="#the-interface">The interface</a></h3>
+<p>The board I have with the shift register doesn’t really spell out how to use it. But you can look at the code the author provided to see what has to happen.</p>
+<p>Basically we have 4 relevant pins to use when writing data to the chip (through the shift register):</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>name</th><th>function</th></tr>
+</thead>
+<tbody>
+<tr><td>Data</td><td>The bit value we’re shifting in</td></tr>
+<tr><td>Shift</td><td>The clock signal. When transitioning from low to high, the value of the Data pin is shifted in.</td></tr>
+<tr><td>Latch</td><td>When the latch is pulled low for 1us, the shifted in data is applied to the parallel bus.</td></tr>
+<tr><td>A0</td><td>When low, the data on the bus is seen as the address. When high the data on the bus is seen as register data.</td></tr>
+</tbody>
+</table>
+</div>
+<p>First the address needs to be written, then you must wait 4us, then the data needs to be written and then you must wait 23us.</p>
+<h2 id="writing-the-driver"><a class="header" href="#writing-the-driver">Writing the driver</a></h2>
+<h3 id="ddsl"><a class="header" href="#ddsl">DDSL</a></h3>
+<p>First we create a file named <code>ym3812.ddsl</code> (or something else to your liking). Then we write the basic setup:</p>
+<pre><code class="language-ddsl">device Ym3812 {
+    register-address-type: u8,
+}
+</code></pre>
+<p>With this we’ve told the compiler there’s a <a href="./language-device.html"><code>device</code></a> and that it uses <code>u8</code> as the address type for registers. Luckily that’s all the settings we need already out of the way, so we can continue with writing the registers.</p>
+<h4 id="global-registers"><a class="header" href="#global-registers">Global registers</a></h4>
+<p>Let’s start simple and do the global registers first.
+There’s no good names given to these registers, so we’ll have to be a bit creative ourselves.</p>
+<p>The docs for the first register is here:</p>
+<pre><code class="language-txt">Byte 01 - This byte is normally used to test the LSI device.  All bits
+          should normally be zero.  Bit 5, if enabled, allows the FM 
+          chips to control the waveform of each operator.
+
+             7     6     5     4     3     2     1     0
+          +-----+-----+-----+-----+-----+-----+-----+-----+
+          |   unused  | WS  |            unused           |
+          +-----+-----+-----+-----+-----+-----+-----+-----+
+</code></pre>
+<p>We can notice it’s located at address 1, is 1 byte in size and only uses bit 5.</p>
+<p>In device-driver, this data is encoded with two objects: a <a href="./language-register.html"><code>register</code></a> and a <a href="./language-fieldset.html"><code>fieldset</code></a>. The fieldset describes the data of the register and the register describes how it relates to the device.</p>
+<p>Let’s define them in ddsl:</p>
+<pre><code class="language-ddsl">/// Register containing the Waveform Select Enable and some test fields
+register Enable_waveform_control {
+    address: 0x01,
+    fields: Enable_waveform_control,
+},
+fieldset Enable_waveform_control {
+    size-bytes: 1,
+    /// If clear, all channels will use normal sine wave.
+    /// If set, register E0-F5 (Waveform Select) contents will be used.
+    field WS 5 -&gt; bool,
+}
+</code></pre>
+<p>As you can see, we’ve defined the objects and put some doc comments on them too.
+The generated code will contain those docs as well, so they’re visible in your code editor.</p>
+<p>The register and fieldset use the same name. This is allowed and they don’t clash.
+That’s because there’s separate <a href="./language.html#namespacing">namespacing</a> for operations and types.
+However, having to define two objects for every device register is a bit bloated. To help with that, we can define the fieldset inline in the fields property of the register:</p>
+<pre><code class="language-ddsl">/// Register containing the Waveform Select Enable and some test fields
+register Enable_waveform_control {
+    address: 0x01,
+    fields: fieldset _ {
+        size-bytes: 1,
+        /// If clear, all channels will use normal sine wave.
+        /// If set, register E0-F5 (Waveform Select) contents will be used.
+        field WS 5,
+    },
+},
+</code></pre>
+<p>That’s much more concise! There are two additional change you may notice that use two different <code>auto</code> features:</p>
+<ol>
+<li>We don’t specify the fieldset name and use an underscore. When defining inline types, this can be used so the type takes on the name of the node it’s being defined in.</li>
+<li>We don’t specify the field is a bool anymore. This is the same as if we wrote <code>field WS 5 -&gt; _</code>. There are some rules about what the so-called base type of the field will become (in order):
+<ul>
+<li>If the field contains a conversion (we’ll see that later in the tutorial), it will take on the base type of the conversion target.</li>
+<li>If the field is 1 bit in size, it will become a <code>bool</code>.</li>
+<li>If the field is multiple bits, it will becoma a <code>uint</code>. (The <code>uint</code> will then become the smallest sized integer that fits the number of bits. So a <code>uint</code> with 11 bits becomes a <code>u16</code>)</li>
+</ul>
+</li>
+</ol>
+<p>Alright, next register:</p>
+<pre><code class="language-txt">Byte 02 - Timer 1 Data.  If Timer 1 is enabled, the value in this 
+          register will be incremented until it overflows.  Upon
+          overflow, the sound card will signal a TIMER interrupt
+          (INT 08) and set bits 7 and 6 in its status byte.  The
+          value for this timer is incremented every eighty (80)
+          microseconds.
+</code></pre>
+<p>This one is more boring, so let’s just define it:</p>
+<pre><code class="language-ddsl">register Timer_1_Data {
+    address: 0x02,
+    fields: fieldset _ {
+        size-bytes: 1,
+        field value 7:0,
+    }
+},
+</code></pre>
+<p><code>7:0</code> is the bit range. It’s high to low and it’s an inclusive range. Again we don’t specify the base type of the value field,
+so it’ll become a u8 in this case.</p>
+<p>Let’s skip some of the registers that you should be able to define yourself already and go to the last global register that uses some new features:</p>
+<pre><code class="language-txt">Byte BD - Amplitude Modulation Depth / Vibrato Depth / Rhythm
+
+        7     6     5     4     3     2     1     0
+     +-----+-----+-----+-----+-----+-----+-----+-----+
+     | AM  | Vib | Rhy | BD  | SD  | TOM | Top | HH  |
+     | Dep | Dep | Ena |     |     |     | Cym |     |
+     +-----+-----+-----+-----+-----+-----+-----+-----+
+
+          bit 7 - Set:    AM depth is 4.8dB
+                  Clear:  AM depth is 1 dB
+          bit 6 - Set:    Vibrato depth is 14 cent
+                  Clear:  Vibrato depth is 7 cent
+          bit 5 - Set:    Rhythm enabled  (6 melodic voices) 
+                  Clear:  Rhythm disabled (9 melodic voices)
+          bit 4 - Bass drum on/off
+          bit 3 - Snare drum on/off
+          bit 2 - Tom tom on/off
+          bit 1 - Cymbal on/off
+          bit 0 - Hi Hat on/off
+</code></pre>
+<p>All these fields <em>could</em> be bools. But that would be confusing for the fields that aren’t simple on/off fields.
+The other fields encode a <em>value</em> that’s distinct from true/false. So ideally we encode those values in a way so the user of our driver knows what they mean without looking at the documentation.</p>
+<p>Luckily we can do that using <a href="./language-enum.html"><code>enum</code></a>s! And once again, we can define and use them inline.</p>
+<pre><code class="language-ddsl">register rhythm_settings {
+    address: 0xBD,
+    fields: fieldset _ {
+        size-bytes: 1,
+        /// Tremolo (Amplitude Vibrato) Depth.
+        field tremolo_depth 7 -&gt; _ as enum _ {
+            /// 1.0dB
+            Low: 0b0,
+            /// 4.8dB
+            High: 0b1,
+        },
+        /// Frequency Vibrato Depth. A "cent" is 1/100 of a semi-tone.
+        field vibrato_depth 6 -&gt; _ as enum _ {
+            /// 7 cents
+            Low: 0b0,
+            /// 14 cents
+            High: 0b1,
+        },
+        field instrument_mode 5 -&gt; _ as enum _ {
+            Melodic: 0b0,
+            Percussion: 0b1,
+        },
+        field bass_drum_on 4,
+        field snare_drum_on 3,
+        field tom_tom_on 2,
+        field cymbal_on 1,
+        field hi_hat_on 0,
+    }
+}
+</code></pre>
+<p>The first three fields use the optional conversion syntax of the <a href="./language-tokens_ast.html#type-specifier">type specifier</a>. The enums will have the same names as the fields.</p>
+<p>Here we can use <code>infallible</code> conversion, which is always recommended when possible. But there exist situations where the enum can’t cover all possible bit patterns, at which point <code>fallible</code> conversion must be used. That would look like this:</p>
+<pre><code class="language-ddsl">field foo 0 -&gt; _ as try enum _ { }
+//                  +++
+</code></pre>
+<h4 id="channel-settings"><a class="header" href="#channel-settings">Channel settings</a></h4>
+<p>There are 3 registers per channel we need to be able to program.
+These control the frequency, whether they’re on or off and how the two operators are connected.</p>
+<p>We could define each individually and that’d work ok. But we’re in the business of providing the best API to our users as possible. So we’re going to combine two powerful features: <a href="./language-tokens_ast.html#repeat"><code>repeats</code></a> and <a href="./language-block.html"><code>blocks</code></a>.</p>
+<h5 id="repeats"><a class="header" href="#repeats">Repeats</a></h5>
+<p>A repeat can be used to, well, repeat an object multiple times. It’s kind of like an array, so much so that the syntax looks like it too.</p>
+<p>We can define a repeat using brackets, like this:</p>
+<pre><code class="language-ddsl">register foo[4 stride 2] { ... }
+</code></pre>
+<p>Here we’ve defined a register that is repeated four times. And with each repeat, the address is incremented by two. So if the start address is 10, then this register is present on addresses 10, 12, 14 and 16.</p>
+<p>Repeats can use enums too instead of a length:</p>
+<pre><code class="language-ddsl">enum bar { a: 2, b: 3, c: 5, d: 7 },
+register foo[bar stride 2] { ... }
+</code></pre>
+<p>This is incredibly useful for when there are gaps in the index.
+The stride is a multiplier on the values of the enum.</p>
+<h5 id="blocks"><a class="header" href="#blocks">Blocks</a></h5>
+<p>A block is an object that groups subobjects together. And that’s very useful in our case because we can group the channel settings together.</p>
+<pre><code class="language-ddsl">block foo {
+    address-offset: 10,
+
+    register bar {
+        address: 10,
+        // ...
+    },
+    register quux {
+        address: 11,
+        // ...
+    }
+}
+</code></pre>
+<p>Here we see registers <code>bar</code> and <code>quux</code> are part of block <code>foo</code>.
+Important to know is that the block can specify an address offset which is then added to all child objects. So in reality <code>bar</code> and <code>quux</code> have addresses 20 and 21. It’s up to you to decide what makes sense. You can always set the offset to 0 if you want to use the global addresses.</p>
+<h5 id="combined"><a class="header" href="#combined">Combined</a></h5>
+<p>For the driver we’re writing, we could do a repeat on every channel register.
+But instead let’s do the repeat on a block and put all channels settings in that block.
+That way it’s nice and organized. Here’s how it could be modeled (with some added comments for explanations):</p>
+<pre><code class="language-ddsl">enum Channel {
+    C1: _, // Use auto assignment. This starts at 0
+    C2: _, // This variant is auto-assigned value 1
+    C3: _, // 2
+    C4: _,
+    C5: _,
+    C6: _,
+    C7: _,
+    C8: _,
+    C9: _,
+},
+
+block ChannelGeneralSettings[Channel stride 1] {
+    //                      ^^^^^^^^^^^^^^^^^^
+    // Create the block with the channel enum as the repeat
+    // Each channel should offset the registers by 1, so we pick a stride of 1
+
+    // Let's not add a block offset so we can keep using the global addresses
+    // That simply makes most sense in this case
+    address-offset: 0,
+
+    register channel_settings0 {
+        address: 0xA0,
+        fields: fieldset _ {
+            size-bytes: 1,
+            field frequency_number_lsb 7:0,
+        }
+    },
+    register channel_settings1 {
+        address: 0xB0,
+        fields: fieldset _ {
+            size-bytes: 1,
+            /// Channel is voiced when set, silent when clear.
+            field key_on 5,
+            /// Octave (0-7). 0 is lowest, 7 is highest.
+            field block_number 4:2,
+            field frequency_number_high 1:0,
+        }
+    },
+    register channel_settings2 {
+        address: 0xC0,
+        fields: fieldset _ {
+            size-bytes: 1,
+            /// Feedback strength.  If all three bits are set to
+            /// zero, no feedback is present.  With values 1-7,
+            /// operator 1 will send a portion of its output back
+            /// into itself.  1 is the least amount of feedback,
+            /// 7 is the most.
+            field feedback 3:1,
+            field synthesis_type 0 -&gt; _ as
+                /// How the operators interact.
+                /// Complex sounds are more easily created
+                /// if the algorithm is set to FrequencyModulation.
+                enum SynthesisType {
+                    /// Operator 1 modulates operator 2.
+                    /// In this case, operator 2 is the only one producing sound.
+                    FrequencyModulation: 0b0,
+                    /// Both operators produce sound directly.
+                    AdditiveSynthesis: 0b1,
+                },
+        }
+    },
+},
+</code></pre>
+<p>Note how the <code>SynthesisType</code> has doc comments on a newline. That’s how you add a description to inline objects.</p>
+<h4 id="operator-settings"><a class="header" href="#operator-settings">Operator settings</a></h4>
+<p>The way the operator settings are done, is a little crazy on this chip. Even the documentation we have calls that out!</p>
+<p>Remember, every channel has two operators.</p>
+<pre><code class="language-txt">The groupings of twenty-two registers (20-35, 40-55, etc.) have an odd
+order due to the use of two operators for each FM voice.  The following
+table shows the offsets within each group of registers for each operator.
+
+
+   Channel        1   2   3   4   5   6   7   8   9
+   Operator 1    00  01  02  08  09  0A  10  11  12
+   Operator 2    03  04  05  0B  0C  0D  13  14  15
+
+Thus, the addresses of the attack/decay bytes for channel 3 are 62 for
+the first operator, and 65 for the second.  (The address of the second
+operator is always the address of the first operator plus three).
+</code></pre>
+<p>The channels have gaps in them and the second operator is always the first operator plus 3.</p>
+<p>So, let’s use the same trick with the block and repeat again:</p>
+<pre><code class="language-ddsl">/// Enum to select the channel for the operator settings block
+enum ChannelOperators {
+    C1: 0x00,
+    C2: 0x01,
+    C3: 0x02,
+    C4: 0x08,
+    C5: 0x09,
+    C6: 0x0A,
+    C7: 0x10,
+    C8: 0x11,
+    C9: 0x12,
+},
+/// Each channel has two operators
+enum Operator {
+    O1: 0,
+    O2: 1, // We could pick 3 (stride 1) or 1 (stride 3)
+           // But this makes most logical sense
+},
+</code></pre>
+<p>Then we use these to create the block with the operator registers.
+I’ll omit the register details since those clutter the code for this example.</p>
+<p>Different from the channel settings is that we need to have two repeats.
+To be consistent, we’ll use the channel repeat on the block and then for each register we’ll have a repeat to select the operator for that channel.</p>
+<pre><code class="language-ddsl">/// Block containing all operator settings for a channel
+block ChannelOperatorSettings[ChannelOperators stride 1] {
+    //                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    address-offset: 0,
+
+    register operator_settings0[Operator stride 3] {
+        //                     ^^^^^^^^^^^^^^^^^^^
+        address: 0x20,
+        fields: fieldset _ {
+            // ...
+        }
+    },
+    register operator_settings1[Operator stride 3] {
+        address: 0x40,
+        fields: fieldset _ {
+            // ...
+        }
+    },
+    register operator_settings2[Operator stride 3] {
+        address: 0x60,
+        fields: fieldset _ {
+            // ...
+        }
+    },
+    register operator_settings3[Operator stride 3] {
+        address: 0x80,
+        fields: fieldset _ {
+            // ...
+        }
+    },
+    register operator_settings4[Operator stride 3] {
+        address: 0xE0,
+        fields: fieldset _ {
+            // ...
+        }
+    },
+},
+</code></pre>
+<p>And that’s it for the DDSL code! We can now actually start using it.</p>
+<h3 id="rust-crate"><a class="header" href="#rust-crate">Rust crate</a></h3>
+<p>Let’s turn this all into a driver we can use from Rust!</p>
+<p>The best way to do it, is to make it into its own crate. We want to make it usable for embedded use, so we’ll make it no-std and to make it portable, we’ll use the embedded-hal traits.</p>
+<h4 id="setting-up-the-crate"><a class="header" href="#setting-up-the-crate">Setting up the crate</a></h4>
+<p>We can make a crate using cargo:</p>
+<pre><code class="language-sh">cargo new ym3812 --lib
+cd ym3812
+</code></pre>
+<p>There’s two styles in which we can architect the crate:</p>
+<ul>
+<li>Using the device-driver compile macro
+<ul>
+<li>This is the easiest way to use device-driver and makes sense during development</li>
+<li>Downside is that the device-driver compiler becomes a dependency</li>
+</ul>
+</li>
+<li>Using the cli to generate rust code ahead of time
+<ul>
+<li>When you’re done with your driver and ready to publish, you might want to convert your crate to this style</li>
+<li>Downside is that it’s a little more setup and your generated rust code can be out of sync with your ddsl</li>
+</ul>
+</li>
+</ul>
+<p>For this tutorial, we’ll set up for using the compile macro.</p>
+<p>Now that we’ve got our crate, we should a couple of things:</p>
+<ul>
+<li>Place our ddsl file in the crate root. Let’s call it <code>ym3812.ddsl</code>, but you can call it anything.</li>
+<li>Add the required dependencies:
+<pre><code class="language-sh"># The macros feature enables the compile macro
+cargo add device-driver --features macros
+cargo add embedded-hal
+# Only required for async drivers
+cargo add embedded-hal-async
+</code></pre>
+</li>
+<li>Add a build script. This will make sure the crate will be recompiled when the ddsl is changed:
+<pre><code class="language-rust">fn main() {
+    println!("cargo:rebuild-if-changed=ym3812.ddsl");
+}</code></pre>
+</li>
+</ul>
+<h4 id="using-the-macro"><a class="header" href="#using-the-macro">Using the macro</a></h4>
+<p>Typically I like to make a separate module to put the driver definitions in and call it something like <code>ll</code> for low-level.
+So let’s do that!</p>
+<pre><code class="language-rust">// lib.rs
+
+mod ll;</code></pre>
+<p>To compile the ddsl code, simply use the compile macro:</p>
+<pre><code class="language-rust">// ll.rs
+
+device_driver::compile!(
+    manifest: "ym3812.ddsl",
+);</code></pre>
+<p>This will put all of the generated code at the site of the macro call.</p>
+<h4 id="creating-the-interface"><a class="header" href="#creating-the-interface">Creating the interface</a></h4>
+<p>Device-driver doesn’t know how to talk with the device, so we need to teach it that.
+With Rust we’ve got traits for it!</p>
+<p>Every type of operation has its own traits. We’ve only defined registers, so we only need to implement the <code>RegisterInterface</code> and/or <code>AsyncRegisterInterface</code> for the interface type we’re going to make.</p>
+<p>If the blocking version is implemented, then blocking register reads and writes will be supported. Same with the async version. For this tutorial we’ll only implement the async version.</p>
+<p>Our interface is just a struct, so let’s create it with all the IO it needs:</p>
+<pre><code class="language-rust">// ll.rs
+
+use embedded_hal::digital::OutputPin;
+use embedded_hal_async::{delay::DelayNs, spi::SpiBus};
+
+/// Our hardware interface with the chip using the shift register that
+/// is present on the opl2 audio board by Maarten Janssen
+pub struct ShiftInterface&lt;SPI, A, L, R, D&gt;
+where
+    SPI: SpiBus,
+    A: OutputPin,
+    L: OutputPin,
+    R: OutputPin,
+    D: DelayNs,
+{
+    /// The spi interface we use to drive the shift register
+    spi: SPI,
+    /// The pin connected to the A0 input
+    address_pin: A,
+    /// The pin connected to the latch input of the shift register
+    latch_pin: L,
+    /// The pin connected to the reset input
+    reset_pin: R,
+    /// Some kind of delay provider
+    delay: D,
+    /// A copy of all the registers in memory.
+    ///
+    /// We need this because we can't read the OPL registers.
+    /// By keeping track of this ourselves, we can still present
+    /// a read/write interface which is useful for modifying registers.
+    registers: [u8; u8::MAX as usize],
+}</code></pre>
+<p>Now that we have our shift interface, we can start implementing the traits we need.
+First off is the base trait that defines address type and the error type. The address type must be the same as the one we set up in the ddsl code.</p>
+<pre><code class="language-rust">// ll.rs
+
+use device_driver::RegisterInterfaceBase;
+
+#[derive(Debug)]
+pub enum InterfaceError {
+    AddressPinError,
+    LatchPinError,
+    ResetPinError,
+    CommunicationError,
+}
+
+impl&lt;SPI: SpiBus, A: OutputPin, L: OutputPin, R: OutputPin, D: DelayNs&gt; RegisterInterfaceBase
+    for ShiftInterface&lt;SPI, A, L, R, D&gt;
+{
+    type Error = InterfaceError;
+    type AddressType = u8;
+}</code></pre>
+<p>Now we’re ready to implement the main trait. This will look very different for almost every device. The requirements here have been discussed earlier in the tutorial.</p>
+<p>Normally devices have sections in their datasheets about how the communication with the device work.</p>
+<pre><code class="language-rust">// ll.rs
+
+impl&lt;SPI: SpiBus, A: OutputPin, L: OutputPin, R: OutputPin, D: DelayNs&gt; AsyncRegisterInterface
+    for ShiftInterface&lt;SPI, A, L, R, D&gt;
+{
+    async fn write_register(
+        &amp;mut self,
+        address: Self::AddressType,
+        data: &amp;mut [u8],
+        _metadata: &amp;device_driver::FieldsetMetadata,
+    ) -&gt; Result&lt;(), Self::Error&gt; {
+        // We know we've always got one byte since all registers are that size
+        let byte = data[0];
+
+        // Save in internal data store
+        self.registers[address as usize] = byte;
+
+        // Send the address
+        self.address_pin
+            .set_low()
+            .map_err(|_| Self::Error::AddressPinError)?;
+
+        self.spi
+            .write(&amp;[address])
+            .await
+            .map_err(|_| Self::Error::CommunicationError)?;
+
+        // Apply the shift latch
+        self.latch_pin
+            .set_low()
+            .map_err(|_| Self::Error::LatchPinError)?;
+        self.delay.delay_us(1).await;
+        self.latch_pin
+            .set_high()
+            .map_err(|_| Self::Error::LatchPinError)?;
+        self.delay.delay_us(4).await;
+
+        // Send the data
+        self.address_pin
+            .set_high()
+            .map_err(|_| Self::Error::AddressPinError)?;
+
+        self.spi
+            .write(&amp;[byte])
+            .await
+            .map_err(|_| Self::Error::CommunicationError)?;
+
+        // Apply the shift latch
+        self.latch_pin
+            .set_low()
+            .map_err(|_| Self::Error::LatchPinError)?;
+        self.delay.delay_us(1).await;
+        self.latch_pin
+            .set_high()
+            .map_err(|_| Self::Error::LatchPinError)?;
+        self.delay.delay_us(23).await;
+
+        Ok(())
+    }
+
+    async fn read_register(
+        &amp;mut self,
+        address: Self::AddressType,
+        data: &amp;mut [u8],
+        _metadata: &amp;device_driver::FieldsetMetadata,
+    ) -&gt; Result&lt;(), Self::Error&gt; {
+        data[0] = self.registers[address as usize];
+        Ok(())
+    }
+}</code></pre>
+<p>Let’s add some convenience methods too for construction and resetting the device.</p>
+<pre><code class="language-rust">// ll.rs
+
+impl&lt;SPI: SpiBus, A: OutputPin, L: OutputPin, R: OutputPin, D: DelayNs&gt;
+    ShiftInterface&lt;SPI, A, L, R, D&gt;
+{
+    pub const fn new(spi: SPI, address_pin: A, latch_pin: L, reset_pin: R, delay: D) -&gt; Self {
+        Self {
+            spi,
+            address_pin,
+            latch_pin,
+            reset_pin,
+            delay,
+            registers: [0; _],
+        }
+    }
+
+    pub async fn reset(&amp;mut self) -&gt; Result&lt;(), InterfaceError&gt; {
+        // Set the pins to the default level
+        self.latch_pin
+            .set_high()
+            .map_err(|_| InterfaceError::LatchPinError)?;
+        self.reset_pin
+            .set_high()
+            .map_err(|_| InterfaceError::ResetPinError)?;
+        self.address_pin
+            .set_low()
+            .map_err(|_| InterfaceError::AddressPinError)?;
+
+        // Make a reset cycle
+        self.reset_pin
+            .set_low()
+            .map_err(|_| InterfaceError::ResetPinError)?;
+        self.delay.delay_ms(1).await;
+        self.reset_pin
+            .set_high()
+            .map_err(|_| InterfaceError::ResetPinError)?;
+
+        // Reset the internal registers
+        self.registers = [0x00; 0xFF];
+        self.write_register(0x00, &amp;mut [0x00; 0xFF], &amp;FieldsetMetadata::DEFAULT)
+            .await?;
+
+        Ok(())
+    }
+}</code></pre>
+<p>With that we’ve done all the setup we need!</p>
+<h2 id="using-the-driver"><a class="header" href="#using-the-driver">Using the driver</a></h2>
+<p>Let’s create an instance of the driver and explore how we can now use it.</p>
+<pre><code class="language-rust">// Create an instance of the interface we need to talk with the chip
+// Get your SPI and gpio from your HAL
+let interface = ShiftInterface::new(
+    Spi::new_txonly(p.SPI1, p.PB3, p.PB5, p.DMA1_CH1, Irqs, config),
+    Output::new(p.PB14, Level::Low, Speed::VeryHigh),
+    Output::new(p.PC4, Level::Low, Speed::VeryHigh),
+    Output::new(p.PD1, Level::Low, Speed::VeryHigh),
+    embassy_time::Delay,
+);
+
+// Create the driver
+let mut ym3812 = Ym3812::new(interface);
+// Access the interface to call its reset function
+ym3812.interface().reset().await?;</code></pre>
+<p>Now we know the device is in a good state (reset) and ready to use.</p>
+<h3 id="example-from-docs"><a class="header" href="#example-from-docs">Example from docs</a></h3>
+<p>Let’s make a sound, that’s the entire point after all.
+Again, the guide helps us!</p>
+<pre><code class="language-txt"> |                              Making a Sound
+ | 
+ |   Many people have asked me, upon reading this document, what the proper
+ |   register values should be to make a simple sound.  Well, here they are.
+ | 
+ |   First, clear out all of the registers by setting all of them to zero.
+ |   This is the quick-and-dirty method of resetting the sound card, but it
+ |   works.  Note that if you wish to use different waveforms, you must then
+ |   turn on bit 5 of register 1.  (This reset need be done only once, at the
+ |   start of the program, and optionally when the program exits, just to 
+ |   make sure that your program doesn't leave any notes on when it exits.)
+ |
+ |   Now, set the following registers to the indicated value:
+ |
+ |     REGISTER     VALUE     DESCRIPTION
+ |        20          01      Set the modulator's multiple to 1
+ |        40          10      Set the modulator's level to about 40 dB
+ |        60          F0      Modulator attack:  quick;   decay:   long
+ |        80          77      Modulator sustain: medium;  release: medium
+ |        A0          98      Set voice frequency's LSB (it'll be a D#)
+ |        23          01      Set the carrier's multiple to 1
+ |        43          00      Set the carrier to maximum volume (about 47 dB)
+ |        63          F0      Carrier attack:  quick;   decay:   long
+ |        83          77      Carrier sustain: medium;  release: medium
+ |        B0          31      Turn the voice on; set the octave and freq MSB
+ |
+ |   To turn the voice off, set register B0h to 11h (or, in fact, any value 
+ |   which leaves bit 5 clear).  It's generally preferable, of course, to
+ |   induce a delay before doing so.
+</code></pre>
+<p>So, let’s replicate that using our new driver.
+With device-driver we’re not fiddling with bits manually, but use named methods. But since our source is specified in addresses and bits, we’ll need to work backwards.</p>
+<pre><code class="language-rust">ym3812.enable_waveform_control()
+    .write_async(|w| w.set_ws(true))
+    .await
+    .unwrap();
+
+let mut operator_settings = ym3812.channel_operator_settings(ChannelOperators::C1);
+
+// Set operator 1 settings
+
+operator_settings
+    .operator_settings_0()
+    .write_at_async(Operator::O1, |reg| {
+        reg.set_modulator_frequency_multiple(ModulatorFrequencyMultiple::AtSpecified)
+    })
+    .await?;
+operator_settings
+    .operator_settings_1()
+    .write_at_async(Operator::O1, |reg| {
+        reg.set_output_level(0x10);
+    })
+    .await?;
+operator_settings
+    .operator_settings_2()
+    .write_at_async(Operator::O1, |reg| {
+        reg.set_attack_rate(15);
+        reg.set_decay_rate(0);
+    })
+    .await?;
+operator_settings
+    .operator_settings_3()
+    .write_at_async(Operator::O1, |reg| {
+        reg.set_sustain_level(7);
+        reg.set_release_rate(7);
+    })
+    .await?;
+
+// Set operator 2 settings
+
+operator_settings
+    .operator_settings_0()
+    .write_at_async(Operator::O2, |reg| {
+        reg.set_modulator_frequency_multiple(ModulatorFrequencyMultiple::AtSpecified)
+    })
+    .await?;
+operator_settings
+    .operator_settings_1()
+    .write_at_async(Operator::O2, |reg| {
+        reg.set_output_level(0);
+    })
+    .await?;
+operator_settings
+    .operator_settings_2()
+    .write_at_async(Operator::O2, |reg| {
+        reg.set_attack_rate(15);
+        reg.set_decay_rate(0);
+    })
+    .await?;
+operator_settings
+    .operator_settings_3()
+    .write_at_async(Operator::O2, |reg| {
+        reg.set_sustain_level(7);
+        reg.set_release_rate(7);
+    })
+    .await?;
+
+// Set channel settings
+
+let mut channel = ym3812.channel_general_settings(Channel::C1);
+
+channel
+    .channel_settings_0()
+    .write_async(|reg| reg.set_frequency_number_lsb(0x98))
+    .await?;
+channel
+    .channel_settings_1()
+    .write_async(|reg| {
+        reg.set_key_on(true);
+        reg.set_frequency_number_high(1);
+        reg.set_block_number(4);
+    })
+    .await?;
+
+ym3812.interface().delay.delay_ms(1000).await;
+
+ym3812.channel_general_settings(Channel::C1)
+    .channel_settings_1()
+    .modify_async(|reg| {
+        reg.set_key_on(false);
+    })
+    .await?;</code></pre>
+<p>Cool, let’s check if this actually works:</p>
+<p><audio controls="" src="../assets/OPL_beep.mp3" preload="metadata" style="width: 100%;"></audio></p>
+<p>It does!</p>
+<p>We’ve got a working driver. Now the world, or at least this device, is our oyster.
+From here you can extend your driver as you like. Setting each register every time is bothersome, so you might want to create some rust functions that take an instrument and set all the registers required for that instrument.</p>
+<p>If you want to make music, you’ll need to drive that too yourself, so you’ll want to make some sort of sequencer.</p>
+<p>Exactly how you structure that is up to you. Generally I’ve found it good practise to view the driver as we have now as a ‘low level’ driver which we can wrap with a ‘high level’ driver. That’s similar to how a PAC and HAL relate on microcontrollers.</p>
+<p>In the future, device-driver hopes to offer some more high level features. You’ll have to stay tuned for that and/or peruse the issue tracker on github. Suggestions are always welcome too!</p>
+<p>If you want to see how I tackled that, take a look here: https://github.com/diondokter/ym3812/</p>
+<p>If things are unclear or could be improved for this tutorial, please send PRs, open issues or hit me up in the chatroom!</p>
+<p>I’ll leave you with the song that’s played by the example through my terrible hacked up sequencer I made 6 years ago:</p>
+<p><audio controls="" src="../assets/OPL_mission_impossible.mp3" preload="metadata" style="width: 100%;"></audio></p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../v2/intro.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="../v2/language.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../v2/intro.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="../v2/language.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr-ef4e11c1.min.js"></script>
+        <script src="../mark-09e88c2c.min.js"></script>
+        <script src="../searcher-09f2665d.js"></script>
+
+        <script src="../clipboard-1626706a.min.js"></script>
+        <script src="../highlight-abc7f01d.js"></script>
+        <script src="../book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../ddsl-67bc1e3d.highlight.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

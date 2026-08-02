@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-ba301190.js";
+            window.path_to_searchindex_js = "../searchindex-d043f034.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-cce5e38a.js"></script>
+        <script src="../toc-ca5e7c95.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -186,25 +186,19 @@
 <p>As a user you should not have to construct your field sets manually in normal use. But it’s available to you for special cases in the generated <code>field_sets</code> module.</p>
 </blockquote>
 <p>Example usage:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use field_sets::MyFieldSet;
+<pre><code class="language-rust">use field_sets::MyFieldSet;
 
 let mut reg = MyFieldSet::new();
 reg.set_foo(1234);
-let foo = reg.foo();
-<span class="boring">}</span></code></pre>
+let foo = reg.foo();</code></pre>
 <p>Field sets also implement all bitwise operators for easier manipulation. These operations are done on <em>all</em> underlying bits, even ones that are not part of a field.</p>
 <p>There’s also an <code>Into</code> and <code>From</code> implementation to the smallest byte array that can fit the entire field set.</p>
 <p>Example usage:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>use field_sets::MyFieldSet;
+<pre><code class="language-rust">use field_sets::MyFieldSet;
 
 let all_ones = !MyFieldSet::new_zero();
 let lowest_byte_set = MyFieldSet::from([0xFF, 0x00]);
-let lowest_byte_inverted = all_ones ^ lowest_byte_set;
-<span class="boring">}</span></code></pre>
+let lowest_byte_inverted = all_ones ^ lowest_byte_set;</code></pre>
 <p>Below are minimal and full examples of how fields can be defined. There are three major variants:</p>
 <ul>
 <li>Base type</li>
@@ -241,36 +235,24 @@ let lowest_byte_inverted = all_ones ^ lowest_byte_set;
 </ul>
 <h2 id="dsl"><a class="header" href="#dsl">DSL</a></h2>
 <p>Simple (base type only):</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>foo: uint = 0..5,
+<pre><code class="language-rust">foo: uint = 0..5,
 bar: bool = 5,
-zoof: int = 6..=20,
-<span class="boring">}</span></code></pre>
+zoof: int = 6..=20,</code></pre>
 <p>With attributes and access specifier:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>/// Field comment!
+<pre><code class="language-rust">/// Field comment!
 #[cfg(blah)]
-foo: WO uint = 0..5,
-<span class="boring">}</span></code></pre>
+foo: WO uint = 0..5,</code></pre>
 <p>With conversion to custom type:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>foo: uint as crate::MyCustomType = 0..16,
-bar: int as try crate::MyCustomType2 = 16..32,
-<span class="boring">}</span></code></pre>
+<pre><code class="language-rust">foo: uint as crate::MyCustomType = 0..16,
+bar: int as try crate::MyCustomType2 = 16..32,</code></pre>
 <p>With conversion to generated enum:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>foo: uint as enum GeneratedEnum {
+<pre><code class="language-rust">foo: uint as enum GeneratedEnum {
     A,
     B = 5,
     /// Default value
     C = default,
     D = catch_all,
-} = 0..8,
-<span class="boring">}</span></code></pre>
+} = 0..8,</code></pre>
 <h2 id="manifest"><a class="header" href="#manifest">Manifest</a></h2>
 <p>Simple (base type only) (json):</p>
 <pre><code class="language-json">{
@@ -413,15 +395,12 @@ To be able to still use extern crates and absolute paths this isn’t done when 
 <h4 id="to-generated-enum"><a class="header" href="#to-generated-enum">To generated enum</a></h4>
 <p>Instead of a custom type, the toolkit can also generate an enum inline.</p>
 <p>In the DSL the format for <code>&lt;TARGET&gt;</code> is:</p>
-<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>enum Foo {
+<pre><code class="language-rust">enum Foo {
     A,
     B = 5, // Also supports bit and hex specification
     /// Comment
     C
-}
-<span class="boring">}</span></code></pre>
+}</code></pre>
 <p>The enum is written pretty much as a normal Rust enum including setting the value of every variant and writing docs on every variant. In this example, the number value of <code>C</code> would be 6.</p>
 <p>The generated enum will have the same docs as the field (if any).</p>
 <p>In the manifest, the same enum would be specified like so:</p>
@@ -525,6 +504,7 @@ To be able to still use extern crates and absolute paths this isn’t done when 
         <script src="../book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
+        <script src="../ddsl-67bc1e3d.highlight.js"></script>
 
 
 
