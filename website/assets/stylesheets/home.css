@@ -37,7 +37,7 @@ body {
         flex-flow: row wrap;
         align-content: stretch;
         align-items: center;
-        gap: 20px;
+        column-gap: 20px;
         font-size: large;
         justify-content: start;
 
@@ -46,10 +46,11 @@ body {
             flex-flow: row wrap;
             align-content: stretch;
             align-items: center;
-            gap: 20px;
+            column-gap: 20px;
+            row-gap: 5px;
             justify-content: center;
             flex-grow: 1;
-
+            padding-block: 10px;
         }
 
         h1 {
@@ -80,7 +81,7 @@ body {
 }
 
 .center-text {
-    max-width: 700px;
+    max-width: 900px;
     text-align: center;
 }
 

@@ -71,3 +71,11 @@ impl From<{{enum_value.name.to_case(Case::Pascal)}}> for {{enum_value.base_type}
         }
     }
 }
+
+impl ::device_driver::EnumIndex for {{enum_value.name.to_case(Case::Pascal)}} {
+    #[track_caller]
+    fn index(&self) -> i32 {
+        let index = {{enum_value.base_type}}::from(*self);
+        index.try_into().unwrap()
+    }
+}
