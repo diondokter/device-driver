@@ -121,10 +121,29 @@ hr {
 
     p {
         em {
-            background-color: var(--theme-shade-2);
+            background-color: var(--theme-shade-4);
             border-radius: 4px;
-            padding-inline: 0.5em;
+            padding-inline: 0.4em;
             white-space: nowrap;
+
+            a:link {
+                text-decoration-style: dotted;
+                text-decoration-color: var(--text-dim);
+                color: inherit;
+            }
+
+            a:visited {
+                color: inherit;
+            }
+
+            a:hover {
+                text-decoration: underline;
+                color: var(--text-theme);
+            }
+
+            a:active {
+                text-decoration: underline;
+            }
         }
     }
 }

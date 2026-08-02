@@ -8,6 +8,8 @@ use crate::{
 pub trait VariantNames {
     /// Names of the variants of this enum
     const VARIANTS: &'static [&'static str];
+    /// Get the name of the current instance
+    fn name(&self) -> &'static str;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -26,6 +28,9 @@ pub enum Integer {
 
 impl VariantNames for Integer {
     const VARIANTS: &[&'static str] = &["u8", "u16", "u32", "u64", "i8", "i16", "i32", "i64"];
+    fn name(&self) -> &'static str {
+        Self::VARIANTS[*self as usize]
+    }
 }
 
 impl Display for Integer {
@@ -172,6 +177,9 @@ impl Access {
 
 impl VariantNames for Access {
     const VARIANTS: &[&'static str] = &["RW", "RO", "WO"];
+    fn name(&self) -> &'static str {
+        Self::VARIANTS[*self as usize]
+    }
 }
 
 impl Display for Access {
@@ -203,6 +211,9 @@ pub enum ByteOrder {
 
 impl VariantNames for ByteOrder {
     const VARIANTS: &[&'static str] = &["LE", "BE"];
+    fn name(&self) -> &'static str {
+        Self::VARIANTS[*self as usize]
+    }
 }
 
 impl Display for ByteOrder {
@@ -348,6 +359,9 @@ impl VariantNames for NodeType {
         "manifest", "device", "block", "register", "command", "buffer", "fieldset", "enum",
         "extern", "field",
     ];
+    fn name(&self) -> &'static str {
+        Self::VARIANTS[*self as usize]
+    }
 }
 
 impl Display for NodeType {
@@ -387,6 +401,9 @@ pub enum AddressMode {
 
 impl VariantNames for AddressMode {
     const VARIANTS: &[&'static str] = &["mapped", "indexed"];
+    fn name(&self) -> &'static str {
+        Self::VARIANTS[*self as usize]
+    }
 }
 
 impl Display for AddressMode {

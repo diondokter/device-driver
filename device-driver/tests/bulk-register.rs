@@ -83,11 +83,11 @@ device_driver::compile!(
 );
 
 #[test]
-fn multi() {
+fn bulk() {
     let mut device = MyTestDevice::new(DeviceInterface::new());
 
     device
-        .multi_write()
+        .bulk_write()
         .with(|d| d.foo().plan())
         .with(|d| d.bar().plan())
         .execute(|(foo, bar)| {
@@ -97,7 +97,7 @@ fn multi() {
         .unwrap();
 
     let (foo, bar) = device
-        .multi_read()
+        .bulk_read()
         .with(|d| d.foo().plan())
         .with(|d| d.bar().plan())
         .execute()
@@ -107,7 +107,7 @@ fn multi() {
     assert_eq!(bar.value(), 42);
 
     device
-        .multi_modify()
+        .bulk_modify()
         .with(|d| d.foo().plan())
         .with(|d| d.bar().plan())
         .execute(|(foo, bar)| {
@@ -117,7 +117,7 @@ fn multi() {
         .unwrap();
 
     let (foo, bar) = device
-        .multi_read()
+        .bulk_read()
         .with(|d| d.foo().plan())
         .with(|d| d.bar().plan())
         .execute()
@@ -161,12 +161,12 @@ fn array() {
 }
 
 #[test]
-fn multi_array() {
+fn bulk_array() {
     use device_driver::Block;
     let mut device = MyTestDevice::new(DeviceInterface::new());
 
     device
-        .multi_write()
+        .bulk_write()
         .with(|d| d.foo().plan())
         .with(|d| d.bar().plan())
         .with(|d| d.foo_repeated().plan_at(0))
@@ -179,7 +179,7 @@ fn multi_array() {
         .unwrap();
 
     let (_, _, foo0, [foo1, foo2]) = device
-        .multi_read()
+        .bulk_read()
         .with(|d| d.foo().plan())
         .with(|d| d.bar().plan())
         .with(|d| d.foo_repeated().plan_at(0))
@@ -192,7 +192,7 @@ fn multi_array() {
     assert_eq!(foo2.value(), 44);
 
     device
-        .multi_modify()
+        .bulk_modify()
         .with(|d| d.foo().plan())
         .with(|d| d.bar().plan())
         .with(|d| d.foo_repeated().plan_at(0))
@@ -207,7 +207,7 @@ fn multi_array() {
         .unwrap();
 
     let (foo, bar, foo0, [foo1, foo2]) = device
-        .multi_read()
+        .bulk_read()
         .with(|d| d.foo().plan())
         .with(|d| d.bar().plan())
         .with(|d| d.foo_repeated().plan_at(0))
@@ -234,6 +234,6 @@ fn array_oob() {
 fn plan_array_oob() {
     let mut device = MyTestDevice::new(DeviceInterface::new());
     device
-        .multi_read()
+        .bulk_read()
         .with(|d| d.foo_repeated().plan_array_at::<3>(2));
 }

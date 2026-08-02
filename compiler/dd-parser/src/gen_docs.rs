@@ -6,33 +6,67 @@ use device_driver_diagnostics::{DynError, ResultExt};
 use crate::{InputType, RichExtra};
 
 pub fn gen_docs(output_path: &Path) -> Result<(), DynError> {
+    // railroad
+
     gen_railroad(&output_path.join("node.svg"), super::node())
         .with_message(|| "generating node railroad diagram")?;
     gen_railroad(&output_path.join("range.svg"), super::range())
-        .with_message(|| "generating node railroad diagram")?;
+        .with_message(|| "generating range railroad diagram")?;
     gen_railroad(&output_path.join("byte-array.svg"), super::byte_array())
-        .with_message(|| "generating node railroad diagram")?;
+        .with_message(|| "generating byte-array railroad diagram")?;
     gen_railroad(
         &output_path.join("simple-expression.svg"),
         super::simple_expression(),
     )
-    .with_message(|| "generating node railroad diagram")?;
+    .with_message(|| "generating nodsimple-expressione railroad diagram")?;
     gen_railroad(&output_path.join("repeat.svg"), super::repeat())
-        .with_message(|| "generating node railroad diagram")?;
+        .with_message(|| "generating repeat railroad diagram")?;
+    gen_railroad(
+        &output_path.join("property.svg"),
+        super::property(super::node()),
+    )
+    .with_message(|| "generating property railroad diagram")?;
+    gen_railroad(
+        &output_path.join("type-specifier.svg"),
+        super::type_specifier(super::node()),
+    )
+    .with_message(|| "generating type-specifier railroad diagram")?;
+    gen_railroad(
+        &output_path.join("node-body.svg"),
+        super::node_body(super::node()),
+    )
+    .with_message(|| "generating node-body railroad diagram")?;
+
+    // ebnf
 
     gen_ebnf(&output_path.join("node.ebnf"), super::node())
         .with_message(|| "generating node railroad diagram")?;
     gen_ebnf(&output_path.join("range.ebnf"), super::range())
-        .with_message(|| "generating node railroad diagram")?;
+        .with_message(|| "generating range railroad diagram")?;
     gen_ebnf(&output_path.join("byte-array.ebnf"), super::byte_array())
-        .with_message(|| "generating node railroad diagram")?;
+        .with_message(|| "generating byte-array railroad diagram")?;
     gen_ebnf(
         &output_path.join("simple-expression.ebnf"),
         super::simple_expression(),
     )
-    .with_message(|| "generating node railroad diagram")?;
+    .with_message(|| "generating simple-expression railroad diagram")?;
     gen_ebnf(&output_path.join("repeat.ebnf"), super::repeat())
-        .with_message(|| "generating node railroad diagram")?;
+        .with_message(|| "generating repeat railroad diagram")?;
+    gen_ebnf(
+        &output_path.join("property.ebnf"),
+        super::property(super::node()),
+    )
+    .with_message(|| "generating property railroad diagram")?;
+    gen_ebnf(
+        &output_path.join("type-specifier.ebnf"),
+        super::type_specifier(super::node()),
+    )
+    .with_message(|| "generating type-specifier railroad diagram")?;
+    gen_ebnf(
+        &output_path.join("node-body.ebnf"),
+        super::node_body(super::node()),
+    )
+    .with_message(|| "generating node-body railroad diagram")?;
 
     Ok(())
 }

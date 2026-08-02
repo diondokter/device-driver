@@ -1,0 +1,3 @@
+(CurlyOpen [ (({ property [Comma]} Comma) { node [Comma]}
+  | { property [Comma]}
+  | { node [Comma]}) [ Comma ] ]) CurlyClose

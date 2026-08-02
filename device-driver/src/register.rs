@@ -104,7 +104,7 @@ where
         (self.register_new_with_reset)()
     }
 
-    /// Get a plan to read, write or modify for multi register transactions
+    /// Get a plan to read, write or modify for bulk register operations
     pub fn plan(&self) -> Plan<AddressType, RegisterFs, Access>
     where
         Repeat: NotRepeating,
@@ -116,7 +116,7 @@ where
         }
     }
 
-    /// Get a plan to read, write or modify for multi register transactions at a given index
+    /// Get a plan to read, write or modify for bulk register operations at a given index
     #[track_caller]
     pub fn plan_at(&self, index: Repeat::Index) -> Plan<AddressType, RegisterFs, Access>
     where
@@ -157,7 +157,7 @@ where
         }
     }
 
-    /// Get a plan to read, write or modify an array of registers for multi register transactions with a given start index and length
+    /// Get a plan to read, write or modify an array of registers for bulk register operations with a given start index and length
     #[track_caller]
     pub fn plan_array_at<const N: usize>(
         self,
@@ -884,7 +884,7 @@ where
     }
 }
 
-/// A plan that is used for multi-reads and writes.
+/// A plan that is used for bulk-reads and writes.
 pub struct Plan<AddressType: Copy, FS, Access> {
     /// The address of the register
     pub address: AddressType,
@@ -894,7 +894,7 @@ pub struct Plan<AddressType: Copy, FS, Access> {
 }
 
 /// A register operation for reading or writing multiple registers in one transaction
-pub struct MultiRegisterOperation<'b, B, AddressType: Address, Fieldsets, Access> {
+pub struct BulkRegisterOperation<'b, B, AddressType: Address, Fieldsets, Access> {
     pub(crate) block: &'b mut B,
     pub(crate) start_address: Option<AddressType>,
     pub(crate) next_address: Option<AddressType>,
@@ -902,8 +902,7 @@ pub struct MultiRegisterOperation<'b, B, AddressType: Address, Fieldsets, Access
     pub(crate) _phantom: PhantomData<Access>,
 }
 
-impl<B, AddressType, FieldSets, Access>
-    MultiRegisterOperation<'_, B, AddressType, FieldSets, Access>
+impl<B, AddressType, FieldSets, Access> BulkRegisterOperation<'_, B, AddressType, FieldSets, Access>
 where
     B: Block,
     B::RegisterAddressMode: AddressMode,
@@ -922,13 +921,13 @@ where
     }
 }
 
-impl<'b, B, AddressType, FieldSets> MultiRegisterOperation<'b, B, AddressType, FieldSets, WO>
+impl<'b, B, AddressType, FieldSets> BulkRegisterOperation<'b, B, AddressType, FieldSets, WO>
 where
     B: Block,
     B::RegisterAddressMode: AddressMode,
     AddressType: Address,
 {
-    /// Chain an extra write onto the multi-write.
+    /// Chain an extra write onto the bulk-write.
     ///
     /// The closure must return a plan for the register you want to write.
     /// The plan is created by calling [`RegisterOperation::plan`] or [`RegisterOperation::plan_with_zero`].
@@ -939,14 +938,14 @@ where
     pub fn with<FS: Fieldset, LocalAccess: WriteCapability>(
         self,
         f: impl FnOnce(&mut B) -> Plan<AddressType, FS, LocalAccess>,
-    ) -> MultiRegisterOperation<'b, B, AddressType, FieldSets::Appended, WO>
+    ) -> BulkRegisterOperation<'b, B, AddressType, FieldSets::Appended, WO>
     where
         FieldSets: Append<FS>,
     {
         let Plan { address, value, .. } = f(self.block);
         self.assert_legal(address);
 
-        MultiRegisterOperation {
+        BulkRegisterOperation {
             block: self.block,
             start_address: self.start_address.or(Some(address)),
             next_address: Some(B::RegisterAddressMode::next_address(
@@ -959,13 +958,13 @@ where
     }
 }
 
-impl<'b, B, AddressType, FieldSets> MultiRegisterOperation<'b, B, AddressType, FieldSets, RO>
+impl<'b, B, AddressType, FieldSets> BulkRegisterOperation<'b, B, AddressType, FieldSets, RO>
 where
     B: Block,
     B::RegisterAddressMode: AddressMode,
     AddressType: Address,
 {
-    /// Chain an extra read onto the multi-read.
+    /// Chain an extra read onto the bulk-read.
     ///
     /// The closure must return a plan for the register you want to read.
     /// The plan is created by calling [`RegisterOperation::plan`].
@@ -976,14 +975,14 @@ where
     pub fn with<FS: Fieldset, LocalAccess: ReadCapability>(
         self,
         f: impl FnOnce(&mut B) -> Plan<AddressType, FS, LocalAccess>,
-    ) -> MultiRegisterOperation<'b, B, AddressType, FieldSets::Appended, RO>
+    ) -> BulkRegisterOperation<'b, B, AddressType, FieldSets::Appended, RO>
     where
         FieldSets: Append<FS>,
     {
         let Plan { address, value, .. } = f(self.block);
         self.assert_legal(address);
 
-        MultiRegisterOperation {
+        BulkRegisterOperation {
             block: self.block,
             start_address: self.start_address.or(Some(address)),
             next_address: Some(B::RegisterAddressMode::next_address(
@@ -996,13 +995,13 @@ where
     }
 }
 
-impl<'b, B, AddressType, FieldSets> MultiRegisterOperation<'b, B, AddressType, FieldSets, RW>
+impl<'b, B, AddressType, FieldSets> BulkRegisterOperation<'b, B, AddressType, FieldSets, RW>
 where
     B: Block,
     B::RegisterAddressMode: AddressMode,
     AddressType: Address,
 {
-    /// Chain an extra modify onto the multi-modify.
+    /// Chain an extra modify onto the bulk-modify.
     ///
     /// The closure must return a plan for the register you want to modify.
     /// The plan is created by calling [`RegisterOperation::plan`].
@@ -1013,14 +1012,14 @@ where
     pub fn with<FS: Fieldset, LocalAccess: ReadCapability + WriteCapability>(
         self,
         f: impl FnOnce(&mut B) -> Plan<AddressType, FS, LocalAccess>,
-    ) -> MultiRegisterOperation<'b, B, AddressType, FieldSets::Appended, RW>
+    ) -> BulkRegisterOperation<'b, B, AddressType, FieldSets::Appended, RW>
     where
         FieldSets: Append<FS>,
     {
         let Plan { address, value, .. } = f(self.block);
         self.assert_legal(address);
 
-        MultiRegisterOperation {
+        BulkRegisterOperation {
             block: self.block,
             start_address: self.start_address.or(Some(address)),
             next_address: Some(B::RegisterAddressMode::next_address(
@@ -1034,7 +1033,7 @@ where
 }
 
 impl<B, Fieldsets>
-    MultiRegisterOperation<
+    BulkRegisterOperation<
         '_,
         B,
         <B::Interface as RegisterInterfaceBase>::AddressType,
@@ -1049,7 +1048,7 @@ where
     /// Execute the read.
     ///
     /// If ok, the fieldset values are returned as a tuple.
-    /// If the multi-read was illegal or the read failed, an error is returned.
+    /// If the bulk-read was illegal or the read failed, an error is returned.
     #[inline]
     pub fn execute(
         mut self,
@@ -1070,7 +1069,7 @@ where
     /// Execute the read.
     ///
     /// If ok, the fieldset values are returned as a tuple.
-    /// If the multi-read was illegal or the read failed, an error is returned.
+    /// If the bulk-read was illegal or the read failed, an error is returned.
     #[inline]
     pub async fn execute_async(
         mut self,
@@ -1091,7 +1090,7 @@ where
 }
 
 impl<B, Fieldsets>
-    MultiRegisterOperation<
+    BulkRegisterOperation<
         '_,
         B,
         <B::Interface as RegisterInterfaceBase>::AddressType,
@@ -1110,7 +1109,7 @@ where
     /// The fieldset values are either the reset value or all-0's based on which plan was used in the chaining phase.
     ///
     /// If ok, the return value of the closure is returned.
-    /// If the multi-write was illegal or the read failed, an error is returned.
+    /// If the bulk-write was illegal or the read failed, an error is returned.
     #[inline]
     pub fn execute(
         mut self,
@@ -1134,7 +1133,7 @@ where
     /// The fieldset values are either the reset value or all-0's based on which plan was used in the chaining phase.
     ///
     /// If ok, the return value of the closure is returned.
-    /// If the multi-write was illegal or the read failed, an error is returned.
+    /// If the bulk-write was illegal or the read failed, an error is returned.
     #[inline]
     pub fn execute_async(
         mut self,
@@ -1159,7 +1158,7 @@ where
 }
 
 impl<B, Fieldsets>
-    MultiRegisterOperation<
+    BulkRegisterOperation<
         '_,
         B,
         <B::Interface as RegisterInterfaceBase>::AddressType,
@@ -1178,7 +1177,7 @@ where
     /// The modified values will be written back to the device.
     ///
     /// If ok, the return value of the closure is returned.
-    /// If the multi-modify was illegal or the read failed, an error is returned.
+    /// If the bulk-modify was illegal or the read failed, an error is returned.
     #[inline]
     pub fn execute(
         mut self,
@@ -1208,7 +1207,7 @@ where
     /// The modified values will be written back to the device.
     ///
     /// If ok, the return value of the closure is returned.
-    /// If the multi-modify was illegal or the read failed, an error is returned.
+    /// If the bulk-modify was illegal or the read failed, an error is returned.
     #[inline]
     pub async fn execute_async(
         mut self,

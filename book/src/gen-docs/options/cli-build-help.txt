@@ -1,0 +1,27 @@
+Usage: [OPTIONS] <COMMAND>
+
+Commands:
+  rust  Generate Rust code
+  help  Print this message or the help of the given subcommand(s)
+
+Options:
+  -s, --source <FILE>
+          Path to the input file
+
+  -o, --output <FILE>
+          Path to output location. Any existing file is overwritten. If not provided, the output is written to stdout
+
+      --unstable-ui-test-mode
+          Improves reproducibility across versions
+
+      --unstable-mir-randomize-seed=<SEED>
+          The seed to use for randomization. If not specified, a random seed is used
+
+      --unstable-mir-randomize-passes
+          Randomize the order of the mir passes
+
+      --unstable-mir-check-assumptions
+          Run assumption checks for the passes
+
+  -h, --help
+          Print help

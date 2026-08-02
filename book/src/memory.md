@@ -33,6 +33,9 @@ There are two options generally:
 
 ### Bit order
 
+> [!NOTE]
+> V2 doesn't support changing the bit order and is always LSB0. If you do encounter the rare MSB0 device, then swap the bits manually in the interface or let the hardware peripheral do it for you if possible
+
 There is also order on the bit level. We get to decide which bit is the smallest of the 8 in a byte.
 There's two options:
 
@@ -153,7 +156,20 @@ Bit order
 - Thus this is **Least Significant Bit 0 (LSB0)**
 
 And so we get our register definition:
+```ddsl
+// V2 DDSL
+register OutX {
+    address: 0x68,
+    fields: fieldset _ {
+        size-bytes: 2,
+        byte-order: LE,
+
+        field value 15:0 -> int,
+    }
+}
+```
 ```rust
+// V1 DSL
 register OutX {
     const ADDRESS = 0x68; // Including bit for multi-register ops
     const SIZE_BITS = 16;
@@ -202,7 +218,22 @@ Bit order
 - The 0th bit is the last/least significant one
 - Thus this is **Least Significant Bit 0 (LSB0)**
 
+```ddsl
+// V2 DDSL
+register OutX {
+    address: 0x05,
+    fields: fieldset _ {
+        size-bytes: 4,
+        byte-order: BE,
+
+        field synt 27:0 -> uint,
+        field bs 28 -> bool,
+        field pll_cp_isel 31:29 -> uint
+    }
+}
+```
 ```rust
+// V1 DSL
 register OutX {
     const ADDRESS = 0x05;
     const SIZE_BITS = 32;
@@ -228,7 +259,23 @@ Luckily for us, the user manual spells out the modes (along to the diagrams):
   - Depends on the hardware settings of the SPI. We set it to most significant bit first to match the datasheet.
   - Thus **Least Significant Bit 0 (LSB0)** (assuming your SPI master also sees the first bit as the LSB)
 
+```ddsl
+// V2 DDSL
+register DevId {
+    address: 0x00,
+    fields: fieldset _ {
+        size-bytes: 4,
+        byte-order: LE,
+
+        field r_id_tag 31:16 -> uint,
+        field model 15:8 -> uint,
+        field ver 7:4 -> uint,
+        field rev 3:0 -> uint
+    }
+}
+```
 ```rust
+// V1 DSL
 register DevId {
     const ADDRESS = 0x00;
     const SIZE_BITS = 32;
