@@ -689,12 +689,155 @@ impl<SPI: SpiBus, A: OutputPin, L: OutputPin, R: OutputPin, D: DelayNs>
 }
 ```
 
-#### High level
-
-#### Adding defmt support
+With that we've done all the setup we need!
 
 ## Using the driver
 
+Let's create an instance of the driver and explore how we can now use it.
+
+```rust
+// Create an instance of the interface we need to talk with the chip
+// Get your SPI and gpio from your HAL
+let interface = ShiftInterface::new(
+    Spi::new_txonly(p.SPI1, p.PB3, p.PB5, p.DMA1_CH1, Irqs, config),
+    Output::new(p.PB14, Level::Low, Speed::VeryHigh),
+    Output::new(p.PC4, Level::Low, Speed::VeryHigh),
+    Output::new(p.PD1, Level::Low, Speed::VeryHigh),
+    embassy_time::Delay,
+);
+
+// Create the driver
+let mut ym3812 = Ym3812::new(interface);
+// Access the interface to call its reset function
+ym3812.interface().reset().await?;
+```
+
+Now we know the device is in a good state (reset) and ready to use.
+
 ### Example from docs
 
-### Our own instruments
+Let's make a sound, that's the entire point after all.
+Again, the guide helps us!
+
+```txt
+{{#include ../assets/adlib_sb.txt:448:476}}
+```
+
+So, let's replicate that using our new driver.
+With device-driver we're not fiddling with bits manually, but use named methods. But since our source is specified in addresses and bits, we'll need to work backwards.
+
+```rust
+ym3812.enable_waveform_control()
+    .write_async(|w| w.set_ws(true))
+    .await
+    .unwrap();
+
+let mut operator_settings = ym3812.channel_operator_settings(ChannelOperators::C1);
+
+// Set operator 1 settings
+
+operator_settings
+    .operator_settings_0()
+    .write_at_async(Operator::O1, |reg| {
+        reg.set_modulator_frequency_multiple(ModulatorFrequencyMultiple::AtSpecified)
+    })
+    .await?;
+operator_settings
+    .operator_settings_1()
+    .write_at_async(Operator::O1, |reg| {
+        reg.set_output_level(0x10);
+    })
+    .await?;
+operator_settings
+    .operator_settings_2()
+    .write_at_async(Operator::O1, |reg| {
+        reg.set_attack_rate(15);
+        reg.set_decay_rate(0);
+    })
+    .await?;
+operator_settings
+    .operator_settings_3()
+    .write_at_async(Operator::O1, |reg| {
+        reg.set_sustain_level(7);
+        reg.set_release_rate(7);
+    })
+    .await?;
+
+// Set operator 2 settings
+
+operator_settings
+    .operator_settings_0()
+    .write_at_async(Operator::O2, |reg| {
+        reg.set_modulator_frequency_multiple(ModulatorFrequencyMultiple::AtSpecified)
+    })
+    .await?;
+operator_settings
+    .operator_settings_1()
+    .write_at_async(Operator::O2, |reg| {
+        reg.set_output_level(0);
+    })
+    .await?;
+operator_settings
+    .operator_settings_2()
+    .write_at_async(Operator::O2, |reg| {
+        reg.set_attack_rate(15);
+        reg.set_decay_rate(0);
+    })
+    .await?;
+operator_settings
+    .operator_settings_3()
+    .write_at_async(Operator::O2, |reg| {
+        reg.set_sustain_level(7);
+        reg.set_release_rate(7);
+    })
+    .await?;
+
+// Set channel settings
+
+let mut channel = ym3812.channel_general_settings(Channel::C1);
+
+channel
+    .channel_settings_0()
+    .write_async(|reg| reg.set_frequency_number_lsb(0x98))
+    .await?;
+channel
+    .channel_settings_1()
+    .write_async(|reg| {
+        reg.set_key_on(true);
+        reg.set_frequency_number_high(1);
+        reg.set_block_number(4);
+    })
+    .await?;
+
+ym3812.interface().delay.delay_ms(1000).await;
+
+ym3812.channel_general_settings(Channel::C1)
+    .channel_settings_1()
+    .modify_async(|reg| {
+        reg.set_key_on(false);
+    })
+    .await?;
+```
+
+Cool, let's check if this actually works:
+
+<audio controls src="../assets/OPL_beep.mp3" preload="metadata" style="width: 100%;"></audio>
+
+It does!
+
+We've got a working driver. Now the world, or at least this device, is our oyster.
+From here you can extend your driver as you like. Setting each register every time is bothersome, so you might want to create some rust functions that take an instrument and set all the registers required for that instrument.
+
+If you want to make music, you'll need to drive that too yourself, so you'll want to make some sort of sequencer.
+
+Exactly how you structure that is up to you. Generally I've found it good practise to view the driver as we have now as a 'low level' driver which we can wrap with a 'high level' driver. That's similar to how a PAC and HAL relate on microcontrollers.
+
+In the future, device-driver hopes to offer some more high level features. You'll have to stay tuned for that and/or peruse the issue tracker on github. Suggestions are always welcome too!
+
+If you want to see how I tackled that, take a look here: https://github.com/diondokter/ym3812/
+
+If things are unclear or could be improved for this tutorial, please send PRs, open issues or hit me up in the chatroom!
+
+I'll leave you with the song that's played by the example through my terrible hacked up sequencer I made 6 years ago:
+
+<audio controls src="../assets/OPL_mission_impossible.mp3" preload="metadata" style="width: 100%;"></audio>
