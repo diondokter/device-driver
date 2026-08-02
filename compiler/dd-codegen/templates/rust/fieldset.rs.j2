@@ -3,6 +3,7 @@
 #[derive(Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct {{field_set.name.to_case(Case::Pascal)}} {
+    #[doc(hidden)]
     /// The internal bits
     bits: [u8; {{field_set.size_bytes}}]
 }

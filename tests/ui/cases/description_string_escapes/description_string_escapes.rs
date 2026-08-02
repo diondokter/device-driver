@@ -63,6 +63,7 @@ impl<I> ::device_driver::Block for Device<I> {
 #[derive(Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct FooFieldSet {
+    #[doc(hidden)]
     /// The internal bits
     bits: [u8; 3],
 }

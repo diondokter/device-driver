@@ -102,6 +102,7 @@ impl<I> ::device_driver::Block for Device<I> {
 #[derive(Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct FooWoFieldSet {
+    #[doc(hidden)]
     /// The internal bits
     bits: [u8; 8],
 }
@@ -253,6 +254,7 @@ impl core::ops::Not for FooWoFieldSet {
 #[derive(Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct FooRwFieldSet {
+    #[doc(hidden)]
     /// The internal bits
     bits: [u8; 8],
 }
@@ -404,6 +406,7 @@ impl core::ops::Not for FooRwFieldSet {
 #[derive(Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct FooRoFieldSet {
+    #[doc(hidden)]
     /// The internal bits
     bits: [u8; 8],
 }
