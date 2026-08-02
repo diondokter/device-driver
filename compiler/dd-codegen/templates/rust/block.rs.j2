@@ -12,7 +12,8 @@ pub struct {{ block.name.to_case(Case::Pascal) }}{{block_generics}} {
     {% if block.root %}
     pub(crate) interface: I,
     {% else %}
-    pub(crate) interface: &'i mut I,
+    #[doc(hidden)]
+    interface: &'i mut I,
     {% endif %}
     #[doc(hidden)]
     base_address: {{device.internal_address_type}},

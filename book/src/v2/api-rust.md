@@ -37,8 +37,6 @@ pub enum Bar { ... }
 > Private/unstable APIs contain `#[doc(hidden)]` attributes and are meant for internal use only.
 >
 > If you're unsure, feel free to create an issue or to ask about it in the chat room.
-> 
-> _TODO: Do a pass over this_
 
 ## Operations
 

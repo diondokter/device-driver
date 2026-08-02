@@ -127,7 +127,8 @@ impl<I> ::device_driver::Block for Blah<I> {
 }
 #[derive(Debug)]
 pub struct Wheee<'i, I> {
-    pub(crate) interface: &'i mut I,
+    #[doc(hidden)]
+    interface: &'i mut I,
     #[doc(hidden)]
     base_address: u8,
 }
@@ -153,7 +154,8 @@ impl<'i, I> ::device_driver::Block for Wheee<'i, I> {
 }
 #[derive(Debug)]
 pub struct Wheee2<'i, I> {
-    pub(crate) interface: &'i mut I,
+    #[doc(hidden)]
+    interface: &'i mut I,
     #[doc(hidden)]
     base_address: u8,
 }
@@ -180,6 +182,7 @@ impl<'i, I> ::device_driver::Block for Wheee2<'i, I> {
 #[derive(Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct Bar {
+    #[doc(hidden)]
     /// The internal bits
     bits: [u8; 1],
 }
@@ -302,6 +305,7 @@ impl core::ops::Not for Bar {
 #[derive(Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct BarDup4 {
+    #[doc(hidden)]
     /// The internal bits
     bits: [u8; 1],
 }
@@ -457,6 +461,7 @@ impl From<Quux> for u8 {
         }
     }
 }
+#[doc(hidden)]
 impl ::device_driver::EnumIndex for Quux {
     #[track_caller]
     fn index(&self) -> i32 {
@@ -501,6 +506,7 @@ impl From<QuuxDup3> for u8 {
         }
     }
 }
+#[doc(hidden)]
 impl ::device_driver::EnumIndex for QuuxDup3 {
     #[track_caller]
     fn index(&self) -> i32 {
@@ -536,6 +542,7 @@ impl From<Wheee2Dup6> for u8 {
         }
     }
 }
+#[doc(hidden)]
 impl ::device_driver::EnumIndex for Wheee2Dup6 {
     #[track_caller]
     fn index(&self) -> i32 {
