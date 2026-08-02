@@ -9,6 +9,11 @@ pub trait BufferInterfaceBase {
     type AddressType: Address;
 }
 
+impl<T: BufferInterfaceBase> BufferInterfaceBase for &mut T {
+    type Error = T::Error;
+    type AddressType = T::AddressType;
+}
+
 /// A trait to represent the interface to the device.
 ///
 /// This is called to read from and write to buffers.
@@ -25,6 +30,20 @@ pub trait BufferInterface: BufferInterfaceBase {
     ///
     /// This interface must adhere to [`embedded_io::Read::read`].
     fn read(&mut self, address: Self::AddressType, buf: &mut [u8]) -> Result<usize, Self::Error>;
+}
+
+impl<T: BufferInterface> BufferInterface for &mut T {
+    fn write(&mut self, address: Self::AddressType, buf: &[u8]) -> Result<usize, Self::Error> {
+        (*self).write(address, buf)
+    }
+
+    fn flush(&mut self, address: Self::AddressType) -> Result<(), Self::Error> {
+        (*self).flush(address)
+    }
+
+    fn read(&mut self, address: Self::AddressType, buf: &mut [u8]) -> Result<usize, Self::Error> {
+        (*self).read(address, buf)
+    }
 }
 
 /// A trait to represent the interface to the device.
@@ -48,6 +67,31 @@ pub trait AsyncBufferInterface: BufferInterfaceBase {
         address: Self::AddressType,
         buf: &mut [u8],
     ) -> Result<usize, Self::Error>;
+}
+
+impl<T: AsyncBufferInterface> AsyncBufferInterface for &mut T {
+    fn write(
+        &mut self,
+        address: Self::AddressType,
+        buf: &[u8],
+    ) -> impl Future<Output = Result<usize, Self::Error>> {
+        (*self).write(address, buf)
+    }
+
+    fn flush(
+        &mut self,
+        address: Self::AddressType,
+    ) -> impl Future<Output = Result<(), Self::Error>> {
+        (*self).flush(address)
+    }
+
+    fn read(
+        &mut self,
+        address: Self::AddressType,
+        buf: &mut [u8],
+    ) -> impl Future<Output = Result<usize, Self::Error>> {
+        (*self).read(address, buf)
+    }
 }
 
 /// Intermediate type for doing buffer operations

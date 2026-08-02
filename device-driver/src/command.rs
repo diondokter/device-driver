@@ -10,6 +10,11 @@ pub trait CommandInterfaceBase {
     type AddressType: Copy;
 }
 
+impl<T: CommandInterfaceBase> CommandInterfaceBase for &mut T {
+    type Error = T::Error;
+    type AddressType = T::AddressType;
+}
+
 /// A trait to represent the interface to the device.
 ///
 /// This is called to dispatch commands.
@@ -30,6 +35,19 @@ pub trait CommandInterface: CommandInterfaceBase {
     ) -> Result<(), Self::Error>;
 }
 
+impl<T: CommandInterface> CommandInterface for &mut T {
+    fn dispatch_command(
+        &mut self,
+        address: Self::AddressType,
+        input: &mut [u8],
+        input_metadata: &FieldsetMetadata,
+        output: &mut [u8],
+        output_metadata: &FieldsetMetadata,
+    ) -> Result<(), Self::Error> {
+        (*self).dispatch_command(address, input, input_metadata, output, output_metadata)
+    }
+}
+
 /// A trait to represent the interface to the device.
 ///
 /// This is called to asynchronously dispatch commands.
@@ -48,6 +66,19 @@ pub trait AsyncCommandInterface: CommandInterfaceBase {
         output: &mut [u8],
         _output_metadata: &FieldsetMetadata,
     ) -> Result<(), Self::Error>;
+}
+
+impl<T: AsyncCommandInterface> AsyncCommandInterface for &mut T {
+    fn dispatch_command(
+        &mut self,
+        address: Self::AddressType,
+        input: &mut [u8],
+        input_metadata: &FieldsetMetadata,
+        output: &mut [u8],
+        output_metadata: &FieldsetMetadata,
+    ) -> impl Future<Output = Result<(), Self::Error>> {
+        (*self).dispatch_command(address, input, input_metadata, output, output_metadata)
+    }
 }
 
 /// Intermediate type for doing command operations
