@@ -3,7 +3,7 @@
 
 function ddslLanguage(hljs) {
     const nodeTypes = "manifest device register command buffer block extern enum field fieldset";
-    const KEYWORDS = "default catch-all allow as stride";
+    const KEYWORDS = "default catch-all allow as stride try";
     const typeKeywords = "bool int uint u8 u16 u32 u64 i8 i16 i32 i64 LE BE _ RO RW WO mapped indexed";
 
     return {

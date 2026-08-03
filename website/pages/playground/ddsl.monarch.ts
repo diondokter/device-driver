@@ -29,7 +29,7 @@ export const language: monaco.languages.IMonarchLanguage = {
   ],
 
   keywords: [
-    'default', 'catch-all', 'allow', 'as', 'stride'
+    'default', 'catch-all', 'allow', 'as', 'stride', 'try'
   ],
 
   typeKeywords: [
