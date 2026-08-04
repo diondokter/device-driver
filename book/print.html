@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-09934aac.js";
+            window.path_to_searchindex_js = "searchindex-4a7d52b4.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-ca5e7c95.js"></script>
@@ -471,16 +471,20 @@ There’s no good names given to these registers, so we’ll have to be a bit cr
 <p>We can notice it’s located at address 1, is 1 byte in size and only uses bit 5.</p>
 <p>In device-driver, this data is encoded with two objects: a <a href="#register"><code>register</code></a> and a <a href="#fieldset"><code>fieldset</code></a>. The fieldset describes the data of the register and the register describes how it relates to the device.</p>
 <p>Let’s define them in ddsl:</p>
-<pre><code class="language-ddsl">/// Register containing the Waveform Select Enable and some test fields
-register Enable_waveform_control {
-    address: 0x01,
-    fields: Enable_waveform_control,
-},
-fieldset Enable_waveform_control {
-    size-bytes: 1,
-    /// If clear, all channels will use normal sine wave.
-    /// If set, register E0-F5 (Waveform Select) contents will be used.
-    field WS 5 -&gt; bool,
+<pre><code class="language-ddsl">device Ym3812 {
+    register-address-type: u8,
+
+    /// Register containing the Waveform Select Enable and some test fields
+    register Enable_waveform_control {
+        address: 0x01,
+        fields: Enable_waveform_control,
+    },
+    fieldset Enable_waveform_control {
+        size-bytes: 1,
+        /// If clear, all channels will use normal sine wave.
+        /// If set, register E0-F5 (Waveform Select) contents will be used.
+        field WS 5 -&gt; bool,
+    }
 }
 </code></pre>
 <p>As you can see, we’ve defined the objects and put some doc comments on them too.
@@ -499,14 +503,14 @@ register Enable_waveform_control {
     },
 },
 </code></pre>
-<p>That’s much more concise! There are two additional change you may notice that use two different <code>auto</code> features:</p>
+<p>That’s much more concise! There are two additional changes you may notice that use two different <code>auto</code> features:</p>
 <ol>
-<li>We don’t specify the fieldset name and use an underscore. When defining inline types, this can be used so the type takes on the name of the node it’s being defined in.</li>
+<li>We don’t specify the fieldset name and use an underscore. When defining inline types, this can be used to make the type take on the name of the node it’s being defined in.</li>
 <li>We don’t specify the field is a bool anymore. This is the same as if we wrote <code>field WS 5 -&gt; _</code>. There are some rules about what the so-called base type of the field will become (in order):
 <ul>
 <li>If the field contains a conversion (we’ll see that later in the tutorial), it will take on the base type of the conversion target.</li>
 <li>If the field is 1 bit in size, it will become a <code>bool</code>.</li>
-<li>If the field is multiple bits, it will becoma a <code>uint</code>. (The <code>uint</code> will then become the smallest sized integer that fits the number of bits. So a <code>uint</code> with 11 bits becomes a <code>u16</code>)</li>
+<li>If the field is multiple bits, it will become a <code>uint</code>. (The <code>uint</code> will then become the smallest sized integer that fits the number of bits. So a <code>uint</code> with 11 bits becomes a <code>u16</code>)</li>
 </ul>
 </li>
 </ol>
@@ -529,7 +533,7 @@ register Enable_waveform_control {
 </code></pre>
 <p><code>7:0</code> is the bit range. It’s high to low and it’s an inclusive range. Again we don’t specify the base type of the value field,
 so it’ll become a u8 in this case.</p>
-<p>Let’s skip some of the registers that you should be able to define yourself already and go to the last global register that uses some new features:</p>
+<p>Let’s skip some of the registers that you should be able to define yourself already now and go to the last global register that uses some new features:</p>
 <pre><code class="language-txt">Byte BD - Amplitude Modulation Depth / Vibrato Depth / Rhythm
 
         7     6     5     4     3     2     1     0
