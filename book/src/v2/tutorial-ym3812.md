@@ -114,16 +114,20 @@ In device-driver, this data is encoded with two objects: a [`register`](./langua
 
 Let's define them in ddsl:
 ```ddsl
-/// Register containing the Waveform Select Enable and some test fields
-register Enable_waveform_control {
-    address: 0x01,
-    fields: Enable_waveform_control,
-},
-fieldset Enable_waveform_control {
-    size-bytes: 1,
-    /// If clear, all channels will use normal sine wave.
-    /// If set, register E0-F5 (Waveform Select) contents will be used.
-    field WS 5 -> bool,
+device Ym3812 {
+    register-address-type: u8,
+
+    /// Register containing the Waveform Select Enable and some test fields
+    register Enable_waveform_control {
+        address: 0x01,
+        fields: Enable_waveform_control,
+    },
+    fieldset Enable_waveform_control {
+        size-bytes: 1,
+        /// If clear, all channels will use normal sine wave.
+        /// If set, register E0-F5 (Waveform Select) contents will be used.
+        field WS 5 -> bool,
+    }
 }
 ```
 
@@ -147,12 +151,12 @@ register Enable_waveform_control {
 },
 ```
 
-That's much more concise! There are two additional change you may notice that use two different `auto` features:
-1. We don't specify the fieldset name and use an underscore. When defining inline types, this can be used so the type takes on the name of the node it's being defined in.
+That's much more concise! There are two additional changes you may notice that use two different `auto` features:
+1. We don't specify the fieldset name and use an underscore. When defining inline types, this can be used to make the type take on the name of the node it's being defined in.
 2. We don't specify the field is a bool anymore. This is the same as if we wrote `field WS 5 -> _`. There are some rules about what the so-called base type of the field will become (in order):
    - If the field contains a conversion (we'll see that later in the tutorial), it will take on the base type of the conversion target.
    - If the field is 1 bit in size, it will become a `bool`.
-   - If the field is multiple bits, it will becoma a `uint`. (The `uint` will then become the smallest sized integer that fits the number of bits. So a `uint` with 11 bits becomes a `u16`)
+   - If the field is multiple bits, it will become a `uint`. (The `uint` will then become the smallest sized integer that fits the number of bits. So a `uint` with 11 bits becomes a `u16`)
 
 Alright, next register:
 ```txt
@@ -173,7 +177,7 @@ register Timer_1_Data {
 `7:0` is the bit range. It's high to low and it's an inclusive range. Again we don't specify the base type of the value field,
 so it'll become a u8 in this case.
 
-Let's skip some of the registers that you should be able to define yourself already and go to the last global register that uses some new features:
+Let's skip some of the registers that you should be able to define yourself already now and go to the last global register that uses some new features:
 ```txt
 {{#include ../assets/adlib_sb.txt:379:397}}
 ```
