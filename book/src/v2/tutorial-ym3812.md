@@ -457,7 +457,7 @@ There's two styles in which we can architect the crate:
 
 For this tutorial, we'll set up for using the compile macro.
 
-Now that we've got our crate, we should a couple of things:
+Now that we've got our crate, we should do a couple of things:
 - Place our ddsl file in the crate root. Let's call it `ym3812.ddsl`, but you can call it anything.
 - Add the required dependencies:
   ```sh
@@ -838,7 +838,7 @@ Exactly how you structure that is up to you. Generally I've found it good practi
 
 In the future, device-driver hopes to offer some more high level features. You'll have to stay tuned for that and/or peruse the issue tracker on github. Suggestions are always welcome too!
 
-If you want to see how I tackled that, take a look here: https://github.com/diondokter/ym3812/
+If you want to see how I tackled that, take a look here: [github](https://github.com/diondokter/ym3812/)
 
 If things are unclear or could be improved for this tutorial, please send PRs, open issues or hit me up in the chatroom!
 
