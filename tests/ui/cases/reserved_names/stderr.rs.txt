@@ -1,0 +1,7 @@
+error: The device driver input has errors that need to be solved!
+   --> reserved_names.rs:229:1
+    |
+229 | compile_error!("The device driver input has errors that need to be solved!");
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: could not compile `reserved_names` (bin "reserved_names") due to 1 previous error

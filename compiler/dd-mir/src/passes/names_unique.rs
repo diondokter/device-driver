@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, num::NonZeroU32};
 
 use crate::{
     model::{LendingIterator, Manifest, Object, Unique, UniqueId},
@@ -25,7 +25,7 @@ impl Pass for NamesUnique {
         let mut duplicate_id = 0u32;
         let mut get_duplicate_id = || {
             duplicate_id = duplicate_id.wrapping_add(1);
-            duplicate_id
+            NonZeroU32::new(duplicate_id).ok_or_else(|| DynError::new("got too many duplicates"))
         };
 
         let mut iter = manifest.iter_objects_with_config_mut();
@@ -40,7 +40,7 @@ impl Pass for NamesUnique {
                 });
 
                 // Duplicate name found. Let's add to the name to make it unique again so it can contribute to later passes
-                object.name_mut().set_duplicate_id(get_duplicate_id());
+                object.name_mut().set_duplicate_id(get_duplicate_id()?);
                 // We've also 'seen' this duplicate
                 seen_ids.insert(object.id());
             }
@@ -59,7 +59,7 @@ impl Pass for NamesUnique {
                         });
 
                         // Duplicate name found. Let's add to the name to make it unique again so it can contribute to later passes
-                        field.name.set_duplicate_id(get_duplicate_id());
+                        field.name.set_duplicate_id(get_duplicate_id()?);
                         // We've also 'seen' this duplicate
                         seen_ids.insert(field.id_with(fs_id.clone()));
                     }
@@ -84,7 +84,7 @@ impl Pass for NamesUnique {
                         });
 
                         // Duplicate name found. Let's add to the name to make it unique again so it can contribute to later passes
-                        variant.name.set_duplicate_id(get_duplicate_id());
+                        variant.name.set_duplicate_id(get_duplicate_id()?);
                         // We've also 'seen' this duplicate
                         seen_ids.insert(variant.id_with(e_id.clone()));
                     }

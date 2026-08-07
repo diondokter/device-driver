@@ -18,14 +18,19 @@ fn main() {}
 /// Root block of the Device driver
 #[derive(Debug)]
 pub struct Device<I> {
-    pub(crate) interface: I,
+    interface: I,
     #[doc(hidden)]
+    #[allow(unused)]
     base_address: u8,
 }
 impl<I> Device<I> {
-    /// Create a new instance of the block based on device interface
+    /// Create a new instance of the device
     pub const fn new(interface: I) -> Self {
         Self { interface, base_address: 0 }
+    }
+    /// Drop the driver instance and reclaim the interface
+    pub fn free(self) -> I {
+        self.interface
     }
     #[doc(alias = "Foo")]
     pub fn foo(

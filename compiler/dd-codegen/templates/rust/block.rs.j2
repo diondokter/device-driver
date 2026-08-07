@@ -10,20 +10,26 @@
 #[derive(Debug)]
 pub struct {{ block.name.to_case(Case::Pascal) }}{{block_generics}} {
     {% if block.root %}
-    pub(crate) interface: I,
+    interface: I,
     {% else %}
     #[doc(hidden)]
     interface: &'i mut I,
     {% endif %}
     #[doc(hidden)]
+    #[allow(unused)]
     base_address: {{device.internal_address_type}},
 }
 
 impl{{block_generics}} {{ block.name.to_case(Case::Pascal) }}{{block_generics}} {
     {% if block.root %}
-    /// Create a new instance of the block based on device interface
+    /// Create a new instance of the device
     pub const fn new(interface: I) -> Self {
         Self { interface, base_address: 0 }
+    }
+
+    /// Drop the driver instance and reclaim the interface
+    pub fn free(self) -> I {
+        self.interface
     }
     {% else %}
     /// Create a new instance of the block based on device interface
@@ -147,5 +153,4 @@ impl{{block_generics}} ::device_driver::Block for {{ block.name.to_case(Case::Pa
         self.interface
     }
     {% endif %}
-
 }

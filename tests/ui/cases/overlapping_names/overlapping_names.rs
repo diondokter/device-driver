@@ -18,14 +18,19 @@ fn main() {}
 /// Root block of the Foo driver
 #[derive(Debug)]
 pub struct Foo<I> {
-    pub(crate) interface: I,
+    interface: I,
     #[doc(hidden)]
+    #[allow(unused)]
     base_address: u8,
 }
 impl<I> Foo<I> {
-    /// Create a new instance of the block based on device interface
+    /// Create a new instance of the device
     pub const fn new(interface: I) -> Self {
         Self { interface, base_address: 0 }
+    }
+    /// Drop the driver instance and reclaim the interface
+    pub fn free(self) -> I {
+        self.interface
     }
     #[doc(alias = "Bar")]
     pub fn bar(
@@ -52,14 +57,19 @@ impl<I> ::device_driver::Block for Foo<I> {
 #[doc(alias = "Foo")]
 #[derive(Debug)]
 pub struct FooDup1<I> {
-    pub(crate) interface: I,
+    interface: I,
     #[doc(hidden)]
+    #[allow(unused)]
     base_address: u8,
 }
 impl<I> FooDup1<I> {
-    /// Create a new instance of the block based on device interface
+    /// Create a new instance of the device
     pub const fn new(interface: I) -> Self {
         Self { interface, base_address: 0 }
+    }
+    /// Drop the driver instance and reclaim the interface
+    pub fn free(self) -> I {
+        self.interface
     }
     #[doc(alias = "Bar")]
     pub fn bar_dup_2(
@@ -85,14 +95,19 @@ impl<I> ::device_driver::Block for FooDup1<I> {
 /// Root block of the Blah driver
 #[derive(Debug)]
 pub struct Blah<I> {
-    pub(crate) interface: I,
+    interface: I,
     #[doc(hidden)]
+    #[allow(unused)]
     base_address: u8,
 }
 impl<I> Blah<I> {
-    /// Create a new instance of the block based on device interface
+    /// Create a new instance of the device
     pub const fn new(interface: I) -> Self {
         Self { interface, base_address: 0 }
+    }
+    /// Drop the driver instance and reclaim the interface
+    pub fn free(self) -> I {
+        self.interface
     }
     #[doc(alias = "Wheee")]
     pub fn wheee(&mut self) -> Wheee<'_, I> {
@@ -130,6 +145,7 @@ pub struct Wheee<'i, I> {
     #[doc(hidden)]
     interface: &'i mut I,
     #[doc(hidden)]
+    #[allow(unused)]
     base_address: u8,
 }
 impl<'i, I> Wheee<'i, I> {
@@ -157,6 +173,7 @@ pub struct Wheee2<'i, I> {
     #[doc(hidden)]
     interface: &'i mut I,
     #[doc(hidden)]
+    #[allow(unused)]
     base_address: u8,
 }
 impl<'i, I> Wheee2<'i, I> {

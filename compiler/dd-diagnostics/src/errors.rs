@@ -130,14 +130,14 @@ impl Diagnostic for DuplicateName {
                             .label(format!(
                                 "the original: {:?}, after word split: {:?}",
                                 self.original_value.original(),
-                                self.original_value.words().join("·")
+                                self.original_value.words_display()
                             )),
                     )
                     .annotation(AnnotationKind::Primary.span(self.duplicate.into()).label(
                         format!(
                             "the duplicate: {:?}, after word split: {:?}",
                             self.duplicate_value.original(),
-                            self.duplicate_value.words().join("·")
+                            self.duplicate_value.words_display()
                         ),
                     )),
             ),
@@ -2092,6 +2092,87 @@ impl Diagnostic for ZeroStrideRepeat {
                         .patch(Patch::new(self.stride.into(), "1")),
                 ),
             Group::with_title(Level::INFO.secondary_title(INFO_TEXT)),
+        ]
+        .to_vec()
+    }
+}
+
+#[derive(Debug)]
+pub struct ReservedOperationNameUsed {
+    pub name: Span,
+    pub operation_name: String,
+    pub reserved_names: &'static [&'static str],
+}
+
+impl Diagnostic for ReservedOperationNameUsed {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        let info_text: String = format!(
+            "reserved names are: {}",
+            self.reserved_names
+                .iter()
+                .map(|name| format!("`{name}`"))
+                .join(", ")
+        );
+
+        [
+            Level::ERROR
+                .primary_title("reserved operation name used")
+                .element(
+                Snippet::source(source).path(path).annotation(
+                    AnnotationKind::Primary
+                        .span(self.name.into())
+                        .label(format!(
+                            "`{}` is a reserved name for operations. Change it to something else",
+                            self.operation_name
+                        )),
+                ),
+            ),
+            Group::with_title(Level::INFO.secondary_title(info_text)),
+        ]
+        .to_vec()
+    }
+}
+
+#[derive(Debug)]
+pub struct FieldSetterNameCollision {
+    pub field: Span,
+    pub setter_name: String,
+    pub collision_field: Span,
+}
+
+impl Diagnostic for FieldSetterNameCollision {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        const HELP_TEXT: &str = "writable fields generate setter functions that have the word `set` prepended. This can collide with other field names.\nAvoid this by changing the name of one of the fields or by making the field read only so it doesn't generate a setter";
+
+        [
+            Level::ERROR
+                .primary_title("field setter name collision")
+                .element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(
+                        AnnotationKind::Primary
+                            .span(self.field.into())
+                            .label(format!(
+                                "this field is writable and generates a setter with a name that collides with another field: `{}`",
+                                self.setter_name
+                            )),
+                    )
+                    .annotation(
+                        AnnotationKind::Context
+                            .span(self.collision_field.into())
+                            .label("collides with this field"),
+                    ),
+            ),
+            Group::with_title(Level::HELP.secondary_title(HELP_TEXT)),
         ]
         .to_vec()
     }
