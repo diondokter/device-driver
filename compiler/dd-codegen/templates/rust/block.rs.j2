@@ -16,6 +16,7 @@ pub struct {{ block.name.to_case(Case::Pascal) }}{{block_generics}} {
     interface: &'i mut I,
     {% endif %}
     #[doc(hidden)]
+    #[allow(unused)]
     base_address: {{device.internal_address_type}},
 }
 
@@ -147,5 +148,4 @@ impl{{block_generics}} ::device_driver::Block for {{ block.name.to_case(Case::Pa
         self.interface
     }
     {% endif %}
-
 }

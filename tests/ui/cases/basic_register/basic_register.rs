@@ -22,6 +22,7 @@ fn main() {}
 pub struct Device<I> {
     pub(crate) interface: I,
     #[doc(hidden)]
+    #[allow(unused)]
     base_address: u8,
 }
 impl<I> Device<I> {

@@ -20,6 +20,7 @@ fn main() {}
 pub struct Foo<I> {
     pub(crate) interface: I,
     #[doc(hidden)]
+    #[allow(unused)]
     base_address: u8,
 }
 impl<I> Foo<I> {
@@ -54,6 +55,7 @@ impl<I> ::device_driver::Block for Foo<I> {
 pub struct FooDup1<I> {
     pub(crate) interface: I,
     #[doc(hidden)]
+    #[allow(unused)]
     base_address: u8,
 }
 impl<I> FooDup1<I> {
@@ -87,6 +89,7 @@ impl<I> ::device_driver::Block for FooDup1<I> {
 pub struct Blah<I> {
     pub(crate) interface: I,
     #[doc(hidden)]
+    #[allow(unused)]
     base_address: u8,
 }
 impl<I> Blah<I> {
@@ -130,6 +133,7 @@ pub struct Wheee<'i, I> {
     #[doc(hidden)]
     interface: &'i mut I,
     #[doc(hidden)]
+    #[allow(unused)]
     base_address: u8,
 }
 impl<'i, I> Wheee<'i, I> {
@@ -157,6 +161,7 @@ pub struct Wheee2<'i, I> {
     #[doc(hidden)]
     interface: &'i mut I,
     #[doc(hidden)]
+    #[allow(unused)]
     base_address: u8,
 }
 impl<'i, I> Wheee2<'i, I> {
