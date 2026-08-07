@@ -84,11 +84,52 @@ impl Bar {
         };
         raw > 0
     }
+    /// `bit 2` - Read the `other_field` field.
+    ///
+    #[must_use]
+    pub fn other_field(&self) -> bool {
+        let start = 2;
+        let end = 2;
+        let raw = unsafe {
+            ::device_driver::ops::load::<
+                u8,
+                ::device_driver::ops::LE,
+            >(&self.bits, start, end)
+        };
+        raw > 0
+    }
+    /// `bit 3` - Read the `set_other_field` field.
+    ///
+    #[must_use]
+    pub fn set_other_field(&self) -> bool {
+        let start = 3;
+        let end = 3;
+        let raw = unsafe {
+            ::device_driver::ops::load::<
+                u8,
+                ::device_driver::ops::LE,
+            >(&self.bits, start, end)
+        };
+        raw > 0
+    }
     /// `bit 1` - Set the `set_my_field` field.
     ///
     pub fn set_set_my_field(&mut self, value: bool) {
         let start = 1;
         let end = 1;
+        let raw = value as _;
+        unsafe {
+            ::device_driver::ops::store::<
+                u8,
+                ::device_driver::ops::LE,
+            >(raw, start, end, &mut self.bits)
+        };
+    }
+    /// `bit 3` - Set the `set_other_field` field.
+    ///
+    pub fn set_set_other_field(&mut self, value: bool) {
+        let start = 3;
+        let end = 3;
         let raw = value as _;
         unsafe {
             ::device_driver::ops::store::<
@@ -118,6 +159,8 @@ impl core::fmt::Debug for Bar {
         let mut d = f.debug_struct("Bar");
         d.field("my_field", &self.my_field());
         d.field("set_my_field", &self.set_my_field());
+        d.field("other_field", &self.other_field());
+        d.field("set_other_field", &self.set_other_field());
         d.finish()
     }
 }
@@ -127,6 +170,8 @@ impl defmt::Format for Bar {
         defmt::write!(f, "Bar {{ ");
         defmt::write!(f, "my_field: {=bool}, ", & self.my_field());
         defmt::write!(f, "set_my_field: {=bool}, ", & self.set_my_field());
+        defmt::write!(f, "other_field: {=bool}, ", & self.other_field());
+        defmt::write!(f, "set_other_field: {=bool}, ", & self.set_other_field());
         defmt::write!(f, "}}");
     }
 }
