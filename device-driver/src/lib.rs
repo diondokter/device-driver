@@ -118,39 +118,6 @@ pub trait Block: Sized {
     }
 }
 
-/// Metadata about fieldsets
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "defmt", derive(defmt::Format))]
-#[non_exhaustive]
-pub struct FieldsetMetadata {
-    /// The byte order of the fieldset
-    pub byte_order: ByteOrder,
-}
-
-impl FieldsetMetadata {
-    /// A default that allows you to construct the metadata in const contexts.
-    /// Yields the same value as [`Self::default`].
-    pub const DEFAULT: Self = Self {
-        byte_order: ByteOrder::LE,
-    };
-
-    /// Create a new instance with the default value
-    pub const fn new() -> Self {
-        Self::DEFAULT
-    }
-
-    /// Set the byte order
-    pub const fn with_byte_order(self, byte_order: ByteOrder) -> Self {
-        Self { byte_order, ..self }
-    }
-}
-
-impl Default for FieldsetMetadata {
-    fn default() -> Self {
-        Self::DEFAULT
-    }
-}
-
 /// Value representing the byte order
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]

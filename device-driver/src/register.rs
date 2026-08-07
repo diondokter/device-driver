@@ -21,6 +21,10 @@ impl<T: RegisterInterfaceBase> RegisterInterfaceBase for &mut T {
     type AddressType = T::AddressType;
 }
 
+#[diagnostic::on_unimplemented(
+    label = "cannot use blocking register operations when the device interface doesn't know how to read and write registers",
+    note = "to enable register operations, implement the trait on this type"
+)]
 /// A trait to represent the interface to the device.
 ///
 /// This is called to write to and read from registers.
@@ -42,6 +46,7 @@ pub trait RegisterInterface: RegisterInterfaceBase {
     ) -> Result<(), Self::Error>;
 }
 
+#[diagnostic::do_not_recommend]
 impl<T: RegisterInterface> RegisterInterface for &mut T {
     fn write_register(
         &mut self,
@@ -62,6 +67,10 @@ impl<T: RegisterInterface> RegisterInterface for &mut T {
     }
 }
 
+#[diagnostic::on_unimplemented(
+    label = "cannot use async register operations when the device interface doesn't know how to read and write registers",
+    note = "to enable register operations, implement the trait on this type"
+)]
 /// A trait to represent the interface to the device.
 ///
 /// This is called to asynchronously write to and read from registers.
@@ -83,6 +92,7 @@ pub trait AsyncRegisterInterface: RegisterInterfaceBase {
     ) -> Result<(), Self::Error>;
 }
 
+#[diagnostic::do_not_recommend]
 impl<T: AsyncRegisterInterface> AsyncRegisterInterface for &mut T {
     fn write_register(
         &mut self,

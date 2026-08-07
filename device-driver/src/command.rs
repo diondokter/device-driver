@@ -15,6 +15,10 @@ impl<T: CommandInterfaceBase> CommandInterfaceBase for &mut T {
     type AddressType = T::AddressType;
 }
 
+#[diagnostic::on_unimplemented(
+    label = "cannot use blocking command operations when the device interface doesn't know how to dispatch commands",
+    note = "to enable command operations, implement the trait on this type"
+)]
 /// A trait to represent the interface to the device.
 ///
 /// This is called to dispatch commands.
@@ -35,6 +39,7 @@ pub trait CommandInterface: CommandInterfaceBase {
     ) -> Result<(), Self::Error>;
 }
 
+#[diagnostic::do_not_recommend]
 impl<T: CommandInterface> CommandInterface for &mut T {
     fn dispatch_command(
         &mut self,
@@ -48,6 +53,10 @@ impl<T: CommandInterface> CommandInterface for &mut T {
     }
 }
 
+#[diagnostic::on_unimplemented(
+    label = "cannot use async command operations when the device interface doesn't know how to dispatch commands",
+    note = "to enable command operations, implement the trait on this type"
+)]
 /// A trait to represent the interface to the device.
 ///
 /// This is called to asynchronously dispatch commands.
@@ -68,6 +77,7 @@ pub trait AsyncCommandInterface: CommandInterfaceBase {
     ) -> Result<(), Self::Error>;
 }
 
+#[diagnostic::do_not_recommend]
 impl<T: AsyncCommandInterface> AsyncCommandInterface for &mut T {
     fn dispatch_command(
         &mut self,
@@ -219,17 +229,16 @@ where
     AddressType: Address,
 {
     /// Dispatch the command to the device
-    pub async fn dispatch_async(self) -> Result<(), <B::Interface as CommandInterfaceBase>::Error> {
-        self.block
-            .interface()
-            .dispatch_command(
-                self.address,
-                &mut [],
-                &FieldsetMetadata::DEFAULT,
-                &mut [],
-                &FieldsetMetadata::DEFAULT,
-            )
-            .await
+    pub fn dispatch_async(
+        self,
+    ) -> impl Future<Output = Result<(), <B::Interface as CommandInterfaceBase>::Error>> {
+        self.block.interface().dispatch_command(
+            self.address,
+            &mut [],
+            &FieldsetMetadata::DEFAULT,
+            &mut [],
+            &FieldsetMetadata::DEFAULT,
+        )
     }
 }
 
