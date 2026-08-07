@@ -65,7 +65,7 @@ It's nice to have examples:
 
 V2:
 
-- None yet
+- [YM3812 OPL2](https://github.com/diondokter/ym3812)
 
 V1:
 
