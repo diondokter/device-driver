@@ -1,5 +1,6 @@
 use std::{
     fmt::{Debug, Display},
+    num::NonZeroU32,
     sync::Arc,
 };
 
@@ -102,7 +103,7 @@ pub struct Identifier<T: IdentifierType> {
     /// The original string that was parsed without concats
     original: Arc<String>,
     words: Arc<[String]>,
-    duplicate_id: Option<u32>,
+    duplicate_id: Option<NonZeroU32>,
     /// Must never change!
     id_type: T,
 }
@@ -236,11 +237,11 @@ impl<T: IdentifierType> Identifier<T> {
         }
     }
 
-    pub fn set_duplicate_id(&mut self, val: u32) {
+    pub fn set_duplicate_id(&mut self, val: NonZeroU32) {
         self.duplicate_id = Some(val);
     }
 
-    pub fn duplicate_id(&self) -> Option<u32> {
+    pub fn duplicate_id(&self) -> Option<NonZeroU32> {
         self.duplicate_id
     }
 
