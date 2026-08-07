@@ -14,6 +14,10 @@ impl<T: BufferInterfaceBase> BufferInterfaceBase for &mut T {
     type AddressType = T::AddressType;
 }
 
+#[diagnostic::on_unimplemented(
+    label = "cannot use blocking buffer operations when the device interface doesn't know how to read and write buffers",
+    note = "to enable buffer operations, implement the trait on this type"
+)]
 /// A trait to represent the interface to the device.
 ///
 /// This is called to read from and write to buffers.
@@ -32,6 +36,7 @@ pub trait BufferInterface: BufferInterfaceBase {
     fn read(&mut self, address: Self::AddressType, buf: &mut [u8]) -> Result<usize, Self::Error>;
 }
 
+#[diagnostic::do_not_recommend]
 impl<T: BufferInterface> BufferInterface for &mut T {
     fn write(&mut self, address: Self::AddressType, buf: &[u8]) -> Result<usize, Self::Error> {
         (*self).write(address, buf)
@@ -46,6 +51,10 @@ impl<T: BufferInterface> BufferInterface for &mut T {
     }
 }
 
+#[diagnostic::on_unimplemented(
+    label = "cannot use async buffer operations when the device interface doesn't know how to read and write buffers",
+    note = "to enable buffer operations, implement the trait on this type"
+)]
 /// A trait to represent the interface to the device.
 ///
 /// This is called to read from and write to buffers.
@@ -69,6 +78,7 @@ pub trait AsyncBufferInterface: BufferInterfaceBase {
     ) -> Result<usize, Self::Error>;
 }
 
+#[diagnostic::do_not_recommend]
 impl<T: AsyncBufferInterface> AsyncBufferInterface for &mut T {
     fn write(
         &mut self,
@@ -143,15 +153,15 @@ where
     /// Write a buffer into this writer, returning how many bytes were written.
     ///
     /// Mirror function of [`embedded_io_async::Write::write`].
-    pub async fn write_async(
+    pub fn write_async(
         &mut self,
         buf: &[u8],
-    ) -> Result<usize, <B::Interface as BufferInterfaceBase>::Error>
+    ) -> impl Future<Output = Result<usize, <B::Interface as BufferInterfaceBase>::Error>>
     where
         B::Interface: AsyncBufferInterface,
         Access: WriteCapability,
     {
-        self.block.interface().write(self.address, buf).await
+        self.block.interface().write(self.address, buf)
     }
 
     /// Write an entire buffer into this writer.
@@ -214,12 +224,14 @@ where
     /// Flush this output stream, blocking until all intermediately buffered contents reach their destination.
     ///
     /// Mirror function of [`embedded_io_async::Write::flush`].
-    pub async fn flush_async(&mut self) -> Result<(), <B::Interface as BufferInterfaceBase>::Error>
+    pub fn flush_async(
+        &mut self,
+    ) -> impl Future<Output = Result<(), <B::Interface as BufferInterfaceBase>::Error>>
     where
         B::Interface: AsyncBufferInterface,
         Access: WriteCapability,
     {
-        self.block.interface().flush(self.address).await
+        self.block.interface().flush(self.address)
     }
 
     /// Read some bytes from this source into the specified buffer, returning how many bytes were read.
@@ -239,15 +251,15 @@ where
     /// Read some bytes from this source into the specified buffer, returning how many bytes were read.
     ///
     /// Mirror function of [`embedded_io_async::Read::read`].
-    pub async fn read_async(
+    pub fn read_async(
         &mut self,
         buf: &mut [u8],
-    ) -> Result<usize, <B::Interface as BufferInterfaceBase>::Error>
+    ) -> impl Future<Output = Result<usize, <B::Interface as BufferInterfaceBase>::Error>>
     where
         B::Interface: AsyncBufferInterface,
         Access: ReadCapability,
     {
-        self.block.interface().read(self.address, buf).await
+        self.block.interface().read(self.address, buf)
     }
 }
 
@@ -306,12 +318,12 @@ where
     Access: WriteCapability,
     AddressType: Address,
 {
-    async fn write(&mut self, buf: &[u8]) -> Result<usize, Self::Error> {
-        self.write_async(buf).await
+    fn write(&mut self, buf: &[u8]) -> impl Future<Output = Result<usize, Self::Error>> {
+        self.write_async(buf)
     }
 
-    async fn flush(&mut self) -> Result<(), Self::Error> {
-        self.flush_async().await
+    fn flush(&mut self) -> impl Future<Output = Result<(), Self::Error>> {
+        self.flush_async()
     }
 }
 
@@ -324,7 +336,7 @@ where
     Access: ReadCapability,
     AddressType: Address,
 {
-    async fn read(&mut self, buf: &mut [u8]) -> Result<usize, Self::Error> {
-        self.read_async(buf).await
+    fn read(&mut self, buf: &mut [u8]) -> impl Future<Output = Result<usize, Self::Error>> {
+        self.read_async(buf)
     }
 }
