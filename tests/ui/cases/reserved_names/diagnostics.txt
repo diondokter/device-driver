@@ -1,0 +1,43 @@
+error: reserved operation name used
+  --> input.ddsl:4:12
+   |
+LL |     buffer New {
+   |            ^^^ `new` is a reserved name for operations. Change it to something else
+   |
+info: reserved names are: `new`, `init`, `deinit`, `destroy`
+
+error: reserved operation name used
+  --> input.ddsl:7:12
+   |
+LL |     buffer Init {
+   |            ^^^^ `init` is a reserved name for operations. Change it to something else
+   |
+info: reserved names are: `new`, `init`, `deinit`, `destroy`
+
+error: reserved operation name used
+  --> input.ddsl:10:12
+   |
+LL |     buffer Deinit {
+   |            ^^^^^^ `deinit` is a reserved name for operations. Change it to something else
+   |
+info: reserved names are: `new`, `init`, `deinit`, `destroy`
+
+error: reserved operation name used
+  --> input.ddsl:13:12
+   |
+LL |     buffer Destroy {
+   |            ^^^^^^^ `destroy` is a reserved name for operations. Change it to something else
+   |
+info: reserved names are: `new`, `init`, `deinit`, `destroy`
+
+error: field setter name collision
+  --> input.ddsl:19:15
+   |
+LL |         field my_field 0,
+   |               ^^^^^^^^ this field is writable and generates a setter with a name that collides with another field: `set·my·field`
+LL |         field set_my_field 1,
+   |               ------------ collides with this field
+   |
+help: writable fields generate setter functions that have the word `set` prepended. This can collide with other field names.
+      Avoid this by changing the name of one of the fields or by making the field read only so it doesn't generate a setter
+

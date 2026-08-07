@@ -178,7 +178,7 @@ impl<T: IdentifierType> Identifier<T> {
             }
         }
 
-        if self.words().iter().all(String::is_empty) {
+        if self.words.iter().all(String::is_empty) {
             return Err(Error::EmptyAfterSplits);
         }
 
@@ -218,8 +218,16 @@ impl<T: IdentifierType> Identifier<T> {
         &self.original
     }
 
-    pub fn words(&self) -> &[String] {
-        &self.words
+    /// Get a display string that separates the words that make up the identifier visually
+    pub fn words_display(&self) -> String {
+        self.words.join("·")
+    }
+
+    /// Same as [Self::words_display], but prepends another word
+    pub fn words_display_prepended(&self, word: String) -> String {
+        let mut words = self.words.to_vec();
+        words.insert(0, word);
+        words.join("·")
     }
 
     pub fn is_empty(&self) -> bool {
@@ -267,6 +275,11 @@ impl<T: IdentifierType> Identifier<T> {
         // Safety: We're only casting the T to a RuntimeType which is explicitly allowed by all implementors of IdentifierType
         // The Identifier itself is repr C and so won't be weird when the generic type changes
         unsafe { std::mem::transmute::<&Self, &Identifier<RuntimeType>>(self) }
+    }
+
+    /// Get the identifier type
+    pub fn id_type(&self) -> &T {
+        &self.id_type
     }
 
     /// Change the type of the identifier to a more specific type

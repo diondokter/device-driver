@@ -1,0 +1,22 @@
+device Foo {
+    buffer-address-type: u16,
+
+    buffer New {
+        address: 0,
+    },
+    buffer Init {
+        address: 1,
+    },
+    buffer Deinit {
+        address: 2,
+    },
+    buffer Destroy {
+        address: 3,
+    },
+
+    fieldset Bar {
+        size-bytes: 1,
+        field my_field 0,
+        field set_my_field 1,
+    }
+}

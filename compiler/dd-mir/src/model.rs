@@ -259,6 +259,7 @@ impl Device {
         .map(|(object, _)| object)
     }
 }
+
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct DeviceConfig {
     /// The id of the device that owns this config. If None, then this is a manifest config
@@ -520,6 +521,19 @@ pub struct Block {
     pub objects: Vec<Object>,
     /// Span of the whole object
     pub span: Span,
+}
+
+impl Block {
+    pub fn iter_objects(&self) -> impl Iterator<Item = &Object> {
+        ObjectIter {
+            children: &self.objects,
+            parent: None,
+            collection_object_returned: false,
+            // Note: We can't give the config from here because there might be a config in the manifest we don't know about
+            current_device_config: Rc::new(DeviceConfig::default()),
+        }
+        .map(|(object, _)| object)
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]

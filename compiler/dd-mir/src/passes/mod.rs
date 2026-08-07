@@ -16,6 +16,7 @@ use crate::{
         repeat_with_enums_checked::RepeatWithEnumsChecked,
         repeat_zero_stride_rejected::RepeatZeroStrideRejected,
         reset_values_converted::ResetValuesConverted,
+        reserved_names_checked::ReservedNamesChecked,
     },
 };
 use device_driver_diagnostics::{Diagnostics, DynError, ResultExt};
@@ -38,9 +39,10 @@ mod names_unique;
 mod repeat_with_enums_checked;
 mod repeat_zero_stride_rejected;
 mod reset_values_converted;
+mod reserved_names_checked;
 
 // TODO: Make const when possible in a future Rust version
-fn get_default_passes() -> [PassInfo; 18] {
+fn get_default_passes() -> [PassInfo; 19] {
     [
         PassInfo::get::<DeviceConfigsOwned>(),
         PassInfo::get::<EnumValuesChecked>(),
@@ -60,6 +62,7 @@ fn get_default_passes() -> [PassInfo; 18] {
         PassInfo::get::<AddressTypesSpecified>(),
         PassInfo::get::<AddressTypesBigEnough>(),
         PassInfo::get::<AddressesNonOverlapping>(),
+        PassInfo::get::<ReservedNamesChecked>(),
     ]
 }
 

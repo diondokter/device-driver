@@ -173,6 +173,14 @@ impl Access {
             Access::WO => false,
         }
     }
+    #[must_use]
+    pub fn is_writable(&self) -> bool {
+        match self {
+            Access::RW => true,
+            Access::RO => false,
+            Access::WO => true,
+        }
+    }
 }
 
 impl VariantNames for Access {
