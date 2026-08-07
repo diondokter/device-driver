@@ -4,7 +4,7 @@ error: reserved operation name used
 LL |     buffer New {
    |            ^^^ `new` is a reserved name for operations. Change it to something else
    |
-info: reserved names are: `new`, `init`, `deinit`, `destroy`
+info: reserved names are: `new`, `init`, `deinit`, `free`
 
 error: reserved operation name used
   --> input.ddsl:7:12
@@ -12,7 +12,7 @@ error: reserved operation name used
 LL |     buffer Init {
    |            ^^^^ `init` is a reserved name for operations. Change it to something else
    |
-info: reserved names are: `new`, `init`, `deinit`, `destroy`
+info: reserved names are: `new`, `init`, `deinit`, `free`
 
 error: reserved operation name used
   --> input.ddsl:10:12
@@ -20,15 +20,15 @@ error: reserved operation name used
 LL |     buffer Deinit {
    |            ^^^^^^ `deinit` is a reserved name for operations. Change it to something else
    |
-info: reserved names are: `new`, `init`, `deinit`, `destroy`
+info: reserved names are: `new`, `init`, `deinit`, `free`
 
 error: reserved operation name used
   --> input.ddsl:13:12
    |
-LL |     buffer Destroy {
-   |            ^^^^^^^ `destroy` is a reserved name for operations. Change it to something else
+LL |     buffer Free {
+   |            ^^^^ `free` is a reserved name for operations. Change it to something else
    |
-info: reserved names are: `new`, `init`, `deinit`, `destroy`
+info: reserved names are: `new`, `init`, `deinit`, `free`
 
 error: field setter name collision
   --> input.ddsl:19:15

@@ -54,7 +54,7 @@ fn check_block_reserved_names<'a>(
 ) -> HashSet<UniqueId> {
     let mut removals = HashSet::new();
 
-    const RESERVED_NAMES: &[&str] = &["new", "init", "deinit", "destroy"];
+    const RESERVED_NAMES: &[&str] = &["new", "init", "deinit", "free"];
 
     for object in objects {
         let object_operation_name = object.name().to_case(convert_case::Case::Snake);

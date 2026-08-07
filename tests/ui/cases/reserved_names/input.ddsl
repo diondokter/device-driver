@@ -10,7 +10,7 @@ device Foo {
     buffer Deinit {
         address: 2,
     },
-    buffer Destroy {
+    buffer Free {
         address: 3,
     },
 
