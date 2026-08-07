@@ -48,3 +48,16 @@ fn async_compiles() {
     let mut device = MyTestDevice::new(DeviceInterface);
     let _future = async { device.foo().read_async().await };
 }
+
+#[test]
+fn async_pass_through_compiles() {
+    // Compiles if we are able to construct pass-through futures
+    fn foo_read_async_pass_through(
+        device: &mut MyTestDevice<DeviceInterface>,
+    ) -> impl Future<Output = Result<FooFields, ()>> {
+        device.foo().read_async()
+    }
+
+    let mut device = MyTestDevice::new(DeviceInterface);
+    let _future = foo_read_async_pass_through(&mut device);
+}
