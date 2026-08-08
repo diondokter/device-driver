@@ -12,16 +12,16 @@ use crate::{
 };
 use device_driver_diagnostics::{
     Diagnostics, DynError,
-    errors::{ReferencedObjectDoesNotExist, RepeatEnumWithCatchAll},
+    errors::{ReferencedObjectDoesNotExist, RepeatEnumTooBig, RepeatEnumWithCatchAll},
 };
 
-/// Checks if the enums referenced by repeats actually exist
+/// Checks if the enums referenced by repeats actually exist and that the enum is suitable to be used as a repeat source
 pub struct RepeatWithEnumsChecked;
 
 impl Pass for RepeatWithEnumsChecked {
-    const ASSUMPTIONS_MADE: &[Assumption] = &[];
+    const ASSUMPTIONS_MADE: &[Assumption] = &[Assumption::NamesUnique];
     const ASSUMPTIONS_RELEASED: &[Assumption] =
-        &[Assumption::RepeatEnumRefValid, Assumption::NamesUnique];
+        &[Assumption::RepeatEnumRefValid, Assumption::RepeatEnumsValid];
 
     fn run_pass(
         manifest: &mut Manifest,
@@ -81,23 +81,33 @@ fn repeat_is_ok(repeat: &Repeat, manifest: &Manifest, diagnostics: &mut Diagnost
         return true;
     };
 
-    if let Some(Object::Enum(enum_value)) = search_object(manifest, repeat_enum) {
-        if let Some(catch_all) = enum_catch_all(enum_value) {
-            diagnostics.add(RepeatEnumWithCatchAll {
-                repeat_enum: repeat_enum.span,
-                enum_name: enum_value.name.span,
-                catch_all,
-            });
-            false
-        } else {
-            true
-        }
-    } else {
+    let Some(Object::Enum(enum_value)) = search_object(manifest, repeat_enum) else {
         diagnostics.add(ReferencedObjectDoesNotExist {
             object_reference: repeat_enum.span,
         });
-        false
+        return false;
+    };
+
+    if let Some(catch_all) = enum_catch_all(enum_value) {
+        diagnostics.add(RepeatEnumWithCatchAll {
+            repeat_enum: repeat_enum.span,
+            enum_name: enum_value.name.span,
+            catch_all,
+        });
+        return false;
     }
+
+    if let Some((too_big_variant, too_big_variant_value)) = enum_too_big_variant(enum_value) {
+        diagnostics.add(RepeatEnumTooBig {
+            repeat_enum: repeat_enum.span,
+            enum_name: enum_value.name.span,
+            too_big_variant,
+            too_big_variant_value,
+        });
+        return false;
+    }
+
+    true
 }
 
 fn enum_catch_all(enum_value: &Enum) -> Option<Span> {
@@ -106,4 +116,10 @@ fn enum_catch_all(enum_value: &Enum) -> Option<Span> {
         .iter()
         .find(|v| v.value.is_catch_all())
         .map(|v| v.name.span)
+}
+
+fn enum_too_big_variant(enum_value: &Enum) -> Option<(Span, i128)> {
+    enum_value
+        .iter_variants_with_discriminant()
+        .find_map(|(discr, v)| i32::try_from(discr).err().map(|_| (v.span, discr)))
 }

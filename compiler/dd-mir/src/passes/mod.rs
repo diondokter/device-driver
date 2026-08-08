@@ -111,10 +111,11 @@ pub(crate) enum Assumption {
     RepeatStrideNonZero,
     ByteOrderSpecified,
     RepeatEnumRefValid,
+    RepeatEnumsValid,
     NamesUnique,
     NamesValid,
 
-    _End,
+    _End, // Keep as the last element
 }
 
 impl Assumption {
@@ -128,6 +129,7 @@ impl Assumption {
         Assumption::RepeatStrideNonZero,
         Assumption::ByteOrderSpecified,
         Assumption::RepeatEnumRefValid,
+        Assumption::RepeatEnumsValid,
         Assumption::NamesUnique,
         Assumption::NamesValid,
     ];

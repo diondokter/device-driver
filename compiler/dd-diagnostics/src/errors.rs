@@ -593,6 +593,46 @@ This is not possible with an enum containing a catch-all since it can take on an
 }
 
 #[derive(Debug)]
+pub struct RepeatEnumTooBig {
+    pub repeat_enum: Span,
+    pub enum_name: Span,
+    pub too_big_variant: Span,
+    pub too_big_variant_value: i128,
+}
+
+impl Diagnostic for RepeatEnumTooBig {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        const INFO_TEXT: &str = "repeat math is done with `i32` integers, so enums used as repeat sources must fit in that";
+
+        [
+            Level::ERROR
+                .primary_title("enum with too big variant used as repeat source")
+                .element(
+                    Snippet::source(source)
+                        .path(path)
+                        .annotation(
+                            AnnotationKind::Primary
+                                .span(self.repeat_enum.into())
+                                .label("repeat uses enum with a variant that's too big"),
+                        )
+                        .annotation(AnnotationKind::Visible.span(self.enum_name.into()))
+                        .annotation(
+                            AnnotationKind::Context
+                                .span(self.too_big_variant.into())
+                                .label(format!("this variant is too big. The value is {}, but must fit in an `i32`", self.too_big_variant_value)),
+                        ),
+                ),
+            Group::with_title(Level::INFO.secondary_title(INFO_TEXT)),
+        ]
+        .to_vec()
+    }
+}
+
+#[derive(Debug)]
 pub struct ExternInvalidBaseType {
     pub extern_name: Span,
     pub base_type: Option<Span>,

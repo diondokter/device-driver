@@ -1,0 +1,13 @@
+error: enum with too big variant used as repeat source
+  --> input.ddsl:2:15
+   |
+LL |     block foo[too_big stride 1] {
+   |               ^^^^^^^ repeat uses enum with a variant that's too big
+...
+LL |     enum too_big {
+LL |         JustOk: 0x7FFF_FFFF,
+LL |         TooBig: 0x8000_0000,
+   |         ------------------- this variant is too big. The value is 2147483648, but must fit in an `i32`
+   |
+info: repeat math is done with `i32` integers, so enums used as repeat sources must fit in that
+
