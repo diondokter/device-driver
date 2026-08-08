@@ -7,7 +7,7 @@ pub trait CommandInterfaceBase {
     /// The error type
     type Error;
     /// The address type used by this interface. Should likely be an integer.
-    type AddressType: Copy;
+    type AddressType: Address;
 }
 
 impl<T: CommandInterfaceBase> CommandInterfaceBase for &mut T {

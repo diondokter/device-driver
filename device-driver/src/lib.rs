@@ -170,61 +170,77 @@ impl ReadCapability for RO {}
 impl WriteCapability for RW {}
 impl ReadCapability for RW {}
 
-#[doc(hidden)]
+trait SealedAddress {}
+
+/// A trait implemented for the types that can be used as an address
+#[expect(private_bounds, reason = "sealed on purpose")]
 #[cfg(feature = "defmt")]
-pub trait Address: Copy + Eq + Display + Debug + defmt::Format {
+pub trait Address: Copy + Eq + Display + Debug + defmt::Format + SealedAddress {
+    #[doc(hidden)]
     const ZERO: Self;
+    #[doc(hidden)]
     fn add(self, val: i32) -> Self;
 }
-#[doc(hidden)]
+/// A trait implemented for the types that can be used as an address
+#[expect(private_bounds, reason = "sealed on purpose")]
 #[cfg(not(feature = "defmt"))]
-pub trait Address: Copy + Eq + Display + Debug {
+pub trait Address: Copy + Eq + Display + Debug + SealedAddress {
+    #[doc(hidden)]
     const ZERO: Self;
+    #[doc(hidden)]
     fn add(self, val: i32) -> Self;
 }
 
+impl SealedAddress for u8 {}
 impl Address for u8 {
     const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
         (self as i32 + val).try_into().unwrap()
     }
 }
+impl SealedAddress for u16 {}
 impl Address for u16 {
     const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
         (self as i32 + val).try_into().unwrap()
     }
 }
+impl SealedAddress for u32 {}
 impl Address for u32 {
     const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
         self.checked_add_signed(val).unwrap()
     }
 }
+impl SealedAddress for u64 {}
 impl Address for u64 {
     const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
         self.checked_add_signed(val as i64).unwrap()
     }
 }
+impl SealedAddress for i8 {}
 impl Address for i8 {
     const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
         (self as i32 + val).try_into().unwrap()
     }
 }
+impl SealedAddress for i16 {}
 impl Address for i16 {
     const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
         (self as i32 + val).try_into().unwrap()
     }
 }
+impl SealedAddress for i32 {}
 impl Address for i32 {
     const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
         self + val
     }
 }
+impl SealedAddress for i64 {}
 impl Address for i64 {
     const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
