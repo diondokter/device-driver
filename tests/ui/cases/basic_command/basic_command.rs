@@ -32,6 +32,8 @@ impl<I> Device<I> {
     pub fn free(self) -> I {
         self.interface
     }
+    /// Command operation:
+    /// - Address: `0`
     #[doc(alias = "Foo")]
     pub fn foo(
         &mut self,

@@ -32,8 +32,9 @@ impl<I> Repeats<I> {
     pub fn free(self) -> I {
         self.interface
     }
-    ///
-    /// Valid index range: `0..1`
+    /// Block operation:
+    /// - Address: `0`
+    /// - Valid index range: `0..1`
     pub fn foo(&mut self, index: usize) -> Foo<'_, I> {
         let address = {
             assert!(index < 1);
@@ -41,8 +42,9 @@ impl<I> Repeats<I> {
         };
         Foo::<'_, I>::new(::device_driver::Block::interface(self), address)
     }
-    ///
-    /// Valid index range: `0..1`
+    /// Block operation:
+    /// - Address: `0`
+    /// - Valid index range: `0..1`
     pub fn bar(&mut self, index: usize) -> Bar<'_, I> {
         let address = {
             assert!(index < 1);
@@ -50,8 +52,9 @@ impl<I> Repeats<I> {
         };
         Bar::<'_, I>::new(::device_driver::Block::interface(self), address)
     }
-    ///
-    /// Valid index range: `0..1`
+    /// Block operation:
+    /// - Address: `0`
+    /// - Valid index range: `0..1`
     pub fn quux(&mut self, index: usize) -> Quux<'_, I> {
         let address = {
             assert!(index < 1);

@@ -32,8 +32,10 @@ impl<I> Device<I> {
     pub fn free(self) -> I {
         self.interface
     }
-    ///
-    /// Valid index range: `0..100`
+    /// Register operation:
+    /// - Address: `0`
+    /// - Reset value: `0`
+    /// - Valid index range: `0..100`
     #[doc(alias = "Foo0")]
     pub fn foo_0(
         &mut self,
@@ -51,8 +53,10 @@ impl<I> Device<I> {
         let address = self.base_address + 0;
         ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
     }
-    ///
-    /// Valid index range: `0..100`
+    /// Register operation:
+    /// - Address: `1`
+    /// - Reset value: `0`
+    /// - Valid index range: `0..100`
     #[doc(alias = "Foo1")]
     pub fn foo_1(
         &mut self,
@@ -70,8 +74,10 @@ impl<I> Device<I> {
         let address = self.base_address + 1;
         ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
     }
-    ///
-    /// Valid index range: `0..100`
+    /// Register operation:
+    /// - Address: `2`
+    /// - Reset value: `0`
+    /// - Valid index range: `0..100`
     #[doc(alias = "Foo2")]
     pub fn foo_2(
         &mut self,
@@ -89,8 +95,10 @@ impl<I> Device<I> {
         let address = self.base_address + 2;
         ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
     }
-    ///
-    /// Valid index range: `0..100`
+    /// Register operation:
+    /// - Address: `3`
+    /// - Reset value: `0`
+    /// - Valid index range: `0..100`
     #[doc(alias = "Foo3")]
     pub fn foo_3(
         &mut self,
@@ -108,8 +116,10 @@ impl<I> Device<I> {
         let address = self.base_address + 3;
         ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
     }
-    ///
-    /// Valid index range: `0..100`
+    /// Register operation:
+    /// - Address: `4`
+    /// - Reset value: `0`
+    /// - Valid index range: `0..100`
     #[doc(alias = "Foo4")]
     pub fn foo_4(
         &mut self,
@@ -127,8 +137,10 @@ impl<I> Device<I> {
         let address = self.base_address + 4;
         ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
     }
-    ///
-    /// Valid index range: `0..100`
+    /// Register operation:
+    /// - Address: `5`
+    /// - Reset value: `0`
+    /// - Valid index range: `0..100`
     #[doc(alias = "Foo5")]
     pub fn foo_5(
         &mut self,
@@ -146,8 +158,10 @@ impl<I> Device<I> {
         let address = self.base_address + 5;
         ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
     }
-    ///
-    /// Valid index range: `0..100`
+    /// Register operation:
+    /// - Address: `6`
+    /// - Reset value: `0`
+    /// - Valid index range: `0..100`
     #[doc(alias = "Foo6")]
     pub fn foo_6(
         &mut self,
@@ -165,8 +179,10 @@ impl<I> Device<I> {
         let address = self.base_address + 6;
         ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
     }
-    ///
-    /// Valid index range: `0..100`
+    /// Register operation:
+    /// - Address: `7`
+    /// - Reset value: `0`
+    /// - Valid index range: `0..100`
     #[doc(alias = "Foo7")]
     pub fn foo_7(
         &mut self,
@@ -184,8 +200,10 @@ impl<I> Device<I> {
         let address = self.base_address + 7;
         ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
     }
-    ///
-    /// Valid index range: `0..100`
+    /// Register operation:
+    /// - Address: `8`
+    /// - Reset value: `0`
+    /// - Valid index range: `0..100`
     #[doc(alias = "Foo8")]
     pub fn foo_8(
         &mut self,
@@ -203,8 +221,10 @@ impl<I> Device<I> {
         let address = self.base_address + 8;
         ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
     }
-    ///
-    /// Valid index range: `0..100`
+    /// Register operation:
+    /// - Address: `9`
+    /// - Reset value: `0`
+    /// - Valid index range: `0..100`
     #[doc(alias = "Foo9")]
     pub fn foo_9(
         &mut self,

@@ -32,6 +32,9 @@ impl<I> Device<I> {
     pub fn free(self) -> I {
         self.interface
     }
+    /// Register operation:
+    /// - Address: `0`
+    /// - Reset value: `0`
     #[doc(alias = "Foo")]
     pub fn foo(
         &mut self,
@@ -53,6 +56,8 @@ impl<I> Device<I> {
             FooFieldSet::default,
         )
     }
+    /// Command operation:
+    /// - Address: `0`
     #[doc(alias = "Bar")]
     pub fn bar(&mut self) -> ::device_driver::CommandOperation<'_, Self, i32, (), ()>
     where
@@ -61,6 +66,8 @@ impl<I> Device<I> {
         let address = self.base_address + 0;
         ::device_driver::CommandOperation::new(self, address as i32)
     }
+    /// Buffer operation:
+    /// - Address: `0`
     #[doc(alias = "Quux")]
     pub fn quux(
         &mut self,

@@ -48,13 +48,48 @@ impl<'a> DriverTemplateRust<'a> {
         self.codegen_options.defmt_feature.as_deref()
     }
 
-    fn get_reset_value_text(&self, method: &BlockMethod) -> Option<&'a str> {
-        let reset_value = match &method.method_type {
-            BlockMethodType::Register { reset_value, .. } => reset_value.as_ref(),
-            _ => None,
-        }?;
+    fn get_block_method_docs(&self, method: &BlockMethod) -> String {
+        use std::fmt::Write;
 
-        self.source.get(Range::from(reset_value.span))
+        let mut docs = String::new();
+
+        let operation_type = match method.method_type {
+            BlockMethodType::Block { .. } => "Block",
+            BlockMethodType::Register { .. } => "Register",
+            BlockMethodType::Command { .. } => "Command",
+            BlockMethodType::Buffer { .. } => "Buffer",
+        };
+
+        if !method.description.is_empty() {
+            writeln!(&mut docs, "///").unwrap();
+        }
+
+        writeln!(&mut docs, "/// {} operation:", operation_type).unwrap();
+        writeln!(&mut docs, "/// - Address: `{}`", method.address).unwrap();
+
+        let reset_value_text = match &method.method_type {
+            BlockMethodType::Register { reset_value, .. } => Some(
+                reset_value
+                    .as_ref()
+                    .map(|reset_value| {
+                        self.source
+                            .get(Range::from(reset_value.span))
+                            .unwrap_or("error: invalid span")
+                    })
+                    .unwrap_or("0"),
+            ),
+            _ => None,
+        };
+
+        if let Some(reset_value_text) = reset_value_text {
+            writeln!(&mut docs, "/// - Reset value: `{reset_value_text}`").unwrap();
+        }
+
+        if let Repeat::Count { count, .. } = method.repeat {
+            writeln!(&mut docs, "/// - Valid index range: `0..{count}`").unwrap();
+        };
+
+        docs
     }
 }
 

@@ -34,6 +34,9 @@ impl<I> Device<I> {
     pub fn free(self) -> I {
         self.interface
     }
+    /// Register operation:
+    /// - Address: `0`
+    /// - Reset value: `0`
     #[doc(alias = "Foo")]
     pub fn foo(
         &mut self,
@@ -57,9 +60,10 @@ impl<I> Device<I> {
     }
     /// The bar register
     ///
-    /// Reset value: `0x123456`
-    ///
-    /// Valid index range: `0..3`
+    /// Register operation:
+    /// - Address: `1`
+    /// - Reset value: `0x123456`
+    /// - Valid index range: `0..3`
     #[doc(alias = "Bar")]
     pub fn bar(
         &mut self,
