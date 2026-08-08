@@ -49,9 +49,8 @@ All operations generate functions that return the various `Operation` types. Con
 
 Devices and blocks are very similar to each other in that they can both contain operations.
 
-A device, however, is the root block. As such it always has an address-offset of 0 and can be constructed with an owned interface value.
-
-_TODO: Describe how to init a device once [#183](https://github.com/diondokter/device-driver/issues/183) is resolved_
+A device, however, is the root block. As such it always has an address-offset of 0 and can be constructed with an owned interface value using the generated `new` function.
+To tear down the device and get back the interface, you can call the `free` function.
 
 Both types implement the [`Block`](https://docs.rs/device-driver/latest/device_driver/trait.Block.html) trait, which exposes the interface for cases where you need raw access to it and which allows you to start bulk operations.
 
@@ -63,8 +62,6 @@ Both types implement the [`Block`](https://docs.rs/device-driver/latest/device_d
 Fieldsets are generated as structs that have the same byte size as specified in the DDSL source.
 
 Each field in a fieldset gets a getter function if the field can be read and a setter function if the field can be written. The getter uses the name of the field and the setter uses the name too, except it prepends it with `set_`.
-
-_TODO: Update text above once [#183](https://github.com/diondokter/device-driver/issues/183) is resolved_
 
 The [Fieldset](https://docs.rs/device-driver/latest/device_driver/trait.Fieldset.html) trait is implemented on all fieldsets which exposes some runtime metadata and a constant `ZERO` init value.
 
