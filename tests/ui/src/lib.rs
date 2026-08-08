@@ -78,21 +78,24 @@ pub fn run_test(source_paths: &[&Path], output_path: &Path) {
         );
     }
 
-    let output_extension = output_path.extension().unwrap().to_str().unwrap();
-    match output_extension {
-        "rs" => {
-            let stderr = compile_output(output_path);
-            let expected_stderr =
-                std::fs::read_to_string(output_path.with_file_name("stderr.rs.txt"))
-                    .unwrap_or_default();
+    // Compile the output and check stderr or skip it if we're running coverage tests (because the output is different and it doesn't help for coverage)
+    if cfg!(not(coverage)) {
+        let output_extension = output_path.extension().unwrap().to_str().unwrap();
+        match output_extension {
+            "rs" => {
+                let stderr = compile_output(output_path);
+                let expected_stderr =
+                    std::fs::read_to_string(output_path.with_file_name("stderr.rs.txt"))
+                        .unwrap_or_default();
 
-            pretty_assertions::assert_str_eq!(
-                normalize_test_string(&expected_stderr),
-                normalize_test_string(&stderr),
-                "Different stderr"
-            );
+                pretty_assertions::assert_str_eq!(
+                    normalize_test_string(&expected_stderr),
+                    normalize_test_string(&stderr),
+                    "Different stderr"
+                );
+            }
+            _ => unimplemented!(),
         }
-        _ => unimplemented!(),
     }
 }
 
