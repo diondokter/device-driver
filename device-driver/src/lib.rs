@@ -68,7 +68,7 @@ pub trait Block: Sized {
     /// Start a bulk-write transaction
     ///
     /// You can chain writes by calling [`register::BulkRegisterOperation::with`].
-    /// Once chained, call [`register::BulkRegisterOperation::execute`] to perform the read.
+    /// Once chained, call [`register::BulkRegisterOperation::execute`] to perform the write.
     fn bulk_write(
         &mut self,
     ) -> register::BulkRegisterOperation<
@@ -94,7 +94,7 @@ pub trait Block: Sized {
     /// Start a bulk-modify transaction
     ///
     /// You can chain modifies by calling [`register::BulkRegisterOperation::with`].
-    /// Once chained, call [`register::BulkRegisterOperation::execute`] to perform the read.
+    /// Once chained, call [`register::BulkRegisterOperation::execute`] to perform the modify.
     fn bulk_modify(
         &mut self,
     ) -> register::BulkRegisterOperation<
