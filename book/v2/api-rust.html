@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-5ac42ca2.js";
+            window.path_to_searchindex_js = "../searchindex-2cb8a05f.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-ca5e7c95.js"></script>
@@ -215,8 +215,8 @@ Private/unstable APIs contain <code>#[doc(hidden)]</code> attributes and are mea
 </ul>
 <h2 id="devicesblocks"><a class="header" href="#devicesblocks">Devices/blocks</a></h2>
 <p>Devices and blocks are very similar to each other in that they can both contain operations.</p>
-<p>A device, however, is the root block. As such it always has an address-offset of 0 and can be constructed with an owned interface value.</p>
-<p><em>TODO: Describe how to init a device once <a href="https://github.com/diondokter/device-driver/issues/183">#183</a> is resolved</em></p>
+<p>A device, however, is the root block. As such it always has an address-offset of 0 and can be constructed with an owned interface value using the generated <code>new</code> function.
+To tear down the device and get back the interface, you can call the <code>free</code> function.</p>
 <p>Both types implement the <a href="https://docs.rs/device-driver/latest/device_driver/trait.Block.html"><code>Block</code></a> trait, which exposes the interface for cases where you need raw access to it and which allows you to start bulk operations.</p>
 <blockquote class="blockquote-tag blockquote-tag-important">
 <p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v9.5A1.75 1.75 0 0 1 14.25 13H8.06l-2.573 2.573A1.458 1.458 0 0 1 3 14.543V13H1.75A1.75 1.75 0 0 1 0 11.25Zm1.75-.25a.25.25 0 0 0-.25.25v9.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h6.5a.25.25 0 0 0 .25-.25v-9.5a.25.25 0 0 0-.25-.25Zm7 2.25v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Important</p>
@@ -225,7 +225,6 @@ Private/unstable APIs contain <code>#[doc(hidden)]</code> attributes and are mea
 <h2 id="fieldsets"><a class="header" href="#fieldsets">Fieldsets</a></h2>
 <p>Fieldsets are generated as structs that have the same byte size as specified in the DDSL source.</p>
 <p>Each field in a fieldset gets a getter function if the field can be read and a setter function if the field can be written. The getter uses the name of the field and the setter uses the name too, except it prepends it with <code>set_</code>.</p>
-<p><em>TODO: Update text above once <a href="https://github.com/diondokter/device-driver/issues/183">#183</a> is resolved</em></p>
 <p>The <a href="https://docs.rs/device-driver/latest/device_driver/trait.Fieldset.html">Fieldset</a> trait is implemented on all fieldsets which exposes some runtime metadata and a constant <code>ZERO</code> init value.</p>
 <p>Fieldsets also implement <code>Into</code> &amp; <code>From</code> for <code>[u8; N]</code>, so they can be converted into byte arrays or constructed from byte arrays, as well as the <code>Default</code> trait which initializes a fieldset with all bits set to zero.</p>
 <p>Fieldsets can be formatted using the <code>Debug</code> implementation or with the <code>defmt::Format</code> implementation if the appropriate rust compiler option flag is active.</p>
