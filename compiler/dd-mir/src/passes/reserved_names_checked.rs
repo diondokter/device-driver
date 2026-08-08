@@ -17,7 +17,7 @@ use super::Assumption;
 pub struct ReservedNamesChecked;
 
 impl Pass for ReservedNamesChecked {
-    const ASSUMPTIONS_MADE: &[Assumption] = &[];
+    const ASSUMPTIONS_MADE: &[Assumption] = &[Assumption::NamesValid];
     const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
 
     fn run_pass(
