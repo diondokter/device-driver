@@ -187,13 +187,15 @@ fn parse_node_to_shape<'src, S: Shape>(
         }
         (Some(target_repeat), Some(node_repeat)) => {
             *target_repeat = Some(Repeat {
-                source: match node_repeat.source {
+                source: match node_repeat.source.value {
                     device_driver_parser::RepeatSource::Count(count) => RepeatSource::Count(count),
-                    device_driver_parser::RepeatSource::Enum(ident) => RepeatSource::Enum(
-                        IdentifierRef::new(ident.val.into()).with_span(ident.span),
-                    ),
-                },
+                    device_driver_parser::RepeatSource::Enum(ident) => {
+                        RepeatSource::Enum(IdentifierRef::new(ident.val.into()))
+                    }
+                }
+                .with_span(node_repeat.source.span),
                 stride: (node_repeat.stride.value as i128).with_span(node_repeat.stride.span),
+                span: node_repeat.span,
             })
         }
         (_, None) => {}

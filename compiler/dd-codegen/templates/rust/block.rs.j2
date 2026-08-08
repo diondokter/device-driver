@@ -41,18 +41,7 @@ impl{{block_generics}} {{ block.name.to_case(Case::Pascal) }}{{block_generics}} 
 
     {% for method in block.methods %}
         {{ self::description_to_docstring(method.description) }}
-        {% if let Some(reset_text) = self.get_reset_value_text(method) %}
-            ///
-            /// Reset value: `{{reset_text}}`
-        {% endif %}
-        {% match method.repeat %}
-            {% when Repeat::None %}
-            {% when Repeat::Count { count, .. } %}
-            ///
-            /// Valid index range: `0..{{count}}`
-            {% when Repeat::Enum { .. } %}
-            {% endwhen %}
-        {% endmatch %}
+        {{ self.get_block_method_docs(method) }}
         {{ self::maybe_doc_alias(method.name, Case::Snake) }}
         pub fn {{ method.name.to_case(Case::Snake) }}(
             &mut self,

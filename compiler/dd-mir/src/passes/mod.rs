@@ -13,7 +13,7 @@ use crate::{
         enum_values_checked::EnumValuesChecked, extern_values_checked::ExternValuesChecked,
         field_conversion_valid::FieldConversionValid, field_set_refs_valid::FieldsetRefsValid,
         names_checked::NamesChecked, names_unique::NamesUnique,
-        repeat_with_enums_checked::RepeatWithEnumsChecked,
+        repeat_math_checked::RepeatMathChecked,
         repeat_zero_stride_rejected::RepeatZeroStrideRejected,
         reserved_names_checked::ReservedNamesChecked, reset_values_converted::ResetValuesConverted,
     },
@@ -35,7 +35,7 @@ mod field_conversion_valid;
 mod field_set_refs_valid;
 mod names_checked;
 mod names_unique;
-mod repeat_with_enums_checked;
+mod repeat_math_checked;
 mod repeat_zero_stride_rejected;
 mod reserved_names_checked;
 mod reset_values_converted;
@@ -52,7 +52,7 @@ fn get_default_passes() -> [PassInfo; 19] {
         PassInfo::get::<NamesUnique>(),
         PassInfo::get::<FieldsetRefsValid>(),
         PassInfo::get::<RepeatZeroStrideRejected>(),
-        PassInfo::get::<RepeatWithEnumsChecked>(),
+        PassInfo::get::<RepeatMathChecked>(),
         PassInfo::get::<FieldConversionValid>(),
         PassInfo::get::<ByteOrderSpecified>(),
         PassInfo::get::<ResetValuesConverted>(),
@@ -113,8 +113,10 @@ pub(crate) enum Assumption {
     RepeatEnumRefValid,
     NamesUnique,
     NamesValid,
+    EnumsNotEmpty,
+    RepeatMathChecked,
 
-    _End,
+    _End, // Keep as the last element
 }
 
 impl Assumption {
@@ -130,6 +132,8 @@ impl Assumption {
         Assumption::RepeatEnumRefValid,
         Assumption::NamesUnique,
         Assumption::NamesValid,
+        Assumption::EnumsNotEmpty,
+        Assumption::RepeatMathChecked,
     ];
 
     const _ALL_ASSUMPTIONS_PRESENT_CHECK: () =

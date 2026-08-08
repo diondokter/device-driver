@@ -3,7 +3,7 @@ use std::ops::Add;
 use convert_case::Case;
 use device_driver_common::{
     identifier::{All, Identifier},
-    span::SpanExt,
+    span::{SpanExt, Spanned},
     specifiers::{BaseType, Integer, Repeat, RepeatSource},
 };
 use device_driver_diagnostics::{DynError, ResultExt};
@@ -412,15 +412,25 @@ pub fn transform_enums(manifest: &mir::Manifest) -> Vec<lir::Enum> {
 fn repeat_to_method_kind(repeat: &Option<Repeat>, manifest: &mir::Manifest) -> lir::Repeat {
     match repeat {
         Some(Repeat {
-            source: RepeatSource::Count(count),
+            source:
+                Spanned {
+                    value: RepeatSource::Count(count),
+                    ..
+                },
             stride,
+            span: _,
         }) => lir::Repeat::Count {
             count: count.get(),
             stride: stride.value,
         },
         Some(Repeat {
-            source: RepeatSource::Enum(enum_name),
+            source:
+                Spanned {
+                    value: RepeatSource::Enum(enum_name),
+                    ..
+                },
             stride,
+            span: _,
         }) => {
             let target_enum = search_object(manifest, enum_name)
                 .expect("Existence checked in MIR pass")

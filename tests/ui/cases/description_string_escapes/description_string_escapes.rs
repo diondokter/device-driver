@@ -33,6 +33,10 @@ impl<I> Device<I> {
         self.interface
     }
     /// \\\\\\/\/\/\////\/\/;{}'"`'
+    ///
+    /// Register operation:
+    /// - Address: `0`
+    /// - Reset value: `0`
     #[doc(alias = "Foo")]
     pub fn foo(
         &mut self,

@@ -32,6 +32,9 @@ impl<I> Device<I> {
     pub fn free(self) -> I {
         self.interface
     }
+    /// Register operation:
+    /// - Address: `0`
+    /// - Reset value: `0`
     pub fn foo_ro(
         &mut self,
     ) -> ::device_driver::RegisterOperation<
@@ -52,6 +55,9 @@ impl<I> Device<I> {
             FooRoFieldSet::default,
         )
     }
+    /// Register operation:
+    /// - Address: `1`
+    /// - Reset value: `0`
     pub fn foo_rw(
         &mut self,
     ) -> ::device_driver::RegisterOperation<
@@ -72,6 +78,9 @@ impl<I> Device<I> {
             FooRwFieldSet::default,
         )
     }
+    /// Register operation:
+    /// - Address: `2`
+    /// - Reset value: `0`
     pub fn foo_wo(
         &mut self,
     ) -> ::device_driver::RegisterOperation<

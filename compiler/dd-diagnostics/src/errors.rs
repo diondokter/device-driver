@@ -593,6 +593,44 @@ This is not possible with an enum containing a catch-all since it can take on an
 }
 
 #[derive(Debug)]
+pub struct RepeatMathOverflow {
+    pub repeat_span: Span,
+    pub max_value_span: Span,
+    pub max_value: i128,
+    pub stride: i128,
+}
+
+impl Diagnostic for RepeatMathOverflow {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        const INFO_TEXT: &str = "repeat math is done with `i32` integers to keep the runtime lean, so all calculations need to fit in a limited range";
+
+        [
+            Level::ERROR.primary_title("repeat math overflow").element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(AnnotationKind::Primary.span(self.repeat_span.into()).label(
+                        format!(
+                            "repeat calculation overflows the allowed `i32` range at {}",
+                            self.max_value * self.stride
+                        ),
+                    ))
+                    .annotation(
+                        AnnotationKind::Context
+                            .span(self.max_value_span.into())
+                            .label(format!("biggest index of {} specified here, which gets multiplied with the stride", self.max_value)),
+                    ),
+            ),
+            Group::with_title(Level::INFO.secondary_title(INFO_TEXT)),
+        ]
+        .to_vec()
+    }
+}
+
+#[derive(Debug)]
 pub struct ExternInvalidBaseType {
     pub extern_name: Span,
     pub base_type: Option<Span>,

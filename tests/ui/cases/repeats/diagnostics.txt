@@ -1,0 +1,33 @@
+error: repeat math overflow
+  --> input.ddsl:2:14
+   |
+LL |     block foo[too_big stride 1] {
+   |              ^^^^^^^^^^^^^^^^^^ repeat calculation overflows the allowed `i32` range at 2147483648
+...
+LL |         TooBig: 0x8000_0000,
+   |         ------------------- biggest index of 2147483648 specified here, which gets multiplied with the stride
+   |
+info: repeat math is done with `i32` integers to keep the runtime lean, so all calculations need to fit in a limited range
+
+error: repeat math overflow
+  --> input.ddsl:11:14
+   |
+LL |     block bar[0x4000_0001 stride 2] {
+   |              ^-----------^^^^^^^^^^
+   |              ||
+   |              |biggest index of 1073741824 specified here, which gets multiplied with the stride
+   |              repeat calculation overflows the allowed `i32` range at 2147483648
+   |
+info: repeat math is done with `i32` integers to keep the runtime lean, so all calculations need to fit in a limited range
+
+error: repeat math overflow
+  --> input.ddsl:22:15
+   |
+LL |         a: -3,
+   |         ----- biggest index of -3 specified here, which gets multiplied with the stride
+...
+LL |     block quux[small stride 1000000000] {
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^ repeat calculation overflows the allowed `i32` range at -3000000000
+   |
+info: repeat math is done with `i32` integers to keep the runtime lean, so all calculations need to fit in a limited range
+

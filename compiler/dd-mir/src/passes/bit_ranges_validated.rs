@@ -132,7 +132,7 @@ fn ranges_overlap(l: &AddressRange, offset: i128, r: &AddressRange, second_offse
 fn get_repeat_iter(manifest: &Manifest, field: &Field) -> (Vec<i128>, bool) {
     if let Some(repeat) = &field.repeat {
         let stride = repeat.stride;
-        match &repeat.source {
+        match &repeat.source.value {
             RepeatSource::Count(count) => (
                 (0..i128::from(count.get()))
                     .map(move |count| count * stride.value)
@@ -226,8 +226,9 @@ mod tests {
                     name: Identifier::try_parse("my_field").unwrap().with_dummy_span(),
                     field_address: AddressRange { start: 0, end: 4 }.with_dummy_span(),
                     repeat: Some(Repeat {
-                        source: RepeatSource::Count(NonZero::new(3).unwrap()),
+                        source: RepeatSource::Count(NonZero::new(3).unwrap()).with_dummy_span(),
                         stride: 5.with_dummy_span(),
+                        span: Span::empty(),
                     }),
                     ..Default::default()
                 }],
@@ -351,8 +352,9 @@ mod tests {
                         name: Identifier::try_parse("my_field").unwrap().with_dummy_span(),
                         field_address: AddressRange { start: 0, end: 0 }.with_dummy_span(),
                         repeat: Some(Repeat {
-                            source: RepeatSource::Count(NonZero::new(6).unwrap()),
+                            source: RepeatSource::Count(NonZero::new(6).unwrap()).with_dummy_span(),
                             stride: 1.with_dummy_span(),
+                            span: Span::empty(),
                         }),
                         ..Default::default()
                     },

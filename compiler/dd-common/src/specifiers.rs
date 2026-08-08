@@ -2,7 +2,7 @@ use std::{fmt::Display, num::NonZeroU32, str::FromStr};
 
 use crate::{
     identifier::{IdentifierRef, Type},
-    span::Spanned,
+    span::{Span, Spanned},
 };
 
 pub trait VariantNames {
@@ -301,14 +301,15 @@ pub struct TypeConversion {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Repeat {
-    pub source: RepeatSource,
+    pub source: Spanned<RepeatSource>,
     pub stride: Spanned<i128>,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum RepeatSource {
     Count(NonZeroU32),
-    Enum(Spanned<IdentifierRef<Type>>),
+    Enum(IdentifierRef<Type>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

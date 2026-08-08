@@ -12,16 +12,18 @@ use crate::{
 };
 use device_driver_diagnostics::{
     Diagnostics, DynError,
-    errors::{ReferencedObjectDoesNotExist, RepeatEnumWithCatchAll},
+    errors::{ReferencedObjectDoesNotExist, RepeatEnumWithCatchAll, RepeatMathOverflow},
 };
 
-/// Checks if the enums referenced by repeats actually exist
-pub struct RepeatWithEnumsChecked;
+/// Checks if the enums referenced by repeats actually exist and that the enum is suitable to be used as a repeat source
+pub struct RepeatMathChecked;
 
-impl Pass for RepeatWithEnumsChecked {
-    const ASSUMPTIONS_MADE: &[Assumption] = &[];
-    const ASSUMPTIONS_RELEASED: &[Assumption] =
-        &[Assumption::RepeatEnumRefValid, Assumption::NamesUnique];
+impl Pass for RepeatMathChecked {
+    const ASSUMPTIONS_MADE: &[Assumption] = &[Assumption::NamesUnique, Assumption::EnumsNotEmpty];
+    const ASSUMPTIONS_RELEASED: &[Assumption] = &[
+        Assumption::RepeatEnumRefValid,
+        Assumption::RepeatMathChecked,
+    ];
 
     fn run_pass(
         manifest: &mut Manifest,
@@ -56,7 +58,8 @@ impl Pass for RepeatWithEnumsChecked {
             if let Some(repeat) = object.repeat_mut()
                 && bad_object_repeat.contains(&id)
             {
-                repeat.source = RepeatSource::Count(NonZero::new(1).unwrap());
+                repeat.source.value = RepeatSource::Count(NonZero::new(1).unwrap());
+                repeat.stride.value = 1;
             }
 
             if let Object::FieldSet(fs) = object {
@@ -66,7 +69,8 @@ impl Pass for RepeatWithEnumsChecked {
                     if let Some(repeat) = field.repeat.as_mut()
                         && bad_field_repeat.contains(&(id.clone(), field_id))
                     {
-                        repeat.source = RepeatSource::Count(NonZero::new(1).unwrap());
+                        repeat.source.value = RepeatSource::Count(NonZero::new(1).unwrap());
+                        repeat.stride.value = 1;
                     }
                 }
             }
@@ -77,27 +81,45 @@ impl Pass for RepeatWithEnumsChecked {
 }
 
 fn repeat_is_ok(repeat: &Repeat, manifest: &Manifest, diagnostics: &mut Diagnostics) -> bool {
-    let RepeatSource::Enum(repeat_enum) = &repeat.source else {
-        return true;
+    let (biggest_raw_value, biggest_value_span) = match &repeat.source.value {
+        RepeatSource::Enum(repeat_enum) => {
+            let Some(Object::Enum(enum_value)) = search_object(manifest, repeat_enum) else {
+                diagnostics.add(ReferencedObjectDoesNotExist {
+                    object_reference: repeat.source.span,
+                });
+                return false;
+            };
+
+            if let Some(catch_all) = enum_catch_all(enum_value) {
+                diagnostics.add(RepeatEnumWithCatchAll {
+                    repeat_enum: repeat.source.span,
+                    enum_name: enum_value.name.span,
+                    catch_all,
+                });
+                return false;
+            }
+
+            enum_value
+                .iter_variants_with_discriminant()
+                .map(|(discr, v)| (discr, v.span))
+                .max_by_key(|(discr, _)| (*discr * repeat.stride.value).abs())
+                .expect("enums are not empty")
+        }
+        RepeatSource::Count(count) => ((count.get() - 1) as i128, repeat.source.span),
     };
 
-    if let Some(Object::Enum(enum_value)) = search_object(manifest, repeat_enum) {
-        if let Some(catch_all) = enum_catch_all(enum_value) {
-            diagnostics.add(RepeatEnumWithCatchAll {
-                repeat_enum: repeat_enum.span,
-                enum_name: enum_value.name.span,
-                catch_all,
-            });
-            false
-        } else {
-            true
-        }
-    } else {
-        diagnostics.add(ReferencedObjectDoesNotExist {
-            object_reference: repeat_enum.span,
+    if i32::try_from(biggest_raw_value * repeat.stride.value).is_err() {
+        diagnostics.add(RepeatMathOverflow {
+            repeat_span: repeat.span,
+            max_value_span: biggest_value_span,
+            max_value: biggest_raw_value,
+            stride: repeat.stride.value,
         });
-        false
+
+        return false;
     }
+
+    true
 }
 
 fn enum_catch_all(enum_value: &Enum) -> Option<Span> {

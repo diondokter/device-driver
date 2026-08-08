@@ -1,0 +1,25 @@
+device Repeats {
+    block foo[too_big stride 1] {
+        address-offset: 0,
+    },
+
+    enum too_big {
+        JustOk: 0x7FFF_FFFF,
+        TooBig: 0x8000_0000,
+    },
+
+    block bar[0x4000_0001 stride 2] {
+        address-offset: 0,
+    },
+
+    enum small {
+        a: -3,
+        b: -2,
+        c: -1,
+        d: 0,
+    },
+
+    block quux[small stride 1000000000] {
+        address-offset: 0,
+    }
+}

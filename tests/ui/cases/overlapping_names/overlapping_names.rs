@@ -32,6 +32,9 @@ impl<I> Foo<I> {
     pub fn free(self) -> I {
         self.interface
     }
+    /// Register operation:
+    /// - Address: `0`
+    /// - Reset value: `0`
     #[doc(alias = "Bar")]
     pub fn bar(
         &mut self,
@@ -71,6 +74,9 @@ impl<I> FooDup1<I> {
     pub fn free(self) -> I {
         self.interface
     }
+    /// Register operation:
+    /// - Address: `0`
+    /// - Reset value: `0`
     #[doc(alias = "Bar")]
     pub fn bar_dup_2(
         &mut self,
@@ -109,11 +115,15 @@ impl<I> Blah<I> {
     pub fn free(self) -> I {
         self.interface
     }
+    /// Block operation:
+    /// - Address: `0`
     #[doc(alias = "Wheee")]
     pub fn wheee(&mut self) -> Wheee<'_, I> {
         let address = self.base_address + 0;
         Wheee::<'_, I>::new(::device_driver::Block::interface(self), address)
     }
+    /// Buffer operation:
+    /// - Address: `0`
     #[doc(alias = "Wheee")]
     pub fn wheee_dup_5(
         &mut self,
@@ -124,6 +134,8 @@ impl<I> Blah<I> {
         let address = self.base_address + 0;
         ::device_driver::BufferOperation::new(self, address as u8)
     }
+    /// Block operation:
+    /// - Address: `0`
     #[doc(alias = "Wheee2")]
     pub fn wheee_2(&mut self) -> Wheee2<'_, I> {
         let address = self.base_address + 0;
