@@ -41,6 +41,24 @@ impl<I> Repeats<I> {
         };
         Foo::<'_, I>::new(::device_driver::Block::interface(self), address)
     }
+    ///
+    /// Valid index range: `0..1`
+    pub fn bar(&mut self, index: usize) -> Bar<'_, I> {
+        let address = {
+            assert!(index < 1);
+            self.base_address + 0 + index as u8 * 1
+        };
+        Bar::<'_, I>::new(::device_driver::Block::interface(self), address)
+    }
+    ///
+    /// Valid index range: `0..1`
+    pub fn quux(&mut self, index: usize) -> Quux<'_, I> {
+        let address = {
+            assert!(index < 1);
+            self.base_address + 0 + index as u8 * 1
+        };
+        Quux::<'_, I>::new(::device_driver::Block::interface(self), address)
+    }
 }
 impl<I> ::device_driver::Block for Repeats<I> {
     type Interface = I;
@@ -72,6 +90,64 @@ impl<'i, I> Foo<'i, I> {
     }
 }
 impl<'i, I> ::device_driver::Block for Foo<'i, I> {
+    type Interface = I;
+    type RegisterAddressType = u8;
+    type CommandAddressType = u8;
+    type BufferAddressType = u8;
+    type RegisterAddressMode = ();
+    fn interface(&mut self) -> &mut Self::Interface {
+        self.interface
+    }
+}
+#[doc(alias = "bar")]
+#[derive(Debug)]
+pub struct Bar<'i, I> {
+    #[doc(hidden)]
+    interface: &'i mut I,
+    #[doc(hidden)]
+    #[allow(unused)]
+    base_address: u8,
+}
+impl<'i, I> Bar<'i, I> {
+    /// Create a new instance of the block based on device interface
+    #[doc(hidden)]
+    fn new(interface: &'i mut I, base_address: u8) -> Self {
+        Self {
+            interface,
+            base_address: base_address,
+        }
+    }
+}
+impl<'i, I> ::device_driver::Block for Bar<'i, I> {
+    type Interface = I;
+    type RegisterAddressType = u8;
+    type CommandAddressType = u8;
+    type BufferAddressType = u8;
+    type RegisterAddressMode = ();
+    fn interface(&mut self) -> &mut Self::Interface {
+        self.interface
+    }
+}
+#[doc(alias = "quux")]
+#[derive(Debug)]
+pub struct Quux<'i, I> {
+    #[doc(hidden)]
+    interface: &'i mut I,
+    #[doc(hidden)]
+    #[allow(unused)]
+    base_address: u8,
+}
+impl<'i, I> Quux<'i, I> {
+    /// Create a new instance of the block based on device interface
+    #[doc(hidden)]
+    fn new(interface: &'i mut I, base_address: u8) -> Self {
+        Self {
+            interface,
+            base_address: base_address,
+        }
+    }
+}
+impl<'i, I> ::device_driver::Block for Quux<'i, I> {
     type Interface = I;
     type RegisterAddressType = u8;
     type CommandAddressType = u8;
@@ -117,6 +193,55 @@ impl ::device_driver::EnumIndex for TooBig {
     #[track_caller]
     fn index(&self) -> i32 {
         let index = u32::from(*self);
+        index.try_into().unwrap()
+    }
+}
+#[doc(alias = "small")]
+#[repr(i8)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub enum Small {
+    #[doc(alias = "a")]
+    A = -3,
+    #[doc(alias = "b")]
+    B = -2,
+    #[doc(alias = "c")]
+    C = -1,
+    #[doc(alias = "d")]
+    D = 0,
+}
+impl core::convert::TryFrom<i8> for Small {
+    type Error = ::device_driver::ConversionError<i8>;
+    fn try_from(val: i8) -> Result<Self, Self::Error> {
+        match val {
+            -3 => Ok(Self::A),
+            -2 => Ok(Self::B),
+            -1 => Ok(Self::C),
+            0 => Ok(Self::D),
+            val => {
+                Err(::device_driver::ConversionError {
+                    source: val,
+                    target: "Small",
+                })
+            }
+        }
+    }
+}
+impl From<Small> for i8 {
+    fn from(val: Small) -> Self {
+        match val {
+            Small::A => -3,
+            Small::B => -2,
+            Small::C => -1,
+            Small::D => 0,
+        }
+    }
+}
+#[doc(hidden)]
+impl ::device_driver::EnumIndex for Small {
+    #[track_caller]
+    fn index(&self) -> i32 {
+        let index = i8::from(*self);
         index.try_into().unwrap()
     }
 }

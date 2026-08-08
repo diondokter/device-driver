@@ -18,6 +18,7 @@ impl Pass for AddressTypesBigEnough {
         Assumption::RepeatStrideNonZero,
         Assumption::NamesUnique,
         Assumption::RepeatEnumRefValid,
+        Assumption::RepeatMathChecked,
     ];
     const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
 

@@ -593,39 +593,37 @@ This is not possible with an enum containing a catch-all since it can take on an
 }
 
 #[derive(Debug)]
-pub struct RepeatEnumTooBig {
-    pub repeat_enum: Span,
-    pub enum_name: Span,
-    pub too_big_variant: Span,
-    pub too_big_variant_value: i128,
+pub struct RepeatMathOverflow {
+    pub repeat_span: Span,
+    pub max_value_span: Span,
+    pub max_value: i128,
+    pub stride: i128,
 }
 
-impl Diagnostic for RepeatEnumTooBig {
+impl Diagnostic for RepeatMathOverflow {
     fn is_error(&self) -> bool {
         true
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
-        const INFO_TEXT: &str = "repeat math is done with `i32` integers, so enums used as repeat sources must fit in that";
+        const INFO_TEXT: &str = "repeat math is done with `i32` integers to keep the runtime lean, so all calculations need to fit in a limited range";
 
         [
-            Level::ERROR
-                .primary_title("enum with too big variant used as repeat source")
-                .element(
-                    Snippet::source(source)
-                        .path(path)
-                        .annotation(
-                            AnnotationKind::Primary
-                                .span(self.repeat_enum.into())
-                                .label("repeat uses enum with a variant that's too big"),
-                        )
-                        .annotation(AnnotationKind::Visible.span(self.enum_name.into()))
-                        .annotation(
-                            AnnotationKind::Context
-                                .span(self.too_big_variant.into())
-                                .label(format!("this variant is too big. The value is {}, but must fit in an `i32`", self.too_big_variant_value)),
+            Level::ERROR.primary_title("repeat math overflow").element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(AnnotationKind::Primary.span(self.repeat_span.into()).label(
+                        format!(
+                            "repeat calculation overflows the allowed `i32` range at {}",
+                            self.max_value * self.stride
                         ),
-                ),
+                    ))
+                    .annotation(
+                        AnnotationKind::Context
+                            .span(self.max_value_span.into())
+                            .label(format!("biggest index of {} specified here, which gets multiplied with the stride", self.max_value)),
+                    ),
+            ),
             Group::with_title(Level::INFO.secondary_title(INFO_TEXT)),
         ]
         .to_vec()

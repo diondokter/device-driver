@@ -3,7 +3,7 @@ use std::{collections::HashSet, num::NonZero};
 use clap::Parser;
 use device_driver_common::{
     identifier::{IdentifierRef, IdentifierType},
-    span::SpanExt,
+    span::{Span, SpanExt},
     specifiers::{Repeat, RepeatSource},
 };
 use device_driver_diagnostics::{Diagnostics, DynError};
@@ -88,13 +88,14 @@ pub fn find_min_max_addresses<'m>(
 
         if let Some(address) = object.address() {
             let repeat = object.repeat().cloned().unwrap_or(Repeat {
-                source: RepeatSource::Count(NonZero::new(1).unwrap()),
+                source: RepeatSource::Count(NonZero::new(1).unwrap()).with_dummy_span(),
                 stride: 0.with_dummy_span(),
+                span: Span::empty(),
             });
 
             let total_address_offsets = address_offsets.iter().sum::<i128>();
 
-            match repeat.source {
+            match repeat.source.value {
                 RepeatSource::Count(count) => {
                     let count_0_address = total_address_offsets + address.value;
                     let count_max_address = count_0_address

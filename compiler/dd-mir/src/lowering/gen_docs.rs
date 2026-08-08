@@ -195,7 +195,8 @@ fn generate_shape_example<S: Shape>() -> Node<'static> {
         name: Ident::new_no_span("Example"),
         repeat: shape.repeat().map(|_| {
             Repeat {
-                source: device_driver_parser::RepeatSource::Count(NonZero::new(8).unwrap()),
+                source: device_driver_parser::RepeatSource::Count(NonZero::new(8).unwrap())
+                    .with_dummy_span(),
                 stride: 4.with_dummy_span(),
             }
             .with_dummy_span()

@@ -1,7 +1,7 @@
 use std::{collections::HashSet, num::NonZero};
 
 use device_driver_common::{
-    span::{SpanExt, Spanned},
+    span::{Span, SpanExt, Spanned},
     specifiers::{AddressMode, Repeat, RepeatSource},
 };
 
@@ -157,8 +157,9 @@ fn find_object_addresses<'m>(
             };
 
             let repeat = object.repeat().cloned().unwrap_or(Repeat {
-                source: RepeatSource::Count(NonZero::new(1).unwrap()),
+                source: RepeatSource::Count(NonZero::new(1).unwrap()).with_dummy_span(),
                 stride: 0.with_dummy_span(),
+                span: Span::empty(),
             });
 
             let total_address_offsets = address_offsets.iter().sum::<i128>();
@@ -167,7 +168,7 @@ fn find_object_addresses<'m>(
             // so limit the elements we look at. Otherwise we could OOM
             let max_elements = if repeat.stride == 0 { 5 } else { usize::MAX };
 
-            match repeat.source {
+            match repeat.source.value {
                 RepeatSource::Count(count) => {
                     for index in (0..i128::from(count.get())).take(max_elements) {
                         let repeat_offset = index * repeat.stride.value;
