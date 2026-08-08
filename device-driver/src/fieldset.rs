@@ -108,18 +108,18 @@ macro_rules! create_fsn {
         }
 
         impl<$($tname),*> ToTuple for $name<$($tname),*> {
-            type Tuple = ($($tname),*);
+            type Tuple = ($($tname),*,);
             fn to_tuple(self) -> Self::Tuple {
                 (
-                    $(self.$tnum),*
+                    $(self.$tnum),*,
                 )
             }
         }
         impl<'a, $($tname),*> ToTuple for &'a mut $name<$($tname),*> {
-            type Tuple = ($(&'a mut $tname),*);
+            type Tuple = ($(&'a mut $tname),*,);
             fn to_tuple(self) -> Self::Tuple {
                 (
-                    $(&mut self.$tnum),*
+                    $(&mut self.$tnum),*,
                 )
             }
         }

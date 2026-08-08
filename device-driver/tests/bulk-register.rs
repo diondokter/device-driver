@@ -237,3 +237,27 @@ fn plan_array_oob() {
         .bulk_read()
         .with(|d| d.foo_repeated().plan_array_at::<3>(2));
 }
+
+/// Show/test that bulk ops work with conditional compilation down to a single element too
+#[test]
+fn conditional() {
+    let mut device = MyTestDevice::new(DeviceInterface::new());
+
+    let bulk_write = device.bulk_write().with(|d| d.foo().plan());
+    #[cfg(false)]
+    let bulk_write = bulk_write.with(|d| d.bar().plan());
+    bulk_write
+        .execute(|vals| {
+            vals.0.set_value(42);
+            #[cfg(false)]
+            vals.1.set_value(42);
+        })
+        .unwrap();
+
+    let bulk_read = device.bulk_read().with(|d| d.foo().plan());
+    #[cfg(false)]
+    let bulk_read = bulk_read.with(|d| d.bar().plan());
+    let vals = bulk_read.execute().unwrap();
+
+    assert_eq!(vals.0.value(), 42)
+}
