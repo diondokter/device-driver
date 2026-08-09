@@ -8,24 +8,101 @@ enum Theme {
     Light,
 }
 
-const DEFAULT_CODE = `device Foo {
+const DEFAULT_CODE = `device Tmp102 {
     register-address-type: u8,
+    byte-order: BE,
 
-    /// Doc comments get reflected in the output code!
-    register Bar {
+    /// The temperature value
+    fieldset TempValue {
+        size-bytes: 2,
+        bit-overlap: allow,
+        /// Read the temperature in celsius
+        field value 15:4 -> _ as Celsius12,
+        /// Read the extended temperature in celsius, when the extended mode is true
+        field extended-value 15:3 -> _ as Celsius13,
+    },
+    /// The current temperature
+    register Temperature {
         address: 0,
-        
-        fields: fieldset BarFields {
-            size-bytes: 1,
-
-            field xena 1:0 -> u8 as enum Xena {
-                A: _,
-                B: _,
-                C: default 3,
-            },
-            field quux 7:2 -> u8,
-        }
-    }
+        access: RO,
+        fields: TempValue,
+    },
+    /// Configuration for the sensor
+    register Config {
+        address: 1,
+        reset: 0b01100000_10100000,
+        fields: fieldset _ {
+            size-bytes: 2,
+            /// Extended mode allows measurement of temperatures above 128°C by configuring the Temperature
+            /// Register, and high- and low-limit registers for 13-bit data format.
+            field extended-mode 4,
+            /// Signals whether the alert condition is active. Polarity is determined by the polarity bit
+            field alert 5 RO,
+            /// Set the conversion rate. Lower means less power usage
+            field conversion-rate 7:6 -> _ as
+                enum _ {
+                    Hz0_25: 0,
+                    Hz1: 1,
+                    Hz4: default 2,
+                    Hz8: 3,
+                },
+            /// The Shutdown-mode bit saves maximum power by shutting down all device circuitry other than the serial
+            /// interface, reducing current consumption to typically less than 0.15 μA.
+            field shutdown 8,
+            /// Set the behavior of the ALERT condition
+            field thermostat-mode 9 -> _ as
+                enum _ {
+                    /// The Alert pin is activated when the temperature equals or exceeds the value in
+                    /// the T(HIGH) register and remains active until the temperature falls below the value in the T(LOW) register
+                    comperator: 0,
+                    /// The ALERT pin becomes active when the temperature equals or exceeds the value
+                    /// in T(HIGH) for a consecutive number of fault conditions. The ALERT pin remains active
+                    /// until a read operation of any register occurs, or the device successfully responds to the SMBus Alert Response
+                    /// address. The ALERT pin will also be cleared if the device is placed in Shutdown mode. When the ALERT pin
+                    /// is cleared, it becomes active again only when temperature falls below T(LOW)
+                    interrupt: 1,
+                },
+            /// If the POL bit is set to 0 (default), the ALERT pin becomes active low. When the POL bit is set to 1,
+            /// the ALERT pin becomes active high and the state of the ALERT pin is inverted. 
+            field polarity 10,
+            /// The amount of fault conditions required to trigger the ALERT status
+            field fault-queue 12:11 -> _ as
+                /// Number of fault conditions
+                enum _ {
+                    /// One fault condition
+                    F1: 0,
+                    /// Two fault conditions
+                    F2: 1,
+                    /// Four fault conditions
+                    F4: 2,
+                    /// Six fault conditions
+                    F6: 3,
+                },
+            field resolution 14:13 RO,
+            /// When the device is in Shutdown Mode, writing a 1 to the OS bit starts a single temperature conversion.
+            /// During the conversion, the OS bit reads '0'.
+            /// The device returns to the shutdown state at the completion of the single conversion. 
+            field one-shot 15,
+        },
+    },
+    /// Set the temperature threshold below (or equeal) which the alert condition stops
+    register TLow {
+        address: 2,
+        fields: TempValue,
+    },
+    /// Set the temperature threshold above (or equal) which the alert condition starts
+    register THigh {
+        address: 3,
+        fields: TempValue,
+    },
+    extern Celsius12 -> i16 {
+        infallible: allow,
+        size-bits: 12,
+    },
+    extern Celsius13 -> i16 {
+        infallible: allow,
+        size-bits: 13,
+    },
 }
 `
 const DEFAULT_OPTIONS = `--rust-defmt-feature=defmt`;

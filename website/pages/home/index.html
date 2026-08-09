@@ -68,24 +68,24 @@
             Document everything using the /// <em>doc comments</em>.
         </p>
     </div>
-    <pre><code class="language-ddsl">device Foo {
+    <pre><code class="language-ddsl">device Ym3812 {
     register-address-type: u8,
 
-    /// Doc comments get reflected in the output code!
-    register Bar {
-        address: 0,
-        
-        fields: fieldset BarFields {
+    register operator_settings1 {
+        address: 0x40,
+        fields: fieldset _ {
             size-bytes: 1,
-
-            field xena 1:0 -> u8 as enum Xena {
-                A: _,
-                B: _,
-                C: default 3,
+            /// Causes output levels to decrease as the frequency rises
+            field level_key_scaling 7:6 -> _ as enum ScalingLevel {
+                NoChange: 0b00,
+                DB3PerOctave: 0b01,
+                DB1_5PerOctave: 0b10,
+                DB6PerOctave: 0b11,
             },
-            field quux 7:2 -> u8,
-        }
-    }
+            /// Attenuates the operator output level
+            field output_level 5:0,
+        },
+    },
 }
 </code></pre>
 </div>
@@ -96,8 +96,8 @@
     <pre><code class="nohighlight hljs"><span style="font-weight:bold;color:rgb(255,85,85)">error</span><span style="font-weight:bold">: invalid fieldset reference</span>
   <span style="font-weight:bold;color:rgb(85,85,255)"> ╭▸ </span>input.ddsl:21:17
    <span style="font-weight:bold;color:rgb(85,85,255)">│</span>
-<span style="font-weight:bold;color:rgb(85,85,255)"> 5</span> <span style="font-weight:bold;color:rgb(85,85,255)">│</span>     register Bar {
-   <span style="font-weight:bold;color:rgb(85,85,255)">│</span>              <span style="font-weight:bold;color:rgb(85,85,255)">───</span> <span style="font-weight:bold;color:rgb(85,85,255)">reference points to non-fieldset object</span>
+<span style="font-weight:bold;color:rgb(85,85,255)"> 5</span> <span style="font-weight:bold;color:rgb(85,85,255)">│</span>     enum Bar {
+   <span style="font-weight:bold;color:rgb(85,85,255)">│</span>          <span style="font-weight:bold;color:rgb(85,85,255)">───</span> <span style="font-weight:bold;color:rgb(85,85,255)">reference points to non-fieldset object</span>
    <span style="font-weight:bold;color:rgb(85,85,255)">‡</span>
 <span style="font-weight:bold;color:rgb(85,85,255)">21</span> <span style="font-weight:bold;color:rgb(85,85,255)">│</span>         fields: Bar
    <span style="font-weight:bold;color:rgb(85,85,255)">╰╴</span>                <span style="font-weight:bold;color:rgb(255,85,85)">━━━</span> <span style="font-weight:bold;color:rgb(255,85,85)">no fieldset found with this name</span>
@@ -124,7 +124,7 @@
             Everything can be called both <em>blocking</em> and <em>async</em>.
         </p>
         <p>
-            Read, write and modify registers, either per register or in <em>bulk</em>.
+            Read, write and modify registers, either per register or in <em><a href="/book/v2/runtime-rust.html#bulk-operations">bulk</a></em>.
         </p>
         <p>
             Commands can be dispatched with optional input and output data.
