@@ -54,7 +54,7 @@ const DEFAULT_CODE = `device Tmp102 {
                 enum _ {
                     /// The Alert pin is activated when the temperature equals or exceeds the value in
                     /// the T(HIGH) register and remains active until the temperature falls below the value in the T(LOW) register
-                    comperator: 0,
+                    comparator: 0,
                     /// The ALERT pin becomes active when the temperature equals or exceeds the value
                     /// in T(HIGH) for a consecutive number of fault conditions. The ALERT pin remains active
                     /// until a read operation of any register occurs, or the device successfully responds to the SMBus Alert Response
@@ -85,7 +85,7 @@ const DEFAULT_CODE = `device Tmp102 {
             field one-shot 15,
         },
     },
-    /// Set the temperature threshold below (or equeal) which the alert condition stops
+    /// Set the temperature threshold below (or equal) which the alert condition stops
     register TLow {
         address: 2,
         fields: TempValue,
