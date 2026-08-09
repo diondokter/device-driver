@@ -1,31 +1,31 @@
-<!doctype html><html><head><meta content="text/html;charset=utf-8" http-equiv="Content-Type"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>device-driver</title><link rel="stylesheet" href="../assets/stylesheets/home.css"><link rel="icon" type="image/png" href="../assets/images/ddsl.png"/><meta name="keywords" content="DDSL, Rust, device-driver, compiler"><meta name="author" content="Dion Dokter"><meta name="description" content="A toolkit to write better device drivers, faster"><meta property="og:description" content="A toolkit to write better device drivers, faster"><meta property="og:title" content="device-driver"><meta property="og:image" content="https://device-driver.com/assets/images/ddsl_card.png"/><meta name="twitter:card" content="summary_large_image"><meta name="color-scheme" content="dark light"/><script defer="defer" src="home.js"></script></head><header class="header"><div class="container"><img src="../assets/images/ddsl.png" height="64px"/><h1>device-driver</h1><div class="buttons"><a href="./book/">Book</a> <a href="./playground/">Playground</a> <a href="https://matrix.to/#/#device-driver:matrix.org">Chat</a> <a href="https://crates.io/crates/device-driver">Crates.io</a> <a href="https://github.com/diondokter/device-driver">GitHub</a></div></div></header><div class="center-text"><h1>A toolkit to write better<br/>device drivers, faster</h1><p>Define your driver using DDSL, a simple custom specification language.</p><p>Then generate Rust code using the compiler or proc macro.</p><p/></div><hr/><div class="showcase"><div><h2>Intro</h2><p>Define your <em><a href="book/v2/language-register.html">registers</a></em>, <em><a href="book/v2/language-command.html">commands</a></em> & <em><a href="book/v2/language-buffer.html">buffers</a></em> using the device-driver specification language. These form the user API of the driver.</p><p>Create <em><a href="book/v2/language-fieldset.html">fieldsets</a></em> composed of many <em><a href="book/v2/language-field.html">fields</a></em>. Make them impossible to use incorrectly with access control, type conversions & enum-indexed repeats.</p><p>Use custom <em><a href="book/v2/language-enum.html">enums</a></em> to represent closed sets. Or define an <em><a href="book/v2/language-extern.html">extern</a></em> when you want to use more complex types implemented in your own code.</p><p>Document everything using the /// <em>doc comments</em>.</p></div><pre><code class="language-ddsl">device Foo {
+<!doctype html><html><head><meta content="text/html;charset=utf-8" http-equiv="Content-Type"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>device-driver</title><link rel="stylesheet" href="../assets/stylesheets/home.css"><link rel="icon" type="image/png" href="../assets/images/ddsl.png"/><meta name="keywords" content="DDSL, Rust, device-driver, compiler"><meta name="author" content="Dion Dokter"><meta name="description" content="A toolkit to write better device drivers, faster"><meta property="og:description" content="A toolkit to write better device drivers, faster"><meta property="og:title" content="device-driver"><meta property="og:image" content="https://device-driver.com/assets/images/ddsl_card.png"/><meta name="twitter:card" content="summary_large_image"><meta name="color-scheme" content="dark light"/><script defer="defer" src="home.js"></script></head><header class="header"><div class="container"><img src="../assets/images/ddsl.png" height="64px"/><h1>device-driver</h1><div class="buttons"><a href="./book/">Book</a> <a href="./playground/">Playground</a> <a href="https://matrix.to/#/#device-driver:matrix.org">Chat</a> <a href="https://crates.io/crates/device-driver">Crates.io</a> <a href="https://github.com/diondokter/device-driver">GitHub</a></div></div></header><div class="center-text"><h1>A toolkit to write better<br/>device drivers, faster</h1><p>Define your driver using DDSL, a simple custom specification language.</p><p>Then generate Rust code using the compiler or proc macro.</p><p/></div><hr/><div class="showcase"><div><h2>Intro</h2><p>Define your <em><a href="book/v2/language-register.html">registers</a></em>, <em><a href="book/v2/language-command.html">commands</a></em> & <em><a href="book/v2/language-buffer.html">buffers</a></em> using the device-driver specification language. These form the user API of the driver.</p><p>Create <em><a href="book/v2/language-fieldset.html">fieldsets</a></em> composed of many <em><a href="book/v2/language-field.html">fields</a></em>. Make them impossible to use incorrectly with access control, type conversions & enum-indexed repeats.</p><p>Use custom <em><a href="book/v2/language-enum.html">enums</a></em> to represent closed sets. Or define an <em><a href="book/v2/language-extern.html">extern</a></em> when you want to use more complex types implemented in your own code.</p><p>Document everything using the /// <em>doc comments</em>.</p></div><pre><code class="language-ddsl">device Ym3812 {
     register-address-type: u8,
 
-    /// Doc comments get reflected in the output code!
-    register Bar {
-        address: 0,
-        
-        fields: fieldset BarFields {
+    register operator_settings1 {
+        address: 0x40,
+        fields: fieldset _ {
             size-bytes: 1,
-
-            field xena 1:0 -> u8 as enum Xena {
-                A: _,
-                B: _,
-                C: default 3,
+            /// Causes output levels to decrease as the frequency rises
+            field level_key_scaling 7:6 -> _ as enum ScalingLevel {
+                NoChange: 0b00,
+                DB3PerOctave: 0b01,
+                DB1_5PerOctave: 0b10,
+                DB6PerOctave: 0b11,
             },
-            field quux 7:2 -> u8,
-        }
-    }
+            /// Attenuates the operator output level
+            field output_level 5:0,
+        },
+    },
 }
 </code></pre></div><hr/><div class="showcase reverse"><pre><code class="nohighlight hljs"><span style="font-weight:bold;color:rgb(255,85,85)">error</span><span style="font-weight:bold">: invalid fieldset reference</span>
   <span style="font-weight:bold;color:rgb(85,85,255)"> ╭▸ </span>input.ddsl:21:17
    <span style="font-weight:bold;color:rgb(85,85,255)">│</span>
-<span style="font-weight:bold;color:rgb(85,85,255)"> 5</span> <span style="font-weight:bold;color:rgb(85,85,255)">│</span>     register Bar {
-   <span style="font-weight:bold;color:rgb(85,85,255)">│</span>              <span style="font-weight:bold;color:rgb(85,85,255)">───</span> <span style="font-weight:bold;color:rgb(85,85,255)">reference points to non-fieldset object</span>
+<span style="font-weight:bold;color:rgb(85,85,255)"> 5</span> <span style="font-weight:bold;color:rgb(85,85,255)">│</span>     enum Bar {
+   <span style="font-weight:bold;color:rgb(85,85,255)">│</span>          <span style="font-weight:bold;color:rgb(85,85,255)">───</span> <span style="font-weight:bold;color:rgb(85,85,255)">reference points to non-fieldset object</span>
    <span style="font-weight:bold;color:rgb(85,85,255)">‡</span>
 <span style="font-weight:bold;color:rgb(85,85,255)">21</span> <span style="font-weight:bold;color:rgb(85,85,255)">│</span>         fields: Bar
    <span style="font-weight:bold;color:rgb(85,85,255)">╰╴</span>                <span style="font-weight:bold;color:rgb(255,85,85)">━━━</span> <span style="font-weight:bold;color:rgb(255,85,85)">no fieldset found with this name</span>
-</code></pre><div><h2>Errors</h2><p>Everything is <em>checked</em> by the compiler for correctness. If not a <em>helpful</em> error message will explain what's wrong.</p></div></div><hr/><div class="showcase"><div><h2>Rust API</h2><p>Use a familiar <em>svd2rust</em>/<em>chiptool</em> inspired API to interact with the driver. Everything can be called both <em>blocking</em> and <em>async</em>.</p><p>Read, write and modify registers, either per register or in <em>bulk</em>.</p><p>Commands can be dispatched with optional input and output data.</p><p>Buffers are written and read with byte slices.</p><p>Fields can have <em><a href="/book/v2/language-tokens_ast.html#type-specifier">conversion</a></em> types so values are always correct.</p><p>The driver is driven entirely by the functions you call, <em>no runtime</em> requirements. It won't get in your way.</p></div><pre><code class="language-rust">// Create device instance
+</code></pre><div><h2>Errors</h2><p>Everything is <em>checked</em> by the compiler for correctness. If not a <em>helpful</em> error message will explain what's wrong.</p></div></div><hr/><div class="showcase"><div><h2>Rust API</h2><p>Use a familiar <em>svd2rust</em>/<em>chiptool</em> inspired API to interact with the driver. Everything can be called both <em>blocking</em> and <em>async</em>.</p><p>Read, write and modify registers, either per register or in <em><a href="/book/v2/runtime-rust.html#bulk-operations">bulk</a></em>.</p><p>Commands can be dispatched with optional input and output data.</p><p>Buffers are written and read with byte slices.</p><p>Fields can have <em><a href="/book/v2/language-tokens_ast.html#type-specifier">conversion</a></em> types so values are always correct.</p><p>The driver is driven entirely by the functions you call, <em>no runtime</em> requirements. It won't get in your way.</p></div><pre><code class="language-rust">// Create device instance
 let mut device = MyDevice::new(DeviceInterface::new());
 
 // Write a register
