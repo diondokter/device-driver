@@ -79,6 +79,15 @@ The output is unstable.
 {{#include ../gen-docs/options/cli-gen_docs-help.txt}}
 ```
 
+##### Converter
+
+Convert from one of the supported formats to DDSL.
+Don't rely on this in your main process since the output is unstable.
+
+```
+{{#include ../gen-docs/options/cli-converter-help.txt}}
+```
+
 ### Tool - Rust proc-macro
 
 To ease the compilation flow for Rust projects, a proc-macro is available.

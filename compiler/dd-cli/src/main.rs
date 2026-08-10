@@ -17,6 +17,8 @@ enum Command {
     /// Generate docs about the compiler
     #[cfg(feature = "gen-docs")]
     GenDocs(GenDocsArgs),
+    #[cfg(feature = "_converter")]
+    Convert(ConverterArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -40,6 +42,21 @@ struct GenDocsArgs {
     output_path: PathBuf,
 }
 
+#[cfg(feature = "_converter")]
+#[derive(Parser, Debug)]
+#[command(no_binary_name = true, bin_name = "")]
+struct ConverterArgs {
+    /// Path to the input file.
+    #[arg(short = 's', long = "source", value_name = "FILE", global = true)]
+    source_path: Option<PathBuf>,
+    /// Path to output location. Any existing file is overwritten. If not provided, the output is written to stdout.
+    #[arg(short = 'o', long = "output", value_name = "FILE", global = true)]
+    output_path: Option<PathBuf>,
+    /// The format to convert from
+    #[command(subcommand)]
+    source_format: device_driver_converter::SourceFormat,
+}
+
 fn main() -> ExitCode {
     match run() {
         Ok(exit) => exit,
@@ -57,6 +74,8 @@ fn run() -> Result<ExitCode, DynError> {
         Command::Build(args) => build(args),
         #[cfg(feature = "gen-docs")]
         Command::GenDocs(args) => gen_docs(args),
+        #[cfg(feature = "_converter")]
+        Command::Convert(args) => convert(args),
     }
 }
 
@@ -132,6 +151,11 @@ fn gen_docs(args: GenDocsArgs) -> Result<ExitCode, DynError> {
     )
     .with_message(|| "writing cli-gen_docs-help")?;
     std::fs::write(
+        cli_folder.join("cli-converter-help.txt"),
+        ConverterArgs::command().render_long_help().to_string(),
+    )
+    .with_message(|| "writing cli-gen_docs-help")?;
+    std::fs::write(
         cli_folder.join("cli-gen_docs-help.txt"),
         GenDocsArgs::command().render_long_help().to_string(),
     )
@@ -152,6 +176,40 @@ fn gen_docs(args: GenDocsArgs) -> Result<ExitCode, DynError> {
     .with_message(|| "writing rust-help")?;
 
     device_driver_core::gen_docs(&args.output_path).map(|()| ExitCode::SUCCESS)
+}
+
+#[cfg(feature = "_converter")]
+fn convert(args: ConverterArgs) -> Result<ExitCode, DynError> {
+    let Some(source_path) = args.source_path else {
+        return Err(DynError::new("no source path provided"));
+    };
+
+    let source = std::fs::read_to_string(&source_path)
+        .with_message(|| format!("Failed to open input file at: {:?}", source_path.display()))?;
+
+    let ddsl = device_driver_converter::convert(&source, args.source_format)
+        .with_message(|| "converting source")?;
+
+    let output_writer: &mut dyn Write = match &args.output_path {
+        Some(path) => &mut std::fs::File::create(path).with_message(|| {
+            format!(
+                "could not create the output file at: {:?}. Does its directory exist?",
+                path.display()
+            )
+        })?,
+        None => &mut std::io::stdout().lock(),
+    };
+
+    let mut output_writer = std::io::BufWriter::new(output_writer);
+    output_writer.write_all(ddsl.as_bytes()).with_message(|| {
+        format!(
+            "could not write output to {}",
+            args.output_path
+                .map_or_else(|| "stdout".into(), |path| format!("{:?}", path.display()))
+        )
+    })?;
+
+    Ok(ExitCode::SUCCESS)
 }
 
 #[derive(clap::ValueEnum, Debug, Clone)]

@@ -20,9 +20,16 @@ path = "src/main.rs"
 [dependencies]
 device-driver-core.workspace = true
 device-driver-diagnostics.workspace = true
+device-driver-converter = { workspace = true, optional = true }
 
 clap.workspace = true
 
 [features]
 # Enable the gen-docs command. Requires nightly to build
 gen-docs = ["device-driver-core/gen-docs"]
+
+# Enable converting device-driver v1 to DDSL
+converter-dd-v1 = ["_converter", "device-driver-converter/dd-v1"]
+
+# Private feature
+_converter = ["dep:device-driver-converter"]
