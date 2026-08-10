@@ -30,10 +30,10 @@ pub enum DeviceDriverV1Format {
 /// Don't use in long running programs since conversion may leak memory.
 /// That's because we're running the ddsl parser in reverse while the parser is
 /// optimized for speed and memory use and so usually borrows from the DDSL source.
-pub fn convert(source: &str, format: SourceFormat) -> Result<String, DynError> {
+pub fn convert(_source: &str, format: SourceFormat) -> Result<String, DynError> {
     match format {
         #[cfg(feature = "dd-v1")]
-        SourceFormat::DeviceDriverV1 { sub_format } => dd_v1::convert(source, sub_format)
+        SourceFormat::DeviceDriverV1 { sub_format } => dd_v1::convert(_source, sub_format)
             .with_message(|| format!("converting device-driver v1 format {sub_format:?}")),
     }
 }
