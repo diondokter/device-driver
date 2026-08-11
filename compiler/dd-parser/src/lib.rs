@@ -75,7 +75,15 @@ impl<'src> Display for Node<'src> {
         let indentation = format!("{:width$}", "", width = indentation_level * 4);
 
         for doc_comment in &self.doc_comments {
-            writeln!(f, "{indentation}///{doc_comment}")?;
+            writeln!(
+                f,
+                "{indentation}///{}{doc_comment}",
+                if doc_comment.starts_with(" ") {
+                    ""
+                } else {
+                    " "
+                }
+            )?;
         }
         write!(f, "{indentation}{} {}", self.node_type.val, self.name.val,)?;
 
@@ -108,12 +116,26 @@ impl<'src> Display for Node<'src> {
                 for doc_comment in property.doc_comments.iter() {
                     writeln!(f, "{indentation}    ///{}", doc_comment)?;
                 }
-                writeln!(
-                    f,
-                    "{indentation}    {}: {},",
-                    property.name.val,
-                    property.expression.get_human_string()
-                )?;
+
+                write!(f, "{indentation}    {}:", property.name.val)?;
+
+                let expression = property.expression.get_human_string();
+
+                if expression.starts_with("///") {
+                    for line in expression.lines() {
+                        write!(f, "\n{indentation}        {line}")?;
+                    }
+                } else {
+                    for (i, line) in expression.lines().enumerate() {
+                        if i == 0 {
+                            write!(f, " {line}")?;
+                        } else {
+                            write!(f, "\n{indentation}    {line}")?;
+                        }
+                    }
+                }
+
+                writeln!(f, ",")?;
             }
 
             if !self.properties.is_empty() && !self.sub_nodes.is_empty() {
