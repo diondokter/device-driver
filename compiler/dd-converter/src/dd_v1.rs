@@ -9,8 +9,8 @@ use device_driver_common::{
 use device_driver_diagnostics::{DynError, ResultExt};
 use device_driver_generation::mir::{
     Access as V1Access, BaseType as V1BaseType, BitOrder, Block, Buffer, ByteOrder as V1ByteOrder,
-    Command, Enum, Field, FieldConversion, Integer as V1Integer, Object, Register,
-    Repeat as V1Repeat,
+    Command, Enum, Field, FieldConversion, Integer as V1Integer, Object, ObjectOverride, RefObject,
+    Register, Repeat as V1Repeat,
 };
 use device_driver_parser::{
     Expression, Ident, Node, Property, Repeat, RepeatSource, TypeConversion, TypeSpecifier,
@@ -101,7 +101,8 @@ pub fn convert(source: &str, sub_format: DeviceDriverV1Format) -> Result<String,
             .objects
             .iter()
             .map(|o| {
-                convert_object(o).with_message(|| format!("converting object `{}`", object_name(o)))
+                convert_object(o, &device_mir.objects)
+                    .with_message(|| format!("converting object `{}`", object_name(o)))
             })
             .collect::<Result<Vec<_>, _>>()?,
         span: Span::empty(),
@@ -152,29 +153,114 @@ fn convert_boundary(value: &Boundary) -> &'static str {
     }
 }
 
-fn convert_object(object: &Object) -> Result<Node<'static>, DynError> {
+fn convert_object(object: &Object, all_objects: &[Object]) -> Result<Node<'static>, DynError> {
     let node = match object {
-        Object::Block(block) => convert_block(block)?,
-        Object::Register(register) => convert_register(register)?,
-        Object::Command(command) => convert_command(command)?,
+        Object::Block(block) => convert_block(block, all_objects)?,
+        Object::Register(register) => convert_register(register, None)?,
+        Object::Command(command) => convert_command(command, None, None)?,
         Object::Buffer(buffer) => convert_buffer(buffer)?,
-        Object::Ref(ref_object) => Node {
-            doc_comments: Vec::new(),
-            node_type: Ident::new_no_span("todo-ref"),
-            name: Ident::new_no_span(ref_object.name.clone().leak()),
-            repeat: None,
-            type_specifier: None,
-            short_properties: Vec::new(),
-            properties: Vec::new(),
-            sub_nodes: Vec::new(),
-            span: Span::empty(),
-        },
+        Object::Ref(ref_object) => convert_ref_object(ref_object, all_objects)?,
     };
 
     Ok(node)
 }
 
-fn convert_register(register: &Register) -> Result<Node<'static>, DynError> {
+fn convert_ref_object(
+    ref_object: &RefObject,
+    all_objects: &[Object],
+) -> Result<Node<'static>, DynError> {
+    match &ref_object.object_override {
+        ObjectOverride::Block(block_override) => {
+            let Some(Object::Block(original_block)) = all_objects
+                .iter()
+                .find(|o| object_name(o) == block_override.name)
+            else {
+                return Err(DynError::new("could not find the original block"));
+            };
+
+            let overridden_block = Block {
+                cfg_attr: original_block.cfg_attr.clone(),
+                description: ref_object.description.clone(),
+                name: ref_object.name.clone(),
+                address_offset: block_override
+                    .address_offset
+                    .unwrap_or(original_block.address_offset),
+                repeat: block_override.repeat.or(original_block.repeat),
+                objects: original_block.objects.clone(),
+            };
+
+            convert_block(&overridden_block, all_objects)
+        }
+        ObjectOverride::Register(register_override) => {
+            let Some(Object::Register(original_register)) = all_objects
+                .iter()
+                .find(|o| object_name(o) == register_override.name)
+            else {
+                return Err(DynError::new("could not find the original register"));
+            };
+
+            let overridden_register = Register {
+                cfg_attr: original_register.cfg_attr.clone(),
+                description: ref_object.description.clone(),
+                name: ref_object.name.clone(),
+                access: register_override.access.unwrap_or(original_register.access),
+                byte_order: Default::default(),
+                bit_order: Default::default(),
+                allow_bit_overlap: Default::default(),
+                allow_address_overlap: register_override.allow_address_overlap,
+                address: register_override
+                    .address
+                    .unwrap_or(original_register.address),
+                size_bits: Default::default(),
+                reset_value: register_override
+                    .reset_value
+                    .clone()
+                    .or(original_register.reset_value.clone()),
+                repeat: register_override.repeat.or(original_register.repeat),
+                fields: Default::default(),
+            };
+
+            convert_register(&overridden_register, Some(register_override.name.clone()))
+        }
+        ObjectOverride::Command(command_override) => {
+            let Some(Object::Command(original_command)) = all_objects
+                .iter()
+                .find(|o| object_name(o) == command_override.name)
+            else {
+                return Err(DynError::new("could not find the original command"));
+            };
+
+            let overridden_command = Command {
+                cfg_attr: original_command.cfg_attr.clone(),
+                description: ref_object.description.clone(),
+                name: ref_object.name.clone(),
+                byte_order: Default::default(),
+                bit_order: Default::default(),
+                allow_bit_overlap: Default::default(),
+                allow_address_overlap: command_override.allow_address_overlap,
+                address: command_override.address.unwrap_or(original_command.address),
+                size_bits_in: Default::default(),
+                size_bits_out: Default::default(),
+                repeat: command_override.repeat.or(original_command.repeat),
+                in_fields: Default::default(),
+                out_fields: Default::default(),
+            };
+
+            convert_command(
+                &overridden_command,
+                (!original_command.in_fields.is_empty())
+                    .then(|| format!("{}FieldsIn", original_command.name)),
+                (!original_command.out_fields.is_empty())
+                    .then(|| format!("{}FieldsOut", original_command.name)),
+            )
+        }
+    }
+}
+
+fn convert_register(
+    register: &Register,
+    fieldset_override: Option<String>,
+) -> Result<Node<'static>, DynError> {
     Ok(Node {
         doc_comments: register
             .description
@@ -227,17 +313,21 @@ fn convert_register(register: &Register) -> Result<Node<'static>, DynError> {
                 Property {
                     doc_comments: Vec::new(),
                     name: Ident::new_no_span("fields"),
-                    expression: Expression::SubNode(Box::new(
-                        convert_fieldset(
-                            None,
-                            register.byte_order,
-                            register.bit_order,
-                            register.allow_bit_overlap,
-                            register.size_bits,
-                            &register.fields,
-                        )
-                        .with_message(|| "converting fieldset")?,
-                    ))
+                    expression: if let Some(fieldset_override) = fieldset_override {
+                        Expression::TypeReference(Ident::new_no_span(fieldset_override.leak()))
+                    } else {
+                        Expression::SubNode(Box::new(
+                            convert_fieldset(
+                                None,
+                                register.byte_order,
+                                register.bit_order,
+                                register.allow_bit_overlap,
+                                register.size_bits,
+                                &register.fields,
+                            )
+                            .with_message(|| "converting fieldset")?,
+                        ))
+                    }
                     .with_dummy_span(),
                 }
                 .with_dummy_span(),
@@ -251,7 +341,11 @@ fn convert_register(register: &Register) -> Result<Node<'static>, DynError> {
     })
 }
 
-fn convert_command(command: &Command) -> Result<Node<'static>, DynError> {
+fn convert_command(
+    command: &Command,
+    fieldset_in_override: Option<String>,
+    fieldset_out_override: Option<String>,
+) -> Result<Node<'static>, DynError> {
     Ok(Node {
         doc_comments: command
             .description
@@ -284,43 +378,55 @@ fn convert_command(command: &Command) -> Result<Node<'static>, DynError> {
                 }
                 .with_dummy_span()
             }),
-            (!command.in_fields.is_empty())
+            (!command.in_fields.is_empty() || fieldset_in_override.is_some())
                 .then(|| {
                     Ok(Property {
                         doc_comments: Vec::new(),
                         name: Ident::new_no_span("fields-in"),
-                        expression: Expression::SubNode(Box::new(
-                            convert_fieldset(
-                                Some(format!("{}FieldsIn", command.name)),
-                                command.byte_order,
-                                command.bit_order,
-                                command.allow_bit_overlap,
-                                command.size_bits_in,
-                                &command.in_fields,
-                            )
-                            .with_message(|| "converting in fieldset")?,
-                        ))
+                        expression: if let Some(fieldset_in_override) = fieldset_in_override {
+                            Expression::TypeReference(Ident::new_no_span(
+                                fieldset_in_override.leak(),
+                            ))
+                        } else {
+                            Expression::SubNode(Box::new(
+                                convert_fieldset(
+                                    Some(format!("{}FieldsIn", command.name)),
+                                    command.byte_order,
+                                    command.bit_order,
+                                    command.allow_bit_overlap,
+                                    command.size_bits_in,
+                                    &command.in_fields,
+                                )
+                                .with_message(|| "converting in fieldset")?,
+                            ))
+                        }
                         .with_dummy_span(),
                     }
                     .with_dummy_span())
                 })
                 .transpose()?,
-            (!command.out_fields.is_empty())
+            (!command.out_fields.is_empty() || fieldset_out_override.is_some())
                 .then(|| {
                     Ok(Property {
                         doc_comments: Vec::new(),
                         name: Ident::new_no_span("fields-out"),
-                        expression: Expression::SubNode(Box::new(
-                            convert_fieldset(
-                                Some(format!("{}FieldsOut", command.name)),
-                                command.byte_order,
-                                command.bit_order,
-                                command.allow_bit_overlap,
-                                command.size_bits_out,
-                                &command.out_fields,
-                            )
-                            .with_message(|| "converting out fieldset")?,
-                        ))
+                        expression: if let Some(fieldset_out_override) = fieldset_out_override {
+                            Expression::TypeReference(Ident::new_no_span(
+                                fieldset_out_override.leak(),
+                            ))
+                        } else {
+                            Expression::SubNode(Box::new(
+                                convert_fieldset(
+                                    Some(format!("{}FieldsOut", command.name)),
+                                    command.byte_order,
+                                    command.bit_order,
+                                    command.allow_bit_overlap,
+                                    command.size_bits_out,
+                                    &command.out_fields,
+                                )
+                                .with_message(|| "converting out fieldset")?,
+                            ))
+                        }
                         .with_dummy_span(),
                     }
                     .with_dummy_span())
@@ -474,7 +580,7 @@ fn convert_buffer(buffer: &Buffer) -> Result<Node<'static>, DynError> {
     })
 }
 
-fn convert_block(block: &Block) -> Result<Node<'static>, DynError> {
+fn convert_block(block: &Block, all_objects: &[Object]) -> Result<Node<'static>, DynError> {
     Ok(Node {
         doc_comments: block
             .description
@@ -502,7 +608,8 @@ fn convert_block(block: &Block) -> Result<Node<'static>, DynError> {
             .objects
             .iter()
             .map(|o| {
-                convert_object(o).with_message(|| format!("converting object {}", object_name(o)))
+                convert_object(o, all_objects)
+                    .with_message(|| format!("converting object {}", object_name(o)))
             })
             .collect::<Result<Vec<_>, _>>()?,
         span: Span::empty(),
