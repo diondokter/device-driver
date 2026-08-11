@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-2cb8a05f.js";
+            window.path_to_searchindex_js = "../searchindex-f20f93f4.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-ca5e7c95.js"></script>
@@ -244,6 +244,28 @@ There are a couple of defined node types:</p>
 </ul>
 <p>Notice how manifests and blocks are part of both.</p>
 <p>*: Enum variants and fields are sort of objects, but they are namespaced within their defining enum/fieldset.</p>
+<h2 id="formatting-style-guide"><a class="header" href="#formatting-style-guide">Formatting style guide</a></h2>
+<p>We stick close to Rust’s style guide. On its face that means:</p>
+<ul>
+<li>Indent with 4 space characters</li>
+<li>A node with a body opens the <code>{</code> on the same line as the start of the node (so not on a separate line)</li>
+<li>Use trailing comma’s everywhere</li>
+<li>Add a blank line to separate items that are distinct
+<ul>
+<li>For example, between the node properties and the subnodes</li>
+</ul>
+</li>
+<li>If you want to document an inline type definition, insert a newline before the subnode and increment the indent. For example:
+<pre><code class="language-ddsl">field foo 0 -&gt; _ as try
+    /// Comments
+    enum Foo {
+        A: _
+    },
+field bar 1,
+</code></pre>
+</li>
+</ul>
+<p>There is no formatter yet to do this for you.</p>
 
                     </main>
 
