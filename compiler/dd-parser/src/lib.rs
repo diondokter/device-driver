@@ -103,7 +103,17 @@ impl<'src> Display for Node<'src> {
                 match conversion {
                     TypeConversion::Reference(ident) => write!(f, " {}", ident.val)?,
                     TypeConversion::Subnode(node) => {
-                        write!(f, "\n{node:width$}", width = indentation_level + 1)?
+                        if node.doc_comments.is_empty() {
+                            for (i, line) in node.to_string().lines().enumerate() {
+                                if i == 0 {
+                                    write!(f, " {line}")?;
+                                } else {
+                                    write!(f, "\n{indentation}{line}")?;
+                                }
+                            }
+                        } else {
+                            write!(f, "\n{node:width$}", width = indentation_level + 1)?;
+                        }
                     }
                 }
             }
@@ -114,7 +124,16 @@ impl<'src> Display for Node<'src> {
 
             for property in self.properties.iter() {
                 for doc_comment in property.doc_comments.iter() {
-                    writeln!(f, "{indentation}    ///{}", doc_comment)?;
+                    writeln!(
+                        f,
+                        "{indentation}    ///{}{}",
+                        if doc_comment.starts_with(" ") {
+                            ""
+                        } else {
+                            " "
+                        },
+                        doc_comment
+                    )?;
                 }
 
                 write!(f, "{indentation}    {}:", property.name.val)?;

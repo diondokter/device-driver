@@ -4,14 +4,17 @@ use crate::DeviceDriverV1Format;
 use dd_v1_convert_case::Boundary;
 use device_driver_common::{
     span::{Span, SpanExt},
-    specifiers::{Access, ByteOrder, Integer},
+    specifiers::{Access, BaseType, ByteOrder, Integer},
 };
 use device_driver_diagnostics::{DynError, ResultExt};
 use device_driver_generation::mir::{
-    Access as V1Access, BitOrder, Block, Buffer, ByteOrder as V1ByteOrder, Command, Field,
-    Integer as V1Integer, Object, Register, Repeat as V1Repeat,
+    Access as V1Access, BaseType as V1BaseType, BitOrder, Block, Buffer, ByteOrder as V1ByteOrder,
+    Command, Enum, Field, FieldConversion, Integer as V1Integer, Object, Register,
+    Repeat as V1Repeat,
 };
-use device_driver_parser::{Expression, Ident, Node, Property, Repeat, RepeatSource};
+use device_driver_parser::{
+    Expression, Ident, Node, Property, Repeat, RepeatSource, TypeConversion, TypeSpecifier,
+};
 use itertools::Itertools;
 
 pub fn convert(source: &str, sub_format: DeviceDriverV1Format) -> Result<String, DynError> {
@@ -398,12 +401,42 @@ fn convert_fieldset(
 
 fn convert_field(field: &Field) -> Result<Node<'static>, DynError> {
     Ok(Node {
-        doc_comments: Vec::new(),
-        node_type: Ident::new_no_span("todo-field"),
+        doc_comments: field
+            .description
+            .lines()
+            .map(|l| (l.to_owned().leak() as &str).with_dummy_span())
+            .collect(),
+        node_type: Ident::new_no_span("field"),
         name: Ident::new_no_span(field.name.clone().leak()),
         repeat: None,
-        type_specifier: None,
-        short_properties: Vec::new(),
+        type_specifier: Some(
+            TypeSpecifier {
+                base_type: convert_base_type(field.base_type).with_dummy_span(),
+                use_try: field
+                    .field_conversion
+                    .as_ref()
+                    .is_some_and(|fc| fc.use_try()),
+                conversion: field
+                    .field_conversion
+                    .as_ref()
+                    .map(convert_field_conversion),
+            }
+            .with_dummy_span(),
+        ),
+        short_properties: [
+            if field.field_address.len() == 1 {
+                Expression::Number(field.field_address.start.into())
+            } else {
+                Expression::AddressRange {
+                    end: (field.field_address.end - 1).into(),
+                    start: field.field_address.start.into(),
+                }
+            }
+            .with_dummy_span(),
+            Expression::Access(convert_access(field.access)).with_dummy_span(),
+        ]
+        .into_iter()
+        .collect(),
         properties: Vec::new(),
         sub_nodes: Vec::new(),
         span: Span::empty(),
@@ -498,5 +531,71 @@ fn object_name(object: &Object) -> &str {
         Object::Command(command) => &command.name,
         Object::Buffer(buffer) => &buffer.name,
         Object::Ref(ref_object) => &ref_object.name,
+    }
+}
+
+fn convert_base_type(value: V1BaseType) -> BaseType {
+    match value {
+        V1BaseType::Unspecified => BaseType::Unspecified,
+        V1BaseType::Bool => BaseType::Bool,
+        V1BaseType::Uint => BaseType::Uint,
+        V1BaseType::Int => BaseType::Int,
+        V1BaseType::FixedSize(integer) => BaseType::FixedSize(convert_integer(integer)),
+    }
+}
+
+fn convert_field_conversion(fs: &FieldConversion) -> TypeConversion<'static> {
+    match fs {
+        FieldConversion::Direct { type_name, .. } => {
+            TypeConversion::Reference(Ident::new_no_span(type_name.clone().leak()))
+        }
+        FieldConversion::Enum { enum_value, .. } => {
+            TypeConversion::Subnode(Box::new(convert_enum(enum_value)))
+        }
+    }
+}
+
+fn convert_enum(enum_value: &Enum) -> Node<'static> {
+    Node {
+        doc_comments: enum_value
+            .description
+            .lines()
+            .map(|l| (l.to_owned().leak() as &str).with_dummy_span())
+            .collect(),
+        node_type: Ident::new_no_span("enum"),
+        name: Ident::new_no_span(enum_value.name.clone().leak()),
+        repeat: None,
+        type_specifier: None,
+        short_properties: Vec::new(),
+        properties: enum_value
+            .variants
+            .iter()
+            .map(|variant| {
+                Property {
+                    doc_comments: variant
+                        .description
+                        .lines()
+                        .map(|l| (l.to_owned().leak() as &str).with_dummy_span())
+                        .collect(),
+                    name: Ident::new_no_span(variant.name.clone().leak()),
+                    expression: match variant.value {
+                        device_driver_generation::mir::EnumValue::Unspecified => Expression::Auto,
+                        device_driver_generation::mir::EnumValue::Specified(num) => {
+                            Expression::Number(num)
+                        }
+                        device_driver_generation::mir::EnumValue::Default => {
+                            Expression::DefaultNumber(None)
+                        }
+                        device_driver_generation::mir::EnumValue::CatchAll => {
+                            Expression::CatchAllNumber(None)
+                        }
+                    }
+                    .with_dummy_span(),
+                }
+                .with_dummy_span()
+            })
+            .collect(),
+        sub_nodes: Vec::new(),
+        span: Span::empty(),
     }
 }
