@@ -41,7 +41,7 @@ pub fn convert(source: &str, sub_format: DeviceDriverV1Format) -> Result<String,
     let ddsl_root = Node {
         doc_comments: Vec::new(),
         node_type: Ident::new_no_span("device"),
-        name: Ident::new_no_span(device_mir.name.as_deref().unwrap_or("ConvertedDevice")),
+        name: Ident::new_no_span(device_mir.name.as_deref().unwrap_or("Device")),
         repeat: None,
         type_specifier: None,
         short_properties: Vec::new(),

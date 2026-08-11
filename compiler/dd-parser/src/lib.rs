@@ -85,7 +85,11 @@ impl<'src> Display for Node<'src> {
                 }
             )?;
         }
-        write!(f, "{indentation}{} {}", self.node_type.val, self.name.val,)?;
+        write!(f, "{indentation}{} {}", self.node_type.val, self.name.val)?;
+
+        if let Some(repeat) = self.repeat {
+            write!(f, "[{} stride {}]", repeat.source, repeat.stride)?;
+        }
 
         for expression in self.short_properties.iter() {
             write!(f, " {}", expression.get_human_string())?;
@@ -341,6 +345,15 @@ pub enum RepeatSource<'src> {
 impl<'src> Default for RepeatSource<'src> {
     fn default() -> Self {
         Self::Count(1.try_into().unwrap())
+    }
+}
+
+impl Display for RepeatSource<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RepeatSource::Count(non_zero) => write!(f, "{non_zero}"),
+            RepeatSource::Enum(ident) => write!(f, "{}", ident.val),
+        }
     }
 }
 
