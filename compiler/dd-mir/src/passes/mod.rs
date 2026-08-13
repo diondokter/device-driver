@@ -1,4 +1,6 @@
-use std::{any::type_name, collections::HashSet, error::Error, fmt::Display, time::Instant};
+#[allow(unused_imports)]
+use std::time::Instant;
+use std::{any::type_name, collections::HashSet, error::Error, fmt::Display};
 
 use crate::{
     MirOptions, PassTiming,
@@ -86,11 +88,17 @@ pub fn run_passes(
 
     // Run the passes
     for pass in passes {
+        #[cfg(not(target_family = "wasm"))]
         let start = Instant::now();
+
         (pass.pass)(manifest, diagnostics)?;
+
         timings.push(PassTiming {
             name: pass.name.into(),
+            #[cfg(not(target_family = "wasm"))]
             duration: start.elapsed(),
+            #[cfg(target_family = "wasm")]
+            duration: std::time::Duration::ZERO,
         });
     }
 

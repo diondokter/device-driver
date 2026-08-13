@@ -1,3 +1,4 @@
+#[allow(unused_imports)]
 use std::time::{Duration, Instant};
 
 use annotate_snippets::{Group, Level};
@@ -61,6 +62,10 @@ impl Diagnostic for Timings {
     fn as_report<'a>(&'a self, _source: &'a str, _path: &'a str) -> Vec<Group<'a>> {
         [Level::INFO
             .primary_title("timings")
+            .elements(
+                cfg!(target_family = "wasm")
+                    .then(|| Level::WARNING.message("not supported on wasm")),
+            )
             .element(
                 Level::INFO
                     .with_name(Some("lexer"))
@@ -98,13 +103,16 @@ impl Diagnostic for Timings {
 }
 
 pub struct Timer<'a> {
+    #[cfg(not(target_family = "wasm"))]
     start: Instant,
+    #[allow(unused)]
     result: &'a mut Duration,
 }
 
 impl<'a> Timer<'a> {
     pub fn new(result: &'a mut Duration) -> Self {
         Self {
+            #[cfg(not(target_family = "wasm"))]
             start: Instant::now(),
             result,
         }
@@ -113,6 +121,9 @@ impl<'a> Timer<'a> {
 
 impl Drop for Timer<'_> {
     fn drop(&mut self) {
-        *self.result = self.start.elapsed();
+        #[cfg(not(target_family = "wasm"))]
+        {
+            *self.result = self.start.elapsed();
+        }
     }
 }
