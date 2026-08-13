@@ -1,7 +1,9 @@
+#[allow(unused_imports)]
+use std::time::Instant;
 use std::{any::type_name, collections::HashSet, error::Error, fmt::Display};
 
 use crate::{
-    MirOptions,
+    MirOptions, PassTiming,
     model::{Manifest, UniqueId},
     passes::{
         address_types_big_enough::AddressTypesBigEnough,
@@ -69,7 +71,7 @@ pub fn run_passes(
     manifest: &mut Manifest,
     options: &MirOptions,
     diagnostics: &mut Diagnostics,
-) -> Result<(), DynError> {
+) -> Result<Vec<PassTiming>, DynError> {
     let passes = get_default_passes();
 
     let passes = if options.randomize_mir_passes {
@@ -82,12 +84,25 @@ pub fn run_passes(
         check_assumptions(&passes, true).with_message(|| "checking mir pass assumptions")?;
     }
 
+    let mut timings = Vec::with_capacity(passes.len());
+
     // Run the passes
     for pass in passes {
+        #[cfg(not(target_family = "wasm"))]
+        let start = Instant::now();
+
         (pass.pass)(manifest, diagnostics)?;
+
+        timings.push(PassTiming {
+            name: pass.name.into(),
+            #[cfg(not(target_family = "wasm"))]
+            duration: start.elapsed(),
+            #[cfg(target_family = "wasm")]
+            duration: std::time::Duration::ZERO,
+        });
     }
 
-    Ok(())
+    Ok(timings)
 }
 
 trait Pass {

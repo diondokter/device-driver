@@ -8,7 +8,10 @@ pub const OUTPUT_HEADER: &str = include_str!("output_header.txt");
 
 pub fn get_compile_options() -> CompileOptions {
     CompileOptions {
-        general_options: device_driver_core::GeneralOptions { ui_test_mode: true },
+        general_options: device_driver_core::GeneralOptions {
+            ui_test_mode: true,
+            timings: Default::default(),
+        },
         mir_options: device_driver_core::MirOptions {
             check_assumptions: true,
             ..Default::default()
