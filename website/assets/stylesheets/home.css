@@ -83,6 +83,7 @@ body {
 .center-text {
     max-width: 900px;
     text-align: center;
+    text-wrap: balance;
 }
 
 hr {
