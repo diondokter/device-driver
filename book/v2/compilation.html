@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-f20f93f4.js";
+            window.path_to_searchindex_js = "../searchindex-1fde5506.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-ca5e7c95.js"></script>
@@ -209,6 +209,12 @@ Options:
       --unstable-ui-test-mode
           Improves reproducibility across versions
 
+      --timings=&lt;TIMINGS&gt;
+          When enabled, a diagnostic is printed with information about the compiler performance. Exact format of the diagnostic is unstable
+          
+          [default: off]
+          [possible values: off, show, verbose]
+
       --unstable-mir-randomize-seed=&lt;SEED&gt;
           The seed to use for randomization. If not specified, a random seed is used
 
@@ -274,6 +280,12 @@ Options:
 
       --unstable-ui-test-mode
           Improves reproducibility across versions
+
+      --timings=&lt;TIMINGS&gt;
+          When enabled, a diagnostic is printed with information about the compiler performance. Exact format of the diagnostic is unstable
+          
+          [default: off]
+          [possible values: off, show, verbose]
 
       --unstable-mir-randomize-seed=&lt;SEED&gt;
           The seed to use for randomization. If not specified, a random seed is used
