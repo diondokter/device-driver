@@ -1,4 +1,4 @@
-use std::{collections::HashSet, num::NonZero};
+use std::{collections::HashSet, num::NonZero, time::Duration};
 
 use clap::Parser;
 use device_driver_common::{
@@ -41,12 +41,12 @@ pub fn lower_ast(
     ast: Ast,
     options: &MirOptions,
     diagnostics: &mut Diagnostics,
-) -> Result<model::Manifest, DynError> {
+) -> Result<(model::Manifest, Vec<PassTiming>), DynError> {
     let mut mir = lowering::lower(ast, diagnostics);
 
-    passes::run_passes(&mut mir, options, diagnostics)?;
+    let pass_timings = passes::run_passes(&mut mir, options, diagnostics)?;
 
-    Ok(mir)
+    Ok((mir, pass_timings))
 }
 
 /// This assumes [passes::Assumption::NamesUnique]
@@ -205,4 +205,10 @@ fn remove_objects(manifest: &mut Manifest, mut removals: HashSet<UniqueId>) {
             return;
         }
     }
+}
+
+#[derive(Debug)]
+pub struct PassTiming {
+    pub name: String,
+    pub duration: Duration,
 }

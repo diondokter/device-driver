@@ -24,6 +24,7 @@ device-driver-parser.workspace = true
 itertools.workspace = true
 clap.workspace = true
 syn = { workspace = true, optional = true }
+annotate-snippets.workspace = true
 
 prettyplease = { version = "0.2.37", optional = true }
 

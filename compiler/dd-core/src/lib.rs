@@ -10,6 +10,10 @@ pub use device_driver_codegen::{RustCodegenOptions, Target as CodegenTarget};
 pub use device_driver_diagnostics::Metadata;
 pub use device_driver_mir::MirOptions;
 
+use crate::timings::Timings;
+
+mod timings;
+
 #[derive(Parser, Debug, Clone)]
 #[command(no_binary_name = true, bin_name = "")]
 pub struct CompileOptions {
@@ -27,17 +31,50 @@ pub struct GeneralOptions {
     /// Improves reproducibility across versions
     #[arg(long = "unstable-ui-test-mode", global = true)]
     pub ui_test_mode: bool,
+    /// When enabled, a diagnostic is printed with information about the compiler performance.
+    /// Exact format of the diagnostic is unstable.
+    #[arg(long, global = true, require_equals = true, default_value = "off")]
+    pub timings: TimingsMode,
+}
+
+#[derive(clap::ValueEnum, Debug, Clone, Copy, Default)]
+pub enum TimingsMode {
+    #[default]
+    Off,
+    Show,
+    Verbose,
 }
 
 pub fn compile(source: &str, options: CompileOptions) -> Result<(String, Diagnostics), DynError> {
+    let mut timings = Timings::new(options.general_options.timings);
     let mut diagnostics = Diagnostics::new();
 
-    let tokens = device_driver_lexer::lex(source);
-    let ast = device_driver_parser::parse(&tokens, &mut diagnostics);
-    let mir = device_driver_mir::lower_ast(ast, &options.mir_options, &mut diagnostics)
-        .with_message(|| "could not lower AST to MIR")?;
-    let lir = device_driver_lir::lower_mir(mir).with_message(|| "could not lower MIR to LIR")?;
-    let mut code = device_driver_codegen::codegen(&options.target, &lir, source);
+    let tokens = {
+        let _t = timings.start_lexer();
+        device_driver_lexer::lex(source)
+    };
+    let ast = {
+        let _t = timings.start_parser();
+        device_driver_parser::parse(&tokens, &mut diagnostics)
+    };
+    let (mir, mir_timings) = {
+        let _t = timings.start_mir();
+        device_driver_mir::lower_ast(ast, &options.mir_options, &mut diagnostics)
+            .with_message(|| "could not lower AST to MIR")?
+    };
+    timings.set_mir_timings(mir_timings);
+    let lir = {
+        let _t = timings.start_lir();
+        device_driver_lir::lower_mir(mir).with_message(|| "could not lower MIR to LIR")?
+    };
+    let mut code = {
+        let _t = timings.start_codegen();
+        device_driver_codegen::codegen(&options.target, &lir, source)
+    };
+
+    if !matches!(options.general_options.timings, TimingsMode::Off) {
+        diagnostics.add(timings);
+    }
 
     if diagnostics.has_error() {
         let _ = write!(code, "\n{}\n", options.target.create_error_message());
