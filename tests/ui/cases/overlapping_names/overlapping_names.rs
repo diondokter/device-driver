@@ -9,7 +9,7 @@ device-driver = { path="../../../../device-driver", default-features=false }
 #![allow(unexpected_cfgs)]
 fn main() {}
 
-// This code was generated using device-driver `2.0.0-alpha.1` (xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx),
+// This code was generated using device-driver `xx.xx.xx` (xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx),
 // a tool distributed under MIT OR Apache-2.0 by Dion Dokter <dev@diondokter.nl>
 // This version was built for xxxx-xxxx-xxxx using rustc 1.xx.x (xxxxxxxxx xxxx-xx-xx)
 // 

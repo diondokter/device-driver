@@ -95,7 +95,11 @@ a tool distributed under {} by {}
 This version was built for {} using {}
 
 For more information about device-driver, visit the website: {}",
-        env!("CARGO_PKG_VERSION"),
+        if options.general_options.ui_test_mode {
+            "xx.xx.xx"
+        } else {
+            env!("CARGO_PKG_VERSION")
+        },
         if options.general_options.ui_test_mode {
             "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
         } else {
