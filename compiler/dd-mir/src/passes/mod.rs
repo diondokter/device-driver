@@ -1,5 +1,3 @@
-#[allow(unused_imports)]
-use std::time::Instant;
 use std::{any::type_name, collections::HashSet, error::Error, fmt::Display};
 
 use crate::{
@@ -20,6 +18,7 @@ use crate::{
         reserved_names_checked::ReservedNamesChecked, reset_values_converted::ResetValuesConverted,
     },
 };
+use device_driver_common::instant::Instant;
 use device_driver_diagnostics::{Diagnostics, DynError, ResultExt};
 
 mod address_types_big_enough;
@@ -88,17 +87,13 @@ pub fn run_passes(
 
     // Run the passes
     for pass in passes {
-        #[cfg(not(target_family = "wasm"))]
         let start = Instant::now();
 
         (pass.pass)(manifest, diagnostics)?;
 
         timings.push(PassTiming {
             name: pass.name.into(),
-            #[cfg(not(target_family = "wasm"))]
             duration: start.elapsed(),
-            #[cfg(target_family = "wasm")]
-            duration: std::time::Duration::ZERO,
         });
     }
 
