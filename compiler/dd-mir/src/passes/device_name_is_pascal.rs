@@ -34,7 +34,7 @@ impl Pass for DeviceNameIsPascal {
             let lenient_pascal_case = convert_case::Case::Custom {
                 boundaries: &lenient_pascal_boundaries,
                 pattern: convert_case::Pattern::Capital,
-                delim: "",
+                delimiter: "",
             };
 
             if let Err(e) = device

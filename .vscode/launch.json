@@ -13,6 +13,8 @@
                     "run",
                     "--",
                     "build",
+                    "rust",
+                    "-s",
                     "device-driver/tests/basic-register.ddsl"
                 ]
             }

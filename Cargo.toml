@@ -19,7 +19,7 @@ members = [
 
 exclude = ["website"]
 
-package.version = "2.0.0-alpha.1"
+package.version = "2.0.0"
 package.authors = ["Dion Dokter <dev@diondokter.nl>"]
 package.license = "MIT OR Apache-2.0"
 package.homepage = "https://device-driver.com"
@@ -28,22 +28,22 @@ package.edition = "2024"
 package.rust-version = "1.94"
 
 [workspace.dependencies]
-device-driver-codegen = { path = "compiler/dd-codegen", version = "=2.0.0-alpha.1" }
-device-driver-common = { path = "compiler/dd-common", version = "=2.0.0-alpha.1" }
-device-driver-core = { path = "compiler/dd-core", version = "=2.0.0-alpha.1" }
-device-driver-diagnostics = { path = "compiler/dd-diagnostics", version = "=2.0.0-alpha.1" }
-device-driver-lexer = { path = "compiler/dd-lexer", version = "=2.0.0-alpha.1" }
-device-driver-lir = { path = "compiler/dd-lir", version = "=2.0.0-alpha.1" }
-device-driver-macros = { path = "compiler/dd-macros", version = "=2.0.0-alpha.1" }
-device-driver-mir = { path = "compiler/dd-mir", version = "=2.0.0-alpha.1" }
-device-driver-parser = { path = "compiler/dd-parser", version = "=2.0.0-alpha.1" }
-device-driver-converter = { path = "compiler/dd-converter", version = "=2.0.0-alpha.1" }
+device-driver-codegen = { path = "compiler/dd-codegen", version = "=2.0.0" }
+device-driver-common = { path = "compiler/dd-common", version = "=2.0.0" }
+device-driver-core = { path = "compiler/dd-core", version = "=2.0.0" }
+device-driver-diagnostics = { path = "compiler/dd-diagnostics", version = "=2.0.0" }
+device-driver-lexer = { path = "compiler/dd-lexer", version = "=2.0.0" }
+device-driver-lir = { path = "compiler/dd-lir", version = "=2.0.0" }
+device-driver-macros = { path = "compiler/dd-macros", version = "=2.0.0" }
+device-driver-mir = { path = "compiler/dd-mir", version = "=2.0.0" }
+device-driver-parser = { path = "compiler/dd-parser", version = "=2.0.0" }
+device-driver-converter = { path = "compiler/dd-converter", version = "=2.0.0" }
 
-itertools = "0.14.0"
-convert_case = "0.10.0"
-clap = { version = "4.6.1", features = ["derive"] }
+itertools = "0.15.0"
+convert_case = "0.11.0"
+clap = { version = "4.6.6", features = ["derive"] }
 bitvec = { version = "1.0.1", default-features = false }
-syn = "2.0.114"
+syn = "3.0.3"
 pretty_assertions = "1.4.1"
 chumsky = { version = "0.13.0", default-features = false, features = ["std"] }
 arbitrary = { version = "1.4.2", features = ["derive"] }
