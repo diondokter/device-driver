@@ -309,6 +309,15 @@ fn convert_register(
                 }
                 .with_dummy_span()
             }),
+            (!matches!(register.access, V1Access::RW)).then(|| {
+                Property {
+                    doc_comments: Vec::new(),
+                    name: Ident::new_no_span("access"),
+                    expression: Expression::Access(convert_access(register.access))
+                        .with_dummy_span(),
+                }
+                .with_dummy_span()
+            }),
             Some(
                 Property {
                     doc_comments: Vec::new(),
@@ -506,6 +515,11 @@ fn convert_fieldset(
 }
 
 fn convert_field(field: &Field) -> Result<Node<'static>, DynError> {
+    let field_len = field.field_address.len();
+    let use_auto_base_type = (field.base_type == V1BaseType::Bool && field_len == 1)
+        || (field.base_type == V1BaseType::Uint && field_len >= 1);
+    let use_type_specifier = !use_auto_base_type || field.field_conversion.is_some();
+
     Ok(Node {
         doc_comments: field
             .description
@@ -515,9 +529,14 @@ fn convert_field(field: &Field) -> Result<Node<'static>, DynError> {
         node_type: Ident::new_no_span("field"),
         name: Ident::new_no_span(field.name.clone().leak()),
         repeat: None,
-        type_specifier: Some(
+        type_specifier: use_type_specifier.then(|| {
             TypeSpecifier {
-                base_type: convert_base_type(field.base_type).with_dummy_span(),
+                base_type: if use_auto_base_type {
+                    BaseType::Unspecified
+                } else {
+                    convert_base_type(field.base_type)
+                }
+                .with_dummy_span(),
                 use_try: field
                     .field_conversion
                     .as_ref()
@@ -527,21 +546,25 @@ fn convert_field(field: &Field) -> Result<Node<'static>, DynError> {
                     .as_ref()
                     .map(convert_field_conversion),
             }
-            .with_dummy_span(),
-        ),
+            .with_dummy_span()
+        }),
         short_properties: [
-            if field.field_address.len() == 1 {
-                Expression::Number(field.field_address.start.into())
-            } else {
-                Expression::AddressRange {
-                    end: (field.field_address.end - 1).into(),
-                    start: field.field_address.start.into(),
+            Some(
+                if field_len == 1 {
+                    Expression::Number(field.field_address.start.into())
+                } else {
+                    Expression::AddressRange {
+                        end: (field.field_address.end - 1).into(),
+                        start: field.field_address.start.into(),
+                    }
                 }
-            }
-            .with_dummy_span(),
-            Expression::Access(convert_access(field.access)).with_dummy_span(),
+                .with_dummy_span(),
+            ),
+            (!matches!(field.access, V1Access::RW))
+                .then(|| Expression::Access(convert_access(field.access)).with_dummy_span()),
         ]
         .into_iter()
+        .flatten()
         .collect(),
         properties: Vec::new(),
         sub_nodes: Vec::new(),
@@ -561,20 +584,27 @@ fn convert_buffer(buffer: &Buffer) -> Result<Node<'static>, DynError> {
         repeat: None,
         type_specifier: None,
         short_properties: Vec::new(),
-        properties: vec![
-            Property {
-                doc_comments: Vec::new(),
-                name: Ident::new_no_span("access"),
-                expression: Expression::Access(convert_access(buffer.access)).with_dummy_span(),
-            }
-            .with_dummy_span(),
-            Property {
-                doc_comments: Vec::new(),
-                name: Ident::new_no_span("address"),
-                expression: Expression::Number(buffer.address.into()).with_dummy_span(),
-            }
-            .with_dummy_span(),
-        ],
+        properties: [
+            (!matches!(buffer.access, V1Access::RW)).then(|| {
+                Property {
+                    doc_comments: Vec::new(),
+                    name: Ident::new_no_span("access"),
+                    expression: Expression::Access(convert_access(buffer.access)).with_dummy_span(),
+                }
+                .with_dummy_span()
+            }),
+            Some(
+                Property {
+                    doc_comments: Vec::new(),
+                    name: Ident::new_no_span("address"),
+                    expression: Expression::Number(buffer.address.into()).with_dummy_span(),
+                }
+                .with_dummy_span(),
+            ),
+        ]
+        .into_iter()
+        .flatten()
+        .collect(),
         sub_nodes: Vec::new(),
         span: Span::empty(),
     })
