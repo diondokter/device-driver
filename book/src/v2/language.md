@@ -84,3 +84,24 @@ Types:
 Notice how manifests and blocks are part of both.
 
 *: Enum variants and fields are sort of objects, but they are namespaced within their defining enum/fieldset.
+
+## Formatting style guide
+
+We stick close to Rust's style guide. On its face that means:
+- Indent with 4 space characters
+- A node with a body opens the `{` on the same line as the start of the node (so not on a separate line)
+- Use trailing comma's everywhere
+- Add a blank line to separate items that are distinct
+  - For example, between the node properties and the subnodes
+- If you want to document an inline type definition, insert a newline before the subnode and increment the indent. For example:
+  ```ddsl
+  field foo 0 -> _ as try
+      /// Comments
+      enum Foo {
+          A: _
+      },
+  field bar 1,
+  ```
+
+There is no formatter yet to do this for you.
+

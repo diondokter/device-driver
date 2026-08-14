@@ -6,7 +6,7 @@
     "preserve": "mdbook build ../book",
     "build": "webpack",
     "build_prod": "webpack --mode production",
-    "serve": "webpack serve",
+    "serve": "webpack serve --progress",
     "serve_prod": "webpack serve --mode production"
   },
   "devDependencies": {
