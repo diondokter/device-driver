@@ -4,7 +4,7 @@ use std::{
     sync::Arc,
 };
 
-use convert_case::{Boundary, Case, Casing, Pattern};
+use convert_case::{Boundary, Case, Pattern};
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -183,7 +183,7 @@ impl<T: IdentifierType> Identifier<T> {
         }
 
         let converted = self.to_case(Case::Pascal);
-        if !converted.is_case(Case::Pascal) {
+        if converted.contains(['-', '_', ' ']) {
             return Err(Error::CannotConvert {
                 case_name: "Pascal",
                 example: converted,
@@ -586,5 +586,21 @@ mod tests {
                 .unwrap()
                 .to_runtime_type(),
         );
+    }
+
+    #[test]
+    fn issue_274() {
+        // https://github.com/diondokter/device-driver/issues/274
+        Identifier::<All>::try_parse("io_pad_i2c_b1")
+            .unwrap()
+            .apply_boundaries(&Boundary::defaults())
+            .check_validity()
+            .unwrap();
+
+        Identifier::<All>::try_parse("io_pad_i2c-b1")
+            .unwrap()
+            .apply_boundaries(&[Boundary::Underscore])
+            .check_validity()
+            .unwrap_err();
     }
 }
