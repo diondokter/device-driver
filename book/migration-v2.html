@@ -35,7 +35,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-546248ba.js";
+            window.path_to_searchindex_js = "searchindex-7f6975d8.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-3f8de81c.js"></script>
@@ -232,7 +232,7 @@ Note that the device name is now specified in the manifest and the defmt option 
 </ul>
 </li>
 <li>Fieldsets are not generated into a module anymore. You may need to change some imports to remove the <code>field_sets</code> module from the path. The Rust compiler will tell you where this needs to happen.</li>
-<li>Fieldsets don’t have a constructor anymore. If you’ve called the <code>new_zero()</code> on fieldsets before, you’ll now need to use the <code>ZERO</code> associated const (for which you’ll need to import the <code>Fieldset</code> trait from the device-driver crate).</li>
+<li>Fieldsets don’t have a constructor anymore. If you’ve called the <code>new_zero()</code> on fieldsets before, you’ll now need to use the <code>ZERO</code> associated const (for which you’ll need to import the <code>Fieldset</code> trait from the device-driver crate) or the <code>default()</code> impl.</li>
 <li>Repeat index parameter has moved. It used to be a parameter on the operation getter function. Now you specify it on the operation. For example:
 <pre><code class="language-rust">- device.foo(index).read()?;
 + device.foo().read_at(index)?;</code></pre>
