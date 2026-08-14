@@ -46,3 +46,4 @@
 # Addendum
 
 - [Memory](./memory.md)
+- [Migrating v1 to v2](./migration-v2.md)

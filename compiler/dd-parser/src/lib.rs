@@ -75,9 +75,21 @@ impl<'src> Display for Node<'src> {
         let indentation = format!("{:width$}", "", width = indentation_level * 4);
 
         for doc_comment in &self.doc_comments {
-            writeln!(f, "{indentation}///{doc_comment}")?;
+            writeln!(
+                f,
+                "{indentation}///{}{doc_comment}",
+                if doc_comment.starts_with(" ") {
+                    ""
+                } else {
+                    " "
+                }
+            )?;
         }
-        write!(f, "{indentation}{} {}", self.node_type.val, self.name.val,)?;
+        write!(f, "{indentation}{} {}", self.node_type.val, self.name.val)?;
+
+        if let Some(repeat) = self.repeat {
+            write!(f, "[{} stride {}]", repeat.source, repeat.stride)?;
+        }
 
         for expression in self.short_properties.iter() {
             write!(f, " {}", expression.get_human_string())?;
@@ -95,7 +107,17 @@ impl<'src> Display for Node<'src> {
                 match conversion {
                     TypeConversion::Reference(ident) => write!(f, " {}", ident.val)?,
                     TypeConversion::Subnode(node) => {
-                        write!(f, "\n{node:width$}", width = indentation_level + 1)?
+                        if node.doc_comments.is_empty() {
+                            for (i, line) in node.to_string().lines().enumerate() {
+                                if i == 0 {
+                                    write!(f, " {line}")?;
+                                } else {
+                                    write!(f, "\n{indentation}{line}")?;
+                                }
+                            }
+                        } else {
+                            write!(f, "\n{node:width$}", width = indentation_level + 1)?;
+                        }
                     }
                 }
             }
@@ -106,14 +128,37 @@ impl<'src> Display for Node<'src> {
 
             for property in self.properties.iter() {
                 for doc_comment in property.doc_comments.iter() {
-                    writeln!(f, "{indentation}    ///{}", doc_comment)?;
+                    writeln!(
+                        f,
+                        "{indentation}    ///{}{}",
+                        if doc_comment.starts_with(" ") {
+                            ""
+                        } else {
+                            " "
+                        },
+                        doc_comment
+                    )?;
                 }
-                writeln!(
-                    f,
-                    "{indentation}    {}: {},",
-                    property.name.val,
-                    property.expression.get_human_string()
-                )?;
+
+                write!(f, "{indentation}    {}:", property.name.val)?;
+
+                let expression = property.expression.get_human_string();
+
+                if expression.starts_with("///") {
+                    for line in expression.lines() {
+                        write!(f, "\n{indentation}        {line}")?;
+                    }
+                } else {
+                    for (i, line) in expression.lines().enumerate() {
+                        if i == 0 {
+                            write!(f, " {line}")?;
+                        } else {
+                            write!(f, "\n{indentation}    {line}")?;
+                        }
+                    }
+                }
+
+                writeln!(f, ",")?;
             }
 
             if !self.properties.is_empty() && !self.sub_nodes.is_empty() {
@@ -300,6 +345,15 @@ pub enum RepeatSource<'src> {
 impl<'src> Default for RepeatSource<'src> {
     fn default() -> Self {
         Self::Count(1.try_into().unwrap())
+    }
+}
+
+impl Display for RepeatSource<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RepeatSource::Count(non_zero) => write!(f, "{non_zero}"),
+            RepeatSource::Enum(ident) => write!(f, "{}", ident.val),
+        }
     }
 }
 

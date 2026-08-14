@@ -41,7 +41,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo clippy --features defmt -- -D warnings
+      - run: cargo clippy --features defmt,converter-dd-v1 -- -D warnings
 
   run-cli:
     runs-on: ubuntu-latest

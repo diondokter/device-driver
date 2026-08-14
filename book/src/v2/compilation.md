@@ -43,8 +43,10 @@ All Rust target specific features start with `--rust`.
 
 The cli can be installed using:
 ```sh
-cargo install device-driver-cli
+cargo install device-driver-cli --all-features
 ```
+
+It's possible to omit using `--all-features`, but you'll be missing some of the less important subcommands like `gen-docs` and `convert` (but it compiles faster).
 
 In the future more methods of distribution may become available. (If you have experience with this, help is very much wanted!)
 
@@ -77,6 +79,15 @@ The output is unstable.
 
 ```
 {{#include ../gen-docs/options/cli-gen_docs-help.txt}}
+```
+
+##### Converter
+
+Convert from one of the supported formats to DDSL.
+Don't rely on this in your main process since the output is unstable.
+
+```
+{{#include ../gen-docs/options/cli-converter-help.txt}}
 ```
 
 ### Tool - Rust proc-macro
