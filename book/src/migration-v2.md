@@ -77,7 +77,7 @@ Now that we've converted the v1 yaml, json, toml or DSL to DDSL, we can focus on
    - A metadata object is now given
    - All buffers are now mutable for the case you need to do bit swaps
 5. Fieldsets are not generated into a module anymore. You may need to change some imports to remove the `field_sets` module from the path. The Rust compiler will tell you where this needs to happen.
-6. Fieldsets don't have a constructor anymore. If you've called the `new_zero()` on fieldsets before, you'll now need to use the `ZERO` associated const (for which you'll need to import the `Fieldset` trait from the device-driver crate).
+6. Fieldsets don't have a constructor anymore. If you've called the `new_zero()` on fieldsets before, you'll now need to use the `ZERO` associated const (for which you'll need to import the `Fieldset` trait from the device-driver crate) or the `default()` impl.
 7. Repeat index parameter has moved. It used to be a parameter on the operation getter function. Now you specify it on the operation. For example:
    ```rust
    - device.foo(index).read()?;

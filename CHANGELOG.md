@@ -2,8 +2,38 @@
 
 ### Unreleased
 
-- V2 of device-driver
-  - Full changelog to come
+### 2.0.0 (to be released)
+
+This release should feel familiar to v1 users, and yet lay the foundations of [lots to come](https://device-driver.com/book/v2/intro.html#future-plans).
+
+There's a [tutorial](https://device-driver.com/book/v2/tutorial-ym3812.html) the introduces the toolkit and the new language.
+
+#### Headline changes
+
+- Introduced [DDSL](https://device-driver.com/book/v2/language.html), the Device-Driver Specification Language, a simple custom language to specify your driver with
+  - Removed the old formats (JSON, YAML, TOML, DSL)
+- Created a [migration guide](https://device-driver.com/book/migration-v2.html) and tool to help convert a v1 driver to v2
+- The cli has been renamed to `ddc` and the [args](https://device-driver.com/book/v2/compilation.html) have been rebuilt from the ground up
+- A website has been created that also hosts the book and an online playground: [device-driver.com](https://device-driver.com)
+
+#### Driver model changes
+
+- [Fieldsets](https://device-driver.com/book/v2/language-fieldset.html) & [enums](https://device-driver.com/book/v2/language-enum.html) are proper objects, and handled the same as any other object
+- Repeats can use enums as the index now
+- The driver specification is fully self contained now. All type references must exist. To support extern types, a new [`extern`](https://device-driver.com/book/v2/language-extern.html) object has been added
+- Object names are more strict and have defined [namespacing](https://device-driver.com/book/v2/language.html#namespacing)
+- Fieldsets now have a size in bytes and no longer in bits. This means non-multiple of 8 sizes are no longer supported
+- Bit order has been removed due to its complexity and low use. Everything is now always LSB0
+- Fields can be repeated now
+- A manifest can contain multiple devices
+
+#### API changes
+
+- The `read_all_registers` API has been removed
+- Repeat indexing is now done on the read/write/modify methods instead of on the register methods
+- [Bulk operations](https://device-driver.com/book/v2/runtime-rust.html#bulk-operations) have been added. This requires the `register-address-mode` config to be set
+- Slightly changed the interface traits. All have a base trait for the error type and the address type and the functions no longer have a size-bits parameter, but gained a metadata parameter
+- Interfaces have a blanket impl for `&mut T` where T impls that interface
 
 ### 1.0.9 (29-04-26)
 
