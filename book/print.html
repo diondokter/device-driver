@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-1fde5506.js";
+            window.path_to_searchindex_js = "searchindex-546248ba.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-ca5e7c95.js"></script>
+        <script src="toc-3f8de81c.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -2331,8 +2331,9 @@ Options:
 </code></pre>
 <h3 id="tool---cli"><a class="header" href="#tool---cli">Tool - CLI</a></h3>
 <p>The cli can be installed using:</p>
-<pre><code class="language-sh">cargo install device-driver-cli
+<pre><code class="language-sh">cargo install device-driver-cli --all-features
 </code></pre>
+<p>It’s possible to omit using <code>--all-features</code>, but you’ll be missing some of the less important subcommands like <code>gen-docs</code> and <code>convert</code> (but it compiles faster).</p>
 <p>In the future more methods of distribution may become available. (If you have experience with this, help is very much wanted!)</p>
 <p>Once installed, you can use the compiler using the <code>ddc</code> command (device-driver compiler):</p>
 <pre><code class="language-sh">ddc --help
@@ -2345,6 +2346,7 @@ Usage: ddc &lt;COMMAND&gt;
 Commands:
   build     Compile DDSL to the target output
   gen-docs  Generate docs about the compiler
+  convert   The format to convert into DDSL
   help      Print this message or the help of the given subcommand(s)
 
 Options:
@@ -2400,6 +2402,27 @@ The output is unstable.</p>
 Options:
   -o, --output &lt;DIR&gt;
           Path to output folder location
+
+  -h, --help
+          Print help
+</code></pre>
+<h5 id="converter"><a class="header" href="#converter">Converter</a></h5>
+<p>Convert from one of the supported formats to DDSL.
+Don’t rely on this in your main process since the output is unstable.</p>
+<pre><code>The format to convert into DDSL
+
+Usage: [OPTIONS] &lt;COMMAND&gt;
+
+Commands:
+  device-driver-v1  The v1 formats of device-driver (DSL, YAML, JSON &amp; TOML)
+  help              Print this message or the help of the given subcommand(s)
+
+Options:
+  -s, --source &lt;FILE&gt;
+          Path to the input file
+
+  -o, --output &lt;FILE&gt;
+          Path to output location. Any existing file is overwritten. If not provided, the output is written to stdout
 
   -h, --help
           Print help
@@ -4682,6 +4705,68 @@ register DevId {
     ver: uint = 4..8,
     rev: uint = 0..4
 }</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="migrating-v1-to-v2"><a class="header" href="#migrating-v1-to-v2">Migrating v1 to v2</a></h1>
+<p>If you want to migrate an existing v1 driver to v2, you’ll read some of the steps here and some of the issues you may encounter.</p>
+<h2 id="convert"><a class="header" href="#convert">Convert</a></h2>
+<p>The <code>ddc</code> cli can do a lot of the mechanical conversion for you.</p>
+<pre><code class="language-sh">ddc convert device-driver-v1 --sub-format yaml -s ./device.yaml -o ./device.ddsl
+</code></pre>
+<p>Change out the paths as you like and change the subformat to the format you’ve used. If you’ve been using the <code>create_device!</code> with the inline DSL, first copy the DSL to a file and feed that to the tool.</p>
+<p>If your install of <code>ddc</code> doesn’t have the convert command, you need to reinstall it with the <code>--features converter-dd-v1</code> flag.</p>
+<p>The convert command converts the formats very straightforwardly and often doesn’t do a perfect job, so some hand tuning is still required.</p>
+<h3 id="cfg-1"><a class="header" href="#cfg-1">Cfg</a></h3>
+<p>Cfg doesn’t exist anymore and there’s currently no replacement. If you really need this, you may need to keep your driver on v1. There are plans to build template support in the language: <a href="https://github.com/diondokter/device-driver/issues/58">issue</a>, so if you really need this and have ideas, please contribute there!</p>
+<p>The converter ignores cfg values.</p>
+<h3 id="naming"><a class="header" href="#naming">Naming</a></h3>
+<p>In v2, the names of objects is a little stricter. You may find that before you had a register, field and enum all with the same name. This would now clash since a register now has a named fieldset. Enums and fieldsets are types and they must not have the same name. See the section on <a href="#namespacing">namespacing</a>.</p>
+<p>The converter copies the names as they were and does not fix them up. You’ll have to figure out alternative names.</p>
+<h3 id="ref-objects"><a class="header" href="#ref-objects">Ref objects</a></h3>
+<p>Ref objects don’t exist anymore. Ref registers and ref commands have good alternatives, though.</p>
+<p>Instead of having overrides, you simply copy the values as though it’s a fully separate register or command. But then instead of defining a new fieldset, you can reuse a fieldset. The converter does this for you.</p>
+<p>For ref blocks you either have to do a bunch of copying manually, or use a (enum) repeat. The converter tool just copies everything (which will likely lead to name collisions you’ll have to fix).</p>
+<h3 id="extern-types"><a class="header" href="#extern-types">Extern types</a></h3>
+<p>In v1 you could reference something that wasn’t defined in the manifest. The generated code would then just use the name as is. This must now be done much more explicit as everything must be self-contained in the manifest.</p>
+<p>You must define an <a href="#extern">extern</a> object for every type reference that used to refer to a rust object. The converter does not do this for you as it can’t know some of the metadata.</p>
+<h3 id="formatting"><a class="header" href="#formatting">Formatting</a></h3>
+<p>The converter doesn’t know about number formatting and outputs everything in decimal.</p>
+<h3 id="bit-order-1"><a class="header" href="#bit-order-1">Bit order</a></h3>
+<p>Bit order doesn’t exist anymore. It was a very hard feature to support for something that’s barely ever used. Everything is now <code>lsb0</code>.</p>
+<p>If the converter finds something with <code>msb0</code>, it bails. Remove or change it in the v1 manifest and run the converter again.</p>
+<h2 id="crate"><a class="header" href="#crate">Crate</a></h2>
+<p>Now that we’ve converted the v1 yaml, json, toml or DSL to DDSL, we can focus on our Rust crate that requires some changes too.</p>
+<ol>
+<li>Update the device-driver dependency to 2.0.0 (or newer)
+<ul>
+<li>If you’re using the macro to compile the source, enable the <code>macros</code> feature on the crate</li>
+</ul>
+</li>
+<li>If you’re using macro to compile the source, update the macro:
+<pre><code class="language-rust"> - device_driver::create_device!(
+ -     device_name: Device,
+ -     manifest: "device.yaml"
+ - );
+ + device_driver::compile!(
+ +     options: "--rust-defmt-feature=defmt",
+ +     manifest: "device.ddsl"
+ + );</code></pre>
+Note that the device name is now specified in the manifest and the defmt option at the compiler invocation.</li>
+<li>If you have a <code>build.rs</code>, check it and update any reference to the old manifest to the new file name.</li>
+<li>Update your interface types
+<ul>
+<li>They now all have a base trait for the error and address types</li>
+<li>Size-bits is no longer given</li>
+<li>A metadata object is now given</li>
+<li>All buffers are now mutable for the case you need to do bit swaps</li>
+</ul>
+</li>
+<li>Fieldsets are not generated into a module anymore. You may need to change some imports to remove the <code>field_sets</code> module from the path. The Rust compiler will tell you where this needs to happen.</li>
+<li>Fieldsets don’t have a constructor anymore. If you’ve called the <code>new_zero()</code> on fieldsets before, you’ll now need to use the <code>ZERO</code> associated const (for which you’ll need to import the <code>Fieldset</code> trait from the device-driver crate).</li>
+<li>Repeat index parameter has moved. It used to be a parameter on the operation getter function. Now you specify it on the operation. For example:
+<pre><code class="language-rust">- device.foo(index).read()?;
++ device.foo().read_at(index)?;</code></pre>
+</li>
+</ol>
 
                     </main>
 

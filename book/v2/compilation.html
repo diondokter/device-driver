@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-1fde5506.js";
+            window.path_to_searchindex_js = "../searchindex-546248ba.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-ca5e7c95.js"></script>
+        <script src="../toc-3f8de81c.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -240,8 +240,9 @@ Options:
 </code></pre>
 <h3 id="tool---cli"><a class="header" href="#tool---cli">Tool - CLI</a></h3>
 <p>The cli can be installed using:</p>
-<pre><code class="language-sh">cargo install device-driver-cli
+<pre><code class="language-sh">cargo install device-driver-cli --all-features
 </code></pre>
+<p>It’s possible to omit using <code>--all-features</code>, but you’ll be missing some of the less important subcommands like <code>gen-docs</code> and <code>convert</code> (but it compiles faster).</p>
 <p>In the future more methods of distribution may become available. (If you have experience with this, help is very much wanted!)</p>
 <p>Once installed, you can use the compiler using the <code>ddc</code> command (device-driver compiler):</p>
 <pre><code class="language-sh">ddc --help
@@ -254,6 +255,7 @@ Usage: ddc &lt;COMMAND&gt;
 Commands:
   build     Compile DDSL to the target output
   gen-docs  Generate docs about the compiler
+  convert   The format to convert into DDSL
   help      Print this message or the help of the given subcommand(s)
 
 Options:
@@ -309,6 +311,27 @@ The output is unstable.</p>
 Options:
   -o, --output &lt;DIR&gt;
           Path to output folder location
+
+  -h, --help
+          Print help
+</code></pre>
+<h5 id="converter"><a class="header" href="#converter">Converter</a></h5>
+<p>Convert from one of the supported formats to DDSL.
+Don’t rely on this in your main process since the output is unstable.</p>
+<pre><code>The format to convert into DDSL
+
+Usage: [OPTIONS] &lt;COMMAND&gt;
+
+Commands:
+  device-driver-v1  The v1 formats of device-driver (DSL, YAML, JSON &amp; TOML)
+  help              Print this message or the help of the given subcommand(s)
+
+Options:
+  -s, --source &lt;FILE&gt;
+          Path to the input file
+
+  -o, --output &lt;FILE&gt;
+          Path to output location. Any existing file is overwritten. If not provided, the output is written to stdout
 
   -h, --help
           Print help
