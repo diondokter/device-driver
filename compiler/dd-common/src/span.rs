@@ -1,6 +1,9 @@
-use std::{fmt::Display, ops::Range};
+use std::{
+    fmt::{Debug, Display},
+    ops::Range,
+};
 
-#[derive(Debug, Clone, Eq, PartialEq, Copy, Default, Hash)]
+#[derive(Clone, Eq, PartialEq, Copy, Default, Hash)]
 pub struct Span {
     pub start: usize,
     pub end: usize,
@@ -77,6 +80,11 @@ impl chumsky::span::Span for Span {
 impl Display for Span {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}..{}", self.start, self.end)
+    }
+}
+impl Debug for Span {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
     }
 }
 
