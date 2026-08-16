@@ -16,8 +16,12 @@ use device_driver_common::{
 pub struct Manifest {
     pub description: String,
     pub name: Spanned<Identifier<All>>,
+    pub default_access: Option<Access>,
     pub config: DeviceConfig,
     pub objects: Vec<Object>,
+
+    pub short_properties_span: Span,
+    pub properties_span: Span,
     pub span: Span,
 }
 
@@ -222,6 +226,8 @@ impl<'a> Iterator for ObjectIter<'a> {
 /// Implementation meant for testing to easily create a manifest with just one device
 impl From<Device> for Manifest {
     fn from(value: Device) -> Self {
+        let default_access = value.default_access;
+
         Self {
             description: String::new(),
             name: value
@@ -230,8 +236,11 @@ impl From<Device> for Manifest {
                 .clone()
                 .cast_unchecked()
                 .with_span(value.name.span),
+            short_properties_span: value.short_properties_span,
+            properties_span: value.properties_span,
             span: value.span,
             objects: vec![Object::Device(value)],
+            default_access,
             config: DeviceConfig::default(),
         }
     }
@@ -241,8 +250,12 @@ impl From<Device> for Manifest {
 pub struct Device {
     pub description: String,
     pub name: Spanned<Identifier<Type>>,
+    pub default_access: Option<Access>,
     pub device_config: DeviceConfig,
     pub objects: Vec<Object>,
+
+    pub short_properties_span: Span,
+    pub properties_span: Span,
     /// Span of the whole object
     pub span: Span,
 }
@@ -305,14 +318,14 @@ pub enum Object {
 }
 
 impl Object {
-    pub(crate) fn device_config(&self) -> Option<&DeviceConfig> {
+    pub fn device_config(&self) -> Option<&DeviceConfig> {
         match self {
             Object::Device(device) => Some(&device.device_config),
             _ => None,
         }
     }
 
-    pub(crate) fn child_objects_mut(&mut self) -> &mut [Object] {
+    pub fn child_objects_mut(&mut self) -> &mut [Object] {
         match self {
             Object::Device(device) => &mut device.objects,
             Object::Block(block) => &mut block.objects,
@@ -320,7 +333,7 @@ impl Object {
         }
     }
 
-    pub(crate) fn child_objects_vec(&mut self) -> Option<&mut Vec<Object>> {
+    pub fn child_objects_vec(&mut self) -> Option<&mut Vec<Object>> {
         match self {
             Object::Device(device) => Some(&mut device.objects),
             Object::Block(block) => Some(&mut block.objects),
@@ -328,7 +341,7 @@ impl Object {
         }
     }
 
-    pub(crate) fn child_objects(&self) -> &[Object] {
+    pub fn child_objects(&self) -> &[Object] {
         match self {
             Object::Device(device) => &device.objects,
             Object::Block(block) => &block.objects,
@@ -337,7 +350,7 @@ impl Object {
     }
 
     /// Get a mutable reference to the name of the specific object
-    pub(crate) fn name_mut(&mut self) -> &mut Identifier<RuntimeType> {
+    pub fn name_mut(&mut self) -> &mut Identifier<RuntimeType> {
         match self {
             Object::Device(val) => val.name.as_runtime_type_mut(),
             Object::Block(val) => val.name.as_runtime_type_mut(),
@@ -367,7 +380,7 @@ impl Object {
     }
 
     /// Get the span of the name of the object
-    pub(crate) fn name_span(&self) -> Span {
+    pub fn name_span(&self) -> Span {
         match self {
             Object::Device(val) => val.name.span,
             Object::Block(val) => val.name.span,
@@ -382,7 +395,7 @@ impl Object {
     }
 
     /// Return the address if it is specified.
-    pub(crate) fn address(&self) -> Option<Spanned<i128>> {
+    pub fn address(&self) -> Option<Spanned<i128>> {
         match self {
             Object::Device(_) => None,
             Object::Block(block) => Some(block.address_offset),
@@ -397,7 +410,7 @@ impl Object {
     }
 
     /// Return the repeat value if it exists
-    pub(crate) fn repeat(&self) -> Option<&Repeat> {
+    pub fn repeat(&self) -> Option<&Repeat> {
         match self {
             Object::Device(_) => None,
             Object::Block(block) => block.repeat.as_ref(),
@@ -412,7 +425,7 @@ impl Object {
     }
 
     /// Return the repeat value if it exists
-    pub(crate) fn repeat_mut(&mut self) -> Option<&mut Repeat> {
+    pub fn repeat_mut(&mut self) -> Option<&mut Repeat> {
         match self {
             Object::Device(_) => None,
             Object::Block(block) => block.repeat.as_mut(),
@@ -426,7 +439,7 @@ impl Object {
         }
     }
 
-    pub(crate) fn as_field_set(&self) -> Option<&FieldSet> {
+    pub fn as_field_set(&self) -> Option<&FieldSet> {
         if let Self::FieldSet(v) = self {
             Some(v)
         } else {
@@ -434,7 +447,7 @@ impl Object {
         }
     }
 
-    pub(crate) fn as_field_set_mut(&mut self) -> Option<&mut FieldSet> {
+    pub fn as_field_set_mut(&mut self) -> Option<&mut FieldSet> {
         if let Self::FieldSet(v) = self {
             Some(v)
         } else {
@@ -450,7 +463,7 @@ impl Object {
         }
     }
 
-    pub(crate) fn allow_address_overlap(&self) -> bool {
+    pub fn allow_address_overlap(&self) -> bool {
         match self {
             Object::Device(_) => false,
             Object::Block(_) => false,
@@ -465,7 +478,7 @@ impl Object {
     }
 
     /// The span of the entire object
-    pub(crate) fn span(&self) -> Span {
+    pub fn span(&self) -> Span {
         match self {
             Object::Device(val) => val.span,
             Object::Block(val) => val.span,
@@ -479,7 +492,7 @@ impl Object {
         }
     }
 
-    pub(crate) fn node_type(&self) -> NodeType {
+    pub fn node_type(&self) -> NodeType {
         match self {
             Object::Device(_) => NodeType::Device,
             Object::Block(_) => NodeType::Block,
@@ -494,7 +507,7 @@ impl Object {
     }
 
     /// Get the fieldset refs of the object. Only returns non-zero for registers and commands
-    pub(crate) fn fieldset_refs(&self) -> Vec<Spanned<IdentifierRef<Type>>> {
+    pub fn fieldset_refs(&self) -> Vec<Spanned<IdentifierRef<Type>>> {
         match self {
             Object::Device(_) => Vec::new(),
             Object::Block(_) => Vec::new(),
@@ -519,6 +532,10 @@ pub struct Block {
     pub address_offset: Spanned<i128>,
     pub repeat: Option<Repeat>,
     pub objects: Vec<Object>,
+    pub default_access: Option<Access>,
+
+    pub short_properties_span: Span,
+    pub properties_span: Span,
     /// Span of the whole object
     pub span: Span,
 }
@@ -540,12 +557,15 @@ impl Block {
 pub struct Register {
     pub description: String,
     pub name: Spanned<Identifier<Operation>>,
-    pub access: Access,
+    pub access: Option<Access>,
     pub allow_address_overlap: bool,
     pub address: Spanned<i128>,
     pub reset_value: Option<Spanned<ResetValue>>,
     pub repeat: Option<Repeat>,
     pub field_set_ref: Spanned<IdentifierRef<Type>>,
+
+    pub short_properties_span: Span,
+    pub properties_span: Span,
     /// Span of the whole object
     pub span: Span,
 }
@@ -557,7 +577,11 @@ pub struct FieldSet {
     pub size_bytes: Spanned<u32>,
     pub byte_order: Option<ByteOrder>,
     pub allow_bit_overlap: bool,
+    pub default_access: Option<Access>,
     pub fields: Vec<Field>,
+
+    pub short_properties_span: Span,
+    pub properties_span: Span,
     /// Span of the whole object
     pub span: Span,
 }
@@ -572,11 +596,14 @@ impl FieldSet {
 pub struct Field {
     pub description: String,
     pub name: Spanned<Identifier<All>>,
-    pub access: Access,
+    pub access: Option<Access>,
     pub base_type: Spanned<BaseType>,
     pub field_conversion: Option<TypeConversion>,
     pub field_address: Spanned<AddressRange>,
     pub repeat: Option<Repeat>,
+
+    pub short_properties_span: Span,
+    pub properties_span: Span,
     /// Span of the whole object
     pub span: Span,
 }
@@ -606,12 +633,15 @@ pub struct Enum {
     pub base_type: Spanned<BaseType>,
     pub size_bits: Option<u32>,
     pub generation_style: Option<EnumGenerationStyle>,
+
+    pub short_properties_span: Span,
+    pub properties_span: Span,
     /// Span of the whole object
     pub span: Span,
 }
 
 impl Enum {
-    #[must_use]
+    #[cfg(test)]
     pub fn new(
         description: String,
         name: Spanned<Identifier<Type>>,
@@ -627,6 +657,8 @@ impl Enum {
             base_type,
             size_bits,
             generation_style: None,
+            short_properties_span: Span::empty(),
+            properties_span: Span::empty(),
             span,
         }
     }
@@ -648,6 +680,8 @@ impl Enum {
             base_type,
             size_bits,
             generation_style: Some(generation_style),
+            short_properties_span: Span::empty(),
+            properties_span: Span::empty(),
             span,
         }
     }
@@ -770,6 +804,8 @@ pub struct Command {
     pub field_set_ref_in: Option<Spanned<IdentifierRef<Type>>>,
     pub field_set_ref_out: Option<Spanned<IdentifierRef<Type>>>,
 
+    pub short_properties_span: Span,
+    pub properties_span: Span,
     /// Span of the whole object
     pub span: Span,
 }
@@ -778,8 +814,11 @@ pub struct Command {
 pub struct Buffer {
     pub description: String,
     pub name: Spanned<Identifier<Operation>>,
-    pub access: Access,
+    pub access: Option<Access>,
     pub address: Spanned<i128>,
+
+    pub short_properties_span: Span,
+    pub properties_span: Span,
     /// Span of the whole object
     pub span: Span,
 }
@@ -794,6 +833,9 @@ pub struct Extern {
     pub supports_infallible: bool,
     /// The user-specified size of the max value of the base type that should be expected
     pub size_bits: Option<Spanned<u64>>,
+
+    pub short_properties_span: Span,
+    pub properties_span: Span,
     /// Span of the whole object
     pub span: Span,
 }
@@ -1021,9 +1063,6 @@ mod tests {
                 Object::Device(Device {
                     description: String::new(),
                     name: Identifier::try_parse("a").unwrap().with_dummy_span(),
-                    device_config: DeviceConfig {
-                        ..Default::default()
-                    },
                     objects: vec![
                         Object::Extern(Extern {
                             name: Identifier::try_parse("b").unwrap().with_dummy_span(),
@@ -1034,15 +1073,14 @@ mod tests {
                             ..Default::default()
                         }),
                     ],
-                    span: Span::default(),
+                    ..Default::default()
                 }),
                 Object::Extern(Extern {
                     name: Identifier::try_parse("d").unwrap().with_dummy_span(),
                     ..Default::default()
                 }),
             ],
-            config: Default::default(),
-            span: Default::default(),
+            ..Default::default()
         };
 
         let names: Vec<_> = manifest

@@ -164,7 +164,7 @@ fn get_method(
                 repeat: repeat_to_method_kind(repeat, manifest),
                 method_type: lir::BlockMethodType::Register {
                     field_set_name: field_set.name().clone().cast_assert(),
-                    access: *access,
+                    access: access.ok_or_else(|| DynError::new("access is not set"))?,
                     reset_value: reset_value.as_ref().map(|rv| {
                         rv.as_array().cloned().map(|array| array.with_span(rv.span)).ok_or_else(
                             || DynError::new("reset value is not an array while it should have been converted to array a mir pass"),
@@ -219,13 +219,17 @@ fn get_method(
             name,
             access,
             address,
+            short_properties_span: _,
+            properties_span: _,
             span: _,
         }) => Some(lir::BlockMethod {
             description: description.clone(),
             name: name.value.clone(),
             address: address.value,
             repeat: lir::Repeat::None, // Buffers can't be repeated (for now?)
-            method_type: lir::BlockMethodType::Buffer { access: *access },
+            method_type: lir::BlockMethodType::Buffer {
+                access: access.ok_or_else(|| DynError::new("access is not set"))?,
+            },
         }),
         mir::Object::FieldSet(_) => None,
         mir::Object::Enum(_) => None,
@@ -286,6 +290,8 @@ fn transform_field(manifest: &mir::Manifest, field: &mir::Field) -> Result<lir::
         field_conversion,
         field_address,
         repeat,
+        short_properties_span: _,
+        properties_span: _,
         span: _,
     } = field;
 
@@ -356,7 +362,7 @@ fn transform_field(manifest: &mir::Manifest, field: &mir::Field) -> Result<lir::
         address: field_address.value,
         base_type,
         conversion_method,
-        access: *access,
+        access: access.ok_or_else(|| DynError::new("access is not set"))?,
         repeat: repeat_to_method_kind(repeat, manifest),
     })
 }
@@ -370,6 +376,8 @@ pub fn transform_enums(manifest: &mir::Manifest) -> Vec<lir::Enum> {
             base_type,
             size_bits: _,
             generation_style: _,
+            short_properties_span: _,
+            properties_span: _,
             span: _
         } = e;
 
@@ -469,6 +477,9 @@ impl<'o> From<&'o mir::Block> for BorrowedBlock<'o> {
             address_offset,
             repeat,
             objects,
+            default_access: _,
+            short_properties_span: _,
+            properties_span: _,
             span: _,
         } = value;
 

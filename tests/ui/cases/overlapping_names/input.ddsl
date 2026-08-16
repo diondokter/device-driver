@@ -1,6 +1,7 @@
 manifest Foo {
     register-address-type: u8,
     buffer-address-type: u8,
+    default-access: RW,
 
     // These should be all fine
     device Foo {

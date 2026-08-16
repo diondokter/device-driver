@@ -282,6 +282,8 @@ fn parse_node_to_shape<'src, S: Shape>(
     let mut removed_properties = HashMap::new();
     let mut removed_short_properties = HashMap::new();
     for property in &node.properties {
+        *target.properties_span() = target.properties_span().or(property.span).to(property.span);
+
         let Some(property_info) = possible_properties
             .iter()
             .find(|p| p.name == PropertyName::Exact(property.name.val))
@@ -372,6 +374,8 @@ fn parse_node_to_shape<'src, S: Shape>(
     }
 
     for short_property in node.short_properties.iter() {
+        *target.short_properties_span() = target.short_properties_span().or(short_property.span).to(short_property.span);
+
         let short_property_discriminant = discriminant(&short_property.value);
 
         let Some(property_info) = possible_properties.iter().find(|p| {
@@ -537,6 +541,8 @@ trait Shape: Default + 'static {
         None
     }
 
+    fn properties_span(&mut self) -> &mut Span;
+    fn short_properties_span(&mut self) -> &mut Span;
     fn span(&mut self) -> &mut Span;
 }
 

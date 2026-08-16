@@ -5,6 +5,7 @@ device_driver::compile!(
         device MyTestDevice {
             byte-order: LE,
             register-address-type: u8,
+            default-access: RW,
 
             register Foo {
                 address: 0,

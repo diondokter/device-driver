@@ -1,5 +1,6 @@
 device Foo {
     buffer-address-type: u16,
+    default-access: RW,
 
     buffer New {
         address: 0,

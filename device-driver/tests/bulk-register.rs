@@ -51,6 +51,7 @@ device_driver::compile!(
             byte-order: LE,
             register-address-type: u8,
             register-address-mode: mapped,
+            default-access: RW,
 
             register Foo {
                 address: 0,

@@ -34,6 +34,7 @@ device_driver::compile!(
     unstable_ddsl: "
         device MyTestDevice {
             register-address-type: u8,
+            default-access: RW,
 
             register FooLE {
                 address-overlap: allow,

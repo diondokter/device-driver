@@ -305,7 +305,6 @@ mod tests {
         let mut start_mir = Device {
             description: String::new(),
             name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
-            device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new(
                 Default::default(),
                 Identifier::try_parse("MyEnum").unwrap().with_dummy_span(),
@@ -335,14 +334,13 @@ mod tests {
                 Some(2),
                 Span::default(),
             ))],
-            span: Span::default(),
+            ..Default::default()
         }
         .into();
 
         let end_mir = Device {
             description: String::new(),
             name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
-            device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new_with_style(
                 Default::default(),
                 Identifier::try_parse("MyEnum").unwrap().with_dummy_span(),
@@ -373,7 +371,7 @@ mod tests {
                 EnumGenerationStyle::InfallibleWithinRange,
                 Span::default(),
             ))],
-            span: Span::default(),
+            ..Default::default()
         }
         .into();
 
@@ -389,7 +387,6 @@ mod tests {
         let mut start_mir = Device {
             description: String::new(),
             name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
-            device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new(
                 Default::default(),
                 Identifier::try_parse("MyEnum").unwrap().with_dummy_span(),
@@ -409,14 +406,13 @@ mod tests {
                 Some(8),
                 Span::default(),
             ))],
-            span: Span::default(),
+            ..Default::default()
         }
         .into();
 
         let end_mir = Device {
             description: String::new(),
             name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
-            device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new_with_style(
                 Default::default(),
                 Identifier::try_parse("MyEnum").unwrap().with_dummy_span(),
@@ -437,7 +433,7 @@ mod tests {
                 EnumGenerationStyle::Fallback,
                 Span::default(),
             ))],
-            span: Span::default(),
+            ..Default::default()
         }
         .into();
 
@@ -453,7 +449,6 @@ mod tests {
         let mut start_mir = Device {
             description: String::new(),
             name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
-            device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new(
                 Default::default(),
                 Identifier::try_parse("MyEnum").unwrap().with_dummy_span(),
@@ -466,14 +461,13 @@ mod tests {
                 Some(16),
                 Span::default(),
             ))],
-            span: Span::default(),
+            ..Default::default()
         }
         .into();
 
         let end_mir = Device {
             description: String::new(),
             name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
-            device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new_with_style(
                 Default::default(),
                 Identifier::try_parse("MyEnum").unwrap().with_dummy_span(),
@@ -487,7 +481,7 @@ mod tests {
                 EnumGenerationStyle::Fallible,
                 Span::default(),
             ))],
-            span: Span::default(),
+            ..Default::default()
         }
         .into();
 
@@ -503,7 +497,6 @@ mod tests {
         let mut start_mir = Device {
             description: String::new(),
             name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
-            device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new(
                 Default::default(),
                 Identifier::try_parse("MyEnum").unwrap().with_dummy_span(),
@@ -528,7 +521,7 @@ mod tests {
                 Some(1),
                 Span::default(),
             ))],
-            span: Span::default(),
+            ..Default::default()
         }
         .into();
 
@@ -546,7 +539,6 @@ mod tests {
         let mut start_mir = Device {
             description: String::new(),
             name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
-            device_config: Default::default(),
             objects: vec![Object::Enum(Enum::new(
                 Default::default(),
                 Identifier::try_parse("MyEnum").unwrap().with_dummy_span(),
@@ -566,7 +558,7 @@ mod tests {
                 Some(8),
                 Span::default(),
             ))],
-            span: Span::default(),
+            ..Default::default()
         }
         .into();
 

@@ -847,6 +847,7 @@ impl Diagnostic for ConversionTypeTooBig {
 #[derive(Debug)]
 pub struct UnspecifiedByteOrder {
     pub fieldset_name: Span,
+    pub properties_span: Span,
 }
 
 impl Diagnostic for UnspecifiedByteOrder {
@@ -865,15 +866,60 @@ impl Diagnostic for UnspecifiedByteOrder {
                             .label("fieldset requires a byte order, but none is specified"),
                     ),
                 ),
-            Group::with_title(Level::HELP.secondary_title(
+            Level::HELP.secondary_title(
                 "specify the byte order on the fieldset or add a default byte order on the device",
-            )), // TODO: Add patch for adding byte order
+            )
+            .element(Snippet::source(source).path(path).patch(
+                Patch::new(self.properties_span.start..self.properties_span.start, "byte-order: LE,\n")
+            )),
             Group::with_title(Level::NOTE.secondary_title(
                 "the fieldset spans multiple bytes, so it needs to have byte ordering specified",
             )),
             Group::with_title(Level::INFO.secondary_title(
                 "byte order is important for any multi-byte value. It has no default, so it needs to be manually specified",
             )),
+        ]
+        .to_vec()
+    }
+}
+
+#[derive(Debug)]
+pub struct UnspecifiedAccess {
+    pub object_name: Span,
+    pub short_property: bool,
+    pub properties_span: Span,
+}
+
+impl Diagnostic for UnspecifiedAccess {
+    fn is_error(&self) -> bool {
+        true
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [
+            Level::ERROR.primary_title("unspecified access").element(
+                Snippet::source(source).path(path).annotation(
+                    AnnotationKind::Primary
+                        .span(self.object_name.into())
+                        .label("object requires an access to be specified, but none is"),
+                ),
+            ),
+            Level::HELP
+                .secondary_title(
+                    "specify the access on the object or add a `default-access` to a parent object",
+                )
+                .element(Snippet::source(source).path(path).patch(Patch::new(
+                    if self.short_property {
+                        self.properties_span.end..self.properties_span.end
+                    } else {
+                        self.properties_span.start..self.properties_span.start
+                    },
+                    if self.short_property {
+                        " RW"
+                    } else {
+                        "access: RW,\n"
+                    },
+                ))),
         ]
         .to_vec()
     }

@@ -191,6 +191,22 @@ If this value is specified, then it permits bulk register reads and writes.",
                     false
                 },
             },
+            PropertyInfo {
+                name: PropertyName::Exact("default-access"),
+                description: "When set, all subobjects use this value as their access value (unless overridden) and don't require an access specifier anymore",
+                allowed_expression_types: Cow::Borrowed(&[Expression::Access(Access::RW)]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |SetterArgs {
+                             target_object,
+                             property,
+                             ..
+                         }| {
+                    target_object.default_access = Some(property.expression.as_access().unwrap());
+                    false
+                },
+            },
         ];
         MAP
     }
@@ -210,6 +226,14 @@ If this value is specified, then it permits bulk register reads and writes.",
 
     fn span(&mut self) -> &mut Span {
         &mut self.span
+    }
+    
+    fn properties_span(&mut self) -> &mut Span {
+        &mut self.properties_span
+    }
+    
+    fn short_properties_span(&mut self) -> &mut Span {
+        &mut self.short_properties_span
     }
 }
 
@@ -370,6 +394,22 @@ If this value is specified, then it permits bulk register reads and writes.",
                     false
                 },
             },
+            PropertyInfo {
+                name: PropertyName::Exact("default-access"),
+                description: "When set, all subobjects use this value as their access value (unless overridden) and don't require an access specifier anymore",
+                allowed_expression_types: Cow::Borrowed(&[Expression::Access(Access::RW)]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |SetterArgs {
+                             target_object,
+                             property,
+                             ..
+                         }| {
+                    target_object.default_access = Some(property.expression.as_access().unwrap());
+                    false
+                },
+            },
         ];
         MAP
     }
@@ -393,6 +433,14 @@ If this value is specified, then it permits bulk register reads and writes.",
     fn span(&mut self) -> &mut Span {
         &mut self.span
     }
+    
+    fn properties_span(&mut self) -> &mut Span {
+        &mut self.properties_span
+    }
+    
+    fn short_properties_span(&mut self) -> &mut Span {
+        &mut self.short_properties_span
+    }
 }
 
 impl Shape for Block {
@@ -408,29 +456,47 @@ impl Shape for Block {
     }
 
     fn supported_properties() -> &'static [PropertyInfo<Self>] {
-        static MAP: &[PropertyInfo<Block>] = &[PropertyInfo {
-            name: PropertyName::Exact("address-offset"),
-            description: "\
+        static MAP: &[PropertyInfo<Block>] = &[
+            PropertyInfo {
+                name: PropertyName::Exact("address-offset"),
+                description: "\
 Defines the address offset of this block. All objects in the block are relative to the block.
 For example, a block with an address offset of 10 which has a register at address 5, will have defined the register at address 15.
 If this is not desired, then keep the address offset at 0.",
-            allowed_expression_types: Cow::Borrowed(&[Expression::Number(0)]),
-            multiple_allowed: false,
-            required: true,
-            supports_doc_comments: false,
-            setter: |SetterArgs {
-                         target_object: block,
-                         property,
-                         ..
-                     }| {
-                block.address_offset = property
-                    .expression
-                    .as_number()
-                    .unwrap()
-                    .with_span(property.expression.span);
-                false
+                allowed_expression_types: Cow::Borrowed(&[Expression::Number(0)]),
+                multiple_allowed: false,
+                required: true,
+                supports_doc_comments: false,
+                setter: |SetterArgs {
+                            target_object: block,
+                            property,
+                            ..
+                        }| {
+                    block.address_offset = property
+                        .expression
+                        .as_number()
+                        .unwrap()
+                        .with_span(property.expression.span);
+                    false
+                },
             },
-        }];
+            PropertyInfo {
+                name: PropertyName::Exact("default-access"),
+                description: "When set, all subobjects use this value as their access value (unless overridden) and don't require an access specifier anymore",
+                allowed_expression_types: Cow::Borrowed(&[Expression::Access(Access::RW)]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |SetterArgs {
+                             target_object,
+                             property,
+                             ..
+                         }| {
+                    target_object.default_access = Some(property.expression.as_access().unwrap());
+                    false
+                },
+            },
+        ];
         MAP
     }
 
@@ -456,6 +522,14 @@ If this is not desired, then keep the address offset at 0.",
 
     fn span(&mut self) -> &mut Span {
         &mut self.span
+    }
+    
+    fn properties_span(&mut self) -> &mut Span {
+        &mut self.properties_span
+    }
+    
+    fn short_properties_span(&mut self) -> &mut Span {
+        &mut self.short_properties_span
     }
 }
 
@@ -496,7 +570,7 @@ impl Shape for Register {
                 },
                 PropertyInfo {
                     name: PropertyName::Exact("access"),
-                    description: "Limits how the register can be accessed. If not specified, the access is `RW`.",
+                    description: "Limits how the register can be accessed. Must be specified unless a `default-access` is set by a parent object.",
                     allowed_expression_types: Cow::Borrowed(&[Expression::Access(Access::RW)]),
                     multiple_allowed: false,
                     required: false,
@@ -506,7 +580,7 @@ impl Shape for Register {
                                  property,
                                  ..
                              }| {
-                        r.access = property.expression.as_access().unwrap();
+                        r.access = Some(property.expression.as_access().unwrap());
                         false
                     },
                 },
@@ -640,6 +714,14 @@ The value can be expressed in two ways:
     fn span(&mut self) -> &mut Span {
         &mut self.span
     }
+    
+    fn properties_span(&mut self) -> &mut Span {
+        &mut self.properties_span
+    }
+    
+    fn short_properties_span(&mut self) -> &mut Span {
+        &mut self.short_properties_span
+    }
 }
 
 impl Shape for FieldSet {
@@ -715,6 +797,22 @@ impl Shape for FieldSet {
                     false
                 },
             },
+            PropertyInfo {
+                name: PropertyName::Exact("default-access"),
+                description: "When set, all subobjects use this value as their access value (unless overridden) and don't require an access specifier anymore",
+                allowed_expression_types: Cow::Borrowed(&[Expression::Access(Access::RW)]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |SetterArgs {
+                             target_object,
+                             property,
+                             ..
+                         }| {
+                    target_object.default_access = Some(property.expression.as_access().unwrap());
+                    false
+                },
+            },
         ];
         MAP
     }
@@ -732,6 +830,14 @@ impl Shape for FieldSet {
 
     fn span(&mut self) -> &mut Span {
         &mut self.span
+    }
+    
+    fn properties_span(&mut self) -> &mut Span {
+        &mut self.properties_span
+    }
+    
+    fn short_properties_span(&mut self) -> &mut Span {
+        &mut self.short_properties_span
     }
 }
 
@@ -804,6 +910,14 @@ impl Shape for Extern {
     fn span(&mut self) -> &mut Span {
         &mut self.span
     }
+    
+    fn properties_span(&mut self) -> &mut Span {
+        &mut self.properties_span
+    }
+    
+    fn short_properties_span(&mut self) -> &mut Span {
+        &mut self.short_properties_span
+    }
 }
 
 impl Shape for Buffer {
@@ -822,7 +936,7 @@ impl Shape for Buffer {
         static MAP: &[PropertyInfo<Buffer>] = &[
             PropertyInfo {
                 name: PropertyName::Exact("access"),
-                description: "Limits how the buffer can be accessed. If not specified, the access is `RW`.",
+                description: "Limits how the buffer can be accessed. Must be specified unless a `default-access` is set by a parent object.",
                 allowed_expression_types: Cow::Borrowed(&[Expression::Access(Access::RW)]),
                 multiple_allowed: false,
                 required: false,
@@ -832,7 +946,7 @@ impl Shape for Buffer {
                              property,
                              ..
                          }| {
-                    buf.access = property.expression.as_access().unwrap();
+                    buf.access = Some(property.expression.as_access().unwrap());
                     false
                 },
             },
@@ -862,6 +976,14 @@ impl Shape for Buffer {
 
     fn span(&mut self) -> &mut Span {
         &mut self.span
+    }
+    
+    fn properties_span(&mut self) -> &mut Span {
+        &mut self.properties_span
+    }
+    
+    fn short_properties_span(&mut self) -> &mut Span {
+        &mut self.short_properties_span
     }
 }
 
@@ -935,6 +1057,14 @@ impl Shape for Enum {
 
     fn span(&mut self) -> &mut Span {
         &mut self.span
+    }
+    
+    fn properties_span(&mut self) -> &mut Span {
+        &mut self.properties_span
+    }
+    
+    fn short_properties_span(&mut self) -> &mut Span {
+        &mut self.short_properties_span
     }
 }
 
@@ -1121,6 +1251,14 @@ impl Shape for Command {
     fn span(&mut self) -> &mut Span {
         &mut self.span
     }
+    
+    fn properties_span(&mut self) -> &mut Span {
+        &mut self.properties_span
+    }
+    
+    fn short_properties_span(&mut self) -> &mut Span {
+        &mut self.short_properties_span
+    }
 }
 
 impl Shape for Field {
@@ -1191,7 +1329,7 @@ impl Shape for Field {
             },
             PropertyInfo {
                 name: PropertyName::Short("access"),
-                description: "Limits how the field can be accessed. If not specified, the access is `RW`.",
+                description: "Limits how the field can be accessed. Must be specified unless a `default-access` is set by a parent object.",
                 allowed_expression_types: Cow::Borrowed(&[Expression::Access(Access::RW)]),
                 multiple_allowed: false,
                 required: false,
@@ -1201,7 +1339,7 @@ impl Shape for Field {
                              property,
                              ..
                          }| {
-                    field.access = property.expression.as_access().unwrap();
+                    field.access = Some(property.expression.as_access().unwrap());
                     false
                 },
             },
@@ -1223,5 +1361,13 @@ impl Shape for Field {
 
     fn span(&mut self) -> &mut Span {
         &mut self.span
+    }
+    
+    fn properties_span(&mut self) -> &mut Span {
+        &mut self.properties_span
+    }
+    
+    fn short_properties_span(&mut self) -> &mut Span {
+        &mut self.short_properties_span
     }
 }

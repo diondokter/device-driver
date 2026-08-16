@@ -1,6 +1,7 @@
 device Device {
     byte-order: LE,
     register-address-type: u32,
+    default-access: RW,
 
     fieldset Foo {
         size-bytes: 0

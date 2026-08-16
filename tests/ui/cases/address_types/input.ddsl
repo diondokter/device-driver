@@ -3,6 +3,7 @@ device Device {
     register-address-type: u16,
     command-address-type: i32,
     buffer-address-type: i8,
+    default-access: RW,
 
     register Foo {
         address: 0,

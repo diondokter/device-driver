@@ -8,6 +8,8 @@ device_driver::compile!(
             register-address-type: u8,
             command-address-type: u8,
             buffer-address-type: u8,
+            default-access: RW,
+            
             /// X
             register Foo {
                 address: 0,
