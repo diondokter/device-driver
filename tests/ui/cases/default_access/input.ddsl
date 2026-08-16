@@ -1,6 +1,4 @@
 manifest X {
-    default-access: RW,
-
     device Y {
         register-address-type: u8,
         default-access: RO,
@@ -24,4 +22,21 @@ manifest X {
             },
         }
     },
+
+    // no default means it should error on all sites that need an access
+    device D {
+        register-address-type: u8,
+        buffer-address-type: u8,
+
+        register E {
+            address: 0,
+            fields: fieldset F {
+                size-bytes: 1,
+                field a 0,
+            },
+        },
+        buffer G {
+            address: 0,
+        }
+    }
 }

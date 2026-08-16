@@ -104,6 +104,59 @@ impl<'i, I> ::device_driver::Block for B<'i, I> {
         self.interface
     }
 }
+/// Root block of the D driver
+#[derive(Debug)]
+pub struct D<I> {
+    interface: I,
+    #[doc(hidden)]
+    #[allow(unused)]
+    base_address: u8,
+}
+impl<I> D<I> {
+    /// Create a new instance of the device
+    pub const fn new(interface: I) -> Self {
+        Self { interface, base_address: 0 }
+    }
+    /// Drop the driver instance and reclaim the interface
+    pub fn free(self) -> I {
+        self.interface
+    }
+    /// Register operation:
+    /// - Address: `0`
+    /// - Reset value: `0`
+    #[doc(alias = "E")]
+    pub fn e(
+        &mut self,
+    ) -> ::device_driver::RegisterOperation<'_, Self, F, u8, ::device_driver::RW, ()>
+    where
+        I: ::device_driver::RegisterInterfaceBase<AddressType = u8>,
+    {
+        let address = self.base_address + 0;
+        ::device_driver::RegisterOperation::new(self, address as u8, F::default)
+    }
+    /// Buffer operation:
+    /// - Address: `0`
+    #[doc(alias = "G")]
+    pub fn g(
+        &mut self,
+    ) -> ::device_driver::BufferOperation<'_, Self, u8, ::device_driver::RW>
+    where
+        I: ::device_driver::BufferInterfaceBase<AddressType = u8>,
+    {
+        let address = self.base_address + 0;
+        ::device_driver::BufferOperation::new(self, address as u8)
+    }
+}
+impl<I> ::device_driver::Block for D<I> {
+    type Interface = I;
+    type RegisterAddressType = u8;
+    type CommandAddressType = u8;
+    type BufferAddressType = u8;
+    type RegisterAddressMode = ();
+    fn interface(&mut self) -> &mut Self::Interface {
+        &mut self.interface
+    }
+}
 #[derive(Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct A {
@@ -210,3 +263,126 @@ impl core::ops::Not for A {
         self
     }
 }
+#[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
+pub struct F {
+    #[doc(hidden)]
+    /// The internal bits
+    bits: [u8; 1],
+}
+unsafe impl ::device_driver::Fieldset for F {
+    const METADATA: ::device_driver::FieldsetMetadata = ::device_driver::FieldsetMetadata::new()
+        .with_byte_order(::device_driver::ByteOrder::LE);
+    const ZERO: Self = Self { bits: [0; 1] };
+}
+impl F {
+    /// `bit 0` - Read the `a` field.
+    ///
+    #[must_use]
+    pub fn a(&self) -> bool {
+        let start = 0;
+        let end = 0;
+        let raw = unsafe {
+            ::device_driver::ops::load::<
+                u8,
+                ::device_driver::ops::LE,
+            >(&self.bits, start, end)
+        };
+        raw > 0
+    }
+    /// `bit 0` - Set the `a` field.
+    ///
+    pub fn set_a(&mut self, value: bool) {
+        let start = 0;
+        let end = 0;
+        let raw = value as _;
+        unsafe {
+            ::device_driver::ops::store::<
+                u8,
+                ::device_driver::ops::LE,
+            >(raw, start, end, &mut self.bits)
+        };
+    }
+}
+impl Default for F {
+    fn default() -> Self {
+        <Self as ::device_driver::Fieldset>::ZERO
+    }
+}
+impl From<[u8; 1]> for F {
+    fn from(bits: [u8; 1]) -> Self {
+        Self { bits }
+    }
+}
+impl From<F> for [u8; 1] {
+    fn from(val: F) -> Self {
+        val.bits
+    }
+}
+impl core::fmt::Debug for F {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> Result<(), core::fmt::Error> {
+        let mut d = f.debug_struct("F");
+        d.field("a", &self.a());
+        d.finish()
+    }
+}
+#[cfg(feature = "defmt")]
+impl defmt::Format for F {
+    fn format(&self, f: defmt::Formatter) {
+        defmt::write!(f, "F {{ ");
+        defmt::write!(f, "a: {=bool}, ", & self.a());
+        defmt::write!(f, "}}");
+    }
+}
+impl core::ops::BitAnd for F {
+    type Output = Self;
+    fn bitand(mut self, rhs: Self) -> Self::Output {
+        self &= rhs;
+        self
+    }
+}
+impl core::ops::BitAndAssign for F {
+    fn bitand_assign(&mut self, rhs: Self) {
+        for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
+            *l &= *r;
+        }
+    }
+}
+impl core::ops::BitOr for F {
+    type Output = Self;
+    fn bitor(mut self, rhs: Self) -> Self::Output {
+        self |= rhs;
+        self
+    }
+}
+impl core::ops::BitOrAssign for F {
+    fn bitor_assign(&mut self, rhs: Self) {
+        for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
+            *l |= *r;
+        }
+    }
+}
+impl core::ops::BitXor for F {
+    type Output = Self;
+    fn bitxor(mut self, rhs: Self) -> Self::Output {
+        self ^= rhs;
+        self
+    }
+}
+impl core::ops::BitXorAssign for F {
+    fn bitxor_assign(&mut self, rhs: Self) {
+        for (l, r) in self.bits.iter_mut().zip(&rhs.bits) {
+            *l ^= *r;
+        }
+    }
+}
+impl core::ops::Not for F {
+    type Output = Self;
+    fn not(mut self) -> Self::Output {
+        for val in self.bits.iter_mut() {
+            *val = !*val;
+        }
+        self
+    }
+}
+compile_error!("The device driver input has errors that need to be solved!");

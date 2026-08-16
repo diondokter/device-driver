@@ -1,0 +1,7 @@
+error: The device driver input has errors that need to be solved!
+   --> default_access.rs:388:1
+    |
+388 | compile_error!("The device driver input has errors that need to be solved!");
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: could not compile `default_access` (bin "default_access") due to 1 previous error
