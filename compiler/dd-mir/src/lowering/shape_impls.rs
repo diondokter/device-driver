@@ -227,11 +227,11 @@ If this value is specified, then it permits bulk register reads and writes.",
     fn span(&mut self) -> &mut Span {
         &mut self.span
     }
-    
-    fn properties_span(&mut self) -> &mut Span {
+
+    fn properties_span(&mut self) -> &mut Option<Span> {
         &mut self.properties_span
     }
-    
+
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
     }
@@ -433,11 +433,11 @@ If this value is specified, then it permits bulk register reads and writes.",
     fn span(&mut self) -> &mut Span {
         &mut self.span
     }
-    
-    fn properties_span(&mut self) -> &mut Span {
+
+    fn properties_span(&mut self) -> &mut Option<Span> {
         &mut self.properties_span
     }
-    
+
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
     }
@@ -523,11 +523,11 @@ If this is not desired, then keep the address offset at 0.",
     fn span(&mut self) -> &mut Span {
         &mut self.span
     }
-    
-    fn properties_span(&mut self) -> &mut Span {
+
+    fn properties_span(&mut self) -> &mut Option<Span> {
         &mut self.properties_span
     }
-    
+
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
     }
@@ -714,11 +714,11 @@ The value can be expressed in two ways:
     fn span(&mut self) -> &mut Span {
         &mut self.span
     }
-    
-    fn properties_span(&mut self) -> &mut Span {
+
+    fn properties_span(&mut self) -> &mut Option<Span> {
         &mut self.properties_span
     }
-    
+
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
     }
@@ -831,11 +831,11 @@ impl Shape for FieldSet {
     fn span(&mut self) -> &mut Span {
         &mut self.span
     }
-    
-    fn properties_span(&mut self) -> &mut Span {
+
+    fn properties_span(&mut self) -> &mut Option<Span> {
         &mut self.properties_span
     }
-    
+
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
     }
@@ -910,11 +910,11 @@ impl Shape for Extern {
     fn span(&mut self) -> &mut Span {
         &mut self.span
     }
-    
-    fn properties_span(&mut self) -> &mut Span {
+
+    fn properties_span(&mut self) -> &mut Option<Span> {
         &mut self.properties_span
     }
-    
+
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
     }
@@ -977,11 +977,11 @@ impl Shape for Buffer {
     fn span(&mut self) -> &mut Span {
         &mut self.span
     }
-    
-    fn properties_span(&mut self) -> &mut Span {
+
+    fn properties_span(&mut self) -> &mut Option<Span> {
         &mut self.properties_span
     }
-    
+
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
     }
@@ -1058,11 +1058,11 @@ impl Shape for Enum {
     fn span(&mut self) -> &mut Span {
         &mut self.span
     }
-    
-    fn properties_span(&mut self) -> &mut Span {
+
+    fn properties_span(&mut self) -> &mut Option<Span> {
         &mut self.properties_span
     }
-    
+
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
     }
@@ -1251,11 +1251,11 @@ impl Shape for Command {
     fn span(&mut self) -> &mut Span {
         &mut self.span
     }
-    
-    fn properties_span(&mut self) -> &mut Span {
+
+    fn properties_span(&mut self) -> &mut Option<Span> {
         &mut self.properties_span
     }
-    
+
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
     }
@@ -1362,11 +1362,11 @@ impl Shape for Field {
     fn span(&mut self) -> &mut Span {
         &mut self.span
     }
-    
-    fn properties_span(&mut self) -> &mut Span {
+
+    fn properties_span(&mut self) -> &mut Option<Span> {
         &mut self.properties_span
     }
-    
+
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
     }

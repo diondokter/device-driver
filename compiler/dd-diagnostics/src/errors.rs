@@ -847,7 +847,7 @@ impl Diagnostic for ConversionTypeTooBig {
 #[derive(Debug)]
 pub struct UnspecifiedByteOrder {
     pub fieldset_name: Span,
-    pub properties_span: Span,
+    pub properties_span: Option<Span>,
 }
 
 impl Diagnostic for UnspecifiedByteOrder {
@@ -869,8 +869,10 @@ impl Diagnostic for UnspecifiedByteOrder {
             Level::HELP.secondary_title(
                 "specify the byte order on the fieldset or add a default byte order on the device",
             )
-            .element(Snippet::source(source).path(path).patch(
-                Patch::new(self.properties_span.start..self.properties_span.start, "byte-order: LE,\n")
+            .elements( self.properties_span.map(|properties_span| {
+                Snippet::source(source).path(path).patch(
+                    Patch::new(properties_span.start..properties_span.start, "byte-order: LE,\n")
+                )}
             )),
             Group::with_title(Level::NOTE.secondary_title(
                 "the fieldset spans multiple bytes, so it needs to have byte ordering specified",
@@ -887,7 +889,7 @@ impl Diagnostic for UnspecifiedByteOrder {
 pub struct UnspecifiedAccess {
     pub object_name: Span,
     pub short_property: bool,
-    pub properties_span: Span,
+    pub properties_span: Option<Span>,
 }
 
 impl Diagnostic for UnspecifiedAccess {
@@ -908,18 +910,20 @@ impl Diagnostic for UnspecifiedAccess {
                 .secondary_title(
                     "specify the access on the object or add a `default-access` to a parent object",
                 )
-                .element(Snippet::source(source).path(path).patch(Patch::new(
-                    if self.short_property {
-                        self.properties_span.end..self.properties_span.end
-                    } else {
-                        self.properties_span.start..self.properties_span.start
-                    },
-                    if self.short_property {
-                        " RW"
-                    } else {
-                        "access: RW,\n"
-                    },
-                ))),
+                .elements(self.properties_span.map(|properties_span| {
+                    Snippet::source(source).path(path).patch(Patch::new(
+                        if self.short_property {
+                            properties_span.end..properties_span.end
+                        } else {
+                            properties_span.start..properties_span.start
+                        },
+                        if self.short_property {
+                            " RW"
+                        } else {
+                            "access: RW,\n"
+                        },
+                    ))
+                })),
         ]
         .to_vec()
     }
@@ -1222,7 +1226,7 @@ impl Diagnostic for OverlappingFields {
 pub struct AddressTypeUndefined {
     pub object_name: Span,
     pub device: Span,
-    pub device_config_area: Span,
+    pub properties_span: Option<Span>,
     pub object_type: &'static str,
 }
 
@@ -1254,10 +1258,12 @@ impl Diagnostic for AddressTypeUndefined {
             ),
             Level::HELP.secondary_title(
                 "add the address type as a global default or as config on the device the object is defined in"
-            ).element(
-                Snippet::source(source).path(path).patch(
-                    Patch::new(self.device_config_area.start..self.device_config_area.start, format!("{}-address-type: u16\n", self.object_type))
-                )
+            ).elements(
+                self.properties_span.map(|properties_span| {
+                    Snippet::source(source).path(path).patch(
+                        Patch::new(properties_span.start..properties_span.start, format!("{}-address-type: u16\n", self.object_type))
+                    )
+                })
             ),
             Group::with_title(
                 Level::INFO.secondary_title("device-driver is agnostic to the address types being used. As such, it must be manually specified")
@@ -1731,6 +1737,8 @@ pub struct MissingRequiredProperty {
     pub property_name: String,
     pub short: bool,
     pub allowed_property_types: Vec<String>,
+    pub example_values: Vec<Cow<'static, str>>,
+    pub properties_span: Option<Span>,
 }
 
 impl Diagnostic for MissingRequiredProperty {
@@ -1753,20 +1761,36 @@ impl Diagnostic for MissingRequiredProperty {
             )
         };
 
-        [
-            Level::ERROR
-                .primary_title(format!(
-                    "{} node is missing a required property",
-                    self.node_type
-                ))
-                .element(
-                    Snippet::source(source).path(path).annotation(
-                        AnnotationKind::Primary
-                            .span(self.node_type.span.into())
-                            .label(label),
-                    ),
-                ), // TODO: Add patches to show user adding the properties
-        ]
+        [Level::ERROR
+            .primary_title(format!(
+                "{} node is missing a required property",
+                self.node_type
+            ))
+            .element(
+                Snippet::source(source).path(path).annotation(
+                    AnnotationKind::Primary
+                        .span(self.node_type.span.into())
+                        .label(label),
+                ),
+            )
+            .elements(self.properties_span.map(|properties_span| {
+                Snippet::source(source)
+                    .path(path)
+                    .patches(self.example_values.iter().map(|example_value| {
+                        Patch::new(
+                            if self.short {
+                                properties_span.end..properties_span.end
+                            } else {
+                                properties_span.start..properties_span.start
+                            },
+                            if self.short {
+                                format!(" {example_value}")
+                            } else {
+                                format!("{}: {example_value},\n", self.property_name)
+                            },
+                        )
+                    }))
+            }))]
         .to_vec()
     }
 }

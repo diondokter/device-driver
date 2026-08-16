@@ -282,7 +282,12 @@ fn parse_node_to_shape<'src, S: Shape>(
     let mut removed_properties = HashMap::new();
     let mut removed_short_properties = HashMap::new();
     for property in &node.properties {
-        *target.properties_span() = target.properties_span().or(property.span).to(property.span);
+        *target.properties_span() = Some(
+            target
+                .properties_span()
+                .unwrap_or(property.span)
+                .to(property.span),
+        );
 
         let Some(property_info) = possible_properties
             .iter()
@@ -372,9 +377,19 @@ fn parse_node_to_shape<'src, S: Shape>(
             removed_properties.insert(property.name.val, property.name.span);
         }
     }
+    if target.properties_span().is_none() {
+        *target.properties_span() = node
+            .sub_nodes
+            .iter()
+            .map(|n| n.span)
+            .reduce(|acc, val| acc.to(val));
+    }
 
     for short_property in node.short_properties.iter() {
-        *target.short_properties_span() = target.short_properties_span().or(short_property.span).to(short_property.span);
+        *target.short_properties_span() = target
+            .short_properties_span()
+            .or(short_property.span)
+            .to(short_property.span);
 
         let short_property_discriminant = discriminant(&short_property.value);
 
@@ -437,6 +452,14 @@ fn parse_node_to_shape<'src, S: Shape>(
             possible_properties.remove(possible_properties.element_offset(property_info).unwrap());
         }
     }
+    if target.short_properties_span().is_empty() {
+        *target.short_properties_span() = node
+            .repeat
+            .map(|r| r.span)
+            .unwrap_or_default()
+            .or(node.name.span)
+            .collapse_to_end();
+    }
 
     // Required properties that haven't been seen
     let missing_properties = possible_properties
@@ -446,6 +469,7 @@ fn parse_node_to_shape<'src, S: Shape>(
 
     if !missing_properties.is_empty() {
         for missing_info in missing_properties {
+            let short = matches!(missing_info.name, PropertyName::Short(_));
             diagnostics.add(MissingRequiredProperty {
                 node_type: S::NODE_TYPE.with_span(node.node_type.span),
                 property_name: match missing_info.name {
@@ -453,12 +477,22 @@ fn parse_node_to_shape<'src, S: Shape>(
                     PropertyName::Short(val) => val.to_string(),
                     _ => "*".to_string(),
                 },
-                short: matches!(missing_info.name, PropertyName::Short(_)),
+                short,
                 allowed_property_types: missing_info
                     .allowed_expression_types
                     .iter()
                     .map(|e| e.to_string())
                     .collect(),
+                example_values: missing_info
+                    .allowed_expression_types
+                    .iter()
+                    .map(|e| e.get_human_string())
+                    .collect(),
+                properties_span: if short {
+                    Some(*target.short_properties_span())
+                } else {
+                    *target.properties_span()
+                },
             });
         }
         error = true;
@@ -541,7 +575,7 @@ trait Shape: Default + 'static {
         None
     }
 
-    fn properties_span(&mut self) -> &mut Span;
+    fn properties_span(&mut self) -> &mut Option<Span>;
     fn short_properties_span(&mut self) -> &mut Span;
     fn span(&mut self) -> &mut Span;
 }

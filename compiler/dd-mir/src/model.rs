@@ -21,7 +21,7 @@ pub struct Manifest {
     pub objects: Vec<Object>,
 
     pub short_properties_span: Span,
-    pub properties_span: Span,
+    pub properties_span: Option<Span>,
     pub span: Span,
 }
 
@@ -255,7 +255,7 @@ pub struct Device {
     pub objects: Vec<Object>,
 
     pub short_properties_span: Span,
-    pub properties_span: Span,
+    pub properties_span: Option<Span>,
     /// Span of the whole object
     pub span: Span,
 }
@@ -523,6 +523,20 @@ impl Object {
             Object::Field(_) => Vec::new(),
         }
     }
+
+    pub fn properties_span(&self) -> Option<Span> {
+        match self {
+            Object::Device(val) => val.properties_span,
+            Object::Block(val) => val.properties_span,
+            Object::Register(val) => val.properties_span,
+            Object::Command(val) => val.properties_span,
+            Object::Buffer(val) => val.properties_span,
+            Object::FieldSet(val) => val.properties_span,
+            Object::Enum(val) => val.properties_span,
+            Object::Extern(val) => val.properties_span,
+            Object::Field(val) => val.properties_span,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -535,7 +549,7 @@ pub struct Block {
     pub default_access: Option<Access>,
 
     pub short_properties_span: Span,
-    pub properties_span: Span,
+    pub properties_span: Option<Span>,
     /// Span of the whole object
     pub span: Span,
 }
@@ -565,7 +579,7 @@ pub struct Register {
     pub field_set_ref: Spanned<IdentifierRef<Type>>,
 
     pub short_properties_span: Span,
-    pub properties_span: Span,
+    pub properties_span: Option<Span>,
     /// Span of the whole object
     pub span: Span,
 }
@@ -581,7 +595,7 @@ pub struct FieldSet {
     pub fields: Vec<Field>,
 
     pub short_properties_span: Span,
-    pub properties_span: Span,
+    pub properties_span: Option<Span>,
     /// Span of the whole object
     pub span: Span,
 }
@@ -603,7 +617,7 @@ pub struct Field {
     pub repeat: Option<Repeat>,
 
     pub short_properties_span: Span,
-    pub properties_span: Span,
+    pub properties_span: Option<Span>,
     /// Span of the whole object
     pub span: Span,
 }
@@ -635,7 +649,7 @@ pub struct Enum {
     pub generation_style: Option<EnumGenerationStyle>,
 
     pub short_properties_span: Span,
-    pub properties_span: Span,
+    pub properties_span: Option<Span>,
     /// Span of the whole object
     pub span: Span,
 }
@@ -658,7 +672,7 @@ impl Enum {
             size_bits,
             generation_style: None,
             short_properties_span: Span::empty(),
-            properties_span: Span::empty(),
+            properties_span: None,
             span,
         }
     }
@@ -681,7 +695,7 @@ impl Enum {
             size_bits,
             generation_style: Some(generation_style),
             short_properties_span: Span::empty(),
-            properties_span: Span::empty(),
+            properties_span: None,
             span,
         }
     }
@@ -805,7 +819,7 @@ pub struct Command {
     pub field_set_ref_out: Option<Spanned<IdentifierRef<Type>>>,
 
     pub short_properties_span: Span,
-    pub properties_span: Span,
+    pub properties_span: Option<Span>,
     /// Span of the whole object
     pub span: Span,
 }
@@ -818,7 +832,7 @@ pub struct Buffer {
     pub address: Spanned<i128>,
 
     pub short_properties_span: Span,
-    pub properties_span: Span,
+    pub properties_span: Option<Span>,
     /// Span of the whole object
     pub span: Span,
 }
@@ -835,7 +849,7 @@ pub struct Extern {
     pub size_bits: Option<Spanned<u64>>,
 
     pub short_properties_span: Span,
-    pub properties_span: Span,
+    pub properties_span: Option<Span>,
     /// Span of the whole object
     pub span: Span,
 }

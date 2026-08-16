@@ -50,7 +50,7 @@ fn set_access(
                         diagnostics.add(UnspecifiedAccess {
                             object_name: field.name.span,
                             short_property: true,
-                            properties_span: field.short_properties_span,
+                            properties_span: Some(field.short_properties_span),
                         });
                     }
                 }

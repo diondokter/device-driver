@@ -36,22 +36,17 @@ impl Pass for AddressTypesSpecified {
                         continue;
                     }
 
-                    let device_first_object =
+                    let device_properties_span =
                         search_object(manifest, &device.identifier().take_ref())
                             .ok_or_else(|| {
                                 DynError::new("config owner doesn't exist for register")
                             })?
-                            .child_objects()
-                            .first()
-                            .ok_or_else(|| {
-                                DynError::new("device that owns register doesn't have children")
-                            })?
-                            .span();
+                            .properties_span();
 
                     diagnostics.add(AddressTypeUndefined {
                         object_name: object.name_span(),
                         device: device.span(),
-                        device_config_area: device_first_object,
+                        properties_span: device_properties_span,
                         object_type: "register",
                     });
                     register_removals.insert(device.clone());
@@ -67,20 +62,15 @@ impl Pass for AddressTypesSpecified {
                         continue;
                     }
 
-                    let device_first_object =
+                    let device_properties_span =
                         search_object(manifest, &device.identifier().take_ref())
                             .ok_or_else(|| DynError::new("config owner doesn't exist for command"))?
-                            .child_objects()
-                            .first()
-                            .ok_or_else(|| {
-                                DynError::new("device that owns command doesn't have children")
-                            })?
-                            .span();
+                            .properties_span();
 
                     diagnostics.add(AddressTypeUndefined {
                         object_name: object.name_span(),
                         device: device.span(),
-                        device_config_area: device_first_object,
+                        properties_span: device_properties_span,
                         object_type: "command",
                     });
                     command_removals.insert(device.clone());
@@ -96,20 +86,15 @@ impl Pass for AddressTypesSpecified {
                         continue;
                     }
 
-                    let device_first_object =
+                    let device_properties_span =
                         search_object(manifest, &device.identifier().take_ref())
                             .ok_or_else(|| DynError::new("config owner doesn't exist for buffer"))?
-                            .child_objects()
-                            .first()
-                            .ok_or_else(|| {
-                                DynError::new("device that owns buffer doesn't have children")
-                            })?
-                            .span();
+                            .properties_span();
 
                     diagnostics.add(AddressTypeUndefined {
                         object_name: object.name_span(),
                         device: device.span(),
-                        device_config_area: device_first_object,
+                        properties_span: device_properties_span,
                         object_type: "buffer",
                     });
                     buffer_removals.insert(device.clone());

@@ -1,0 +1,27 @@
+manifest X {
+    default-access: RW,
+
+    device Y {
+        register-address-type: u8,
+        default-access: RO,
+
+        register Z {
+            address: 0,
+            fields: fieldset A {
+                size-bytes: 1,
+                default-access: WO,
+                field a 0,
+            },
+        },
+
+        block B {
+            default-access: WO,
+            address-offset: 0,
+
+            register C {
+                address: 1,
+                fields: A,
+            },
+        }
+    },
+}
