@@ -6,6 +6,7 @@ fieldset Example {
     size-bytes: 8,
     byte-order: LE,
     bit-overlap: allow,
+    default-access: RW,
 
     field node,
 }
@@ -48,6 +49,16 @@ Allows fields to overlap. This is not allowed by default to prevent copy-paste m
 ```ddsl
 // allow
 bit-overlap: allow
+```
+#### Info
+- required: `no`
+- multiple allowed: `no`
+- supports doc comments: `no`
+### default-access
+When set, all subobjects use this value as their access value (unless overridden) and don't require an access specifier anymore
+```ddsl
+// access specifier
+default-access: RW
 ```
 #### Info
 - required: `no`

@@ -2,7 +2,7 @@
 
 ```ddsl
 /// doc comment line
-register Example {
+register Example[8 stride 4] {
     address: 0,
     access: RW,
     address-overlap: allow,
@@ -34,7 +34,7 @@ address: 0
 - multiple allowed: `no`
 - supports doc comments: `no`
 ### access
-Limits how the register can be accessed. If not specified, the access is `RW`.
+Limits how the register can be accessed. Must be specified unless a `default-access` is set by a parent object.
 ```ddsl
 // access specifier
 access: RW

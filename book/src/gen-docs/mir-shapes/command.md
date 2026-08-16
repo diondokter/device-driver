@@ -2,7 +2,7 @@
 
 ```ddsl
 /// doc comment line
-command Example {
+command Example[8 stride 4] {
     address: 0,
     address-overlap: allow,
     fields-in: MyFieldset,

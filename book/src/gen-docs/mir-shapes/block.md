@@ -2,8 +2,9 @@
 
 ```ddsl
 /// doc comment line
-block Example {
+block Example[8 stride 4] {
     address-offset: 0,
+    default-access: RW,
 
     block node,
     register node,
@@ -37,6 +38,16 @@ address-offset: 0
 ```
 #### Info
 - required: `yes`
+- multiple allowed: `no`
+- supports doc comments: `no`
+### default-access
+When set, all subobjects use this value as their access value (unless overridden) and don't require an access specifier anymore
+```ddsl
+// access specifier
+default-access: RW
+```
+#### Info
+- required: `no`
 - multiple allowed: `no`
 - supports doc comments: `no`
 ## Possible subnodes
