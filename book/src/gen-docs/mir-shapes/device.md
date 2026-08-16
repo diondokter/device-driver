@@ -9,6 +9,7 @@ device Example {
     buffer-address-type: i32,
     word-boundaries: "bD:0B:_",
     register-address-mode: mapped,
+    default-access: RW,
 
     block node,
     register node,
@@ -103,6 +104,16 @@ If this value is specified, then it permits bulk register reads and writes.
 ```ddsl
 // address mode
 register-address-mode: mapped
+```
+#### Info
+- required: `no`
+- multiple allowed: `no`
+- supports doc comments: `no`
+### default-access
+When set, all subobjects use this value as their access value (unless overridden) and don't require an access specifier anymore
+```ddsl
+// access specifier
+default-access: RW
 ```
 #### Info
 - required: `no`

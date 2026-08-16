@@ -15,7 +15,7 @@ impl Span {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.start >= self.end
+        self.start == 0 && self.end == 0
     }
 
     /// Return self if not empty, or the other span if self is empty
@@ -52,6 +52,15 @@ impl Span {
         assert!(start.start <= self.end);
         Self {
             start: start.start,
+            end: self.end,
+        }
+    }
+
+    /// Discard the span and keep a zero-length span at the end value
+    #[must_use]
+    pub fn collapse_to_end(&self) -> Span {
+        Span {
+            start: self.end,
             end: self.end,
         }
     }

@@ -92,7 +92,11 @@ First we create a file named `ym3812.ddsl` (or something else to your liking). T
 
 ```ddsl
 device Ym3812 {
+    // Our register address space is 0-255, and the shift register takes a byte,
+    // so use u8 for the address type
     register-address-type: u8,
+    // Everything is read-write, so to save some typing, we set a default
+    default-access: RW,
 }
 ```
 
@@ -116,6 +120,7 @@ Let's define them in ddsl:
 ```ddsl
 device Ym3812 {
     register-address-type: u8,
+    default-access: RW,
 
     /// Register containing the Waveform Select Enable and some test fields
     register Enable_waveform_control {

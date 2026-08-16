@@ -132,10 +132,7 @@ impl<T: Eq> EqSet<T> {
 #[cfg(test)]
 mod tests {
     use convert_case::Boundary;
-    use device_driver_common::{
-        identifier::Identifier,
-        span::{Span, SpanExt},
-    };
+    use device_driver_common::{identifier::Identifier, span::SpanExt};
 
     use crate::model::{Buffer, Device, DeviceConfig, Enum, EnumVariant, Field, FieldSet, Object};
 
@@ -162,7 +159,7 @@ mod tests {
                     ..Default::default()
                 }),
             ],
-            span: Span::default(),
+            ..Default::default()
         }
         .into();
 
@@ -196,7 +193,7 @@ mod tests {
                 ],
                 ..Default::default()
             })],
-            span: Span::default(),
+            ..Default::default()
         }
         .into();
 
@@ -230,7 +227,7 @@ mod tests {
                 ],
                 ..Default::default()
             })],
-            span: Span::default(),
+            ..Default::default()
         }
         .into();
 

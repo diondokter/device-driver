@@ -1,0 +1,42 @@
+manifest X {
+    device Y {
+        register-address-type: u8,
+        default-access: RO,
+
+        register Z {
+            address: 0,
+            fields: fieldset A {
+                size-bytes: 1,
+                default-access: WO,
+                field a 0,
+            },
+        },
+
+        block B {
+            default-access: WO,
+            address-offset: 0,
+
+            register C {
+                address: 1,
+                fields: A,
+            },
+        }
+    },
+
+    // no default means it should error on all sites that need an access
+    device D {
+        register-address-type: u8,
+        buffer-address-type: u8,
+
+        register E {
+            address: 0,
+            fields: fieldset F {
+                size-bytes: 1,
+                field a 0,
+            },
+        },
+        buffer G {
+            address: 0,
+        }
+    }
+}

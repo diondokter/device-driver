@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use convert_case::Case;
 use device_driver_common::{identifier::RuntimeType, specifiers::Access};
 use device_driver_diagnostics::{
-    Diagnostics, DynError,
+    Diagnostics, DynError, ResultExt,
     errors::{FieldSetterNameCollision, ReservedOperationNameUsed},
 };
 
@@ -17,7 +17,7 @@ use super::Assumption;
 pub struct ReservedNamesChecked;
 
 impl Pass for ReservedNamesChecked {
-    const ASSUMPTIONS_MADE: &[Assumption] = &[Assumption::NamesValid];
+    const ASSUMPTIONS_MADE: &[Assumption] = &[Assumption::NamesValid, Assumption::AccessSet];
     const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
 
     fn run_pass(
@@ -36,7 +36,9 @@ impl Pass for ReservedNamesChecked {
                     check_block_reserved_names(block.iter_objects(), diagnostics)
                 }
                 Object::FieldSet(field_set) => {
-                    check_field_names(field_set, diagnostics);
+                    check_field_names(field_set, diagnostics).with_message(|| {
+                        format!("checking field names of {}", field_set.name.original())
+                    })?;
                     HashSet::new()
                 }
                 _ => HashSet::new(),
@@ -77,7 +79,10 @@ fn check_block_reserved_names<'a>(
     removals
 }
 
-fn check_field_names(field_set: &mut FieldSet, diagnostics: &mut Diagnostics) {
+fn check_field_names(
+    field_set: &mut FieldSet,
+    diagnostics: &mut Diagnostics,
+) -> Result<(), DynError> {
     let field_names: HashMap<_, _> = field_set
         .fields
         .iter()
@@ -85,7 +90,11 @@ fn check_field_names(field_set: &mut FieldSet, diagnostics: &mut Diagnostics) {
         .collect();
 
     for field in &mut field_set.fields {
-        if !field.access.is_writable() {
+        if !field
+            .access
+            .ok_or_else(|| DynError::new("access is not set"))?
+            .is_writable()
+        {
             continue;
         }
 
@@ -96,7 +105,7 @@ fn check_field_names(field_set: &mut FieldSet, diagnostics: &mut Diagnostics) {
         };
 
         // The setter collides with another field. To fix it for further compilation, we set it to read only so the setter is not generated
-        field.access = Access::RO;
+        field.access = Some(Access::RO);
 
         diagnostics.add(FieldSetterNameCollision {
             field: field.name.span,
@@ -104,4 +113,6 @@ fn check_field_names(field_set: &mut FieldSet, diagnostics: &mut Diagnostics) {
             collision_field,
         });
     }
+
+    Ok(())
 }

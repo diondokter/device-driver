@@ -21,7 +21,7 @@ buffer Example {
 ## Long properties
 These properties are specified in the node body.
 ### access
-Limits how the buffer can be accessed. If not specified, the access is `RW`.
+Limits how the buffer can be accessed. Must be specified unless a `default-access` is set by a parent object.
 ```ddsl
 // access specifier
 access: RW

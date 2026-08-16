@@ -4,7 +4,7 @@ use crate::{
     MirOptions, PassTiming,
     model::{Manifest, UniqueId},
     passes::{
-        address_types_big_enough::AddressTypesBigEnough,
+        access_set::AccessSet, address_types_big_enough::AddressTypesBigEnough,
         address_types_specified::AddressTypesSpecified,
         addresses_non_overlapping::AddressesNonOverlapping,
         base_types_specified::BaseTypesSpecified, bit_ranges_validated::BitRangesValidated,
@@ -21,6 +21,7 @@ use crate::{
 use device_driver_common::instant::Instant;
 use device_driver_diagnostics::{Diagnostics, DynError, ResultExt};
 
+mod access_set;
 mod address_types_big_enough;
 mod address_types_specified;
 mod addresses_non_overlapping;
@@ -42,7 +43,7 @@ mod reserved_names_checked;
 mod reset_values_converted;
 
 // TODO: Make const when possible in a future Rust version
-fn get_default_passes() -> [PassInfo; 19] {
+fn get_default_passes() -> [PassInfo; 20] {
     [
         PassInfo::get::<DeviceConfigsOwned>(),
         PassInfo::get::<EnumValuesChecked>(),
@@ -50,6 +51,7 @@ fn get_default_passes() -> [PassInfo; 19] {
         PassInfo::get::<BaseTypesSpecified>(),
         PassInfo::get::<DeviceNameIsPascal>(),
         PassInfo::get::<NamesChecked>(),
+        PassInfo::get::<AccessSet>(),
         PassInfo::get::<NamesUnique>(),
         PassInfo::get::<FieldsetRefsValid>(),
         PassInfo::get::<RepeatZeroStrideRejected>(),
@@ -125,6 +127,7 @@ pub(crate) enum Assumption {
     NamesValid,
     EnumsNotEmpty,
     RepeatMathChecked,
+    AccessSet,
 
     _End, // Keep as the last element
 }
@@ -144,6 +147,7 @@ impl Assumption {
         Assumption::NamesValid,
         Assumption::EnumsNotEmpty,
         Assumption::RepeatMathChecked,
+        Assumption::AccessSet,
     ];
 
     const _ALL_ASSUMPTIONS_PRESENT_CHECK: () =

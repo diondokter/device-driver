@@ -2,7 +2,7 @@
 
 ```ddsl
 /// doc comment line
-field Example 8:0 RW -> uint as try Foo
+field Example[8 stride 4] 8:0 RW -> uint as try Foo
 ```
 ## Table
 
@@ -30,7 +30,7 @@ address: 0
 - multiple allowed: `no`
 - supports doc comments: `no`
 ### access
-Limits how the field can be accessed. If not specified, the access is `RW`.
+Limits how the field can be accessed. Must be specified unless a `default-access` is set by a parent object.
 ```ddsl
 // access specifier
 access: RW

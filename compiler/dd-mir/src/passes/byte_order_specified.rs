@@ -28,6 +28,7 @@ impl Pass for ByteOrderSpecified {
                 if fs.size_bytes > 1 && fs.byte_order.is_none() {
                     diagnostics.add(UnspecifiedByteOrder {
                         fieldset_name: fs.name.span,
+                        properties_span: fs.properties_span,
                     });
                 }
 
@@ -42,11 +43,7 @@ impl Pass for ByteOrderSpecified {
 
 #[cfg(test)]
 mod tests {
-    use device_driver_common::{
-        identifier::Identifier,
-        span::{Span, SpanExt},
-        specifiers::ByteOrder,
-    };
+    use device_driver_common::{identifier::Identifier, span::SpanExt, specifiers::ByteOrder};
 
     use crate::model::{Device, DeviceConfig, FieldSet, Object};
 
@@ -57,7 +54,6 @@ mod tests {
         let mut input = Device {
             description: String::new(),
             name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
-            device_config: Default::default(),
             objects: vec![
                 Object::FieldSet(FieldSet {
                     name: Identifier::try_parse("MyRegister")
@@ -75,7 +71,7 @@ mod tests {
                     ..Default::default()
                 }),
             ],
-            span: Span::default(),
+            ..Default::default()
         }
         .into();
 
@@ -89,7 +85,6 @@ mod tests {
         let mut input = Device {
             description: String::new(),
             name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
-            device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: Identifier::try_parse("MyRegister")
                     .unwrap()
@@ -97,7 +92,7 @@ mod tests {
                 size_bytes: 2.with_dummy_span(),
                 ..Default::default()
             })],
-            span: Span::default(),
+            ..Default::default()
         }
         .into();
 
@@ -124,7 +119,7 @@ mod tests {
                 size_bytes: 2.with_dummy_span(),
                 ..Default::default()
             })],
-            span: Span::default(),
+            ..Default::default()
         }
         .into();
 

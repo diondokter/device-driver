@@ -50,6 +50,7 @@ device_driver::compile!(
         device MyTestDevice {
             byte-order: LE,
             register-address-type: u8,
+            default-access: RW,
 
             /// Block description
             block Bar[2 stride 20] {

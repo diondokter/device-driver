@@ -32,6 +32,8 @@ device_driver::compile!(
         device MyTestDevice {
             byte-order: LE,
             command-address-type: u8,
+            default-access: RW,
+            
             /// A simple command
             command Simple {
                 address: 0

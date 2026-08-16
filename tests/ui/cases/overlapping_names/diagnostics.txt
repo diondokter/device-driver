@@ -1,5 +1,5 @@
 error: duplicate name found
-  --> input.ddsl:22:12
+  --> input.ddsl:23:12
    |
 LL |     device Foo {
    |            --- the original: "Foo", after word split: "foo"
@@ -14,7 +14,7 @@ info: names may not collide within their namespace. There are 4 namespaces:
       - Enum variants: unique within an enum
 
 error: duplicate name found
-  --> input.ddsl:23:18
+  --> input.ddsl:24:18
    |
 LL |         register Bar {
    |                  --- the original: "Bar", after word split: "bar"
@@ -29,7 +29,7 @@ info: names may not collide within their namespace. There are 4 namespaces:
       - Enum variants: unique within an enum
 
 error: duplicate name found
-  --> input.ddsl:28:50
+  --> input.ddsl:29:50
    |
 LL |                 field quux 7:0 -> u8 as try enum _ { // Enum same name as field
    |                                                  - the original: "quux", after word split: "quux"
@@ -44,7 +44,7 @@ info: names may not collide within their namespace. There are 4 namespaces:
       - Enum variants: unique within an enum
 
 error: duplicate name found
-  --> input.ddsl:25:30
+  --> input.ddsl:26:30
    |
 LL |             fields: fieldset _ { // Fieldset same name as register
    |                              - the original: "Bar", after word split: "bar"
@@ -59,7 +59,7 @@ info: names may not collide within their namespace. There are 4 namespaces:
       - Enum variants: unique within an enum
 
 error: duplicate name found
-  --> input.ddsl:41:16
+  --> input.ddsl:42:16
    |
 LL |         block Wheee { // Should overlap with both operations and types
    |               ----- the original: "Wheee", after word split: "wheee"
@@ -74,7 +74,7 @@ info: names may not collide within their namespace. There are 4 namespaces:
       - Enum variants: unique within an enum
 
 error: duplicate name found
-  --> input.ddsl:47:14
+  --> input.ddsl:48:14
    |
 LL |         block Wheee2 { // Should overlap with both operations and types
    |               ------ the original: "Wheee2", after word split: "wheee·2"

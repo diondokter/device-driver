@@ -174,7 +174,6 @@ mod tests {
         let mut start_mir = Device {
             description: String::new(),
             name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
-            device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: Identifier::try_parse("MyReg").unwrap().with_dummy_span(),
                 size_bytes: 1.with_dummy_span(),
@@ -185,7 +184,7 @@ mod tests {
                 }],
                 ..Default::default()
             })],
-            span: Span::default(),
+            ..Default::default()
         }
         .into();
 
@@ -196,7 +195,6 @@ mod tests {
         let mut start_mir = Device {
             description: String::new(),
             name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
-            device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: Identifier::try_parse("MyReg").unwrap().with_dummy_span(),
                 size_bytes: 1.with_dummy_span(),
@@ -207,7 +205,7 @@ mod tests {
                 }],
                 ..Default::default()
             })],
-            span: Span::default(),
+            ..Default::default()
         }
         .into();
 
@@ -218,7 +216,6 @@ mod tests {
         let mut start_mir = Device {
             description: String::new(),
             name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
-            device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: Identifier::try_parse("MyReg").unwrap().with_dummy_span(),
                 size_bytes: 1.with_dummy_span(),
@@ -234,7 +231,7 @@ mod tests {
                 }],
                 ..Default::default()
             })],
-            span: Span::default(),
+            ..Default::default()
         }
         .into();
 
@@ -248,7 +245,6 @@ mod tests {
         let mut start_mir = Device {
             description: String::new(),
             name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
-            device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: Identifier::try_parse("MyReg").unwrap().with_dummy_span(),
                 size_bytes: 2.with_dummy_span(),
@@ -268,7 +264,7 @@ mod tests {
                 ],
                 ..Default::default()
             })],
-            span: Span::default(),
+            ..Default::default()
         }
         .into();
 
@@ -279,7 +275,6 @@ mod tests {
         let mut start_mir = Device {
             description: String::new(),
             name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
-            device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: Identifier::try_parse("MyReg").unwrap().with_dummy_span(),
                 size_bytes: 2.with_dummy_span(),
@@ -300,7 +295,7 @@ mod tests {
                 ],
                 ..Default::default()
             })],
-            span: Span::default(),
+            ..Default::default()
         }
         .into();
 
@@ -311,7 +306,6 @@ mod tests {
         let mut start_mir = Device {
             description: String::new(),
             name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
-            device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: Identifier::try_parse("MyReg").unwrap().with_dummy_span(),
                 size_bytes: 2.with_dummy_span(),
@@ -331,7 +325,7 @@ mod tests {
                 ],
                 ..Default::default()
             })],
-            span: Span::default(),
+            ..Default::default()
         }
         .into();
 
@@ -343,7 +337,6 @@ mod tests {
         let mut start_mir = Device {
             description: String::new(),
             name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
-            device_config: Default::default(),
             objects: vec![Object::FieldSet(FieldSet {
                 name: Identifier::try_parse("MyReg").unwrap().with_dummy_span(),
                 size_bytes: 2.with_dummy_span(),
@@ -368,7 +361,7 @@ mod tests {
                 ],
                 ..Default::default()
             })],
-            span: Span::default(),
+            ..Default::default()
         }
         .into();
 

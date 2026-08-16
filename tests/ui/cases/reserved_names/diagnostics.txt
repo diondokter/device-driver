@@ -1,5 +1,5 @@
 error: reserved operation name used
-  --> input.ddsl:4:12
+  --> input.ddsl:5:12
    |
 LL |     buffer New {
    |            ^^^ `new` is a reserved name for operations. Change it to something else
@@ -7,7 +7,7 @@ LL |     buffer New {
 info: reserved names are: `new`, `init`, `deinit`, `free`
 
 error: reserved operation name used
-  --> input.ddsl:7:12
+  --> input.ddsl:8:12
    |
 LL |     buffer Init {
    |            ^^^^ `init` is a reserved name for operations. Change it to something else
@@ -15,7 +15,7 @@ LL |     buffer Init {
 info: reserved names are: `new`, `init`, `deinit`, `free`
 
 error: reserved operation name used
-  --> input.ddsl:10:12
+  --> input.ddsl:11:12
    |
 LL |     buffer Deinit {
    |            ^^^^^^ `deinit` is a reserved name for operations. Change it to something else
@@ -23,7 +23,7 @@ LL |     buffer Deinit {
 info: reserved names are: `new`, `init`, `deinit`, `free`
 
 error: reserved operation name used
-  --> input.ddsl:13:12
+  --> input.ddsl:14:12
    |
 LL |     buffer Free {
    |            ^^^^ `free` is a reserved name for operations. Change it to something else
@@ -31,7 +31,7 @@ LL |     buffer Free {
 info: reserved names are: `new`, `init`, `deinit`, `free`
 
 error: field setter name collision
-  --> input.ddsl:19:15
+  --> input.ddsl:20:15
    |
 LL |         field my_field 0,
    |               ^^^^^^^^ this field is writable and generates a setter with a name that collides with another field: `set·my·field`

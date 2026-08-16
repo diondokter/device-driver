@@ -1,0 +1,33 @@
+error: unspecified access
+  --> input.ddsl:31:18
+   |
+LL |         register E {
+   |                  ^ object requires an access to be specified, but none is
+   |
+help: specify the access on the object or add a `default-access` to a parent object
+   |
+LL +             access: RW,
+   |
+
+error: unspecified access
+  --> input.ddsl:38:16
+   |
+LL |         buffer G {
+   |                ^ object requires an access to be specified, but none is
+   |
+help: specify the access on the object or add a `default-access` to a parent object
+   |
+LL +             access: RW,
+   |
+
+error: unspecified access
+  --> input.ddsl:35:23
+   |
+LL |                 field a 0,
+   |                       ^ object requires an access to be specified, but none is
+   |
+help: specify the access on the object or add a `default-access` to a parent object
+   |
+LL |                 field a 0 RW,
+   |                           ++
+
