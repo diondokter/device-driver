@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-7f6975d8.js";
+            window.path_to_searchindex_js = "../searchindex-cb8825c0.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-3f8de81c.js"></script>
@@ -198,7 +198,7 @@ let result = device.bar().dispatch(|data| data.set_val(1234))?;
 assert_eq!(result.quux(), true);</code></pre>
 <h2 id="example"><a class="header" href="#example">Example</a></h2>
 <pre><code class="language-ddsl">/// doc comment line
-command Example {
+command Example[8 stride 4] {
     address: 0,
     address-overlap: allow,
     fields-in: MyFieldset,

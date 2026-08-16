@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-7f6975d8.js";
+            window.path_to_searchindex_js = "../searchindex-cb8825c0.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-3f8de81c.js"></script>
@@ -203,6 +203,7 @@ fieldset Example {
     size-bytes: 8,
     byte-order: LE,
     bit-overlap: allow,
+    default-access: RW,
 
     field node,
 }
@@ -254,6 +255,17 @@ byte-order: LE
 bit-overlap: allow
 </code></pre>
 <h4 id="info-2"><a class="header" href="#info-2">Info</a></h4>
+<ul>
+<li>required: <code>no</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h3 id="default-access"><a class="header" href="#default-access">default-access</a></h3>
+<p>When set, all subobjects use this value as their access value (unless overridden) and don’t require an access specifier anymore</p>
+<pre><code class="language-ddsl">// access specifier
+default-access: RW
+</code></pre>
+<h4 id="info-3"><a class="header" href="#info-3">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>

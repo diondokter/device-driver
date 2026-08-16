@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-7f6975d8.js";
+            window.path_to_searchindex_js = "searchindex-cb8825c0.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-3f8de81c.js"></script>
@@ -451,7 +451,11 @@ operator is always the address of the first operator plus three).
 <h3 id="ddsl"><a class="header" href="#ddsl">DDSL</a></h3>
 <p>First we create a file named <code>ym3812.ddsl</code> (or something else to your liking). Then we write the basic setup:</p>
 <pre><code class="language-ddsl">device Ym3812 {
+    // Our register address space is 0-255, and the shift register takes a byte,
+    // so use u8 for the address type
     register-address-type: u8,
+    // Everything is read-write, so to save some typing, we set a default
+    default-access: RW,
 }
 </code></pre>
 <p>With this we’ve told the compiler there’s a <a href="#device"><code>device</code></a> and that it uses <code>u8</code> as the address type for registers. Luckily that’s all the settings we need already out of the way, so we can continue with writing the registers.</p>
@@ -473,6 +477,7 @@ There’s no good names given to these registers, so we’ll have to be a bit cr
 <p>Let’s define them in ddsl:</p>
 <pre><code class="language-ddsl">device Ym3812 {
     register-address-type: u8,
+    default-access: RW,
 
     /// Register containing the Waveform Select Enable and some test fields
     register Enable_waveform_control {
@@ -1417,6 +1422,7 @@ manifest Example {
     buffer-address-type: i32,
     word-boundaries: "bD:0B:_",
     register-address-mode: mapped,
+    default-access: RW,
 
     device node,
     fieldset node,
@@ -1522,6 +1528,17 @@ register-address-mode: mapped
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
+<h3 id="default-access"><a class="header" href="#default-access">default-access</a></h3>
+<p>When set, all subobjects use this value as their access value (unless overridden) and don’t require an access specifier anymore</p>
+<pre><code class="language-ddsl">// access specifier
+default-access: RW
+</code></pre>
+<h4 id="info-6"><a class="header" href="#info-6">Info</a></h4>
+<ul>
+<li>required: <code>no</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
 <h2 id="possible-subnodes"><a class="header" href="#possible-subnodes">Possible subnodes</a></h2>
 <p>Subnodes of the following types are allowed in the node body.</p>
 <ul>
@@ -1557,6 +1574,7 @@ device Example {
     buffer-address-type: i32,
     word-boundaries: "bD:0B:_",
     register-address-mode: mapped,
+    default-access: RW,
 
     block node,
     register node,
@@ -1591,7 +1609,7 @@ device Example {
 <pre><code class="language-ddsl">// byte order
 byte-order: LE
 </code></pre>
-<h4 id="info-6"><a class="header" href="#info-6">Info</a></h4>
+<h4 id="info-7"><a class="header" href="#info-7">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
@@ -1665,6 +1683,17 @@ register-address-mode: mapped
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
+<h3 id="default-access-1"><a class="header" href="#default-access-1">default-access</a></h3>
+<p>When set, all subobjects use this value as their access value (unless overridden) and don’t require an access specifier anymore</p>
+<pre><code class="language-ddsl">// access specifier
+default-access: RW
+</code></pre>
+<h4 id="info-6-1"><a class="header" href="#info-6-1">Info</a></h4>
+<ul>
+<li>required: <code>no</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
 <h2 id="possible-subnodes-1"><a class="header" href="#possible-subnodes-1">Possible subnodes</a></h2>
 <p>Subnodes of the following types are allowed in the node body.</p>
 <ul>
@@ -1695,8 +1724,9 @@ foo.bar().dispatch()?;
 device.foo().bar().dispatch()?;</code></pre>
 <h2 id="example-2"><a class="header" href="#example-2">Example</a></h2>
 <pre><code class="language-ddsl">/// doc comment line
-block Example {
+block Example[8 stride 4] {
     address-offset: 0,
+    default-access: RW,
 
     block node,
     register node,
@@ -1733,9 +1763,20 @@ If this is not desired, then keep the address offset at 0.</p>
 <pre><code class="language-ddsl">// number
 address-offset: 0
 </code></pre>
-<h4 id="info-7"><a class="header" href="#info-7">Info</a></h4>
+<h4 id="info-8"><a class="header" href="#info-8">Info</a></h4>
 <ul>
 <li>required: <code>yes</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h3 id="default-access-2"><a class="header" href="#default-access-2">default-access</a></h3>
+<p>When set, all subobjects use this value as their access value (unless overridden) and don’t require an access specifier anymore</p>
+<pre><code class="language-ddsl">// access specifier
+default-access: RW
+</code></pre>
+<h4 id="info-1-2"><a class="header" href="#info-1-2">Info</a></h4>
+<ul>
+<li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
@@ -1761,7 +1802,7 @@ device.foo().write(|reg| reg.set_bar(12345))?;
 assert_eq!(device.foo().read()?.bar(), 12345);</code></pre>
 <h2 id="example-3"><a class="header" href="#example-3">Example</a></h2>
 <pre><code class="language-ddsl">/// doc comment line
-register Example {
+register Example[8 stride 4] {
     address: 0,
     access: RW,
     address-overlap: allow,
@@ -1793,18 +1834,18 @@ register Example {
 <pre><code class="language-ddsl">// number
 address: 0
 </code></pre>
-<h4 id="info-8"><a class="header" href="#info-8">Info</a></h4>
+<h4 id="info-9"><a class="header" href="#info-9">Info</a></h4>
 <ul>
 <li>required: <code>yes</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
 <h3 id="access"><a class="header" href="#access">access</a></h3>
-<p>Limits how the register can be accessed. If not specified, the access is <code>RW</code>.</p>
+<p>Limits how the register can be accessed. Must be specified unless a <code>default-access</code> is set by a parent object.</p>
 <pre><code class="language-ddsl">// access specifier
 access: RW
 </code></pre>
-<h4 id="info-1-2"><a class="header" href="#info-1-2">Info</a></h4>
+<h4 id="info-1-3"><a class="header" href="#info-1-3">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
@@ -1874,7 +1915,7 @@ let result = device.bar().dispatch(|data| data.set_val(1234))?;
 assert_eq!(result.quux(), true);</code></pre>
 <h2 id="example-4"><a class="header" href="#example-4">Example</a></h2>
 <pre><code class="language-ddsl">/// doc comment line
-command Example {
+command Example[8 stride 4] {
     address: 0,
     address-overlap: allow,
     fields-in: MyFieldset,
@@ -1905,7 +1946,7 @@ command Example {
 <pre><code class="language-ddsl">// number
 address: 0
 </code></pre>
-<h4 id="info-9"><a class="header" href="#info-9">Info</a></h4>
+<h4 id="info-10"><a class="header" href="#info-10">Info</a></h4>
 <ul>
 <li>required: <code>yes</code></li>
 <li>multiple allowed: <code>no</code></li>
@@ -1916,7 +1957,7 @@ address: 0
 <pre><code class="language-ddsl">// allow
 address-overlap: allow
 </code></pre>
-<h4 id="info-1-3"><a class="header" href="#info-1-3">Info</a></h4>
+<h4 id="info-1-4"><a class="header" href="#info-1-4">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
@@ -1986,11 +2027,11 @@ buffer Example {
 <h2 id="long-properties-5"><a class="header" href="#long-properties-5">Long properties</a></h2>
 <p>These properties are specified in the node body.</p>
 <h3 id="access-1"><a class="header" href="#access-1">access</a></h3>
-<p>Limits how the buffer can be accessed. If not specified, the access is <code>RW</code>.</p>
+<p>Limits how the buffer can be accessed. Must be specified unless a <code>default-access</code> is set by a parent object.</p>
 <pre><code class="language-ddsl">// access specifier
 access: RW
 </code></pre>
-<h4 id="info-10"><a class="header" href="#info-10">Info</a></h4>
+<h4 id="info-11"><a class="header" href="#info-11">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
@@ -2001,7 +2042,7 @@ access: RW
 <pre><code class="language-ddsl">// number
 address: 0
 </code></pre>
-<h4 id="info-1-4"><a class="header" href="#info-1-4">Info</a></h4>
+<h4 id="info-1-5"><a class="header" href="#info-1-5">Info</a></h4>
 <ul>
 <li>required: <code>yes</code></li>
 <li>multiple allowed: <code>no</code></li>
@@ -2034,6 +2075,7 @@ fieldset Example {
     size-bytes: 8,
     byte-order: LE,
     bit-overlap: allow,
+    default-access: RW,
 
     field node,
 }
@@ -2062,7 +2104,7 @@ fieldset Example {
 <pre><code class="language-ddsl">// number
 size-bytes: 8
 </code></pre>
-<h4 id="info-11"><a class="header" href="#info-11">Info</a></h4>
+<h4 id="info-12"><a class="header" href="#info-12">Info</a></h4>
 <ul>
 <li>required: <code>yes</code></li>
 <li>multiple allowed: <code>no</code></li>
@@ -2073,7 +2115,7 @@ size-bytes: 8
 <pre><code class="language-ddsl">// byte order
 byte-order: LE
 </code></pre>
-<h4 id="info-1-5"><a class="header" href="#info-1-5">Info</a></h4>
+<h4 id="info-1-6"><a class="header" href="#info-1-6">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
@@ -2085,6 +2127,17 @@ byte-order: LE
 bit-overlap: allow
 </code></pre>
 <h4 id="info-2-4"><a class="header" href="#info-2-4">Info</a></h4>
+<ul>
+<li>required: <code>no</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h3 id="default-access-3"><a class="header" href="#default-access-3">default-access</a></h3>
+<p>When set, all subobjects use this value as their access value (unless overridden) and don’t require an access specifier anymore</p>
+<pre><code class="language-ddsl">// access specifier
+default-access: RW
+</code></pre>
+<h4 id="info-3-4"><a class="header" href="#info-3-4">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
@@ -2145,7 +2198,7 @@ enum Example -&gt; uint {
 // catch-all auto
 *any name*: catch-all _
 </code></pre>
-<h4 id="info-12"><a class="header" href="#info-12">Info</a></h4>
+<h4 id="info-13"><a class="header" href="#info-13">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>yes</code></li>
@@ -2187,7 +2240,7 @@ extern Example -&gt; uint {
 <pre><code class="language-ddsl">// allow
 infallible: allow
 </code></pre>
-<h4 id="info-13"><a class="header" href="#info-13">Info</a></h4>
+<h4 id="info-14"><a class="header" href="#info-14">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
@@ -2198,7 +2251,7 @@ infallible: allow
 <pre><code class="language-ddsl">// number
 size-bits: 8
 </code></pre>
-<h4 id="info-1-6"><a class="header" href="#info-1-6">Info</a></h4>
+<h4 id="info-1-7"><a class="header" href="#info-1-7">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
@@ -2222,7 +2275,7 @@ reg.set_bar(MyEnum::A);
 let bar = reg.bar()?;</code></pre>
 <h2 id="example-9"><a class="header" href="#example-9">Example</a></h2>
 <pre><code class="language-ddsl">/// doc comment line
-field Example 8:0 RW -&gt; uint as try Foo
+field Example[8 stride 4] 8:0 RW -&gt; uint as try Foo
 </code></pre>
 <h2 id="table-9"><a class="header" href="#table-9">Table</a></h2>
 <div class="table-wrapper">
@@ -2250,18 +2303,18 @@ address: 8:0,
 // number
 address: 0
 </code></pre>
-<h4 id="info-14"><a class="header" href="#info-14">Info</a></h4>
+<h4 id="info-15"><a class="header" href="#info-15">Info</a></h4>
 <ul>
 <li>required: <code>yes</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
 <h3 id="access-2"><a class="header" href="#access-2">access</a></h3>
-<p>Limits how the field can be accessed. If not specified, the access is <code>RW</code>.</p>
+<p>Limits how the field can be accessed. Must be specified unless a <code>default-access</code> is set by a parent object.</p>
 <pre><code class="language-ddsl">// access specifier
 access: RW
 </code></pre>
-<h4 id="info-1-7"><a class="header" href="#info-1-7">Info</a></h4>
+<h4 id="info-1-8"><a class="header" href="#info-1-8">Info</a></h4>
 <ul>
 <li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>

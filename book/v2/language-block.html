@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-7f6975d8.js";
+            window.path_to_searchindex_js = "../searchindex-cb8825c0.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-3f8de81c.js"></script>
@@ -195,8 +195,9 @@ foo.bar().dispatch()?;
 device.foo().bar().dispatch()?;</code></pre>
 <h2 id="example"><a class="header" href="#example">Example</a></h2>
 <pre><code class="language-ddsl">/// doc comment line
-block Example {
+block Example[8 stride 4] {
     address-offset: 0,
+    default-access: RW,
 
     block node,
     register node,
@@ -236,6 +237,17 @@ address-offset: 0
 <h4 id="info"><a class="header" href="#info">Info</a></h4>
 <ul>
 <li>required: <code>yes</code></li>
+<li>multiple allowed: <code>no</code></li>
+<li>supports doc comments: <code>no</code></li>
+</ul>
+<h3 id="default-access"><a class="header" href="#default-access">default-access</a></h3>
+<p>When set, all subobjects use this value as their access value (unless overridden) and don’t require an access specifier anymore</p>
+<pre><code class="language-ddsl">// access specifier
+default-access: RW
+</code></pre>
+<h4 id="info-1"><a class="header" href="#info-1">Info</a></h4>
+<ul>
+<li>required: <code>no</code></li>
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>

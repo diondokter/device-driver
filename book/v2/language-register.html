@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-7f6975d8.js";
+            window.path_to_searchindex_js = "../searchindex-cb8825c0.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-3f8de81c.js"></script>
@@ -187,7 +187,7 @@ device.foo().write(|reg| reg.set_bar(12345))?;
 assert_eq!(device.foo().read()?.bar(), 12345);</code></pre>
 <h2 id="example"><a class="header" href="#example">Example</a></h2>
 <pre><code class="language-ddsl">/// doc comment line
-register Example {
+register Example[8 stride 4] {
     address: 0,
     access: RW,
     address-overlap: allow,
@@ -226,7 +226,7 @@ address: 0
 <li>supports doc comments: <code>no</code></li>
 </ul>
 <h3 id="access"><a class="header" href="#access">access</a></h3>
-<p>Limits how the register can be accessed. If not specified, the access is <code>RW</code>.</p>
+<p>Limits how the register can be accessed. Must be specified unless a <code>default-access</code> is set by a parent object.</p>
 <pre><code class="language-ddsl">// access specifier
 access: RW
 </code></pre>

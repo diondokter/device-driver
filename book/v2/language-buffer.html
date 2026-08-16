@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-7f6975d8.js";
+            window.path_to_searchindex_js = "../searchindex-cb8825c0.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-3f8de81c.js"></script>
@@ -214,7 +214,7 @@ buffer Example {
 <h2 id="long-properties"><a class="header" href="#long-properties">Long properties</a></h2>
 <p>These properties are specified in the node body.</p>
 <h3 id="access"><a class="header" href="#access">access</a></h3>
-<p>Limits how the buffer can be accessed. If not specified, the access is <code>RW</code>.</p>
+<p>Limits how the buffer can be accessed. Must be specified unless a <code>default-access</code> is set by a parent object.</p>
 <pre><code class="language-ddsl">// access specifier
 access: RW
 </code></pre>

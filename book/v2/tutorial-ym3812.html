@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-7f6975d8.js";
+            window.path_to_searchindex_js = "../searchindex-cb8825c0.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-3f8de81c.js"></script>
@@ -267,7 +267,11 @@ operator is always the address of the first operator plus three).
 <h3 id="ddsl"><a class="header" href="#ddsl">DDSL</a></h3>
 <p>First we create a file named <code>ym3812.ddsl</code> (or something else to your liking). Then we write the basic setup:</p>
 <pre><code class="language-ddsl">device Ym3812 {
+    // Our register address space is 0-255, and the shift register takes a byte,
+    // so use u8 for the address type
     register-address-type: u8,
+    // Everything is read-write, so to save some typing, we set a default
+    default-access: RW,
 }
 </code></pre>
 <p>With this we’ve told the compiler there’s a <a href="./language-device.html"><code>device</code></a> and that it uses <code>u8</code> as the address type for registers. Luckily that’s all the settings we need already out of the way, so we can continue with writing the registers.</p>
@@ -289,6 +293,7 @@ There’s no good names given to these registers, so we’ll have to be a bit cr
 <p>Let’s define them in ddsl:</p>
 <pre><code class="language-ddsl">device Ym3812 {
     register-address-type: u8,
+    default-access: RW,
 
     /// Register containing the Waveform Select Enable and some test fields
     register Enable_waveform_control {
