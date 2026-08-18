@@ -3,7 +3,7 @@ use device_driver::{FieldsetMetadata, RegisterInterface, RegisterInterfaceBase};
 device_driver::compile!(
     unstable_ddsl: "
         device MyTestDevice {
-            byte-order: LE,
+            default-byte-order: LE,
             register-address-type: u8,
             default-access: RW,
 

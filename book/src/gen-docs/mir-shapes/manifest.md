@@ -3,7 +3,7 @@
 ```ddsl
 /// doc comment line
 manifest Example {
-    byte-order: LE,
+    default-byte-order: LE,
     register-address-type: i32,
     command-address-type: i32,
     buffer-address-type: i32,
@@ -30,11 +30,11 @@ manifest Example {
 | Supports subnodes | `yes`, see below |
 ## Long properties
 These properties are specified in the node body.
-### byte-order
+### default-byte-order
 Sets the global default byte order used by fieldsets. This can be overridden per device and fieldset.
 ```ddsl
 // byte order
-byte-order: LE
+default-byte-order: LE
 ```
 #### Info
 - required: `no`

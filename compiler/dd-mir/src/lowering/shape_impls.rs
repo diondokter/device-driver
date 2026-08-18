@@ -50,7 +50,7 @@ impl Shape for Manifest {
     fn supported_properties() -> &'static [PropertyInfo<Self>] {
         static MAP: &[PropertyInfo<Manifest>] = &[
             PropertyInfo {
-                name: PropertyName::Exact("byte-order"),
+                name: PropertyName::Exact("default-byte-order"),
                 description: "Sets the global default byte order used by fieldsets. This can be overridden per device and fieldset.",
                 allowed_expression_types: Cow::Borrowed(&[Expression::ByteOrder(ByteOrder::LE)]),
                 multiple_allowed: false,
@@ -252,7 +252,7 @@ impl Shape for Device {
     fn supported_properties() -> &'static [PropertyInfo<Self>] {
         static MAP: &[PropertyInfo<Device>] = &[
             PropertyInfo {
-                name: PropertyName::Exact("byte-order"),
+                name: PropertyName::Exact("default-byte-order"),
                 description: "Sets the default byte order used by fieldsets in this device. This can be overridden per fieldset.",
                 allowed_expression_types: Cow::Borrowed(&[Expression::ByteOrder(ByteOrder::LE)]),
                 multiple_allowed: false,

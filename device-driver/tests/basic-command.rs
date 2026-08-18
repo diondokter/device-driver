@@ -30,7 +30,7 @@ impl CommandInterface for DeviceInterface {
 device_driver::compile!(
     unstable_ddsl: "
         device MyTestDevice {
-            byte-order: LE,
+            default-byte-order: LE,
             command-address-type: u8,
             default-access: RW,
             

@@ -52,7 +52,7 @@ device_driver::compile!(
     options: "--rust-defmt-feature=defmt",
     unstable_ddsl: "
         device MyTestDevice {
-            byte-order: LE,
+            default-byte-order: LE,
             register-address-type: u8,
             default-access: RW,
 

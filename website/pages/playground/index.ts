@@ -10,7 +10,8 @@ enum Theme {
 
 const DEFAULT_CODE = `device Tmp102 {
     register-address-type: u8,
-    byte-order: BE,
+    default-byte-order: BE,
+    default-access: RW,
 
     /// The temperature value
     fieldset TempValue {
