@@ -1773,27 +1773,22 @@ impl Diagnostic for MissingRequiredProperty {
                         .label(label),
                 ),
             )
-            .elements(
-                self.example_values
-                    .iter()
-                    .map(|example_value| {
-                        self.properties_span.map(|properties_span| {
-                            Snippet::source(source).path(path).patch(Patch::new(
-                                if self.short {
-                                    properties_span.end..properties_span.end
-                                } else {
-                                    properties_span.start..properties_span.start
-                                },
-                                if self.short {
-                                    format!(" {example_value}")
-                                } else {
-                                    format!("{}: {example_value},\n", self.property_name)
-                                },
-                            ))
-                        })
-                    })
-                    .flatten(),
-            )]
+            .elements(self.example_values.iter().flat_map(|example_value| {
+                self.properties_span.map(|properties_span| {
+                    Snippet::source(source).path(path).patch(Patch::new(
+                        if self.short {
+                            properties_span.end..properties_span.end
+                        } else {
+                            properties_span.start..properties_span.start
+                        },
+                        if self.short {
+                            format!(" {example_value}")
+                        } else {
+                            format!("{}: {example_value},\n", self.property_name)
+                        },
+                    ))
+                })
+            }))]
         .to_vec()
     }
 }
