@@ -51,7 +51,7 @@ pub fn convert(source: &str, sub_format: DeviceDriverV1Format) -> Result<String,
                 .default_byte_order
                 .map(|val| Property {
                     doc_comments: Vec::new(),
-                    name: Ident::new_no_span("byte-order"),
+                    name: Ident::new_no_span("default-byte-order"),
                     expression: Expression::ByteOrder(convert_byte_order(val)).with_dummy_span(),
                 }),
             device_mir
@@ -91,6 +91,11 @@ pub fn convert(source: &str, sub_format: DeviceDriverV1Format) -> Result<String,
                         .leak(),
                 )
                 .with_dummy_span(),
+            }),
+            Some(Property {
+                doc_comments: Vec::new(),
+                name: Ident::new_no_span("default-access"),
+                expression: Expression::Access(Access::RW).with_dummy_span(),
             }),
         ]
         .into_iter()
