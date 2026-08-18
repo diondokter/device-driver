@@ -3,17 +3,19 @@
 
     register operator_settings1 {
         address: 0x40,
+        access: WO,
+
         fields: fieldset _ {
             size-bytes: 1,
             /// Causes output levels to decrease as the frequency rises
-            field level_key_scaling 7:6 -> _ as enum ScalingLevel {
+            field level_key_scaling 7:6 RW -> _ as enum ScalingLevel {
                 NoChange: 0b00,
                 DB3PerOctave: 0b01,
                 DB1_5PerOctave: 0b10,
                 DB6PerOctave: 0b11,
             },
             /// Attenuates the operator output level
-            field output_level 5:0,
+            field output_level 5:0 RW,
         },
     },
 }

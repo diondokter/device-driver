@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-cb8825c0.js";
+            window.path_to_searchindex_js = "searchindex-6fbad898.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-3f8de81c.js"></script>
@@ -1416,7 +1416,7 @@ All objects that make up the driver are defined in it.</p>
 <h2 id="example"><a class="header" href="#example">Example</a></h2>
 <pre><code class="language-ddsl">/// doc comment line
 manifest Example {
-    byte-order: LE,
+    default-byte-order: LE,
     register-address-type: i32,
     command-address-type: i32,
     buffer-address-type: i32,
@@ -1449,10 +1449,10 @@ manifest Example {
 </div>
 <h2 id="long-properties"><a class="header" href="#long-properties">Long properties</a></h2>
 <p>These properties are specified in the node body.</p>
-<h3 id="byte-order"><a class="header" href="#byte-order">byte-order</a></h3>
+<h3 id="default-byte-order"><a class="header" href="#default-byte-order">default-byte-order</a></h3>
 <p>Sets the global default byte order used by fieldsets. This can be overridden per device and fieldset.</p>
 <pre><code class="language-ddsl">// byte order
-byte-order: LE
+default-byte-order: LE
 </code></pre>
 <h4 id="info"><a class="header" href="#info">Info</a></h4>
 <ul>
@@ -1568,7 +1568,7 @@ let (foo, bar) = device
 <h2 id="example-1"><a class="header" href="#example-1">Example</a></h2>
 <pre><code class="language-ddsl">/// doc comment line
 device Example {
-    byte-order: LE,
+    default-byte-order: LE,
     register-address-type: i32,
     command-address-type: i32,
     buffer-address-type: i32,
@@ -1604,10 +1604,10 @@ device Example {
 </div>
 <h2 id="long-properties-1"><a class="header" href="#long-properties-1">Long properties</a></h2>
 <p>These properties are specified in the node body.</p>
-<h3 id="byte-order-1"><a class="header" href="#byte-order-1">byte-order</a></h3>
+<h3 id="default-byte-order-1"><a class="header" href="#default-byte-order-1">default-byte-order</a></h3>
 <p>Sets the default byte order used by fieldsets in this device. This can be overridden per fieldset.</p>
 <pre><code class="language-ddsl">// byte order
-byte-order: LE
+default-byte-order: LE
 </code></pre>
 <h4 id="info-7"><a class="header" href="#info-7">Info</a></h4>
 <ul>
@@ -2110,7 +2110,7 @@ size-bytes: 8
 <li>multiple allowed: <code>no</code></li>
 <li>supports doc comments: <code>no</code></li>
 </ul>
-<h3 id="byte-order-2"><a class="header" href="#byte-order-2">byte-order</a></h3>
+<h3 id="byte-order"><a class="header" href="#byte-order">byte-order</a></h3>
 <p>The byte order of the fieldset data.</p>
 <pre><code class="language-ddsl">// byte order
 byte-order: LE
@@ -4465,7 +4465,7 @@ confusion ensues.</p>
 <ul>
 <li><a href="#concepts">Concepts</a>
 <ul>
-<li><a href="#byte-order-3">Byte order</a></li>
+<li><a href="#byte-order-1">Byte order</a></li>
 <li><a href="#bit-order">Bit order</a></li>
 <li><a href="#together">Together</a></li>
 </ul>
@@ -4481,7 +4481,7 @@ confusion ensues.</p>
 </li>
 </ul>
 <h2 id="concepts"><a class="header" href="#concepts">Concepts</a></h2>
-<h3 id="byte-order-3"><a class="header" href="#byte-order-3">Byte order</a></h3>
+<h3 id="byte-order-1"><a class="header" href="#byte-order-1">Byte order</a></h3>
 <p>Also known as endianness. It describes what the first byte is in an array of bytes.
 There are two options generally:</p>
 <ul>
