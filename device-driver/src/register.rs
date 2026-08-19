@@ -137,12 +137,12 @@ where
 {
     #[doc(hidden)]
     pub fn new(
-        interface: &'b mut B,
+        block: &'b mut B,
         address: AddressType,
         register_new_with_reset: fn() -> RegisterFs,
     ) -> Self {
         Self {
-            block: interface,
+            block,
             address,
             register_new_with_reset,
             _phantom: PhantomData,
