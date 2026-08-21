@@ -1,6 +1,6 @@
 use core::marker::PhantomData;
 
-use crate::{Address, Block, Fieldset, FieldsetMetadata};
+use crate::{Address, Block, Fieldset, FieldsetMetadata, NotFieldset};
 
 /// Common properties shared by [`CommandInterface`] & [`AsyncCommandInterface`]
 pub trait CommandInterfaceBase {
@@ -118,19 +118,13 @@ where
             _phantom: PhantomData,
         }
     }
-}
 
-/// Simple command
-impl<B, AddressType> CommandOperation<'_, B, AddressType, (), ()>
-where
-    B: Block,
-    B::Interface: CommandInterfaceBase<AddressType = AddressType>,
-    AddressType: Address,
-{
     /// Dispatch the command to the device
     pub fn dispatch(self) -> Result<(), <B::Interface as CommandInterfaceBase>::Error>
     where
         B::Interface: CommandInterface,
+        InFieldset: NotFieldset,
+        OutFieldset: NotFieldset,
     {
         self.block.interface().dispatch_command(
             self.address,
@@ -147,6 +141,8 @@ where
     ) -> impl Future<Output = Result<(), <B::Interface as CommandInterfaceBase>::Error>>
     where
         B::Interface: AsyncCommandInterface,
+        InFieldset: NotFieldset,
+        OutFieldset: NotFieldset,
     {
         self.block.interface().dispatch_command(
             self.address,
@@ -156,23 +152,16 @@ where
             &FieldsetMetadata::DEFAULT,
         )
     }
-}
 
-/// Only input
-impl<B, AddressType, InFieldset> CommandOperation<'_, B, AddressType, InFieldset, ()>
-where
-    B: Block,
-    B::Interface: CommandInterfaceBase<AddressType = AddressType>,
-    AddressType: Address,
-    InFieldset: Fieldset,
-{
-    /// Dispatch the command to the device
-    pub fn dispatch(
+    /// Dispatch the command to the device with an input
+    pub fn dispatch_in(
         self,
         f: impl FnOnce(&mut InFieldset),
     ) -> Result<(), <B::Interface as CommandInterfaceBase>::Error>
     where
         B::Interface: CommandInterface,
+        InFieldset: Fieldset,
+        OutFieldset: NotFieldset,
     {
         let mut in_fields = InFieldset::ZERO;
         f(&mut in_fields);
@@ -186,13 +175,15 @@ where
         )
     }
 
-    /// Dispatch the command to the device
-    pub async fn dispatch_async(
+    /// Dispatch the command to the device with an input
+    pub async fn dispatch_in_async(
         self,
         f: impl FnOnce(&mut InFieldset),
     ) -> Result<(), <B::Interface as CommandInterfaceBase>::Error>
     where
         B::Interface: AsyncCommandInterface,
+        InFieldset: Fieldset,
+        OutFieldset: NotFieldset,
     {
         let mut in_fields = InFieldset::ZERO;
         f(&mut in_fields);
@@ -208,20 +199,13 @@ where
             )
             .await
     }
-}
 
-/// Only output
-impl<B, AddressType, OutFieldset> CommandOperation<'_, B, AddressType, (), OutFieldset>
-where
-    B: Block,
-    B::Interface: CommandInterfaceBase<AddressType = AddressType>,
-    AddressType: Address,
-    OutFieldset: Fieldset,
-{
-    /// Dispatch the command to the device
-    pub fn dispatch(self) -> Result<OutFieldset, <B::Interface as CommandInterfaceBase>::Error>
+    /// Dispatch the command to the device with an output
+    pub fn dispatch_out(self) -> Result<OutFieldset, <B::Interface as CommandInterfaceBase>::Error>
     where
         B::Interface: CommandInterface,
+        InFieldset: NotFieldset,
+        OutFieldset: Fieldset,
     {
         let mut out_fields = OutFieldset::ZERO;
 
@@ -236,12 +220,14 @@ where
         Ok(out_fields)
     }
 
-    /// Dispatch the command to the device
-    pub async fn dispatch_async(
+    /// Dispatch the command to the device with an output
+    pub async fn dispatch_out_async(
         self,
     ) -> Result<OutFieldset, <B::Interface as CommandInterfaceBase>::Error>
     where
         B::Interface: AsyncCommandInterface,
+        InFieldset: NotFieldset,
+        OutFieldset: Fieldset,
     {
         let mut out_fields = OutFieldset::ZERO;
 
@@ -258,25 +244,16 @@ where
 
         Ok(out_fields)
     }
-}
 
-/// Input and output
-impl<B, AddressType, InFieldset, OutFieldset>
-    CommandOperation<'_, B, AddressType, InFieldset, OutFieldset>
-where
-    B: Block,
-    B::Interface: CommandInterfaceBase<AddressType = AddressType>,
-    AddressType: Address,
-    InFieldset: Fieldset,
-    OutFieldset: Fieldset,
-{
-    /// Dispatch the command to the device
-    pub fn dispatch(
+    /// Dispatch the command to the device with an input and output
+    pub fn dispatch_inout(
         self,
         f: impl FnOnce(&mut InFieldset),
     ) -> Result<OutFieldset, <B::Interface as CommandInterfaceBase>::Error>
     where
         B::Interface: CommandInterface,
+        InFieldset: Fieldset,
+        OutFieldset: Fieldset,
     {
         let mut in_fields = InFieldset::ZERO;
         f(&mut in_fields);
@@ -294,13 +271,15 @@ where
         Ok(out_fields)
     }
 
-    /// Dispatch the command to the device
-    pub async fn dispatch_async(
+    /// Dispatch the command to the device with an input and output
+    pub async fn dispatch_inout_async(
         self,
         f: impl FnOnce(&mut InFieldset),
     ) -> Result<OutFieldset, <B::Interface as CommandInterfaceBase>::Error>
     where
         B::Interface: AsyncCommandInterface,
+        InFieldset: Fieldset,
+        OutFieldset: Fieldset,
     {
         let mut in_fields = InFieldset::ZERO;
         f(&mut in_fields);
