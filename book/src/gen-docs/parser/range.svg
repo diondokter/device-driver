@@ -46,7 +46,8 @@ svg.railroad g.labeledbox &gt; rect {
 stroke-width: 1px;
 stroke: grey;
 stroke-dasharray: 5px;
-fill:rgba(90, 90, 150, .1);
+fill: rgb(90, 90, 150);
+fill-opacity: .1;
 }
 </style>
 <rect width="100%" height="100%" class="railroad_canvas"/>
