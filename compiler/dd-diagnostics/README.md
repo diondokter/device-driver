@@ -1,8 +1,8 @@
 # Device driver toolkit 
 
-[![crates.io](https://img.shields.io/crates/v/device-driver-macros.svg)](https://crates.io/crates/device-driver-macros)
-[![crates.io](https://img.shields.io/crates/d/device-driver-macros.svg)](https://crates.io/crates/device-driver-macros)
-[![Documentation](https://docs.rs/device-driver-macros/badge.svg)](https://docs.rs/device-driver-macros)
+[![crates.io](https://img.shields.io/crates/v/device-driver-diagnostics.svg)](https://crates.io/crates/device-driver-diagnostics)
+[![crates.io](https://img.shields.io/crates/d/device-driver-diagnostics.svg)](https://crates.io/crates/device-driver-diagnostics)
+[![Documentation](https://docs.rs/device-driver-diagnostics/badge.svg)](https://docs.rs/device-driver-diagnostics)
 [![matrix](https://img.shields.io/matrix/device-driver:matrix.org)](https://matrix.to/#/#device-driver:matrix.org)
 
 > A toolkit to write better device drivers, faster.

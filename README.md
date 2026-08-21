@@ -1,4 +1,5 @@
-# Device driver toolkit #![no_std]
+# Device driver toolkit
+
 [![crates.io](https://img.shields.io/crates/v/device-driver.svg)](https://crates.io/crates/device-driver)
 [![crates.io](https://img.shields.io/crates/d/device-driver.svg)](https://crates.io/crates/device-driver)
 [![Documentation](https://docs.rs/device-driver/badge.svg)](https://docs.rs/device-driver)

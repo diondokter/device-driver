@@ -10,3 +10,5 @@
 Head over to [the website](https://device-driver.com/) to learn about how to use the project to build your own device drivers.
 
 See the readme in root of the repo for more project information.
+
+This is the Rust runtime of device-driver and the main public crate you should use.

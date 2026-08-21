@@ -1,9 +1,14 @@
-# Device driver compiler [![crates.io](https://img.shields.io/crates/v/device-driver-compiler.svg)](https://crates.io/crates/device-driver-compiler) [![Documentation](https://docs.rs/device-driver-compiler/badge.svg)](https://docs.rs/device-driver-compiler)
+# Device driver toolkit 
+
+[![crates.io](https://img.shields.io/crates/v/device-driver-core.svg)](https://crates.io/crates/device-driver-core)
+[![crates.io](https://img.shields.io/crates/d/device-driver-core.svg)](https://crates.io/crates/device-driver-core)
+[![Documentation](https://docs.rs/device-driver-core/badge.svg)](https://docs.rs/device-driver-core)
+[![matrix](https://img.shields.io/matrix/device-driver:matrix.org)](https://matrix.to/#/#device-driver:matrix.org)
 
 > A toolkit to write better device drivers, faster.
 
-Read [the book](https://diondokter.github.io/device-driver/) to learn about how to use the project to build your own device drivers.
+Head over to [the website](https://device-driver.com/) to learn about how to use the project to build your own device drivers.
 
-Compiler implementation crate for the device driver toolkit.
+See the readme in root of the repo for more project information.
 
-This crate is not meant to be consumed directly. Read more here: <https://crates.io/crates/device-driver>
+This is an internal crate, not meant for public usage. If you do use it, pin the version as this crate does not follow semver.
