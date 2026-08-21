@@ -44,6 +44,17 @@ impl<I> Device<I> {
         let address = self.base_address + 0;
         ::device_driver::CommandOperation::new(self, address as u8)
     }
+    /// Command operation:
+    /// - Address: `1`
+    /// - Index range: `0..4`
+    #[doc(alias = "Bar")]
+    pub fn bar(&mut self) -> ::device_driver::CommandOperation<'_, Self, u8, (), ()>
+    where
+        I: ::device_driver::CommandInterfaceBase<AddressType = u8>,
+    {
+        let address = self.base_address + 1;
+        ::device_driver::CommandOperation::new(self, address as u8)
+    }
 }
 impl<I> ::device_driver::Block for Device<I> {
     type Interface = I;
