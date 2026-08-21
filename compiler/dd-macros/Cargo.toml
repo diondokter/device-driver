@@ -7,9 +7,9 @@ license.workspace = true
 homepage.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-keywords = ["no_std", "device", "driver", "toolkit"]
-categories = ["embedded", "hardware-support", "no-std::no-alloc", "no-std"]
-description = "Proc macro implementation for the `device-driver` crate"
+keywords = ["device", "driver", "toolkit"]
+categories = ["embedded", "hardware-support", "development-tools"]
+description = "Internal proc-macro implementation crate for the device-driver toolkit"
 readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

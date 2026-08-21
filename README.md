@@ -36,6 +36,9 @@ Of these, only the `device-driver` and `device-driver-cli` crates are considered
 Anything that can reasonably break user code will warrant a *breaking* semver bump.
 This only holds if the user is only consuming 'public' device-driver code.
 
+Increasing the MSRV is not considered a breaking change. Assume you need the latest stable version.
+The MSRV is encoded in the `rust-version` field of the Cargo.toml file.
+
 ## License
 
 Code licensed under either of
