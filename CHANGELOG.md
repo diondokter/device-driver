@@ -2,7 +2,7 @@
 
 ### Unreleased
 
-### 2.0.0 (to be released)
+### 2.0.0
 
 This release should feel familiar to v1 users, and yet lay the foundations of [lots to come](https://device-driver.com/book/v2/intro.html#future-plans).
 
