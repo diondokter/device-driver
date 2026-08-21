@@ -59,7 +59,7 @@ impl<I> Device<I> {
     /// Command operation:
     /// - Address: `0`
     #[doc(alias = "Bar")]
-    pub fn bar(&mut self) -> ::device_driver::CommandOperation<'_, Self, i32, (), ()>
+    pub fn bar(&mut self) -> ::device_driver::CommandOperation<'_, Self, i32, (), (), ()>
     where
         I: ::device_driver::CommandInterfaceBase<AddressType = i32>,
     {

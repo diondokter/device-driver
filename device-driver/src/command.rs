@@ -1,6 +1,6 @@
 use core::marker::PhantomData;
 
-use crate::{Address, Block, Fieldset, FieldsetMetadata, NotFieldset};
+use crate::{Address, Block, Fieldset, FieldsetMetadata, NotFieldset, NotRepeating, Repeating};
 
 /// Common properties shared by [`CommandInterface`] & [`AsyncCommandInterface`]
 pub trait CommandInterfaceBase {
@@ -92,7 +92,7 @@ impl<T: AsyncCommandInterface> AsyncCommandInterface for &mut T {
 }
 
 /// Intermediate type for doing command operations
-pub struct CommandOperation<'b, B, AddressType, InFieldset, OutFieldset>
+pub struct CommandOperation<'b, B, AddressType, InFieldset, OutFieldset, Repeat>
 where
     B: Block,
     B::Interface: CommandInterfaceBase<AddressType = AddressType>,
@@ -100,11 +100,11 @@ where
 {
     block: &'b mut B,
     address: AddressType,
-    _phantom: PhantomData<(InFieldset, OutFieldset)>,
+    _phantom: PhantomData<(InFieldset, OutFieldset, Repeat)>,
 }
 
-impl<'d, B, AddressType, InFieldset, OutFieldset>
-    CommandOperation<'d, B, AddressType, InFieldset, OutFieldset>
+impl<'d, B, AddressType, InFieldset, OutFieldset, Repeat>
+    CommandOperation<'d, B, AddressType, InFieldset, OutFieldset, Repeat>
 where
     B: Block,
     B::Interface: CommandInterfaceBase<AddressType = AddressType>,
@@ -125,9 +125,31 @@ where
         B::Interface: CommandInterface,
         InFieldset: NotFieldset,
         OutFieldset: NotFieldset,
+        Repeat: NotRepeating,
     {
         self.block.interface().dispatch_command(
             self.address,
+            &mut [],
+            &FieldsetMetadata::DEFAULT,
+            &mut [],
+            &FieldsetMetadata::DEFAULT,
+        )
+    }
+
+    /// Dispatch the command to the device
+    #[track_caller]
+    pub fn dispatch_at(
+        self,
+        index: Repeat::Index,
+    ) -> Result<(), <B::Interface as CommandInterfaceBase>::Error>
+    where
+        B::Interface: CommandInterface,
+        InFieldset: NotFieldset,
+        OutFieldset: NotFieldset,
+        Repeat: Repeating,
+    {
+        self.block.interface().dispatch_command(
+            Repeat::calc_address(self.address, index),
             &mut [],
             &FieldsetMetadata::DEFAULT,
             &mut [],
@@ -143,9 +165,30 @@ where
         B::Interface: AsyncCommandInterface,
         InFieldset: NotFieldset,
         OutFieldset: NotFieldset,
+        Repeat: NotRepeating,
     {
         self.block.interface().dispatch_command(
             self.address,
+            &mut [],
+            &FieldsetMetadata::DEFAULT,
+            &mut [],
+            &FieldsetMetadata::DEFAULT,
+        )
+    }
+
+    /// Dispatch the command to the device
+    pub fn dispatch_at_async(
+        self,
+        index: Repeat::Index,
+    ) -> impl Future<Output = Result<(), <B::Interface as CommandInterfaceBase>::Error>>
+    where
+        B::Interface: AsyncCommandInterface,
+        InFieldset: NotFieldset,
+        OutFieldset: NotFieldset,
+        Repeat: Repeating,
+    {
+        self.block.interface().dispatch_command(
+            Repeat::calc_address(self.address, index),
             &mut [],
             &FieldsetMetadata::DEFAULT,
             &mut [],
@@ -162,12 +205,38 @@ where
         B::Interface: CommandInterface,
         InFieldset: Fieldset,
         OutFieldset: NotFieldset,
+        Repeat: NotRepeating,
     {
         let mut in_fields = InFieldset::ZERO;
         f(&mut in_fields);
 
         self.block.interface().dispatch_command(
             self.address,
+            in_fields.as_slice_mut(),
+            &InFieldset::METADATA,
+            &mut [],
+            &FieldsetMetadata::DEFAULT,
+        )
+    }
+
+    /// Dispatch the command to the device with an input
+    #[track_caller]
+    pub fn dispatch_in_at(
+        self,
+        index: Repeat::Index,
+        f: impl FnOnce(&mut InFieldset),
+    ) -> Result<(), <B::Interface as CommandInterfaceBase>::Error>
+    where
+        B::Interface: CommandInterface,
+        InFieldset: Fieldset,
+        OutFieldset: NotFieldset,
+        Repeat: Repeating,
+    {
+        let mut in_fields = InFieldset::ZERO;
+        f(&mut in_fields);
+
+        self.block.interface().dispatch_command(
+            Repeat::calc_address(self.address, index),
             in_fields.as_slice_mut(),
             &InFieldset::METADATA,
             &mut [],
@@ -184,6 +253,7 @@ where
         B::Interface: AsyncCommandInterface,
         InFieldset: Fieldset,
         OutFieldset: NotFieldset,
+        Repeat: NotRepeating,
     {
         let mut in_fields = InFieldset::ZERO;
         f(&mut in_fields);
@@ -200,17 +270,70 @@ where
             .await
     }
 
+    /// Dispatch the command to the device with an input
+    pub async fn dispatch_in_at_async(
+        self,
+        index: Repeat::Index,
+        f: impl FnOnce(&mut InFieldset),
+    ) -> Result<(), <B::Interface as CommandInterfaceBase>::Error>
+    where
+        B::Interface: AsyncCommandInterface,
+        InFieldset: Fieldset,
+        OutFieldset: NotFieldset,
+        Repeat: Repeating,
+    {
+        let mut in_fields = InFieldset::ZERO;
+        f(&mut in_fields);
+
+        self.block
+            .interface()
+            .dispatch_command(
+                Repeat::calc_address(self.address, index),
+                in_fields.as_slice_mut(),
+                &InFieldset::METADATA,
+                &mut [],
+                &FieldsetMetadata::DEFAULT,
+            )
+            .await
+    }
+
     /// Dispatch the command to the device with an output
     pub fn dispatch_out(self) -> Result<OutFieldset, <B::Interface as CommandInterfaceBase>::Error>
     where
         B::Interface: CommandInterface,
         InFieldset: NotFieldset,
         OutFieldset: Fieldset,
+        Repeat: NotRepeating,
     {
         let mut out_fields = OutFieldset::ZERO;
 
         self.block.interface().dispatch_command(
             self.address,
+            &mut [],
+            &FieldsetMetadata::DEFAULT,
+            out_fields.as_slice_mut(),
+            &OutFieldset::METADATA,
+        )?;
+
+        Ok(out_fields)
+    }
+
+    /// Dispatch the command to the device with an output
+    #[track_caller]
+    pub fn dispatch_out_at(
+        self,
+        index: Repeat::Index,
+    ) -> Result<OutFieldset, <B::Interface as CommandInterfaceBase>::Error>
+    where
+        B::Interface: CommandInterface,
+        InFieldset: NotFieldset,
+        OutFieldset: Fieldset,
+        Repeat: Repeating,
+    {
+        let mut out_fields = OutFieldset::ZERO;
+
+        self.block.interface().dispatch_command(
+            Repeat::calc_address(self.address, index),
             &mut [],
             &FieldsetMetadata::DEFAULT,
             out_fields.as_slice_mut(),
@@ -228,6 +351,7 @@ where
         B::Interface: AsyncCommandInterface,
         InFieldset: NotFieldset,
         OutFieldset: Fieldset,
+        Repeat: NotRepeating,
     {
         let mut out_fields = OutFieldset::ZERO;
 
@@ -235,6 +359,33 @@ where
             .interface()
             .dispatch_command(
                 self.address,
+                &mut [],
+                &FieldsetMetadata::DEFAULT,
+                out_fields.as_slice_mut(),
+                &OutFieldset::METADATA,
+            )
+            .await?;
+
+        Ok(out_fields)
+    }
+
+    /// Dispatch the command to the device with an output
+    pub async fn dispatch_out_at_async(
+        self,
+        index: Repeat::Index,
+    ) -> Result<OutFieldset, <B::Interface as CommandInterfaceBase>::Error>
+    where
+        B::Interface: AsyncCommandInterface,
+        InFieldset: NotFieldset,
+        OutFieldset: Fieldset,
+        Repeat: Repeating,
+    {
+        let mut out_fields = OutFieldset::ZERO;
+
+        self.block
+            .interface()
+            .dispatch_command(
+                Repeat::calc_address(self.address, index),
                 &mut [],
                 &FieldsetMetadata::DEFAULT,
                 out_fields.as_slice_mut(),
@@ -254,6 +405,7 @@ where
         B::Interface: CommandInterface,
         InFieldset: Fieldset,
         OutFieldset: Fieldset,
+        Repeat: NotRepeating,
     {
         let mut in_fields = InFieldset::ZERO;
         f(&mut in_fields);
@@ -272,6 +424,35 @@ where
     }
 
     /// Dispatch the command to the device with an input and output
+    #[track_caller]
+    pub fn dispatch_inout_at(
+        self,
+        index: Repeat::Index,
+        f: impl FnOnce(&mut InFieldset),
+    ) -> Result<OutFieldset, <B::Interface as CommandInterfaceBase>::Error>
+    where
+        B::Interface: CommandInterface,
+        InFieldset: Fieldset,
+        OutFieldset: Fieldset,
+        Repeat: Repeating,
+    {
+        let mut in_fields = InFieldset::ZERO;
+        f(&mut in_fields);
+
+        let mut out_fields = OutFieldset::ZERO;
+
+        self.block.interface().dispatch_command(
+            Repeat::calc_address(self.address, index),
+            in_fields.as_slice_mut(),
+            &InFieldset::METADATA,
+            out_fields.as_slice_mut(),
+            &OutFieldset::METADATA,
+        )?;
+
+        Ok(out_fields)
+    }
+
+    /// Dispatch the command to the device with an input and output
     pub async fn dispatch_inout_async(
         self,
         f: impl FnOnce(&mut InFieldset),
@@ -280,6 +461,7 @@ where
         B::Interface: AsyncCommandInterface,
         InFieldset: Fieldset,
         OutFieldset: Fieldset,
+        Repeat: NotRepeating,
     {
         let mut in_fields = InFieldset::ZERO;
         f(&mut in_fields);
@@ -290,6 +472,37 @@ where
             .interface()
             .dispatch_command(
                 self.address,
+                in_fields.as_slice_mut(),
+                &InFieldset::METADATA,
+                out_fields.as_slice_mut(),
+                &OutFieldset::METADATA,
+            )
+            .await?;
+
+        Ok(out_fields)
+    }
+
+    /// Dispatch the command to the device with an input and output
+    pub async fn dispatch_inout_at_async(
+        self,
+        index: Repeat::Index,
+        f: impl FnOnce(&mut InFieldset),
+    ) -> Result<OutFieldset, <B::Interface as CommandInterfaceBase>::Error>
+    where
+        B::Interface: AsyncCommandInterface,
+        InFieldset: Fieldset,
+        OutFieldset: Fieldset,
+        Repeat: Repeating,
+    {
+        let mut in_fields = InFieldset::ZERO;
+        f(&mut in_fields);
+
+        let mut out_fields = OutFieldset::ZERO;
+
+        self.block
+            .interface()
+            .dispatch_command(
+                Repeat::calc_address(self.address, index),
                 in_fields.as_slice_mut(),
                 &InFieldset::METADATA,
                 out_fields.as_slice_mut(),

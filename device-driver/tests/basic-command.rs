@@ -73,6 +73,17 @@ device_driver::compile!(
                     /// The value!
                     field val 7:0 -> uint
                 }
+            },
+
+            command repeated[4 stride 1] {
+                address: 4,
+            },
+            enum r {
+                a: _,
+                b: _,
+            },
+            command enum_repeated[r stride 2] {
+                address: 8,
             }
         }
     "
@@ -105,4 +116,12 @@ fn command_combinations() {
     assert_eq!(device.interface.last_command, 3);
     assert_eq!(device.interface.last_input, vec![0x7B, 0x00]);
     assert_eq!(out.val(), 0x7B);
+
+    device.repeated().dispatch_at(3).unwrap();
+    assert_eq!(device.interface.last_command, 7);
+    assert_eq!(device.interface.last_input, vec![]);
+
+    device.enum_repeated().dispatch_at(R::A).unwrap();
+    assert_eq!(device.interface.last_command, 8);
+    assert_eq!(device.interface.last_input, vec![]);
 }

@@ -37,7 +37,7 @@ impl<I> Device<I> {
     #[doc(alias = "Foo")]
     pub fn foo(
         &mut self,
-    ) -> ::device_driver::CommandOperation<'_, Self, u8, FooFieldSetIn, ()>
+    ) -> ::device_driver::CommandOperation<'_, Self, u8, FooFieldSetIn, (), ()>
     where
         I: ::device_driver::CommandInterfaceBase<AddressType = u8>,
     {
@@ -48,7 +48,16 @@ impl<I> Device<I> {
     /// - Address: `1`
     /// - Index range: `0..4`
     #[doc(alias = "Bar")]
-    pub fn bar(&mut self) -> ::device_driver::CommandOperation<'_, Self, u8, (), ()>
+    pub fn bar(
+        &mut self,
+    ) -> ::device_driver::CommandOperation<
+        '_,
+        Self,
+        u8,
+        (),
+        (),
+        ::device_driver::ArrayRepeat<4, 1>,
+    >
     where
         I: ::device_driver::CommandInterfaceBase<AddressType = u8>,
     {
