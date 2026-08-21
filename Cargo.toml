@@ -42,10 +42,10 @@ device-driver-converter = { path = "compiler/dd-converter", version = "=2.0.0" }
 itertools = "0.15.0"
 convert_case = "0.11.0"
 clap = { version = "4.6.6", features = ["derive"] }
-bitvec = { version = "1.0.1", default-features = false }
+bitvec = { version = "1.1.1", default-features = false }
 syn = "3.0.3"
 pretty_assertions = "1.4.1"
 chumsky = { version = "0.13.0", default-features = false, features = ["std"] }
 arbitrary = { version = "1.4.2", features = ["derive"] }
-fastrand = "2.4.1"
-annotate-snippets = "0.12.13"
+fastrand = "2.5.0"
+annotate-snippets = "0.12.16"

@@ -11,7 +11,7 @@ cargo-fuzz = true
 device-driver-core.workspace = true
 
 arbitrary = { version = "1.4.2", features = ["derive"] }
-libfuzzer-sys = "0.4"
+libfuzzer-sys = "0.4.13"
 
 [[bin]]
 name = "compiler-text"
