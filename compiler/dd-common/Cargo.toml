@@ -17,7 +17,7 @@ convert_case.workspace = true
 chumsky.workspace = true
 arbitrary = { workspace = true, optional = true }
 
-unicode-ident = "1.0.22"
+unicode-ident = "1.0.24"
 
 [target.'cfg(target_family = "wasm")'.dependencies]
 web-time = "1.1.0"
