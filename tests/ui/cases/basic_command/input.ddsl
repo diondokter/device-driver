@@ -11,5 +11,9 @@ device Device {
 
             field value 23:0 -> uint
         }
-    }
+    },
+
+    command Bar[4 stride 1] {
+        address: 1
+    },
 }

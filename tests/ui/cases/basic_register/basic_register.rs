@@ -63,7 +63,7 @@ impl<I> Device<I> {
     /// Register operation:
     /// - Address: `1`
     /// - Reset value: `0x123456`
-    /// - Valid index range: `0..3`
+    /// - Index range: `0..3`
     #[doc(alias = "Bar")]
     pub fn bar(
         &mut self,

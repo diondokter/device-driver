@@ -34,6 +34,7 @@ There's a [tutorial](https://device-driver.com/book/v2/tutorial-ym3812.html) the
 - [Bulk operations](https://device-driver.com/book/v2/runtime-rust.html#bulk-operations) have been added. This requires the `register-address-mode` config to be set
 - Slightly changed the interface traits. All have a base trait for the error type and the address type and the functions no longer have a size-bits parameter, but gained a metadata parameter
 - Interfaces have a blanket impl for `&mut T` where T impls that interface
+- Command dispatches now use explicit names instead of being overloaded
 
 ### 1.0.9 (29-04-26)
 

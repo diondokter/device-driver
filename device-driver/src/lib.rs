@@ -11,10 +11,14 @@ mod command;
 mod fieldset;
 mod register;
 
+mod repeats;
+
 pub use buffer::*;
 pub use command::*;
 pub use fieldset::*;
 pub use register::*;
+
+pub use repeats::*;
 
 #[doc(hidden)]
 pub mod ops;

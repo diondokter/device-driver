@@ -86,7 +86,7 @@ impl<'a> DriverTemplateRust<'a> {
         }
 
         if let Repeat::Count { count, .. } = method.repeat {
-            writeln!(&mut docs, "/// - Valid index range: `0..{count}`").unwrap();
+            writeln!(&mut docs, "/// - Index range: `0..{count}`").unwrap();
         };
 
         docs

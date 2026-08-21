@@ -34,7 +34,7 @@ impl<I> Repeats<I> {
     }
     /// Block operation:
     /// - Address: `0`
-    /// - Valid index range: `0..1`
+    /// - Index range: `0..1`
     pub fn foo(&mut self, index: usize) -> Foo<'_, I> {
         let address = {
             assert!(index < 1);
@@ -44,7 +44,7 @@ impl<I> Repeats<I> {
     }
     /// Block operation:
     /// - Address: `0`
-    /// - Valid index range: `0..1`
+    /// - Index range: `0..1`
     pub fn bar(&mut self, index: usize) -> Bar<'_, I> {
         let address = {
             assert!(index < 1);
@@ -54,7 +54,7 @@ impl<I> Repeats<I> {
     }
     /// Block operation:
     /// - Address: `0`
-    /// - Valid index range: `0..1`
+    /// - Index range: `0..1`
     pub fn quux(&mut self, index: usize) -> Quux<'_, I> {
         let address = {
             assert!(index < 1);
