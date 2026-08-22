@@ -66,10 +66,10 @@ It's nice to have examples:
 V2:
 
 - [YM3812 OPL2](https://github.com/diondokter/ym3812)
+- [S2-LP radio](https://github.com/diondokter/s2lp)
 
 V1:
 
-- [S2-LP radio](https://github.com/diondokter/s2lp)
 - [Nordic nPM1300 Power Management IC](https://github.com/thermigo/npm1300-rs)
 - [iqs323 inductive/capacitive sensing controller](https://github.com/tactile-eng/iqs323-driver)
 - [AXP192 Power Management IC](https://github.com/okhsunrog/axp192-dd)
