@@ -1,5 +1,3 @@
-#![doc = include_str!(concat!("../", env!("CARGO_PKG_README")))]
-
 use std::{
     fs::File,
     io::{Read, stderr},
@@ -106,7 +104,7 @@ fn try_create_device(input: Input) -> Result<TokenStream, DynError> {
         .map(String::from)
         .collect::<Vec<_>>();
     let compile_options = MacroCompileOptions::try_parse_from(compile_options).into_dyn_result()?;
-    let (output, diagnostics) = device_driver_core::compile(&source, compile_options.into())?;
+    let (output_files, diagnostics) = device_driver_core::compile(&source, compile_options.into())?;
 
     diagnostics
         .print_to(
@@ -121,10 +119,16 @@ fn try_create_device(input: Input) -> Result<TokenStream, DynError> {
             },
         )
         .unwrap();
-    output
-        .parse()
-        .map_err(|e: proc_macro::LexError| DynError::new(e.to_string()))
-        .with_message(|| "could not parse the output")
+
+    if let [output_file] = output_files.as_slice() {
+        output_file
+            .contents
+            .parse()
+            .map_err(|e: proc_macro::LexError| DynError::new(e.to_string()))
+            .with_message(|| "could not parse the output")
+    } else {
+        Err(DynError::new("compiler returned multiple files"))
+    }
 }
 
 enum Source {

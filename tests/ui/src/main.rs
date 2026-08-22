@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use device_driver_diagnostics::Metadata;
-use device_driver_tests::get_compile_options;
+use device_driver_tests::get_rust_compile_options;
 
 fn main() {
     let args = std::env::args().skip(1);
@@ -57,10 +57,10 @@ fn accept(cases_dir: &Path) {
             let source = std::fs::read_to_string(&source_path).unwrap();
 
             let source_extension = source_path.extension().unwrap().display().to_string();
-            let (transformed, diagnostics) = match &*source_extension {
+            let (output_files, diagnostics) = match &*source_extension {
                 "ddsl" => {
                     let (transformed, diagnostics) =
-                        device_driver_core::compile(&source, get_compile_options()).unwrap();
+                        device_driver_core::compile(&source, get_rust_compile_options()).unwrap();
                     let mut diagnostics_output = String::new();
 
                     diagnostics
@@ -90,7 +90,11 @@ fn accept(cases_dir: &Path) {
             )
             .unwrap();
 
-            let output = device_driver_tests::OUTPUT_HEADER.to_string() + &transformed;
+            let [output_file] = output_files.as_slice() else {
+                panic!("did not get a single file result");
+            };
+
+            let output = device_driver_tests::OUTPUT_HEADER.to_string() + &output_file.contents;
             let output_name = format!("{}.rs", test_case.file_name().display());
             let output_path = test_case.path().join(output_name);
 

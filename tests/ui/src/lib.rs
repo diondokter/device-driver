@@ -6,7 +6,7 @@ use regex::Regex;
 
 pub const OUTPUT_HEADER: &str = include_str!("output_header.txt");
 
-pub fn get_compile_options() -> CompileOptions {
+pub fn get_rust_compile_options() -> CompileOptions {
     CompileOptions {
         general_options: device_driver_core::GeneralOptions {
             ui_test_mode: true,
@@ -31,10 +31,10 @@ pub fn run_test(source_paths: &[&Path], output_path: &Path) {
         let source = std::fs::read_to_string(source_path).unwrap();
 
         let input_extension = source_path.extension().unwrap().display().to_string();
-        let (transformed, diagnostics) = match &*input_extension {
+        let (output_files, diagnostics) = match &*input_extension {
             "ddsl" => {
                 let (transformed, diagnostics) =
-                    device_driver_core::compile(&source, get_compile_options()).unwrap();
+                    device_driver_core::compile(&source, get_rust_compile_options()).unwrap();
 
                 let mut diagnostics_output = String::new();
 
@@ -56,7 +56,11 @@ pub fn run_test(source_paths: &[&Path], output_path: &Path) {
             e => panic!("Unrecognized extension: {e:?}"),
         };
 
-        let output = OUTPUT_HEADER.to_string() + &transformed;
+        let [output_file] = output_files.as_slice() else {
+            panic!("did not get a single file result");
+        };
+
+        let output = OUTPUT_HEADER.to_string() + &output_file.contents;
 
         let diagnostics_path = source_path
             .with_file_name("diagnostics")
