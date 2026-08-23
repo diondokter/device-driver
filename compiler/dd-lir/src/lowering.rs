@@ -33,7 +33,7 @@ pub fn transform_devices(manifest: &mir::Manifest) -> Result<Vec<lir::Device>, D
                     ),
                     // Cast unchecked is fine here since this is a root block and the identifier is never used as an operation
                     name: &device.name.value.clone().cast_unchecked(),
-                    address_offset: &0,
+                    address_offset: &device.address_offset.value,
                     repeat: &None,
                     objects: &device.objects,
                 },
@@ -45,6 +45,7 @@ pub fn transform_devices(manifest: &mir::Manifest) -> Result<Vec<lir::Device>, D
 
             Ok(lir::Device {
                 internal_address_type: find_best_internal_address_type(manifest, device),
+                address_offset: device.address_offset.value,
                 blocks,
             })
         })

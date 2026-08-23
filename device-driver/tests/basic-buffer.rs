@@ -35,6 +35,7 @@ device_driver::compile!(
         device MyTestDevice {
             default-byte-order: LE,
             buffer-address-type: u8,
+            address-offset: 100,
 
             /// A read only buffer
             buffer RoBuf {
@@ -57,11 +58,11 @@ fn buffer_write_read() {
     });
 
     device.wo_buf().write(&[0, 1, 2, 3]).unwrap();
-    assert_eq!(device.interface.last_address, 1);
+    assert_eq!(device.interface.last_address, 101);
 
     let mut buffer = [0; 8];
     let len = device.ro_buf().read(&mut buffer).unwrap();
-    assert_eq!(device.interface.last_address, 0);
+    assert_eq!(device.interface.last_address, 100);
     assert_eq!(len, 4);
     assert_eq!(&buffer[..len], &[0, 1, 2, 3]);
 }

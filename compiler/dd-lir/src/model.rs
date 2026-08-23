@@ -12,6 +12,7 @@ pub struct Driver {
 
 pub struct Device {
     pub internal_address_type: Integer,
+    pub address_offset: i128,
     pub blocks: Vec<Block>,
 }
 
