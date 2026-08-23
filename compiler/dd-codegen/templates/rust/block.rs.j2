@@ -24,7 +24,7 @@ impl{{block_generics}} {{ block.name.to_case(Case::Pascal) }}{{block_generics}} 
     {% if block.root %}
     /// Create a new instance of the device
     pub const fn new(interface: I) -> Self {
-        Self { interface, base_address: 0 }
+        Self { interface, base_address: {{ device.address_offset }} }
     }
 
     /// Drop the driver instance and reclaim the interface

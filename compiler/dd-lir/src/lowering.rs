@@ -45,6 +45,7 @@ pub fn transform_devices(manifest: &mir::Manifest) -> Result<Vec<lir::Device>, D
 
             Ok(lir::Device {
                 internal_address_type: find_best_internal_address_type(manifest, device),
+                address_offset: device.address_offset.value,
                 blocks,
             })
         })
