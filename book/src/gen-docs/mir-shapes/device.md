@@ -10,6 +10,7 @@ device Example {
     word-boundaries: "bD:0B:_",
     register-address-mode: mapped,
     default-access: RW,
+    address-offset: 0,
 
     block node,
     register node,
@@ -114,6 +115,17 @@ When set, all subobjects use this value as their access value (unless overridden
 ```ddsl
 // access specifier
 default-access: RW
+```
+#### Info
+- required: `no`
+- multiple allowed: `no`
+- supports doc comments: `no`
+### address-offset
+Defines the global address offset of this device. All objects in the device are relative to this offset.
+If this is not specified, the address offset defaults to 0.
+```ddsl
+// number
+address-offset: 0
 ```
 #### Info
 - required: `no`
