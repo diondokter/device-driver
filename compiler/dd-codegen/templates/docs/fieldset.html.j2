@@ -1,0 +1,62 @@
+<h2>Fields {{ fieldset.name.original() }}</h2>
+<p>
+    {{ fieldset.description }}
+</p>
+
+<table>
+    <tr>
+        <th>Name</th>
+        <th>Byte order</th>
+        <th>Size bytes</th>
+    </tr>
+    <tr>
+        <td>{{ fieldset.name.original() }}<br />{{ fieldset.name.words_display() }}</td>
+        <td>{{ fieldset.byte_order }}</td>
+        <td>{{ fieldset.size_bytes }}</td>
+    </tr>
+</table>
+
+<br />
+
+{% for bit_range in self.overview_tables() %}
+<table style="table-layout: fixed;">
+    <tr>
+        <th colspan="{{bit_range.iter().count()}}">
+            Bits ({{bit_range.end-1}}:{{bit_range.start}})
+        </th>
+    </tr>
+    <tr>
+        {% for bit in bit_range.iter().rev() %}
+        {%if bit < fieldset.size_bytes * 8 %} <td>{{bit}}</td>
+            {%endif%}
+            {%endfor%}
+    </tr>
+    <tr>
+        {% for (field, local_len) in self.fields_in_range(*bit_range) %}
+        {%match field %}
+        {%when Some(field)%}
+        <td colspan="{{local_len}}">{{field.name.original()}}</td>
+        {%when None%}
+        <td colspan="{{local_len}}"><small>reserved</small></td>
+        {%endmatch%}
+        {%endfor%}
+    </tr>
+    <tr>
+        {% for (field, local_len) in self.fields_in_range(*bit_range) %}
+        {%match field %}
+        {%when Some(field)%}
+        <td colspan="{{local_len}}">{{field.access}}</td>
+        {%when None%}
+        <td colspan="{{local_len}}"></td>
+        {%endmatch%}
+        {%endfor%}
+    </tr>
+    {# <tr>
+        <td colspan="8"></td>
+        <td>0x0</td>
+        <td>0x1</td>
+        <td colspan="6">0x35</td>
+    </tr> #}
+</table>
+<br />
+{% endfor %}

@@ -11,6 +11,8 @@ pub fn lower_mir(manifest: device_driver_mir::model::Manifest) -> Result<model::
         lowering::transform_devices(&manifest).with_message(|| "could not transform devices")?;
 
     Ok(model::Driver {
+        manifest_name: manifest.name.value,
+        manifest_description: manifest.description,
         devices,
         field_sets,
         enums,
