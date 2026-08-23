@@ -251,6 +251,7 @@ pub struct Device {
     pub description: String,
     pub name: Spanned<Identifier<Type>>,
     pub default_access: Option<Access>,
+    pub address_offset: Spanned<i128>,
     pub device_config: DeviceConfig,
     pub objects: Vec<Object>,
 
@@ -397,7 +398,7 @@ impl Object {
     /// Return the address if it is specified.
     pub fn address(&self) -> Option<Spanned<i128>> {
         match self {
-            Object::Device(_) => None,
+            Object::Device(device) => Some(device.address_offset),
             Object::Block(block) => Some(block.address_offset),
             Object::Register(register) => Some(register.address),
             Object::Command(command) => Some(command.address),

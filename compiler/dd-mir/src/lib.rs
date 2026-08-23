@@ -72,7 +72,7 @@ pub fn find_min_max_addresses<'m>(
     let mut max_obj_found = None;
 
     let mut children_left = vec![device.objects.len()];
-    let mut address_offsets = vec![0];
+    let mut address_offsets = vec![device.address_offset.value];
 
     for object in device.iter_objects() {
         while children_left.last() == Some(&0) {
@@ -139,7 +139,7 @@ pub fn find_min_max_addresses<'m>(
 
         match object {
             Object::Device(d) => {
-                address_offsets.push(0);
+                address_offsets.push(d.address_offset.value);
                 children_left.push(d.objects.len());
             }
             Object::Block(b) => {

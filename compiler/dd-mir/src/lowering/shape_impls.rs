@@ -410,6 +410,28 @@ If this value is specified, then it permits bulk register reads and writes.",
                     false
                 },
             },
+            PropertyInfo {
+                name: PropertyName::Exact("address-offset"),
+                description: "\
+Defines the global address offset of this device. All objects in the device are relative to this offset.
+If this is not specified, the address offset defaults to 0.",
+                allowed_expression_types: Cow::Borrowed(&[Expression::Number(0)]),
+                multiple_allowed: false,
+                required: false,
+                supports_doc_comments: false,
+                setter: |SetterArgs {
+                             target_object: dev,
+                             property,
+                             ..
+                         }| {
+                    dev.address_offset = property
+                        .expression
+                        .as_number()
+                        .unwrap()
+                        .with_span(property.expression.span);
+                    false
+                },
+            },
         ];
         MAP
     }
