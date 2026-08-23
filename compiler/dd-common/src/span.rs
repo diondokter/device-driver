@@ -6,6 +6,7 @@ use std::{
 #[derive(Clone, Eq, PartialEq, Copy, Default, Hash)]
 pub struct Span {
     pub start: usize,
+    // Exclusive
     pub end: usize,
 }
 

@@ -41,7 +41,7 @@ impl Target {
 pub fn codegen(target: &Target, lir_driver: &Driver, source: &str) -> Result<Vec<File>, DynError> {
     match target {
         Target::Rust(codegen_options) => rust::codegen(codegen_options, lir_driver, source),
-        Target::Docs(codegen_options) => docs::codegen(codegen_options, lir_driver, source),
+        Target::Docs(codegen_options) => docs::codegen(codegen_options.clone(), lir_driver, source),
     }
 }
 
