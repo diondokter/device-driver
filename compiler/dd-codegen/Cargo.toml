@@ -15,9 +15,13 @@ readme = "README.md"
 [dependencies]
 device-driver-common.workspace = true
 device-driver-lir.workspace = true
+device-driver-diagnostics.workspace = true
 
 convert_case.workspace = true
 clap.workspace = true
 itertools.workspace = true
+syn.workspace = true
+
+prettyplease = { version = "0.3.0" }
 
 askama = { version = "0.16.0", default-features = false, features = ["derive", "alloc"] }

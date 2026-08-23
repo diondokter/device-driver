@@ -1,0 +1,72 @@
+<h2>Fields {{ fieldset.name.original() }}</h2>
+<p>
+    {{ fieldset.description }}
+</p>
+
+<table>
+    <tr>
+        <th>Name</th>
+        <th>Byte order</th>
+        <th>Size bytes</th>
+        {% if get_reset_value_text().is_some() %}
+        <th>Reset value</th>
+        {%endif%}
+    </tr>
+    <tr>
+        <td>{{ fieldset.name.original() }}<br />{{ fieldset.name.words_display() }}</td>
+        <td>{{ fieldset.byte_order }}</td>
+        <td>{{ fieldset.size_bytes }}</td>
+        {% if let Some(reset_value) = get_reset_value_text() %}
+        <td>{{reset_value}}</td>
+        {%endif%}
+    </tr>
+</table>
+
+<br />
+
+{% for bit_range in self.overview_tables() %}
+<table>
+    <tr>
+        <th colspan="{{bit_range.iter().count()}}">
+            Bits ({{bit_range.end-1}}:{{bit_range.start}})
+        </th>
+    </tr>
+    <tr>
+        {% for bit in bit_range.iter().rev() %}
+        {%if bit < fieldset.size_bytes * 8 %} <td>{{bit}}</td>
+            {%endif%}
+            {%endfor%}
+    </tr>
+    <tr>
+        {% for (field, local_len) in self.fields_in_range(*bit_range) %}
+        {%match field %}
+        {%when Some(field)%}
+        <td colspan="{{local_len}}">{{field.name.original()}}</td>
+        {%when None%}
+        <td colspan="{{local_len}}"><small>reserved</small></td>
+        {%endmatch%}
+        {%endfor%}
+    </tr>
+    <tr>
+        {% for (field, local_len) in self.fields_in_range(*bit_range) %}
+        {%match field %}
+        {%when Some(field)%}
+        <td colspan="{{local_len}}">{{field.access}}</td>
+        {%when None%}
+        <td colspan="{{local_len}}"></td>
+        {%endmatch%}
+        {%endfor%}
+    </tr>
+    <tr>
+        {% for (reset_value, local_len) in self.reset_values_in_range(*bit_range) %}
+        {%match reset_value %}
+        {%when Some(reset_value)%}
+        <td colspan="{{local_len}}">{{reset_value | fmt("{:X}")}}h</td>
+        {%when None%}
+        <td colspan="{{local_len}}">0</td>
+        {%endmatch%}
+        {%endfor%}
+    </tr>
+</table>
+<br />
+{% endfor %}

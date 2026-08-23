@@ -23,15 +23,10 @@ device-driver-parser.workspace = true
 
 itertools.workspace = true
 clap.workspace = true
-syn = { workspace = true, optional = true }
 annotate-snippets.workspace = true
-
-prettyplease = { version = "0.3.0", optional = true }
 
 [dev-dependencies]
 pretty_assertions = "1.4.1"
 
 [features]
-default = ["prettyplease"]
-prettyplease = ["dep:prettyplease", "dep:syn"]
 gen-docs = ["device-driver-parser/gen-docs", "device-driver-mir/gen-docs"]

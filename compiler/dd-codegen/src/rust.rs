@@ -7,9 +7,12 @@ use device_driver_common::{
     identifier::{Identifier, IdentifierType, Type},
     specifiers::{Access, AddressMode},
 };
+use device_driver_diagnostics::{DynError, ResultExt};
 use device_driver_lir::model::{
     BlockMethod, BlockMethodType, Driver, Field, FieldConversionMethod, Repeat,
 };
+
+use crate::File;
 
 #[derive(Parser, Debug, Clone, Default)]
 #[command(no_binary_name = true, bin_name = "")]
@@ -21,6 +24,24 @@ pub struct RustCodegenOptions {
         require_equals = true
     )]
     pub defmt_feature: Option<String>,
+}
+
+pub fn codegen(
+    codegen_options: &RustCodegenOptions,
+    lir_driver: &Driver,
+    source: &str,
+) -> Result<Vec<File>, DynError> {
+    Ok(vec![File {
+        name: "driver.rs".into(),
+        contents: format_code(
+            &DriverTemplateRust::new(lir_driver, source, codegen_options).to_string(),
+        )
+        .with_message(|| "could not format code")?,
+    }])
+}
+
+fn format_code(input: &str) -> Result<String, syn::Error> {
+    Ok(prettyplease::unparse(&syn::parse_file(input)?))
 }
 
 #[derive(Template)]

@@ -27,9 +27,16 @@ struct BuildArgs {
     /// Path to the input file.
     #[arg(short = 's', long = "source", value_name = "FILE", global = true)]
     source_path: Option<PathBuf>,
-    /// Path to output location. Any existing file is overwritten. If not provided, the output is written to stdout.
+    /// Path to output location. Any existing file is overwritten.
+    /// If no output file or target folder is provided and only one file is generated, the output is written to stdout.
+    ///
+    /// Can only be used with targets that generate a single file.
     #[arg(short = 'o', long = "output", value_name = "FILE", global = true)]
     output_path: Option<PathBuf>,
+    /// Path to target folder location. Any existing file in the folder is overwritten.
+    /// If no output file or target folder is provided and only one file is generated, the output is written to stdout.
+    #[arg(short = 't', long = "target", value_name = "FOLDER", global = true)]
+    target_folder: Option<PathBuf>,
     #[command(flatten)]
     options: CompileOptions,
 }
@@ -83,11 +90,16 @@ fn build(args: BuildArgs) -> Result<ExitCode, DynError> {
     let Some(source_path) = args.source_path else {
         return Err(DynError::new("no source path provided"));
     };
+    if args.output_path.is_some() && args.target_folder.is_some() {
+        return Err(DynError::new(
+            "both single file output path and target folder are specified. Both cannot be used at the same time. Pick one",
+        ));
+    }
 
     let source = std::fs::read_to_string(&source_path)
         .with_message(|| format!("Failed to open input file at: {:?}", source_path.display()))?;
 
-    let (output, diagnostics) = device_driver_core::compile(&source, args.options)
+    let (output_files, diagnostics) = device_driver_core::compile(&source, args.options)
         .with_message(|| "internal compilation error")?;
 
     let diagnostics_has_error = diagnostics.has_error();
@@ -110,26 +122,40 @@ fn build(args: BuildArgs) -> Result<ExitCode, DynError> {
         return Ok(ExitCode::FAILURE);
     }
 
-    let output_writer: &mut dyn Write = match &args.output_path {
-        Some(path) => &mut std::fs::File::create(path).with_message(|| {
-            format!(
-                "could not create the output file at: {:?}. Does its directory exist?",
-                path.display()
-            )
-        })?,
-        None => &mut std::io::stdout().lock(),
-    };
+    if let Some(output_folder) = args.target_folder.as_ref() {
+        std::fs::create_dir_all(output_folder).with_message(|| "could not create target folder")?;
 
-    let mut output_writer = std::io::BufWriter::new(output_writer);
-    output_writer
-        .write_all(output.as_bytes())
-        .with_message(|| {
-            format!(
-                "could not write output to {}",
-                args.output_path
-                    .map_or_else(|| "stdout".into(), |path| format!("{:?}", path.display()))
-            )
-        })?;
+        for file in output_files {
+            let file_path = output_folder.join(file.name);
+            std::fs::write(&file_path, file.contents)
+                .with_message(|| format!("could not write output to {}", file_path.display()))?;
+        }
+    } else if let [output_file] = output_files.as_slice() {
+        let output_writer: &mut dyn Write = match &args.output_path {
+            Some(path) => &mut std::fs::File::create(path).with_message(|| {
+                format!(
+                    "could not create the output file at: {:?}. Does its directory exist?",
+                    path.display()
+                )
+            })?,
+            None => &mut std::io::stdout().lock(),
+        };
+
+        let mut output_writer = std::io::BufWriter::new(output_writer);
+        output_writer
+            .write_all(output_file.contents.as_bytes())
+            .with_message(|| {
+                format!(
+                    "could not write output to {}",
+                    args.output_path
+                        .map_or_else(|| "stdout".into(), |path| format!("{:?}", path.display()))
+                )
+            })?;
+    } else {
+        return Err(DynError::new(
+            "more than one file is generated, but no target folder is given",
+        ));
+    }
 
     Ok(ExitCode::SUCCESS)
 }
@@ -174,6 +200,13 @@ fn gen_docs(args: GenDocsArgs) -> Result<ExitCode, DynError> {
             .to_string(),
     )
     .with_message(|| "writing rust-help")?;
+    std::fs::write(
+        cli_folder.join("docs-help.txt"),
+        device_driver_core::DocsCodegenOptions::command()
+            .render_long_help()
+            .to_string(),
+    )
+    .with_message(|| "writing docs-help")?;
 
     device_driver_core::gen_docs(&args.output_path).map(|()| ExitCode::SUCCESS)
 }

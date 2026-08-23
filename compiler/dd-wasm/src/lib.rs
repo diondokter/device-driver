@@ -1,6 +1,7 @@
 use clap::Parser;
 use device_driver_core::{
-    CodegenTarget, CompileOptions, GeneralOptions, MirOptions, RustCodegenOptions,
+    CodegenTarget, CompileOptions, DocsCodegenOptions, GeneralOptions, MirOptions,
+    RustCodegenOptions,
 };
 use device_driver_diagnostics::{Metadata, ResultExt};
 use wasm_bindgen::prelude::*;
@@ -28,6 +29,27 @@ impl From<RustCompileOptions> for CompileOptions {
     }
 }
 
+#[derive(Parser, Debug, Clone)]
+#[command(no_binary_name = true)]
+struct DocsCompileOptions {
+    #[command(flatten)]
+    pub general_options: GeneralOptions,
+    #[command(flatten)]
+    pub mir_options: MirOptions,
+    #[command(flatten)]
+    pub docs_codegen_options: DocsCodegenOptions,
+}
+
+impl From<DocsCompileOptions> for CompileOptions {
+    fn from(value: DocsCompileOptions) -> Self {
+        Self {
+            general_options: value.general_options,
+            mir_options: value.mir_options,
+            target: CodegenTarget::Docs(value.docs_codegen_options),
+        }
+    }
+}
+
 #[wasm_bindgen]
 pub fn compile(source: &str, chars_per_line: usize, target: TargetArg, options: &str) -> Output {
     let options = options.replace("\r\n", " ").replace('\n', " ");
@@ -44,12 +66,22 @@ pub fn compile(source: &str, chars_per_line: usize, target: TargetArg, options: 
             }
         }
         .into(),
+        TargetArg::Docs => match DocsCompileOptions::try_parse_from(options) {
+            Ok(codegen_options) => codegen_options,
+            Err(e) => {
+                return Output {
+                    code: String::new(),
+                    diagnostics: e.render().ansi().to_string(),
+                };
+            }
+        }
+        .into(),
     };
 
     let (output, diagnostics_string) = match device_driver_core::compile(source, compile_options)
         .with_message(|| "internal compiler error")
     {
-        Ok((output, diagnostics)) => {
+        Ok((output_files, diagnostics)) => {
             let mut diagnostics_string = String::new();
             diagnostics
                 .print_to_fmt(
@@ -64,7 +96,12 @@ pub fn compile(source: &str, chars_per_line: usize, target: TargetArg, options: 
                     },
                 )
                 .unwrap();
-            (output, diagnostics_string)
+            if let [output_file] = output_files.as_slice() {
+                (output_file.contents.clone(), diagnostics_string)
+            } else {
+                // TODO: Support multiple files
+                (String::new(), "did not get a single file result".into())
+            }
         }
         Err(e) => (String::new(), e.to_report_string()),
     };
@@ -85,4 +122,5 @@ pub struct Output {
 #[derive(Debug, Clone, Copy)]
 pub enum TargetArg {
     Rust,
+    Docs,
 }

@@ -137,6 +137,8 @@ function setup(): PageContext {
     let editors = setup_monaco(startCode, theme);
 
     let recompile = () => {
+        console.debug("Recompiling...")
+
         let source = (editors.codeEditor.getModel() ?? throwExpression("No code-editor model")).getValue();
         let target = device_driver_wasm.TargetArg[targetPickerSelect.value as keyof typeof device_driver_wasm.TargetArg];
         if (target == undefined) {
@@ -154,7 +156,6 @@ function setup(): PageContext {
         localStorage.setItem("code-session", source);
         localStorage.setItem("target", targetPickerSelect.value);
         localStorage.setItem("compile-options", compilerOptionsInput.value);
-
     };
 
     // Set the recompile events

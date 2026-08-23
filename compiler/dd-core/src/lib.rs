@@ -1,12 +1,11 @@
-#![doc = include_str!(concat!("../", env!("CARGO_PKG_README")))]
-
 use std::fmt::Write;
 
 use clap::Parser;
 use device_driver_diagnostics::{Diagnostics, DynError, ResultExt};
-use itertools::Itertools;
 
-pub use device_driver_codegen::{RustCodegenOptions, Target as CodegenTarget};
+pub use device_driver_codegen::{
+    DocsCodegenOptions, File, RustCodegenOptions, Target as CodegenTarget,
+};
 pub use device_driver_diagnostics::Metadata;
 pub use device_driver_mir::MirOptions;
 
@@ -45,7 +44,10 @@ pub enum TimingsMode {
     Verbose,
 }
 
-pub fn compile(source: &str, options: CompileOptions) -> Result<(String, Diagnostics), DynError> {
+pub fn compile(
+    source: &str,
+    options: CompileOptions,
+) -> Result<(Vec<File>, Diagnostics), DynError> {
     let mut timings = Timings::new(options.general_options.timings);
     let mut diagnostics = Diagnostics::new();
 
@@ -67,62 +69,60 @@ pub fn compile(source: &str, options: CompileOptions) -> Result<(String, Diagnos
         let _t = timings.start_lir();
         device_driver_lir::lower_mir(mir).with_message(|| "could not lower MIR to LIR")?
     };
-    let mut code = {
+    let mut code_files = {
         let _t = timings.start_codegen();
         device_driver_codegen::codegen(&options.target, &lir, source)
-    };
+    }
+    .with_message(|| "could not generate code")?;
 
     if !matches!(options.general_options.timings, TimingsMode::Off) {
         diagnostics.add(timings);
     }
 
-    if diagnostics.has_error() {
-        let _ = write!(code, "\n{}\n", options.target.create_error_message());
-    }
+    for code_file in code_files.iter_mut() {
+        if diagnostics.has_error() {
+            let _ = writeln!(
+                code_file.contents,
+                "{}",
+                options.target.create_error_message()
+            );
+        }
 
-    // TODO: Make formatting dependent on the target. Right now it's just Rust
-    let formatted_code = match format_code(&code) {
-        Ok(formatted_code) => formatted_code,
-        Err(e) => format!(
-            "{}\n\n{code}",
-            e.to_string().lines().map(|e| format!("// {e}")).join("\n")
-        ),
-    };
-
-    let preamble = options.target.to_comments(&format!(
-        "This code was generated using device-driver `{}` ({}),
+        let preamble = options.target.to_comments(&format!(
+            "This code was generated using device-driver `{}` ({}),
 a tool distributed under {} by {}
 This version was built for {} using {}
 
 For more information about device-driver, visit the website: {}",
-        if options.general_options.ui_test_mode {
-            "xx.xx.xx"
-        } else {
-            env!("CARGO_PKG_VERSION")
-        },
-        if options.general_options.ui_test_mode {
-            "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-        } else {
-            env!("BUILDRS_GIT_SHA")
-        },
-        env!("CARGO_PKG_LICENSE"),
-        env!("CARGO_PKG_AUTHORS"),
-        if options.general_options.ui_test_mode {
-            "xxxx-xxxx-xxxx"
-        } else {
-            env!("BUILDRS_TARGET")
-        },
-        if options.general_options.ui_test_mode {
-            "rustc 1.xx.x (xxxxxxxxx xxxx-xx-xx)"
-        } else {
-            env!("BUILDRS_RUSTC")
-        },
-        env!("CARGO_PKG_HOMEPAGE"),
-    ));
+            if options.general_options.ui_test_mode {
+                "xx.xx.xx"
+            } else {
+                env!("CARGO_PKG_VERSION")
+            },
+            if options.general_options.ui_test_mode {
+                "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+            } else {
+                env!("BUILDRS_GIT_SHA")
+            },
+            env!("CARGO_PKG_LICENSE"),
+            env!("CARGO_PKG_AUTHORS"),
+            if options.general_options.ui_test_mode {
+                "xxxx-xxxx-xxxx"
+            } else {
+                env!("BUILDRS_TARGET")
+            },
+            if options.general_options.ui_test_mode {
+                "rustc 1.xx.x (xxxxxxxxx xxxx-xx-xx)"
+            } else {
+                env!("BUILDRS_RUSTC")
+            },
+            env!("CARGO_PKG_HOMEPAGE"),
+        ));
 
-    let formatted_code = preamble + "\n\n" + &formatted_code;
+        code_file.contents = preamble + "\n\n" + &code_file.contents;
+    }
 
-    Ok((formatted_code, diagnostics))
+    Ok((code_files, diagnostics))
 }
 
 #[cfg(feature = "gen-docs")]
@@ -158,77 +158,4 @@ pub fn gen_docs(output_path: &std::path::Path) -> Result<(), DynError> {
     device_driver_mir::gen_docs(&mir_shapes_folder).with_message(|| "gen-docs for mir shapes")?;
 
     Ok(())
-}
-
-#[cfg(not(feature = "prettyplease"))]
-fn format_code(input: &str) -> Result<String, DynError> {
-    use std::io::{Read, Write};
-    use std::process::Stdio;
-
-    use device_driver_diagnostics::ResultExt;
-
-    let mut cmd = std::process::Command::new("rustfmt");
-
-    cmd.args(["--edition", "2024"])
-        .args(["--config", "newline_style=native"])
-        .args(["--color", "never"])
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-
-    let mut child = cmd
-        .spawn()
-        .with_message(|| "error while spawning rustfmt")?;
-    let mut child_stdin = child.stdin.take().unwrap();
-    let mut child_stdout = child.stdout.take().unwrap();
-
-    // Write to stdin in a new thread, so that we can read from stdout on this
-    // thread. This keeps the child from blocking on writing to its stdout which
-    // might block us from writing to its stdin.
-    let output = std::thread::scope(|s| {
-        s.spawn(|| {
-            child_stdin
-                .write_all(input.as_bytes())
-                .with_message(|| "couldn't write input to rustfmt")?;
-            child_stdin
-                .flush()
-                .with_message(|| "couldn't flush input to rustfmt")?;
-            drop(child_stdin);
-            Result::<(), DynError>::Ok(())
-        });
-        let handle: std::thread::ScopedJoinHandle<'_, Result<Vec<u8>, DynError>> = s.spawn(|| {
-            let mut output = Vec::new();
-            child_stdout.read_to_end(&mut output).into_dyn_result()?;
-            Ok(output)
-        });
-
-        handle.join()
-    });
-
-    let status = child.wait().into_dyn_result()?;
-    if !status.success() {
-        return Err(DynError::new(format!(
-            "rustfmt exited unsuccessfully ({status}):\n{}",
-            child
-                .stderr
-                .map(|mut stderr| {
-                    let mut err = String::new();
-                    stderr.read_to_string(&mut err).unwrap();
-                    err
-                })
-                .unwrap_or_default()
-        )));
-    }
-
-    let output = match output {
-        Ok(output) => output,
-        Err(e) => std::panic::resume_unwind(e),
-    };
-
-    String::from_utf8(output?).into_dyn_result()
-}
-
-#[cfg(feature = "prettyplease")]
-fn format_code(input: &str) -> Result<String, syn::Error> {
-    Ok(prettyplease::unparse(&syn::parse_file(input)?))
 }

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Register {{ method.name.original() }}</title>
+
+    <style>
+        html {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        table {
+            {# width: min(100%, 1080px); #}
+        }
+
+        table,
+        th,
+        td {
+            border: 1px solid;
+            border-collapse: collapse;
+            padding: 5px;
+            text-align: center;
+        }
+    </style>
+
+    <meta name="color-scheme" content="dark light" />
+</head>
+
+<h1>Register {{ method.name.original() }}</h1>
+<p>
+    {{ method.description }}
+</p>
+
+<table>
+    <tr>
+        <th>Name</th>
+        <th>Address</th>
+        <th>Parent</th>
+        <th>Repeat</th>
+        <th>Access</th>
+        <th>Fields</th>
+    </tr>
+    <tr>
+        <td>{{ method.name.original() }}<br />{{ method.name.words_display() }}</td>
+        <td>{{ method.address }}<br />{{ method.address | fmt("{:X}h") }}</td>
+        <td>todo</td>
+        <td>
+            {% match &method.repeat %}
+            {% when Repeat::None %}
+            None
+            {% when Repeat::Count { count, stride } %}
+            {{count}} <small>stride</small> {{stride}}
+            {% when Repeat::Enum { enum_name, stride, .. } %}
+            {{enum_name.original()}}<small>stride</small>{{stride}}
+            {% endmatch %}
+        </td>
+        <td>{{access}}</td>
+        <td>{{fieldset_template.fieldset.name.original()}}</td>
+    </tr>
+</table>
+
+{{fieldset_template}}
+
+</html>

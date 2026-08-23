@@ -5,6 +5,8 @@ use device_driver_common::{
 };
 
 pub struct Driver {
+    pub manifest_name: Identifier<All>,
+    pub manifest_description: String,
     pub devices: Vec<Device>,
     pub field_sets: Vec<FieldSet>,
     pub enums: Vec<Enum>,
