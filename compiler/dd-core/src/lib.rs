@@ -92,7 +92,6 @@ pub fn compile(source: &str, options: CompileOptions) -> Result<(String, Diagnos
     let preamble = options.target.to_comments(&format!(
         "This code was generated using device-driver `{}` ({}),
 a tool distributed under {} by {}
-This version was built for {} using {}
 
 For more information about device-driver, visit the website: {}",
         if options.general_options.ui_test_mode {
@@ -107,16 +106,6 @@ For more information about device-driver, visit the website: {}",
         },
         env!("CARGO_PKG_LICENSE"),
         env!("CARGO_PKG_AUTHORS"),
-        if options.general_options.ui_test_mode {
-            "xxxx-xxxx-xxxx"
-        } else {
-            env!("BUILDRS_TARGET")
-        },
-        if options.general_options.ui_test_mode {
-            "rustc 1.xx.x (xxxxxxxxx xxxx-xx-xx)"
-        } else {
-            env!("BUILDRS_RUSTC")
-        },
         env!("CARGO_PKG_HOMEPAGE"),
     ));
 
