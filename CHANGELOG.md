@@ -2,6 +2,11 @@
 
 ### Unreleased
 
+### 2.1.0 (24-08-26)
+
+- Added optional `address-offset` to `device` so you can have a global offset
+- Removed the mention of the rust compiler version from the preamble to make the generated code easier to reproduce
+
 ### 2.0.0 (21-08-26)
 
 This release should feel familiar to v1 users, and yet lay the foundations of [lots to come](https://device-driver.com/book/v2/intro.html#future-plans).
