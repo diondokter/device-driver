@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-89d9d78e.js";
+            window.path_to_searchindex_js = "searchindex-f577de01.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-3f8de81c.js"></script>
@@ -2397,9 +2397,11 @@ Options:
 </code></pre>
 <h3 id="tool---cli"><a class="header" href="#tool---cli">Tool - CLI</a></h3>
 <p>The cli can be installed using:</p>
-<pre><code class="language-sh">cargo install device-driver-cli --all-features
+<pre><code class="language-sh">cargo install device-driver-cli
 </code></pre>
-<p>It’s possible to omit using <code>--all-features</code>, but you’ll be missing some of the less important subcommands like <code>gen-docs</code> and <code>convert</code> (but it compiles faster).</p>
+<p>This gives access to the build command. If you want be able to convert formats to ddsl, then add the appropriate converter feature, like <code>--features converter-dd-v1</code>.
+This is done to improve compile times.
+It’s possible to use <code>--all-features</code>, but right now that only compiles using nightly.</p>
 <p>In the future more methods of distribution may become available. (If you have experience with this, help is very much wanted!)</p>
 <p>Once installed, you can use the compiler using the <code>ddc</code> command (device-driver compiler):</p>
 <pre><code class="language-sh">ddc --help
