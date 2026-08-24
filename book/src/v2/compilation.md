@@ -43,10 +43,12 @@ All Rust target specific features start with `--rust`.
 
 The cli can be installed using:
 ```sh
-cargo install device-driver-cli --all-features
+cargo install device-driver-cli
 ```
 
-It's possible to omit using `--all-features`, but you'll be missing some of the less important subcommands like `gen-docs` and `convert` (but it compiles faster).
+This gives access to the build command. If you want be able to convert formats to ddsl, then add the appropriate converter feature, like `--features converter-dd-v1`.
+This is done to improve compile times.
+It's possible to use `--all-features`, but right now that only compiles using nightly.
 
 In the future more methods of distribution may become available. (If you have experience with this, help is very much wanted!)
 
