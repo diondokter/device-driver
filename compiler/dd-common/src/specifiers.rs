@@ -394,6 +394,12 @@ impl AddressRange {
     }
 }
 
+impl Display for AddressRange {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}:{}", self.end, self.start)
+    }
+}
+
 /// Type to specify how addresses work
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]

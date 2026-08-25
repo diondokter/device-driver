@@ -1,4 +1,4 @@
-use std::{collections::HashMap, range::Range};
+use std::{borrow::Cow, collections::HashMap, range::Range};
 
 use askama::Template;
 use clap::Parser;
@@ -7,7 +7,10 @@ use device_driver_common::{
     specifiers::{Access, ByteOrder},
 };
 use device_driver_diagnostics::DynError;
-use device_driver_lir::model::{BlockMethod, BlockMethodType, Driver, Field, FieldSet, Repeat};
+use device_driver_lir::model::{
+    BlockMethod, BlockMethodType, Driver, Field, FieldConversionMethod, FieldSet, Repeat,
+};
+use itertools::Itertools;
 
 use crate::File;
 
@@ -263,6 +266,38 @@ impl<'a> FieldsetTemplateDocs<'a> {
             ))
         })
     }
+
+    fn field_conversion_display(&self, field: &Field) -> Cow<'static, str> {
+        match &field.conversion_method {
+            FieldConversionMethod::None => "".into(),
+            FieldConversionMethod::Into(identifier) => {
+                format!("{}<br/>from ", identifier.original()).into()
+            }
+            FieldConversionMethod::UnsafeInto(identifier) => {
+                format!("{}<br/>from ", identifier.original()).into()
+            }
+            FieldConversionMethod::TryInto(identifier) => {
+                format!("{}<br/>try from ", identifier.original()).into()
+            }
+            FieldConversionMethod::Bool => "".into(),
+        }
+    }
+
+    fn field_reset_value(&self, field: &Field) -> Cow<'static, str> {
+        let Some(Some(reset_value)) = self.reset_value else {
+            return "0h".into();
+        };
+
+        let bits = load_bits(
+            &reset_value.value,
+            self.fieldset.byte_order,
+            (field.address.start..field.address.end + 1).into(),
+        );
+
+        // TODO: Show converted value
+
+        format!("{bits:X}h").into()
+    }
 }
 
 fn load_bits(reset_value: &[u8], byte_order: ByteOrder, mut bit_range: Range<u32>) -> u64 {
@@ -285,4 +320,8 @@ fn load_bits(reset_value: &[u8], byte_order: ByteOrder, mut bit_range: Range<u32
         }
     }
     val
+}
+
+fn description_to_html(description: &str) -> String {
+    description.lines().join("<br/>")
 }

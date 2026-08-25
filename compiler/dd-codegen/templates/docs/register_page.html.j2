@@ -12,7 +12,7 @@
         }
 
         table {
-            {# width: min(100%, 1080px); #}
+            margin-bottom: 1em;
         }
 
         table,
@@ -30,7 +30,7 @@
 
 <h1>Register {{ method.name.original() }}</h1>
 <p>
-    {{ method.description }}
+    {{ self::description_to_html(&method.description) }}
 </p>
 
 <table>
@@ -60,6 +60,8 @@
         <td>{{fieldset_template.fieldset.name.original()}}</td>
     </tr>
 </table>
+
+<h1>Fields {{ fieldset_template.fieldset.name.original() }}</h1>
 
 {{fieldset_template}}
 

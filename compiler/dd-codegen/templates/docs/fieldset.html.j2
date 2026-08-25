@@ -1,6 +1,5 @@
-<h2>Fields {{ fieldset.name.original() }}</h2>
 <p>
-    {{ fieldset.description }}
+    {{ self::description_to_html(&fieldset.description) }}
 </p>
 
 <table>
@@ -22,7 +21,7 @@
     </tr>
 </table>
 
-<br />
+<h2>Overview</h2>
 
 {% for bit_range in self.overview_tables() %}
 <table>
@@ -68,5 +67,27 @@
         {%endfor%}
     </tr>
 </table>
-<br />
 {% endfor %}
+
+<h2>Fields</h2>
+
+<table>
+    <tr>
+        <th>Bits</th>
+        <th>Field</th>
+        <th>Description</th>
+        <th>Access</th>
+        <th>Type</th>
+        <th>Value</th>
+    </tr>
+    {% for field in fieldset.fields %}
+    <tr>
+        <td>{{field.address}}</td>
+        <td>{{field.name.original()}}</td>
+        <td>{{self::description_to_html(&field.description)}}</td>
+        <td>{{field.access}}</td>
+        <td>{{self.field_conversion_display(field)}}{{field.base_type}}</td>
+        <td>{{self.field_reset_value(field)}}</td>
+    </tr>
+    {% endfor %}
+</table>
