@@ -2,30 +2,9 @@
 <html>
 
 <head>
-    <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Register {{ method.name.original() }}</title>
-
-    <style>
-        html {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        table {
-            margin-bottom: 1em;
-        }
-
-        table,
-        th,
-        td {
-            border: 1px solid;
-            border-collapse: collapse;
-            padding: 5px;
-            text-align: center;
-        }
-    </style>
-
-    <meta name="color-scheme" content="dark light" />
+    {% let page_type = "Register" %}
+    {% let title = method.name.original() %}
+    {% include "temphead.html.j2" %}
 </head>
 
 <h1>Register {{ method.name.original() }}</h1>
@@ -61,7 +40,7 @@
     </tr>
 </table>
 
-<h1>Fields {{ fieldset_template.fieldset.name.original() }}</h1>
+<h2>Fields {{ fieldset_template.fieldset.name.original() }}</h2>
 
 {{fieldset_template}}
 

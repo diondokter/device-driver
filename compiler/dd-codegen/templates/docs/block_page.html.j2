@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+
+{% decl page_type %}
+{% if block.root %}
+{% let page_type = "Device" %}
+{% else %}
+{% let page_type = "Block" %}
+{% endif %}
+
+<head>
+    {% let title = self.block.name.original() %}
+    {% include "temphead.html.j2" %}
+</head>
+
+<h1>{{ page_type }} {{ block.name.original() }}</h1>
+<p>
+    {{ self::description_to_html(&block.description) }}
+</p>
+
+<table>
+    <tr>
+        <th>Name</th>
+        <th>Address offset</th>
+        <th>Parent</th>
+        <th>Register address type</th>
+        <th>Command address type</th>
+        <th>Buffer address type</th>
+        <th>Register address mode</th>
+    </tr>
+    <tr>
+        <td>{{ block.name.original() }}<br />{{ block.name.words_display() }}</td>
+        <td>todo</td>
+        <td>todo</td>
+        <td>{{block.register_address_type}}</td>
+        <td>{{block.command_address_type}}</td>
+        <td>{{block.buffer_address_type}}</td>
+        <td>{{block.register_address_mode | fmt("{:?}")}}</td>
+    </tr>
+</table>
+
+{% if self.has_blocks() %}
+<h2>Blocks</h2>
+
+<table>
+    <tr>
+        <th>Name</th>
+        <th>Description</th>
+        <th>Repeat</th>
+    </tr>
+    {% for block in self.blocks() %}
+    <tr>
+        <td>{{ block.name.original() }}<br />{{ block.name.words_display() }}</td>
+        <td>{{ self::description_to_html(&block.description) }}</td>
+        <td>
+            {% match &block.repeat %}
+            {% when Repeat::None %}
+            None
+            {% when Repeat::Count { count, stride } %}
+            {{count}} <small>stride</small> {{stride}}
+            {% when Repeat::Enum { enum_name, stride, .. } %}
+            {{enum_name.original()}}<small>stride</small>{{stride}}
+            {% endmatch %}
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}
+
+{% if self.has_registers() %}
+<h2>Registers</h2>
+
+<table>
+    <tr>
+        <th>Address</th>
+        <th>Name</th>
+        <th>Description</th>
+        <th>Repeat</th>
+    </tr>
+    {% for register in self.registers() %}
+    <tr>
+        <td>{{ register.address | fmt("{:X}h") }}</td>
+        <td>{{ register.name.original() }}<br />{{ register.name.words_display() }}</td>
+        <td>{{ self::description_to_html(&register.description) }}</td>
+        <td>
+            {% match &register.repeat %}
+            {% when Repeat::None %}
+            None
+            {% when Repeat::Count { count, stride } %}
+            {{count}} <small>stride</small> {{stride}}
+            {% when Repeat::Enum { enum_name, stride, .. } %}
+            {{enum_name.original()}}<small>stride</small>{{stride}}
+            {% endmatch %}
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}
+
+{% if self.has_commands() %}
+<h2>Commands</h2>
+
+<table>
+    <tr>
+        <th>Address</th>
+        <th>Name</th>
+        <th>Description</th>
+        <th>Repeat</th>
+    </tr>
+    {% for command in self.commands() %}
+    <tr>
+        <td>{{ command.address | fmt("{:X}h") }}</td>
+        <td>{{ command.name.original() }}<br />{{ command.name.words_display() }}</td>
+        <td>{{ self::description_to_html(&command.description) }}</td>
+        <td>
+            {% match &command.repeat %}
+            {% when Repeat::None %}
+            None
+            {% when Repeat::Count { count, stride } %}
+            {{count}} <small>stride</small> {{stride}}
+            {% when Repeat::Enum { enum_name, stride, .. } %}
+            {{enum_name.original()}}<small>stride</small>{{stride}}
+            {% endmatch %}
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}
+
+{% if self.has_buffers() %}
+<h2>Buffers</h2>
+
+<table>
+    <tr>
+        <th>Address</th>
+        <th>Name</th>
+        <th>Description</th>
+        <th>Repeat</th>
+    </tr>
+    {% for buffer in self.buffers() %}
+    <tr>
+        <td>{{ buffer.address | fmt("{:X}h") }}</td>
+        <td>{{ buffer.name.original() }}<br />{{ buffer.name.words_display() }}</td>
+        <td>{{ self::description_to_html(&buffer.description) }}</td>
+        <td>
+            {% match &buffer.repeat %}
+            {% when Repeat::None %}
+            None
+            {% when Repeat::Count { count, stride } %}
+            {{count}} <small>stride</small> {{stride}}
+            {% when Repeat::Enum { enum_name, stride, .. } %}
+            {{enum_name.original()}}<small>stride</small>{{stride}}
+            {% endmatch %}
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}
+
+</html>

@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    {% let page_type = "Fieldset" %}
+    {% let title = fieldset_template.fieldset.name.original() %}
+    {% include "temphead.html.j2" %}
+</head>
+
+<h1>Fields {{ fieldset_template.fieldset.name.original() }}</h1>
+
+{{fieldset_template}}
+
+</html>

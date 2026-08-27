@@ -8,7 +8,7 @@ use device_driver_common::{
 };
 use device_driver_diagnostics::DynError;
 use device_driver_lir::model::{
-    BlockMethod, BlockMethodType, Driver, Field, FieldConversionMethod, FieldSet, Repeat,
+    Block, BlockMethod, BlockMethodType, Driver, Field, FieldConversionMethod, FieldSet, Repeat,
 };
 use itertools::Itertools;
 
@@ -61,6 +61,17 @@ pub fn codegen(
 
     let mut output_files = Vec::new();
 
+    for block in lir_driver
+        .devices
+        .iter()
+        .flat_map(|device| device.blocks.iter())
+    {
+        output_files.push(File {
+            name: format!("block.{}.html", block.name.original()),
+            contents: BlockPageTemplateDocs { block }.to_string(),
+        });
+    }
+
     // Write out all operations
     for method in lir_driver
         .devices
@@ -77,7 +88,7 @@ pub fn codegen(
             } => {
                 output_files.push(File {
                     name: format!("register.{}.html", method.name.original()),
-                    contents: RegisterTemplateDocs {
+                    contents: RegisterPageTemplateDocs {
                         method,
                         fieldset_template: FieldsetTemplateDocs {
                             fieldset: lir_driver
@@ -102,9 +113,28 @@ pub fn codegen(
             BlockMethodType::Command {
                 field_set_name_in: _,
                 field_set_name_out: _,
-            } => todo!(),
-            BlockMethodType::Buffer { access: _ } => todo!(),
+            } => {
+                // TODO
+            }
+            BlockMethodType::Buffer { access: _ } => {
+                // TODO
+            }
         }
+    }
+
+    for fs in &lir_driver.field_sets {
+        output_files.push(File {
+            name: format!("type.{}.html", fs.name.original()),
+            contents: FieldsetPageTemplateDocs {
+                fieldset_template: FieldsetTemplateDocs {
+                    fieldset: fs,
+                    reset_value: None,
+                    codegen_options: &codegen_options,
+                    source,
+                },
+            }
+            .to_string(),
+        });
     }
 
     Ok(output_files)
@@ -116,10 +146,20 @@ pub fn codegen(
     escape = "none",
     whitespace = "minimize"
 )]
-pub struct RegisterTemplateDocs<'a> {
+pub struct RegisterPageTemplateDocs<'a> {
     method: &'a BlockMethod,
     fieldset_template: FieldsetTemplateDocs<'a>,
     access: &'a Access,
+}
+
+#[derive(Template)]
+#[template(
+    path = "docs/fieldset_page.html.j2",
+    escape = "none",
+    whitespace = "minimize"
+)]
+pub struct FieldsetPageTemplateDocs<'a> {
+    fieldset_template: FieldsetTemplateDocs<'a>,
 }
 
 #[derive(Template)]
@@ -324,4 +364,60 @@ fn load_bits(reset_value: &[u8], byte_order: ByteOrder, mut bit_range: Range<u32
 
 fn description_to_html(description: &str) -> String {
     description.lines().join("<br/>")
+}
+
+#[derive(Template)]
+#[template(
+    path = "docs/block_page.html.j2",
+    escape = "none",
+    whitespace = "minimize"
+)]
+pub struct BlockPageTemplateDocs<'a> {
+    block: &'a Block,
+}
+
+impl<'a> BlockPageTemplateDocs<'a> {
+    pub fn blocks(&self) -> impl Iterator<Item = &BlockMethod> {
+        self.block
+            .methods
+            .iter()
+            .filter(|method| matches!(method.method_type, BlockMethodType::Block { .. }))
+    }
+
+    pub fn has_blocks(&self) -> bool {
+        self.blocks().next().is_some()
+    }
+
+    pub fn registers(&self) -> impl Iterator<Item = &BlockMethod> {
+        self.block
+            .methods
+            .iter()
+            .filter(|method| matches!(method.method_type, BlockMethodType::Register { .. }))
+    }
+
+    pub fn has_registers(&self) -> bool {
+        self.registers().next().is_some()
+    }
+
+    pub fn commands(&self) -> impl Iterator<Item = &BlockMethod> {
+        self.block
+            .methods
+            .iter()
+            .filter(|method| matches!(method.method_type, BlockMethodType::Command { .. }))
+    }
+
+    pub fn has_commands(&self) -> bool {
+        self.commands().next().is_some()
+    }
+
+    pub fn buffers(&self) -> impl Iterator<Item = &BlockMethod> {
+        self.block
+            .methods
+            .iter()
+            .filter(|method| matches!(method.method_type, BlockMethodType::Buffer { .. }))
+    }
+
+    pub fn has_buffers(&self) -> bool {
+        self.buffers().next().is_some()
+    }
 }
