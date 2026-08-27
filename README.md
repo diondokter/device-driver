@@ -7,7 +7,60 @@
 
 > A toolkit to write better device drivers, faster.
 
-Head over to [the website](https://device-driver.com/) to learn about how to use the project to build your own device drivers.
+Head over to the [website](https://device-driver.com/) to learn about how to use the project to build your own device drivers.  
+There you'll find the [book](https://device-driver.com/book/) which contains the reference and a [tutorial](https://device-driver.com/book/v2/tutorial-ym3812.html).
+
+## Short overview
+
+Use a simple specification language to define your driver:
+```ddsl
+device Ym3812 {
+    register-address-type: u8,
+
+    register operator_settings1 {
+        address: 0x40,
+        access: WO,
+
+        fields: fieldset _ {
+            size-bytes: 1,
+            /// Causes output levels to decrease as the frequency rises
+            field level_key_scaling 7:6 RW -> _ as enum ScalingLevel {
+                NoChange: 0b00,
+                DB3PerOctave: 0b01,
+                DB1_5PerOctave: 0b10,
+                DB6PerOctave: 0b11,
+            },
+            /// Attenuates the operator output level
+            field output_level 5:0 RW,
+        },
+    },
+}
+```
+Generate a rich `svd2rust`/`chiptool`-like driver API in Rust:
+```rust
+// Create device instance
+let mut device = MyDevice::new(DeviceInterface::new());
+
+// Write a register
+device.foo().write(|reg| reg.set_value_1(MyEnum::B))?;
+
+// Anything can be used async
+device.foo().read_async().await?;
+
+// Dispatch commands
+device.simple_command().dispatch()?;
+
+// Operate on registers in bulk
+let (foo, bar) = device
+    .bulk_read()
+    .with(|d| d.foo().plan())
+    .with(|d| d.bar().plan())
+    .execute()?;
+
+// Write and read buffers
+device.wo_buf().write(&[0, 1, 2, 3])?;
+let len = device.ro_buf().read(&mut buffer)?;
+```
 
 ## Versions
 
