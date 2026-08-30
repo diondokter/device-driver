@@ -130,6 +130,7 @@ pub(crate) enum Assumption {
     EnumsNotEmpty,
     RepeatMathChecked,
     AccessSet,
+    LocalNamespacesAssigned,
 
     _End, // Keep as the last element
 }
@@ -150,6 +151,7 @@ impl Assumption {
         Assumption::EnumsNotEmpty,
         Assumption::RepeatMathChecked,
         Assumption::AccessSet,
+        Assumption::LocalNamespacesAssigned,
     ];
 
     const _ALL_ASSUMPTIONS_PRESENT_CHECK: () =

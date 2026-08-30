@@ -11,7 +11,7 @@ use device_driver_common::{
         ResetValue, TypeConversion,
     },
 };
-use device_driver_diagnostics::{DynError, ResultExt};
+use device_driver_diagnostics::DynError;
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Manifest {

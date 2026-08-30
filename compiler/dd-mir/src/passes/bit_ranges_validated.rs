@@ -20,6 +20,7 @@ impl Pass for BitRangesValidated {
         Assumption::RepeatStrideNonZero,
         Assumption::RepeatEnumRefValid,
         Assumption::NamesUnique,
+        Assumption::LocalNamespacesAssigned,
     ];
     const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
 

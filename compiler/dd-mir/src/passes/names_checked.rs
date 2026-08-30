@@ -10,7 +10,7 @@ use device_driver_diagnostics::{Diagnostics, DynError, errors::InvalidIdentifier
 pub struct NamesChecked;
 
 impl Pass for NamesChecked {
-    const ASSUMPTIONS_MADE: &[Assumption] = &[];
+    const ASSUMPTIONS_MADE: &[Assumption] = &[Assumption::LocalNamespacesAssigned];
     const ASSUMPTIONS_RELEASED: &[Assumption] = &[Assumption::NamesValid];
 
     fn run_pass(

@@ -19,8 +19,11 @@ use device_driver_diagnostics::{
 pub struct FieldConversionValid;
 
 impl Pass for FieldConversionValid {
-    const ASSUMPTIONS_MADE: &[Assumption] =
-        &[Assumption::FieldBaseTypesSpecified, Assumption::NamesUnique];
+    const ASSUMPTIONS_MADE: &[Assumption] = &[
+        Assumption::FieldBaseTypesSpecified,
+        Assumption::NamesUnique,
+        Assumption::LocalNamespacesAssigned,
+    ];
     const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
 
     fn run_pass(

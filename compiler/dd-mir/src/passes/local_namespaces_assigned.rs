@@ -11,7 +11,7 @@ pub struct LocalNamespacesAssigned;
 
 impl Pass for LocalNamespacesAssigned {
     const ASSUMPTIONS_MADE: &[Assumption] = &[];
-    const ASSUMPTIONS_RELEASED: &[Assumption] = &[];
+    const ASSUMPTIONS_RELEASED: &[Assumption] = &[Assumption::LocalNamespacesAssigned];
 
     fn run_pass(
         manifest: &mut Manifest,
