@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f577de01.js";
+            window.path_to_searchindex_js = "searchindex-4b4aa130.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-3f8de81c.js"></script>
@@ -1232,7 +1232,7 @@ There are a couple of defined node types:</p>
 <li>Extern</li>
 </ul>
 <p>Notice how manifests and blocks are part of both.</p>
-<p>*: Enum variants and fields are sort of objects, but they are namespaced within their defining enum/fieldset.</p>
+<p>*: Enum variants and fields are sort of objects, but they are namespaced within their local defining enum/fieldset.</p>
 <h2 id="formatting-style-guide"><a class="header" href="#formatting-style-guide">Formatting style guide</a></h2>
 <p>We stick close to Rust’s style guide. On its face that means:</p>
 <ul>
@@ -1437,7 +1437,7 @@ manifest Example {
 <tr><th>Property</th><th>Value</th></tr>
 </thead>
 <tbody>
-<tr><td>Identifier namespace</td><td><code>All</code></td></tr>
+<tr><td>Identifier namespace</td><td><code>Global</code></td></tr>
 <tr><td>Supports repeat</td><td><code>no</code></td></tr>
 <tr><td>Supports basetype</td><td><code>no</code></td></tr>
 <tr><td>Supports conversion type</td><td><code>no</code></td></tr>
@@ -1757,7 +1757,7 @@ block Example[8 stride 4] {
 <tr><th>Property</th><th>Value</th></tr>
 </thead>
 <tbody>
-<tr><td>Identifier namespace</td><td><code>All</code></td></tr>
+<tr><td>Identifier namespace</td><td><code>Global</code></td></tr>
 <tr><td>Supports repeat</td><td><code>yes</code></td></tr>
 <tr><td>Supports basetype</td><td><code>no</code></td></tr>
 <tr><td>Supports conversion type</td><td><code>no</code></td></tr>
@@ -2297,7 +2297,7 @@ field Example[8 stride 4] 8:0 RW -&gt; uint as try Foo
 <tr><th>Property</th><th>Value</th></tr>
 </thead>
 <tbody>
-<tr><td>Identifier namespace</td><td><code>All</code></td></tr>
+<tr><td>Identifier namespace</td><td><code>Local</code></td></tr>
 <tr><td>Supports repeat</td><td><code>yes</code></td></tr>
 <tr><td>Supports basetype</td><td><code>yes</code></td></tr>
 <tr><td>Supports conversion type</td><td><code>yes</code></td></tr>
