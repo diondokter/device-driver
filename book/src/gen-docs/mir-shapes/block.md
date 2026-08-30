@@ -19,7 +19,7 @@ block Example[8 stride 4] {
 
 | Property | Value |
 | --- | --- |
-| Identifier namespace | `All` |
+| Identifier namespace | `Global` |
 | Supports repeat | `yes` |
 | Supports basetype | `no` |
 | Supports conversion type | `no` |

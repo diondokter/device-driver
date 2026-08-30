@@ -21,7 +21,7 @@ manifest Example {
 
 | Property | Value |
 | --- | --- |
-| Identifier namespace | `All` |
+| Identifier namespace | `Global` |
 | Supports repeat | `no` |
 | Supports basetype | `no` |
 | Supports conversion type | `no` |

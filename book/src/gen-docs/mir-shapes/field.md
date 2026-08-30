@@ -8,7 +8,7 @@ field Example[8 stride 4] 8:0 RW -> uint as try Foo
 
 | Property | Value |
 | --- | --- |
-| Identifier namespace | `All` |
+| Identifier namespace | `Local` |
 | Supports repeat | `yes` |
 | Supports basetype | `yes` |
 | Supports conversion type | `yes` |

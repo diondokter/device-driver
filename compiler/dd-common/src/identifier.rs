@@ -48,6 +48,18 @@ impl RuntimeNamespace {
     }
 }
 
+impl Display for RuntimeNamespace {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RuntimeNamespace::Global => write!(f, "Global"),
+            RuntimeNamespace::Local { site: Some(site) } => write!(f, "Local({site})"),
+            RuntimeNamespace::Local { site: None } => write!(f, "Local"),
+            RuntimeNamespace::Operation => write!(f, "Operation"),
+            RuntimeNamespace::Type => write!(f, "Type"),
+        }
+    }
+}
+
 #[repr(transparent)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Type(RuntimeNamespace);

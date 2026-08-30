@@ -55,7 +55,7 @@ fn gen_doc<S: Shape>(folder: &Path) -> Result<(), DynError> {
     writeln!(doc, "| --- | --- |").into_dyn_result()?;
     writeln!(
         doc,
-        "| Identifier namespace | `{:?}` |",
+        "| Identifier namespace | `{}` |",
         S::NameIdentifierType::default().runtime_value()
     )
     .into_dyn_result()?;
