@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    model::{LendingIterator, Manifest, UniqueId},
+    model::{LendingIterator, Manifest, ObjectId},
     passes::{Assumption, Pass},
 };
 use device_driver_common::specifiers::ByteOrder;
@@ -17,7 +17,7 @@ impl Pass for ByteOrderSpecified {
     fn run_pass(
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,
-    ) -> Result<HashSet<UniqueId>, DynError> {
+    ) -> Result<HashSet<ObjectId>, DynError> {
         let mut iter = manifest.iter_objects_with_config_mut();
         while let Some((object, config)) = iter.next() {
             if let Some(fs) = object.as_field_set_mut() {

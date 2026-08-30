@@ -2,14 +2,14 @@ use std::{collections::HashSet, num::NonZero, time::Duration};
 
 use clap::Parser;
 use device_driver_common::{
-    identifier::{IdentifierRef, IdentifierType},
+    identifier::{IdentifierRef, Namespace},
     span::{Span, SpanExt},
     specifiers::{Repeat, RepeatSource},
 };
 use device_driver_diagnostics::{Diagnostics, DynError};
 use device_driver_parser::Ast;
 
-use crate::model::{Device, LendingIterator, Manifest, Object, Unique, UniqueId};
+use crate::model::{Device, Id, LendingIterator, Manifest, Object, ObjectId};
 
 mod lowering;
 pub mod model;
@@ -50,7 +50,7 @@ pub fn lower_ast(
 }
 
 /// This assumes [passes::Assumption::NamesUnique]
-pub fn search_object<'o, T: IdentifierType>(
+pub fn search_object<'o, T: Namespace>(
     manifest: &'o Manifest,
     name: &IdentifierRef<T>,
 ) -> Option<&'o Object> {
@@ -156,8 +156,11 @@ pub fn find_min_max_addresses<'m>(
     ))
 }
 
-fn remove_objects(manifest: &mut Manifest, mut removals: HashSet<UniqueId>) {
-    fn try_remove_from_vec(objects: &mut Vec<Object>, removals: &mut HashSet<UniqueId>) {
+fn remove_objects(
+    manifest: &mut Manifest,
+    mut removals: HashSet<ObjectId>,
+) -> Result<(), DynError> {
+    fn try_remove_from_vec(objects: &mut Vec<Object>, removals: &mut HashSet<ObjectId>) {
         removals.retain(|removal| {
             if let Some((index, _)) = objects
                 .iter()
@@ -169,10 +172,18 @@ fn remove_objects(manifest: &mut Manifest, mut removals: HashSet<UniqueId>) {
             } else {
                 // Find a field
                 for fs in objects.iter_mut().filter_map(|o| o.as_field_set_mut()) {
-                    let fs_id = fs.id();
-                    for field_index in 0..fs.fields.len() {
-                        if fs.fields[field_index].has_id_with(fs_id.clone(), removal) {
-                            fs.fields.remove(field_index);
+                    for index in 0..fs.fields.len() {
+                        if fs.fields[index].has_id(removal) {
+                            fs.fields.remove(index);
+                            return false;
+                        }
+                    }
+                }
+                // Find an enum variant
+                for enum_value in objects.iter_mut().filter_map(|o| o.as_enum_mut()) {
+                    for index in 0..enum_value.variants.len() {
+                        if enum_value.variants[index].has_id(removal) {
+                            enum_value.variants.remove(index);
                             return false;
                         }
                     }
@@ -184,13 +195,19 @@ fn remove_objects(manifest: &mut Manifest, mut removals: HashSet<UniqueId>) {
     }
 
     if removals.is_empty() {
-        return;
+        return Ok(());
+    }
+
+    for removal in removals.iter() {
+        if !removal.identifier().is_valid() {
+            return Err(DynError::new(format!("removal {} is invalid", removal)));
+        }
     }
 
     try_remove_from_vec(&mut manifest.objects, &mut removals);
 
     if removals.is_empty() {
-        return;
+        return Ok(());
     }
 
     let mut iter = manifest.iter_objects_with_config_mut();
@@ -202,9 +219,11 @@ fn remove_objects(manifest: &mut Manifest, mut removals: HashSet<UniqueId>) {
         try_remove_from_vec(child_objects, &mut removals);
 
         if removals.is_empty() {
-            return;
+            return Ok(());
         }
     }
+
+    Ok(())
 }
 
 #[derive(Debug)]

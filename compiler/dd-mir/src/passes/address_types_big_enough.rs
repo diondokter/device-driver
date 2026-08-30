@@ -5,7 +5,7 @@ use device_driver_diagnostics::{Diagnostics, DynError, errors::AddressOutOfRange
 
 use crate::{
     find_min_max_addresses,
-    model::{Device, Manifest, Object, Unique, UniqueId},
+    model::{Device, Id, Manifest, Object, ObjectId},
     passes::{Assumption, Pass},
 };
 
@@ -25,7 +25,7 @@ impl Pass for AddressTypesBigEnough {
     fn run_pass(
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,
-    ) -> Result<HashSet<UniqueId>, DynError> {
+    ) -> Result<HashSet<ObjectId>, DynError> {
         let mut removals = HashSet::new();
 
         for object in manifest.iter_objects() {
@@ -69,7 +69,7 @@ fn check_device(
     device: &Device,
     filter: impl Fn(&Object) -> bool,
     diagnostics: &mut Diagnostics,
-    removals: &mut HashSet<UniqueId>,
+    removals: &mut HashSet<ObjectId>,
 ) {
     let Some(address_type) = address_type else {
         return;

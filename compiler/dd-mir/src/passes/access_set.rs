@@ -4,7 +4,7 @@ use device_driver_common::specifiers::Access;
 use device_driver_diagnostics::{Diagnostics, DynError, errors::UnspecifiedAccess};
 
 use crate::{
-    model::{Manifest, Object, UniqueId},
+    model::{Manifest, Object, ObjectId},
     passes::Pass,
 };
 
@@ -19,7 +19,7 @@ impl Pass for AccessSet {
     fn run_pass(
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,
-    ) -> Result<HashSet<UniqueId>, DynError> {
+    ) -> Result<HashSet<ObjectId>, DynError> {
         set_access(manifest.default_access, &mut manifest.objects, diagnostics);
         Ok(Default::default())
     }

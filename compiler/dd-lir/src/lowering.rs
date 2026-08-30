@@ -2,7 +2,7 @@ use std::ops::Add;
 
 use convert_case::Case;
 use device_driver_common::{
-    identifier::{All, Identifier},
+    identifier::{Global, Identifier},
     span::{SpanExt, Spanned},
     specifiers::{BaseType, Integer, Repeat, RepeatSource},
 };
@@ -462,7 +462,7 @@ fn repeat_to_method_kind(repeat: &Option<Repeat>, manifest: &mir::Manifest) -> l
 #[derive(Debug, Clone)]
 pub struct BorrowedBlock<'o> {
     pub description: &'o String,
-    pub name: &'o Identifier<All>,
+    pub name: &'o Identifier<Global>,
     #[expect(unused, reason = "included for completeness")]
     pub address_offset: &'o i128,
     #[expect(unused, reason = "included for completeness")]

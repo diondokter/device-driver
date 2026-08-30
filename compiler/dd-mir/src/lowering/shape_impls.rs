@@ -9,7 +9,7 @@ use crate::{
 };
 use convert_case::Boundary;
 use device_driver_common::{
-    identifier::{All, Identifier, IdentifierRef, Operation, Type},
+    identifier::{Global, Identifier, IdentifierRef, Local, Operation, Type},
     span::{Span, SpanExt, Spanned},
     specifiers::{
         Access, AddressMode, AddressRange, BaseType, ByteOrder, Integer, NodeType, Repeat,
@@ -37,7 +37,7 @@ const FIELD_SET_EXAMPLE: Node<'static> = Node {
 
 impl Shape for Manifest {
     const NODE_TYPE: NodeType = NodeType::Manifest;
-    type NameIdentifierType = All;
+    type NameIdentifierType = Global;
 
     fn doc_comments(&mut self) -> &mut String {
         &mut self.description
@@ -467,7 +467,7 @@ If this is not specified, the address offset defaults to 0.",
 
 impl Shape for Block {
     const NODE_TYPE: NodeType = NodeType::Block;
-    type NameIdentifierType = All;
+    type NameIdentifierType = Global;
 
     fn doc_comments(&mut self) -> &mut String {
         &mut self.description
@@ -1285,7 +1285,7 @@ impl Shape for Command {
 
 impl Shape for Field {
     const NODE_TYPE: NodeType = NodeType::Field;
-    type NameIdentifierType = All;
+    type NameIdentifierType = Local;
 
     fn doc_comments(&mut self) -> &mut String {
         &mut self.description

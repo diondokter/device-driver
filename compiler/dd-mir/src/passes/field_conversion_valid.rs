@@ -3,7 +3,7 @@ use std::{borrow::Cow, collections::HashSet};
 use device_driver_common::span::SpanExt;
 
 use crate::{
-    model::{EnumGenerationStyle, Manifest, Object, Unique, UniqueId},
+    model::{EnumGenerationStyle, Id, Manifest, Object, ObjectId},
     passes::{Assumption, Pass},
     search_object,
 };
@@ -26,7 +26,7 @@ impl Pass for FieldConversionValid {
     fn run_pass(
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,
-    ) -> Result<HashSet<UniqueId>, DynError> {
+    ) -> Result<HashSet<ObjectId>, DynError> {
         let mut removals = HashSet::new();
 
         for object in manifest.iter_objects() {
@@ -53,7 +53,7 @@ impl Pass for FieldConversionValid {
                                         field_len: field.field_address.len(),
                                         conversion_len: target_enum_size.into(),
                                     });
-                                    removals.insert(field.id_with(field_set.id()));
+                                    removals.insert(field.id());
                                     continue;
                                 }
 
@@ -65,7 +65,7 @@ impl Pass for FieldConversionValid {
                                         conversion_object: target_enum.name.span,
                                         conversion_base_type: target_enum.base_type.value,
                                     });
-                                    removals.insert(field.id_with(field_set.id()));
+                                    removals.insert(field.id());
                                     continue;
                                 }
 
@@ -87,7 +87,7 @@ impl Pass for FieldConversionValid {
                                                 existing_type_specifier_content: field
                                                     .get_type_specifier_string(),
                                             });
-                                            removals.insert(field.id_with(field_set.id()));
+                                            removals.insert(field.id());
                                             continue;
                                         }
                                         EnumGenerationStyle::InfallibleWithinRange => {
@@ -114,7 +114,7 @@ impl Pass for FieldConversionValid {
                                                     ],
                                                 existing_type_specifier_content: field.get_type_specifier_string()
                                             });
-                                                removals.insert(field.id_with(field_set.id()));
+                                                removals.insert(field.id());
                                                 continue;
                                             }
                                         }
@@ -146,7 +146,7 @@ impl Pass for FieldConversionValid {
                                         field_len: field.field_address.len(),
                                         conversion_len: target_extern_size,
                                     });
-                                    removals.insert(field.id_with(field_set.id()));
+                                    removals.insert(field.id());
                                     continue;
                                 }
 
@@ -158,7 +158,7 @@ impl Pass for FieldConversionValid {
                                         conversion_object: target_extern.name.span,
                                         conversion_base_type: target_extern.base_type.value,
                                     });
-                                    removals.insert(field.id_with(field_set.id()));
+                                    removals.insert(field.id());
                                     continue;
                                 }
 
@@ -173,7 +173,7 @@ impl Pass for FieldConversionValid {
                                         existing_type_specifier_content: field
                                             .get_type_specifier_string(),
                                     });
-                                    removals.insert(field.id_with(field_set.id()));
+                                    removals.insert(field.id());
                                     continue;
                                 }
                             }
@@ -182,14 +182,14 @@ impl Pass for FieldConversionValid {
                                     object_reference: conversion.type_name.span,
                                     referenced_object: invalid_object.name_span(),
                                 });
-                                removals.insert(field.id_with(field_set.id()));
+                                removals.insert(field.id());
                                 continue;
                             }
                             None => {
                                 diagnostics.add(ReferencedObjectDoesNotExist {
                                     object_reference: conversion.type_name.span,
                                 });
-                                removals.insert(field.id_with(field_set.id()));
+                                removals.insert(field.id());
                                 continue;
                             }
                         }

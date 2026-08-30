@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    model::{LendingIterator, Manifest, Object, Unique, UniqueId},
+    model::{Id, LendingIterator, Manifest, Object, ObjectId},
     passes::{Assumption, Pass},
 };
 use device_driver_diagnostics::{Diagnostics, DynError, errors::InvalidIdentifier};
@@ -16,7 +16,7 @@ impl Pass for NamesChecked {
     fn run_pass(
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,
-    ) -> Result<HashSet<UniqueId>, DynError> {
+    ) -> Result<HashSet<ObjectId>, DynError> {
         let mut removals = HashSet::new();
 
         let mut iter = manifest.iter_objects_with_config_mut();
@@ -43,32 +43,30 @@ impl Pass for NamesChecked {
 
             if let Object::FieldSet(field_set) = object {
                 let mut field_removals = HashSet::new();
-                let field_set_id = field_set.id();
                 for field in &mut field_set.fields {
                     if let Err(e) = field.name.apply_boundaries(boundaries).check_validity() {
                         diagnostics.add(InvalidIdentifier::new(e, field.name.span));
-                        field_removals.insert(field.id_with(field_set_id.clone()));
+                        field_removals.insert(field.id());
                     }
                 }
 
                 field_set
                     .fields
-                    .retain(|field| !field_removals.contains(&field.id_with(field_set_id.clone())));
+                    .retain(|field| !field_removals.contains(&field.id()));
             }
 
             if let Object::Enum(enum_value) = object {
                 let mut variant_removals = HashSet::new();
-                let enum_id = enum_value.id();
                 for variant in &mut enum_value.variants {
                     if let Err(e) = variant.name.apply_boundaries(boundaries).check_validity() {
                         diagnostics.add(InvalidIdentifier::new(e, variant.name.span));
-                        variant_removals.insert(variant.id_with(enum_id.clone()));
+                        variant_removals.insert(variant.id());
                     }
                 }
 
-                enum_value.variants.retain(|variant| {
-                    !variant_removals.contains(&variant.id_with(enum_id.clone()))
-                });
+                enum_value
+                    .variants
+                    .retain(|variant| !variant_removals.contains(&variant.id()));
             }
         }
 

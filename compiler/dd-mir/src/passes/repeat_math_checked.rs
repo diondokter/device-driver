@@ -6,7 +6,7 @@ use device_driver_common::{
 };
 
 use crate::{
-    model::{Enum, LendingIterator, Manifest, Object, Unique, UniqueId},
+    model::{Enum, Id, LendingIterator, Manifest, Object, ObjectId},
     passes::{Assumption, Pass},
     search_object,
 };
@@ -28,7 +28,7 @@ impl Pass for RepeatMathChecked {
     fn run_pass(
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,
-    ) -> Result<HashSet<UniqueId>, DynError> {
+    ) -> Result<HashSet<ObjectId>, DynError> {
         let mut bad_object_repeat = HashSet::new();
         let mut bad_field_repeat = HashSet::new();
 
@@ -44,7 +44,7 @@ impl Pass for RepeatMathChecked {
                     if let Some(repeat) = field.repeat.as_ref()
                         && !repeat_is_ok(repeat, manifest, diagnostics)
                     {
-                        bad_field_repeat.insert((object.id(), field.id_with(fs.id())));
+                        bad_field_repeat.insert((object.id(), field.id()));
                     }
                 }
             }
@@ -63,9 +63,8 @@ impl Pass for RepeatMathChecked {
             }
 
             if let Object::FieldSet(fs) = object {
-                let fs_id = fs.id();
                 for field in &mut fs.fields {
-                    let field_id = field.id_with(fs_id.clone());
+                    let field_id = field.id();
                     if let Some(repeat) = field.repeat.as_mut()
                         && bad_field_repeat.contains(&(id.clone(), field_id))
                     {

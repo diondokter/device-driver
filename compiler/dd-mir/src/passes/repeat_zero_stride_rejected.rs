@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    model::{Manifest, Unique, UniqueId},
+    model::{Id, Manifest, ObjectId},
     passes::{Assumption, Pass},
 };
 use device_driver_diagnostics::{Diagnostics, DynError, errors::ZeroStrideRepeat};
@@ -15,7 +15,7 @@ impl Pass for RepeatZeroStrideRejected {
     fn run_pass(
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,
-    ) -> Result<HashSet<UniqueId>, DynError> {
+    ) -> Result<HashSet<ObjectId>, DynError> {
         let mut removals = HashSet::new();
 
         for object in manifest.iter_objects() {

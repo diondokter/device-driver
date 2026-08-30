@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use convert_case::Casing;
 
 use crate::{
-    model::{LendingIterator, Manifest, Object, Unique, UniqueId},
+    model::{Id, LendingIterator, Manifest, Object, ObjectId},
     passes::{Assumption, Pass},
 };
 use device_driver_diagnostics::{
@@ -20,7 +20,7 @@ impl Pass for DeviceNameIsPascal {
     fn run_pass(
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,
-    ) -> Result<HashSet<UniqueId>, DynError> {
+    ) -> Result<HashSet<ObjectId>, DynError> {
         let mut removals = HashSet::new();
 
         let mut iter = manifest.iter_objects_with_config_mut();

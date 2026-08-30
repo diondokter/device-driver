@@ -1,7 +1,7 @@
 use std::{fmt::Write, fs, num::NonZero, path::Path};
 
 use device_driver_common::{
-    identifier::IdentifierType,
+    identifier::Namespace,
     span::{Span, SpanExt},
     specifiers::{BaseType, VariantNames},
 };

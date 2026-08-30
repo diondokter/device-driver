@@ -6,7 +6,7 @@ use device_driver_common::{
 };
 
 use crate::{
-    model::{FieldSet, LendingIterator, Manifest, Object, Register, Unique, UniqueId},
+    model::{FieldSet, Id, LendingIterator, Manifest, Object, ObjectId, Register},
     passes::{Assumption, Pass},
     search_object,
 };
@@ -36,7 +36,7 @@ impl Pass for ResetValuesConverted {
     fn run_pass(
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,
-    ) -> Result<HashSet<UniqueId>, DynError> {
+    ) -> Result<HashSet<ObjectId>, DynError> {
         let mut new_reset_values = HashMap::new();
 
         for object in manifest.iter_objects() {

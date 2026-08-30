@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use device_driver_common::specifiers::{AddressRange, RepeatSource};
 
 use crate::{
-    model::{Field, FieldSet, Manifest, Unique, UniqueId},
+    model::{Field, FieldSet, Id, Manifest, ObjectId},
     passes::{Assumption, Pass},
     search_object,
 };
@@ -26,7 +26,7 @@ impl Pass for BitRangesValidated {
     fn run_pass(
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,
-    ) -> Result<HashSet<UniqueId>, DynError> {
+    ) -> Result<HashSet<ObjectId>, DynError> {
         let mut removals = HashSet::new();
 
         for object in manifest.iter_objects() {
@@ -46,7 +46,7 @@ fn validate_len(
     field_set: &FieldSet,
     manifest: &Manifest,
     diagnostics: &mut Diagnostics,
-    removals: &mut HashSet<UniqueId>,
+    removals: &mut HashSet<ObjectId>,
 ) {
     for field in &field_set.fields {
         let field_len = field.field_address.len();
@@ -71,7 +71,7 @@ fn validate_len(
                 fieldset_size_bits: field_set.size_bits(),
                 fieldset_size_span: field_set.size_bytes.span,
             });
-            removals.insert(field.id_with(field_set.id()));
+            removals.insert(field.id());
         }
 
         if min_field_start < 0 {
@@ -81,7 +81,7 @@ fn validate_len(
                 repeat_offset: repeated.then_some(*min_repeat_offset),
                 field_set_context: field_set.name.span,
             });
-            removals.insert(field.id_with(field_set.id()));
+            removals.insert(field.id());
         }
     }
 }

@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use device_driver_diagnostics::{Diagnostics, DynError};
 
 use crate::{
-    model::{LendingIterator, Manifest, Object, Unique, UniqueId},
+    model::{Id, LendingIterator, Manifest, Object, ObjectId},
     passes::{Assumption, Pass},
 };
 
@@ -17,7 +17,7 @@ impl Pass for DeviceConfigsOwned {
     fn run_pass(
         manifest: &mut Manifest,
         _diagnostics: &mut Diagnostics,
-    ) -> Result<HashSet<UniqueId>, DynError> {
+    ) -> Result<HashSet<ObjectId>, DynError> {
         let mut iter = manifest.iter_objects_with_config_mut();
         while let Some((object, _)) = iter.next() {
             let Object::Device(device) = object else {

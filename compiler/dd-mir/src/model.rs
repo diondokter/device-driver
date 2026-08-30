@@ -2,20 +2,21 @@ use std::{fmt::Display, rc::Rc};
 
 use convert_case::Boundary;
 #[cfg(test)]
-use device_driver_common::identifier::IdentifierType;
+use device_driver_common::identifier::Namespace;
 use device_driver_common::{
-    identifier::{All, Identifier, IdentifierRef, Operation, RuntimeType, Type},
+    identifier::{Global, Identifier, IdentifierRef, Local, Operation, RuntimeNamespace, Type},
     span::{Span, SpanExt, Spanned},
     specifiers::{
         Access, AddressMode, AddressRange, BaseType, ByteOrder, Integer, NodeType, Repeat,
         ResetValue, TypeConversion,
     },
 };
+use device_driver_diagnostics::{DynError, ResultExt};
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Manifest {
     pub description: String,
-    pub name: Spanned<Identifier<All>>,
+    pub name: Spanned<Identifier<Global>>,
     pub default_access: Option<Access>,
     pub config: DeviceConfig,
     pub objects: Vec<Object>,
@@ -277,7 +278,7 @@ impl Device {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct DeviceConfig {
     /// The id of the device that owns this config. If None, then this is a manifest config
-    pub owner: Option<UniqueId>,
+    pub owner: Option<ObjectId>,
     pub byte_order: Option<ByteOrder>,
     pub register_address_type: Option<Spanned<Integer>>,
     pub command_address_type: Option<Spanned<Integer>>,
@@ -351,32 +352,32 @@ impl Object {
     }
 
     /// Get a mutable reference to the name of the specific object
-    pub fn name_mut(&mut self) -> &mut Identifier<RuntimeType> {
+    pub fn name_mut(&mut self) -> &mut Identifier<RuntimeNamespace> {
         match self {
-            Object::Device(val) => val.name.as_runtime_type_mut(),
-            Object::Block(val) => val.name.as_runtime_type_mut(),
-            Object::Register(val) => val.name.as_runtime_type_mut(),
-            Object::Command(val) => val.name.as_runtime_type_mut(),
-            Object::Buffer(val) => val.name.as_runtime_type_mut(),
-            Object::FieldSet(val) => val.name.as_runtime_type_mut(),
-            Object::Enum(val) => val.name.as_runtime_type_mut(),
-            Object::Extern(val) => val.name.as_runtime_type_mut(),
-            Object::Field(val) => val.name.as_runtime_type_mut(),
+            Object::Device(val) => val.name.as_runtime_namespace_mut(),
+            Object::Block(val) => val.name.as_runtime_namespace_mut(),
+            Object::Register(val) => val.name.as_runtime_namespace_mut(),
+            Object::Command(val) => val.name.as_runtime_namespace_mut(),
+            Object::Buffer(val) => val.name.as_runtime_namespace_mut(),
+            Object::FieldSet(val) => val.name.as_runtime_namespace_mut(),
+            Object::Enum(val) => val.name.as_runtime_namespace_mut(),
+            Object::Extern(val) => val.name.as_runtime_namespace_mut(),
+            Object::Field(val) => val.name.as_runtime_namespace_mut(),
         }
     }
 
     /// Get a reference to the name of the specific object
-    pub fn name(&self) -> &Identifier<RuntimeType> {
+    pub fn name(&self) -> &Identifier<RuntimeNamespace> {
         match self {
-            Object::Device(val) => val.name.as_runtime_type(),
-            Object::Block(val) => val.name.as_runtime_type(),
-            Object::Register(val) => val.name.as_runtime_type(),
-            Object::Command(val) => val.name.as_runtime_type(),
-            Object::Buffer(val) => val.name.as_runtime_type(),
-            Object::FieldSet(val) => val.name.as_runtime_type(),
-            Object::Enum(val) => val.name.as_runtime_type(),
-            Object::Extern(val) => val.name.as_runtime_type(),
-            Object::Field(val) => val.name.as_runtime_type(),
+            Object::Device(val) => val.name.as_runtime_namespace(),
+            Object::Block(val) => val.name.as_runtime_namespace(),
+            Object::Register(val) => val.name.as_runtime_namespace(),
+            Object::Command(val) => val.name.as_runtime_namespace(),
+            Object::Buffer(val) => val.name.as_runtime_namespace(),
+            Object::FieldSet(val) => val.name.as_runtime_namespace(),
+            Object::Enum(val) => val.name.as_runtime_namespace(),
+            Object::Extern(val) => val.name.as_runtime_namespace(),
+            Object::Field(val) => val.name.as_runtime_namespace(),
         }
     }
 
@@ -464,6 +465,14 @@ impl Object {
         }
     }
 
+    pub fn as_enum_mut(&mut self) -> Option<&mut Enum> {
+        if let Self::Enum(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
     pub fn allow_address_overlap(&self) -> bool {
         match self {
             Object::Device(_) => false,
@@ -543,7 +552,7 @@ impl Object {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Block {
     pub description: String,
-    pub name: Spanned<Identifier<All>>,
+    pub name: Spanned<Identifier<Global>>,
     pub address_offset: Spanned<i128>,
     pub repeat: Option<Repeat>,
     pub objects: Vec<Object>,
@@ -610,7 +619,7 @@ impl FieldSet {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Field {
     pub description: String,
-    pub name: Spanned<Identifier<All>>,
+    pub name: Spanned<Identifier<Local>>,
     pub access: Option<Access>,
     pub base_type: Spanned<BaseType>,
     pub field_conversion: Option<TypeConversion>,
@@ -764,7 +773,7 @@ impl EnumGenerationStyle {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct EnumVariant {
     pub description: String,
-    pub name: Spanned<Identifier<All>>,
+    pub name: Spanned<Identifier<Local>>,
     pub value: EnumValue,
     /// Span of the whole object
     pub span: Span,
@@ -856,111 +865,85 @@ pub struct Extern {
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub enum UniqueId {
-    Object {
-        object_name: Spanned<Identifier<RuntimeType>>,
-    },
-    Field {
-        parent_id: Box<UniqueId>,
-        field_name: Spanned<Identifier<RuntimeType>>,
-    },
-    Variant {
-        parent_id: Box<UniqueId>,
-        variant_name: Spanned<Identifier<RuntimeType>>,
-    },
+pub struct ObjectId {
+    object_name: Spanned<Identifier<RuntimeNamespace>>,
 }
 
-impl UniqueId {
+impl ObjectId {
     #[must_use]
     pub fn span(&self) -> Span {
-        match self {
-            UniqueId::Object { object_name } => object_name.span,
-            UniqueId::Field { field_name, .. } => field_name.span,
-            UniqueId::Variant { variant_name, .. } => variant_name.span,
-        }
+        self.object_name.span
     }
 
-    pub fn identifier(&self) -> &Identifier<RuntimeType> {
-        match self {
-            UniqueId::Object { object_name } => object_name,
-            UniqueId::Field { field_name, .. } => field_name,
-            UniqueId::Variant { variant_name, .. } => variant_name,
-        }
+    pub fn identifier(&self) -> &Identifier<RuntimeNamespace> {
+        &self.object_name
     }
 
     /// *Only for tests:* Create a new instance with a dummy span.
     #[cfg(test)]
-    pub fn new_test<T: IdentifierType>(identifier: Identifier<T>) -> Self {
+    pub fn new_test<T: Namespace>(identifier: Identifier<T>) -> Self {
         use device_driver_common::span::SpanExt;
 
-        Self::Object {
-            object_name: identifier.to_runtime_type().with_dummy_span(),
+        Self {
+            object_name: identifier.to_runtime_namespace().with_dummy_span(),
         }
+    }
+
+    pub fn concrete_namespace_ids(
+        &self,
+    ) -> Result<impl Iterator<Item = Result<Self, DynError>>, DynError> {
+        let concretes = self
+            .identifier()
+            .namespace()
+            .concrete_namespaces()
+            .into_dyn_result()?;
+
+        Ok(concretes.into_iter().map(|namespace| {
+            Ok(Self {
+                object_name: self
+                    .object_name
+                    .value
+                    .clone()
+                    .cast_concrete(namespace)
+                    .into_dyn_result()?
+                    .with_span(self.object_name.span),
+            })
+        }))
     }
 }
 
-impl Display for UniqueId {
+impl Display for ObjectId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            UniqueId::Object { object_name } => write!(f, "{}", object_name.original()),
-            UniqueId::Field {
-                parent_id,
-                field_name,
-            } => write!(f, "{parent_id} {{ {} }}", field_name.original()),
-            UniqueId::Variant {
-                parent_id,
-                variant_name,
-            } => write!(f, "{parent_id} {{ {} }}", variant_name.original()),
-        }
+        write!(
+            f,
+            "{} ({:?})",
+            self.object_name.original(),
+            self.object_name.namespace()
+        )
     }
 }
 
-pub trait Unique {
-    type Metadata;
-
-    fn id(&self) -> UniqueId
-    where
-        Self::Metadata: Empty;
-    fn id_with(&self, meta: Self::Metadata) -> UniqueId;
-
-    fn has_id(&self, id: &UniqueId) -> bool
-    where
-        Self::Metadata: Empty;
-    fn has_id_with(&self, meta: Self::Metadata, id: &UniqueId) -> bool {
-        self.id_with(meta) == *id
-    }
+pub trait Id {
+    fn id(&self) -> ObjectId;
+    fn has_id(&self, id: &ObjectId) -> bool;
 }
-
-pub trait Empty {}
-impl Empty for () {}
 
 macro_rules! impl_unique_object {
     ($t:ty) => {
-        impl Unique for $t {
-            type Metadata = ();
-
-            fn id(&self) -> UniqueId {
-                UniqueId::Object {
+        impl Id for $t {
+            fn id(&self) -> ObjectId {
+                ObjectId {
                     object_name: self
                         .name
                         .value
                         .clone()
-                        .to_runtime_type()
+                        .to_runtime_namespace()
                         .with_span(self.name.span),
                 }
             }
 
-            fn id_with(&self, _: Self::Metadata) -> UniqueId {
-                self.id()
-            }
-
-            fn has_id(&self, id: &UniqueId) -> bool {
-                match id {
-                    UniqueId::Object { object_name } => {
-                        self.name.as_runtime_type() == &object_name.value
-                    }
-                    _ => false,
-                }
+            fn has_id(&self, id: &ObjectId) -> bool {
+                self.name.as_runtime_namespace() == &id.object_name.value
             }
         }
     };
@@ -974,59 +957,11 @@ impl_unique_object!(Block);
 impl_unique_object!(Enum);
 impl_unique_object!(FieldSet);
 impl_unique_object!(Extern);
+impl_unique_object!(Field);
+impl_unique_object!(EnumVariant);
 
-impl Unique for Field {
-    type Metadata = UniqueId;
-
-    fn id(&self) -> UniqueId {
-        unreachable!()
-    }
-
-    fn id_with(&self, parent: Self::Metadata) -> UniqueId {
-        UniqueId::Field {
-            parent_id: Box::new(parent),
-            field_name: self
-                .name
-                .value
-                .clone()
-                .to_runtime_type()
-                .with_span(self.name.span),
-        }
-    }
-
-    fn has_id(&self, _id: &UniqueId) -> bool {
-        unreachable!()
-    }
-}
-
-impl Unique for EnumVariant {
-    type Metadata = UniqueId;
-
-    fn id(&self) -> UniqueId {
-        unreachable!()
-    }
-
-    fn id_with(&self, parent: Self::Metadata) -> UniqueId {
-        UniqueId::Variant {
-            parent_id: Box::new(parent),
-            variant_name: self
-                .name
-                .value
-                .clone()
-                .to_runtime_type()
-                .with_span(self.name.span),
-        }
-    }
-
-    fn has_id(&self, _id: &UniqueId) -> bool {
-        unreachable!()
-    }
-}
-
-impl Unique for Object {
-    type Metadata = ();
-
-    fn id(&self) -> UniqueId {
+impl Id for Object {
+    fn id(&self) -> ObjectId {
         match self {
             Object::Device(val) => val.id(),
             Object::Block(val) => val.id(),
@@ -1041,11 +976,7 @@ impl Unique for Object {
         }
     }
 
-    fn id_with(&self, (): Self::Metadata) -> UniqueId {
-        self.id()
-    }
-
-    fn has_id(&self, id: &UniqueId) -> bool {
+    fn has_id(&self, id: &ObjectId) -> bool {
         match self {
             Object::Device(val) => val.has_id(id),
             Object::Block(val) => val.has_id(id),
