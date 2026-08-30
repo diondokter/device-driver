@@ -24,42 +24,29 @@ pub enum RuntimeNamespace {
 }
 
 impl RuntimeNamespace {
-    pub fn shares_namespace_with(
-        &self,
-        other: RuntimeNamespace,
-    ) -> Result<bool, UndefinedLocalSiteError> {
-        for self_namespace in self.concrete_namespaces()? {
-            for other_namespace in other.concrete_namespaces()? {
+    pub fn shares_namespace_with(&self, other: RuntimeNamespace) -> bool {
+        for self_namespace in self.concrete_namespaces() {
+            for other_namespace in other.concrete_namespaces() {
                 if self_namespace == other_namespace {
-                    return Ok(true);
+                    return true;
                 }
             }
         }
 
-        Ok(false)
+        false
     }
 
-    pub fn concrete_namespaces(&self) -> Result<Vec<RuntimeNamespace>, UndefinedLocalSiteError> {
+    pub fn concrete_namespaces(&self) -> Vec<RuntimeNamespace> {
         match self {
             RuntimeNamespace::Global => {
-                Ok(vec![RuntimeNamespace::Operation, RuntimeNamespace::Type])
+                vec![RuntimeNamespace::Operation, RuntimeNamespace::Type]
             }
-            RuntimeNamespace::Local { site: Some(_) } => Ok(vec![*self]),
-            RuntimeNamespace::Local { site: None } => Err(UndefinedLocalSiteError),
-            RuntimeNamespace::Operation => Ok(vec![*self]),
-            RuntimeNamespace::Type => Ok(vec![*self]),
+            RuntimeNamespace::Local { .. } => vec![*self],
+            RuntimeNamespace::Operation => vec![*self],
+            RuntimeNamespace::Type => vec![*self],
         }
     }
 }
-
-#[derive(Debug)]
-pub struct UndefinedLocalSiteError;
-impl Display for UndefinedLocalSiteError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "a local site is undefined")
-    }
-}
-impl std::error::Error for UndefinedLocalSiteError {}
 
 #[repr(transparent)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -139,7 +126,7 @@ impl From<Global> for Operation {
 }
 
 /// A structure that holds the name data of objects
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[repr(C)]
 pub struct Identifier<T: Namespace> {
     boundaries_applied: bool,
@@ -259,6 +246,11 @@ impl<T: Namespace> Identifier<T> {
     /// Better to use [`Self::to_case`] in most circumstances.
     pub fn original(&self) -> &str {
         &self.original
+    }
+
+    /// Get the words derived from the original
+    pub fn words(&self) -> Arc<[String]> {
+        self.words.clone()
     }
 
     /// Get a display string that separates the words that make up the identifier visually
@@ -385,21 +377,21 @@ impl Identifier<RuntimeNamespace> {
     pub fn cast_concrete(
         self,
         runtime_namespace: RuntimeNamespace,
-    ) -> Result<Identifier<RuntimeNamespace>, UndefinedLocalSiteError> {
+    ) -> Identifier<RuntimeNamespace> {
         assert!(
             self.namespace
                 .runtime_value()
-                .concrete_namespaces()?
+                .concrete_namespaces()
                 .contains(&runtime_namespace)
         );
 
-        Ok(Identifier {
+        Identifier {
             boundaries_applied: self.boundaries_applied,
             original: self.original,
             words: self.words,
             duplicate_id: self.duplicate_id,
             namespace: runtime_namespace,
-        })
+        }
     }
 }
 

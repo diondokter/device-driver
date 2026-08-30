@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::{
-    model::{Id, LendingIterator, Manifest, Object, ObjectId},
+    model::{Id, LendingIterator, Manifest, Object, ObjectId, ObjectWords},
     passes::{Assumption, Pass},
 };
 use device_driver_common::identifier::RuntimeNamespace;
@@ -22,7 +22,8 @@ impl Pass for NamesUnique {
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,
     ) -> Result<HashSet<ObjectId>, DynError> {
-        let mut namespace_seen_ids = HashMap::<RuntimeNamespace, HashSet<_>>::new();
+        let mut namespace_seen_ids =
+            HashMap::<RuntimeNamespace, (HashSet<ObjectId>, HashSet<ObjectWords>)>::new();
 
         let mut duplicate_id = 0u32;
         let mut get_duplicate_id = || {
@@ -38,9 +39,8 @@ impl Pass for NamesUnique {
                 let object_id = object_id?;
                 let namespace = *object_id.identifier().namespace();
 
-                let seen_ids: &mut HashSet<ObjectId> =
-                    namespace_seen_ids.entry(namespace).or_default();
-                if !seen_ids.insert(object_id.clone()) {
+                let (seen_ids, seen_words) = namespace_seen_ids.entry(namespace).or_default();
+                if !seen_ids.insert(object_id.clone()) | !seen_words.insert(object_id.words()) {
                     let original = seen_ids.get(&object_id).unwrap();
                     diagnostics.add(DuplicateName {
                         original: original.span(),
@@ -56,9 +56,10 @@ impl Pass for NamesUnique {
 
             if let Object::FieldSet(field_set) = object {
                 let mut seen_ids = HashSet::new();
+                let mut seen_words = HashSet::new();
                 for field in field_set.fields.iter_mut() {
                     let field_id = field.id();
-                    if !seen_ids.insert(field_id.clone()) {
+                    if !seen_ids.insert(field_id.clone()) | !seen_words.insert(field_id.words()) {
                         let original = seen_ids.get(&field_id).unwrap();
                         diagnostics.add(DuplicateName {
                             original: original.span(),
@@ -75,9 +76,11 @@ impl Pass for NamesUnique {
 
             if let Object::Enum(enum_value) = object {
                 let mut seen_ids = HashSet::new();
+                let mut seen_words = HashSet::new();
                 for variant in enum_value.variants.iter_mut() {
                     let variant_id = variant.id();
-                    if !seen_ids.insert(variant_id.clone()) {
+                    if !seen_ids.insert(variant_id.clone()) | !seen_words.insert(variant_id.words())
+                    {
                         let original = seen_ids.get(&variant_id).unwrap();
                         diagnostics.add(DuplicateName {
                             original: original.span(),

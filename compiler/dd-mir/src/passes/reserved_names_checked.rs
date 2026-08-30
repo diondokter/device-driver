@@ -30,10 +30,10 @@ impl Pass for ReservedNamesChecked {
         while let Some((object, _)) = iter.next() {
             let new_removals = match object {
                 Object::Device(device) => {
-                    check_block_reserved_names(device.iter_objects(), diagnostics)?
+                    check_block_reserved_names(device.iter_objects(), diagnostics)
                 }
                 Object::Block(block) => {
-                    check_block_reserved_names(block.iter_objects(), diagnostics)?
+                    check_block_reserved_names(block.iter_objects(), diagnostics)
                 }
                 Object::FieldSet(field_set) => {
                     check_field_names(field_set, diagnostics).with_message(|| {
@@ -53,7 +53,7 @@ impl Pass for ReservedNamesChecked {
 fn check_block_reserved_names<'a>(
     objects: impl Iterator<Item = &'a Object>,
     diagnostics: &mut Diagnostics,
-) -> Result<HashSet<ObjectId>, DynError> {
+) -> HashSet<ObjectId> {
     let mut removals = HashSet::new();
 
     const RESERVED_NAMES: &[&str] = &["new", "init", "deinit", "free"];
@@ -65,7 +65,6 @@ fn check_block_reserved_names<'a>(
             .name()
             .namespace()
             .shares_namespace_with(RuntimeNamespace::Operation)
-            .into_dyn_result()?
             && RESERVED_NAMES.contains(&object_operation_name.as_str())
         {
             removals.insert(object.id());
@@ -77,7 +76,7 @@ fn check_block_reserved_names<'a>(
         }
     }
 
-    Ok(removals)
+    removals
 }
 
 fn check_field_names(

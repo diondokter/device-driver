@@ -48,5 +48,10 @@ manifest Foo {
         enum Wheee2 {
             A: _,
         },
+    },
+
+    device Words {
+        extern multiple-words -> u8,
+        extern multiple_words -> u8, // Should overlap with multiple-words
     }
 }

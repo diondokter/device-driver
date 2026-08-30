@@ -1,4 +1,4 @@
-use std::{fmt::Display, rc::Rc};
+use std::{fmt::Display, rc::Rc, sync::Arc};
 
 use convert_case::Boundary;
 #[cfg(test)]
@@ -864,9 +864,23 @@ pub struct Extern {
     pub span: Span,
 }
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Eq)]
 pub struct ObjectId {
     object_name: Spanned<Identifier<RuntimeNamespace>>,
+}
+
+impl PartialEq for ObjectId {
+    fn eq(&self, other: &Self) -> bool {
+        self.object_name.original() == other.object_name.original()
+            && self.object_name.namespace() == other.object_name.namespace()
+    }
+}
+
+impl std::hash::Hash for ObjectId {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.object_name.original().hash(state);
+        self.object_name.namespace().hash(state);
+    }
 }
 
 impl ObjectId {
@@ -892,11 +906,7 @@ impl ObjectId {
     pub fn concrete_namespace_ids(
         &self,
     ) -> Result<impl Iterator<Item = Result<Self, DynError>>, DynError> {
-        let concretes = self
-            .identifier()
-            .namespace()
-            .concrete_namespaces()
-            .into_dyn_result()?;
+        let concretes = self.identifier().namespace().concrete_namespaces();
 
         Ok(concretes.into_iter().map(|namespace| {
             Ok(Self {
@@ -905,10 +915,13 @@ impl ObjectId {
                     .value
                     .clone()
                     .cast_concrete(namespace)
-                    .into_dyn_result()?
                     .with_span(self.object_name.span),
             })
         }))
+    }
+
+    pub fn words(&self) -> ObjectWords {
+        ObjectWords(self.object_name.words())
     }
 }
 
@@ -922,6 +935,9 @@ impl Display for ObjectId {
         )
     }
 }
+
+#[derive(Hash, PartialEq, Eq)]
+pub struct ObjectWords(Arc<[String]>);
 
 pub trait Id {
     fn id(&self) -> ObjectId;
