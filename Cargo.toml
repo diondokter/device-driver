@@ -40,7 +40,7 @@ device-driver-parser = { path = "compiler/dd-parser", version = "=2.1.0" }
 device-driver-converter = { path = "compiler/dd-converter", version = "=2.1.0" }
 
 itertools = "0.15.0"
-convert_case = "0.11.0"
+convert_case = "0.12.0"
 clap = { version = "4.6.6", features = ["derive"] }
 bitvec = { version = "1.1.1", default-features = false }
 syn = "3.0.3"
