@@ -127,7 +127,7 @@ impl<'a> From<&'a Span> for Range<usize> {
     }
 }
 
-#[derive(Debug, Clone, Eq, Copy)]
+#[derive(Clone, Eq, Copy)]
 pub struct Spanned<T> {
     pub span: Span,
     pub value: T,
@@ -164,6 +164,12 @@ impl<T: Default> Default for Spanned<T> {
 }
 
 impl<T: Display> Display for Spanned<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.value.fmt(f)
+    }
+}
+
+impl<T: Debug> Debug for Spanned<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.value.fmt(f)
     }

@@ -6,7 +6,7 @@ use device_driver_common::{
 };
 
 use crate::{
-    model::{Device, DeviceConfig, Manifest, Object, Unique, UniqueId},
+    model::{Device, DeviceConfig, Id, Manifest, Object, ObjectId},
     passes::{Assumption, Pass},
     search_object,
 };
@@ -27,7 +27,7 @@ impl Pass for AddressesNonOverlapping {
     fn run_pass(
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,
-    ) -> Result<HashSet<UniqueId>, DynError> {
+    ) -> Result<HashSet<ObjectId>, DynError> {
         for (device, config) in manifest.iter_devices_with_config() {
             let register_addresses = find_object_addresses(manifest, device, &config, |o| {
                 matches!(o, Object::Block(_) | Object::Register(_))
@@ -99,7 +99,7 @@ fn check_for_overlap(addresses: &[ObjectAddress], diagnostics: &mut Diagnostics)
 }
 
 struct ObjectAddress {
-    id: UniqueId,
+    id: ObjectId,
     // Address including repeat offset
     address: Spanned<i128>,
     size: Spanned<u32>,

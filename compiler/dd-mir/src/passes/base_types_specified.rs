@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::{
-    model::{LendingIterator, Manifest, Object, UniqueId},
+    model::{LendingIterator, Manifest, Object, ObjectId},
     passes::{Assumption, Pass},
 };
 use device_driver_common::specifiers::{BaseType, Integer};
@@ -20,7 +20,7 @@ impl Pass for BaseTypesSpecified {
     fn run_pass(
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,
-    ) -> Result<HashSet<UniqueId>, DynError> {
+    ) -> Result<HashSet<ObjectId>, DynError> {
         // Collect base types of all objects since we can't later in the pass because of the mut borrow of manifest
         let base_types = manifest
             .iter_objects()

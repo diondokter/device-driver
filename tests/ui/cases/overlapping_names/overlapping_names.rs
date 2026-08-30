@@ -207,6 +207,34 @@ impl<'i, I> ::device_driver::Block for Wheee2<'i, I> {
         self.interface
     }
 }
+/// Root block of the Words driver
+#[derive(Debug)]
+pub struct Words<I> {
+    interface: I,
+    #[doc(hidden)]
+    #[allow(unused)]
+    base_address: u8,
+}
+impl<I> Words<I> {
+    /// Create a new instance of the device
+    pub const fn new(interface: I) -> Self {
+        Self { interface, base_address: 0 }
+    }
+    /// Drop the driver instance and reclaim the interface
+    pub fn free(self) -> I {
+        self.interface
+    }
+}
+impl<I> ::device_driver::Block for Words<I> {
+    type Interface = I;
+    type RegisterAddressType = u8;
+    type CommandAddressType = u8;
+    type BufferAddressType = u8;
+    type RegisterAddressMode = ();
+    fn interface(&mut self) -> &mut Self::Interface {
+        &mut self.interface
+    }
+}
 #[derive(Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct Bar {

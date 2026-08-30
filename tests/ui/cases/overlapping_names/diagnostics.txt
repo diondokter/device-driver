@@ -88,3 +88,18 @@ info: names may not collide within their namespace. There are 4 namespaces:
       - Fields: unique within a fieldset
       - Enum variants: unique within an enum
 
+error: duplicate name found
+  --> input.ddsl:55:16
+   |
+LL |         extern multiple_words -> u8, // Should overlap with multiple-words
+   |                ^^^^^^^^^^^^^^
+   |                |
+   |                the original: "multiple_words", after word split: "multiple·words"
+   |                the duplicate: "multiple_words", after word split: "multiple·words"
+   |
+info: names may not collide within their namespace. There are 4 namespaces:
+      - Types: a type definition
+      - Operations: something you *do* with a driver
+      - Fields: unique within a fieldset
+      - Enum variants: unique within an enum
+

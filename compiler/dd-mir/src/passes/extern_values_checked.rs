@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    model::{Manifest, Object, Unique, UniqueId},
+    model::{Id, Manifest, Object, ObjectId},
     passes::{Assumption, Pass},
 };
 use device_driver_diagnostics::{
@@ -19,7 +19,7 @@ impl Pass for ExternValuesChecked {
     fn run_pass(
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,
-    ) -> Result<HashSet<UniqueId>, DynError> {
+    ) -> Result<HashSet<ObjectId>, DynError> {
         let mut removals = HashSet::new();
 
         for object in manifest.iter_objects() {

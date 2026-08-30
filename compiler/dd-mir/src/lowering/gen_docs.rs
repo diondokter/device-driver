@@ -1,7 +1,7 @@
 use std::{fmt::Write, fs, num::NonZero, path::Path};
 
 use device_driver_common::{
-    identifier::IdentifierType,
+    identifier::Namespace,
     span::{Span, SpanExt},
     specifiers::{BaseType, VariantNames},
 };
@@ -55,7 +55,7 @@ fn gen_doc<S: Shape>(folder: &Path) -> Result<(), DynError> {
     writeln!(doc, "| --- | --- |").into_dyn_result()?;
     writeln!(
         doc,
-        "| Identifier namespace | `{:?}` |",
+        "| Identifier namespace | `{}` |",
         S::NameIdentifierType::default().runtime_value()
     )
     .into_dyn_result()?;

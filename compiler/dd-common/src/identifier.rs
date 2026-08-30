@@ -8,10 +8,13 @@ use convert_case::{Boundary, Case, Pattern};
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum RuntimeType {
-    /// Used for things that participate in all types.
-    /// These are manifests, blocks, fields, enum variants, ...
-    All,
+pub enum RuntimeNamespace {
+    /// Used for things that participate in all namespaces.
+    /// These are manifests, blocks, ...
+    Global,
+    /// Used for things that participate in no namespaces except the local definition.
+    /// These are fields, enum variants, ...
+    Local { site: Option<NonZeroU32> },
     /// Used for things that define operations or things you can do with a driver.
     /// These are registers, commands, buffers, ...
     Operation,
@@ -20,95 +23,134 @@ pub enum RuntimeType {
     Type,
 }
 
-impl RuntimeType {
-    pub fn shares_namespace_with(&self, other: RuntimeType) -> bool {
-        matches!(
-            (self, other),
-            (RuntimeType::All, _)
-                | (_, RuntimeType::All)
-                | (RuntimeType::Operation, RuntimeType::Operation)
-                | (RuntimeType::Type, RuntimeType::Type)
-        )
+impl RuntimeNamespace {
+    pub fn shares_namespace_with(&self, other: RuntimeNamespace) -> bool {
+        for self_namespace in self.concrete_namespaces() {
+            for other_namespace in other.concrete_namespaces() {
+                if self_namespace == other_namespace {
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
+
+    pub fn concrete_namespaces(&self) -> Vec<RuntimeNamespace> {
+        match self {
+            RuntimeNamespace::Global => {
+                vec![RuntimeNamespace::Operation, RuntimeNamespace::Type]
+            }
+            RuntimeNamespace::Local { .. } => vec![*self],
+            RuntimeNamespace::Operation => vec![*self],
+            RuntimeNamespace::Type => vec![*self],
+        }
+    }
+}
+
+impl Display for RuntimeNamespace {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RuntimeNamespace::Global => write!(f, "Global"),
+            RuntimeNamespace::Local { site: Some(site) } => write!(f, "Local({site})"),
+            RuntimeNamespace::Local { site: None } => write!(f, "Local"),
+            RuntimeNamespace::Operation => write!(f, "Operation"),
+            RuntimeNamespace::Type => write!(f, "Type"),
+        }
     }
 }
 
 #[repr(transparent)]
-#[derive(Debug, Copy, Clone)]
-pub struct Type(RuntimeType);
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Type(RuntimeNamespace);
 impl Default for Type {
     fn default() -> Self {
-        Self(RuntimeType::Type)
+        Self(RuntimeNamespace::Type)
     }
 }
 #[repr(transparent)]
-#[derive(Debug, Copy, Clone)]
-pub struct Operation(RuntimeType);
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Operation(RuntimeNamespace);
 impl Default for Operation {
     fn default() -> Self {
-        Self(RuntimeType::Operation)
+        Self(RuntimeNamespace::Operation)
     }
 }
 #[repr(transparent)]
-#[derive(Debug, Copy, Clone)]
-pub struct All(RuntimeType);
-impl Default for All {
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Global(RuntimeNamespace);
+impl Default for Global {
     fn default() -> Self {
-        Self(RuntimeType::All)
+        Self(RuntimeNamespace::Global)
+    }
+}
+
+#[repr(transparent)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Local(RuntimeNamespace);
+impl Default for Local {
+    fn default() -> Self {
+        Self(RuntimeNamespace::Local { site: None })
     }
 }
 
 /// # Safety
 /// Must only be implemented on type that are transparently [RuntimeType]
-pub unsafe trait IdentifierType: Debug {
-    fn runtime_value(&self) -> RuntimeType;
+pub unsafe trait Namespace: Debug {
+    fn runtime_value(&self) -> RuntimeNamespace;
 }
 
-unsafe impl IdentifierType for Type {
-    fn runtime_value(&self) -> RuntimeType {
-        RuntimeType::Type
+unsafe impl Namespace for Type {
+    fn runtime_value(&self) -> RuntimeNamespace {
+        RuntimeNamespace::Type
     }
 }
-unsafe impl IdentifierType for Operation {
-    fn runtime_value(&self) -> RuntimeType {
-        RuntimeType::Operation
+unsafe impl Namespace for Operation {
+    fn runtime_value(&self) -> RuntimeNamespace {
+        RuntimeNamespace::Operation
     }
 }
-unsafe impl IdentifierType for All {
-    fn runtime_value(&self) -> RuntimeType {
-        RuntimeType::All
+unsafe impl Namespace for Global {
+    fn runtime_value(&self) -> RuntimeNamespace {
+        RuntimeNamespace::Global
     }
 }
-unsafe impl IdentifierType for RuntimeType {
-    fn runtime_value(&self) -> RuntimeType {
+unsafe impl Namespace for Local {
+    fn runtime_value(&self) -> RuntimeNamespace {
+        self.0.runtime_value()
+    }
+}
+unsafe impl Namespace for RuntimeNamespace {
+    fn runtime_value(&self) -> RuntimeNamespace {
         *self
     }
 }
 
-impl From<All> for Type {
-    fn from(_: All) -> Self {
+impl From<Global> for Type {
+    fn from(_: Global) -> Self {
         Type::default()
     }
 }
-impl From<All> for Operation {
-    fn from(_: All) -> Self {
+impl From<Global> for Operation {
+    fn from(_: Global) -> Self {
         Operation::default()
     }
 }
 
 /// A structure that holds the name data of objects
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[repr(C)]
-pub struct Identifier<T: IdentifierType> {
+pub struct Identifier<T: Namespace> {
     boundaries_applied: bool,
     /// The original string that was parsed without concats
     original: Arc<String>,
     words: Arc<[String]>,
     duplicate_id: Option<NonZeroU32>,
-    /// Must never change!
-    id_type: T,
+    /// Must never change the internal runtime type!
+    namespace: T,
 }
 
-impl<T: IdentifierType> Identifier<T> {
+impl<T: Namespace> Identifier<T> {
     /// Try parse a string as an identifier.
     /// It will not have boundaries applied yet.
     pub fn try_parse(value: &str) -> Result<Self, Error>
@@ -130,7 +172,7 @@ impl<T: IdentifierType> Identifier<T> {
             original: Arc::new(value.into()),
             words: [value.into()].into(),
             duplicate_id: None,
-            id_type,
+            namespace: id_type,
         })
     }
 
@@ -218,6 +260,11 @@ impl<T: IdentifierType> Identifier<T> {
         &self.original
     }
 
+    /// Get the words derived from the original
+    pub fn words(&self) -> Arc<[String]> {
+        self.words.clone()
+    }
+
     /// Get a display string that separates the words that make up the identifier visually
     pub fn words_display(&self) -> String {
         self.words.join("·")
@@ -241,7 +288,7 @@ impl<T: IdentifierType> Identifier<T> {
     {
         IdentifierRef {
             original: self.original.clone(),
-            id_type: self.id_type.clone(),
+            id_type: self.namespace.clone(),
         }
     }
 
@@ -253,113 +300,132 @@ impl<T: IdentifierType> Identifier<T> {
         self.duplicate_id
     }
 
-    pub fn to_runtime_type(self) -> Identifier<RuntimeType> {
+    pub fn to_runtime_namespace(self) -> Identifier<RuntimeNamespace> {
         Identifier {
             boundaries_applied: self.boundaries_applied,
             original: self.original,
             words: self.words,
             duplicate_id: self.duplicate_id,
-            id_type: self.id_type.runtime_value(),
+            namespace: self.namespace.runtime_value(),
         }
     }
 
-    pub fn as_runtime_type_mut(&mut self) -> &mut Identifier<RuntimeType> {
-        assert_eq!(size_of::<T>(), size_of::<RuntimeType>());
+    pub fn as_runtime_namespace_mut(&mut self) -> &mut Identifier<RuntimeNamespace> {
+        assert_eq!(size_of::<T>(), size_of::<RuntimeNamespace>());
         // Safety: We're only casting the T to a RuntimeType which is explicitly allowed by all implementors of IdentifierType
         // The Identifier itself is repr C and so won't be weird when the generic type changes
-        unsafe { std::mem::transmute::<&mut Self, &mut Identifier<RuntimeType>>(self) }
+        unsafe { std::mem::transmute::<&mut Self, &mut Identifier<RuntimeNamespace>>(self) }
     }
 
-    pub fn as_runtime_type(&self) -> &Identifier<RuntimeType> {
-        assert_eq!(size_of::<T>(), size_of::<RuntimeType>());
+    pub fn as_runtime_namespace(&self) -> &Identifier<RuntimeNamespace> {
+        assert_eq!(size_of::<T>(), size_of::<RuntimeNamespace>());
         // Safety: We're only casting the T to a RuntimeType which is explicitly allowed by all implementors of IdentifierType
         // The Identifier itself is repr C and so won't be weird when the generic type changes
-        unsafe { std::mem::transmute::<&Self, &Identifier<RuntimeType>>(self) }
+        unsafe { std::mem::transmute::<&Self, &Identifier<RuntimeNamespace>>(self) }
     }
 
     /// Get the identifier type
-    pub fn id_type(&self) -> &T {
-        &self.id_type
+    pub fn namespace(&self) -> &T {
+        &self.namespace
     }
 
-    /// Change the type of the identifier to a more specific type
+    /// Change the type of the identifier to a more specific namespace
     pub fn cast<U>(self) -> Identifier<U>
     where
-        U: IdentifierType + Default,
+        U: Namespace + Default,
         U: From<T>,
     {
         // Fine to do since we have the where bound
         self.cast_unchecked()
     }
 
-    /// Change the type of the identifier.
+    /// Change the namespace of the identifier.
     /// This is generally a bad idea because of the subtleties!
     /// So make sure this is actually what you want.
-    pub fn cast_unchecked<U: IdentifierType + Default>(self) -> Identifier<U> {
+    pub fn cast_unchecked<U: Namespace + Default>(self) -> Identifier<U> {
         Identifier {
             boundaries_applied: self.boundaries_applied,
             original: self.original,
             words: self.words,
             duplicate_id: self.duplicate_id,
-            id_type: U::default(),
+            namespace: U::default(),
         }
     }
 
-    /// Change the type of the identifier, but only if the runtime type is already that type.
+    /// Change the namespace of the identifier, but only if the runtime namespace is already that namespace.
     /// This function will panic if they're different.
     #[track_caller]
-    pub fn cast_assert<U: IdentifierType + Default>(self) -> Identifier<U> {
-        assert_eq!(self.id_type.runtime_value(), U::default().runtime_value());
+    pub fn cast_assert<U: Namespace + Default>(self) -> Identifier<U> {
+        assert_eq!(self.namespace.runtime_value(), U::default().runtime_value());
 
         Identifier {
             boundaries_applied: self.boundaries_applied,
             original: self.original,
             words: self.words,
             duplicate_id: self.duplicate_id,
-            id_type: U::default(),
+            namespace: U::default(),
+        }
+    }
+
+    /// Returns true if the identifier can be safely compared to other identifiers
+    pub fn is_valid(&self) -> bool {
+        match self.namespace().runtime_value() {
+            RuntimeNamespace::Global => true,
+            RuntimeNamespace::Local { site } => site.is_some(),
+            RuntimeNamespace::Operation => true,
+            RuntimeNamespace::Type => true,
         }
     }
 }
 
-impl<T: IdentifierType + Default> Default for Identifier<T> {
+impl Identifier<Local> {
+    pub fn set_local_site(&mut self, site: NonZeroU32) {
+        self.namespace.0 = RuntimeNamespace::Local { site: Some(site) }
+    }
+}
+
+impl Identifier<RuntimeNamespace> {
+    /// Cast the namespace to a concrete namespace. Panics if the target is not a concrete namespace of the current namespace
+    pub fn cast_concrete(
+        self,
+        runtime_namespace: RuntimeNamespace,
+    ) -> Identifier<RuntimeNamespace> {
+        assert!(
+            self.namespace
+                .runtime_value()
+                .concrete_namespaces()
+                .contains(&runtime_namespace)
+        );
+
+        Identifier {
+            boundaries_applied: self.boundaries_applied,
+            original: self.original,
+            words: self.words,
+            duplicate_id: self.duplicate_id,
+            namespace: runtime_namespace,
+        }
+    }
+}
+
+impl<T: Namespace + Default> Default for Identifier<T> {
     fn default() -> Self {
         Self {
             boundaries_applied: Default::default(),
             original: Default::default(),
             words: Default::default(),
             duplicate_id: Default::default(),
-            id_type: T::default(),
+            namespace: T::default(),
         }
     }
 }
 
-impl<T: IdentifierType> std::hash::Hash for Identifier<T> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.original.hash(state);
-        self.duplicate_id.hash(state);
-        self.id_type.runtime_value().hash(state);
-    }
-}
-
-impl<T: IdentifierType> PartialEq for Identifier<T> {
-    fn eq(&self, other: &Self) -> bool {
-        (self.original == other.original || self.words == other.words)
-            && self.duplicate_id == other.duplicate_id
-            && self
-                .id_type
-                .runtime_value()
-                .shares_namespace_with(other.id_type.runtime_value())
-    }
-}
-impl<T: IdentifierType> Eq for Identifier<T> {}
-
-#[derive(Debug, Clone, Default)]
-pub struct IdentifierRef<T: IdentifierType> {
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+pub struct IdentifierRef<T: Namespace> {
     original: Arc<String>,
     id_type: T,
 }
 
-impl<T: IdentifierType> IdentifierRef<T> {
+impl<T: Namespace> IdentifierRef<T> {
     pub fn new(identifier_original: String) -> Self
     where
         T: Default,
@@ -374,29 +440,11 @@ impl<T: IdentifierType> IdentifierRef<T> {
         &self.original
     }
 
-    pub fn is_ref_to<U: IdentifierType>(&self, identifier: &Identifier<U>) -> bool {
-        identifier.id_type.runtime_value() == self.id_type.runtime_value()
+    pub fn is_ref_to<U: Namespace>(&self, identifier: &Identifier<U>) -> bool {
+        identifier.namespace.runtime_value() == self.id_type.runtime_value()
             && self.original() == identifier.original()
     }
 }
-
-impl<T: IdentifierType> std::hash::Hash for IdentifierRef<T> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.original.hash(state);
-        self.id_type.runtime_value().hash(state);
-    }
-}
-
-impl<T: IdentifierType> PartialEq for IdentifierRef<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.original == other.original
-            && self
-                .id_type
-                .runtime_value()
-                .shares_namespace_with(other.id_type.runtime_value())
-    }
-}
-impl<T: IdentifierType> Eq for IdentifierRef<T> {}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
@@ -443,9 +491,9 @@ mod tests {
 
     #[test]
     fn simple_cases() {
-        assert_eq!(Identifier::<All>::try_parse(""), Err(Error::Empty));
+        assert_eq!(Identifier::<Global>::try_parse(""), Err(Error::Empty));
         assert_eq!(
-            Identifier::<All>::try_parse("1")
+            Identifier::<Global>::try_parse("1")
                 .unwrap()
                 .apply_boundaries(&[Boundary::Underscore])
                 .check_validity(),
@@ -455,28 +503,28 @@ mod tests {
             })
         );
         assert_eq!(
-            Identifier::<All>::try_parse("_1")
+            Identifier::<Global>::try_parse("_1")
                 .unwrap()
                 .apply_boundaries(&[Boundary::Underscore])
                 .to_case(Case::Kebab),
             "1"
         );
         assert_eq!(
-            Identifier::<All>::try_parse("a1")
+            Identifier::<Global>::try_parse("a1")
                 .unwrap()
                 .apply_boundaries(&[Boundary::Underscore])
                 .to_case(Case::Kebab),
             "a1"
         );
         assert_eq!(
-            Identifier::<All>::try_parse("a_1")
+            Identifier::<Global>::try_parse("a_1")
                 .unwrap()
                 .apply_boundaries(&[Boundary::Underscore])
                 .to_case(Case::Kebab),
             "a-1"
         );
         assert_eq!(
-            Identifier::<All>::try_parse("😈")
+            Identifier::<Global>::try_parse("😈")
                 .unwrap()
                 .apply_boundaries(&[Boundary::Underscore])
                 .check_validity(),
@@ -486,7 +534,7 @@ mod tests {
             })
         );
         assert_eq!(
-            Identifier::<All>::try_parse("abc😈")
+            Identifier::<Global>::try_parse("abc😈")
                 .unwrap()
                 .apply_boundaries(&[Boundary::Underscore])
                 .check_validity(),
@@ -496,21 +544,21 @@ mod tests {
             })
         );
         assert_eq!(
-            Identifier::<All>::try_parse("_")
+            Identifier::<Global>::try_parse("_")
                 .unwrap()
                 .apply_boundaries(&[Boundary::Space])
                 .to_case(Case::Kebab),
             "_"
         );
         assert_eq!(
-            Identifier::<All>::try_parse("_")
+            Identifier::<Global>::try_parse("_")
                 .unwrap()
                 .apply_boundaries(&[Boundary::Underscore])
                 .check_validity(),
             Err(Error::EmptyAfterSplits)
         );
         assert_eq!(
-            Identifier::<All>::try_parse("abc def")
+            Identifier::<Global>::try_parse("abc def")
                 .unwrap()
                 .apply_boundaries(&[Boundary::Underscore])
                 .check_validity(),
@@ -519,27 +567,27 @@ mod tests {
                 invalid_char: ' '
             })
         );
-        Identifier::<All>::try_parse("abc def")
+        Identifier::<Global>::try_parse("abc def")
             .unwrap()
             .apply_boundaries(&[Boundary::Space])
             .check_validity()
             .unwrap();
         assert_eq!(
-            Identifier::<All>::try_parse("abc_def")
+            Identifier::<Global>::try_parse("abc_def")
                 .unwrap()
                 .apply_boundaries(&[Boundary::Underscore])
                 .to_case(Case::Kebab),
             "abc-def"
         );
         assert_eq!(
-            Identifier::<All>::try_parse("_abc_def")
+            Identifier::<Global>::try_parse("_abc_def")
                 .unwrap()
                 .apply_boundaries(&[Boundary::Underscore])
                 .to_case(Case::Kebab),
             "abc-def"
         );
         assert_eq!(
-            Identifier::<All>::try_parse("Bar🚩bar")
+            Identifier::<Global>::try_parse("Bar🚩bar")
                 .unwrap()
                 .apply_boundaries(&[Boundary::Underscore])
                 .check_validity(),
@@ -552,7 +600,7 @@ mod tests {
 
     #[test]
     fn default_is_empty() {
-        assert!(Identifier::<All>::default().is_empty());
+        assert!(Identifier::<Global>::default().is_empty());
     }
 
     #[test]
@@ -560,44 +608,28 @@ mod tests {
         assert_eq!(
             Identifier::<Type>::try_parse("a")
                 .unwrap()
-                .to_runtime_type(),
-            Identifier::try_parse_with_type("a", RuntimeType::Type).unwrap()
+                .to_runtime_namespace(),
+            Identifier::try_parse_with_type("a", RuntimeNamespace::Type).unwrap()
         );
 
         assert_ne!(
             Identifier::<Type>::try_parse("a")
                 .unwrap()
-                .to_runtime_type(),
-            Identifier::try_parse_with_type("a", RuntimeType::Operation).unwrap()
-        );
-    }
-
-    #[test]
-    fn all_vs_specific_equals() {
-        assert_eq!(
-            Identifier::<All>::try_parse("a").unwrap().to_runtime_type(),
-            Identifier::<Type>::try_parse("a")
-                .unwrap()
-                .to_runtime_type(),
-        );
-        assert_eq!(
-            Identifier::<All>::try_parse("a").unwrap().to_runtime_type(),
-            Identifier::<Operation>::try_parse("a")
-                .unwrap()
-                .to_runtime_type(),
+                .to_runtime_namespace(),
+            Identifier::try_parse_with_type("a", RuntimeNamespace::Operation).unwrap()
         );
     }
 
     #[test]
     fn issue_274() {
         // https://github.com/diondokter/device-driver/issues/274
-        Identifier::<All>::try_parse("io_pad_i2c_b1")
+        Identifier::<Global>::try_parse("io_pad_i2c_b1")
             .unwrap()
             .apply_boundaries(&Boundary::defaults())
             .check_validity()
             .unwrap();
 
-        Identifier::<All>::try_parse("io_pad_i2c-b1")
+        Identifier::<Global>::try_parse("io_pad_i2c-b1")
             .unwrap()
             .apply_boundaries(&[Boundary::Underscore])
             .check_validity()

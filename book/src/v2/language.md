@@ -83,7 +83,7 @@ Types:
 
 Notice how manifests and blocks are part of both.
 
-*: Enum variants and fields are sort of objects, but they are namespaced within their defining enum/fieldset.
+*: Enum variants and fields are sort of objects, but they are namespaced within their local defining enum/fieldset.
 
 ## Formatting style guide
 

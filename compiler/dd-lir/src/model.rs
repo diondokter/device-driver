@@ -1,5 +1,5 @@
 use device_driver_common::{
-    identifier::{All, Identifier, Operation, Type},
+    identifier::{Identifier, Local, Operation, Type},
     span::Spanned,
     specifiers::{Access, AddressMode, AddressRange, ByteOrder, Integer},
 };
@@ -44,7 +44,7 @@ pub enum Repeat {
     },
     Enum {
         enum_name: Identifier<Type>,
-        enum_variants: Vec<Identifier<All>>,
+        enum_variants: Vec<Identifier<Local>>,
         stride: i128,
     },
 }
@@ -78,7 +78,7 @@ pub struct FieldSet {
 
 pub struct Field {
     pub description: String,
-    pub name: Identifier<All>,
+    pub name: Identifier<Local>,
     pub address: AddressRange,
     pub base_type: String,
     pub conversion_method: FieldConversionMethod,
@@ -135,7 +135,7 @@ impl Enum {
 
 pub struct EnumVariant {
     pub description: String,
-    pub name: Identifier<All>,
+    pub name: Identifier<Local>,
     pub discriminant: i128,
     pub default: bool,
     pub catch_all: bool,

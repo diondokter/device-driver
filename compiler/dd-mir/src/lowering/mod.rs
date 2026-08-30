@@ -7,7 +7,7 @@ use std::{
 
 use crate::model::{Manifest, Object};
 use device_driver_common::{
-    identifier::{Identifier, IdentifierRef, IdentifierType, Type},
+    identifier::{Identifier, IdentifierRef, Namespace, Type},
     span::{Span, SpanExt, Spanned},
     specifiers::{BaseType, NodeType, Repeat, RepeatSource, TypeConversion},
 };
@@ -546,7 +546,7 @@ fn parse_node_to_shape<'src, S: Shape>(
 
 trait Shape: Default + 'static {
     const NODE_TYPE: NodeType;
-    type NameIdentifierType: IdentifierType + Default;
+    type NameIdentifierType: Namespace + Default;
 
     fn doc_comments(&mut self) -> &mut String;
     fn name(&mut self) -> &mut Spanned<Identifier<Self::NameIdentifierType>>;

@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use device_driver_diagnostics::{Diagnostics, DynError, errors::AddressTypeUndefined};
 
 use crate::{
-    model::{Manifest, Object, UniqueId},
+    model::{Manifest, Object, ObjectId},
     passes::{Assumption, Pass},
     search_object,
 };
@@ -19,7 +19,7 @@ impl Pass for AddressTypesSpecified {
     fn run_pass(
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,
-    ) -> Result<HashSet<UniqueId>, DynError> {
+    ) -> Result<HashSet<ObjectId>, DynError> {
         let mut register_removals = HashSet::new();
         let mut command_removals = HashSet::new();
         let mut buffer_removals = HashSet::new();

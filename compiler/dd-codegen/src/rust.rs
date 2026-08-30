@@ -4,7 +4,7 @@ use askama::Template;
 use clap::Parser;
 use convert_case::Case;
 use device_driver_common::{
-    identifier::{Identifier, IdentifierType, Type},
+    identifier::{Identifier, Namespace, Type},
     specifiers::{Access, AddressMode},
 };
 use device_driver_lir::model::{
@@ -151,7 +151,7 @@ fn get_address_mode_const_value(value: &Option<AddressMode>) -> &'static str {
     }
 }
 
-fn maybe_doc_alias<T: IdentifierType>(identifier: &Identifier<T>, case: Case) -> String {
+fn maybe_doc_alias<T: Namespace>(identifier: &Identifier<T>, case: Case) -> String {
     if identifier.to_case(case) == identifier.original() {
         return String::new();
     }

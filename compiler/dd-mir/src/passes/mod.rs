@@ -2,7 +2,7 @@ use std::{any::type_name, collections::HashSet, error::Error, fmt::Display};
 
 use crate::{
     MirOptions, PassTiming,
-    model::{Manifest, UniqueId},
+    model::{Manifest, ObjectId},
     passes::{
         access_set::AccessSet, address_types_big_enough::AddressTypesBigEnough,
         address_types_specified::AddressTypesSpecified,
@@ -12,8 +12,8 @@ use crate::{
         device_configs_owned::DeviceConfigsOwned, device_name_is_pascal::DeviceNameIsPascal,
         enum_values_checked::EnumValuesChecked, extern_values_checked::ExternValuesChecked,
         field_conversion_valid::FieldConversionValid, field_set_refs_valid::FieldsetRefsValid,
-        names_checked::NamesChecked, names_unique::NamesUnique,
-        repeat_math_checked::RepeatMathChecked,
+        local_namespaces_assigned::LocalNamespacesAssigned, names_checked::NamesChecked,
+        names_unique::NamesUnique, repeat_math_checked::RepeatMathChecked,
         repeat_zero_stride_rejected::RepeatZeroStrideRejected,
         reserved_names_checked::ReservedNamesChecked, reset_values_converted::ResetValuesConverted,
     },
@@ -35,6 +35,7 @@ mod enum_values_checked;
 mod extern_values_checked;
 mod field_conversion_valid;
 mod field_set_refs_valid;
+mod local_namespaces_assigned;
 mod names_checked;
 mod names_unique;
 mod repeat_math_checked;
@@ -43,8 +44,9 @@ mod reserved_names_checked;
 mod reset_values_converted;
 
 // TODO: Make const when possible in a future Rust version
-fn get_default_passes() -> [PassInfo; 20] {
+fn get_default_passes() -> [PassInfo; 21] {
     [
+        PassInfo::get::<LocalNamespacesAssigned>(),
         PassInfo::get::<DeviceConfigsOwned>(),
         PassInfo::get::<EnumValuesChecked>(),
         PassInfo::get::<ExternValuesChecked>(),
@@ -109,7 +111,7 @@ trait Pass {
     fn run_pass(
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,
-    ) -> Result<HashSet<UniqueId>, DynError>;
+    ) -> Result<HashSet<ObjectId>, DynError>;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -128,6 +130,7 @@ pub(crate) enum Assumption {
     EnumsNotEmpty,
     RepeatMathChecked,
     AccessSet,
+    LocalNamespacesAssigned,
 
     _End, // Keep as the last element
 }
@@ -148,6 +151,7 @@ impl Assumption {
         Assumption::EnumsNotEmpty,
         Assumption::RepeatMathChecked,
         Assumption::AccessSet,
+        Assumption::LocalNamespacesAssigned,
     ];
 
     const _ALL_ASSUMPTIONS_PRESENT_CHECK: () =
@@ -178,7 +182,12 @@ impl PassInfo {
     ) -> Result<(), DynError> {
         let removals = P::run_pass(manifest, diagnostics)
             .with_message(|| format!("could not finish {} MIR pass", type_name::<P>()))?;
-        crate::remove_objects(manifest, removals);
+        crate::remove_objects(manifest, removals).with_message(|| {
+            format!(
+                "could not remove objects from {} MIR pass",
+                type_name::<P>()
+            )
+        })?;
         Ok(())
     }
 }
@@ -286,7 +295,7 @@ mod tests {
         fn run_pass(
             _manifest: &mut Manifest,
             _diagnostics: &mut Diagnostics,
-        ) -> Result<HashSet<UniqueId>, DynError> {
+        ) -> Result<HashSet<ObjectId>, DynError> {
             todo!()
         }
     }
@@ -299,7 +308,7 @@ mod tests {
         fn run_pass(
             _manifest: &mut Manifest,
             _diagnostics: &mut Diagnostics,
-        ) -> Result<HashSet<UniqueId>, DynError> {
+        ) -> Result<HashSet<ObjectId>, DynError> {
             todo!()
         }
     }

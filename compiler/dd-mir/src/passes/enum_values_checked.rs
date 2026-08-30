@@ -7,7 +7,7 @@ use device_driver_common::{
 use itertools::Itertools;
 
 use crate::{
-    model::{EnumGenerationStyle, EnumValue, LendingIterator, Manifest, Object, Unique, UniqueId},
+    model::{EnumGenerationStyle, EnumValue, Id, LendingIterator, Manifest, Object, ObjectId},
     passes::{Assumption, Pass},
 };
 use device_driver_diagnostics::{
@@ -32,7 +32,7 @@ impl Pass for EnumValuesChecked {
     fn run_pass(
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,
-    ) -> Result<HashSet<UniqueId>, DynError> {
+    ) -> Result<HashSet<ObjectId>, DynError> {
         let mut removals = HashSet::new();
 
         let mut iter = manifest.iter_objects_with_config_mut();
@@ -50,18 +50,17 @@ impl Pass for EnumValuesChecked {
             }
 
             // Record all variant values
-            let e_id = enum_value.id();
             let seen_values = enum_value
                 .iter_variants_with_discriminant_mut()
                 .map(|(discriminant, variant)| {
                     if variant.value.specified_discriminant().is_none() {
                         variant.value.specify(discriminant);
                     }
-                    (discriminant, (variant.id_with(e_id.clone()), variant.span))
+                    (discriminant, (variant.id(), variant.span))
                 })
                 .collect_vec();
 
-            let mut seen_values_map = HashMap::<i128, Vec<(&UniqueId, Span)>>::new();
+            let mut seen_values_map = HashMap::<i128, Vec<(&ObjectId, Span)>>::new();
             for (variant_value, (variant_id, span)) in &seen_values {
                 seen_values_map
                     .entry(*variant_value)
@@ -529,7 +528,7 @@ mod tests {
         let removals = EnumValuesChecked::run_pass(&mut start_mir, &mut diagnostics).unwrap();
 
         assert!(diagnostics.has_error());
-        assert!(removals.contains(&UniqueId::new_test(
+        assert!(removals.contains(&ObjectId::new_test(
             Identifier::<Type>::try_parse("MyEnum").unwrap()
         )));
     }
@@ -567,7 +566,7 @@ mod tests {
 
         assert!(diagnostics.has_error());
         assert_eq!(removals.len(), 1);
-        assert!(removals.contains(&UniqueId::new_test(
+        assert!(removals.contains(&ObjectId::new_test(
             Identifier::<Type>::try_parse("MyEnum").unwrap()
         )));
     }

@@ -1,14 +1,14 @@
 use std::collections::{HashMap, HashSet};
 
 use convert_case::Case;
-use device_driver_common::{identifier::RuntimeType, specifiers::Access};
+use device_driver_common::{identifier::RuntimeNamespace, specifiers::Access};
 use device_driver_diagnostics::{
     Diagnostics, DynError, ResultExt,
     errors::{FieldSetterNameCollision, ReservedOperationNameUsed},
 };
 
 use crate::{
-    model::{FieldSet, LendingIterator, Manifest, Object, Unique, UniqueId},
+    model::{FieldSet, Id, LendingIterator, Manifest, Object, ObjectId},
     passes::Pass,
 };
 
@@ -23,7 +23,7 @@ impl Pass for ReservedNamesChecked {
     fn run_pass(
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,
-    ) -> Result<HashSet<UniqueId>, DynError> {
+    ) -> Result<HashSet<ObjectId>, DynError> {
         let mut removals = HashSet::new();
 
         let mut iter = manifest.iter_objects_with_config_mut();
@@ -53,7 +53,7 @@ impl Pass for ReservedNamesChecked {
 fn check_block_reserved_names<'a>(
     objects: impl Iterator<Item = &'a Object>,
     diagnostics: &mut Diagnostics,
-) -> HashSet<UniqueId> {
+) -> HashSet<ObjectId> {
     let mut removals = HashSet::new();
 
     const RESERVED_NAMES: &[&str] = &["new", "init", "deinit", "free"];
@@ -63,8 +63,8 @@ fn check_block_reserved_names<'a>(
 
         if object
             .name()
-            .id_type()
-            .shares_namespace_with(RuntimeType::Operation)
+            .namespace()
+            .shares_namespace_with(RuntimeNamespace::Operation)
             && RESERVED_NAMES.contains(&object_operation_name.as_str())
         {
             removals.insert(object.id());
