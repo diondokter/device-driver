@@ -16,6 +16,7 @@ fn main() {}
 
 /// Root block of the Device driver
 #[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Device<I> {
     interface: I,
     #[doc(hidden)]

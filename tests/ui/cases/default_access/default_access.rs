@@ -16,6 +16,7 @@ fn main() {}
 
 /// Root block of the Y driver
 #[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Y<I> {
     interface: I,
     #[doc(hidden)]
@@ -63,6 +64,7 @@ impl<I> ::device_driver::Block for Y<I> {
     }
 }
 #[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct B<'i, I> {
     #[doc(hidden)]
     interface: &'i mut I,
@@ -105,6 +107,7 @@ impl<'i, I> ::device_driver::Block for B<'i, I> {
 }
 /// Root block of the D driver
 #[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct D<I> {
     interface: I,
     #[doc(hidden)]

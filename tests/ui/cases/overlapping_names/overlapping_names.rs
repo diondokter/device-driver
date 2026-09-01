@@ -16,6 +16,7 @@ fn main() {}
 
 /// Root block of the Foo driver
 #[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Foo<I> {
     interface: I,
     #[doc(hidden)]
@@ -58,6 +59,7 @@ impl<I> ::device_driver::Block for Foo<I> {
 /// Root block of the FooDup1 driver
 #[doc(alias = "Foo")]
 #[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct FooDup1<I> {
     interface: I,
     #[doc(hidden)]
@@ -99,6 +101,7 @@ impl<I> ::device_driver::Block for FooDup1<I> {
 }
 /// Root block of the Blah driver
 #[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Blah<I> {
     interface: I,
     #[doc(hidden)]
@@ -152,6 +155,7 @@ impl<I> ::device_driver::Block for Blah<I> {
     }
 }
 #[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Wheee<'i, I> {
     #[doc(hidden)]
     interface: &'i mut I,
@@ -180,6 +184,7 @@ impl<'i, I> ::device_driver::Block for Wheee<'i, I> {
     }
 }
 #[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Wheee2<'i, I> {
     #[doc(hidden)]
     interface: &'i mut I,
@@ -209,6 +214,7 @@ impl<'i, I> ::device_driver::Block for Wheee2<'i, I> {
 }
 /// Root block of the Words driver
 #[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Words<I> {
     interface: I,
     #[doc(hidden)]

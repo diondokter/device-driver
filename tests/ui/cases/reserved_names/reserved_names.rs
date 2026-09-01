@@ -16,6 +16,7 @@ fn main() {}
 
 /// Root block of the Foo driver
 #[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Foo<I> {
     interface: I,
     #[doc(hidden)]
