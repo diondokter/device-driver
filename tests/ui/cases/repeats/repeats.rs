@@ -16,6 +16,7 @@ fn main() {}
 
 /// Root block of the Repeats driver
 #[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Repeats<I> {
     interface: I,
     #[doc(hidden)]
@@ -74,6 +75,7 @@ impl<I> ::device_driver::Block for Repeats<I> {
 }
 #[doc(alias = "foo")]
 #[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Foo<'i, I> {
     #[doc(hidden)]
     interface: &'i mut I,
@@ -103,6 +105,7 @@ impl<'i, I> ::device_driver::Block for Foo<'i, I> {
 }
 #[doc(alias = "bar")]
 #[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Bar<'i, I> {
     #[doc(hidden)]
     interface: &'i mut I,
@@ -132,6 +135,7 @@ impl<'i, I> ::device_driver::Block for Bar<'i, I> {
 }
 #[doc(alias = "quux")]
 #[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Quux<'i, I> {
     #[doc(hidden)]
     interface: &'i mut I,

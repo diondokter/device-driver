@@ -8,6 +8,9 @@
 {{ self::description_to_docstring(block.description) }}
 {{ self::maybe_doc_alias(block.name, Case::Pascal) }}
 #[derive(Debug)]
+{% if let Some(defmt_feature) = defmt_feature() %}
+#[cfg_attr(feature = "{{defmt_feature}}", derive(defmt::Format))]
+{% endif %}
 pub struct {{ block.name.to_case(Case::Pascal) }}{{block_generics}} {
     {% if block.root %}
     interface: I,
