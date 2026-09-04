@@ -1,6 +1,12 @@
-use std::{borrow::Cow, error::Error, fmt::Debug, fmt::Display, fmt::Write};
+use std::{
+    borrow::Cow,
+    error::Error,
+    fmt::{Debug, Display, Write},
+    ops::Deref,
+};
 
 use annotate_snippets::{Group, Level, Renderer, renderer::DecorStyle};
+use device_driver_common::span::Span;
 
 pub mod errors;
 
@@ -39,11 +45,11 @@ impl Diagnostics {
         self.diagnostics.is_empty()
     }
 
-    pub fn print_to<W: std::io::Write>(
-        self,
-        mut writer: W,
+    pub fn render_for_each<E>(
+        &self,
         metadata: Metadata<'_>,
-    ) -> std::io::Result<()> {
+        mut f: impl FnMut(&dyn Diagnostic, String) -> Result<(), E>,
+    ) -> Result<(), E> {
         let renderer = metadata.get_renderer();
 
         for diagnostic in &self.diagnostics {
@@ -54,10 +60,18 @@ impl Diagnostics {
                 rendered = strip_ansi_urls(&rendered);
             }
 
-            writeln!(writer, "{rendered}\n",)?;
+            f(diagnostic.deref(), rendered)?;
         }
 
         Ok(())
+    }
+
+    pub fn print_to<W: std::io::Write>(
+        self,
+        mut writer: W,
+        metadata: Metadata<'_>,
+    ) -> std::io::Result<()> {
+        self.render_for_each(metadata, |_, rendered| writeln!(writer, "{rendered}\n"))
     }
 
     pub fn print_to_fmt<W: std::fmt::Write>(
@@ -65,20 +79,7 @@ impl Diagnostics {
         mut writer: W,
         metadata: Metadata<'_>,
     ) -> std::fmt::Result {
-        let renderer = metadata.get_renderer();
-
-        for diagnostic in &self.diagnostics {
-            let mut rendered =
-                renderer.render(&diagnostic.as_report(metadata.source, metadata.source_path));
-
-            if !metadata.ansi {
-                rendered = strip_ansi_urls(&rendered);
-            }
-
-            writeln!(writer, "{rendered}\n",)?;
-        }
-
-        Ok(())
+        self.render_for_each(metadata, |_, rendered| writeln!(writer, "{rendered}\n"))
     }
 }
 
@@ -163,12 +164,16 @@ fn strip_ansi_urls(text: &str) -> String {
     output
 }
 
-pub trait Diagnostic: Debug {
+pub trait Diagnostic: Debug + Send {
     fn is_error(&self) -> bool;
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>>;
+
+    fn main_span(&self) -> Span {
+        Span::empty()
+    }
 }
 
-impl<E: Error> Diagnostic for E {
+impl<E: Error + Send> Diagnostic for E {
     fn is_error(&self) -> bool {
         true
     }

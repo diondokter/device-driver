@@ -97,6 +97,10 @@ impl Diagnostic for DeviceNameNotPascal {
         ]
         .to_vec()
     }
+
+    fn main_span(&self) -> Span {
+        self.device_name
+    }
 }
 
 #[derive(Debug)]
@@ -1546,6 +1550,10 @@ impl Diagnostic for ParsingError {
             ),
         )]
         .to_vec()
+    }
+
+    fn main_span(&self) -> Span {
+        self.span
     }
 }
 
