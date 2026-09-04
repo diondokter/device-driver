@@ -21,6 +21,7 @@ path = "src/main.rs"
 device-driver-core.workspace = true
 device-driver-diagnostics.workspace = true
 device-driver-converter = { workspace = true, optional = true }
+device-driver-lsp = { workspace = true, features = ["runtime-tokio"] }
 
 clap.workspace = true
 

@@ -13,8 +13,10 @@ members = [
     "compiler/dd-mir",
     "compiler/dd-parser",
     "compiler/dd-wasm",
+    "compiler/dd-converter",
+    "compiler/dd-lsp",
     "fuzz",
-    "tests/ui", "compiler/dd-converter",
+    "tests/ui",
 ]
 
 exclude = ["website"]
@@ -38,6 +40,7 @@ device-driver-macros = { path = "compiler/dd-macros", version = "=2.1.0" }
 device-driver-mir = { path = "compiler/dd-mir", version = "=2.1.0" }
 device-driver-parser = { path = "compiler/dd-parser", version = "=2.1.0" }
 device-driver-converter = { path = "compiler/dd-converter", version = "=2.1.0" }
+device-driver-lsp = { path = "compiler/dd-lsp", version = "=2.1.0" }
 
 itertools = "0.15.0"
 convert_case = "0.12.0"
