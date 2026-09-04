@@ -1,0 +1,25 @@
+[package]
+name = "device-driver-lsp"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+keywords = ["device", "driver", "toolkit", "lsp"]
+categories = ["embedded", "hardware-support", "development-tools"]
+description = "LSP implementation for device-driver"
+
+[dependencies]
+device-driver-diagnostics.workspace = true
+device-driver-lexer.workspace = true
+device-driver-parser.workspace = true
+device-driver-mir.workspace = true
+
+tower-lsp-server = { version = "0.23.0", default-features = false }
+tokio = { version = "1.53.1", optional = true, features = ["rt", "io-std"] }
+camino = "1.2.5"
+
+[features]
+runtime-tokio = ["dep:tokio", "tower-lsp-server/runtime-tokio"]

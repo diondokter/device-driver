@@ -64,6 +64,31 @@ impl Span {
             end: self.end,
         }
     }
+
+    pub fn as_line_column(&self, source: &str) -> ((u32, u32), (u32, u32)) {
+        fn byte_to_line_column(val: usize, source: &str) -> (u32, u32) {
+            let mut lines = 0;
+            let mut last_line_start = 0;
+
+            for (byte_index, char_val) in source.char_indices() {
+                match char_val {
+                    _ if byte_index == val => break,
+                    '\n' => {
+                        lines += 1;
+                        last_line_start = byte_index + 1
+                    }
+                    _ => {}
+                }
+            }
+
+            (lines, (val - last_line_start) as u32)
+        }
+
+        (
+            byte_to_line_column(self.start, source),
+            byte_to_line_column(self.end, source),
+        )
+    }
 }
 
 impl chumsky::span::Span for Span {
