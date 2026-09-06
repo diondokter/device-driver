@@ -10,7 +10,6 @@ rust-version.workspace = true
 keywords = ["device", "driver", "toolkit"]
 categories = ["embedded", "hardware-support", "development-tools"]
 description = "Internal proc-macro implementation crate for the device-driver toolkit"
-readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
