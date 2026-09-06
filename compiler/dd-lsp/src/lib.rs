@@ -1,5 +1,4 @@
-use camino::{Utf8Path, Utf8PathBuf};
-use device_driver_diagnostics::{Diagnostics, DynError, Metadata, ResultExt};
+use device_driver_diagnostics::{Diagnostics, DynError, ResultExt, Severity};
 use tower_lsp_server::{
     Client, LanguageServer, LspService, Server,
     ls_types::{
@@ -38,48 +37,38 @@ impl Backend {
         Ok(diagnostics)
     }
 
-    pub async fn compile(&self, file: &Utf8Path, source: &str, version: Option<i32>) {
+    pub async fn compile(&self, uri: Uri, source: &str, version: Option<i32>) {
         match self.try_compile(source) {
             Ok(diagnostics) => {
-                let mut diags = Vec::new();
+                let diags = diagnostics
+                    .iter()
+                    .map(|diagnostic| {
+                        let span = diagnostic.primary_span().as_line_column(source);
 
-                let Ok(()) = diagnostics.render_for_each(
-                    Metadata {
-                        source,
-                        source_path: file.as_str(),
-                        term_width: None,
-                        ansi: false,
-                        unicode: false,
-                        anonymized_line_numbers: false,
-                    },
-                    |diagnostic, rendered| {
-                        let span = diagnostic.main_span().as_line_column(source);
-
-                        diags.push(tower_lsp_server::ls_types::Diagnostic {
+                        tower_lsp_server::ls_types::Diagnostic {
                             range: Range::new(
                                 Position::new(span.0.0, span.0.1),
                                 Position::new(span.1.0, span.1.1),
                             ),
-                            severity: if diagnostic.is_error() {
-                                Some(DiagnosticSeverity::ERROR)
-                            } else {
-                                Some(DiagnosticSeverity::WARNING)
+                            severity: match diagnostic.severity() {
+                                Severity::Error => Some(DiagnosticSeverity::ERROR),
+                                Severity::Warning => Some(DiagnosticSeverity::WARNING),
+                                Severity::Info => Some(DiagnosticSeverity::INFORMATION),
+                                Severity::Note => Some(DiagnosticSeverity::HINT),
+                                Severity::Help => Some(DiagnosticSeverity::HINT),
                             },
                             code: None,
                             code_description: None,
                             source: Some("DDSL".into()),
-                            message: rendered,
-                            related_information: None, // TODO: look at
+                            message: diagnostic.title().into(),
+                            related_information: None,
                             tags: None,
                             data: None,
-                        });
-                        Result::<(), std::convert::Infallible>::Ok(())
-                    },
-                );
+                        }
+                    })
+                    .collect();
 
-                self.client
-                    .publish_diagnostics(Uri::from_file_path(file).unwrap(), diags, version)
-                    .await;
+                self.client.publish_diagnostics(uri, diags, version).await;
             }
             Err(e) => {
                 self.client.log_message(MessageType::ERROR, e).await;
@@ -115,18 +104,12 @@ impl LanguageServer for Backend {
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        eprintln!("did_open");
-
-        let path = Utf8PathBuf::from(params.text_document.uri.path().to_string())
-            .canonicalize_utf8()
-            .unwrap();
-
         self.client
-            .log_message(MessageType::LOG, format!("did_open: {}", path))
+            .log_message(MessageType::LOG, format!("did_open: {params:?}"))
             .await;
 
         self.compile(
-            &path,
+            params.text_document.uri,
             &params.text_document.text,
             Some(params.text_document.version),
         )
@@ -134,29 +117,26 @@ impl LanguageServer for Backend {
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
-        let path = Utf8PathBuf::from(params.text_document.uri.path().to_string())
-            .canonicalize_utf8()
-            .unwrap();
-
         self.client
-            .log_message(MessageType::LOG, format!("did_save: {}", path))
+            .log_message(MessageType::LOG, format!("did_save: {params:?}"))
             .await;
 
-        self.compile(&path, params.text.as_ref().unwrap(), None)
-            .await;
+        self.compile(
+            params.text_document.uri,
+            params.text.as_ref().unwrap(),
+            None,
+        )
+        .await;
     }
 
     async fn did_change(&self, params: tower_lsp_server::ls_types::DidChangeTextDocumentParams) {
-        let path = Utf8PathBuf::from(params.text_document.uri.path().to_string())
-            .canonicalize_utf8()
-            .unwrap();
-
         self.client
-            .log_message(MessageType::LOG, format!("did_change: {}", path))
+            .log_message(MessageType::LOG, format!("did_change: {params:?}"))
             .await;
 
         for change in params.content_changes {
-            self.compile(&path, &change.text, None).await;
+            self.compile(params.text_document.uri.clone(), &change.text, None)
+                .await;
         }
     }
 

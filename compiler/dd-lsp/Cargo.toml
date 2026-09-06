@@ -19,7 +19,6 @@ device-driver-mir.workspace = true
 
 tower-lsp-server = { version = "0.23.0", default-features = false }
 tokio = { version = "1.53.1", optional = true, features = ["rt", "io-std"] }
-camino = "1.2.5"
 
 [features]
 runtime-tokio = ["dep:tokio", "tower-lsp-server/runtime-tokio"]
