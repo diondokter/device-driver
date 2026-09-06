@@ -91,7 +91,14 @@ fn accept(cases_dir: &Path) {
             .unwrap();
 
             let output = device_driver_tests::OUTPUT_HEADER.to_string() + &transformed;
-            let output_name = format!("{}.rs", test_case.file_name().display());
+            let output_name = format!(
+                "{}.rs",
+                test_case
+                    .file_name()
+                    .display()
+                    .to_string()
+                    .replace("_", "-")
+            );
             let output_path = test_case.path().join(output_name);
 
             std::fs::write(&output_path, output).unwrap();
