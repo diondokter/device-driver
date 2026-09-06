@@ -10,7 +10,6 @@ rust-version.workspace = true
 keywords = ["device", "driver", "toolkit"]
 categories = ["embedded", "hardware-support", "development-tools", "command-line-utilities"]
 description = "The command line compiler for the device-driver toolkit"
-readme = "README.md"
 default-run = "ddc"
 
 [[bin]]

@@ -10,7 +10,6 @@ rust-version.workspace = true
 keywords = ["device", "driver", "toolkit"]
 categories = ["embedded", "hardware-support", "development-tools"]
 description = "Internal compiler crate for the device-driver toolkit"
-readme = "README.md"
 
 [dependencies]
 convert_case.workspace = true
