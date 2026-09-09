@@ -4,7 +4,7 @@ use device_driver_parser::Ast;
 pub struct Document {
     version: i32,
     source: String,
-    ast: Ast,
+    _ast: Ast,
 }
 
 impl Document {
@@ -20,7 +20,7 @@ impl Document {
             Document {
                 version,
                 source,
-                ast,
+                _ast: ast,
             },
             diagnostics,
         ))
