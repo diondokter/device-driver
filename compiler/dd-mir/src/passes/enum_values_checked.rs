@@ -303,7 +303,6 @@ mod tests {
     #[test]
     fn enum_values_correct() {
         let mut start_mir = Device {
-            description: String::new(),
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
@@ -351,7 +350,6 @@ mod tests {
         .into();
 
         let end_mir = Device {
-            description: String::new(),
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
@@ -409,7 +407,6 @@ mod tests {
     #[test]
     fn enum_values_infallible_with_fallback() {
         let mut start_mir = Device {
-            description: String::new(),
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
@@ -443,7 +440,6 @@ mod tests {
         .into();
 
         let end_mir = Device {
-            description: String::new(),
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
@@ -487,7 +483,6 @@ mod tests {
     #[test]
     fn enum_values_fallible() {
         let mut start_mir = Device {
-            description: String::new(),
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
@@ -512,7 +507,6 @@ mod tests {
         .into();
 
         let end_mir = Device {
-            description: String::new(),
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
@@ -547,7 +541,6 @@ mod tests {
     #[test]
     fn enum_values_dont_fit() {
         let mut start_mir = Device {
-            description: String::new(),
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
@@ -599,7 +592,6 @@ mod tests {
     #[test]
     fn enum_values_no_duplicates() {
         let mut start_mir = Device {
-            description: String::new(),
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),

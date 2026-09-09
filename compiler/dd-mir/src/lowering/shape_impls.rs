@@ -10,7 +10,7 @@ use crate::{
 use convert_case::Boundary;
 use device_driver_common::{
     identifier::{Global, Identifier, IdentifierRef, Local, Operation, Type},
-    interner::StrExt,
+    interner::{Istr, StrExt},
     span::{Span, SpanExt, Spanned},
     specifiers::{
         Access, AddressMode, AddressRange, BaseType, ByteOrder, Integer, NodeType, Repeat,
@@ -42,7 +42,7 @@ impl Shape for Manifest {
     const NODE_TYPE: NodeType = NodeType::Manifest;
     type NameIdentifierType = Global;
 
-    fn doc_comments(&mut self) -> &mut String {
+    fn doc_comments(&mut self) -> &mut Istr {
         &mut self.description
     }
 
@@ -246,7 +246,7 @@ impl Shape for Device {
     const NODE_TYPE: NodeType = NodeType::Device;
     type NameIdentifierType = Type;
 
-    fn doc_comments(&mut self) -> &mut String {
+    fn doc_comments(&mut self) -> &mut Istr {
         &mut self.description
     }
 
@@ -476,7 +476,7 @@ impl Shape for Block {
     const NODE_TYPE: NodeType = NodeType::Block;
     type NameIdentifierType = Global;
 
-    fn doc_comments(&mut self) -> &mut String {
+    fn doc_comments(&mut self) -> &mut Istr {
         &mut self.description
     }
 
@@ -568,7 +568,7 @@ impl Shape for Register {
     const NODE_TYPE: NodeType = NodeType::Register;
     type NameIdentifierType = Operation;
 
-    fn doc_comments(&mut self) -> &mut String {
+    fn doc_comments(&mut self) -> &mut Istr {
         &mut self.description
     }
 
@@ -759,7 +759,7 @@ impl Shape for FieldSet {
     const NODE_TYPE: NodeType = NodeType::FieldSet;
     type NameIdentifierType = Type;
 
-    fn doc_comments(&mut self) -> &mut String {
+    fn doc_comments(&mut self) -> &mut Istr {
         &mut self.description
     }
 
@@ -878,7 +878,7 @@ impl Shape for Extern {
     const NODE_TYPE: NodeType = NodeType::Extern;
     type NameIdentifierType = Type;
 
-    fn doc_comments(&mut self) -> &mut String {
+    fn doc_comments(&mut self) -> &mut Istr {
         &mut self.description
     }
 
@@ -960,7 +960,7 @@ impl Shape for Buffer {
     const NODE_TYPE: NodeType = NodeType::Buffer;
     type NameIdentifierType = Operation;
 
-    fn doc_comments(&mut self) -> &mut String {
+    fn doc_comments(&mut self) -> &mut Istr {
         &mut self.description
     }
 
@@ -1029,7 +1029,7 @@ impl Shape for Enum {
     const NODE_TYPE: NodeType = NodeType::Enum;
     type NameIdentifierType = Type;
 
-    fn doc_comments(&mut self) -> &mut String {
+    fn doc_comments(&mut self) -> &mut Istr {
         &mut self.description
     }
 
@@ -1072,7 +1072,7 @@ impl Shape for Enum {
                         };
 
                         enum_value.variants.push(EnumVariant {
-                            description: property.doc_comments.iter().map(|c| c.value).join("\n"),
+                            description: property.doc_comments.iter().map(|c| c.value).join("\n").intern(),
                             name: identifier.with_span(property.name.span),
                             value: match &property.expression.value {
                                 Expression::Number(num) => EnumValue::Specified(*num),
@@ -1114,7 +1114,7 @@ impl Shape for Command {
     const NODE_TYPE: NodeType = NodeType::Command;
     type NameIdentifierType = Operation;
 
-    fn doc_comments(&mut self) -> &mut String {
+    fn doc_comments(&mut self) -> &mut Istr {
         &mut self.description
     }
 
@@ -1307,7 +1307,7 @@ impl Shape for Field {
     const NODE_TYPE: NodeType = NodeType::Field;
     type NameIdentifierType = Local;
 
-    fn doc_comments(&mut self) -> &mut String {
+    fn doc_comments(&mut self) -> &mut Istr {
         &mut self.description
     }
 

@@ -30,7 +30,7 @@ impl Interner {
         };
 
         // Allocate a default Istr at 0
-        let default_istr = interner.intern("DEFAULT");
+        let default_istr = interner.intern("");
         debug_assert_eq!(default_istr.0, 0);
 
         interner
