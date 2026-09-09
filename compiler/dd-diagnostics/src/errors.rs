@@ -8,6 +8,7 @@ use std::borrow::Cow;
 use annotate_snippets::{AnnotationKind, Group, Level, Patch, Snippet};
 use device_driver_common::{
     identifier::{self, Identifier, RuntimeNamespace},
+    interner::Istr,
     span::{Span, Spanned},
     specifiers::{BaseType, Integer, NodeType},
 };
@@ -1829,7 +1830,7 @@ impl Diagnostic for UnknownNodeType {
 pub struct InvalidPropertyName {
     pub property: Span,
     pub node_type: Spanned<NodeType>,
-    pub expected_names: Vec<&'static str>,
+    pub expected_names: Vec<Istr>,
 }
 
 impl Diagnostic for InvalidPropertyName {
@@ -2228,7 +2229,7 @@ pub struct InvalidShortProperty {
     pub property: Span,
     pub node_type: Spanned<NodeType>,
     pub got: String,
-    pub expected: Vec<(String, String)>,
+    pub expected: Vec<(String, Istr)>,
 }
 
 impl Diagnostic for InvalidShortProperty {
