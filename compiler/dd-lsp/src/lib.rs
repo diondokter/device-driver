@@ -1,16 +1,22 @@
-use device_driver_diagnostics::{Diagnostics, DynError, ResultExt, Severity};
+use std::collections::HashMap;
+
+use device_driver_diagnostics::Severity;
+use tokio::sync::RwLock;
 use tower_lsp_server::{
     Client, LanguageServer, LspService, Server,
     ls_types::{
-        DiagnosticSeverity, DidOpenTextDocumentParams, DidSaveTextDocumentParams, InitializeResult,
-        MessageType, Position, Range, ServerCapabilities, TextDocumentSyncCapability,
-        TextDocumentSyncKind, Uri,
+        DiagnosticSeverity, DidOpenTextDocumentParams, InitializeResult, MessageType, Position,
+        Range, ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind, Uri,
     },
 };
 
-#[derive(Debug)]
+use crate::document::Document;
+
+mod document;
+
 pub struct Backend {
     client: Client,
+    documents: RwLock<HashMap<Uri, Document>>,
 }
 
 impl Backend {
@@ -21,29 +27,31 @@ impl Backend {
         rt.block_on(async {
             let stdin = tokio::io::stdin();
             let stdout = tokio::io::stdout();
-            let (service, socket) = LspService::new(|client| Backend { client });
+            let (service, socket) = LspService::new(|client| Backend {
+                client,
+                documents: RwLock::new(HashMap::new()),
+            });
             Server::new(stdin, stdout, socket).serve(service).await;
         });
     }
 
-    pub fn try_compile(&self, source: &str) -> Result<Diagnostics, DynError> {
-        let mut diagnostics = Diagnostics::new();
+    pub async fn update_document(&self, uri: Uri, source: String, version: i32) {
+        let documents = self.documents.read().await;
 
-        let tokens = device_driver_lexer::lex(source);
-        let ast = device_driver_parser::parse(&tokens, &mut diagnostics);
-        let _mir = device_driver_mir::lower_ast(&ast, &Default::default(), &mut diagnostics)
-            .with_message(|| "lower ast into MIR")?;
+        if let Some(document) = documents.get(&uri)
+            && document.version() >= version
+        {
+            return;
+        }
 
-        Ok(diagnostics)
-    }
+        drop(documents);
 
-    pub async fn compile(&self, uri: Uri, source: &str, version: Option<i32>) {
-        match self.try_compile(source) {
-            Ok(diagnostics) => {
+        match Document::compile(source, version) {
+            Ok((document, diagnostics)) => {
                 let diags = diagnostics
                     .iter()
                     .map(|diagnostic| {
-                        let span = diagnostic.primary_span().as_line_column(source);
+                        let span = diagnostic.primary_span().as_line_column(document.source());
 
                         tower_lsp_server::ls_types::Diagnostic {
                             range: Range::new(
@@ -68,7 +76,11 @@ impl Backend {
                     })
                     .collect();
 
-                self.client.publish_diagnostics(uri, diags, version).await;
+                self.documents.write().await.insert(uri.clone(), document);
+
+                self.client
+                    .publish_diagnostics(uri, diags, Some(version))
+                    .await;
             }
             Err(e) => {
                 self.client.log_message(MessageType::ERROR, e).await;
@@ -108,23 +120,10 @@ impl LanguageServer for Backend {
             .log_message(MessageType::LOG, format!("did_open: {params:?}"))
             .await;
 
-        self.compile(
+        self.update_document(
             params.text_document.uri,
-            &params.text_document.text,
-            Some(params.text_document.version),
-        )
-        .await;
-    }
-
-    async fn did_save(&self, params: DidSaveTextDocumentParams) {
-        self.client
-            .log_message(MessageType::LOG, format!("did_save: {params:?}"))
-            .await;
-
-        self.compile(
-            params.text_document.uri,
-            params.text.as_ref().unwrap(),
-            None,
+            params.text_document.text,
+            params.text_document.version,
         )
         .await;
     }
@@ -135,8 +134,12 @@ impl LanguageServer for Backend {
             .await;
 
         for change in params.content_changes {
-            self.compile(params.text_document.uri.clone(), &change.text, None)
-                .await;
+            self.update_document(
+                params.text_document.uri.clone(),
+                change.text,
+                params.text_document.version,
+            )
+            .await;
         }
     }
 
