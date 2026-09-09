@@ -23,7 +23,7 @@ pub fn transform_devices(manifest: &mir::Manifest) -> Result<Vec<lir::Device>, D
             // Create a root block and pass the device objects to it
             let blocks = collect_into_blocks(
                 BorrowedBlock {
-                    description: &format!(
+                    description: format!(
                         "{}Root block of the {} driver",
                         if device.description.is_empty() {
                             String::new()
@@ -88,7 +88,7 @@ fn collect_into_blocks(
     }
 
     let new_block = lir::Block {
-        description: description.clone(),
+        description,
         root: is_root,
         name: name.clone().cast(),
         register_address_type: device_config
@@ -137,7 +137,7 @@ fn get_method(
             )?);
 
             Some(lir::BlockMethod {
-                description: description.clone(),
+                description: *description,
                 name: name.value.clone().cast(),
                 address: address_offset.value,
                 repeat: repeat_to_method_kind(repeat, manifest),
@@ -161,7 +161,7 @@ fn get_method(
             ))?;
 
             Some(lir::BlockMethod {
-                description: description.clone(),
+                description: *description,
                 name: name.value.clone(),
                 address: address.value,
                 repeat: repeat_to_method_kind(repeat, manifest),
@@ -206,7 +206,7 @@ fn get_method(
                 .transpose()?;
 
             Some(lir::BlockMethod {
-                description: description.clone(),
+                description: *description,
                 name: name.value.clone(),
                 address: address.value,
                 repeat: repeat_to_method_kind(repeat, manifest),
@@ -226,7 +226,7 @@ fn get_method(
             properties_span: _,
             span: _,
         }) => Some(lir::BlockMethod {
-            description: description.clone(),
+            description: *description,
             name: name.value.clone(),
             address: address.value,
             repeat: lir::Repeat::None, // Buffers can't be repeated (for now?)
@@ -274,7 +274,7 @@ fn transform_field_set(
         .with_message(|| "transforming fields")?;
 
     Ok(lir::FieldSet {
-        description: field_set.description.clone(),
+        description: field_set.description,
         name: field_set.name.value.clone(),
         byte_order: field_set.byte_order.ok_or_else(|| {
             DynError::new("Byte order should never be none at this point after the MIR passes")
@@ -360,7 +360,7 @@ fn transform_field(manifest: &mir::Manifest, field: &mir::Field) -> Result<lir::
     };
 
     Ok(lir::Field {
-        description: description.clone(),
+        description: *description,
         name: name.value.clone(),
         address: field_address.value,
         base_type,
@@ -402,7 +402,7 @@ pub fn transform_enums(manifest: &mir::Manifest) -> Vec<lir::Enum> {
                } = v;
 
                 lir::EnumVariant {
-                    description: description.clone(),
+                    description: *description,
                     name: name.value.clone(),
                     discriminant,
                     default: matches!(value, mir::EnumValue::Default(_)),
@@ -412,7 +412,7 @@ pub fn transform_enums(manifest: &mir::Manifest) -> Vec<lir::Enum> {
             .collect();
 
         lir::Enum {
-            description: description.clone(),
+            description: *description,
             name: name.value.clone(),
             base_type,
             variants,
@@ -463,7 +463,7 @@ fn repeat_to_method_kind(repeat: &Option<Repeat>, manifest: &mir::Manifest) -> l
 
 #[derive(Debug, Clone)]
 pub struct BorrowedBlock<'o> {
-    pub description: &'o Istr,
+    pub description: Istr,
     pub name: &'o Identifier<Global>,
     #[expect(unused, reason = "included for completeness")]
     pub address_offset: &'o i128,
@@ -487,7 +487,7 @@ impl<'o> From<&'o mir::Block> for BorrowedBlock<'o> {
         } = value;
 
         Self {
-            description,
+            description: *description,
             name,
             address_offset,
             repeat,

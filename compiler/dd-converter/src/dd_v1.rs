@@ -475,7 +475,7 @@ fn convert_fieldset(
     Ok(Node {
         doc_comments: Vec::new(),
         node_type: Ident::new_no_span("fieldset".intern()),
-        name: Ident::new_no_span(name.map(|name| name.as_str()).unwrap_or("_").intern()),
+        name: Ident::new_no_span(name.as_deref().unwrap_or("_").intern()),
         repeat: None,
         type_specifier: None,
         short_properties: Vec::new(),
