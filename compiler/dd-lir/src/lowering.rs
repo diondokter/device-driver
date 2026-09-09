@@ -3,8 +3,9 @@ use std::ops::Add;
 use convert_case::Case;
 use device_driver_common::{
     identifier::{Global, Identifier},
+    interner::{Istr, StrExt},
     span::{SpanExt, Spanned},
-    specifiers::{BaseType, Integer, Repeat, RepeatSource},
+    specifiers::{BaseType, Integer, Repeat, RepeatSource, VariantNames},
 };
 use device_driver_diagnostics::{DynError, ResultExt};
 
@@ -30,7 +31,8 @@ pub fn transform_devices(manifest: &mir::Manifest) -> Result<Vec<lir::Device>, D
                             format!("{}\n\n", device.description)
                         },
                         device.name.to_case(Case::Pascal),
-                    ),
+                    )
+                    .intern(),
                     // Cast unchecked is fine here since this is a root block and the identifier is never used as an operation
                     name: &device.name.value.clone().cast_unchecked(),
                     address_offset: &device.address_offset.value,
@@ -303,7 +305,7 @@ fn transform_field(manifest: &mir::Manifest, field: &mir::Field) -> Result<lir::
             ));
         }
         (BaseType::Bool, None) if field_address.len() == 1 => {
-            ("u8".to_string(), lir::FieldConversionMethod::Bool)
+            ("u8".intern(), lir::FieldConversionMethod::Bool)
         }
         (BaseType::Bool, _) => {
             return Err(DynError::new(
@@ -311,9 +313,9 @@ fn transform_field(manifest: &mir::Manifest, field: &mir::Field) -> Result<lir::
             ));
         }
         (BaseType::FixedSize(integer), None) => {
-            (integer.to_string(), lir::FieldConversionMethod::None)
+            (integer.name().intern(), lir::FieldConversionMethod::None)
         }
-        (BaseType::FixedSize(integer), Some(fc)) => (integer.to_string(), {
+        (BaseType::FixedSize(integer), Some(fc)) => (integer.name().intern(), {
             let field_bits = field.field_address.len() as u32;
 
             let fc_identifier = search_object(manifest, &fc.type_name)
@@ -383,7 +385,7 @@ pub fn transform_enums(manifest: &mir::Manifest) -> Vec<lir::Enum> {
         } = e;
 
         let base_type = match base_type.value {
-            BaseType::FixedSize(integer) => integer.to_string(),
+            BaseType::FixedSize(integer) => integer.name().intern(),
             _ => {
                 panic!("Enum base type should be set to fixed size integer in a mir pass at this point")
             }
@@ -461,7 +463,7 @@ fn repeat_to_method_kind(repeat: &Option<Repeat>, manifest: &mir::Manifest) -> l
 
 #[derive(Debug, Clone)]
 pub struct BorrowedBlock<'o> {
-    pub description: &'o String,
+    pub description: &'o Istr,
     pub name: &'o Identifier<Global>,
     #[expect(unused, reason = "included for completeness")]
     pub address_offset: &'o i128,

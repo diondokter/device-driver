@@ -54,7 +54,6 @@ mod tests {
     #[test]
     fn well_enough_specified() {
         let mut input = Device {
-            description: String::new(),
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
@@ -87,7 +86,6 @@ mod tests {
     #[test]
     fn not_enough_specified() {
         let mut input = Device {
-            description: String::new(),
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
@@ -115,7 +113,6 @@ mod tests {
         };
 
         let mut input = Device {
-            description: String::new(),
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),

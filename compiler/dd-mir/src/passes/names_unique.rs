@@ -117,7 +117,6 @@ mod tests {
         };
 
         let mut start_mir = Device {
-            description: String::new(),
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
@@ -153,7 +152,6 @@ mod tests {
         };
 
         let mut start_mir = Device {
-            description: String::new(),
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
@@ -195,7 +193,6 @@ mod tests {
         };
 
         let mut start_mir = Device {
-            description: String::new(),
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),

@@ -174,7 +174,6 @@ mod tests {
     #[test]
     fn max_len_exceeded() {
         let mut start_mir = Device {
-            description: String::new(),
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
@@ -201,7 +200,6 @@ mod tests {
         assert!(!diagnostics.has_error());
 
         let mut start_mir = Device {
-            description: String::new(),
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
@@ -228,7 +226,6 @@ mod tests {
         assert!(diagnostics.has_error());
 
         let mut start_mir = Device {
-            description: String::new(),
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
@@ -263,7 +260,6 @@ mod tests {
     #[test]
     fn overlap() {
         let mut start_mir = Device {
-            description: String::new(),
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
@@ -299,7 +295,6 @@ mod tests {
         assert!(!diagnostics.has_error());
 
         let mut start_mir = Device {
-            description: String::new(),
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
@@ -336,7 +331,6 @@ mod tests {
         assert!(!diagnostics.has_error());
 
         let mut start_mir = Device {
-            description: String::new(),
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
@@ -373,7 +367,6 @@ mod tests {
         assert!(!diagnostics.is_empty());
 
         let mut start_mir = Device {
-            description: String::new(),
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
