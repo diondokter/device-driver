@@ -1,5 +1,6 @@
 use device_driver_common::{
     identifier::{Identifier, Local, Operation, Type},
+    interner::Istr,
     span::Spanned,
     specifiers::{Access, AddressMode, AddressRange, ByteOrder, Integer},
 };
@@ -17,7 +18,7 @@ pub struct Device {
 }
 
 pub struct Block {
-    pub description: String,
+    pub description: Istr,
     /// True for the root (top-level) block
     pub root: bool,
     pub name: Identifier<Type>,
@@ -29,7 +30,7 @@ pub struct Block {
 }
 
 pub struct BlockMethod {
-    pub description: String,
+    pub description: Istr,
     pub name: Identifier<Operation>,
     pub address: i128,
     pub repeat: Repeat,
@@ -69,7 +70,7 @@ pub enum BlockMethodType {
 
 /// A set of fields, like a register or command in/out
 pub struct FieldSet {
-    pub description: String,
+    pub description: Istr,
     pub name: Identifier<Type>,
     pub byte_order: ByteOrder,
     pub size_bytes: u32,
@@ -77,10 +78,10 @@ pub struct FieldSet {
 }
 
 pub struct Field {
-    pub description: String,
+    pub description: Istr,
     pub name: Identifier<Local>,
     pub address: AddressRange,
-    pub base_type: String,
+    pub base_type: Istr,
     pub conversion_method: FieldConversionMethod,
     pub access: Access,
     pub repeat: Repeat,
@@ -117,9 +118,9 @@ impl FieldConversionMethod {
 }
 
 pub struct Enum {
-    pub description: String,
+    pub description: Istr,
     pub name: Identifier<Type>,
-    pub base_type: String,
+    pub base_type: Istr,
     pub variants: Vec<EnumVariant>,
 }
 
@@ -134,7 +135,7 @@ impl Enum {
 }
 
 pub struct EnumVariant {
-    pub description: String,
+    pub description: Istr,
     pub name: Identifier<Local>,
     pub discriminant: i128,
     pub default: bool,

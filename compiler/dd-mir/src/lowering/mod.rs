@@ -143,7 +143,12 @@ fn parse_node_to_shape<S: Shape>(
 
     // Doc comments
 
-    *target.doc_comments() = node.doc_comments.iter().map(|c| c.value).join("\n");
+    *target.doc_comments() = node
+        .doc_comments
+        .iter()
+        .map(|c| c.value)
+        .join("\n")
+        .intern();
 
     // Object name
 
@@ -544,7 +549,7 @@ trait Shape: Default + 'static {
     const NODE_TYPE: NodeType;
     type NameIdentifierType: Namespace + Default;
 
-    fn doc_comments(&mut self) -> &mut String;
+    fn doc_comments(&mut self) -> &mut Istr;
     fn name(&mut self) -> &mut Spanned<Identifier<Self::NameIdentifierType>>;
 
     /// All the supported properties
