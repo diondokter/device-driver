@@ -6,6 +6,8 @@ use std::{
 
 use convert_case::{Boundary, Case, Pattern};
 
+use crate::interner::Istr;
+
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum RuntimeNamespace {
@@ -143,7 +145,7 @@ impl From<Global> for Operation {
 pub struct Identifier<T: Namespace> {
     boundaries_applied: bool,
     /// The original string that was parsed without concats
-    original: Arc<String>,
+    original: Istr,
     words: Arc<[String]>,
     duplicate_id: Option<NonZeroU32>,
     /// Must never change the internal runtime type!
@@ -153,7 +155,7 @@ pub struct Identifier<T: Namespace> {
 impl<T: Namespace> Identifier<T> {
     /// Try parse a string as an identifier.
     /// It will not have boundaries applied yet.
-    pub fn try_parse(value: &str) -> Result<Self, Error>
+    pub fn try_parse(value: Istr) -> Result<Self, Error>
     where
         T: Default,
     {
@@ -162,15 +164,15 @@ impl<T: Namespace> Identifier<T> {
 
     /// Try parse a string as an identifier.
     /// It will not have boundaries applied yet.
-    pub fn try_parse_with_type(value: &str, id_type: T) -> Result<Self, Error> {
+    pub fn try_parse_with_type(value: Istr, id_type: T) -> Result<Self, Error> {
         if value.is_empty() {
             return Err(Error::Empty);
         }
 
         Ok(Self {
             boundaries_applied: false,
-            original: Arc::new(value.into()),
-            words: [value.into()].into(),
+            original: value,
+            words: [value.as_str().into()].into(),
             duplicate_id: None,
             namespace: id_type,
         })
@@ -256,8 +258,8 @@ impl<T: Namespace> Identifier<T> {
 
     /// Get the original text. Don't use this unless it's important to get the *exact* original value.
     /// Better to use [`Self::to_case`] in most circumstances.
-    pub fn original(&self) -> &str {
-        &self.original
+    pub fn original(&self) -> Istr {
+        self.original
     }
 
     /// Get the words derived from the original
@@ -287,7 +289,7 @@ impl<T: Namespace> Identifier<T> {
         T: Clone,
     {
         IdentifierRef {
-            original: self.original.clone(),
+            original: self.original,
             id_type: self.namespace.clone(),
         }
     }
@@ -411,33 +413,32 @@ impl<T: Namespace + Default> Default for Identifier<T> {
     fn default() -> Self {
         Self {
             boundaries_applied: Default::default(),
-            original: Default::default(),
+            original: Istr::default(),
             words: Default::default(),
             duplicate_id: Default::default(),
             namespace: T::default(),
         }
     }
 }
-
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct IdentifierRef<T: Namespace> {
-    original: Arc<String>,
+    original: Istr,
     id_type: T,
 }
 
 impl<T: Namespace> IdentifierRef<T> {
-    pub fn new(identifier_original: String) -> Self
+    pub fn new(identifier_original: Istr) -> Self
     where
         T: Default,
     {
         Self {
-            original: Arc::new(identifier_original),
+            original: identifier_original,
             id_type: T::default(),
         }
     }
 
-    pub fn original(&self) -> &str {
-        &self.original
+    pub fn original(&self) -> Istr {
+        self.original
     }
 
     pub fn is_ref_to<U: Namespace>(&self, identifier: &Identifier<U>) -> bool {
@@ -487,13 +488,18 @@ impl Display for Error {
 
 #[cfg(test)]
 mod tests {
+    use crate::interner::StrExt;
+
     use super::*;
 
     #[test]
     fn simple_cases() {
-        assert_eq!(Identifier::<Global>::try_parse(""), Err(Error::Empty));
         assert_eq!(
-            Identifier::<Global>::try_parse("1")
+            Identifier::<Global>::try_parse("".intern()),
+            Err(Error::Empty)
+        );
+        assert_eq!(
+            Identifier::<Global>::try_parse("1".intern())
                 .unwrap()
                 .apply_boundaries(&[Boundary::Underscore])
                 .check_validity(),
@@ -503,28 +509,28 @@ mod tests {
             })
         );
         assert_eq!(
-            Identifier::<Global>::try_parse("_1")
+            Identifier::<Global>::try_parse("_1".intern())
                 .unwrap()
                 .apply_boundaries(&[Boundary::Underscore])
                 .to_case(Case::Kebab),
             "1"
         );
         assert_eq!(
-            Identifier::<Global>::try_parse("a1")
+            Identifier::<Global>::try_parse("a1".intern())
                 .unwrap()
                 .apply_boundaries(&[Boundary::Underscore])
                 .to_case(Case::Kebab),
             "a1"
         );
         assert_eq!(
-            Identifier::<Global>::try_parse("a_1")
+            Identifier::<Global>::try_parse("a_1".intern())
                 .unwrap()
                 .apply_boundaries(&[Boundary::Underscore])
                 .to_case(Case::Kebab),
             "a-1"
         );
         assert_eq!(
-            Identifier::<Global>::try_parse("😈")
+            Identifier::<Global>::try_parse("😈".intern())
                 .unwrap()
                 .apply_boundaries(&[Boundary::Underscore])
                 .check_validity(),
@@ -534,7 +540,7 @@ mod tests {
             })
         );
         assert_eq!(
-            Identifier::<Global>::try_parse("abc😈")
+            Identifier::<Global>::try_parse("abc😈".intern())
                 .unwrap()
                 .apply_boundaries(&[Boundary::Underscore])
                 .check_validity(),
@@ -544,21 +550,21 @@ mod tests {
             })
         );
         assert_eq!(
-            Identifier::<Global>::try_parse("_")
+            Identifier::<Global>::try_parse("_".intern())
                 .unwrap()
                 .apply_boundaries(&[Boundary::Space])
                 .to_case(Case::Kebab),
             "_"
         );
         assert_eq!(
-            Identifier::<Global>::try_parse("_")
+            Identifier::<Global>::try_parse("_".intern())
                 .unwrap()
                 .apply_boundaries(&[Boundary::Underscore])
                 .check_validity(),
             Err(Error::EmptyAfterSplits)
         );
         assert_eq!(
-            Identifier::<Global>::try_parse("abc def")
+            Identifier::<Global>::try_parse("abc def".intern())
                 .unwrap()
                 .apply_boundaries(&[Boundary::Underscore])
                 .check_validity(),
@@ -567,27 +573,27 @@ mod tests {
                 invalid_char: ' '
             })
         );
-        Identifier::<Global>::try_parse("abc def")
+        Identifier::<Global>::try_parse("abc def".intern())
             .unwrap()
             .apply_boundaries(&[Boundary::Space])
             .check_validity()
             .unwrap();
         assert_eq!(
-            Identifier::<Global>::try_parse("abc_def")
+            Identifier::<Global>::try_parse("abc_def".intern())
                 .unwrap()
                 .apply_boundaries(&[Boundary::Underscore])
                 .to_case(Case::Kebab),
             "abc-def"
         );
         assert_eq!(
-            Identifier::<Global>::try_parse("_abc_def")
+            Identifier::<Global>::try_parse("_abc_def".intern())
                 .unwrap()
                 .apply_boundaries(&[Boundary::Underscore])
                 .to_case(Case::Kebab),
             "abc-def"
         );
         assert_eq!(
-            Identifier::<Global>::try_parse("Bar🚩bar")
+            Identifier::<Global>::try_parse("Bar🚩bar".intern())
                 .unwrap()
                 .apply_boundaries(&[Boundary::Underscore])
                 .check_validity(),
@@ -606,30 +612,30 @@ mod tests {
     #[test]
     fn static_vs_runtime_equals() {
         assert_eq!(
-            Identifier::<Type>::try_parse("a")
+            Identifier::<Type>::try_parse("a".intern())
                 .unwrap()
                 .to_runtime_namespace(),
-            Identifier::try_parse_with_type("a", RuntimeNamespace::Type).unwrap()
+            Identifier::try_parse_with_type("a".intern(), RuntimeNamespace::Type).unwrap()
         );
 
         assert_ne!(
-            Identifier::<Type>::try_parse("a")
+            Identifier::<Type>::try_parse("a".intern())
                 .unwrap()
                 .to_runtime_namespace(),
-            Identifier::try_parse_with_type("a", RuntimeNamespace::Operation).unwrap()
+            Identifier::try_parse_with_type("a".intern(), RuntimeNamespace::Operation).unwrap()
         );
     }
 
     #[test]
     fn issue_274() {
         // https://github.com/diondokter/device-driver/issues/274
-        Identifier::<Global>::try_parse("io_pad_i2c_b1")
+        Identifier::<Global>::try_parse("io_pad_i2c_b1".intern())
             .unwrap()
             .apply_boundaries(&Boundary::defaults())
             .check_validity()
             .unwrap();
 
-        Identifier::<Global>::try_parse("io_pad_i2c-b1")
+        Identifier::<Global>::try_parse("io_pad_i2c-b1".intern())
             .unwrap()
             .apply_boundaries(&[Boundary::Underscore])
             .check_validity()

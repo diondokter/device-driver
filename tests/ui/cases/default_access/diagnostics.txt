@@ -1,4 +1,4 @@
-error: unspecified access
+error: object needs access specified
   --> input.ddsl:31:18
    |
 LL |         register E {
@@ -9,7 +9,7 @@ help: specify the access on the object or add a `default-access` to a parent obj
 LL +             access: RW,
    |
 
-error: unspecified access
+error: object needs access specified
   --> input.ddsl:38:16
    |
 LL |         buffer G {
@@ -20,7 +20,7 @@ help: specify the access on the object or add a `default-access` to a parent obj
 LL +             access: RW,
    |
 
-error: unspecified access
+error: object needs access specified
   --> input.ddsl:35:23
    |
 LL |                 field a 0,

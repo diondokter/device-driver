@@ -1010,7 +1010,7 @@ impl Id for Object {
 
 #[cfg(test)]
 mod tests {
-    use device_driver_common::span::SpanExt;
+    use device_driver_common::{interner::StrExt, span::SpanExt};
 
     use super::*;
 
@@ -1024,21 +1024,29 @@ mod tests {
             objects: vec![
                 Object::Device(Device {
                     description: String::new(),
-                    name: Identifier::try_parse("a").unwrap().with_dummy_span(),
+                    name: Identifier::try_parse("a".intern())
+                        .unwrap()
+                        .with_dummy_span(),
                     objects: vec![
                         Object::Extern(Extern {
-                            name: Identifier::try_parse("b").unwrap().with_dummy_span(),
+                            name: Identifier::try_parse("b".intern())
+                                .unwrap()
+                                .with_dummy_span(),
                             ..Default::default()
                         }),
                         Object::Extern(Extern {
-                            name: Identifier::try_parse("c").unwrap().with_dummy_span(),
+                            name: Identifier::try_parse("c".intern())
+                                .unwrap()
+                                .with_dummy_span(),
                             ..Default::default()
                         }),
                     ],
                     ..Default::default()
                 }),
                 Object::Extern(Extern {
-                    name: Identifier::try_parse("d").unwrap().with_dummy_span(),
+                    name: Identifier::try_parse("d".intern())
+                        .unwrap()
+                        .with_dummy_span(),
                     ..Default::default()
                 }),
             ],
@@ -1047,7 +1055,7 @@ mod tests {
 
         let names: Vec<_> = manifest
             .iter_objects()
-            .map(|o| o.name().original())
+            .map(|o| o.name().original().as_str())
             .collect();
         assert_eq!(&names, NAME_ORDER);
 
