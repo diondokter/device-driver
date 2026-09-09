@@ -31,7 +31,7 @@ impl Backend {
 
         let tokens = device_driver_lexer::lex(source);
         let ast = device_driver_parser::parse(&tokens, &mut diagnostics);
-        let _mir = device_driver_mir::lower_ast(ast, &Default::default(), &mut diagnostics)
+        let _mir = device_driver_mir::lower_ast(&ast, &Default::default(), &mut diagnostics)
             .with_message(|| "lower ast into MIR")?;
 
         Ok(diagnostics)

@@ -162,6 +162,7 @@ mod tests {
 
     use device_driver_common::{
         identifier::Identifier,
+        interner::StrExt,
         span::{Span, SpanExt},
         specifiers::Repeat,
     };
@@ -174,12 +175,18 @@ mod tests {
     fn max_len_exceeded() {
         let mut start_mir = Device {
             description: String::new(),
-            name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
+            name: Identifier::try_parse("Device".intern())
+                .unwrap()
+                .with_dummy_span(),
             objects: vec![Object::FieldSet(FieldSet {
-                name: Identifier::try_parse("MyReg").unwrap().with_dummy_span(),
+                name: Identifier::try_parse("MyReg".intern())
+                    .unwrap()
+                    .with_dummy_span(),
                 size_bytes: 1.with_dummy_span(),
                 fields: vec![Field {
-                    name: Identifier::try_parse("my_field").unwrap().with_dummy_span(),
+                    name: Identifier::try_parse("my_field".intern())
+                        .unwrap()
+                        .with_dummy_span(),
                     field_address: AddressRange { start: 0, end: 7 }.with_dummy_span(),
                     ..Default::default()
                 }],
@@ -195,12 +202,18 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
+            name: Identifier::try_parse("Device".intern())
+                .unwrap()
+                .with_dummy_span(),
             objects: vec![Object::FieldSet(FieldSet {
-                name: Identifier::try_parse("MyReg").unwrap().with_dummy_span(),
+                name: Identifier::try_parse("MyReg".intern())
+                    .unwrap()
+                    .with_dummy_span(),
                 size_bytes: 1.with_dummy_span(),
                 fields: vec![Field {
-                    name: Identifier::try_parse("my_field").unwrap().with_dummy_span(),
+                    name: Identifier::try_parse("my_field".intern())
+                        .unwrap()
+                        .with_dummy_span(),
                     field_address: AddressRange { start: 0, end: 8 }.with_dummy_span(),
                     ..Default::default()
                 }],
@@ -216,12 +229,18 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
+            name: Identifier::try_parse("Device".intern())
+                .unwrap()
+                .with_dummy_span(),
             objects: vec![Object::FieldSet(FieldSet {
-                name: Identifier::try_parse("MyReg").unwrap().with_dummy_span(),
+                name: Identifier::try_parse("MyReg".intern())
+                    .unwrap()
+                    .with_dummy_span(),
                 size_bytes: 1.with_dummy_span(),
                 fields: vec![Field {
-                    name: Identifier::try_parse("my_field").unwrap().with_dummy_span(),
+                    name: Identifier::try_parse("my_field".intern())
+                        .unwrap()
+                        .with_dummy_span(),
                     field_address: AddressRange { start: 0, end: 4 }.with_dummy_span(),
                     repeat: Some(Repeat {
                         source: RepeatSource::Count(NonZero::new(3).unwrap()).with_dummy_span(),
@@ -245,18 +264,24 @@ mod tests {
     fn overlap() {
         let mut start_mir = Device {
             description: String::new(),
-            name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
+            name: Identifier::try_parse("Device".intern())
+                .unwrap()
+                .with_dummy_span(),
             objects: vec![Object::FieldSet(FieldSet {
-                name: Identifier::try_parse("MyReg").unwrap().with_dummy_span(),
+                name: Identifier::try_parse("MyReg".intern())
+                    .unwrap()
+                    .with_dummy_span(),
                 size_bytes: 2.with_dummy_span(),
                 fields: vec![
                     Field {
-                        name: Identifier::try_parse("my_field").unwrap().with_dummy_span(),
+                        name: Identifier::try_parse("my_field".intern())
+                            .unwrap()
+                            .with_dummy_span(),
                         field_address: AddressRange { start: 0, end: 4 }.with_dummy_span(),
                         ..Default::default()
                     },
                     Field {
-                        name: Identifier::try_parse("my_field2")
+                        name: Identifier::try_parse("my_field2".intern())
                             .unwrap()
                             .with_dummy_span(),
                         field_address: AddressRange { start: 5, end: 9 }.with_dummy_span(),
@@ -275,19 +300,25 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
+            name: Identifier::try_parse("Device".intern())
+                .unwrap()
+                .with_dummy_span(),
             objects: vec![Object::FieldSet(FieldSet {
-                name: Identifier::try_parse("MyReg").unwrap().with_dummy_span(),
+                name: Identifier::try_parse("MyReg".intern())
+                    .unwrap()
+                    .with_dummy_span(),
                 size_bytes: 2.with_dummy_span(),
                 allow_bit_overlap: true,
                 fields: vec![
                     Field {
-                        name: Identifier::try_parse("my_field").unwrap().with_dummy_span(),
+                        name: Identifier::try_parse("my_field".intern())
+                            .unwrap()
+                            .with_dummy_span(),
                         field_address: AddressRange { start: 0, end: 5 }.with_dummy_span(),
                         ..Default::default()
                     },
                     Field {
-                        name: Identifier::try_parse("my_field2")
+                        name: Identifier::try_parse("my_field2".intern())
                             .unwrap()
                             .with_dummy_span(),
                         field_address: AddressRange { start: 5, end: 9 }.with_dummy_span(),
@@ -306,18 +337,24 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
+            name: Identifier::try_parse("Device".intern())
+                .unwrap()
+                .with_dummy_span(),
             objects: vec![Object::FieldSet(FieldSet {
-                name: Identifier::try_parse("MyReg").unwrap().with_dummy_span(),
+                name: Identifier::try_parse("MyReg".intern())
+                    .unwrap()
+                    .with_dummy_span(),
                 size_bytes: 2.with_dummy_span(),
                 fields: vec![
                     Field {
-                        name: Identifier::try_parse("my_field").unwrap().with_dummy_span(),
+                        name: Identifier::try_parse("my_field".intern())
+                            .unwrap()
+                            .with_dummy_span(),
                         field_address: AddressRange { start: 0, end: 5 }.with_dummy_span(),
                         ..Default::default()
                     },
                     Field {
-                        name: Identifier::try_parse("my_field2")
+                        name: Identifier::try_parse("my_field2".intern())
                             .unwrap()
                             .with_dummy_span(),
                         field_address: AddressRange { start: 5, end: 9 }.with_dummy_span(),
@@ -337,13 +374,19 @@ mod tests {
 
         let mut start_mir = Device {
             description: String::new(),
-            name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
+            name: Identifier::try_parse("Device".intern())
+                .unwrap()
+                .with_dummy_span(),
             objects: vec![Object::FieldSet(FieldSet {
-                name: Identifier::try_parse("MyReg").unwrap().with_dummy_span(),
+                name: Identifier::try_parse("MyReg".intern())
+                    .unwrap()
+                    .with_dummy_span(),
                 size_bytes: 2.with_dummy_span(),
                 fields: vec![
                     Field {
-                        name: Identifier::try_parse("my_field").unwrap().with_dummy_span(),
+                        name: Identifier::try_parse("my_field".intern())
+                            .unwrap()
+                            .with_dummy_span(),
                         field_address: AddressRange { start: 0, end: 0 }.with_dummy_span(),
                         repeat: Some(Repeat {
                             source: RepeatSource::Count(NonZero::new(6).unwrap()).with_dummy_span(),
@@ -353,7 +396,7 @@ mod tests {
                         ..Default::default()
                     },
                     Field {
-                        name: Identifier::try_parse("my_field2")
+                        name: Identifier::try_parse("my_field2".intern())
                             .unwrap()
                             .with_dummy_span(),
                         field_address: AddressRange { start: 5, end: 9 }.with_dummy_span(),
