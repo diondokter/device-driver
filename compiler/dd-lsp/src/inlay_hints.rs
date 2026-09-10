@@ -1,7 +1,9 @@
-use device_driver_common::span::Span;
+use device_driver_common::{span::Span, specifiers::BaseType};
 use device_driver_mir::model::Manifest;
 use device_driver_parser::Node;
-use tower_lsp_server::ls_types::{InlayHint, InlayHintKind, InlayHintLabel, TextEdit};
+use tower_lsp_server::ls_types::{
+    InlayHint, InlayHintKind, InlayHintLabel, InlayHintTooltip, TextEdit,
+};
 
 use crate::ToRange;
 
@@ -38,6 +40,7 @@ pub(crate) fn get_hints(
 
     subnode_hints
         .chain(auto_name_hint(root_node, source, mir))
+        .chain(auto_base_type_hint(root_node, source, mir))
         .collect()
 }
 
@@ -64,9 +67,107 @@ fn auto_name_hint(node: &Node, source: &str, mir: &Manifest) -> Option<InlayHint
             }]
             .into(),
         ),
-        tooltip: None,
+        tooltip: Some(InlayHintTooltip::String("Inferred object name".into())),
         padding_left: Some(true),
         padding_right: None,
         data: None,
     })
+}
+
+fn auto_base_type_hint(node: &Node, source: &str, mir: &Manifest) -> Option<InlayHint> {
+    // Do two searches at once:
+    // - Search for the object (or field) that represents the current node
+    // - Get its base type if that's supported
+    let (mir_base_type, short_properties_span) = mir.iter_objects().find_map(|object| {
+        if object.span() == node.span {
+            Some(
+                object
+                    .base_type()
+                    .map(|bt| (bt, object.short_properties_span())),
+            )
+        } else if let Some(fs) = object.as_field_set() {
+            fs.fields.iter().find_map(|field| {
+                if field.span == node.span {
+                    Some(Some((&field.base_type, field.short_properties_span)))
+                } else {
+                    None
+                }
+            })
+        } else {
+            None
+        }
+    })??;
+
+    match node.type_specifier.as_ref() {
+        Some(ts) => match ts.base_type.value {
+            BaseType::Unspecified => {
+                let base_type_range = ts.base_type.span.to_range(source);
+
+                Some(InlayHint {
+                    position: base_type_range.end,
+                    label: InlayHintLabel::String(mir_base_type.value.to_string()),
+                    kind: Some(InlayHintKind::TYPE),
+                    text_edits: Some(
+                        [TextEdit {
+                            range: base_type_range,
+                            new_text: mir_base_type.value.to_string(),
+                        }]
+                        .into(),
+                    ),
+                    tooltip: Some(InlayHintTooltip::String("Inferred base type".into())),
+                    padding_left: Some(true),
+                    padding_right: None,
+                    data: None,
+                })
+            }
+            BaseType::Int | BaseType::Uint => {
+                let base_type_range = ts.base_type.span.to_range(source);
+
+                Some(InlayHint {
+                    position: base_type_range.end,
+                    label: InlayHintLabel::String(
+                        mir_base_type
+                            .value
+                            .as_fixed_size()
+                            .unwrap()
+                            .size_bits()
+                            .to_string(),
+                    ),
+                    kind: Some(InlayHintKind::TYPE),
+                    text_edits: Some(
+                        [TextEdit {
+                            range: base_type_range,
+                            new_text: mir_base_type.value.to_string(),
+                        }]
+                        .into(),
+                    ),
+                    tooltip: Some(InlayHintTooltip::String("Number of inferred bits".into())),
+                    padding_left: None,
+                    padding_right: None,
+                    data: None,
+                })
+            }
+            BaseType::FixedSize(_) | BaseType::Bool => None,
+        },
+        None => {
+            let type_conversion_range = short_properties_span.collapse_to_end().to_range(source);
+
+            Some(InlayHint {
+                position: type_conversion_range.start,
+                label: InlayHintLabel::String(format!("-> {mir_base_type}")),
+                kind: Some(InlayHintKind::TYPE),
+                text_edits: Some(
+                    [TextEdit {
+                        range: type_conversion_range,
+                        new_text: format!(" -> {mir_base_type}"),
+                    }]
+                    .into(),
+                ),
+                tooltip: Some(InlayHintTooltip::String("Inferred type specifier".into())),
+                padding_left: Some(true),
+                padding_right: None,
+                data: None,
+            })
+        }
+    }
 }
