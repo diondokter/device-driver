@@ -474,6 +474,20 @@ impl Object {
         }
     }
 
+    pub fn base_type(&self) -> Option<&Spanned<BaseType>> {
+        match self {
+            Object::Device(_) => None,
+            Object::Block(_) => None,
+            Object::Register(_) => None,
+            Object::Command(_) => None,
+            Object::Buffer(_) => None,
+            Object::FieldSet(_) => None,
+            Object::Enum(enum_value) => Some(&enum_value.base_type),
+            Object::Extern(extern_value) => Some(&extern_value.base_type),
+            Object::Field(field) => Some(&field.base_type),
+        }
+    }
+
     pub fn allow_address_overlap(&self) -> bool {
         match self {
             Object::Device(_) => false,
@@ -500,6 +514,20 @@ impl Object {
             Object::Enum(val) => val.span,
             Object::Extern(val) => val.span,
             Object::Field(val) => val.span,
+        }
+    }
+
+    pub fn short_properties_span(&self) -> Span {
+        match self {
+            Object::Device(device) => device.short_properties_span,
+            Object::Block(block) => block.short_properties_span,
+            Object::Register(register) => register.short_properties_span,
+            Object::Command(command) => command.short_properties_span,
+            Object::Buffer(buffer) => buffer.short_properties_span,
+            Object::FieldSet(field_set) => field_set.short_properties_span,
+            Object::Enum(enum_value) => enum_value.short_properties_span,
+            Object::Extern(extern_balue) => extern_balue.short_properties_span,
+            Object::Field(field) => field.short_properties_span,
         }
     }
 
