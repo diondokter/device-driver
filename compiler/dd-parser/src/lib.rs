@@ -190,6 +190,16 @@ pub enum TypeConversion {
     Subnode(Box<Node>),
 }
 
+impl TypeConversion {
+    pub fn as_subnode(&self) -> Option<&Node> {
+        if let Self::Subnode(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Property {
     pub doc_comments: Vec<Spanned<Istr>>,
@@ -277,6 +287,14 @@ impl Expression {
     pub fn as_address_mode(&self) -> Option<AddressMode> {
         if let Self::AddressMode(v) = self {
             Some(*v)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_sub_node(&self) -> Option<&Node> {
+        if let Self::SubNode(v) = self {
+            Some(v)
         } else {
             None
         }
