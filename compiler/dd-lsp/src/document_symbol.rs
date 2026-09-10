@@ -22,8 +22,8 @@ pub fn get_node_symbol(node: &Node, source: &str, mir: &Manifest) -> DocumentSym
         },
         tags: None,
         deprecated: None,
-        range: prop.span.into_range(source),
-        selection_range: prop.name.span.into_range(source),
+        range: prop.span.to_range(source),
+        selection_range: prop.name.span.to_range(source),
         children: prop
             .expression
             .as_sub_node()
@@ -33,13 +33,11 @@ pub fn get_node_symbol(node: &Node, source: &str, mir: &Manifest) -> DocumentSym
     let return_node = node
         .type_specifier
         .as_ref()
-        .map(|ts| {
+        .and_then(|ts| {
             ts.conversion
                 .as_ref()
-                .map(|conversion| conversion.as_subnode())
+                .and_then(|conversion| conversion.as_subnode())
         })
-        .flatten()
-        .flatten()
         .into_iter()
         .map(|node| get_node_symbol(node, source, mir));
 
@@ -67,8 +65,8 @@ pub fn get_node_symbol(node: &Node, source: &str, mir: &Manifest) -> DocumentSym
         kind: node_type_symbol_kind(node.node_type.val),
         tags: None,
         deprecated: None,
-        range: node.span.into_range(source),
-        selection_range: node.name.span.into_range(source),
+        range: node.span.to_range(source),
+        selection_range: node.name.span.to_range(source),
         children: Some(properties.chain(return_node).chain(sub_nodes).collect()),
     }
 }

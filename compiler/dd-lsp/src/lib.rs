@@ -55,7 +55,7 @@ impl Backend {
                 let diags = diagnostics
                     .iter()
                     .map(|diagnostic| tower_lsp_server::ls_types::Diagnostic {
-                        range: diagnostic.primary_span().into_range(document.source()),
+                        range: diagnostic.primary_span().to_range(document.source()),
                         severity: match diagnostic.severity() {
                             Severity::Error => Some(DiagnosticSeverity::ERROR),
                             Severity::Warning => Some(DiagnosticSeverity::WARNING),
@@ -165,11 +165,11 @@ impl LanguageServer for Backend {
 }
 
 trait IntoRange {
-    fn into_range(&self, source: &str) -> Range;
+    fn to_range(&self, source: &str) -> Range;
 }
 
 impl IntoRange for Span {
-    fn into_range(&self, source: &str) -> Range {
+    fn to_range(&self, source: &str) -> Range {
         let span = self.as_line_column(source);
         Range::new(
             Position::new(span.0.0, span.0.1),
