@@ -1,10 +1,12 @@
 use device_driver_diagnostics::{Diagnostics, DynError, ResultExt};
+use device_driver_mir::model::Manifest;
 use device_driver_parser::Ast;
 
 pub struct Document {
     version: i32,
     source: String,
-    _ast: Ast,
+    ast: Ast,
+    mir: Manifest,
 }
 
 impl Document {
@@ -13,14 +15,15 @@ impl Document {
 
         let tokens = device_driver_lexer::lex(&source);
         let ast = device_driver_parser::parse(&tokens, &mut diagnostics);
-        let _mir = device_driver_mir::lower_ast(&ast, &Default::default(), &mut diagnostics)
+        let (mir, _) = device_driver_mir::lower_ast(&ast, &Default::default(), &mut diagnostics)
             .with_message(|| "lower ast into MIR")?;
 
         Ok((
             Document {
                 version,
                 source,
-                _ast: ast,
+                ast,
+                mir,
             },
             diagnostics,
         ))
@@ -32,5 +35,13 @@ impl Document {
 
     pub fn version(&self) -> i32 {
         self.version
+    }
+
+    pub fn mir(&self) -> &Manifest {
+        &self.mir
+    }
+
+    pub fn ast(&self) -> &Ast {
+        &self.ast
     }
 }

@@ -1,18 +1,22 @@
 use std::collections::HashMap;
 
+use device_driver_common::span::Span;
 use device_driver_diagnostics::Severity;
 use tokio::sync::RwLock;
 use tower_lsp_server::{
     Client, LanguageServer, LspService, Server,
+    jsonrpc::Error,
     ls_types::{
-        DiagnosticSeverity, DidOpenTextDocumentParams, InitializeResult, MessageType, Position,
-        Range, ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind, Uri,
+        DiagnosticSeverity, DidOpenTextDocumentParams, DocumentSymbolResponse, InitializeResult,
+        MessageType, OneOf, Position, Range, ServerCapabilities, TextDocumentSyncCapability,
+        TextDocumentSyncKind, Uri,
     },
 };
 
 use crate::document::Document;
 
 mod document;
+mod document_symbol;
 
 pub struct Backend {
     client: Client,
@@ -50,29 +54,22 @@ impl Backend {
             Ok((document, diagnostics)) => {
                 let diags = diagnostics
                     .iter()
-                    .map(|diagnostic| {
-                        let span = diagnostic.primary_span().as_line_column(document.source());
-
-                        tower_lsp_server::ls_types::Diagnostic {
-                            range: Range::new(
-                                Position::new(span.0.0, span.0.1),
-                                Position::new(span.1.0, span.1.1),
-                            ),
-                            severity: match diagnostic.severity() {
-                                Severity::Error => Some(DiagnosticSeverity::ERROR),
-                                Severity::Warning => Some(DiagnosticSeverity::WARNING),
-                                Severity::Info => Some(DiagnosticSeverity::INFORMATION),
-                                Severity::Note => Some(DiagnosticSeverity::HINT),
-                                Severity::Help => Some(DiagnosticSeverity::HINT),
-                            },
-                            code: None,
-                            code_description: None,
-                            source: Some("DDSL".into()),
-                            message: diagnostic.title().into(),
-                            related_information: None,
-                            tags: None,
-                            data: None,
-                        }
+                    .map(|diagnostic| tower_lsp_server::ls_types::Diagnostic {
+                        range: diagnostic.primary_span().into_range(document.source()),
+                        severity: match diagnostic.severity() {
+                            Severity::Error => Some(DiagnosticSeverity::ERROR),
+                            Severity::Warning => Some(DiagnosticSeverity::WARNING),
+                            Severity::Info => Some(DiagnosticSeverity::INFORMATION),
+                            Severity::Note => Some(DiagnosticSeverity::HINT),
+                            Severity::Help => Some(DiagnosticSeverity::HINT),
+                        },
+                        code: None,
+                        code_description: None,
+                        source: Some("DDSL".into()),
+                        message: diagnostic.title().into(),
+                        related_information: None,
+                        tags: None,
+                        data: None,
                     })
                     .collect();
 
@@ -99,6 +96,7 @@ impl LanguageServer for Backend {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(
                     TextDocumentSyncKind::FULL,
                 )),
+                document_symbol_provider: Some(OneOf::Left(true)),
                 ..Default::default()
             },
             server_info: Some(tower_lsp_server::ls_types::ServerInfo {
@@ -143,7 +141,39 @@ impl LanguageServer for Backend {
         }
     }
 
+    async fn document_symbol(
+        &self,
+        params: tower_lsp_server::ls_types::DocumentSymbolParams,
+    ) -> tower_lsp_server::jsonrpc::Result<Option<DocumentSymbolResponse>> {
+        let guard = self.documents.read().await;
+        let Some(document) = guard.get(&params.text_document.uri) else {
+            return Err(Error::invalid_params(params.text_document.uri.to_string()));
+        };
+
+        let Some(root_node) = document.ast().root_node.as_ref() else {
+            return Ok(None);
+        };
+
+        let root_node_symbol =
+            document_symbol::get_node_symbol(root_node, document.source(), document.mir());
+        Ok(Some(DocumentSymbolResponse::Nested(vec![root_node_symbol])))
+    }
+
     async fn shutdown(&self) -> tower_lsp_server::jsonrpc::Result<()> {
         Ok(())
+    }
+}
+
+trait IntoRange {
+    fn into_range(&self, source: &str) -> Range;
+}
+
+impl IntoRange for Span {
+    fn into_range(&self, source: &str) -> Range {
+        let span = self.as_line_column(source);
+        Range::new(
+            Position::new(span.0.0, span.0.1),
+            Position::new(span.1.0, span.1.1),
+        )
     }
 }
