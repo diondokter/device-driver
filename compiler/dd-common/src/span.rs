@@ -65,6 +65,11 @@ impl Span {
         }
     }
 
+    /// Returns true if the two spans have some overlap
+    pub fn overlaps(&self, other: Self) -> bool {
+        self.start < other.end && other.start < self.end
+    }
+
     pub fn as_line_column(&self, source: &str) -> ((u32, u32), (u32, u32)) {
         fn byte_to_line_column(val: usize, source: &str) -> (u32, u32) {
             let mut lines = 0;
@@ -88,6 +93,39 @@ impl Span {
             byte_to_line_column(self.start, source),
             byte_to_line_column(self.end, source),
         )
+    }
+
+    pub fn from_line_column(
+        source: &str,
+        start_line: u32,
+        start_column: u32,
+        end_line: u32,
+        end_column: u32,
+    ) -> Self {
+        fn line_column_to_byte(line: u32, column: u32, source: &str) -> usize {
+            let mut lines = 0;
+            let mut last_line_start = 0;
+
+            for (byte_index, char_val) in source.char_indices() {
+                let column_index = byte_index - last_line_start;
+                match char_val {
+                    _ if lines == line && column_index == column as usize => return byte_index,
+                    '\n' => {
+                        lines += 1;
+                        last_line_start = byte_index + 1
+                    }
+                    _ => {}
+                }
+            }
+
+            // Not found?
+            usize::MAX
+        }
+
+        Span {
+            start: line_column_to_byte(start_line, start_column, source),
+            end: line_column_to_byte(end_line, end_column, source),
+        }
     }
 }
 

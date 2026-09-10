@@ -8,8 +8,8 @@ use tower_lsp_server::{
     jsonrpc::Error,
     ls_types::{
         DiagnosticSeverity, DidOpenTextDocumentParams, DocumentSymbolResponse, InitializeResult,
-        MessageType, OneOf, Position, Range, ServerCapabilities, TextDocumentSyncCapability,
-        TextDocumentSyncKind, Uri,
+        InlayHint, MessageType, OneOf, Position, Range, ServerCapabilities,
+        TextDocumentSyncCapability, TextDocumentSyncKind, Uri,
     },
 };
 
@@ -17,6 +17,7 @@ use crate::document::Document;
 
 mod document;
 mod document_symbol;
+mod inlay_hints;
 
 pub struct Backend {
     client: Client,
@@ -97,6 +98,7 @@ impl LanguageServer for Backend {
                     TextDocumentSyncKind::FULL,
                 )),
                 document_symbol_provider: Some(OneOf::Left(true)),
+                inlay_hint_provider: Some(OneOf::Left(true)),
                 ..Default::default()
             },
             server_info: Some(tower_lsp_server::ls_types::ServerInfo {
@@ -114,10 +116,6 @@ impl LanguageServer for Backend {
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        self.client
-            .log_message(MessageType::LOG, format!("did_open: {params:?}"))
-            .await;
-
         self.update_document(
             params.text_document.uri,
             params.text_document.text,
@@ -127,10 +125,6 @@ impl LanguageServer for Backend {
     }
 
     async fn did_change(&self, params: tower_lsp_server::ls_types::DidChangeTextDocumentParams) {
-        self.client
-            .log_message(MessageType::LOG, format!("did_change: {params:?}"))
-            .await;
-
         for change in params.content_changes {
             self.update_document(
                 params.text_document.uri.clone(),
@@ -159,21 +153,70 @@ impl LanguageServer for Backend {
         Ok(Some(DocumentSymbolResponse::Nested(vec![root_node_symbol])))
     }
 
+    async fn inlay_hint(
+        &self,
+        params: tower_lsp_server::ls_types::InlayHintParams,
+    ) -> tower_lsp_server::jsonrpc::Result<Option<Vec<InlayHint>>> {
+        self.client
+            .log_message(
+                MessageType::INFO,
+                format!("Inlay hints requested: {:?}", params.range),
+            )
+            .await;
+
+        let guard = self.documents.read().await;
+        let Some(document) = guard.get(&params.text_document.uri) else {
+            return Err(Error::invalid_params(params.text_document.uri.to_string()));
+        };
+
+        let Some(root_node) = document.ast().root_node.as_ref() else {
+            return Ok(None);
+        };
+
+        let hints = inlay_hints::get_hints(
+            root_node,
+            params.range.to_span(document.source()),
+            document.source(),
+            document.mir(),
+        );
+        self.client
+            .log_message(MessageType::INFO, format!("Sending back: {:?}", hints))
+            .await;
+
+        Ok(Some(hints))
+    }
+
     async fn shutdown(&self) -> tower_lsp_server::jsonrpc::Result<()> {
         Ok(())
     }
 }
 
-trait IntoRange {
+trait ToRange {
     fn to_range(&self, source: &str) -> Range;
 }
 
-impl IntoRange for Span {
+impl ToRange for Span {
     fn to_range(&self, source: &str) -> Range {
         let span = self.as_line_column(source);
         Range::new(
             Position::new(span.0.0, span.0.1),
             Position::new(span.1.0, span.1.1),
+        )
+    }
+}
+
+trait ToSpan {
+    fn to_span(&self, source: &str) -> Span;
+}
+
+impl ToSpan for Range {
+    fn to_span(&self, source: &str) -> Span {
+        Span::from_line_column(
+            source,
+            self.start.line,
+            self.start.character,
+            self.end.line,
+            self.end.character,
         )
     }
 }
