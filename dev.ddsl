@@ -1,0 +1,33 @@
+manifest dev {
+    default-access: RW,
+
+    device Foo {
+        register-address-type: u8,
+
+        block y {
+            address-offset: 5,
+
+            register my_reg {
+                address: 5,
+                fields: fieldset _ {
+                    size-bytes: 1,
+
+                    field MyField 7:0 -> _ as try enum _ {
+                        B: _,
+                    },
+                }
+            },
+        },
+
+        register x {
+            address: 5,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                field MyField 7:0 -> _ as try enum MyEnum {
+                    B: _,
+                },
+            }
+        },
+    },
+}

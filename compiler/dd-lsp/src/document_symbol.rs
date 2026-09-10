@@ -7,7 +7,7 @@ use device_driver_mir::model::Manifest;
 use device_driver_parser::Node;
 use tower_lsp_server::ls_types::{DocumentSymbol, SymbolKind};
 
-use crate::IntoRange;
+use crate::ToRange;
 
 pub fn get_node_symbol(node: &Node, source: &str, mir: &Manifest) -> DocumentSymbol {
     let kind = node_type_symbol_kind(node.node_type.val);
