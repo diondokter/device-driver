@@ -526,7 +526,7 @@ impl Object {
             Object::Buffer(buffer) => buffer.short_properties_span,
             Object::FieldSet(field_set) => field_set.short_properties_span,
             Object::Enum(enum_value) => enum_value.short_properties_span,
-            Object::Extern(extern_balue) => extern_balue.short_properties_span,
+            Object::Extern(extern_value) => extern_value.short_properties_span,
             Object::Field(field) => field.short_properties_span,
         }
     }
