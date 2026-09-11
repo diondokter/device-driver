@@ -1,6 +1,11 @@
-use device_driver_common::{span::Span, specifiers::BaseType};
+use std::str::FromStr;
+
+use device_driver_common::{
+    span::Span,
+    specifiers::{BaseType, NodeType},
+};
 use device_driver_mir::model::Manifest;
-use device_driver_parser::Node;
+use device_driver_parser::{Expression, Node};
 use tower_lsp_server::ls_types::{
     InlayHint, InlayHintKind, InlayHintLabel, InlayHintTooltip, TextEdit,
 };
@@ -41,6 +46,11 @@ pub(crate) fn get_hints(
     subnode_hints
         .chain(auto_name_hint(root_node, source, mir))
         .chain(auto_base_type_hint(root_node, source, mir))
+        .chain(
+            enum_variant_hints(root_node, source, mir)
+                .into_iter()
+                .flatten(),
+        )
         .collect()
 }
 
@@ -75,6 +85,14 @@ fn auto_name_hint(node: &Node, source: &str, mir: &Manifest) -> Option<InlayHint
 }
 
 fn auto_base_type_hint(node: &Node, source: &str, mir: &Manifest) -> Option<InlayHint> {
+    // Optimization, skip nodes without base types that are not fieldsets
+    if !matches!(
+        NodeType::from_str(node.node_type.val.as_str()),
+        Ok(NodeType::Enum | NodeType::Extern | NodeType::Field)
+    ) {
+        return None;
+    }
+
     // Do two searches at once:
     // - Search for the object (or field) that represents the current node
     // - Get its base type if that's supported
@@ -170,4 +188,58 @@ fn auto_base_type_hint(node: &Node, source: &str, mir: &Manifest) -> Option<Inla
             })
         }
     }
+}
+
+fn enum_variant_hints(node: &Node, source: &str, mir: &Manifest) -> Option<Vec<InlayHint>> {
+    if !matches!(
+        NodeType::from_str(node.node_type.val.as_str()),
+        Ok(NodeType::Enum)
+    ) {
+        return None;
+    }
+
+    let enum_value = mir
+        .iter_enums()
+        .find(|enum_value| enum_value.span == node.span)?;
+
+    let mut hints = Vec::new();
+
+    // Go over each variant, which are properties in the AST
+    for property in node.properties.iter() {
+        let Some((value, _)) = enum_value
+            .iter_variants_with_discriminant()
+            .find(|(_, variant)| variant.name.original() == property.name.val)
+        else {
+            // Variant not found. Probably removed in a MIR pass
+            continue;
+        };
+
+        let replacement_expression = match &property.expression.value {
+            Expression::DefaultNumber(None) => Expression::DefaultNumber(Some(value)),
+            Expression::CatchAllNumber(None) => Expression::CatchAllNumber(Some(value)),
+            Expression::Auto => Expression::Number(value),
+            _ => continue,
+        };
+
+        let expression_range = property.expression.span.to_range(source);
+
+        hints.push(InlayHint {
+            position: expression_range.end,
+            label: InlayHintLabel::String(value.to_string()),
+            kind: Some(InlayHintKind::TYPE),
+            text_edits: Some(
+                [TextEdit {
+                    range: expression_range,
+                    new_text: replacement_expression.get_human_string().to_string(),
+                }]
+                .into(),
+            ),
+            tooltip: Some(InlayHintTooltip::String("Inferred value".into())),
+            padding_left: Some(true),
+            padding_right: None,
+            data: None,
+        });
+    }
+
+    Some(hints)
 }
