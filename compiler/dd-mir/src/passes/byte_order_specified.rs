@@ -43,7 +43,9 @@ impl Pass for ByteOrderSpecified {
 
 #[cfg(test)]
 mod tests {
-    use device_driver_common::{identifier::Identifier, span::SpanExt, specifiers::ByteOrder};
+    use device_driver_common::{
+        identifier::Identifier, interner::StrExt, span::SpanExt, specifiers::ByteOrder,
+    };
 
     use crate::model::{Device, DeviceConfig, FieldSet, Object};
 
@@ -52,18 +54,19 @@ mod tests {
     #[test]
     fn well_enough_specified() {
         let mut input = Device {
-            description: String::new(),
-            name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
+            name: Identifier::try_parse("Device".intern())
+                .unwrap()
+                .with_dummy_span(),
             objects: vec![
                 Object::FieldSet(FieldSet {
-                    name: Identifier::try_parse("MyRegister")
+                    name: Identifier::try_parse("MyRegister".intern())
                         .unwrap()
                         .with_dummy_span(),
                     size_bytes: 1.with_dummy_span(),
                     ..Default::default()
                 }),
                 Object::FieldSet(FieldSet {
-                    name: Identifier::try_parse("MyRegister2")
+                    name: Identifier::try_parse("MyRegister2".intern())
                         .unwrap()
                         .with_dummy_span(),
                     size_bytes: 2.with_dummy_span(),
@@ -83,10 +86,11 @@ mod tests {
     #[test]
     fn not_enough_specified() {
         let mut input = Device {
-            description: String::new(),
-            name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
+            name: Identifier::try_parse("Device".intern())
+                .unwrap()
+                .with_dummy_span(),
             objects: vec![Object::FieldSet(FieldSet {
-                name: Identifier::try_parse("MyRegister")
+                name: Identifier::try_parse("MyRegister".intern())
                     .unwrap()
                     .with_dummy_span(),
                 size_bytes: 2.with_dummy_span(),
@@ -109,11 +113,12 @@ mod tests {
         };
 
         let mut input = Device {
-            description: String::new(),
-            name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
+            name: Identifier::try_parse("Device".intern())
+                .unwrap()
+                .with_dummy_span(),
             device_config: global_config,
             objects: vec![Object::FieldSet(FieldSet {
-                name: Identifier::try_parse("MyRegister")
+                name: Identifier::try_parse("MyRegister".intern())
                     .unwrap()
                     .with_dummy_span(),
                 size_bytes: 2.with_dummy_span(),

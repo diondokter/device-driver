@@ -1,0 +1,222 @@
+use std::collections::HashMap;
+
+use device_driver_common::span::Span;
+use device_driver_diagnostics::Severity;
+use tokio::sync::RwLock;
+use tower_lsp_server::{
+    Client, LanguageServer, LspService, Server,
+    jsonrpc::Error,
+    ls_types::{
+        DiagnosticSeverity, DidOpenTextDocumentParams, DocumentSymbolResponse, InitializeResult,
+        InlayHint, MessageType, OneOf, Position, Range, ServerCapabilities,
+        TextDocumentSyncCapability, TextDocumentSyncKind, Uri,
+    },
+};
+
+use crate::document::Document;
+
+mod document;
+mod document_symbol;
+mod inlay_hints;
+
+pub struct Backend {
+    client: Client,
+    documents: RwLock<HashMap<Uri, Document>>,
+}
+
+impl Backend {
+    pub fn run() {
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .build()
+            .unwrap();
+        rt.block_on(async {
+            let stdin = tokio::io::stdin();
+            let stdout = tokio::io::stdout();
+            let (service, socket) = LspService::new(|client| Backend {
+                client,
+                documents: RwLock::new(HashMap::new()),
+            });
+            Server::new(stdin, stdout, socket).serve(service).await;
+        });
+    }
+
+    pub async fn update_document(&self, uri: Uri, source: String, version: i32) {
+        let documents = self.documents.read().await;
+
+        if let Some(document) = documents.get(&uri)
+            && document.version() >= version
+        {
+            return;
+        }
+
+        drop(documents);
+
+        match Document::compile(source, version) {
+            Ok((document, diagnostics)) => {
+                let diags = diagnostics
+                    .iter()
+                    .map(|diagnostic| tower_lsp_server::ls_types::Diagnostic {
+                        range: diagnostic.primary_span().to_range(document.source()),
+                        severity: match diagnostic.severity() {
+                            Severity::Error => Some(DiagnosticSeverity::ERROR),
+                            Severity::Warning => Some(DiagnosticSeverity::WARNING),
+                            Severity::Info => Some(DiagnosticSeverity::INFORMATION),
+                            Severity::Note => Some(DiagnosticSeverity::HINT),
+                            Severity::Help => Some(DiagnosticSeverity::HINT),
+                        },
+                        code: None,
+                        code_description: None,
+                        source: Some("DDSL".into()),
+                        message: diagnostic.title().into(),
+                        related_information: None,
+                        tags: None,
+                        data: None,
+                    })
+                    .collect();
+
+                self.documents.write().await.insert(uri.clone(), document);
+
+                self.client
+                    .publish_diagnostics(uri, diags, Some(version))
+                    .await;
+            }
+            Err(e) => {
+                self.client.log_message(MessageType::ERROR, e).await;
+            }
+        }
+    }
+}
+
+impl LanguageServer for Backend {
+    async fn initialize(
+        &self,
+        _params: tower_lsp_server::ls_types::InitializeParams,
+    ) -> tower_lsp_server::jsonrpc::Result<InitializeResult> {
+        Ok(InitializeResult {
+            capabilities: ServerCapabilities {
+                text_document_sync: Some(TextDocumentSyncCapability::Kind(
+                    TextDocumentSyncKind::FULL,
+                )),
+                document_symbol_provider: Some(OneOf::Left(true)),
+                inlay_hint_provider: Some(OneOf::Left(true)),
+                ..Default::default()
+            },
+            server_info: Some(tower_lsp_server::ls_types::ServerInfo {
+                name: env!("CARGO_PKG_NAME").into(),
+                version: Some(env!("CARGO_PKG_VERSION").into()),
+            }),
+            offset_encoding: None,
+        })
+    }
+
+    async fn initialized(&self, _params: tower_lsp_server::ls_types::InitializedParams) {
+        self.client
+            .log_message(MessageType::INFO, "server initialized!")
+            .await;
+    }
+
+    async fn did_open(&self, params: DidOpenTextDocumentParams) {
+        self.update_document(
+            params.text_document.uri,
+            params.text_document.text,
+            params.text_document.version,
+        )
+        .await;
+    }
+
+    async fn did_change(&self, params: tower_lsp_server::ls_types::DidChangeTextDocumentParams) {
+        for change in params.content_changes {
+            self.update_document(
+                params.text_document.uri.clone(),
+                change.text,
+                params.text_document.version,
+            )
+            .await;
+        }
+    }
+
+    async fn document_symbol(
+        &self,
+        params: tower_lsp_server::ls_types::DocumentSymbolParams,
+    ) -> tower_lsp_server::jsonrpc::Result<Option<DocumentSymbolResponse>> {
+        let guard = self.documents.read().await;
+        let Some(document) = guard.get(&params.text_document.uri) else {
+            return Err(Error::invalid_params(params.text_document.uri.to_string()));
+        };
+
+        let Some(root_node) = document.ast().root_node.as_ref() else {
+            return Ok(None);
+        };
+
+        let root_node_symbol =
+            document_symbol::get_node_symbol(root_node, document.source(), document.mir());
+        Ok(Some(DocumentSymbolResponse::Nested(vec![root_node_symbol])))
+    }
+
+    async fn inlay_hint(
+        &self,
+        params: tower_lsp_server::ls_types::InlayHintParams,
+    ) -> tower_lsp_server::jsonrpc::Result<Option<Vec<InlayHint>>> {
+        self.client
+            .log_message(
+                MessageType::INFO,
+                format!("Inlay hints requested: {:?}", params.range),
+            )
+            .await;
+
+        let guard = self.documents.read().await;
+        let Some(document) = guard.get(&params.text_document.uri) else {
+            return Err(Error::invalid_params(params.text_document.uri.to_string()));
+        };
+
+        let Some(root_node) = document.ast().root_node.as_ref() else {
+            return Ok(None);
+        };
+
+        let hints = inlay_hints::get_hints(
+            root_node,
+            params.range.to_span(document.source()),
+            document.source(),
+            document.mir(),
+        );
+        self.client
+            .log_message(MessageType::INFO, format!("Sending back: {:?}", hints))
+            .await;
+
+        Ok(Some(hints))
+    }
+
+    async fn shutdown(&self) -> tower_lsp_server::jsonrpc::Result<()> {
+        Ok(())
+    }
+}
+
+trait ToRange {
+    fn to_range(&self, source: &str) -> Range;
+}
+
+impl ToRange for Span {
+    fn to_range(&self, source: &str) -> Range {
+        let span = self.as_line_column(source);
+        Range::new(
+            Position::new(span.0.0, span.0.1),
+            Position::new(span.1.0, span.1.1),
+        )
+    }
+}
+
+trait ToSpan {
+    fn to_span(&self, source: &str) -> Span;
+}
+
+impl ToSpan for Range {
+    fn to_span(&self, source: &str) -> Span {
+        Span::from_line_column(
+            source,
+            self.start.line,
+            self.start.character,
+            self.end.line,
+            self.end.character,
+        )
+    }
+}

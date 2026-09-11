@@ -1,7 +1,4 @@
 {
-    "rust-analyzer.linkedProjects": [
-        "Cargo.toml",
-    ],
     "rust-analyzer.cargo.targetDir": true,
-    "rust-analyzer.cargo.features": ["gen-docs", "dd-v1", "converter-dd-v1"]
+    "rust-analyzer.cargo.features": ["dd-v1", "converter-dd-v1"],
 }

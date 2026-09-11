@@ -5,6 +5,7 @@ use convert_case::Boundary;
 use device_driver_common::identifier::Namespace;
 use device_driver_common::{
     identifier::{Global, Identifier, IdentifierRef, Local, Operation, RuntimeNamespace, Type},
+    interner::Istr,
     span::{Span, SpanExt, Spanned},
     specifiers::{
         Access, AddressMode, AddressRange, BaseType, ByteOrder, Integer, NodeType, Repeat,
@@ -15,7 +16,7 @@ use device_driver_diagnostics::DynError;
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Manifest {
-    pub description: String,
+    pub description: Istr,
     pub name: Spanned<Identifier<Global>>,
     pub default_access: Option<Access>,
     pub config: DeviceConfig,
@@ -230,7 +231,7 @@ impl From<Device> for Manifest {
         let default_access = value.default_access;
 
         Self {
-            description: String::new(),
+            description: Istr::default(),
             name: value
                 .name
                 .value
@@ -249,7 +250,7 @@ impl From<Device> for Manifest {
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Device {
-    pub description: String,
+    pub description: Istr,
     pub name: Spanned<Identifier<Type>>,
     pub default_access: Option<Access>,
     pub address_offset: Spanned<i128>,
@@ -473,6 +474,20 @@ impl Object {
         }
     }
 
+    pub fn base_type(&self) -> Option<&Spanned<BaseType>> {
+        match self {
+            Object::Device(_) => None,
+            Object::Block(_) => None,
+            Object::Register(_) => None,
+            Object::Command(_) => None,
+            Object::Buffer(_) => None,
+            Object::FieldSet(_) => None,
+            Object::Enum(enum_value) => Some(&enum_value.base_type),
+            Object::Extern(extern_value) => Some(&extern_value.base_type),
+            Object::Field(field) => Some(&field.base_type),
+        }
+    }
+
     pub fn allow_address_overlap(&self) -> bool {
         match self {
             Object::Device(_) => false,
@@ -499,6 +514,20 @@ impl Object {
             Object::Enum(val) => val.span,
             Object::Extern(val) => val.span,
             Object::Field(val) => val.span,
+        }
+    }
+
+    pub fn short_properties_span(&self) -> Span {
+        match self {
+            Object::Device(device) => device.short_properties_span,
+            Object::Block(block) => block.short_properties_span,
+            Object::Register(register) => register.short_properties_span,
+            Object::Command(command) => command.short_properties_span,
+            Object::Buffer(buffer) => buffer.short_properties_span,
+            Object::FieldSet(field_set) => field_set.short_properties_span,
+            Object::Enum(enum_value) => enum_value.short_properties_span,
+            Object::Extern(extern_value) => extern_value.short_properties_span,
+            Object::Field(field) => field.short_properties_span,
         }
     }
 
@@ -551,7 +580,7 @@ impl Object {
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Block {
-    pub description: String,
+    pub description: Istr,
     pub name: Spanned<Identifier<Global>>,
     pub address_offset: Spanned<i128>,
     pub repeat: Option<Repeat>,
@@ -579,7 +608,7 @@ impl Block {
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Register {
-    pub description: String,
+    pub description: Istr,
     pub name: Spanned<Identifier<Operation>>,
     pub access: Option<Access>,
     pub allow_address_overlap: bool,
@@ -596,7 +625,7 @@ pub struct Register {
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct FieldSet {
-    pub description: String,
+    pub description: Istr,
     pub name: Spanned<Identifier<Type>>,
     pub size_bytes: Spanned<u32>,
     pub byte_order: Option<ByteOrder>,
@@ -618,7 +647,7 @@ impl FieldSet {
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Field {
-    pub description: String,
+    pub description: Istr,
     pub name: Spanned<Identifier<Local>>,
     pub access: Option<Access>,
     pub base_type: Spanned<BaseType>,
@@ -651,7 +680,7 @@ impl Field {
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Enum {
-    pub description: String,
+    pub description: Istr,
     pub name: Spanned<Identifier<Type>>,
     pub variants: Vec<EnumVariant>,
     pub base_type: Spanned<BaseType>,
@@ -667,7 +696,7 @@ pub struct Enum {
 impl Enum {
     #[cfg(test)]
     pub fn new(
-        description: String,
+        description: Istr,
         name: Spanned<Identifier<Type>>,
         variants: Vec<EnumVariant>,
         base_type: Spanned<BaseType>,
@@ -689,7 +718,7 @@ impl Enum {
 
     #[cfg(test)]
     pub fn new_with_style(
-        description: String,
+        description: Istr,
         name: Spanned<Identifier<Type>>,
         variants: Vec<EnumVariant>,
         base_type: Spanned<BaseType>,
@@ -772,7 +801,7 @@ impl EnumGenerationStyle {
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct EnumVariant {
-    pub description: String,
+    pub description: Istr,
     pub name: Spanned<Identifier<Local>>,
     pub value: EnumValue,
     /// Span of the whole object
@@ -819,7 +848,7 @@ impl EnumValue {
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Command {
-    pub description: String,
+    pub description: Istr,
     pub name: Spanned<Identifier<Operation>>,
     pub address: Spanned<i128>,
     pub allow_address_overlap: bool,
@@ -836,7 +865,7 @@ pub struct Command {
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Buffer {
-    pub description: String,
+    pub description: Istr,
     pub name: Spanned<Identifier<Operation>>,
     pub access: Option<Access>,
     pub address: Spanned<i128>,
@@ -849,7 +878,7 @@ pub struct Buffer {
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Extern {
-    pub description: String,
+    pub description: Istr,
     pub name: Spanned<Identifier<Type>>,
     /// From/into what base type can this extern be converted?
     pub base_type: Spanned<BaseType>,
@@ -1010,7 +1039,7 @@ impl Id for Object {
 
 #[cfg(test)]
 mod tests {
-    use device_driver_common::span::SpanExt;
+    use device_driver_common::{interner::StrExt, span::SpanExt};
 
     use super::*;
 
@@ -1023,22 +1052,30 @@ mod tests {
             name: Default::default(),
             objects: vec![
                 Object::Device(Device {
-                    description: String::new(),
-                    name: Identifier::try_parse("a").unwrap().with_dummy_span(),
+                    description: Istr::default(),
+                    name: Identifier::try_parse("a".intern())
+                        .unwrap()
+                        .with_dummy_span(),
                     objects: vec![
                         Object::Extern(Extern {
-                            name: Identifier::try_parse("b").unwrap().with_dummy_span(),
+                            name: Identifier::try_parse("b".intern())
+                                .unwrap()
+                                .with_dummy_span(),
                             ..Default::default()
                         }),
                         Object::Extern(Extern {
-                            name: Identifier::try_parse("c").unwrap().with_dummy_span(),
+                            name: Identifier::try_parse("c".intern())
+                                .unwrap()
+                                .with_dummy_span(),
                             ..Default::default()
                         }),
                     ],
                     ..Default::default()
                 }),
                 Object::Extern(Extern {
-                    name: Identifier::try_parse("d").unwrap().with_dummy_span(),
+                    name: Identifier::try_parse("d".intern())
+                        .unwrap()
+                        .with_dummy_span(),
                     ..Default::default()
                 }),
             ],
@@ -1047,14 +1084,14 @@ mod tests {
 
         let names: Vec<_> = manifest
             .iter_objects()
-            .map(|o| o.name().original())
+            .map(|o| o.name().original().as_str())
             .collect();
         assert_eq!(&names, NAME_ORDER);
 
         let mut names = Vec::new();
         let mut lender = manifest.iter_objects_with_config_mut();
         while let Some((object, _)) = lender.next() {
-            names.push(object.name().original().to_string());
+            names.push(object.name().original().as_str());
         }
         assert_eq!(&names, NAME_ORDER);
     }

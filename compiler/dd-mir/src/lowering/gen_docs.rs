@@ -2,6 +2,7 @@ use std::{fmt::Write, fs, num::NonZero, path::Path};
 
 use device_driver_common::{
     identifier::Namespace,
+    interner::StrExt,
     span::{Span, SpanExt},
     specifiers::{BaseType, VariantNames},
 };
@@ -148,9 +149,9 @@ fn write_properties<S: Shape>(
 ) -> Result<(), DynError> {
     for property in properties {
         let name = match property.name {
-            PropertyName::Exact(name) => name,
+            PropertyName::Exact(name) => name.as_str(),
             PropertyName::Any => "*any name*",
-            PropertyName::Short(name) => name,
+            PropertyName::Short(name) => name.as_str(),
         };
 
         writeln!(doc, "### {name}").into_dyn_result()?;
@@ -186,13 +187,13 @@ fn write_properties<S: Shape>(
     Ok(())
 }
 
-fn generate_shape_example<S: Shape>() -> Node<'static> {
+fn generate_shape_example<S: Shape>() -> Node {
     let mut shape = S::default();
 
     Node {
-        doc_comments: vec![" doc comment line".with_dummy_span()],
-        node_type: Ident::new_no_span(S::NODE_TYPE.name()),
-        name: Ident::new_no_span("Example"),
+        doc_comments: vec![" doc comment line".intern().with_dummy_span()],
+        node_type: Ident::new_no_span(S::NODE_TYPE.name().intern()),
+        name: Ident::new_no_span("Example".intern()),
         repeat: shape.repeat().map(|_| {
             Repeat {
                 source: device_driver_parser::RepeatSource::Count(NonZero::new(8).unwrap())
@@ -206,7 +207,9 @@ fn generate_shape_example<S: Shape>() -> Node<'static> {
                 base_type: BaseType::Uint.with_dummy_span(),
                 use_try: true,
                 conversion: shape.conversion_type().map(|_| {
-                    device_driver_parser::TypeConversion::Reference(Ident::new_no_span("Foo"))
+                    device_driver_parser::TypeConversion::Reference(Ident::new_no_span(
+                        "Foo".intern(),
+                    ))
                 }),
             }
             .with_dummy_span()
@@ -226,7 +229,7 @@ fn generate_shape_example<S: Shape>() -> Node<'static> {
                     Property {
                         doc_comments: p
                             .supports_doc_comments
-                            .then_some(" doc comment line".with_dummy_span())
+                            .then_some(" doc comment line".intern().with_dummy_span())
                             .into_iter()
                             .collect(),
                         name: Ident::new_no_span(name),
@@ -238,10 +241,10 @@ fn generate_shape_example<S: Shape>() -> Node<'static> {
                     Property {
                         doc_comments: p
                             .supports_doc_comments
-                            .then_some(" doc comment line".with_dummy_span())
+                            .then_some(" doc comment line".intern().with_dummy_span())
                             .into_iter()
                             .collect(),
-                        name: Ident::new_no_span("Any"),
+                        name: Ident::new_no_span("Any".intern()),
                         expression: p.allowed_expression_types[0].clone().with_dummy_span(),
                     }
                     .with_dummy_span(),
@@ -254,8 +257,8 @@ fn generate_shape_example<S: Shape>() -> Node<'static> {
             .iter()
             .map(|node_type| Node {
                 doc_comments: Vec::new(),
-                node_type: Ident::new_no_span(node_type.name()),
-                name: Ident::new_no_span("node"),
+                node_type: Ident::new_no_span(node_type.name().intern()),
+                name: Ident::new_no_span("node".intern()),
                 repeat: None,
                 type_specifier: None,
                 short_properties: Vec::new(),

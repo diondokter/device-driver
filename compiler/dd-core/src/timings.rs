@@ -1,8 +1,8 @@
 use std::time::Duration;
 
 use annotate_snippets::{Group, Level};
-use device_driver_common::instant::Instant;
-use device_driver_diagnostics::Diagnostic;
+use device_driver_common::{instant::Instant, span::Span};
+use device_driver_diagnostics::{Diagnostic, Severity};
 use device_driver_mir::PassTiming;
 
 use crate::TimingsMode;
@@ -55,13 +55,13 @@ impl Timings {
 }
 
 impl Diagnostic for Timings {
-    fn is_error(&self) -> bool {
-        false
+    fn severity(&self) -> Severity {
+        Severity::Info
     }
 
     fn as_report<'a>(&'a self, _source: &'a str, _path: &'a str) -> Vec<Group<'a>> {
-        [Level::INFO
-            .primary_title("timings")
+        [self
+            .title_snippet()
             .element(
                 Level::INFO
                     .with_name(Some("lexer"))
@@ -95,6 +95,14 @@ impl Diagnostic for Timings {
                     .message(format!("{:>8.3}ms", self.codegen.as_secs_f64() * 1000.0)),
             )]
         .to_vec()
+    }
+
+    fn primary_span(&self) -> Span {
+        Span::empty()
+    }
+
+    fn title(&self) -> std::borrow::Cow<'static, str> {
+        "timings".into()
     }
 }
 

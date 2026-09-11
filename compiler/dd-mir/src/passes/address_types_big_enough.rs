@@ -99,7 +99,9 @@ fn check_device(
 
 #[cfg(test)]
 mod tests {
-    use device_driver_common::{identifier::Identifier, span::SpanExt, specifiers::Integer};
+    use device_driver_common::{
+        identifier::Identifier, interner::StrExt, span::SpanExt, specifiers::Integer,
+    };
 
     use crate::model::{Command, Device, DeviceConfig, Register};
 
@@ -108,14 +110,17 @@ mod tests {
     #[test]
     fn not_too_low() {
         let mut start_mir = Device {
-            description: String::new(),
-            name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
+            name: Identifier::try_parse("Device".intern())
+                .unwrap()
+                .with_dummy_span(),
             device_config: DeviceConfig {
                 register_address_type: Some(Integer::I8.with_dummy_span()),
                 ..Default::default()
             },
             objects: vec![Object::Register(Register {
-                name: Identifier::try_parse("MyReg").unwrap().with_dummy_span(),
+                name: Identifier::try_parse("MyReg".intern())
+                    .unwrap()
+                    .with_dummy_span(),
                 address: (-300).with_dummy_span(),
                 ..Default::default()
             })],
@@ -135,14 +140,17 @@ mod tests {
     #[test]
     fn not_too_high() {
         let mut start_mir = Device {
-            description: String::new(),
-            name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
+            name: Identifier::try_parse("Device".intern())
+                .unwrap()
+                .with_dummy_span(),
             device_config: DeviceConfig {
                 command_address_type: Some(Integer::U16.with_dummy_span()),
                 ..Default::default()
             },
             objects: vec![Object::Command(Command {
-                name: Identifier::try_parse("MyReg").unwrap().with_dummy_span(),
+                name: Identifier::try_parse("MyReg".intern())
+                    .unwrap()
+                    .with_dummy_span(),
                 address: 128000.with_dummy_span(),
                 ..Default::default()
             })],

@@ -38,7 +38,7 @@ pub struct MirOptions {
 }
 
 pub fn lower_ast(
-    ast: Ast,
+    ast: &Ast,
     options: &MirOptions,
     diagnostics: &mut Diagnostics,
 ) -> Result<(model::Manifest, Vec<PassTiming>), DynError> {

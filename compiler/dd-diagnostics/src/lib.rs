@@ -1,6 +1,12 @@
-use std::{borrow::Cow, error::Error, fmt::Debug, fmt::Display, fmt::Write};
+use std::{
+    borrow::Cow,
+    error::Error,
+    fmt::{Debug, Display, Write},
+    ops::Deref,
+};
 
-use annotate_snippets::{Group, Level, Renderer, renderer::DecorStyle};
+use annotate_snippets::{Group, Level, Renderer, Title, renderer::DecorStyle};
+use device_driver_common::span::Span;
 
 pub mod errors;
 
@@ -31,7 +37,7 @@ impl Diagnostics {
     pub fn has_error(&self) -> bool {
         self.diagnostics
             .iter()
-            .any(|diagnostic| diagnostic.is_error())
+            .any(|diagnostic| diagnostic.severity() == Severity::Error)
     }
 
     #[must_use]
@@ -39,14 +45,18 @@ impl Diagnostics {
         self.diagnostics.is_empty()
     }
 
-    pub fn print_to<W: std::io::Write>(
-        self,
-        mut writer: W,
+    pub fn iter(&self) -> impl Iterator<Item = &dyn Diagnostic> {
+        self.diagnostics.iter().map(Box::deref)
+    }
+
+    pub fn render_for_each<E>(
+        &self,
         metadata: Metadata<'_>,
-    ) -> std::io::Result<()> {
+        mut f: impl FnMut(&dyn Diagnostic, String) -> Result<(), E>,
+    ) -> Result<(), E> {
         let renderer = metadata.get_renderer();
 
-        for diagnostic in &self.diagnostics {
+        for diagnostic in self.iter() {
             let mut rendered =
                 renderer.render(&diagnostic.as_report(metadata.source, metadata.source_path));
 
@@ -54,10 +64,18 @@ impl Diagnostics {
                 rendered = strip_ansi_urls(&rendered);
             }
 
-            writeln!(writer, "{rendered}\n",)?;
+            f(diagnostic, rendered)?;
         }
 
         Ok(())
+    }
+
+    pub fn print_to<W: std::io::Write>(
+        self,
+        mut writer: W,
+        metadata: Metadata<'_>,
+    ) -> std::io::Result<()> {
+        self.render_for_each(metadata, |_, rendered| writeln!(writer, "{rendered}\n"))
     }
 
     pub fn print_to_fmt<W: std::fmt::Write>(
@@ -65,20 +83,7 @@ impl Diagnostics {
         mut writer: W,
         metadata: Metadata<'_>,
     ) -> std::fmt::Result {
-        let renderer = metadata.get_renderer();
-
-        for diagnostic in &self.diagnostics {
-            let mut rendered =
-                renderer.render(&diagnostic.as_report(metadata.source, metadata.source_path));
-
-            if !metadata.ansi {
-                rendered = strip_ansi_urls(&rendered);
-            }
-
-            writeln!(writer, "{rendered}\n",)?;
-        }
-
-        Ok(())
+        self.render_for_each(metadata, |_, rendered| writeln!(writer, "{rendered}\n"))
     }
 }
 
@@ -163,14 +168,28 @@ fn strip_ansi_urls(text: &str) -> String {
     output
 }
 
-pub trait Diagnostic: Debug {
-    fn is_error(&self) -> bool;
+pub trait Diagnostic: Debug + Send {
+    fn severity(&self) -> Severity;
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>>;
+
+    fn primary_span(&self) -> Span;
+    fn title(&self) -> Cow<'static, str>;
+
+    fn title_snippet(&self) -> Title<'static> {
+        match self.severity() {
+            Severity::Error => Level::ERROR,
+            Severity::Warning => Level::WARNING,
+            Severity::Info => Level::INFO,
+            Severity::Note => Level::NOTE,
+            Severity::Help => Level::HELP,
+        }
+        .primary_title(self.title())
+    }
 }
 
-impl<E: Error> Diagnostic for E {
-    fn is_error(&self) -> bool {
-        true
+impl<E: Error + Send> Diagnostic for E {
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, _source: &'a str, _file_path: &'a str) -> Vec<Group<'a>> {
@@ -184,6 +203,23 @@ impl<E: Error> Diagnostic for E {
 
         vec![Group::with_title(Level::ERROR.primary_title(self.to_string())).elements(sources)]
     }
+
+    fn primary_span(&self) -> Span {
+        Span::empty()
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        self.to_string().into()
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Severity {
+    Error,
+    Warning,
+    Info,
+    Note,
+    Help,
 }
 
 #[derive(Debug)]
@@ -266,29 +302,6 @@ impl<T, E: ErrorExt> ResultExt<T, E> for Result<T, E> {
 
     fn into_dyn_result(self) -> Result<T, DynError> {
         self.map_err(ErrorExt::into_dyn_error)
-    }
-}
-
-#[derive(Debug)]
-pub struct Message<'s> {
-    string: Cow<'s, str>,
-}
-
-impl<'s> Message<'s> {
-    pub fn new(string: impl Into<Cow<'s, str>>) -> Self {
-        Self {
-            string: string.into(),
-        }
-    }
-}
-
-impl Diagnostic for Message<'_> {
-    fn is_error(&self) -> bool {
-        true
-    }
-
-    fn as_report<'a>(&'a self, _source: &'a str, _path: &'a str) -> Vec<Group<'a>> {
-        [Group::with_title(Level::ERROR.primary_title(&*self.string))].to_vec()
     }
 }
 

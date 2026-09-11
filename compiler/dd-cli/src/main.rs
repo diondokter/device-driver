@@ -19,6 +19,8 @@ enum Command {
     GenDocs(GenDocsArgs),
     #[cfg(feature = "_converter")]
     Convert(ConverterArgs),
+    /// Run the lsp server
+    Lsp,
 }
 
 #[derive(Parser, Debug)]
@@ -76,6 +78,10 @@ fn run() -> Result<ExitCode, DynError> {
         Command::GenDocs(args) => gen_docs(args),
         #[cfg(feature = "_converter")]
         Command::Convert(args) => convert(args),
+        Command::Lsp => {
+            device_driver_lsp::Backend::run();
+            Ok(ExitCode::SUCCESS)
+        }
     }
 }
 
