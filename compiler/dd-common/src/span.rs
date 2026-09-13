@@ -18,6 +18,10 @@ impl Span {
         self.start == 0 && self.end == 0
     }
 
+    pub fn len(&self) -> usize {
+        self.end - self.start
+    }
+
     /// Return self if not empty, or the other span if self is empty
     #[must_use]
     pub fn or(&self, other: Self) -> Self {
@@ -74,10 +78,14 @@ impl Span {
         fn byte_to_line_column(val: usize, source: &str) -> (u32, u32) {
             let mut lines = 0;
             let mut last_line_start = 0;
+            let mut last_byte_index = 0;
 
             for (byte_index, char_val) in source.char_indices() {
                 match char_val {
-                    _ if byte_index == val => break,
+                    _ if byte_index >= val => {
+                        last_byte_index = byte_index;
+                        break;
+                    }
                     '\n' => {
                         lines += 1;
                         last_line_start = byte_index + 1
@@ -86,7 +94,12 @@ impl Span {
                 }
             }
 
-            (lines, (val - last_line_start) as u32)
+            let columns = source[last_line_start..last_byte_index]
+                .chars()
+                .map(|c| c.len_utf16())
+                .sum::<usize>();
+
+            (lines, columns as u32)
         }
 
         (
@@ -107,9 +120,12 @@ impl Span {
             let mut last_line_start = 0;
 
             for (byte_index, char_val) in source.char_indices() {
-                let column_index = byte_index - last_line_start;
+                let column_index = source[last_line_start..byte_index]
+                    .chars()
+                    .map(|c| c.len_utf16())
+                    .sum::<usize>();
                 match char_val {
-                    _ if lines == line && column_index == column as usize => return byte_index,
+                    _ if lines == line && column_index >= column as usize => return byte_index,
                     '\n' => {
                         lines += 1;
                         last_line_start = byte_index + 1
