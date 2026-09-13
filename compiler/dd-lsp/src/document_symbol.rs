@@ -74,11 +74,11 @@ pub fn get_node_symbol(node: &Node, source: &str, mir: &Manifest) -> DocumentSym
 fn node_type_symbol_kind(node_type: Istr) -> SymbolKind {
     match NodeType::from_str(node_type.as_str()) {
         Ok(NodeType::Manifest) => SymbolKind::FILE,
-        Ok(NodeType::Device) => SymbolKind::CLASS,
-        Ok(NodeType::Block) => SymbolKind::METHOD,
-        Ok(NodeType::Register) => SymbolKind::METHOD,
-        Ok(NodeType::Command) => SymbolKind::METHOD,
-        Ok(NodeType::Buffer) => SymbolKind::METHOD,
+        Ok(NodeType::Device) => SymbolKind::MODULE,
+        Ok(NodeType::Block) => SymbolKind::MODULE,
+        Ok(NodeType::Register) => SymbolKind::CLASS,
+        Ok(NodeType::Command) => SymbolKind::CLASS,
+        Ok(NodeType::Buffer) => SymbolKind::CLASS,
         Ok(NodeType::FieldSet) => SymbolKind::STRUCT,
         Ok(NodeType::Enum) => SymbolKind::ENUM,
         Ok(NodeType::Extern) => SymbolKind::STRUCT,
