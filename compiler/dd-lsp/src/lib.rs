@@ -1,14 +1,17 @@
 use std::collections::HashMap;
 
-use device_driver_common::span::Span;
+use device_driver_common::{span::Span, specifiers::VariantNames};
 use device_driver_diagnostics::Severity;
+use device_driver_lexer::{TokenModifier, TokenType};
 use tokio::sync::RwLock;
 use tower_lsp_server::{
     Client, LanguageServer, LspService, Server,
     jsonrpc::Error,
     ls_types::{
         DiagnosticSeverity, DidOpenTextDocumentParams, DocumentSymbolResponse, InitializeResult,
-        InlayHint, MessageType, OneOf, Position, Range, ServerCapabilities,
+        InlayHint, MessageType, OneOf, Position, Range, SemanticTokensFullOptions,
+        SemanticTokensLegend, SemanticTokensOptions, SemanticTokensRangeResult,
+        SemanticTokensResult, SemanticTokensServerCapabilities, ServerCapabilities,
         TextDocumentSyncCapability, TextDocumentSyncKind, Uri,
     },
 };
@@ -18,6 +21,7 @@ use crate::document::Document;
 mod document;
 mod document_symbol;
 mod inlay_hints;
+mod semantic_tokens;
 
 pub struct Backend {
     client: Client,
@@ -99,6 +103,25 @@ impl LanguageServer for Backend {
                 )),
                 document_symbol_provider: Some(OneOf::Left(true)),
                 inlay_hint_provider: Some(OneOf::Left(true)),
+                semantic_tokens_provider: Some(
+                    SemanticTokensServerCapabilities::SemanticTokensOptions(
+                        SemanticTokensOptions {
+                            work_done_progress_options: Default::default(),
+                            legend: SemanticTokensLegend {
+                                token_types: TokenType::VARIANTS
+                                    .iter()
+                                    .map(|tt| (*tt).into())
+                                    .collect(),
+                                token_modifiers: TokenModifier::VARIANTS
+                                    .iter()
+                                    .map(|tm| (*tm).into())
+                                    .collect(),
+                            },
+                            range: Some(true),
+                            full: Some(SemanticTokensFullOptions::Bool(true)),
+                        },
+                    ),
+                ),
                 ..Default::default()
             },
             server_info: Some(tower_lsp_server::ls_types::ServerInfo {
@@ -157,13 +180,6 @@ impl LanguageServer for Backend {
         &self,
         params: tower_lsp_server::ls_types::InlayHintParams,
     ) -> tower_lsp_server::jsonrpc::Result<Option<Vec<InlayHint>>> {
-        self.client
-            .log_message(
-                MessageType::INFO,
-                format!("Inlay hints requested: {:?}", params.range),
-            )
-            .await;
-
         let guard = self.documents.read().await;
         let Some(document) = guard.get(&params.text_document.uri) else {
             return Err(Error::invalid_params(params.text_document.uri.to_string()));
@@ -179,11 +195,52 @@ impl LanguageServer for Backend {
             document.source(),
             document.mir(),
         );
-        self.client
-            .log_message(MessageType::INFO, format!("Sending back: {:?}", hints))
-            .await;
 
         Ok(Some(hints))
+    }
+
+    async fn semantic_tokens_full(
+        &self,
+        params: tower_lsp_server::ls_types::SemanticTokensParams,
+    ) -> tower_lsp_server::jsonrpc::Result<Option<SemanticTokensResult>> {
+        let guard = self.documents.read().await;
+        let Some(document) = guard.get(&params.text_document.uri) else {
+            return Err(Error::invalid_params(params.text_document.uri.to_string()));
+        };
+
+        let Some(root_node) = document.ast().root_node.as_ref() else {
+            return Ok(None);
+        };
+
+        self.client
+            .log_message(MessageType::INFO, format!("Got: {params:?}"))
+            .await;
+
+        Ok(Some(SemanticTokensResult::Tokens(
+            semantic_tokens::calculate_semantic_tokens(root_node, document.source(), None),
+        )))
+    }
+
+    async fn semantic_tokens_range(
+        &self,
+        params: tower_lsp_server::ls_types::SemanticTokensRangeParams,
+    ) -> tower_lsp_server::jsonrpc::Result<Option<SemanticTokensRangeResult>> {
+        let guard = self.documents.read().await;
+        let Some(document) = guard.get(&params.text_document.uri) else {
+            return Err(Error::invalid_params(params.text_document.uri.to_string()));
+        };
+
+        let Some(root_node) = document.ast().root_node.as_ref() else {
+            return Ok(None);
+        };
+
+        Ok(Some(SemanticTokensRangeResult::Tokens(
+            semantic_tokens::calculate_semantic_tokens(
+                root_node,
+                document.source(),
+                Some(params.range),
+            ),
+        )))
     }
 
     async fn shutdown(&self) -> tower_lsp_server::jsonrpc::Result<()> {
