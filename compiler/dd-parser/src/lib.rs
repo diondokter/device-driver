@@ -14,7 +14,10 @@ use device_driver_common::{
     specifiers::{Access, AddressMode, BaseType, ByteOrder, Integer},
 };
 use device_driver_diagnostics::{Diagnostics, errors::ParsingError};
-use device_driver_lexer::Token;
+use device_driver_lexer::{
+    Token, TokenModifier, TokenType,
+    semantic_token_object::{SemanticToken, SemanticTokenObject},
+};
 
 use crate::parse_num::{ParseIntRadix, ParseIntRadixError, ParseIntRadixErrorKind, parse_num};
 
@@ -177,11 +180,69 @@ impl Display for Node {
     }
 }
 
+impl SemanticTokenObject for Node {
+    fn to_tokens_in(&self, tokens: &mut Vec<SemanticToken<'_>>) {
+        tokens.extend(self.doc_comments.iter().map(|doc_comment| {
+            Token::DocCommentLine(doc_comment.as_str())
+                .with_semantics(TokenType::Comment, &[TokenModifier::Documentation])
+        }));
+        tokens.push(
+            Token::Ident(self.node_type.val.as_str()).with_semantics(TokenType::NodeType, &[]),
+        );
+        tokens.push(Token::Ident(self.name.val.as_str()).with_semantics(
+            TokenType::Type,
+            &[TokenModifier::Declaration, TokenModifier::Definition],
+        ));
+
+        if let Some(repeat) = self.repeat.as_ref() {
+            repeat.to_tokens_in(tokens);
+        }
+
+        for short_property in self.short_properties.iter() {
+            short_property.to_tokens_in(tokens);
+        }
+
+        if let Some(type_specifier) = self.type_specifier.as_ref() {
+            type_specifier.to_tokens_in(tokens);
+        }
+
+        if self.properties.len() + self.sub_nodes.len() > 0 {
+            tokens.push(Token::CurlyOpen.without_semantics());
+
+            for property in self.properties.iter() {
+                property.to_tokens_in(tokens);
+                tokens.push(Token::Comma.without_semantics());
+            }
+
+            for sub_node in self.sub_nodes.iter() {
+                sub_node.to_tokens_in(tokens);
+                tokens.push(Token::Comma.without_semantics());
+            }
+
+            tokens.push(Token::CurlyClose.without_semantics());
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct TypeSpecifier {
     pub base_type: Spanned<BaseType>,
     pub use_try: bool,
     pub conversion: Option<TypeConversion>,
+}
+
+impl SemanticTokenObject for TypeSpecifier {
+    fn to_tokens_in(&self, tokens: &mut Vec<SemanticToken<'_>>) {
+        tokens.push(Token::Arrow.without_semantics());
+        self.base_type.to_tokens_in(tokens);
+        if let Some(conversion) = self.conversion.as_ref() {
+            tokens.push(Token::As.with_semantics(TokenType::Keyword, &[]));
+            if self.use_try {
+                tokens.push(Token::Try.with_semantics(TokenType::Keyword, &[]));
+            }
+            conversion.to_tokens_in(tokens);
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -200,11 +261,35 @@ impl TypeConversion {
     }
 }
 
+impl SemanticTokenObject for TypeConversion {
+    fn to_tokens_in(&self, tokens: &mut Vec<SemanticToken<'_>>) {
+        match self {
+            TypeConversion::Reference(ident) => {
+                tokens.push(Token::Ident(ident.val.as_str()).with_semantics(TokenType::Type, &[]))
+            }
+            TypeConversion::Subnode(node) => node.to_tokens_in(tokens),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Property {
     pub doc_comments: Vec<Spanned<Istr>>,
     pub name: Ident,
     pub expression: Spanned<Expression>,
+}
+
+impl SemanticTokenObject for Property {
+    fn to_tokens_in(&self, tokens: &mut Vec<SemanticToken<'_>>) {
+        tokens.extend(self.doc_comments.iter().map(|istr| {
+            Token::DocCommentLine(istr.as_str())
+                .with_semantics(TokenType::Comment, &[TokenModifier::Documentation])
+        }));
+        tokens.push(Token::Ident(self.name.val.as_str()).with_semantics(TokenType::Property, &[]));
+
+        tokens.push(Token::Colon.without_semantics());
+        self.expression.to_tokens_in(tokens);
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -224,7 +309,6 @@ pub enum Expression {
     SubNode(Box<Node>),
     Auto,
     AddressMode(AddressMode),
-    Error,
 }
 
 impl Expression {
@@ -319,7 +403,6 @@ impl Expression {
             Expression::SubNode(val) => val.to_string().into(),
             Expression::Auto => "_".into(),
             Expression::AddressMode(val) => val.to_string().into(),
-            Expression::Error => "ERROR".into(),
         }
     }
 }
@@ -344,7 +427,85 @@ impl Display for Expression {
             Expression::SubNode(_) => write!(f, "sub node"),
             Expression::Auto => write!(f, "auto"),
             Expression::AddressMode(_) => write!(f, "address mode"),
-            Expression::Error => write!(f, "error"),
+        }
+    }
+}
+
+impl SemanticTokenObject for Expression {
+    fn to_tokens_in(&self, tokens: &mut Vec<SemanticToken<'_>>) {
+        match self {
+            Expression::AddressRange { end, start } => {
+                tokens.push(
+                    Token::Num(end.to_string().intern().as_str())
+                        .with_semantics(TokenType::Number, &[]),
+                );
+                tokens.push(Token::Colon.without_semantics());
+                tokens.push(
+                    Token::Num(start.to_string().intern().as_str())
+                        .with_semantics(TokenType::Number, &[]),
+                );
+            }
+            Expression::ByteArray(bytes) => {
+                tokens.push(Token::BracketOpen.without_semantics());
+                for (i, byte) in bytes.iter().enumerate() {
+                    if i != 0 {
+                        tokens.push(Token::Comma.without_semantics());
+                    }
+                    tokens.push(
+                        Token::Num(byte.to_string().intern().as_str())
+                            .with_semantics(TokenType::Number, &[]),
+                    );
+                }
+                tokens.push(Token::BracketClose.without_semantics());
+            }
+            Expression::BaseType(base_type) => base_type.to_tokens_in(tokens),
+            Expression::Integer(integer) => integer.to_tokens_in(tokens),
+            Expression::Allow => tokens.push(Token::Allow.with_semantics(TokenType::Keyword, &[])),
+            Expression::Number(num) => tokens.push(
+                Token::Num(num.to_string().intern().as_str())
+                    .with_semantics(TokenType::Number, &[]),
+            ),
+            Expression::DefaultNumber(num) => {
+                tokens.push(Token::Default.with_semantics(TokenType::Keyword, &[]));
+                match num {
+                    Some(num) => {
+                        tokens.push(
+                            Token::Num(num.to_string().intern().as_str())
+                                .with_semantics(TokenType::Number, &[]),
+                        );
+                    }
+                    None => {
+                        tokens.push(Token::Underscore.with_semantics(TokenType::Operator, &[]));
+                    }
+                }
+            }
+            Expression::CatchAllNumber(num) => {
+                tokens.push(Token::CatchAll.with_semantics(TokenType::Keyword, &[]));
+                match num {
+                    Some(num) => {
+                        tokens.push(
+                            Token::Num(num.to_string().intern().as_str())
+                                .with_semantics(TokenType::Number, &[]),
+                        );
+                    }
+                    None => {
+                        tokens.push(Token::Underscore.with_semantics(TokenType::Operator, &[]));
+                    }
+                }
+            }
+            Expression::String(istr) => {
+                tokens.push(Token::String(istr.as_str()).with_semantics(TokenType::String, &[]));
+            }
+            Expression::Access(access) => access.to_tokens_in(tokens),
+            Expression::ByteOrder(byte_order) => byte_order.to_tokens_in(tokens),
+            Expression::TypeReference(ident) => {
+                tokens.push(Token::Ident(ident.val.as_str()).with_semantics(TokenType::Type, &[]))
+            }
+            Expression::SubNode(node) => node.to_tokens_in(tokens),
+            Expression::Auto => {
+                tokens.push(Token::Underscore.with_semantics(TokenType::Operator, &[]));
+            }
+            Expression::AddressMode(address_mode) => address_mode.to_tokens_in(tokens),
         }
     }
 }
@@ -353,6 +514,19 @@ impl Display for Expression {
 pub struct Repeat {
     pub source: Spanned<RepeatSource>,
     pub stride: Spanned<i32>,
+}
+
+impl SemanticTokenObject for Repeat {
+    fn to_tokens_in(&self, tokens: &mut Vec<SemanticToken<'_>>) {
+        tokens.push(Token::BracketOpen.without_semantics());
+        self.source.to_tokens_in(tokens);
+        tokens.push(Token::Stride.with_semantics(TokenType::Keyword, &[]));
+        tokens.push(
+            Token::Num(self.stride.to_string().intern().as_str())
+                .with_semantics(TokenType::Number, &[]),
+        );
+        tokens.push(Token::BracketClose.without_semantics());
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -372,6 +546,20 @@ impl Display for RepeatSource {
         match self {
             RepeatSource::Count(non_zero) => write!(f, "{non_zero}"),
             RepeatSource::Enum(ident) => write!(f, "{}", ident.val),
+        }
+    }
+}
+
+impl SemanticTokenObject for RepeatSource {
+    fn to_tokens_in(&self, tokens: &mut Vec<SemanticToken<'_>>) {
+        match self {
+            RepeatSource::Count(non_zero) => tokens.push(
+                Token::Num(non_zero.get().to_string().intern().as_str())
+                    .with_semantics(TokenType::Number, &[]),
+            ),
+            RepeatSource::Enum(ident) => {
+                tokens.push(Token::Ident(ident.val.as_str()).with_semantics(TokenType::Type, &[]))
+            }
         }
     }
 }
