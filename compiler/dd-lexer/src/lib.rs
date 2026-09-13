@@ -2,9 +2,11 @@ use std::{borrow::Cow, fmt::Display};
 
 use device_driver_common::{
     span::{SpanExt, Spanned},
-    specifiers::{Access, AddressMode, BaseType, ByteOrder, Integer},
+    specifiers::{Access, AddressMode, BaseType, ByteOrder, Integer, VariantNames},
 };
 use logos::Logos;
+
+pub mod semantic_token_object;
 
 pub fn lex(source: &str) -> Vec<Spanned<Token<'_>>> {
     Token::lexer(source)
@@ -203,5 +205,118 @@ impl<'src> Token<'src> {
         }
 
         Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TokenType {
+    Namespace,
+    Type,
+    Class,
+    Enum,
+    Interface,
+    Struct,
+    TypeParameter,
+    Parameter,
+    Variable,
+    Property,
+    EnumMember,
+    Event,
+    Function,
+    Method,
+    Macro,
+    Keyword,
+    Modifier,
+    Comment,
+    String,
+    Number,
+    Regexp,
+    Operator,
+    Decorator,
+    Label,
+    // Custom:
+    NodeType,
+    Access,
+    ByteOrder,
+    AddressMode,
+}
+
+impl VariantNames for TokenType {
+    const VARIANTS: &'static [&'static str] = &[
+        "namespace",
+        "type",
+        "class",
+        "enum",
+        "interface",
+        "struct",
+        "typeparameter",
+        "parameter",
+        "variable",
+        "property",
+        "enummember",
+        "event",
+        "function",
+        "method",
+        "macro",
+        "keyword",
+        "modifier",
+        "comment",
+        "string",
+        "number",
+        "regexp",
+        "operator",
+        "decorator",
+        "label",
+        "nodetype",
+        "access",
+        "byteorder",
+        "addressmode",
+    ];
+    fn name(&self) -> &'static str {
+        Self::VARIANTS[*self as usize]
+    }
+}
+
+impl Display for TokenType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", Self::VARIANTS[*self as usize])
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TokenModifier {
+    Declaration = 0b1,
+    Definition = 0b10,
+    Readonly = 0b100,
+    Static = 0b1000,
+    Deprecated = 0b1_0000,
+    Abstract = 0b10_0000,
+    Async = 0b100_0000,
+    Modification = 0b1000_0000,
+    Documentation = 0b1_0000_0000,
+    DefaultLibrary = 0b10_0000_0000,
+}
+
+impl VariantNames for TokenModifier {
+    const VARIANTS: &'static [&'static str] = &[
+        "declaration",
+        "definition",
+        "readonly",
+        "static",
+        "deprecated",
+        "abstract",
+        "async",
+        "modification",
+        "documentation",
+        "defaultlibrary",
+    ];
+    fn name(&self) -> &'static str {
+        Self::VARIANTS[*self as usize]
+    }
+}
+
+impl Display for TokenModifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", Self::VARIANTS[*self as usize])
     }
 }
