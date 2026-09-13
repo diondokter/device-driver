@@ -79,8 +79,15 @@ fn run() -> Result<ExitCode, DynError> {
         #[cfg(feature = "_converter")]
         Command::Convert(args) => convert(args),
         Command::Lsp => {
-            device_driver_lsp::Backend::run();
-            Ok(ExitCode::SUCCESS)
+            let result = std::panic::catch_unwind(|| {
+                device_driver_lsp::Backend::run();
+            });
+            std::thread::sleep(std::time::Duration::from_mins(1));
+            if result.is_ok() {
+                Ok(ExitCode::SUCCESS)
+            } else {
+                Ok(ExitCode::FAILURE)
+            }
         }
     }
 }
