@@ -1,4 +1,5 @@
 # Device-driver toolkit
+
 [![crates.io](https://img.shields.io/crates/v/device-driver.svg)](https://crates.io/crates/device-driver) [![Documentation](https://docs.rs/device-driver/badge.svg)](https://docs.rs/device-driver)
 
 > A toolkit to write better device drivers, faster.
@@ -9,6 +10,7 @@ For runtime docs, visit [docs.rs](https://docs.rs/device-driver).
 Device-driver uses a small custom language named DDSL (device driver specification language) as its input. It's made so creating drivers is direct, easy and to-the-point.
 
 Example of a DDSL register:
+
 ```ddsl
 register SYNT {
     address: 0x05,
@@ -35,17 +37,19 @@ register SYNT {
 
 > [!NOTE]
 > The name `device-driver` consists of two parts:
+>
 > - `driver`: Code to enable the use of hardware.
 > - `device`: A chip or peripheral you can talk to over a bus.
 >
 > Examples of good targets for using this toolkit:
+>
 > - An I2C accelerometer
 > - A SPI radio transceiver
 > - A screen/display with parallel bus
 >
 > The driver is usable in any no-std context and can be made to work with the `embedded-hal` crate or any custom interfaces.
 
-## Book overview:
+## Book overview
 
 The book contains documentation for multiple versions.
 Go to the version you're using and continue to read there.
@@ -59,7 +63,7 @@ The addendums contain useful background information.
 > It's hard to keep a book like this up-to-date with reality. Small errors might creep in despite my best effort.
 > If you do find something out of place, missing or simply wrong, please open an issue or PR, even if it's just for a typo! I'd really appreciate it and helps out everyone.
 
-## Known drivers using the toolkit:
+## Known drivers using the toolkit
 
 It's nice to have examples:
 
@@ -68,6 +72,7 @@ V2:
 - [YM3812 OPL2](https://github.com/diondokter/ym3812)
 - [S2-LP radio](https://github.com/diondokter/s2lp)
 - [TI ADC Bus Expanders](https://github.com/activexray/ti-adc-expander)
+- [iC-Haus iC-MD 48bit quadrature counter](https://github.com/trappitsch/ic-md)
 
 V1:
 
@@ -75,7 +80,6 @@ V1:
 - [iqs323 inductive/capacitive sensing controller](https://github.com/tactile-eng/iqs323-driver)
 - [AXP192 Power Management IC](https://github.com/okhsunrog/axp192-dd)
 - [ONSEMI FUSB302B USB-PD PHY](https://github.com/okhsunrog/fusb302b)
-- [iC-Haus iC-MD 48bit quadrature counter](https://github.com/trappitsch/ic-md)
 - [STMicroelectronics LIS2DE12 3-axis accelerometer](https://github.com/leftger/lis2de12)
 - [ISSI IS25LP128F 128Mbit SPI NOR Flash](https://github.com/leftger/is25lp128f)
 - [ON Semiconductor CAT25040 4kbit SPI EEPROM](https://github.com/cesardtamayo/cat25040)
