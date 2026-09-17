@@ -78,6 +78,6 @@ fn field_repeats() {
         let read_value = reset.o(i);
         let expected_value = i.is_multiple_of(2);
         println!("{i} - read: {read_value}, expected: {expected_value}");
-        assert_eq!(read_value, expected_value, "{i}"); 
+        assert_eq!(read_value, expected_value, "{i}");
     }
 }
