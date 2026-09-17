@@ -2,6 +2,8 @@
 
 ### Unreleased
 
+### 2.1.1 (24-08-26)
+
 - Added defmt::Format derives for generated devices/blocks
 - Sped up two MIR passes significantly, making the compiler 4.5x faster when compiling a manifest with 8192 externs
   - Also fixed internal Hash and and PartialEq implementations for identifiers so they're no longer breaking the rules
