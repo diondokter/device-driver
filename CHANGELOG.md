@@ -5,6 +5,7 @@
 - Added defmt::Format derives for generated devices/blocks
 - Sped up two MIR passes significantly, making the compiler 4.5x faster when compiling a manifest with 8192 externs
   - Also fixed internal Hash and and PartialEq implementations for identifiers so they're no longer breaking the rules
+- Fixed field repeats. They were accidentally providing exclusive ranges to the load and store functions while inclusive is required
 
 ### 2.1.0 (24-08-26)
 
