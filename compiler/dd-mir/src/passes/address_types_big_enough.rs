@@ -75,16 +75,22 @@ fn check_device(
         return;
     };
 
-    let Some(((min_address, min_obj), (max_address, _))) =
+    let Some(((min_address, min_obj), (max_address, max_obj))) =
         find_min_max_addresses(manifest, device, filter)
     else {
         return;
     };
 
     if min_address < address_type.min_value() || max_address > address_type.max_value() {
+        let diagnostic_object = if max_address > address_type.max_value() {
+            max_obj
+        } else {
+            min_obj
+        };
+
         diagnostics.add(AddressOutOfRange {
-            object: min_obj.name_span(),
-            address: min_obj
+            object: diagnostic_object.name_span(),
+            address: diagnostic_object
                 .address()
                 .expect("All objects here should have addresses")
                 .span,
