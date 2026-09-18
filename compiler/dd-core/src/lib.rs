@@ -50,11 +50,11 @@ pub fn compile(source: &str, options: CompileOptions) -> Result<(String, Diagnos
     let mut diagnostics = Diagnostics::new();
 
     let tokens = {
-        let _t = timings.start_lexer();
+        let _t = timings.start_lexer(source.len());
         device_driver_lexer::lex(source)
     };
     let ast = {
-        let _t = timings.start_parser();
+        let _t = timings.start_parser(tokens.len());
         device_driver_parser::parse(&tokens, &mut diagnostics)
     };
     let (mir, mir_timings) = {
@@ -72,21 +72,20 @@ pub fn compile(source: &str, options: CompileOptions) -> Result<(String, Diagnos
         device_driver_codegen::codegen(&options.target, &lir, source)
     };
 
-    if !matches!(options.general_options.timings, TimingsMode::Off) {
-        diagnostics.add(timings);
-    }
-
     if diagnostics.has_error() {
         let _ = write!(code, "\n{}\n", options.target.create_error_message());
     }
 
     // TODO: Make formatting dependent on the target. Right now it's just Rust
-    let formatted_code = match format_code(&code) {
-        Ok(formatted_code) => formatted_code,
-        Err(e) => format!(
-            "{}\n\n{code}",
-            e.to_string().lines().map(|e| format!("// {e}")).join("\n")
-        ),
+    let formatted_code = {
+        let _t = timings.start_formatting();
+        match format_code(&code) {
+            Ok(formatted_code) => formatted_code,
+            Err(e) => format!(
+                "{}\n\n{code}",
+                e.to_string().lines().map(|e| format!("// {e}")).join("\n")
+            ),
+        }
     };
 
     let preamble = options.target.to_comments(&format!(
@@ -110,6 +109,10 @@ For more information about device-driver, visit the website: {}",
     ));
 
     let formatted_code = preamble + "\n\n" + &formatted_code;
+
+    if !matches!(options.general_options.timings, TimingsMode::Off) {
+        diagnostics.add(timings);
+    }
 
     Ok((formatted_code, diagnostics))
 }

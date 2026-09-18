@@ -178,25 +178,21 @@ impl<T: Namespace> Identifier<T> {
 
     /// Apply the boundaries. This can only be called once and must be called before [`Self::to_case`]
     pub fn apply_boundaries(&mut self, boundaries: &[Boundary]) -> &mut Self {
-        assert!(!self.boundaries_applied);
+        debug_assert!(!self.boundaries_applied);
 
-        let mut words = Vec::new();
-
-        for word in self.words.iter() {
-            let mut local_words = convert_case::split(word, boundaries);
-            local_words.retain(|word| !word.is_empty());
-            words.append(&mut local_words);
-        }
+        let original = self.original();
+        let mut words = convert_case::split(&original, boundaries);
+        words.retain(|word| !word.is_empty());
 
         let words = Pattern::Lowercase.mutate(&words);
 
         self.boundaries_applied = true;
-        self.words = words.into_iter().collect();
+        self.words = words.into();
         self
     }
 
     pub fn check_validity(&self) -> Result<(), Error> {
-        assert!(self.boundaries_applied);
+        debug_assert!(self.boundaries_applied);
 
         for (word_index, word) in self.words.iter().enumerate() {
             for (char_offset, char) in word.char_indices() {
@@ -224,11 +220,10 @@ impl<T: Namespace> Identifier<T> {
             return Err(Error::EmptyAfterSplits);
         }
 
-        let converted = self.to_case(Case::Pascal);
-        if converted.contains(['-', '_', ' ']) {
+        if self.words.iter().any(|word| word.contains(['-', '_', ' '])) {
             return Err(Error::CannotConvert {
                 case_name: "Pascal",
-                example: converted,
+                example: self.to_case(Case::Pascal),
             });
         }
 
@@ -237,21 +232,23 @@ impl<T: Namespace> Identifier<T> {
 
     /// Convert the identifier to a string in the given case
     pub fn to_case(&self, case: Case) -> String {
-        assert!(
+        debug_assert!(
             self.boundaries_applied,
             "Boundaries not applied for `{}`",
             self.original()
         );
 
-        let mut words = self.words.to_vec();
-
         if let Some(dup_id) = self.duplicate_id {
+            let mut words = self.words.to_vec();
             words.push("dup".to_string());
             words.push(format!("{dup_id:X}"));
-        }
 
-        let words = case.mutate(&words.iter().map(String::as_str).collect::<Vec<_>>());
-        case.join(&words)
+            let words = case.pattern().mutate(&words);
+            case.join(&words)
+        } else {
+            let words = case.pattern().mutate(&self.words);
+            case.join(&words)
+        }
     }
 
     /// Get the original text. Don't use this unless it's important to get the *exact* original value.
