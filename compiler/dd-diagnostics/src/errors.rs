@@ -8,12 +8,13 @@ use std::borrow::Cow;
 use annotate_snippets::{AnnotationKind, Group, Level, Patch, Snippet};
 use device_driver_common::{
     identifier::{self, Identifier, RuntimeNamespace},
+    interner::Istr,
     span::{Span, Spanned},
     specifiers::{BaseType, Integer, NodeType},
 };
 use itertools::Itertools;
 
-use crate::{Diagnostic, encode_ansi_url};
+use crate::{Diagnostic, Severity, encode_ansi_url};
 
 #[derive(Debug)]
 pub struct IntegerFieldSizeTooBig {
@@ -24,31 +25,29 @@ pub struct IntegerFieldSizeTooBig {
 }
 
 impl Diagnostic for IntegerFieldSizeTooBig {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         let field_message = format!("field has a size of {} bits", self.size_bits);
 
         [
-            Level::ERROR
-                .primary_title("field size exceeds 64-bit size limit")
-                .element(
-                    Snippet::source(source)
-                        .path(path)
-                        .annotation(
-                            AnnotationKind::Primary
-                                .span(self.field_address.into())
-                                .label(field_message),
-                        )
-                        .annotation(
-                            AnnotationKind::Context
-                                .span(self.base_type.into())
-                                .label("field uses an integer as base type"),
-                        )
-                        .annotation(AnnotationKind::Visible.span(self.field_set.into())),
-                ),
+            self.title_snippet().element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(
+                        AnnotationKind::Primary
+                            .span(self.field_address.into())
+                            .label(field_message),
+                    )
+                    .annotation(
+                        AnnotationKind::Context
+                            .span(self.base_type.into())
+                            .label("field uses an integer as base type"),
+                    )
+                    .annotation(AnnotationKind::Visible.span(self.field_set.into())),
+            ),
             Group::with_title(
                 Level::NOTE.secondary_title("integer base types are available up to 64-bit"),
             ),
@@ -62,6 +61,14 @@ impl Diagnostic for IntegerFieldSizeTooBig {
         ]
         .to_vec()
     }
+
+    fn primary_span(&self) -> Span {
+        self.field_address
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "field size exceeds 64-bit size limit".into()
+    }
 }
 
 #[derive(Debug)]
@@ -71,15 +78,15 @@ pub struct DeviceNameNotPascal {
 }
 
 impl Diagnostic for DeviceNameNotPascal {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         const INFO_TEXT: &str = "device names tend to be a bit weird, so the casing is not automatically changed from the input. Because of that, they need to be roughly PascalCase shaped.";
 
         [
-            Level::ERROR.primary_title("invalid device name").element(
+            self.title_snippet().element(
                 Snippet::source(source).path(path).annotation(
                     AnnotationKind::Primary
                         .span(self.device_name.into())
@@ -97,6 +104,14 @@ impl Diagnostic for DeviceNameNotPascal {
         ]
         .to_vec()
     }
+
+    fn primary_span(&self) -> Span {
+        self.device_name
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "invalid device name".into()
+    }
 }
 
 #[derive(Debug)]
@@ -108,8 +123,8 @@ pub struct DuplicateName {
 }
 
 impl Diagnostic for DuplicateName {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
@@ -121,7 +136,7 @@ impl Diagnostic for DuplicateName {
 - Enum variants: unique within an enum";
 
         [
-            Level::ERROR.primary_title("duplicate name found").element(
+            self.title_snippet().element(
                 Snippet::source(source)
                     .path(path)
                     .annotation(
@@ -145,6 +160,14 @@ impl Diagnostic for DuplicateName {
         ]
         .to_vec()
     }
+
+    fn primary_span(&self) -> Span {
+        self.duplicate
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "duplicate name found".into()
+    }
 }
 
 #[derive(Debug)]
@@ -153,13 +176,13 @@ pub struct EmptyEnum {
 }
 
 impl Diagnostic for EmptyEnum {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         [
-            Level::ERROR.primary_title("enum has no variants").element(
+            self.title_snippet().element(
                 Snippet::source(source).path(path).annotation(
                     AnnotationKind::Primary
                         .span(self.enum_node.into())
@@ -172,6 +195,14 @@ impl Diagnostic for EmptyEnum {
         ]
         .to_vec()
     }
+
+    fn primary_span(&self) -> Span {
+        self.enum_node
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "enum has no variants".into()
+    }
 }
 
 #[derive(Debug)]
@@ -181,16 +212,15 @@ pub struct DuplicateVariantValue {
 }
 
 impl Diagnostic for DuplicateVariantValue {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         const INFO_TEXT: &str = "all enum variants must have a unique value";
 
         [
-            Level::ERROR
-                .primary_title("two or more enum variants share the same value")
+            self.title_snippet()
                 .element(Snippet::source(source).path(path).annotations(
                     self.duplicates.iter().map(|dup| {
                         AnnotationKind::Primary.span(dup.into()).label(format!(
@@ -203,6 +233,14 @@ impl Diagnostic for DuplicateVariantValue {
         ]
         .to_vec()
     }
+
+    fn primary_span(&self) -> Span {
+        self.duplicates[0]
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "two or more enum variants share the same value".into()
+    }
 }
 
 #[derive(Debug)]
@@ -214,36 +252,42 @@ pub struct EnumBadBasetype {
 }
 
 impl Diagnostic for EnumBadBasetype {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         [
-            Level::ERROR
-                .primary_title("invalid base type for enum")
-                .element(
-                    Snippet::source(source)
-                        .path(path)
-                        .annotation(
-                            AnnotationKind::Primary
-                                .span(self.base_type.into())
-                                .label("invalid base type"),
-                        )
-                        .annotation(
-                            AnnotationKind::Context
-                                .span(self.enum_name.into())
-                                .label("enum using invalid base type"),
-                        )
-                        .annotations(
-                            self.context.iter().map(|c| {
-                                AnnotationKind::Context.span(c.span.into()).label(&c.value)
-                            }),
-                        ),
-                ),
+            self.title_snippet().element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(
+                        AnnotationKind::Primary
+                            .span(self.base_type.into())
+                            .label("invalid base type"),
+                    )
+                    .annotation(
+                        AnnotationKind::Context
+                            .span(self.enum_name.into())
+                            .label("enum using invalid base type"),
+                    )
+                    .annotations(
+                        self.context
+                            .iter()
+                            .map(|c| AnnotationKind::Context.span(c.span.into()).label(&c.value)),
+                    ),
+            ),
             Group::with_title(Level::INFO.secondary_title(self.info)),
         ]
         .to_vec()
+    }
+
+    fn primary_span(&self) -> Span {
+        self.base_type
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "invalid base type for enum".into()
     }
 }
 
@@ -256,34 +300,40 @@ pub struct EnumSizeBitsBiggerThanBaseType {
 }
 
 impl Diagnostic for EnumSizeBitsBiggerThanBaseType {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         [
-            Level::ERROR
-                .primary_title("enum doesn't fit its base type")
-                .element(
-                    Snippet::source(source)
-                        .path(path)
-                        .annotation(
-                            AnnotationKind::Primary
-                                .span(self.enum_name.into())
-                                .label(format!("enum is {} bits", self.enum_size_bits)),
-                        )
-                        .annotation(
-                            AnnotationKind::Primary
-                                .span(self.base_type.into())
-                                .label(format!("base type is {} bits", self.base_type_size_bits)),
-                        ),
-                ),
+            self.title_snippet().element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(
+                        AnnotationKind::Primary
+                            .span(self.enum_name.into())
+                            .label(format!("enum is {} bits", self.enum_size_bits)),
+                    )
+                    .annotation(
+                        AnnotationKind::Primary
+                            .span(self.base_type.into())
+                            .label(format!("base type is {} bits", self.base_type_size_bits)),
+                    ),
+            ),
             Group::with_title(
                 // TODO: Add patch for base type
                 Level::HELP.secondary_title("make the enum smaller or pick a bigger base type"),
             ),
         ]
         .to_vec()
+    }
+
+    fn primary_span(&self) -> Span {
+        self.enum_name
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "enum doesn't fit its base type".into()
     }
 }
 
@@ -293,8 +343,8 @@ pub struct EnumNoAutoBaseTypeSelected {
 }
 
 impl Diagnostic for EnumNoAutoBaseTypeSelected {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
@@ -302,18 +352,24 @@ impl Diagnostic for EnumNoAutoBaseTypeSelected {
             "a variant or the size-bits is too big to fit in any of the base types";
 
         [
-            Level::ERROR
-                .primary_title("no valid base type found")
-                .element(
-                    Snippet::source(source).path(path).annotation(
-                        AnnotationKind::Primary
-                            .span(self.enum_name.into())
-                            .label("could not select a valid base type for this enum"),
-                    ),
+            self.title_snippet().element(
+                Snippet::source(source).path(path).annotation(
+                    AnnotationKind::Primary
+                        .span(self.enum_name.into())
+                        .label("could not select a valid base type for this enum"),
                 ),
+            ),
             Group::with_title(Level::NOTE.secondary_title(NOTE_TEXT)),
         ]
         .to_vec()
+    }
+
+    fn primary_span(&self) -> Span {
+        self.enum_name
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "no valid base type found".into()
     }
 }
 
@@ -326,32 +382,38 @@ pub struct VariantValuesTooHigh {
 }
 
 impl Diagnostic for VariantValuesTooHigh {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         [
-            Level::ERROR
-                .primary_title("enum variant value is too high")
-                .element(
-                    Snippet::source(source)
-                        .path(path)
-                        .annotation(
-                            AnnotationKind::Context
-                                .span(self.enum_name.into())
-                                .label(format!("enum is {} bits", self.size_bits)),
-                        )
-                        .annotations(self.variant_names.iter().map(|name| {
-                            AnnotationKind::Primary.span(name.into()).label(format!(
-                                "variant value exceeds the max of {} ({:#X})",
-                                self.max_value, self.max_value
-                            ))
-                        })),
-                ),
+            self.title_snippet().element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(
+                        AnnotationKind::Context
+                            .span(self.enum_name.into())
+                            .label(format!("enum is {} bits", self.size_bits)),
+                    )
+                    .annotations(self.variant_names.iter().map(|name| {
+                        AnnotationKind::Primary.span(name.into()).label(format!(
+                            "variant value exceeds the max of {} ({:#X})",
+                            self.max_value, self.max_value
+                        ))
+                    })),
+            ),
             Group::with_title(Level::INFO.secondary_title("all variants must fit in their enum")),
         ]
         .to_vec()
+    }
+
+    fn primary_span(&self) -> Span {
+        self.variant_names[0]
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "enum variant value is too high".into()
     }
 }
 
@@ -364,8 +426,8 @@ pub struct VariantValuesTooLow {
 }
 
 impl Diagnostic for VariantValuesTooLow {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
@@ -391,6 +453,14 @@ impl Diagnostic for VariantValuesTooLow {
         ]
         .to_vec()
     }
+
+    fn primary_span(&self) -> Span {
+        self.variant_names[0]
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "enum variant value is too low".into()
+    }
 }
 
 #[derive(Debug)]
@@ -400,41 +470,47 @@ pub struct EnumMultipleDefaults {
 }
 
 impl Diagnostic for EnumMultipleDefaults {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         [
-            Level::ERROR
-                .primary_title("enum defines more than one default variant")
-                .element(
-                    Snippet::source(source)
-                        .path(path)
-                        .annotation(
-                            AnnotationKind::Context
-                                .span(self.enum_name.into())
-                                .label("offending enum"),
-                        )
-                        .annotations(self.variant_names.iter().enumerate().map(
-                            |(index, variant_name)| {
-                                if index == 0 {
-                                    AnnotationKind::Context
-                                        .span(variant_name.into())
-                                        .label("first default variant")
-                                } else {
-                                    AnnotationKind::Primary
-                                        .span(variant_name.into())
-                                        .label("extra default variant")
-                                }
-                            },
-                        )),
-                ),
+            self.title_snippet().element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(
+                        AnnotationKind::Context
+                            .span(self.enum_name.into())
+                            .label("offending enum"),
+                    )
+                    .annotations(self.variant_names.iter().enumerate().map(
+                        |(index, variant_name)| {
+                            if index == 0 {
+                                AnnotationKind::Context
+                                    .span(variant_name.into())
+                                    .label("first default variant")
+                            } else {
+                                AnnotationKind::Primary
+                                    .span(variant_name.into())
+                                    .label("extra default variant")
+                            }
+                        },
+                    )),
+            ),
             Group::with_title(
                 Level::INFO.secondary_title("enums can have at most one default variant"),
             ),
         ]
         .to_vec()
+    }
+
+    fn primary_span(&self) -> Span {
+        self.variant_names[1]
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "enum defines more than one default variant".into()
     }
 }
 
@@ -445,41 +521,47 @@ pub struct EnumMultipleCatchalls {
 }
 
 impl Diagnostic for EnumMultipleCatchalls {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         [
-            Level::ERROR
-                .primary_title("enum defines more than one catch-all variant")
-                .element(
-                    Snippet::source(source)
-                        .path(path)
-                        .annotation(
-                            AnnotationKind::Context
-                                .span(self.enum_name.into())
-                                .label("offending enum"),
-                        )
-                        .annotations(self.variant_names.iter().enumerate().map(
-                            |(index, variant_name)| {
-                                if index == 0 {
-                                    AnnotationKind::Context
-                                        .span(variant_name.into())
-                                        .label("first catch-all variant")
-                                } else {
-                                    AnnotationKind::Primary
-                                        .span(variant_name.into())
-                                        .label("extra catch-all variant")
-                                }
-                            },
-                        )),
-                ),
+            self.title_snippet().element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(
+                        AnnotationKind::Context
+                            .span(self.enum_name.into())
+                            .label("offending enum"),
+                    )
+                    .annotations(self.variant_names.iter().enumerate().map(
+                        |(index, variant_name)| {
+                            if index == 0 {
+                                AnnotationKind::Context
+                                    .span(variant_name.into())
+                                    .label("first catch-all variant")
+                            } else {
+                                AnnotationKind::Primary
+                                    .span(variant_name.into())
+                                    .label("extra catch-all variant")
+                            }
+                        },
+                    )),
+            ),
             Group::with_title(
                 Level::INFO.secondary_title("enums can have at most one catch-all variant"),
             ),
         ]
         .to_vec()
+    }
+
+    fn primary_span(&self) -> Span {
+        self.variant_names[1]
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "enum defines more than one catch-all variant".into()
     }
 }
 
@@ -489,26 +571,32 @@ pub struct ReferencedObjectDoesNotExist {
 }
 
 impl Diagnostic for ReferencedObjectDoesNotExist {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         const INFO_TEXT: &str = "all objects must be specified in the manifest. It's possible a previous analysis step removed it due to some error. See the previous diagnostics";
 
         [
-            Level::ERROR
-                .primary_title("referenced object does not exist")
-                .element(
-                    Snippet::source(source).path(path).annotation(
-                        AnnotationKind::Primary
-                            .span(self.object_reference.into())
-                            .label("object cannot be found"),
-                    ),
+            self.title_snippet().element(
+                Snippet::source(source).path(path).annotation(
+                    AnnotationKind::Primary
+                        .span(self.object_reference.into())
+                        .label("object cannot be found"),
                 ),
+            ),
             Group::with_title(Level::INFO.secondary_title(INFO_TEXT)),
         ]
         .to_vec()
+    }
+
+    fn primary_span(&self) -> Span {
+        self.object_reference
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "referenced object does not exist".into()
     }
 }
 
@@ -519,33 +607,39 @@ pub struct InvalidConversionType {
 }
 
 impl Diagnostic for InvalidConversionType {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         const NOTE_TEXT: &str = "the referenced object has an invalid type. Only enums and externs can be used for conversions";
 
         [
-            Level::ERROR
-                .primary_title("invalid conversion type")
-                .element(
-                    Snippet::source(source)
-                        .path(path)
-                        .annotation(
-                            AnnotationKind::Primary
-                                .span(self.object_reference.into())
-                                .label("object referenced as conversion type"),
-                        )
-                        .annotation(
-                            AnnotationKind::Context
-                                .span(self.referenced_object.into())
-                                .label("referenced object"),
-                        ),
-                ),
+            self.title_snippet().element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(
+                        AnnotationKind::Primary
+                            .span(self.object_reference.into())
+                            .label("object referenced as conversion type"),
+                    )
+                    .annotation(
+                        AnnotationKind::Context
+                            .span(self.referenced_object.into())
+                            .label("referenced object"),
+                    ),
+            ),
             Group::with_title(Level::NOTE.secondary_title(NOTE_TEXT)),
         ]
         .to_vec()
+    }
+
+    fn primary_span(&self) -> Span {
+        self.object_reference
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "object has invalid conversion type".into()
     }
 }
 
@@ -557,8 +651,8 @@ pub struct RepeatEnumWithCatchAll {
 }
 
 impl Diagnostic for RepeatEnumWithCatchAll {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
@@ -566,29 +660,35 @@ impl Diagnostic for RepeatEnumWithCatchAll {
 This is not possible with an enum containing a catch-all since it can take on any value";
 
         [
-            Level::ERROR
-                .primary_title("enum with catch-all used as repeat source")
-                .element(
-                    Snippet::source(source)
-                        .path(path)
-                        .annotation(
-                            AnnotationKind::Primary
-                                .span(self.repeat_enum.into())
-                                .label("repeat uses enum with catch-all"),
-                        )
-                        .annotation(AnnotationKind::Visible.span(self.enum_name.into()))
-                        .annotation(
-                            AnnotationKind::Context
-                                .span(self.catch_all.into())
-                                .label("catch-all specified here"),
-                        ),
-                ),
+            self.title_snippet().element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(
+                        AnnotationKind::Primary
+                            .span(self.repeat_enum.into())
+                            .label("repeat uses enum with catch-all"),
+                    )
+                    .annotation(AnnotationKind::Visible.span(self.enum_name.into()))
+                    .annotation(
+                        AnnotationKind::Context
+                            .span(self.catch_all.into())
+                            .label("catch-all specified here"),
+                    ),
+            ),
             Group::with_title(Level::INFO.secondary_title(INFO_TEXT)),
             Group::with_title(Level::HELP.secondary_title(
                 "remove the catch-all from the enum or don't use it as repeat source",
             )),
         ]
         .to_vec()
+    }
+
+    fn primary_span(&self) -> Span {
+        self.repeat_enum
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "enum with catch-all used as repeat source".into()
     }
 }
 
@@ -601,15 +701,15 @@ pub struct RepeatMathOverflow {
 }
 
 impl Diagnostic for RepeatMathOverflow {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         const INFO_TEXT: &str = "repeat math is done with `i32` integers to keep the runtime lean, so all calculations need to fit in a limited range";
 
         [
-            Level::ERROR.primary_title("repeat math overflow").element(
+            self.title_snippet().element(
                 Snippet::source(source)
                     .path(path)
                     .annotation(AnnotationKind::Primary.span(self.repeat_span.into()).label(
@@ -628,6 +728,14 @@ impl Diagnostic for RepeatMathOverflow {
         ]
         .to_vec()
     }
+
+    fn primary_span(&self) -> Span {
+        self.repeat_span
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "repeat math overflow".into()
+    }
 }
 
 #[derive(Debug)]
@@ -637,41 +745,47 @@ pub struct ExternInvalidBaseType {
 }
 
 impl Diagnostic for ExternInvalidBaseType {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         const INFO_TEXT: &str = "externs must specify a fixed size integer type as their base type";
 
         [
-            Level::ERROR
-                .primary_title("invalid base type for extern object")
-                .element(
-                    Snippet::source(source)
-                        .path(path)
-                        .annotation(
-                            if self.base_type.is_some() {
-                                AnnotationKind::Context
-                            } else {
-                                AnnotationKind::Primary
-                            }
-                            .span(self.extern_name.into())
-                            .label(if self.base_type.is_some() {
-                                "extern has an invalid base type"
-                            } else {
-                                "extern has no base type"
-                            }),
-                        )
-                        .annotations(self.base_type.map(|base_type| {
+            self.title_snippet().element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(
+                        if self.base_type.is_some() {
+                            AnnotationKind::Context
+                        } else {
                             AnnotationKind::Primary
-                                .span(base_type.into())
-                                .label("invalid base type")
-                        })),
-                ),
+                        }
+                        .span(self.extern_name.into())
+                        .label(if self.base_type.is_some() {
+                            "extern has an invalid base type"
+                        } else {
+                            "extern has no base type"
+                        }),
+                    )
+                    .annotations(self.base_type.map(|base_type| {
+                        AnnotationKind::Primary
+                            .span(base_type.into())
+                            .label("invalid base type")
+                    })),
+            ),
             Group::with_title(Level::INFO.secondary_title(INFO_TEXT)),
         ]
         .to_vec()
+    }
+
+    fn primary_span(&self) -> Span {
+        self.base_type.unwrap_or(self.extern_name)
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "invalid base type for extern object".into()
     }
 }
 
@@ -683,24 +797,30 @@ pub struct ExternInvalidSizeBits {
 }
 
 impl Diagnostic for ExternInvalidSizeBits {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
-        [Level::ERROR
-            .primary_title("invalid size-bits value for extern object")
-            .element(
-                Snippet::source(source)
-                    .path(path)
-                    .annotation(
-                        AnnotationKind::Primary
-                            .span(self.size_bits.into())
-                            .label(&self.reason),
-                    )
-                    .annotation(AnnotationKind::Visible.span(self.extern_name.into())),
-            )]
+        [self.title_snippet().element(
+            Snippet::source(source)
+                .path(path)
+                .annotation(
+                    AnnotationKind::Primary
+                        .span(self.size_bits.into())
+                        .label(&self.reason),
+                )
+                .annotation(AnnotationKind::Visible.span(self.extern_name.into())),
+        )]
         .to_vec()
+    }
+
+    fn primary_span(&self) -> Span {
+        self.size_bits
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "invalid size-bits value for extern object".into()
     }
 }
 
@@ -714,42 +834,48 @@ pub struct DifferentBaseTypes {
 }
 
 impl Diagnostic for DifferentBaseTypes {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         const INFO_TEXT: &str = "conversions can only happen when the same base type is shared";
 
         [
-            Level::ERROR
-                .primary_title("field and conversion use different base types")
-                .element(
-                    Snippet::source(source)
-                        .path(path)
-                        .annotation(
-                            AnnotationKind::Context
-                                .span(self.conversion.into())
-                                .label("conversion specified here"),
-                        )
-                        .annotation(
-                            AnnotationKind::Primary
-                                .span(self.field.into())
-                                .label(format!("field uses base type: {}", self.field_base_type)),
-                        )
-                        .annotation(
-                            AnnotationKind::Primary
-                                .span(self.conversion_object.into())
-                                .label(format!(
-                                    "conversion object uses base type: {}",
-                                    self.conversion_base_type
-                                )),
-                        ),
-                ),
+            self.title_snippet().element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(
+                        AnnotationKind::Context
+                            .span(self.conversion.into())
+                            .label("conversion specified here"),
+                    )
+                    .annotation(
+                        AnnotationKind::Primary
+                            .span(self.field.into())
+                            .label(format!("field uses base type: {}", self.field_base_type)),
+                    )
+                    .annotation(
+                        AnnotationKind::Primary
+                            .span(self.conversion_object.into())
+                            .label(format!(
+                                "conversion object uses base type: {}",
+                                self.conversion_base_type
+                            )),
+                    ),
+            ),
             // TODO: Add help with patch
             Group::with_title(Level::INFO.secondary_title(INFO_TEXT)),
         ]
         .to_vec()
+    }
+
+    fn primary_span(&self) -> Span {
+        self.field
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "field and conversion use different base types".into()
     }
 }
 
@@ -763,29 +889,27 @@ pub struct InvalidInfallibleConversion {
 }
 
 impl Diagnostic for InvalidInfallibleConversion {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         [
-            Level::ERROR
-                .primary_title("invalid infallible conversion")
-                .element(
-                    Snippet::source(source)
-                        .path(path)
-                        .annotation(
-                            AnnotationKind::Primary
-                                .span(self.conversion.into())
-                                .label("conversion specified here"),
-                        )
-                        .annotations(
-                            self.context.iter().map(|c| {
-                                AnnotationKind::Context.span(c.span.into()).label(&c.value)
-                            }),
-                        )
-                        .annotation(AnnotationKind::Visible.span(self.field.into())),
-                ),
+            self.title_snippet().element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(
+                        AnnotationKind::Primary
+                            .span(self.conversion.into())
+                            .label("conversion specified here"),
+                    )
+                    .annotations(
+                        self.context
+                            .iter()
+                            .map(|c| AnnotationKind::Context.span(c.span.into()).label(&c.value)),
+                    )
+                    .annotation(AnnotationKind::Visible.span(self.field.into())),
+            ),
             // TODO: Add patch
             Group::with_title(Level::HELP.secondary_title("mark the conversion fallible")),
             Group::with_title(
@@ -794,6 +918,14 @@ impl Diagnostic for InvalidInfallibleConversion {
             ),
         ]
         .to_vec()
+    }
+
+    fn primary_span(&self) -> Span {
+        self.conversion
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "invalid infallible conversion".into()
     }
 }
 
@@ -808,39 +940,45 @@ pub struct ConversionTypeTooBig {
 }
 
 impl Diagnostic for ConversionTypeTooBig {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         const INFO_TEXT: &str = "a field can only convert to types of equal length or smaller";
 
         [
-            Level::ERROR
-                .primary_title("conversion type too big for field")
-                .element(
-                    Snippet::source(source)
-                        .path(path)
-                        .annotation(AnnotationKind::Visible.span(self.field.into()))
-                        .annotation(
-                            AnnotationKind::Primary
-                                .span(self.field_address.into())
-                                .label(format!("field is {} bits", self.field_len)),
-                        )
-                        .annotation(
-                            AnnotationKind::Primary
-                                .span(self.conversion_type.into())
-                                .label(format!("target type is {} bits", self.conversion_len)),
-                        )
-                        .annotation(
-                            AnnotationKind::Context
-                                .span(self.conversion.into())
-                                .label("field specifies a conversion type here"),
-                        ),
-                ),
+            self.title_snippet().element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(AnnotationKind::Visible.span(self.field.into()))
+                    .annotation(
+                        AnnotationKind::Primary
+                            .span(self.field_address.into())
+                            .label(format!("field is {} bits", self.field_len)),
+                    )
+                    .annotation(
+                        AnnotationKind::Primary
+                            .span(self.conversion_type.into())
+                            .label(format!("target type is {} bits", self.conversion_len)),
+                    )
+                    .annotation(
+                        AnnotationKind::Context
+                            .span(self.conversion.into())
+                            .label("field specifies a conversion type here"),
+                    ),
+            ),
             Group::with_title(Level::INFO.secondary_title(INFO_TEXT)),
         ]
         .to_vec()
+    }
+
+    fn primary_span(&self) -> Span {
+        self.field_address
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "conversion type too big for field".into()
     }
 }
 
@@ -851,14 +989,13 @@ pub struct UnspecifiedByteOrder {
 }
 
 impl Diagnostic for UnspecifiedByteOrder {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         [
-            Level::ERROR
-                .primary_title("unspecified byte order")
+            self.title_snippet()
                 .element(
                     Snippet::source(source).path(path).annotation(
                         AnnotationKind::Primary
@@ -883,6 +1020,14 @@ impl Diagnostic for UnspecifiedByteOrder {
         ]
         .to_vec()
     }
+
+    fn primary_span(&self) -> Span {
+        self.fieldset_name
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "fieldset needs byte order specified".into()
+    }
 }
 
 #[derive(Debug)]
@@ -893,13 +1038,13 @@ pub struct UnspecifiedAccess {
 }
 
 impl Diagnostic for UnspecifiedAccess {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         [
-            Level::ERROR.primary_title("unspecified access").element(
+            self.title_snippet().element(
                 Snippet::source(source).path(path).annotation(
                     AnnotationKind::Primary
                         .span(self.object_name.into())
@@ -927,6 +1072,14 @@ impl Diagnostic for UnspecifiedAccess {
         ]
         .to_vec()
     }
+
+    fn primary_span(&self) -> Span {
+        self.object_name
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "object needs access specified".into()
+    }
 }
 
 #[derive(Debug)]
@@ -938,15 +1091,15 @@ pub struct ResetValueIntTooBig {
 }
 
 impl Diagnostic for ResetValueIntTooBig {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         const INFO_TEXT: &str = "reset values cannot be bigger than their fieldset";
 
         [
-            Level::ERROR.primary_title("reset value too big").element(
+            self.title_snippet().element(
                 Snippet::source(source)
                     .path(path)
                     .annotation(AnnotationKind::Primary.span(self.reset_value.into()).label(
@@ -961,6 +1114,14 @@ impl Diagnostic for ResetValueIntTooBig {
         ]
         .to_vec()
     }
+
+    fn primary_span(&self) -> Span {
+        self.reset_value
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "reset value too big for register".into()
+    }
 }
 
 #[derive(Debug)]
@@ -972,17 +1133,15 @@ pub struct ResetValueArrayWrongSize {
 }
 
 impl Diagnostic for ResetValueArrayWrongSize {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         const INFO_TEXT: &str = "reset values must have the same size as their associated register";
 
         [
-            Level::ERROR
-                .primary_title("reset value wrong size")
-                .element(
+            self.title_snippet().element(
                 Snippet::source(source)
                     .path(path)
                     .annotation(AnnotationKind::Primary.span(self.reset_value.into()).label(
@@ -997,6 +1156,14 @@ impl Diagnostic for ResetValueArrayWrongSize {
         ]
         .to_vec()
     }
+
+    fn primary_span(&self) -> Span {
+        self.reset_value
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "reset value wrong size".into()
+    }
 }
 
 #[derive(Debug)]
@@ -1009,13 +1176,13 @@ pub struct BoolFieldTooLarge {
 }
 
 impl Diagnostic for BoolFieldTooLarge {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         [
-            Level::ERROR.primary_title("bool field too large").element(
+            self.title_snippet().element(
                 Snippet::source(source).path(path).annotations(
                     [
                         Some(
@@ -1047,6 +1214,14 @@ impl Diagnostic for BoolFieldTooLarge {
         ]
         .to_vec()
     }
+
+    fn primary_span(&self) -> Span {
+        self.address
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "bool field too large".into()
+    }
 }
 
 #[derive(Debug)]
@@ -1068,38 +1243,46 @@ impl FieldAddressExceedsFieldsetSize {
 }
 
 impl Diagnostic for FieldAddressExceedsFieldsetSize {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         [
-            Level::ERROR
-                .primary_title("field address exceeds fieldset size")
-                .element(
-                    Snippet::source(source)
-                        .path(path)
-                        .annotation(AnnotationKind::Primary.span(self.address.into()).label(
-                            format!(
+            self.title_snippet().element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(
+                        AnnotationKind::Primary
+                            .span(self.address.into())
+                            .label(format!(
                                 "address goes up to {}{}",
                                 self.max_field_end,
                                 self.get_repeat_message()
-                            ),
-                        ))
-                        .annotation(
-                            AnnotationKind::Context
-                                .span(self.fieldset_size_span.into())
-                                .label(format!(
-                                    "The fieldset is only {} bits",
-                                    self.fieldset_size_bits
-                                )),
-                        ),
-                ),
+                            )),
+                    )
+                    .annotation(
+                        AnnotationKind::Context
+                            .span(self.fieldset_size_span.into())
+                            .label(format!(
+                                "The fieldset is only {} bits",
+                                self.fieldset_size_bits
+                            )),
+                    ),
+            ),
             Group::with_title(Level::INFO.secondary_title(
                 "fields, including all repeats, must be fully contained in a fieldset",
             )),
         ]
         .to_vec()
+    }
+
+    fn primary_span(&self) -> Span {
+        self.address
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "field address exceeds fieldset size".into()
     }
 }
 
@@ -1121,31 +1304,39 @@ impl FieldAddressNegative {
 }
 
 impl Diagnostic for FieldAddressNegative {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         [
-            Level::ERROR
-                .primary_title("field address is negative")
-                .element(
-                    Snippet::source(source)
-                        .path(path)
-                        .annotation(AnnotationKind::Primary.span(self.address.into()).label(
-                            format!(
+            self.title_snippet().element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(
+                        AnnotationKind::Primary
+                            .span(self.address.into())
+                            .label(format!(
                                 "address goes down to {}{}",
                                 self.min_field_start,
                                 self.get_repeat_message()
-                            ),
-                        ))
-                        .annotation(AnnotationKind::Visible.span(self.field_set_context.into())),
-                ),
+                            )),
+                    )
+                    .annotation(AnnotationKind::Visible.span(self.field_set_context.into())),
+            ),
             Group::with_title(Level::INFO.secondary_title(
                 "fields, including all repeats, must be fully contained in a fieldset",
             )),
         ]
         .to_vec()
+    }
+
+    fn primary_span(&self) -> Span {
+        self.address
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "field address is negative".into()
     }
 }
 
@@ -1179,8 +1370,8 @@ impl OverlappingFields {
 }
 
 impl Diagnostic for OverlappingFields {
-    fn is_error(&self) -> bool {
-        false
+    fn severity(&self) -> Severity {
+        Severity::Warning
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
@@ -1188,14 +1379,14 @@ impl Diagnostic for OverlappingFields {
         const INFO_TEXT: &str = "overlapping fields are usually the result of a copy paste mistake. This warning exists to alert to that possibility";
 
         [
-            Level::WARNING.primary_title("overlapping fields").element(
+            self.title_snippet().element(
                 Snippet::source(source)
                     .path(path)
                     .annotation(
                         AnnotationKind::Primary
                             .span(self.field_address_1.into())
                             .label(format!(
-                                "Field sits at address range @{}:{}{}",
+                                "field sits at address range @{}:{}{}",
                                 self.field_address_end_1 - 1,
                                 self.field_address_start_1,
                                 self.get_repeat_message_1()
@@ -1205,7 +1396,7 @@ impl Diagnostic for OverlappingFields {
                         AnnotationKind::Primary
                             .span(self.field_address_2.into())
                             .label(format!(
-                                "Field sits at address range @{}:{}{}",
+                                "field sits at address range @{}:{}{}",
                                 self.field_address_end_2 - 1,
                                 self.field_address_start_2,
                                 self.get_repeat_message_2()
@@ -1220,6 +1411,14 @@ impl Diagnostic for OverlappingFields {
         ]
         .to_vec()
     }
+
+    fn primary_span(&self) -> Span {
+        self.field_address_2
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "overlapping fields".into()
+    }
 }
 
 #[derive(Debug)]
@@ -1231,15 +1430,13 @@ pub struct AddressTypeUndefined {
 }
 
 impl Diagnostic for AddressTypeUndefined {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         vec![
-            Level::ERROR
-            .primary_title(format!("{} address type not defined", self.object_type))
-            .element(
+            self.title_snippet().element(
                 Snippet::source(source)
                     .path(path)
                     .annotation(
@@ -1270,6 +1467,14 @@ impl Diagnostic for AddressTypeUndefined {
             ),
         ]
     }
+
+    fn primary_span(&self) -> Span {
+        self.device
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        format!("{} address type not defined", self.object_type).into()
+    }
 }
 
 #[derive(Debug)]
@@ -1283,24 +1488,23 @@ pub struct AddressOutOfRange {
 }
 
 impl Diagnostic for AddressOutOfRange {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         vec![
-            Level::ERROR
-                .primary_title("address out of range")
+            self.title_snippet()
                 .element(
                     Snippet::source(source)
                         .path(path)
                         .annotation(AnnotationKind::Primary.span(self.address.into()).label(
                             if self.address_value_min == self.address_value_max {
-                                format!("address has value: {}", self.address_value_max,)
+                                format!("address has value: {}", self.address_value_max)
                             } else {
                                 format!(
                                     "address ranges from {} to {}",
-                                    self.address_value_min, self.address_value_max,
+                                    self.address_value_min, self.address_value_max
                                 )
                             },
                         ))
@@ -1334,6 +1538,18 @@ impl Diagnostic for AddressOutOfRange {
             },
         ]
     }
+
+    fn primary_span(&self) -> Span {
+        self.address
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        format!(
+            "address out of range for address type {}",
+            self.address_type
+        )
+        .into()
+    }
 }
 
 #[derive(Debug)]
@@ -1350,8 +1566,8 @@ pub struct AddressOverlap {
 }
 
 impl Diagnostic for AddressOverlap {
-    fn is_error(&self) -> bool {
-        false
+    fn severity(&self) -> Severity {
+        Severity::Warning
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
@@ -1376,11 +1592,7 @@ impl Diagnostic for AddressOverlap {
         const INFO_TEXT: &str = "overlapping objects are usually the result of a copy paste mistake. This warning exists to alert to that possibility";
 
         [
-            Level::WARNING
-                .primary_title(format!(
-                    "address overlap at {} ({:#X})",
-                    self.address, self.address
-                ))
+            self.title_snippet()
                 .element(
                     Snippet::source(source)
                         .path(path)
@@ -1429,6 +1641,14 @@ impl Diagnostic for AddressOverlap {
         ]
         .to_vec()
     }
+
+    fn primary_span(&self) -> Span {
+        self.object_2
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        format!("address overlap at {} ({:#X})", self.address, self.address).into()
+    }
 }
 
 #[derive(Debug)]
@@ -1444,8 +1664,8 @@ impl InvalidIdentifier {
 }
 
 impl Diagnostic for InvalidIdentifier {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
@@ -1490,12 +1710,19 @@ which in practice means the word-boundaries should always include those characte
         };
 
         [
-            Level::ERROR
-                .primary_title("invalid identifier")
+            self.title_snippet()
                 .element(Snippet::source(source).path(path).annotation(annotation)),
             Group::with_title(Level::INFO.secondary_title(INFO_TEXT)),
         ]
         .to_vec()
+    }
+
+    fn primary_span(&self) -> Span {
+        self.identifier
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "invalid identifier".into()
     }
 }
 
@@ -1505,15 +1732,15 @@ pub struct InvalidAutoIdentifier {
 }
 
 impl Diagnostic for InvalidAutoIdentifier {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         const INFO_TEXT: &str = "auto identifiers can only be used in places where there's a parent node of which the name can be taken";
 
         [
-            Level::ERROR.primary_title("invalid identifier").element(
+            self.title_snippet().element(
                 Snippet::source(source).path(path).annotation(
                     AnnotationKind::Primary
                         .span(self.auto_identifier.into())
@@ -1524,6 +1751,14 @@ impl Diagnostic for InvalidAutoIdentifier {
         ]
         .to_vec()
     }
+
+    fn primary_span(&self) -> Span {
+        self.auto_identifier
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "invalid identifier".into()
+    }
 }
 
 #[derive(Debug)]
@@ -1533,8 +1768,8 @@ pub struct ParsingError {
 }
 
 impl Diagnostic for ParsingError {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
@@ -1547,6 +1782,14 @@ impl Diagnostic for ParsingError {
         )]
         .to_vec()
     }
+
+    fn primary_span(&self) -> Span {
+        self.span
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        format!("parsing error: {}", self.reason).into()
+    }
 }
 
 #[derive(Debug)]
@@ -1556,12 +1799,12 @@ pub struct UnknownNodeType {
 }
 
 impl Diagnostic for UnknownNodeType {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
-        [Level::ERROR.primary_title("Unknown node type").element(
+        [self.title_snippet().element(
             Snippet::source(source).path(path).annotation(
                 AnnotationKind::Primary
                     .span(self.node_type.into())
@@ -1573,26 +1816,31 @@ impl Diagnostic for UnknownNodeType {
         )]
         .to_vec()
     }
+
+    fn primary_span(&self) -> Span {
+        self.node_type
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "unknown node type".into()
+    }
 }
 
 #[derive(Debug)]
 pub struct InvalidPropertyName {
     pub property: Span,
     pub node_type: Spanned<NodeType>,
-    pub expected_names: Vec<&'static str>,
+    pub expected_names: Vec<Istr>,
 }
 
 impl Diagnostic for InvalidPropertyName {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
-        [Level::ERROR
-            .primary_title(format!(
-                "invalid property name for `{}` nodes",
-                self.node_type
-            ))
+        [self
+            .title_snippet()
             .element(Snippet::source(source).path(path).annotation(
                 AnnotationKind::Primary.span(self.property.into()).label(
                     if self.expected_names.is_empty() {
@@ -1603,6 +1851,14 @@ impl Diagnostic for InvalidPropertyName {
                 ),
             ))]
         .to_vec()
+    }
+
+    fn primary_span(&self) -> Span {
+        self.property
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        format!("invalid property name for `{}` nodes", self.node_type).into()
     }
 }
 
@@ -1615,27 +1871,22 @@ pub struct InvalidExpressionType {
 }
 
 impl Diagnostic for InvalidExpressionType {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
-        let mut report = [Level::ERROR
-            .primary_title(format!(
-                "invalid expression type for this property in {} nodes",
-                self.node_type
-            ))
-            .element(
-                Snippet::source(source).path(path).annotation(
-                    AnnotationKind::Primary
-                        .span(self.expression.span.into())
-                        .label(format!(
-                            "got {}, expected one of: {}",
-                            self.expression,
-                            self.valid_expression_types.join(", ")
-                        )),
-                ),
-            )]
+        let mut report = [self.title_snippet().element(
+            Snippet::source(source).path(path).annotation(
+                AnnotationKind::Primary
+                    .span(self.expression.span.into())
+                    .label(format!(
+                        "got {}, expected one of: {}",
+                        self.expression,
+                        self.valid_expression_types.join(", ")
+                    )),
+            ),
+        )]
         .to_vec();
 
         for (name, value) in self
@@ -1656,6 +1907,18 @@ impl Diagnostic for InvalidExpressionType {
 
         report
     }
+
+    fn primary_span(&self) -> Span {
+        self.expression.span
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        format!(
+            "invalid expression type for this property in {} nodes",
+            self.node_type
+        )
+        .into()
+    }
 }
 
 #[derive(Debug)]
@@ -1665,12 +1928,12 @@ pub struct DuplicateProperty {
 }
 
 impl Diagnostic for DuplicateProperty {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
-        [Level::ERROR.primary_title("duplicate property").element(
+        [self.title_snippet().element(
             Snippet::source(source)
                 .path(path)
                 .annotation(
@@ -1686,6 +1949,14 @@ impl Diagnostic for DuplicateProperty {
         )]
         .to_vec()
     }
+
+    fn primary_span(&self) -> Span {
+        self.duplicate
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "duplicate property".into()
+    }
 }
 
 #[derive(Debug)]
@@ -1696,13 +1967,13 @@ pub struct InvalidNodeType {
 }
 
 impl Diagnostic for InvalidNodeType {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         [
-            Level::ERROR.primary_title("invalid node type").element(
+            self.title_snippet().element(
                 Snippet::source(source)
                     .path(path)
                     .annotation(
@@ -1729,6 +2000,14 @@ impl Diagnostic for InvalidNodeType {
         ]
         .to_vec()
     }
+
+    fn primary_span(&self) -> Span {
+        self.node_type
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "invalid node type".into()
+    }
 }
 
 #[derive(Debug)]
@@ -1742,8 +2021,8 @@ pub struct MissingRequiredProperty {
 }
 
 impl Diagnostic for MissingRequiredProperty {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
@@ -1761,11 +2040,8 @@ impl Diagnostic for MissingRequiredProperty {
             )
         };
 
-        [Level::ERROR
-            .primary_title(format!(
-                "{} node is missing a required property",
-                self.node_type
-            ))
+        [self
+            .title_snippet()
             .element(
                 Snippet::source(source).path(path).annotation(
                     AnnotationKind::Primary
@@ -1791,6 +2067,18 @@ impl Diagnostic for MissingRequiredProperty {
             }))]
         .to_vec()
     }
+
+    fn primary_span(&self) -> Span {
+        self.node_type.span
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        format!(
+            "{} node is missing a required property: {}",
+            self.node_type, self.property_name
+        )
+        .into()
+    }
 }
 
 #[derive(Debug)]
@@ -1800,12 +2088,12 @@ pub struct InvalidSubnode {
 }
 
 impl Diagnostic for InvalidSubnode {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
-        [Level::ERROR.primary_title("invalid subnode").element(
+        [self.title_snippet().element(
             Snippet::source(source)
                 .path(path)
                 .annotation(
@@ -1821,6 +2109,14 @@ impl Diagnostic for InvalidSubnode {
         )]
         .to_vec()
     }
+
+    fn primary_span(&self) -> Span {
+        self.subnode
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "invalid subnode".into()
+    }
 }
 
 #[derive(Debug)]
@@ -1830,13 +2126,13 @@ pub struct SizeBytesTooLarge {
 }
 
 impl Diagnostic for SizeBytesTooLarge {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         [
-            Level::ERROR.primary_title("size-bytes too large").element(
+            self.title_snippet().element(
                 Snippet::source(source)
                     .path(path)
                     .annotation(AnnotationKind::Context.span(self.field_set.into()))
@@ -1858,6 +2154,14 @@ impl Diagnostic for SizeBytesTooLarge {
         ]
         .to_vec()
     }
+
+    fn primary_span(&self) -> Span {
+        self.value
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "size-bytes too large".into()
+    }
 }
 
 #[derive(Debug)]
@@ -1866,21 +2170,27 @@ pub struct FieldAddressOutOfRange {
 }
 
 impl Diagnostic for FieldAddressOutOfRange {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
-        [Level::ERROR
-            .primary_title("field address exceeds the allowed limits")
-            .element(
-                Snippet::source(source).path(path).annotation(
-                    AnnotationKind::Primary
-                        .span(self.field_address.into())
-                        .label("address must be non-negative and lower than 2^32"),
-                ),
-            )]
+        [self.title_snippet().element(
+            Snippet::source(source).path(path).annotation(
+                AnnotationKind::Primary
+                    .span(self.field_address.into())
+                    .label("address must be non-negative and lower than 2^32"),
+            ),
+        )]
         .to_vec()
+    }
+
+    fn primary_span(&self) -> Span {
+        self.field_address
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "field address exceeds the allowed limits".into()
     }
 }
 
@@ -1890,21 +2200,27 @@ pub struct ResetValueNegative {
 }
 
 impl Diagnostic for ResetValueNegative {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
-        [Level::ERROR
-            .primary_title("reset value is negative")
-            .element(
-                Snippet::source(source).path(path).annotation(
-                    AnnotationKind::Primary
-                        .span(self.reset_value.into())
-                        .label("value may not be negative"),
-                ),
-            )]
+        [self.title_snippet().element(
+            Snippet::source(source).path(path).annotation(
+                AnnotationKind::Primary
+                    .span(self.reset_value.into())
+                    .label("value may not be negative"),
+            ),
+        )]
         .to_vec()
+    }
+
+    fn primary_span(&self) -> Span {
+        self.reset_value
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "reset value is negative".into()
     }
 }
 
@@ -1913,45 +2229,46 @@ pub struct InvalidShortProperty {
     pub property: Span,
     pub node_type: Spanned<NodeType>,
     pub got: String,
-    pub expected: Vec<(String, String)>,
+    pub expected: Vec<(String, Istr)>,
 }
 
 impl Diagnostic for InvalidShortProperty {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
-        [Level::ERROR
-            .primary_title(format!(
-                "invalid short property for `{}` nodes",
-                self.node_type
-            ))
-            .element(
-                Snippet::source(source)
-                    .path(path)
-                    .annotation(AnnotationKind::Primary.span(self.property.into()).label(
-                        if self.expected.is_empty() {
-                            "no short properties are expected".into()
-                        } else {
-                            format!(
-                                "expected one of: {}",
-                                self.expected
-                                    .iter()
-                                    .map(|(expression, purpose)| format!(
-                                        "`{expression}` as {purpose}"
-                                    ))
-                                    .join(", ")
-                            )
-                        },
-                    ))
-                    .annotation(
-                        AnnotationKind::Context
-                            .span(self.property.into())
-                            .label(format!("got: `{}`", self.got,)),
-                    ),
-            )]
+        [self.title_snippet().element(
+            Snippet::source(source)
+                .path(path)
+                .annotation(AnnotationKind::Primary.span(self.property.into()).label(
+                    if self.expected.is_empty() {
+                        "no short properties are expected".into()
+                    } else {
+                        format!(
+                            "expected one of: {}",
+                            self.expected
+                                .iter()
+                                .map(|(expression, purpose)| format!("`{expression}` as {purpose}"))
+                                .join(", ")
+                        )
+                    },
+                ))
+                .annotation(
+                    AnnotationKind::Context
+                        .span(self.property.into())
+                        .label(format!("got: `{}`", self.got,)),
+                ),
+        )]
         .to_vec()
+    }
+
+    fn primary_span(&self) -> Span {
+        self.property
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        format!("invalid short property for `{}` nodes", self.node_type).into()
     }
 }
 
@@ -1963,22 +2280,20 @@ pub struct FieldAddressWrongOrder {
 }
 
 impl Diagnostic for FieldAddressWrongOrder {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         const NOTE_TEXT: &str = "the ordering is `high:low` because that mirrors the format commonly used in datasheets and HDLs";
         [
-            Level::ERROR
-                .primary_title("field address specified in wrong order")
-                .element(
-                    Snippet::source(source).path(path).annotation(
-                        AnnotationKind::Primary
-                            .span(self.address.into())
-                            .label("address must be specified as `high:low`"),
-                    ),
+            self.title_snippet().element(
+                Snippet::source(source).path(path).annotation(
+                    AnnotationKind::Primary
+                        .span(self.address.into())
+                        .label("address must be specified as `high:low`"),
                 ),
+            ),
             Level::HELP
                 .secondary_title("try switching around the numbers")
                 .element(Snippet::source(source).path(path).patch(Patch::new(
@@ -1989,6 +2304,14 @@ impl Diagnostic for FieldAddressWrongOrder {
         ]
         .into()
     }
+
+    fn primary_span(&self) -> Span {
+        self.address
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "field address specified in wrong order".into()
+    }
 }
 
 #[derive(Debug)]
@@ -1998,24 +2321,30 @@ pub struct IgnoredDocCommentOnProperty {
 }
 
 impl Diagnostic for IgnoredDocCommentOnProperty {
-    fn is_error(&self) -> bool {
-        false
+    fn severity(&self) -> Severity {
+        Severity::Warning
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
-        [Level::WARNING
-            .primary_title("doc comments placed on property that doesn't use them")
-            .element(
-                Snippet::source(source)
-                    .path(path)
-                    .annotation(
-                        AnnotationKind::Primary
-                            .span(self.doc_comments.into())
-                            .label("these doc comments are ignored"),
-                    )
-                    .annotation(AnnotationKind::Visible.span(self.property.into())),
-            )]
+        [self.title_snippet().element(
+            Snippet::source(source)
+                .path(path)
+                .annotation(
+                    AnnotationKind::Primary
+                        .span(self.doc_comments.into())
+                        .label("these doc comments are ignored"),
+                )
+                .annotation(AnnotationKind::Visible.span(self.property.into())),
+        )]
         .into()
+    }
+
+    fn primary_span(&self) -> Span {
+        self.doc_comments
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "doc comments placed on property that doesn't use them".into()
     }
 }
 
@@ -2026,27 +2355,22 @@ pub struct InvalidTypeSpecifier {
 }
 
 impl Diagnostic for InvalidTypeSpecifier {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         [
-            Level::ERROR
-                .primary_title(format!(
-                    "invalid type specifier for `{}` nodes",
-                    self.node_type
-                ))
-                .element(
-                    Snippet::source(source)
-                        .path(path)
-                        .annotation(AnnotationKind::Visible.span(self.node_type.span.into()))
-                        .annotation(
-                            AnnotationKind::Primary
-                                .span(self.type_specifier.into())
-                                .label("no type specifier is allowed on this node"),
-                        ),
-                ),
+            self.title_snippet().element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(AnnotationKind::Visible.span(self.node_type.span.into()))
+                    .annotation(
+                        AnnotationKind::Primary
+                            .span(self.type_specifier.into())
+                            .label("no type specifier is allowed on this node"),
+                    ),
+            ),
             Level::HELP
                 .secondary_title("remove the type specifier")
                 .element(
@@ -2057,6 +2381,14 @@ impl Diagnostic for InvalidTypeSpecifier {
         ]
         .to_vec()
     }
+
+    fn primary_span(&self) -> Span {
+        self.type_specifier
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        format!("invalid type specifier for `{}` nodes", self.node_type).into()
+    }
 }
 
 #[derive(Debug)]
@@ -2066,27 +2398,22 @@ pub struct InvalidTypeConversion {
 }
 
 impl Diagnostic for InvalidTypeConversion {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         [
-            Level::ERROR
-                .primary_title(format!(
-                    "invalid type conversion for `{}` nodes",
-                    self.node_type
-                ))
-                .element(
-                    Snippet::source(source)
-                        .path(path)
-                        .annotation(AnnotationKind::Visible.span(self.node_type.span.into()))
-                        .annotation(
-                            AnnotationKind::Primary
-                                .span(self.type_conversion.into())
-                                .label("no type conversion is allowed on this node"),
-                        ),
-                ),
+            self.title_snippet().element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(AnnotationKind::Visible.span(self.node_type.span.into()))
+                    .annotation(
+                        AnnotationKind::Primary
+                            .span(self.type_conversion.into())
+                            .label("no type conversion is allowed on this node"),
+                    ),
+            ),
             Level::HELP
                 .secondary_title("remove the type conversion")
                 .element(
@@ -2097,6 +2424,14 @@ impl Diagnostic for InvalidTypeConversion {
         ]
         .to_vec()
     }
+
+    fn primary_span(&self) -> Span {
+        self.type_conversion
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        format!("invalid type conversion for `{}` nodes", self.node_type).into()
+    }
 }
 
 #[derive(Debug)]
@@ -2106,28 +2441,34 @@ pub struct InvalidFieldsetRef {
 }
 
 impl Diagnostic for InvalidFieldsetRef {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
-        [Level::ERROR
-            .primary_title("invalid fieldset reference")
-            .element(
-                Snippet::source(source)
-                    .path(path)
-                    .annotation(
-                        AnnotationKind::Primary
-                            .span(self.reference.into())
-                            .label("no fieldset found with this name"),
-                    )
-                    .annotations(self.pointee.map(|pointee| {
-                        AnnotationKind::Context
-                            .span(pointee.into())
-                            .label("reference points to this non-fieldset object instead")
-                    })),
-            )]
+        [self.title_snippet().element(
+            Snippet::source(source)
+                .path(path)
+                .annotation(
+                    AnnotationKind::Primary
+                        .span(self.reference.into())
+                        .label("no fieldset found with this name"),
+                )
+                .annotations(self.pointee.map(|pointee| {
+                    AnnotationKind::Context
+                        .span(pointee.into())
+                        .label("reference points to this non-fieldset object instead")
+                })),
+        )]
         .to_vec()
+    }
+
+    fn primary_span(&self) -> Span {
+        self.reference
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "invalid fieldset reference".into()
     }
 }
 
@@ -2138,13 +2479,13 @@ pub struct InvalidRepeat {
 }
 
 impl Diagnostic for InvalidRepeat {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         [
-            Level::ERROR.primary_title("invalid repeat").element(
+            self.title_snippet().element(
                 Snippet::source(source)
                     .path(path)
                     .annotation(
@@ -2165,6 +2506,14 @@ impl Diagnostic for InvalidRepeat {
         ]
         .to_vec()
     }
+
+    fn primary_span(&self) -> Span {
+        self.repeat
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "invalid repeat for node".into()
+    }
 }
 
 #[derive(Debug)]
@@ -2173,23 +2522,21 @@ pub struct ZeroStrideRepeat {
 }
 
 impl Diagnostic for ZeroStrideRepeat {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         const INFO_TEXT: &str = "a stride of 0 means the address doesn't change. So the repeat is useless and thus rejected";
 
         [
-            Level::ERROR
-                .primary_title("repeat stride cannot be 0")
-                .element(
-                    Snippet::source(source).path(path).annotation(
-                        AnnotationKind::Primary
-                            .span(self.stride.into())
-                            .label("stride is 0"),
-                    ),
+            self.title_snippet().element(
+                Snippet::source(source).path(path).annotation(
+                    AnnotationKind::Primary
+                        .span(self.stride.into())
+                        .label("stride is 0"),
                 ),
+            ),
             Level::HELP
                 .secondary_title("change to a non-zero value")
                 .element(
@@ -2201,6 +2548,14 @@ impl Diagnostic for ZeroStrideRepeat {
         ]
         .to_vec()
     }
+
+    fn primary_span(&self) -> Span {
+        self.stride
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "repeat stride cannot be 0".into()
+    }
 }
 
 #[derive(Debug)]
@@ -2211,8 +2566,8 @@ pub struct ReservedOperationNameUsed {
 }
 
 impl Diagnostic for ReservedOperationNameUsed {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
@@ -2225,9 +2580,7 @@ impl Diagnostic for ReservedOperationNameUsed {
         );
 
         [
-            Level::ERROR
-                .primary_title("reserved operation name used")
-                .element(
+            self.title_snippet().element(
                 Snippet::source(source).path(path).annotation(
                     AnnotationKind::Primary
                         .span(self.name.into())
@@ -2241,6 +2594,14 @@ impl Diagnostic for ReservedOperationNameUsed {
         ]
         .to_vec()
     }
+
+    fn primary_span(&self) -> Span {
+        self.name
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "reserved operation name used".into()
+    }
 }
 
 #[derive(Debug)]
@@ -2251,17 +2612,15 @@ pub struct FieldSetterNameCollision {
 }
 
 impl Diagnostic for FieldSetterNameCollision {
-    fn is_error(&self) -> bool {
-        true
+    fn severity(&self) -> Severity {
+        Severity::Error
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
         const HELP_TEXT: &str = "writable fields generate setter functions that have the word `set` prepended. This can collide with other field names.\nAvoid this by changing the name of one of the fields or by making the field read only so it doesn't generate a setter";
 
         [
-            Level::ERROR
-                .primary_title("field setter name collision")
-                .element(
+            self.title_snippet().element(
                 Snippet::source(source)
                     .path(path)
                     .annotation(
@@ -2281,5 +2640,13 @@ impl Diagnostic for FieldSetterNameCollision {
             Group::with_title(Level::HELP.secondary_title(HELP_TEXT)),
         ]
         .to_vec()
+    }
+
+    fn primary_span(&self) -> Span {
+        self.field
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "field setter name collision".into()
     }
 }

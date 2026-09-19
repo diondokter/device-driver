@@ -103,7 +103,7 @@ impl Pass for NamesUnique {
 #[cfg(test)]
 mod tests {
     use convert_case::Boundary;
-    use device_driver_common::{identifier::Identifier, span::SpanExt};
+    use device_driver_common::{identifier::Identifier, interner::StrExt, span::SpanExt};
 
     use crate::model::{Buffer, Device, DeviceConfig, Enum, EnumVariant, Field, FieldSet, Object};
 
@@ -117,16 +117,21 @@ mod tests {
         };
 
         let mut start_mir = Device {
-            description: String::new(),
-            name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
+            name: Identifier::try_parse("Device".intern())
+                .unwrap()
+                .with_dummy_span(),
             device_config: global_config,
             objects: vec![
                 Object::Buffer(Buffer {
-                    name: Identifier::try_parse("MyBuffer").unwrap().with_dummy_span(),
+                    name: Identifier::try_parse("MyBuffer".intern())
+                        .unwrap()
+                        .with_dummy_span(),
                     ..Default::default()
                 }),
                 Object::Buffer(Buffer {
-                    name: Identifier::try_parse("MyBuffer").unwrap().with_dummy_span(),
+                    name: Identifier::try_parse("MyBuffer".intern())
+                        .unwrap()
+                        .with_dummy_span(),
                     ..Default::default()
                 }),
             ],
@@ -147,18 +152,25 @@ mod tests {
         };
 
         let mut start_mir = Device {
-            description: String::new(),
-            name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
+            name: Identifier::try_parse("Device".intern())
+                .unwrap()
+                .with_dummy_span(),
             device_config: global_config,
             objects: vec![Object::FieldSet(FieldSet {
-                name: Identifier::try_parse("Reg").unwrap().with_dummy_span(),
+                name: Identifier::try_parse("Reg".intern())
+                    .unwrap()
+                    .with_dummy_span(),
                 fields: vec![
                     Field {
-                        name: Identifier::try_parse("field").unwrap().with_dummy_span(),
+                        name: Identifier::try_parse("field".intern())
+                            .unwrap()
+                            .with_dummy_span(),
                         ..Default::default()
                     },
                     Field {
-                        name: Identifier::try_parse("field").unwrap().with_dummy_span(),
+                        name: Identifier::try_parse("field".intern())
+                            .unwrap()
+                            .with_dummy_span(),
                         ..Default::default()
                     },
                 ],
@@ -181,18 +193,25 @@ mod tests {
         };
 
         let mut start_mir = Device {
-            description: String::new(),
-            name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
+            name: Identifier::try_parse("Device".intern())
+                .unwrap()
+                .with_dummy_span(),
             device_config: global_config,
             objects: vec![Object::Enum(Enum {
-                name: Identifier::try_parse("Enum").unwrap().with_dummy_span(),
+                name: Identifier::try_parse("Enum".intern())
+                    .unwrap()
+                    .with_dummy_span(),
                 variants: vec![
                     EnumVariant {
-                        name: Identifier::try_parse("Variant").unwrap().with_dummy_span(),
+                        name: Identifier::try_parse("Variant".intern())
+                            .unwrap()
+                            .with_dummy_span(),
                         ..Default::default()
                     },
                     EnumVariant {
-                        name: Identifier::try_parse("Variant").unwrap().with_dummy_span(),
+                        name: Identifier::try_parse("Variant".intern())
+                            .unwrap()
+                            .with_dummy_span(),
                         ..Default::default()
                     },
                 ],
