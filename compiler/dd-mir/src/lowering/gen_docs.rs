@@ -11,7 +11,10 @@ use device_driver_parser::{Ident, Node, Property, Repeat, TypeSpecifier};
 use itertools::Itertools;
 
 use crate::{
-    lowering::{PropertyInfo, PropertyName, Shape},
+    lowering::{
+        PropertyInfo, PropertyName, Shape,
+        shape_impls::{ast_example, node_example},
+    },
     model::{Block, Buffer, Command, Device, Enum, Extern, Field, FieldSet, Manifest, Register},
 };
 
@@ -47,7 +50,9 @@ fn gen_doc<S: Shape>(folder: &Path) -> Result<(), DynError> {
 
     writeln!(doc, "## Example\n").into_dyn_result()?;
     writeln!(doc, "```ddsl").into_dyn_result()?;
-    writeln!(doc, "{}", generate_shape_example::<S>()).into_dyn_result()?;
+    generate_shape_example::<S>()
+        .fmt_formatted(&mut doc, &ast_example().ast, 0)
+        .into_dyn_result()?;
     writeln!(doc, "```").into_dyn_result()?;
 
     writeln!(doc, "## Table\n").into_dyn_result()?;
@@ -164,7 +169,11 @@ fn write_properties<S: Shape>(
             property
                 .allowed_expression_types
                 .iter()
-                .map(|expr| format!("// {}\n{name}: {}", expr, expr.get_human_string()))
+                .map(|expr| format!(
+                    "// {}\n{name}: {}",
+                    expr,
+                    expr.print_formatted(&ast_example().ast)
+                ))
                 .join(",\n")
         )
         .into_dyn_result()?;
@@ -255,17 +264,7 @@ fn generate_shape_example<S: Shape>() -> Node {
         sub_nodes: S::supported_subnodes()
             .unwrap_or_default()
             .iter()
-            .map(|node_type| Node {
-                doc_comments: Vec::new(),
-                node_type: Ident::new_no_span(node_type.name().intern()),
-                name: Ident::new_no_span("node".intern()),
-                repeat: None,
-                type_specifier: None,
-                short_properties: Vec::new(),
-                properties: Vec::new(),
-                sub_nodes: Vec::new(),
-                span: Span::empty(),
-            })
+            .map(|node_type| node_example(*node_type))
             .collect(),
         span: Span::empty(),
     }

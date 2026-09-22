@@ -5,6 +5,7 @@ use chumsky::{
     error::Rich,
     extra,
     input::{Input, MappedInput},
+    inspector::Inspector,
     prelude::{choice, just, recursive},
     select,
 };
@@ -25,10 +26,53 @@ use crate::parse_num::{ParseIntRadix, ParseIntRadixError, ParseIntRadixErrorKind
 pub mod gen_docs;
 mod parse_num;
 
+#[derive(Default)]
+pub struct AstArena {
+    nodes: Vec<Node>,
+}
+
+impl AstArena {
+    pub fn alloc_node(&mut self, node: Node) -> NodeId {
+        let id = NodeId(self.nodes.len());
+        self.nodes.push(node);
+        id
+    }
+}
+
+impl<'src, I: Input<'src>> Inspector<'src, I> for AstArena {
+    type Checkpoint = AstArenaCheckpoint;
+
+    fn on_token(&mut self, _token: &I::Token) {}
+
+    fn on_save<'parse>(
+        &self,
+        _cursor: &chumsky::input::Cursor<'src, 'parse, I>,
+    ) -> Self::Checkpoint {
+        AstArenaCheckpoint {
+            node_count: self.nodes.len(),
+        }
+    }
+
+    fn on_rewind<'parse>(
+        &mut self,
+        marker: &chumsky::input::Checkpoint<'src, 'parse, I, Self::Checkpoint>,
+    ) {
+        // undo all the pushes that happened since the checkpoint
+        self.nodes.truncate(marker.inspector().node_count);
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct AstArenaCheckpoint {
+    node_count: usize,
+}
+
 pub fn parse(tokens: &[Spanned<Token>], diagnostics: &mut Diagnostics) -> Ast {
+    let mut state = AstArena { nodes: Vec::new() };
+
     let (ast, parse_errs) = node()
         .map_with(|ast, e| (ast, e.span()))
-        .parse(
+        .parse_with_state(
             tokens.map(
                 tokens
                     .last()
@@ -36,6 +80,7 @@ pub fn parse(tokens: &[Spanned<Token>], diagnostics: &mut Diagnostics) -> Ast {
                     .unwrap_or_default(),
                 |token| (&token.value, &token.span),
             ),
+            &mut state,
         )
         .into_output_errors();
 
@@ -46,19 +91,49 @@ pub fn parse(tokens: &[Spanned<Token>], diagnostics: &mut Diagnostics) -> Ast {
         });
     }
 
-    ast.map(|(root_node, span)| Ast {
-        root_node: Some(root_node),
-        span,
-    })
-    .unwrap_or_default()
+    Ast::new(
+        ast.map(|(ast, _)| ast),
+        state,
+        ast.as_ref().map(|(_, span)| *span).unwrap_or_default(),
+    )
 }
 
 // Don't forget to update the book when parsers are added, changed or removed!
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Ast {
-    pub root_node: Option<Node>,
+    pub root_node: Option<NodeId>,
+    nodes: Vec<Node>,
     pub span: Span,
 }
+
+impl Ast {
+    pub fn new(root_node: Option<NodeId>, arena: AstArena, span: Span) -> Self {
+        Self {
+            root_node,
+            nodes: arena.nodes,
+            span,
+        }
+    }
+
+    pub fn node(&self, id: NodeId) -> &Node {
+        &self.nodes[id.0]
+    }
+
+    pub fn node_mut(&mut self, id: NodeId) -> &mut Node {
+        &mut self.nodes[id.0]
+    }
+
+    pub fn nodes(&self) -> &[Node] {
+        &self.nodes
+    }
+
+    pub fn nodes_mut(&mut self) -> &mut [Node] {
+        &mut self.nodes
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NodeId(usize);
 
 #[derive(Debug, Clone)]
 pub struct Node {
@@ -69,13 +144,23 @@ pub struct Node {
     pub type_specifier: Option<Spanned<TypeSpecifier>>,
     pub short_properties: Vec<Spanned<Expression>>,
     pub properties: Vec<Spanned<Property>>,
-    pub sub_nodes: Vec<Node>,
+    pub sub_nodes: Vec<NodeId>,
     pub span: Span,
 }
 
-impl Display for Node {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let indentation_level = f.width().unwrap_or_default();
+impl Node {
+    pub fn to_string_formatted(&self, ast: &Ast) -> String {
+        let mut buf = String::new();
+        self.fmt_formatted(&mut buf, ast, 0).unwrap();
+        buf
+    }
+
+    pub fn fmt_formatted(
+        &self,
+        f: &mut impl std::fmt::Write,
+        ast: &Ast,
+        indentation_level: usize,
+    ) -> std::fmt::Result {
         let indentation = format!("{:width$}", "", width = indentation_level * 4);
 
         for doc_comment in &self.doc_comments {
@@ -96,7 +181,7 @@ impl Display for Node {
         }
 
         for expression in self.short_properties.iter() {
-            write!(f, " {}", expression.get_human_string())?;
+            write!(f, " {}", expression.print_formatted(ast))?;
         }
 
         if let Some(type_specifier) = self.type_specifier.as_ref() {
@@ -111,8 +196,9 @@ impl Display for Node {
                 match conversion {
                     TypeConversion::Reference(ident) => write!(f, " {}", ident.val)?,
                     TypeConversion::Subnode(node) => {
+                        let node = ast.node(*node);
                         if node.doc_comments.is_empty() {
-                            for (i, line) in node.to_string().lines().enumerate() {
+                            for (i, line) in node.to_string_formatted(ast).lines().enumerate() {
                                 if i == 0 {
                                     write!(f, " {line}")?;
                                 } else {
@@ -120,7 +206,7 @@ impl Display for Node {
                                 }
                             }
                         } else {
-                            write!(f, "\n{node:width$}", width = indentation_level + 1)?;
+                            node.fmt_formatted(f, ast, indentation_level + 1)?;
                         }
                     }
                 }
@@ -146,7 +232,7 @@ impl Display for Node {
 
                 write!(f, "{indentation}    {}:", property.name.val)?;
 
-                let expression = property.expression.get_human_string();
+                let expression = property.expression.print_formatted(ast);
 
                 if expression.starts_with("///") {
                     for line in expression.lines() {
@@ -170,7 +256,8 @@ impl Display for Node {
             }
 
             for node in self.sub_nodes.iter() {
-                writeln!(f, "{node:width$},", width = indentation_level + 1)?;
+                let node = ast.node(*node);
+                node.fmt_formatted(f, ast, indentation_level + 1)?;
             }
 
             write!(f, "{indentation}}}")?;
@@ -181,7 +268,9 @@ impl Display for Node {
 }
 
 impl SemanticTokenObject for Node {
-    fn to_tokens_in(&self, tokens: &mut Vec<SemanticToken<'_>>) {
+    type Context = Ast;
+
+    fn to_tokens_in(&self, ctx: &Self::Context, tokens: &mut Vec<SemanticToken<'_>>) {
         tokens.extend(self.doc_comments.iter().map(|doc_comment| {
             Token::DocCommentLine(doc_comment.as_str())
                 .with_semantics(TokenType::Comment, &[TokenModifier::Documentation])
@@ -195,27 +284,27 @@ impl SemanticTokenObject for Node {
         ));
 
         if let Some(repeat) = self.repeat.as_ref() {
-            repeat.to_tokens_in(tokens);
+            repeat.to_tokens_in(&(), tokens);
         }
 
         for short_property in self.short_properties.iter() {
-            short_property.to_tokens_in(tokens);
+            short_property.to_tokens_in(ctx, tokens);
         }
 
         if let Some(type_specifier) = self.type_specifier.as_ref() {
-            type_specifier.to_tokens_in(tokens);
+            type_specifier.to_tokens_in(ctx, tokens);
         }
 
         if self.properties.len() + self.sub_nodes.len() > 0 {
             tokens.push(Token::CurlyOpen.without_semantics());
 
             for property in self.properties.iter() {
-                property.to_tokens_in(tokens);
+                property.to_tokens_in(ctx, tokens);
                 tokens.push(Token::Comma.without_semantics());
             }
 
             for sub_node in self.sub_nodes.iter() {
-                sub_node.to_tokens_in(tokens);
+                ctx.node(*sub_node).to_tokens_in(ctx, tokens);
                 tokens.push(Token::Comma.without_semantics());
             }
 
@@ -232,15 +321,17 @@ pub struct TypeSpecifier {
 }
 
 impl SemanticTokenObject for TypeSpecifier {
-    fn to_tokens_in(&self, tokens: &mut Vec<SemanticToken<'_>>) {
+    type Context = Ast;
+
+    fn to_tokens_in(&self, ctx: &Self::Context, tokens: &mut Vec<SemanticToken<'_>>) {
         tokens.push(Token::Arrow.without_semantics());
-        self.base_type.to_tokens_in(tokens);
+        self.base_type.to_tokens_in(&(), tokens);
         if let Some(conversion) = self.conversion.as_ref() {
             tokens.push(Token::As.with_semantics(TokenType::Keyword, &[]));
             if self.use_try {
                 tokens.push(Token::Try.with_semantics(TokenType::Keyword, &[]));
             }
-            conversion.to_tokens_in(tokens);
+            conversion.to_tokens_in(ctx, tokens);
         }
     }
 }
@@ -248,13 +339,13 @@ impl SemanticTokenObject for TypeSpecifier {
 #[derive(Debug, Clone)]
 pub enum TypeConversion {
     Reference(Ident),
-    Subnode(Box<Node>),
+    Subnode(NodeId),
 }
 
 impl TypeConversion {
-    pub fn as_subnode(&self) -> Option<&Node> {
+    pub fn as_subnode(&self) -> Option<NodeId> {
         if let Self::Subnode(v) = self {
-            Some(v)
+            Some(*v)
         } else {
             None
         }
@@ -262,12 +353,14 @@ impl TypeConversion {
 }
 
 impl SemanticTokenObject for TypeConversion {
-    fn to_tokens_in(&self, tokens: &mut Vec<SemanticToken<'_>>) {
+    type Context = Ast;
+
+    fn to_tokens_in(&self, ctx: &Self::Context, tokens: &mut Vec<SemanticToken<'_>>) {
         match self {
             TypeConversion::Reference(ident) => {
                 tokens.push(Token::Ident(ident.val.as_str()).with_semantics(TokenType::Type, &[]))
             }
-            TypeConversion::Subnode(node) => node.to_tokens_in(tokens),
+            TypeConversion::Subnode(node) => ctx.node(*node).to_tokens_in(ctx, tokens),
         }
     }
 }
@@ -280,7 +373,9 @@ pub struct Property {
 }
 
 impl SemanticTokenObject for Property {
-    fn to_tokens_in(&self, tokens: &mut Vec<SemanticToken<'_>>) {
+    type Context = Ast;
+
+    fn to_tokens_in(&self, ctx: &Self::Context, tokens: &mut Vec<SemanticToken<'_>>) {
         tokens.extend(self.doc_comments.iter().map(|istr| {
             Token::DocCommentLine(istr.as_str())
                 .with_semantics(TokenType::Comment, &[TokenModifier::Documentation])
@@ -288,7 +383,7 @@ impl SemanticTokenObject for Property {
         tokens.push(Token::Ident(self.name.val.as_str()).with_semantics(TokenType::Property, &[]));
 
         tokens.push(Token::Colon.without_semantics());
-        self.expression.to_tokens_in(tokens);
+        self.expression.to_tokens_in(ctx, tokens);
     }
 }
 
@@ -306,7 +401,7 @@ pub enum Expression {
     Access(Access),
     ByteOrder(ByteOrder),
     TypeReference(Ident),
-    SubNode(Box<Node>),
+    SubNode(NodeId),
     Auto,
     AddressMode(AddressMode),
 }
@@ -376,15 +471,15 @@ impl Expression {
         }
     }
 
-    pub fn as_sub_node(&self) -> Option<&Node> {
+    pub fn as_sub_node(&self) -> Option<NodeId> {
         if let Self::SubNode(v) = self {
-            Some(v)
+            Some(*v)
         } else {
             None
         }
     }
 
-    pub fn get_human_string(&self) -> Cow<'static, str> {
+    pub fn print_formatted(&self, ast: &Ast) -> Cow<'static, str> {
         match self {
             Expression::AddressRange { end, start } => format!("{end}:{start}").into(),
             Expression::ByteArray(items) => format!("{items:?}").into(),
@@ -400,7 +495,7 @@ impl Expression {
             Expression::Access(val) => val.to_string().into(),
             Expression::ByteOrder(val) => val.to_string().into(),
             Expression::TypeReference(ident) => ident.val.to_string().into(),
-            Expression::SubNode(val) => val.to_string().into(),
+            Expression::SubNode(val) => ast.node(*val).to_string_formatted(ast).into(),
             Expression::Auto => "_".into(),
             Expression::AddressMode(val) => val.to_string().into(),
         }
@@ -432,7 +527,9 @@ impl Display for Expression {
 }
 
 impl SemanticTokenObject for Expression {
-    fn to_tokens_in(&self, tokens: &mut Vec<SemanticToken<'_>>) {
+    type Context = Ast;
+
+    fn to_tokens_in(&self, ctx: &Self::Context, tokens: &mut Vec<SemanticToken<'_>>) {
         match self {
             Expression::AddressRange { end, start } => {
                 tokens.push(
@@ -458,8 +555,8 @@ impl SemanticTokenObject for Expression {
                 }
                 tokens.push(Token::BracketClose.without_semantics());
             }
-            Expression::BaseType(base_type) => base_type.to_tokens_in(tokens),
-            Expression::Integer(integer) => integer.to_tokens_in(tokens),
+            Expression::BaseType(base_type) => base_type.to_tokens_in(&(), tokens),
+            Expression::Integer(integer) => integer.to_tokens_in(&(), tokens),
             Expression::Allow => tokens.push(Token::Allow.with_semantics(TokenType::Keyword, &[])),
             Expression::Number(num) => tokens.push(
                 Token::Num(num.to_string().intern().as_str())
@@ -496,16 +593,16 @@ impl SemanticTokenObject for Expression {
             Expression::String(istr) => {
                 tokens.push(Token::String(istr.as_str()).with_semantics(TokenType::String, &[]));
             }
-            Expression::Access(access) => access.to_tokens_in(tokens),
-            Expression::ByteOrder(byte_order) => byte_order.to_tokens_in(tokens),
+            Expression::Access(access) => access.to_tokens_in(&(), tokens),
+            Expression::ByteOrder(byte_order) => byte_order.to_tokens_in(&(), tokens),
             Expression::TypeReference(ident) => {
                 tokens.push(Token::Ident(ident.val.as_str()).with_semantics(TokenType::Type, &[]))
             }
-            Expression::SubNode(node) => node.to_tokens_in(tokens),
+            Expression::SubNode(node) => ctx.node(*node).to_tokens_in(ctx, tokens),
             Expression::Auto => {
                 tokens.push(Token::Underscore.with_semantics(TokenType::Operator, &[]));
             }
-            Expression::AddressMode(address_mode) => address_mode.to_tokens_in(tokens),
+            Expression::AddressMode(address_mode) => address_mode.to_tokens_in(&(), tokens),
         }
     }
 }
@@ -517,9 +614,11 @@ pub struct Repeat {
 }
 
 impl SemanticTokenObject for Repeat {
-    fn to_tokens_in(&self, tokens: &mut Vec<SemanticToken<'_>>) {
+    type Context = ();
+
+    fn to_tokens_in(&self, ctx: &Self::Context, tokens: &mut Vec<SemanticToken<'_>>) {
         tokens.push(Token::BracketOpen.without_semantics());
-        self.source.to_tokens_in(tokens);
+        self.source.to_tokens_in(ctx, tokens);
         tokens.push(Token::Stride.with_semantics(TokenType::Keyword, &[]));
         tokens.push(
             Token::Num(self.stride.to_string().intern().as_str())
@@ -551,7 +650,9 @@ impl Display for RepeatSource {
 }
 
 impl SemanticTokenObject for RepeatSource {
-    fn to_tokens_in(&self, tokens: &mut Vec<SemanticToken<'_>>) {
+    type Context = ();
+
+    fn to_tokens_in(&self, _ctx: &Self::Context, tokens: &mut Vec<SemanticToken<'_>>) {
         match self {
             RepeatSource::Count(non_zero) => tokens.push(
                 Token::Num(non_zero.get().to_string().intern().as_str())
@@ -636,7 +737,7 @@ fn try_num<'tokens, 'src: 'tokens, I: ParseIntRadix>(
 pub type InputType<'tokens, 'src> =
     MappedInput<'tokens, Token<'src>, Span, &'tokens [Spanned<Token<'src>>]>;
 pub type RichErr<'tokens, 'src> = Rich<'tokens, Token<'src>, Span>;
-pub type RichExtra<'tokens, 'src> = extra::Err<RichErr<'tokens, 'src>>;
+pub type RichExtra<'tokens, 'src> = extra::Full<RichErr<'tokens, 'src>, AstArena, ()>;
 
 pub fn ident<'tokens, 'src: 'tokens>(
     allow_auto: bool,
@@ -777,7 +878,7 @@ pub fn repeat<'tokens, 'src: 'tokens>()
 }
 
 pub fn property<'tokens, 'src: 'tokens, 'node>(
-    node: impl Parser<'tokens, InputType<'tokens, 'src>, Node, RichExtra<'tokens, 'src>> + Clone,
+    node: impl Parser<'tokens, InputType<'tokens, 'src>, NodeId, RichExtra<'tokens, 'src>> + Clone,
 ) -> impl Parser<'tokens, InputType<'tokens, 'src>, Spanned<Property>, RichExtra<'tokens, 'src>> + Clone
 {
     doc_comment()
@@ -791,9 +892,7 @@ pub fn property<'tokens, 'src: 'tokens, 'node>(
                             .labelled("simple-expression")
                             .as_non_terminal(),
                         node.clone()
-                            .map_with(|node, extra| {
-                                Expression::SubNode(Box::new(node)).spanned(extra.span())
-                            })
+                            .map_with(|node, extra| Expression::SubNode(node).spanned(extra.span()))
                             .labelled("node")
                             .as_non_terminal(),
                         ident(false)
@@ -818,13 +917,13 @@ pub fn property<'tokens, 'src: 'tokens, 'node>(
 }
 
 pub fn type_specifier<'tokens, 'src: 'tokens>(
-    node: impl Parser<'tokens, InputType<'tokens, 'src>, Node, RichExtra<'tokens, 'src>> + Clone,
+    node: impl Parser<'tokens, InputType<'tokens, 'src>, NodeId, RichExtra<'tokens, 'src>> + Clone,
 ) -> impl Parser<'tokens, InputType<'tokens, 'src>, Spanned<TypeSpecifier>, RichExtra<'tokens, 'src>>
 + Clone {
     let type_conversion = just(Token::As).ignore_then(just(Token::Try).or_not()).then(
         node.labelled("node")
             .as_non_terminal()
-            .map(|node| TypeConversion::Subnode(Box::new(node)))
+            .map(TypeConversion::Subnode)
             .or(ident(false).map(TypeConversion::Reference)),
     );
     just(Token::Arrow)
@@ -850,11 +949,11 @@ pub fn type_specifier<'tokens, 'src: 'tokens>(
 }
 
 pub fn node_body<'tokens, 'src: 'tokens>(
-    node: impl Parser<'tokens, InputType<'tokens, 'src>, Node, RichExtra<'tokens, 'src>> + Clone,
+    node: impl Parser<'tokens, InputType<'tokens, 'src>, NodeId, RichExtra<'tokens, 'src>> + Clone,
 ) -> impl Parser<
     'tokens,
     InputType<'tokens, 'src>,
-    (Vec<Spanned<Property>>, Vec<Node>),
+    (Vec<Spanned<Property>>, Vec<NodeId>),
     RichExtra<'tokens, 'src>,
 > + Clone {
     let properties = property(node.clone())
@@ -892,7 +991,7 @@ pub fn node_body<'tokens, 'src: 'tokens>(
 }
 
 pub fn node<'tokens, 'src: 'tokens>()
--> impl Parser<'tokens, InputType<'tokens, 'src>, Node, RichExtra<'tokens, 'src>> + Clone {
+-> impl Parser<'tokens, InputType<'tokens, 'src>, NodeId, RichExtra<'tokens, 'src>> + Clone {
     recursive(|node| {
         let node = node.labelled("node").as_non_terminal();
 
@@ -932,7 +1031,7 @@ pub fn node<'tokens, 'src: 'tokens>()
                     let mut span: Span = extra.span();
                     span = span.start_from(node_type.span);
 
-                    Node {
+                    extra.state().alloc_node(Node {
                         doc_comments,
                         node_type,
                         name,
@@ -942,7 +1041,7 @@ pub fn node<'tokens, 'src: 'tokens>()
                         short_properties: expressions,
                         sub_nodes,
                         span,
-                    }
+                    })
                 },
             )
             .labelled("node")

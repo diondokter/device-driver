@@ -5,7 +5,7 @@ use device_driver_common::{
     specifiers::{BaseType, NodeType},
 };
 use device_driver_mir::model::Manifest;
-use device_driver_parser::{Expression, Node};
+use device_driver_parser::{Ast, AstArena, Expression, Node};
 use tower_lsp_server::ls_types::{
     InlayHint, InlayHintKind, InlayHintLabel, InlayHintTooltip, TextEdit,
 };
@@ -13,44 +13,20 @@ use tower_lsp_server::ls_types::{
 use crate::ToRange;
 
 pub(crate) fn get_hints(
-    root_node: &Node,
+    ast: &Ast,
     visible_span: Span,
     source: &str,
     mir: &Manifest,
 ) -> Vec<InlayHint> {
-    if !visible_span.overlaps(root_node.span) {
-        return Vec::new();
-    }
-
-    let subnodes = root_node
-        .sub_nodes
+    ast.nodes()
         .iter()
-        .chain(
-            root_node
-                .type_specifier
-                .as_ref()
-                .and_then(|ts| ts.conversion.as_ref())
-                .and_then(|conversion| conversion.as_subnode()),
-        )
-        .chain(
-            root_node
-                .properties
-                .iter()
-                .filter_map(|prop| prop.expression.as_sub_node()),
-        );
-
-    let subnode_hints = subnodes
-        .filter(|subnode| visible_span.overlaps(subnode.span))
-        .flat_map(|subnode| get_hints(subnode, visible_span, source, mir));
-
-    subnode_hints
-        .chain(auto_name_hint(root_node, source, mir))
-        .chain(auto_base_type_hint(root_node, source, mir))
-        .chain(
-            enum_variant_hints(root_node, source, mir)
+        .filter(|node| visible_span.overlaps(node.span))
+        .flat_map(|node| {
+            auto_name_hint(node, source, mir)
                 .into_iter()
-                .flatten(),
-        )
+                .chain(auto_base_type_hint(node, source, mir))
+                .chain(enum_variant_hints(node, source, mir).into_iter().flatten())
+        })
         .collect()
 }
 
@@ -230,7 +206,10 @@ fn enum_variant_hints(node: &Node, source: &str, mir: &Manifest) -> Option<Vec<I
             text_edits: Some(
                 [TextEdit {
                     range: expression_range,
-                    new_text: replacement_expression.get_human_string().to_string(),
+                    new_text: replacement_expression
+                        // Empty AST should be fine here since none of the replacements are subnodes
+                        .print_formatted(&Ast::new(None, AstArena::default(), Span::empty()))
+                        .to_string(),
                 }]
                 .into(),
             ),

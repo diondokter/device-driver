@@ -1,4 +1,4 @@
-use std::{borrow::Cow, sync::LazyLock};
+use std::{borrow::Cow, collections::HashMap, str::FromStr, sync::LazyLock};
 
 use crate::{
     lowering::{LowerResult, PropertyInfo, PropertyName, SetterArgs, Shape, lower_node},
@@ -14,28 +14,55 @@ use device_driver_common::{
     span::{Span, SpanExt, Spanned},
     specifiers::{
         Access, AddressMode, AddressRange, BaseType, ByteOrder, Integer, NodeType, Repeat,
-        ResetValue, TypeConversion,
+        ResetValue, TypeConversion, VariantNames,
     },
 };
 use device_driver_diagnostics::errors::{
     ExternInvalidSizeBits, FieldAddressOutOfRange, FieldAddressWrongOrder, InvalidIdentifier,
     ResetValueNegative, SizeBytesTooLarge,
 };
-use device_driver_parser::{Expression, Ident, Node};
+use device_driver_parser::{Ast, AstArena, Expression, Ident, Node, NodeId};
 use itertools::Itertools;
 
-fn fieldset_example() -> Node {
-    Node {
-        doc_comments: Vec::new(),
-        node_type: Ident::new_no_span("fieldset".intern()),
-        name: Ident::new_no_span("MyFieldSet".intern()),
-        repeat: None,
-        type_specifier: None,
-        properties: Vec::new(),
-        short_properties: Vec::new(),
-        sub_nodes: Vec::new(),
-        span: Span::empty(),
-    }
+pub struct AstExample {
+    pub(crate) ast: Ast,
+
+    node_examples: HashMap<NodeType, NodeId>,
+}
+
+pub(crate) fn ast_example() -> &'static AstExample {
+    static AST_EXAMPLE: LazyLock<AstExample> = LazyLock::new(|| {
+        let mut arena = AstArena::default();
+
+        let node_examples = NodeType::VARIANTS
+            .iter()
+            .map(|nt| {
+                let node = arena.alloc_node(Node {
+                    doc_comments: Vec::new(),
+                    node_type: Ident::new_no_span(nt.intern()),
+                    name: Ident::new_no_span(format!("my_{nt}").intern()),
+                    repeat: None,
+                    type_specifier: None,
+                    properties: Vec::new(),
+                    short_properties: Vec::new(),
+                    sub_nodes: Vec::new(),
+                    span: Span::empty(),
+                });
+
+                (NodeType::from_str(nt).unwrap(), node)
+            })
+            .collect();
+
+        let ast = Ast::new(None, arena, Span::empty());
+
+        AstExample { ast, node_examples }
+    });
+
+    &AST_EXAMPLE
+}
+
+pub(crate) fn node_example(node_type: NodeType) -> NodeId {
+    ast_example().node_examples[&node_type]
 }
 
 impl Shape for Manifest {
@@ -681,7 +708,7 @@ The value can be expressed in two ways:
                         Expression::TypeReference(device_driver_parser::Ident::new_no_span(
                             "MyFieldset".intern(),
                         )),
-                        Expression::SubNode(Box::new(fieldset_example())),
+                        Expression::SubNode(node_example(NodeType::FieldSet)),
                     ]),
                     multiple_allowed: false,
                     required: true,
@@ -692,6 +719,7 @@ The value can be expressed in two ways:
                                  node,
                                  diagnostics,
                                  sibling_objects,
+                                 ast,
                              }| {
                         match &property.expression.value {
                             Expression::TypeReference(ident) => {
@@ -701,10 +729,11 @@ The value can be expressed in two ways:
                             }
                             Expression::SubNode(sub_node) => {
                                 let result = lower_node(
-                                    sub_node,
+                                    ast.node( *sub_node),
                                     Some(NodeType::Register.with_span(node.node_type.span)),
                                     Some(Ident::new(r.name.original(), r.name.span)),
                                     &[NodeType::FieldSet],
+                                    ast,
                                     diagnostics,
                                 );
 
@@ -1167,7 +1196,7 @@ impl Shape for Command {
                         Expression::TypeReference(device_driver_parser::Ident::new_no_span(
                             "MyFieldset".intern(),
                         )),
-                        Expression::SubNode(Box::new(fieldset_example())),
+                        Expression::SubNode(node_example(NodeType::FieldSet)),
                     ]),
                     multiple_allowed: false,
                     required: false,
@@ -1178,6 +1207,7 @@ impl Shape for Command {
                                  node,
                                  diagnostics,
                                  sibling_objects,
+                                 ast,
                              }| {
                         match &property.expression.value {
                             Expression::TypeReference(ident) => {
@@ -1188,10 +1218,11 @@ impl Shape for Command {
                             }
                             Expression::SubNode(sub_node) => {
                                 let result = lower_node(
-                                    sub_node,
+                                    ast.node(*sub_node),
                                     Some(NodeType::Register.with_span(node.node_type.span)),
                                     Some(Ident::new(command.name.original(), command.name.span)),
                                     &[NodeType::FieldSet],
+                                    ast,
                                     diagnostics,
                                 );
 
@@ -1227,7 +1258,7 @@ impl Shape for Command {
                         Expression::TypeReference(device_driver_parser::Ident::new_no_span(
                             "MyFieldset".intern(),
                         )),
-                        Expression::SubNode(Box::new(fieldset_example())),
+                        Expression::SubNode(node_example(NodeType::FieldSet)),
                     ]),
                     multiple_allowed: false,
                     required: false,
@@ -1238,6 +1269,7 @@ impl Shape for Command {
                                  node,
                                  diagnostics,
                                  sibling_objects,
+                                 ast,
                              }| {
                         match &property.expression.value {
                             Expression::TypeReference(ident) => {
@@ -1248,10 +1280,11 @@ impl Shape for Command {
                             }
                             Expression::SubNode(sub_node) => {
                                 let result = lower_node(
-                                    sub_node,
+                                    ast.node(*sub_node),
                                     Some(NodeType::Register.with_span(node.node_type.span)),
                                     Some(Ident::new(command.name.original(), command.name.span)),
                                     &[NodeType::FieldSet],
+                                    ast,
                                     diagnostics,
                                 );
 
