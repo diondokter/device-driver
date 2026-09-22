@@ -5,6 +5,7 @@ use std::{
     collections::HashMap,
     hash::Hash,
     mem,
+    num::NonZero,
     ops::Deref,
     sync::{LazyLock, Mutex},
 };
@@ -13,7 +14,7 @@ static GLOBAL_INTERNER: LazyLock<Mutex<Interner>> =
     LazyLock::new(|| Mutex::new(Interner::with_capacity(1024 * 32)));
 
 pub struct Interner {
-    map: HashMap<&'static str, u32>,
+    map: HashMap<&'static str, NonZero<u32>>,
     vec: Vec<&'static str>,
     buf: String,
     full: Vec<String>,
@@ -31,7 +32,7 @@ impl Interner {
 
         // Allocate a default Istr at 0
         let default_istr = interner.intern("");
-        debug_assert_eq!(default_istr.0, 0);
+        debug_assert_eq!(default_istr.0.get(), 1);
 
         interner
     }
@@ -41,7 +42,7 @@ impl Interner {
             return Istr(id);
         }
         let name = unsafe { self.alloc(name) };
-        let id = self.map.len() as u32;
+        let id = NonZero::new(self.map.len() as u32 + 1).unwrap();
         self.map.insert(name, id);
         self.vec.push(name);
 
@@ -52,7 +53,7 @@ impl Interner {
     }
 
     pub fn lookup(&self, id: Istr) -> &'static str {
-        self.vec[id.0 as usize]
+        self.vec[id.0.get() as usize - 1]
     }
 
     unsafe fn alloc(&mut self, name: &str) -> &'static str {
@@ -80,8 +81,8 @@ impl Drop for Interner {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Default)]
-pub struct Istr(u32);
+#[derive(PartialEq, Eq, Clone, Copy)]
+pub struct Istr(NonZero<u32>);
 
 impl Istr {
     pub fn as_str(self) -> &'static str {
@@ -135,6 +136,12 @@ impl Hash for Istr {
 impl<'a> From<&'a str> for Istr {
     fn from(value: &'a str) -> Self {
         value.intern()
+    }
+}
+
+impl Default for Istr {
+    fn default() -> Self {
+        Self(NonZero::new(1).unwrap())
     }
 }
 
