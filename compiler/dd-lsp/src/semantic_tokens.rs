@@ -1,13 +1,14 @@
 use device_driver_common::span::Span;
 use device_driver_lexer::semantic_token_object::SemanticTokenObject;
-use device_driver_parser::Node;
+use device_driver_parser::{Ast, NodeId};
 use tower_lsp_server::ls_types::{Position, Range, SemanticToken, SemanticTokens};
 
 use crate::{ToRange, ToSpan};
 
 pub fn calculate_semantic_tokens(
-    node: &Node,
+    root_node: NodeId,
     source: &str,
+    ast: &Ast,
     range: Option<Range>,
 ) -> SemanticTokens {
     let span_limit = range.map(|range| range.to_span(source)).unwrap_or(Span {
@@ -15,8 +16,10 @@ pub fn calculate_semantic_tokens(
         end: u32::MAX,
     });
 
-    let semantic_tokens = node
-        .to_respanned_tokens(source, node.span)
+    let root_node = ast.node(root_node);
+
+    let semantic_tokens = root_node
+        .to_respanned_tokens(source, root_node.span, ast)
         .into_iter()
         .skip_while(|token| !span_limit.overlaps(token.span))
         .take_while(|token| span_limit.overlaps(token.span))

@@ -29,15 +29,16 @@ pub mod gen_docs;
 mod shape_impls;
 
 pub fn lower(ast: &Ast, diagnostics: &mut Diagnostics) -> Manifest {
-    let Some(root_node) = ast.root_node.as_ref() else {
+    let Some(root_node) = ast.root_node else {
         return Default::default();
     };
 
     let result = lower_node(
-        root_node,
+        ast.node(root_node),
         None,
         None,
         &[NodeType::Manifest, NodeType::Device],
+        ast,
         diagnostics,
     );
 
@@ -63,6 +64,7 @@ fn lower_node(
     parent_node_type: Option<Spanned<NodeType>>,
     parent_node_name: Option<Ident>,
     allowed_node_types: &[NodeType],
+    ast: &Ast,
     diagnostics: &mut Diagnostics,
 ) -> LowerResult {
     let Ok(node_type) = NodeType::from_str(node.node_type.val.as_str()) else {
@@ -84,46 +86,46 @@ fn lower_node(
     }
 
     match node_type.value {
-        NodeType::Manifest => match parse_node_to_shape(node, parent_node_name, diagnostics) {
+        NodeType::Manifest => match parse_node_to_shape(node, parent_node_name, ast, diagnostics) {
             Ok((val, siblings)) => {
                 assert!(siblings.is_empty(), "Manifest has no siblings");
                 LowerResult::Manifest(val)
             }
             Err(siblings) => LowerResult::Error(siblings),
         },
-        NodeType::Device => match parse_node_to_shape(node, parent_node_name, diagnostics) {
+        NodeType::Device => match parse_node_to_shape(node, parent_node_name, ast, diagnostics) {
             Ok((val, siblings)) => LowerResult::Objects(Object::Device(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
-        NodeType::Block => match parse_node_to_shape(node, parent_node_name, diagnostics) {
+        NodeType::Block => match parse_node_to_shape(node, parent_node_name, ast, diagnostics) {
             Ok((val, siblings)) => LowerResult::Objects(Object::Block(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
-        NodeType::Register => match parse_node_to_shape(node, parent_node_name, diagnostics) {
+        NodeType::Register => match parse_node_to_shape(node, parent_node_name, ast, diagnostics) {
             Ok((val, siblings)) => LowerResult::Objects(Object::Register(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
-        NodeType::Command => match parse_node_to_shape(node, parent_node_name, diagnostics) {
+        NodeType::Command => match parse_node_to_shape(node, parent_node_name, ast, diagnostics) {
             Ok((val, siblings)) => LowerResult::Objects(Object::Command(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
-        NodeType::Buffer => match parse_node_to_shape(node, parent_node_name, diagnostics) {
+        NodeType::Buffer => match parse_node_to_shape(node, parent_node_name, ast, diagnostics) {
             Ok((val, siblings)) => LowerResult::Objects(Object::Buffer(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
-        NodeType::FieldSet => match parse_node_to_shape(node, parent_node_name, diagnostics) {
+        NodeType::FieldSet => match parse_node_to_shape(node, parent_node_name, ast, diagnostics) {
             Ok((val, siblings)) => LowerResult::Objects(Object::FieldSet(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
-        NodeType::Enum => match parse_node_to_shape(node, parent_node_name, diagnostics) {
+        NodeType::Enum => match parse_node_to_shape(node, parent_node_name, ast, diagnostics) {
             Ok((val, siblings)) => LowerResult::Objects(Object::Enum(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
-        NodeType::Extern => match parse_node_to_shape(node, parent_node_name, diagnostics) {
+        NodeType::Extern => match parse_node_to_shape(node, parent_node_name, ast, diagnostics) {
             Ok((val, siblings)) => LowerResult::Objects(Object::Extern(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
-        NodeType::Field => match parse_node_to_shape(node, parent_node_name, diagnostics) {
+        NodeType::Field => match parse_node_to_shape(node, parent_node_name, ast, diagnostics) {
             Ok((val, siblings)) => LowerResult::Objects(Object::Field(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
@@ -133,6 +135,7 @@ fn lower_node(
 fn parse_node_to_shape<S: Shape>(
     node: &Node,
     parent_node_name: Option<Ident>,
+    ast: &Ast,
     diagnostics: &mut Diagnostics,
 ) -> Result<(S, Vec<Object>), Vec<Object>> {
     let mut target = S::default();
@@ -245,10 +248,11 @@ fn parse_node_to_shape<S: Shape>(
                     }
                     device_driver_parser::TypeConversion::Subnode(sub_node) => {
                         let sub_node = lower_node(
-                            sub_node,
+                            ast.node(*sub_node),
                             Some(NodeType::Field.with_span(node.node_type.span)),
                             Some(node.name),
                             &[NodeType::Enum, NodeType::Extern],
+                            ast,
                             diagnostics,
                         );
 
@@ -359,7 +363,7 @@ fn parse_node_to_shape<S: Shape>(
                 valid_expression_values: property_info
                     .allowed_expression_types
                     .iter()
-                    .map(|e| e.get_human_string())
+                    .map(|e| e.print_formatted(ast))
                     .collect(),
             });
             continue;
@@ -371,6 +375,7 @@ fn parse_node_to_shape<S: Shape>(
             node,
             diagnostics,
             sibling_objects: &mut sibling_objects,
+            ast,
         });
 
         if !property_info.multiple_allowed {
@@ -382,7 +387,7 @@ fn parse_node_to_shape<S: Shape>(
         *target.properties_span() = node
             .sub_nodes
             .iter()
-            .map(|n| n.span)
+            .map(|n| ast.node(*n).span)
             .reduce(|acc, val| acc.to(val));
     }
 
@@ -443,6 +448,7 @@ fn parse_node_to_shape<S: Shape>(
             node,
             diagnostics,
             sibling_objects: &mut sibling_objects,
+            ast,
         });
 
         if !property_info.multiple_allowed {
@@ -487,7 +493,7 @@ fn parse_node_to_shape<S: Shape>(
                 example_values: missing_info
                     .allowed_expression_types
                     .iter()
-                    .map(|e| e.get_human_string())
+                    .map(|e| e.print_formatted(ast))
                     .collect(),
                 properties_span: if short {
                     Some(*target.short_properties_span())
@@ -504,10 +510,11 @@ fn parse_node_to_shape<S: Shape>(
     if let Some(supported_subnodes) = S::supported_subnodes() {
         for sub_node in node.sub_nodes.iter() {
             let sub_node_result = lower_node(
-                sub_node,
+                ast.node(*sub_node),
                 Some(S::NODE_TYPE.with_span(node.node_type.span)),
                 None,
                 supported_subnodes,
+                ast,
                 diagnostics,
             );
 
@@ -525,7 +532,7 @@ fn parse_node_to_shape<S: Shape>(
     } else if let Some(subnode) = node.sub_nodes.first() {
         diagnostics.add(InvalidSubnode {
             node_type: S::NODE_TYPE.with_span(node.node_type.span),
-            subnode: subnode.span,
+            subnode: ast.node(*subnode).span,
         });
     }
 
@@ -622,6 +629,7 @@ struct SetterArgs<'a, T: ?Sized> {
     node: &'a Node,
     diagnostics: &'a mut Diagnostics,
     sibling_objects: &'a mut Vec<Object>,
+    ast: &'a Ast,
 }
 
 #[derive(Clone, Copy)]

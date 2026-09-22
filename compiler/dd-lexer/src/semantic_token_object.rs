@@ -36,18 +36,21 @@ impl<'src> Token<'src> {
 
 /// An object that can be turned into semantic tokens
 pub trait SemanticTokenObject {
-    fn to_tokens_in(&self, tokens: &mut Vec<SemanticToken<'_>>);
-    fn to_tokens(&self) -> Vec<SemanticToken<'_>> {
+    type Context;
+
+    fn to_tokens_in(&self, ctx: &Self::Context, tokens: &mut Vec<SemanticToken<'_>>);
+    fn to_tokens(&self, ctx: &Self::Context) -> Vec<SemanticToken<'_>> {
         let mut tokens = Vec::new();
-        self.to_tokens_in(&mut tokens);
+        self.to_tokens_in(ctx, &mut tokens);
         tokens
     }
     fn to_respanned_tokens<'src>(
         &self,
         source: &'src str,
         object_span: Span,
+        ctx: &Self::Context,
     ) -> Vec<Spanned<SemanticToken<'src>>> {
-        let self_tokens = self.to_tokens();
+        let self_tokens = self.to_tokens(ctx);
         let mut self_index = 0;
 
         let source_tokens = super::lex(&source[std::ops::Range::from(object_span)]);
@@ -97,19 +100,25 @@ pub trait SemanticTokenObject {
 }
 
 impl SemanticTokenObject for Access {
-    fn to_tokens_in(&self, tokens: &mut Vec<SemanticToken<'_>>) {
+    type Context = ();
+
+    fn to_tokens_in(&self, _ctx: &Self::Context, tokens: &mut Vec<SemanticToken<'_>>) {
         tokens.push(Token::Access(*self).with_semantics(TokenType::Access, &[]));
     }
 }
 
 impl SemanticTokenObject for ByteOrder {
-    fn to_tokens_in(&self, tokens: &mut Vec<SemanticToken<'_>>) {
+    type Context = ();
+
+    fn to_tokens_in(&self, _ctx: &Self::Context, tokens: &mut Vec<SemanticToken<'_>>) {
         tokens.push(Token::ByteOrder(*self).with_semantics(TokenType::ByteOrder, &[]));
     }
 }
 
 impl SemanticTokenObject for BaseType {
-    fn to_tokens_in(&self, tokens: &mut Vec<SemanticToken<'_>>) {
+    type Context = ();
+
+    fn to_tokens_in(&self, _ctx: &Self::Context, tokens: &mut Vec<SemanticToken<'_>>) {
         tokens.push(
             Token::BaseType(*self)
                 .with_semantics(TokenType::Type, &[TokenModifier::DefaultLibrary]),
@@ -118,7 +127,9 @@ impl SemanticTokenObject for BaseType {
 }
 
 impl SemanticTokenObject for Integer {
-    fn to_tokens_in(&self, tokens: &mut Vec<SemanticToken<'_>>) {
+    type Context = ();
+
+    fn to_tokens_in(&self, _ctx: &Self::Context, tokens: &mut Vec<SemanticToken<'_>>) {
         tokens.push(
             Token::Integer(*self).with_semantics(TokenType::Type, &[TokenModifier::DefaultLibrary]),
         );
@@ -126,7 +137,9 @@ impl SemanticTokenObject for Integer {
 }
 
 impl SemanticTokenObject for AddressMode {
-    fn to_tokens_in(&self, tokens: &mut Vec<SemanticToken<'_>>) {
+    type Context = ();
+
+    fn to_tokens_in(&self, _ctx: &Self::Context, tokens: &mut Vec<SemanticToken<'_>>) {
         tokens.push(Token::AddressMode(*self).with_semantics(TokenType::AddressMode, &[]));
     }
 }

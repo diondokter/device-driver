@@ -179,12 +179,16 @@ impl LanguageServer for Backend {
             return Err(Error::invalid_params(params.text_document.uri.to_string()));
         };
 
-        let Some(root_node) = document.ast().root_node.as_ref() else {
+        let Some(root_node) = document.ast().root_node else {
             return Ok(None);
         };
 
-        let root_node_symbol =
-            document_symbol::get_node_symbol(root_node, document.source(), document.mir());
+        let root_node_symbol = document_symbol::get_node_symbol(
+            document.ast().node(root_node),
+            document.source(),
+            document.ast(),
+            document.mir(),
+        );
 
         let elapsed = start.elapsed();
         self.client
@@ -208,12 +212,8 @@ impl LanguageServer for Backend {
             return Err(Error::invalid_params(params.text_document.uri.to_string()));
         };
 
-        let Some(root_node) = document.ast().root_node.as_ref() else {
-            return Ok(None);
-        };
-
         let hints = inlay_hints::get_hints(
-            root_node,
+            document.ast(),
             params.range.to_span(document.source()),
             document.source(),
             document.mir(),
@@ -241,11 +241,16 @@ impl LanguageServer for Backend {
             return Err(Error::invalid_params(params.text_document.uri.to_string()));
         };
 
-        let Some(root_node) = document.ast().root_node.as_ref() else {
+        let Some(root_node) = document.ast().root_node else {
             return Ok(None);
         };
 
-        let tokens = semantic_tokens::calculate_semantic_tokens(root_node, document.source(), None);
+        let tokens = semantic_tokens::calculate_semantic_tokens(
+            root_node,
+            document.source(),
+            document.ast(),
+            None,
+        );
 
         let elapsed = start.elapsed();
         self.client
@@ -277,8 +282,9 @@ impl LanguageServer for Backend {
         };
 
         let tokens = semantic_tokens::calculate_semantic_tokens(
-            root_node,
+            *root_node,
             document.source(),
+            document.ast(),
             Some(params.range),
         );
 

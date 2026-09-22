@@ -4,12 +4,12 @@ use std::str::FromStr;
 
 use device_driver_common::{interner::Istr, specifiers::NodeType};
 use device_driver_mir::model::Manifest;
-use device_driver_parser::Node;
+use device_driver_parser::{Ast, Node};
 use tower_lsp_server::ls_types::{DocumentSymbol, SymbolKind};
 
 use crate::ToRange;
 
-pub fn get_node_symbol(node: &Node, source: &str, mir: &Manifest) -> DocumentSymbol {
+pub fn get_node_symbol(node: &Node, source: &str, ast: &Ast, mir: &Manifest) -> DocumentSymbol {
     let kind = node_type_symbol_kind(node.node_type.val);
 
     let properties = node.properties.iter().map(|prop| DocumentSymbol {
@@ -27,7 +27,7 @@ pub fn get_node_symbol(node: &Node, source: &str, mir: &Manifest) -> DocumentSym
         children: prop
             .expression
             .as_sub_node()
-            .map(|sub_node| vec![get_node_symbol(sub_node, source, mir)]),
+            .map(|sub_node| vec![get_node_symbol(ast.node(sub_node), source, ast, mir)]),
     });
 
     let return_node = node
@@ -39,12 +39,12 @@ pub fn get_node_symbol(node: &Node, source: &str, mir: &Manifest) -> DocumentSym
                 .and_then(|conversion| conversion.as_subnode())
         })
         .into_iter()
-        .map(|node| get_node_symbol(node, source, mir));
+        .map(|node| get_node_symbol(ast.node(node), source, ast, mir));
 
     let sub_nodes = node
         .sub_nodes
         .iter()
-        .map(|node| get_node_symbol(node, source, mir));
+        .map(|node| get_node_symbol(ast.node(*node), source, ast, mir));
 
     let node_name = if node.name.is_auto() {
         // If the name is auto, we still want to display the real name instead of just `_`
