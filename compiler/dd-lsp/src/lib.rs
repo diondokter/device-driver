@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use device_driver_common::{span::Span, specifiers::VariantNames};
+use device_driver_common::{instant::Instant, span::Span, specifiers::VariantNames};
 use device_driver_diagnostics::Severity;
 use device_driver_lexer::{TokenModifier, TokenType};
 use tokio::sync::RwLock;
@@ -45,6 +45,8 @@ impl Backend {
     }
 
     pub async fn update_document(&self, uri: Uri, source: String, version: i32) {
+        let start = Instant::now();
+
         let documents = self.documents.read().await;
 
         if let Some(document) = documents.get(&uri)
@@ -88,6 +90,14 @@ impl Backend {
                 self.client.log_message(MessageType::ERROR, e).await;
             }
         }
+
+        let elapsed = start.elapsed();
+        self.client
+            .log_message(
+                MessageType::LOG,
+                format!("update_document took {}ms", elapsed.as_secs_f32() * 1000.0),
+            )
+            .await;
     }
 }
 
@@ -162,6 +172,8 @@ impl LanguageServer for Backend {
         &self,
         params: tower_lsp_server::ls_types::DocumentSymbolParams,
     ) -> tower_lsp_server::jsonrpc::Result<Option<DocumentSymbolResponse>> {
+        let start = Instant::now();
+
         let guard = self.documents.read().await;
         let Some(document) = guard.get(&params.text_document.uri) else {
             return Err(Error::invalid_params(params.text_document.uri.to_string()));
@@ -173,6 +185,15 @@ impl LanguageServer for Backend {
 
         let root_node_symbol =
             document_symbol::get_node_symbol(root_node, document.source(), document.mir());
+
+        let elapsed = start.elapsed();
+        self.client
+            .log_message(
+                MessageType::LOG,
+                format!("document_symbol took {}ms", elapsed.as_secs_f32() * 1000.0),
+            )
+            .await;
+
         Ok(Some(DocumentSymbolResponse::Nested(vec![root_node_symbol])))
     }
 
@@ -180,6 +201,8 @@ impl LanguageServer for Backend {
         &self,
         params: tower_lsp_server::ls_types::InlayHintParams,
     ) -> tower_lsp_server::jsonrpc::Result<Option<Vec<InlayHint>>> {
+        let start = Instant::now();
+
         let guard = self.documents.read().await;
         let Some(document) = guard.get(&params.text_document.uri) else {
             return Err(Error::invalid_params(params.text_document.uri.to_string()));
@@ -196,6 +219,14 @@ impl LanguageServer for Backend {
             document.mir(),
         );
 
+        let elapsed = start.elapsed();
+        self.client
+            .log_message(
+                MessageType::LOG,
+                format!("inlay_hint took {}ms", elapsed.as_secs_f32() * 1000.0),
+            )
+            .await;
+
         Ok(Some(hints))
     }
 
@@ -203,6 +234,8 @@ impl LanguageServer for Backend {
         &self,
         params: tower_lsp_server::ls_types::SemanticTokensParams,
     ) -> tower_lsp_server::jsonrpc::Result<Option<SemanticTokensResult>> {
+        let start = Instant::now();
+
         let guard = self.documents.read().await;
         let Some(document) = guard.get(&params.text_document.uri) else {
             return Err(Error::invalid_params(params.text_document.uri.to_string()));
@@ -212,19 +245,28 @@ impl LanguageServer for Backend {
             return Ok(None);
         };
 
+        let tokens = semantic_tokens::calculate_semantic_tokens(root_node, document.source(), None);
+
+        let elapsed = start.elapsed();
         self.client
-            .log_message(MessageType::INFO, format!("Got: {params:?}"))
+            .log_message(
+                MessageType::LOG,
+                format!(
+                    "semantic_tokens_full took {}ms",
+                    elapsed.as_secs_f32() * 1000.0
+                ),
+            )
             .await;
 
-        Ok(Some(SemanticTokensResult::Tokens(
-            semantic_tokens::calculate_semantic_tokens(root_node, document.source(), None),
-        )))
+        Ok(Some(SemanticTokensResult::Tokens(tokens)))
     }
 
     async fn semantic_tokens_range(
         &self,
         params: tower_lsp_server::ls_types::SemanticTokensRangeParams,
     ) -> tower_lsp_server::jsonrpc::Result<Option<SemanticTokensRangeResult>> {
+        let start = Instant::now();
+
         let guard = self.documents.read().await;
         let Some(document) = guard.get(&params.text_document.uri) else {
             return Err(Error::invalid_params(params.text_document.uri.to_string()));
@@ -234,13 +276,24 @@ impl LanguageServer for Backend {
             return Ok(None);
         };
 
-        Ok(Some(SemanticTokensRangeResult::Tokens(
-            semantic_tokens::calculate_semantic_tokens(
-                root_node,
-                document.source(),
-                Some(params.range),
-            ),
-        )))
+        let tokens = semantic_tokens::calculate_semantic_tokens(
+            root_node,
+            document.source(),
+            Some(params.range),
+        );
+
+        let elapsed = start.elapsed();
+        self.client
+            .log_message(
+                MessageType::LOG,
+                format!(
+                    "semantic_tokens_range took {}ms",
+                    elapsed.as_secs_f32() * 1000.0
+                ),
+            )
+            .await;
+
+        Ok(Some(SemanticTokensRangeResult::Tokens(tokens)))
     }
 
     async fn shutdown(&self) -> tower_lsp_server::jsonrpc::Result<()> {
