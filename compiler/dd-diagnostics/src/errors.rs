@@ -1008,7 +1008,7 @@ impl Diagnostic for UnspecifiedByteOrder {
             )
             .elements( self.properties_span.map(|properties_span| {
                 Snippet::source(source).path(path).patch(
-                    Patch::new(properties_span.start..properties_span.start, "byte-order: LE,\n")
+                    Patch::new(properties_span.collapse_to_start().into(), "byte-order: LE,\n")
                 )}
             )),
             Group::with_title(Level::NOTE.secondary_title(
@@ -1058,9 +1058,9 @@ impl Diagnostic for UnspecifiedAccess {
                 .elements(self.properties_span.map(|properties_span| {
                     Snippet::source(source).path(path).patch(Patch::new(
                         if self.short_property {
-                            properties_span.end..properties_span.end
+                            properties_span.collapse_to_end().into()
                         } else {
-                            properties_span.start..properties_span.start
+                            properties_span.collapse_to_start().into()
                         },
                         if self.short_property {
                             " RW"
@@ -1458,7 +1458,7 @@ impl Diagnostic for AddressTypeUndefined {
             ).elements(
                 self.properties_span.map(|properties_span| {
                     Snippet::source(source).path(path).patch(
-                        Patch::new(properties_span.start..properties_span.start, format!("{}-address-type: u16\n", self.object_type))
+                        Patch::new(properties_span.collapse_to_start().into(), format!("{}-address-type: u16\n", self.object_type))
                     )
                 })
             ),
@@ -1688,8 +1688,8 @@ which in practice means the word-boundaries should always include those characte
                 invalid_char: character,
             } if !self.identifier.is_empty() => AnnotationKind::Primary
                 .span(
-                    self.identifier.start + offset
-                        ..self.identifier.start + offset + character.len_utf8(),
+                    self.identifier.start as usize + offset
+                        ..self.identifier.start as usize + offset + character.len_utf8(),
                 )
                 .label(format!(
                     "`{character}` (or `{}`) is not a valid character",
@@ -2053,9 +2053,9 @@ impl Diagnostic for MissingRequiredProperty {
                 self.properties_span.map(|properties_span| {
                     Snippet::source(source).path(path).patch(Patch::new(
                         if self.short {
-                            properties_span.end..properties_span.end
+                            properties_span.collapse_to_end().into()
                         } else {
-                            properties_span.start..properties_span.start
+                            properties_span.collapse_to_start().into()
                         },
                         if self.short {
                             format!(" {example_value}")

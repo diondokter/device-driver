@@ -50,7 +50,7 @@ pub trait SemanticTokenObject {
         let self_tokens = self.to_tokens();
         let mut self_index = 0;
 
-        let source_tokens = super::lex(&source[object_span.start..object_span.end]);
+        let source_tokens = super::lex(&source[std::ops::Range::from(object_span)]);
         let mut semantic_source_tokens = Vec::with_capacity(source_tokens.len());
 
         let ignore = |token: &Token| matches!(token, Token::Comma);

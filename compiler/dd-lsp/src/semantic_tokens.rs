@@ -12,7 +12,7 @@ pub fn calculate_semantic_tokens(
 ) -> SemanticTokens {
     let span_limit = range.map(|range| range.to_span(source)).unwrap_or(Span {
         start: 0,
-        end: usize::MAX,
+        end: u32::MAX,
     });
 
     let semantic_tokens = node
