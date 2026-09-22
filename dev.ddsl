@@ -119,7 +119,7 @@ manifest foo {
                     /// Antenna switch signal used for antenna diversity
                     AntennaSwitch: 13,
                     /// Valid preamble detected flag
-                    ValidPreableDetected: 14,
+                    ValidPreambleDetected: 14,
                     /// Sync word detected flag
                     SyncWordDetected: 15,
                     /// RSSI above threshold (same indication of CS register)
@@ -609,7 +609,7 @@ manifest foo {
                     normal: 0,
                     direct_through_fifo: 1,
                     direct_through_gpio: 2,
-                    pn9: 3,
+                    on9: 3,
                 },
                 /// - In tx mode:
                 ///  - false: select the primary SYNC word
@@ -1802,7 +1802,7 @@ manifest foo {
                 address: 0x80,
                 fields: fieldset _ {
                     size-bytes: 1,
-                    /// Determines the point at which the sound ceases to decay and chages to a sound having a constant level.
+                    /// Determines the point at which the sound ceases to decay and changes to a sound having a constant level.
                     /// The sustain level is expressed as a fraction of the maximum level. 15 is the softest and 0 is the loudest sustain level.
                     ///
                     /// *Note: the Sustain-bit in the register 20-35 must be set for this to have an effect.
