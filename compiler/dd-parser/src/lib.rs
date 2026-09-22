@@ -1,4 +1,4 @@
-use std::{borrow::Cow, fmt::Display, num::NonZeroU32};
+use std::{borrow::Cow, fmt::Display, num::NonZeroU32, sync::LazyLock};
 
 use chumsky::{
     IterParser, Parser,
@@ -568,23 +568,17 @@ impl SemanticTokenObject for RepeatSource {
 pub struct Ident {
     pub val: Istr,
     pub span: Span,
-    is_auto: bool,
 }
 
 impl Ident {
     pub const fn new(val: Istr, span: Span) -> Self {
-        Self {
-            val,
-            span,
-            is_auto: false,
-        }
+        Self { val, span }
     }
 
     pub const fn new_no_span(val: Istr) -> Self {
         Self {
             val,
             span: Span::empty(),
-            is_auto: false,
         }
     }
 
@@ -592,13 +586,13 @@ impl Ident {
         Self {
             val: "_".intern(),
             span,
-            is_auto: true,
         }
     }
 
     /// Returns true if the identifier was specified using an underscore token
     pub fn is_auto(&self) -> bool {
-        self.is_auto
+        static UNDERSCORE: LazyLock<Istr> = LazyLock::new(|| "_".intern());
+        self.val == *UNDERSCORE
     }
 }
 
