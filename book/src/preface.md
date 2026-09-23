@@ -73,13 +73,18 @@ V2:
 - [S2-LP radio](https://github.com/diondokter/s2lp)
 - [TI ADC Bus Expanders](https://github.com/activexray/ti-adc-expander)
 - [iC-Haus iC-MD 48bit quadrature counter](https://github.com/trappitsch/ic-md)
+- [X-Powers AXP192 Power Management IC](https://github.com/okhsunrog/axp192-dd)
+- [X-Powers AXP2101 Power Management IC](https://github.com/okhsunrog/axp2101-dd)
+- [ONSEMI FUSB302B USB-PD PHY](https://github.com/okhsunrog/fusb302b)
+- [TI DRV8301 three-phase gate driver](https://github.com/okhsunrog/drv8301-dd)
+- [TI INA3221 triple-channel current/voltage monitor](https://github.com/okhsunrog/ina3221-dd)
+- [FocalTech FT6336U capacitive touch controller](https://github.com/okhsunrog/ft6336u-dd)
+- [NXP PCF8563 real-time clock](https://github.com/okhsunrog/pcf8563-dd)
 
 V1:
 
 - [Nordic nPM1300 Power Management IC](https://github.com/thermigo/npm1300-rs)
 - [iqs323 inductive/capacitive sensing controller](https://github.com/tactile-eng/iqs323-driver)
-- [AXP192 Power Management IC](https://github.com/okhsunrog/axp192-dd)
-- [ONSEMI FUSB302B USB-PD PHY](https://github.com/okhsunrog/fusb302b)
 - [STMicroelectronics LIS2DE12 3-axis accelerometer](https://github.com/leftger/lis2de12)
 - [ISSI IS25LP128F 128Mbit SPI NOR Flash](https://github.com/leftger/is25lp128f)
 - [ON Semiconductor CAT25040 4kbit SPI EEPROM](https://github.com/cesardtamayo/cat25040)
