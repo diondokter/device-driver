@@ -4,43 +4,38 @@ use device_driver_common::{
     span::Span,
     specifiers::{BaseType, NodeType},
 };
-use device_driver_mir::model::Manifest;
 use device_driver_parser::{Ast, AstArena, Expression, Node};
 use tower_lsp_server::ls_types::{
     InlayHint, InlayHintKind, InlayHintLabel, InlayHintTooltip, TextEdit,
 };
 
-use crate::ToRange;
+use crate::document::Document;
 
-pub(crate) fn get_hints(
-    ast: &Ast,
-    visible_span: Span,
-    source: &str,
-    mir: &Manifest,
-) -> Vec<InlayHint> {
+pub(crate) fn get_hints(ast: &Ast, visible_span: Span, document: &Document) -> Vec<InlayHint> {
     ast.nodes()
         .iter()
         .filter(|node| visible_span.overlaps(node.span))
         .flat_map(|node| {
-            auto_name_hint(node, source, mir)
+            auto_name_hint(node, document)
                 .into_iter()
-                .chain(auto_base_type_hint(node, source, mir))
-                .chain(enum_variant_hints(node, source, mir).into_iter().flatten())
+                .chain(auto_base_type_hint(node, document))
+                .chain(enum_variant_hints(node, document).into_iter().flatten())
         })
         .collect()
 }
 
-fn auto_name_hint(node: &Node, source: &str, mir: &Manifest) -> Option<InlayHint> {
+fn auto_name_hint(node: &Node, document: &Document) -> Option<InlayHint> {
     if !node.name.is_auto() {
         return None;
     }
 
-    let true_node_name = mir
+    let true_node_name = document
+        .mir()
         .iter_objects()
         .find(|object| object.span() == node.span)
         .map(|object| object.name().original().as_str())?;
 
-    let node_name_range = node.name.span.to_range(source);
+    let node_name_range = document.translate_span(node.name.span);
 
     Some(InlayHint {
         position: node_name_range.end,
@@ -60,7 +55,7 @@ fn auto_name_hint(node: &Node, source: &str, mir: &Manifest) -> Option<InlayHint
     })
 }
 
-fn auto_base_type_hint(node: &Node, source: &str, mir: &Manifest) -> Option<InlayHint> {
+fn auto_base_type_hint(node: &Node, document: &Document) -> Option<InlayHint> {
     // Optimization, skip nodes without base types that are not fieldsets
     if !matches!(
         NodeType::from_str(node.node_type.val.as_str()),
@@ -72,30 +67,31 @@ fn auto_base_type_hint(node: &Node, source: &str, mir: &Manifest) -> Option<Inla
     // Do two searches at once:
     // - Search for the object (or field) that represents the current node
     // - Get its base type if that's supported
-    let (mir_base_type, short_properties_span) = mir.iter_objects().find_map(|object| {
-        if object.span() == node.span {
-            Some(
-                object
-                    .base_type()
-                    .map(|bt| (bt, object.short_properties_span())),
-            )
-        } else if let Some(fs) = object.as_field_set() {
-            fs.fields.iter().find_map(|field| {
-                if field.span == node.span {
-                    Some(Some((&field.base_type, field.short_properties_span)))
-                } else {
-                    None
-                }
-            })
-        } else {
-            None
-        }
-    })??;
+    let (mir_base_type, short_properties_span) =
+        document.mir().iter_objects().find_map(|object| {
+            if object.span() == node.span {
+                Some(
+                    object
+                        .base_type()
+                        .map(|bt| (bt, object.short_properties_span())),
+                )
+            } else if let Some(fs) = object.as_field_set() {
+                fs.fields.iter().find_map(|field| {
+                    if field.span == node.span {
+                        Some(Some((&field.base_type, field.short_properties_span)))
+                    } else {
+                        None
+                    }
+                })
+            } else {
+                None
+            }
+        })??;
 
     match node.type_specifier.as_ref() {
         Some(ts) => match ts.base_type.value {
             BaseType::Unspecified => {
-                let base_type_range = ts.base_type.span.to_range(source);
+                let base_type_range = document.translate_span(ts.base_type.span);
 
                 Some(InlayHint {
                     position: base_type_range.end,
@@ -115,7 +111,7 @@ fn auto_base_type_hint(node: &Node, source: &str, mir: &Manifest) -> Option<Inla
                 })
             }
             BaseType::Int | BaseType::Uint => {
-                let base_type_range = ts.base_type.span.to_range(source);
+                let base_type_range = document.translate_span(ts.base_type.span);
 
                 Some(InlayHint {
                     position: base_type_range.end,
@@ -144,7 +140,8 @@ fn auto_base_type_hint(node: &Node, source: &str, mir: &Manifest) -> Option<Inla
             BaseType::FixedSize(_) | BaseType::Bool => None,
         },
         None => {
-            let type_conversion_range = short_properties_span.collapse_to_end().to_range(source);
+            let type_conversion_range =
+                document.translate_span(short_properties_span.collapse_to_end());
 
             Some(InlayHint {
                 position: type_conversion_range.start,
@@ -166,7 +163,7 @@ fn auto_base_type_hint(node: &Node, source: &str, mir: &Manifest) -> Option<Inla
     }
 }
 
-fn enum_variant_hints(node: &Node, source: &str, mir: &Manifest) -> Option<Vec<InlayHint>> {
+fn enum_variant_hints(node: &Node, document: &Document) -> Option<Vec<InlayHint>> {
     if !matches!(
         NodeType::from_str(node.node_type.val.as_str()),
         Ok(NodeType::Enum)
@@ -174,7 +171,8 @@ fn enum_variant_hints(node: &Node, source: &str, mir: &Manifest) -> Option<Vec<I
         return None;
     }
 
-    let enum_value = mir
+    let enum_value = document
+        .mir()
         .iter_enums()
         .find(|enum_value| enum_value.span == node.span)?;
 
@@ -197,7 +195,7 @@ fn enum_variant_hints(node: &Node, source: &str, mir: &Manifest) -> Option<Vec<I
             _ => continue,
         };
 
-        let expression_range = property.expression.span.to_range(source);
+        let expression_range = document.translate_span(property.expression.span);
 
         hints.push(InlayHint {
             position: expression_range.end,
