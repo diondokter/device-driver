@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use device_driver_common::{instant::Instant, span::Span, specifiers::VariantNames};
+use device_driver_common::{instant::Instant, specifiers::VariantNames};
 use device_driver_diagnostics::Severity;
 use device_driver_lexer::{TokenModifier, TokenType};
 use tokio::sync::RwLock;
@@ -9,10 +9,10 @@ use tower_lsp_server::{
     jsonrpc::Error,
     ls_types::{
         DiagnosticSeverity, DidOpenTextDocumentParams, DocumentSymbolResponse, InitializeResult,
-        InlayHint, MessageType, OneOf, Position, Range, SemanticTokensFullOptions,
-        SemanticTokensLegend, SemanticTokensOptions, SemanticTokensRangeResult,
-        SemanticTokensResult, SemanticTokensServerCapabilities, ServerCapabilities,
-        TextDocumentSyncCapability, TextDocumentSyncKind, Uri,
+        InlayHint, MessageType, OneOf, SemanticTokensFullOptions, SemanticTokensLegend,
+        SemanticTokensOptions, SemanticTokensRangeResult, SemanticTokensResult,
+        SemanticTokensServerCapabilities, ServerCapabilities, TextDocumentSyncCapability,
+        TextDocumentSyncKind, Uri,
     },
 };
 
@@ -62,7 +62,7 @@ impl Backend {
                 let diags = diagnostics
                     .iter()
                     .map(|diagnostic| tower_lsp_server::ls_types::Diagnostic {
-                        range: diagnostic.primary_span().to_range(document.source()),
+                        range: document.translate_span(diagnostic.primary_span()),
                         severity: match diagnostic.severity() {
                             Severity::Error => Some(DiagnosticSeverity::ERROR),
                             Severity::Warning => Some(DiagnosticSeverity::WARNING),
@@ -183,12 +183,8 @@ impl LanguageServer for Backend {
             return Ok(None);
         };
 
-        let root_node_symbol = document_symbol::get_node_symbol(
-            document.ast().node(root_node),
-            document.source(),
-            document.ast(),
-            document.mir(),
-        );
+        let root_node_symbol =
+            document_symbol::get_node_symbol(document.ast().node(root_node), document);
 
         let elapsed = start.elapsed();
         self.client
@@ -214,9 +210,8 @@ impl LanguageServer for Backend {
 
         let hints = inlay_hints::get_hints(
             document.ast(),
-            params.range.to_span(document.source()),
-            document.source(),
-            document.mir(),
+            document.translate_range(params.range),
+            document,
         );
 
         let elapsed = start.elapsed();
@@ -245,12 +240,7 @@ impl LanguageServer for Backend {
             return Ok(None);
         };
 
-        let tokens = semantic_tokens::calculate_semantic_tokens(
-            root_node,
-            document.source(),
-            document.ast(),
-            None,
-        );
+        let tokens = semantic_tokens::calculate_semantic_tokens(root_node, document, None);
 
         let elapsed = start.elapsed();
         self.client
@@ -281,12 +271,8 @@ impl LanguageServer for Backend {
             return Ok(None);
         };
 
-        let tokens = semantic_tokens::calculate_semantic_tokens(
-            *root_node,
-            document.source(),
-            document.ast(),
-            Some(params.range),
-        );
+        let tokens =
+            semantic_tokens::calculate_semantic_tokens(*root_node, document, Some(params.range));
 
         let elapsed = start.elapsed();
         self.client
@@ -304,35 +290,5 @@ impl LanguageServer for Backend {
 
     async fn shutdown(&self) -> tower_lsp_server::jsonrpc::Result<()> {
         Ok(())
-    }
-}
-
-trait ToRange {
-    fn to_range(&self, source: &str) -> Range;
-}
-
-impl ToRange for Span {
-    fn to_range(&self, source: &str) -> Range {
-        let span = self.as_line_column(source);
-        Range::new(
-            Position::new(span.0.0, span.0.1),
-            Position::new(span.1.0, span.1.1),
-        )
-    }
-}
-
-trait ToSpan {
-    fn to_span(&self, source: &str) -> Span;
-}
-
-impl ToSpan for Range {
-    fn to_span(&self, source: &str) -> Span {
-        Span::from_line_column(
-            source,
-            self.start.line,
-            self.start.character,
-            self.end.line,
-            self.end.character,
-        )
     }
 }

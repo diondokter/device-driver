@@ -3,13 +3,15 @@
 use std::str::FromStr;
 
 use device_driver_common::{interner::Istr, specifiers::NodeType};
-use device_driver_mir::model::Manifest;
-use device_driver_parser::{Ast, Node};
+use device_driver_parser::Node;
 use tower_lsp_server::ls_types::{DocumentSymbol, SymbolKind};
 
-use crate::ToRange;
+use crate::document::Document;
 
-pub fn get_node_symbol(node: &Node, source: &str, ast: &Ast, mir: &Manifest) -> DocumentSymbol {
+pub fn get_node_symbol(node: &Node, document: &Document) -> DocumentSymbol {
+    let ast = document.ast();
+    let mir = document.mir();
+
     let kind = node_type_symbol_kind(node.node_type.val);
 
     let properties = node.properties.iter().map(|prop| DocumentSymbol {
@@ -22,12 +24,12 @@ pub fn get_node_symbol(node: &Node, source: &str, ast: &Ast, mir: &Manifest) -> 
         },
         tags: None,
         deprecated: None,
-        range: prop.span.to_range(source),
-        selection_range: prop.name.span.to_range(source),
+        range: document.translate_span(prop.span),
+        selection_range: document.translate_span(prop.name.span),
         children: prop
             .expression
             .as_sub_node()
-            .map(|sub_node| vec![get_node_symbol(ast.node(sub_node), source, ast, mir)]),
+            .map(|sub_node| vec![get_node_symbol(ast.node(sub_node), document)]),
     });
 
     let return_node = node
@@ -39,12 +41,12 @@ pub fn get_node_symbol(node: &Node, source: &str, ast: &Ast, mir: &Manifest) -> 
                 .and_then(|conversion| conversion.as_subnode())
         })
         .into_iter()
-        .map(|node| get_node_symbol(ast.node(node), source, ast, mir));
+        .map(|node| get_node_symbol(ast.node(node), document));
 
     let sub_nodes = node
         .sub_nodes
         .iter()
-        .map(|node| get_node_symbol(ast.node(*node), source, ast, mir));
+        .map(|node| get_node_symbol(ast.node(*node), document));
 
     let node_name = if node.name.is_auto() {
         // If the name is auto, we still want to display the real name instead of just `_`
@@ -65,8 +67,8 @@ pub fn get_node_symbol(node: &Node, source: &str, ast: &Ast, mir: &Manifest) -> 
         kind: node_type_symbol_kind(node.node_type.val),
         tags: None,
         deprecated: None,
-        range: node.span.to_range(source),
-        selection_range: node.name.span.to_range(source),
+        range: document.translate_span(node.span),
+        selection_range: document.translate_span(node.name.span),
         children: Some(properties.chain(return_node).chain(sub_nodes).collect()),
     }
 }

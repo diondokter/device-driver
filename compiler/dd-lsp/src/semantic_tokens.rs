@@ -1,25 +1,28 @@
 use device_driver_common::span::Span;
 use device_driver_lexer::semantic_token_object::SemanticTokenObject;
-use device_driver_parser::{Ast, NodeId};
+use device_driver_parser::NodeId;
 use tower_lsp_server::ls_types::{Position, Range, SemanticToken, SemanticTokens};
 
-use crate::{ToRange, ToSpan};
+use crate::document::Document;
 
 pub fn calculate_semantic_tokens(
     root_node: NodeId,
-    source: &str,
-    ast: &Ast,
+    document: &Document,
     range: Option<Range>,
 ) -> SemanticTokens {
-    let span_limit = range.map(|range| range.to_span(source)).unwrap_or(Span {
-        start: 0,
-        end: u32::MAX,
-    });
+    let ast = document.ast();
+
+    let span_limit = range
+        .map(|range| document.translate_range(range))
+        .unwrap_or(Span {
+            start: 0,
+            end: u32::MAX,
+        });
 
     let root_node = ast.node(root_node);
 
     let semantic_tokens = root_node
-        .to_respanned_tokens(source, root_node.span, ast)
+        .to_respanned_tokens(document.source(), root_node.span, ast)
         .into_iter()
         .skip_while(|token| !span_limit.overlaps(token.span))
         .take_while(|token| span_limit.overlaps(token.span))
@@ -30,7 +33,7 @@ pub fn calculate_semantic_tokens(
                 character: 0,
             },
             |previous_token_start, token| {
-                let current_token_range = token.span.to_range(source);
+                let current_token_range = document.translate_span(token.span);
 
                 let delta_line = current_token_range.start.line - previous_token_start.line;
 
