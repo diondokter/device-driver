@@ -3,6 +3,7 @@ use std::num::NonZeroU32;
 use crate::DeviceDriverV1Format;
 use dd_v1_convert_case::Boundary;
 use device_driver_common::{
+    interner::StrExt,
     span::{Span, SpanExt},
     specifiers::{Access, BaseType, ByteOrder, Integer},
 };
@@ -13,7 +14,8 @@ use device_driver_generation::mir::{
     Register, Repeat as V1Repeat,
 };
 use device_driver_parser::{
-    Expression, Ident, Node, Property, Repeat, RepeatSource, TypeConversion, TypeSpecifier,
+    Ast, AstArena, Expression, Ident, Node, NodeId, Property, Repeat, RepeatSource, TypeConversion,
+    TypeSpecifier,
 };
 use itertools::Itertools;
 
@@ -38,10 +40,12 @@ pub fn convert(source: &str, sub_format: DeviceDriverV1Format) -> Result<String,
     }
     .with_message(|| "transforming source into v1 mir")?;
 
+    let mut arena = AstArena::default();
+
     let ddsl_root = Node {
         doc_comments: Vec::new(),
-        node_type: Ident::new_no_span("device"),
-        name: Ident::new_no_span(device_mir.name.as_deref().unwrap_or("Device")),
+        node_type: Ident::new_no_span("device".intern()),
+        name: Ident::new_no_span(device_mir.name.as_deref().unwrap_or("Device").intern()),
         repeat: None,
         type_specifier: None,
         short_properties: Vec::new(),
@@ -51,7 +55,7 @@ pub fn convert(source: &str, sub_format: DeviceDriverV1Format) -> Result<String,
                 .default_byte_order
                 .map(|val| Property {
                     doc_comments: Vec::new(),
-                    name: Ident::new_no_span("default-byte-order"),
+                    name: Ident::new_no_span("default-byte-order".intern()),
                     expression: Expression::ByteOrder(convert_byte_order(val)).with_dummy_span(),
                 }),
             device_mir
@@ -59,7 +63,7 @@ pub fn convert(source: &str, sub_format: DeviceDriverV1Format) -> Result<String,
                 .register_address_type
                 .map(|val| Property {
                     doc_comments: Vec::new(),
-                    name: Ident::new_no_span("register-address-type"),
+                    name: Ident::new_no_span("register-address-type".intern()),
                     expression: Expression::Integer(convert_integer(val)).with_dummy_span(),
                 }),
             device_mir
@@ -67,7 +71,7 @@ pub fn convert(source: &str, sub_format: DeviceDriverV1Format) -> Result<String,
                 .command_address_type
                 .map(|val| Property {
                     doc_comments: Vec::new(),
-                    name: Ident::new_no_span("command-address-type"),
+                    name: Ident::new_no_span("command-address-type".intern()),
                     expression: Expression::Integer(convert_integer(val)).with_dummy_span(),
                 }),
             device_mir
@@ -75,12 +79,12 @@ pub fn convert(source: &str, sub_format: DeviceDriverV1Format) -> Result<String,
                 .buffer_address_type
                 .map(|val| Property {
                     doc_comments: Vec::new(),
-                    name: Ident::new_no_span("buffer-address-type"),
+                    name: Ident::new_no_span("buffer-address-type".intern()),
                     expression: Expression::Integer(convert_integer(val)).with_dummy_span(),
                 }),
             Some(Property {
                 doc_comments: Vec::new(),
-                name: Ident::new_no_span("word-boundaries"),
+                name: Ident::new_no_span("word-boundaries".intern()),
                 expression: Expression::String(
                     device_mir
                         .global_config
@@ -88,13 +92,13 @@ pub fn convert(source: &str, sub_format: DeviceDriverV1Format) -> Result<String,
                         .iter()
                         .map(convert_boundary)
                         .join(":")
-                        .leak(),
+                        .intern(),
                 )
                 .with_dummy_span(),
             }),
             Some(Property {
                 doc_comments: Vec::new(),
-                name: Ident::new_no_span("default-access"),
+                name: Ident::new_no_span("default-access".intern()),
                 expression: Expression::Access(Access::RW).with_dummy_span(),
             }),
         ]
@@ -106,14 +110,14 @@ pub fn convert(source: &str, sub_format: DeviceDriverV1Format) -> Result<String,
             .objects
             .iter()
             .map(|o| {
-                convert_object(o, &device_mir.objects)
+                convert_object(o, &device_mir.objects, &mut arena)
                     .with_message(|| format!("converting object `{}`", object_name(o)))
             })
             .collect::<Result<Vec<_>, _>>()?,
         span: Span::empty(),
     };
 
-    Ok(ddsl_root.to_string())
+    Ok(ddsl_root.to_string_formatted(&Ast::new(None, arena, Span::empty())))
 }
 
 fn convert_integer(value: V1Integer) -> Integer {
@@ -158,13 +162,17 @@ fn convert_boundary(value: &Boundary) -> &'static str {
     }
 }
 
-fn convert_object(object: &Object, all_objects: &[Object]) -> Result<Node<'static>, DynError> {
+fn convert_object(
+    object: &Object,
+    all_objects: &[Object],
+    arena: &mut AstArena,
+) -> Result<NodeId, DynError> {
     let node = match object {
-        Object::Block(block) => convert_block(block, all_objects)?,
-        Object::Register(register) => convert_register(register, None)?,
-        Object::Command(command) => convert_command(command, None, None)?,
-        Object::Buffer(buffer) => convert_buffer(buffer)?,
-        Object::Ref(ref_object) => convert_ref_object(ref_object, all_objects)?,
+        Object::Block(block) => convert_block(block, all_objects, arena)?,
+        Object::Register(register) => convert_register(register, None, arena)?,
+        Object::Command(command) => convert_command(command, None, None, arena)?,
+        Object::Buffer(buffer) => convert_buffer(buffer, arena)?,
+        Object::Ref(ref_object) => convert_ref_object(ref_object, all_objects, arena)?,
     };
 
     Ok(node)
@@ -173,7 +181,8 @@ fn convert_object(object: &Object, all_objects: &[Object]) -> Result<Node<'stati
 fn convert_ref_object(
     ref_object: &RefObject,
     all_objects: &[Object],
-) -> Result<Node<'static>, DynError> {
+    arena: &mut AstArena,
+) -> Result<NodeId, DynError> {
     match &ref_object.object_override {
         ObjectOverride::Block(block_override) => {
             let Some(Object::Block(original_block)) = all_objects
@@ -194,7 +203,7 @@ fn convert_ref_object(
                 objects: original_block.objects.clone(),
             };
 
-            convert_block(&overridden_block, all_objects)
+            convert_block(&overridden_block, all_objects, arena)
         }
         ObjectOverride::Register(register_override) => {
             let Some(Object::Register(original_register)) = all_objects
@@ -225,7 +234,11 @@ fn convert_ref_object(
                 fields: Default::default(),
             };
 
-            convert_register(&overridden_register, Some(register_override.name.clone()))
+            convert_register(
+                &overridden_register,
+                Some(register_override.name.clone()),
+                arena,
+            )
         }
         ObjectOverride::Command(command_override) => {
             let Some(Object::Command(original_command)) = all_objects
@@ -257,6 +270,7 @@ fn convert_ref_object(
                     .then(|| format!("{}FieldsIn", original_command.name)),
                 (!original_command.out_fields.is_empty())
                     .then(|| format!("{}FieldsOut", original_command.name)),
+                arena,
             )
         }
     }
@@ -265,15 +279,16 @@ fn convert_ref_object(
 fn convert_register(
     register: &Register,
     fieldset_override: Option<String>,
-) -> Result<Node<'static>, DynError> {
-    Ok(Node {
+    arena: &mut AstArena,
+) -> Result<NodeId, DynError> {
+    let node = Node {
         doc_comments: register
             .description
             .lines()
-            .map(|l| (l.to_owned().leak() as &str).with_dummy_span())
+            .map(|l| l.intern().with_dummy_span())
             .collect(),
-        node_type: Ident::new_no_span("register"),
-        name: Ident::new_no_span(register.name.clone().leak()),
+        node_type: Ident::new_no_span("register".intern()),
+        name: Ident::new_no_span(register.name.intern()),
         repeat: register
             .repeat
             .map(convert_repeat)
@@ -285,7 +300,7 @@ fn convert_register(
             Some(
                 Property {
                     doc_comments: Vec::new(),
-                    name: Ident::new_no_span("address"),
+                    name: Ident::new_no_span("address".intern()),
                     expression: Expression::Number(register.address.into()).with_dummy_span(),
                 }
                 .with_dummy_span(),
@@ -293,7 +308,7 @@ fn convert_register(
             register.allow_address_overlap.then(|| {
                 Property {
                     doc_comments: Vec::new(),
-                    name: Ident::new_no_span("address-overlap"),
+                    name: Ident::new_no_span("address-overlap".intern()),
                     expression: Expression::Allow.with_dummy_span(),
                 }
                 .with_dummy_span()
@@ -301,7 +316,7 @@ fn convert_register(
             register.reset_value.as_ref().map(|reset_value| {
                 Property {
                     doc_comments: Vec::new(),
-                    name: Ident::new_no_span("reset"),
+                    name: Ident::new_no_span("reset".intern()),
                     expression: match reset_value {
                         device_driver_generation::mir::ResetValue::Integer(num) => {
                             Expression::Number(*num as i128)
@@ -317,7 +332,7 @@ fn convert_register(
             (!matches!(register.access, V1Access::RW)).then(|| {
                 Property {
                     doc_comments: Vec::new(),
-                    name: Ident::new_no_span("access"),
+                    name: Ident::new_no_span("access".intern()),
                     expression: Expression::Access(convert_access(register.access))
                         .with_dummy_span(),
                 }
@@ -326,11 +341,11 @@ fn convert_register(
             Some(
                 Property {
                     doc_comments: Vec::new(),
-                    name: Ident::new_no_span("fields"),
+                    name: Ident::new_no_span("fields".intern()),
                     expression: if let Some(fieldset_override) = fieldset_override {
-                        Expression::TypeReference(Ident::new_no_span(fieldset_override.leak()))
+                        Expression::TypeReference(Ident::new_no_span(fieldset_override.intern()))
                     } else {
-                        Expression::SubNode(Box::new(
+                        Expression::SubNode(
                             convert_fieldset(
                                 None,
                                 register.byte_order,
@@ -338,9 +353,10 @@ fn convert_register(
                                 register.allow_bit_overlap,
                                 register.size_bits,
                                 &register.fields,
+                                arena,
                             )
                             .with_message(|| "converting fieldset")?,
-                        ))
+                        )
                     }
                     .with_dummy_span(),
                 }
@@ -352,22 +368,24 @@ fn convert_register(
         .collect(),
         sub_nodes: Vec::new(),
         span: Span::empty(),
-    })
+    };
+    Ok(arena.alloc_node(node))
 }
 
 fn convert_command(
     command: &Command,
     fieldset_in_override: Option<String>,
     fieldset_out_override: Option<String>,
-) -> Result<Node<'static>, DynError> {
-    Ok(Node {
+    arena: &mut AstArena,
+) -> Result<NodeId, DynError> {
+    let node = Node {
         doc_comments: command
             .description
             .lines()
-            .map(|l| (l.to_owned().leak() as &str).with_dummy_span())
+            .map(|l| l.intern().with_dummy_span())
             .collect(),
-        node_type: Ident::new_no_span("command"),
-        name: Ident::new_no_span(command.name.clone().leak()),
+        node_type: Ident::new_no_span("command".intern()),
+        name: Ident::new_no_span(command.name.clone().intern()),
         repeat: command
             .repeat
             .map(convert_repeat)
@@ -379,7 +397,7 @@ fn convert_command(
             Some(
                 Property {
                     doc_comments: Vec::new(),
-                    name: Ident::new_no_span("address"),
+                    name: Ident::new_no_span("address".intern()),
                     expression: Expression::Number(command.address.into()).with_dummy_span(),
                 }
                 .with_dummy_span(),
@@ -387,7 +405,7 @@ fn convert_command(
             command.allow_address_overlap.then(|| {
                 Property {
                     doc_comments: Vec::new(),
-                    name: Ident::new_no_span("address-overlap"),
+                    name: Ident::new_no_span("address-overlap".intern()),
                     expression: Expression::Allow.with_dummy_span(),
                 }
                 .with_dummy_span()
@@ -396,13 +414,13 @@ fn convert_command(
                 .then(|| {
                     Ok(Property {
                         doc_comments: Vec::new(),
-                        name: Ident::new_no_span("fields-in"),
+                        name: Ident::new_no_span("fields-in".intern()),
                         expression: if let Some(fieldset_in_override) = fieldset_in_override {
                             Expression::TypeReference(Ident::new_no_span(
-                                fieldset_in_override.leak(),
+                                fieldset_in_override.intern(),
                             ))
                         } else {
-                            Expression::SubNode(Box::new(
+                            Expression::SubNode(
                                 convert_fieldset(
                                     Some(format!("{}FieldsIn", command.name)),
                                     command.byte_order,
@@ -410,9 +428,10 @@ fn convert_command(
                                     command.allow_bit_overlap,
                                     command.size_bits_in,
                                     &command.in_fields,
+                                    arena,
                                 )
                                 .with_message(|| "converting in fieldset")?,
-                            ))
+                            )
                         }
                         .with_dummy_span(),
                     }
@@ -423,13 +442,13 @@ fn convert_command(
                 .then(|| {
                     Ok(Property {
                         doc_comments: Vec::new(),
-                        name: Ident::new_no_span("fields-out"),
+                        name: Ident::new_no_span("fields-out".intern()),
                         expression: if let Some(fieldset_out_override) = fieldset_out_override {
                             Expression::TypeReference(Ident::new_no_span(
-                                fieldset_out_override.leak(),
+                                fieldset_out_override.intern(),
                             ))
                         } else {
-                            Expression::SubNode(Box::new(
+                            Expression::SubNode(
                                 convert_fieldset(
                                     Some(format!("{}FieldsOut", command.name)),
                                     command.byte_order,
@@ -437,9 +456,10 @@ fn convert_command(
                                     command.allow_bit_overlap,
                                     command.size_bits_out,
                                     &command.out_fields,
+                                    arena,
                                 )
                                 .with_message(|| "converting out fieldset")?,
-                            ))
+                            )
                         }
                         .with_dummy_span(),
                     }
@@ -452,7 +472,8 @@ fn convert_command(
         .collect(),
         sub_nodes: Vec::new(),
         span: Span::empty(),
-    })
+    };
+    Ok(arena.alloc_node(node))
 }
 
 fn convert_fieldset(
@@ -462,7 +483,8 @@ fn convert_fieldset(
     allow_bit_overlap: bool,
     size_bits: u32,
     fields: &[Field],
-) -> Result<Node<'static>, DynError> {
+    arena: &mut AstArena,
+) -> Result<NodeId, DynError> {
     if !size_bits.is_multiple_of(8) {
         return Err(DynError::new(
             "size-bits is not a multiple of 8. This is no longer supported in v2",
@@ -474,10 +496,10 @@ fn convert_fieldset(
         ));
     }
 
-    Ok(Node {
+    let node = Node {
         doc_comments: Vec::new(),
-        node_type: Ident::new_no_span("fieldset"),
-        name: Ident::new_no_span(name.map(|name| name.clone().leak() as &str).unwrap_or("_")),
+        node_type: Ident::new_no_span("fieldset".intern()),
+        name: Ident::new_no_span(name.as_deref().unwrap_or("_").intern()),
         repeat: None,
         type_specifier: None,
         short_properties: Vec::new(),
@@ -485,7 +507,7 @@ fn convert_fieldset(
             Some(
                 Property {
                     doc_comments: Vec::new(),
-                    name: Ident::new_no_span("size-bytes"),
+                    name: Ident::new_no_span("size-bytes".intern()),
                     expression: Expression::Number((size_bits / 8).into()).with_dummy_span(),
                 }
                 .with_dummy_span(),
@@ -493,7 +515,7 @@ fn convert_fieldset(
             byte_order.map(|byte_order| {
                 Property {
                     doc_comments: Vec::new(),
-                    name: Ident::new_no_span("byte-order"),
+                    name: Ident::new_no_span("byte-order".intern()),
                     expression: Expression::ByteOrder(convert_byte_order(byte_order))
                         .with_dummy_span(),
                 }
@@ -502,7 +524,7 @@ fn convert_fieldset(
             allow_bit_overlap.then(|| {
                 Property {
                     doc_comments: Vec::new(),
-                    name: Ident::new_no_span("bit-overlap"),
+                    name: Ident::new_no_span("bit-overlap".intern()),
                     expression: Expression::Allow.with_dummy_span(),
                 }
                 .with_dummy_span()
@@ -513,26 +535,29 @@ fn convert_fieldset(
         .collect(),
         sub_nodes: fields
             .iter()
-            .map(|f| convert_field(f).with_message(|| format!("converting field {}", f.name)))
+            .map(|f| {
+                convert_field(f, arena).with_message(|| format!("converting field {}", f.name))
+            })
             .collect::<Result<Vec<_>, _>>()?,
         span: Span::empty(),
-    })
+    };
+    Ok(arena.alloc_node(node))
 }
 
-fn convert_field(field: &Field) -> Result<Node<'static>, DynError> {
+fn convert_field(field: &Field, arena: &mut AstArena) -> Result<NodeId, DynError> {
     let field_len = field.field_address.len();
     let use_auto_base_type = (field.base_type == V1BaseType::Bool && field_len == 1)
         || (field.base_type == V1BaseType::Uint && field_len >= 1);
     let use_type_specifier = !use_auto_base_type || field.field_conversion.is_some();
 
-    Ok(Node {
+    let node = Node {
         doc_comments: field
             .description
             .lines()
-            .map(|l| (l.to_owned().leak() as &str).with_dummy_span())
+            .map(|l| l.intern().with_dummy_span())
             .collect(),
-        node_type: Ident::new_no_span("field"),
-        name: Ident::new_no_span(field.name.clone().leak()),
+        node_type: Ident::new_no_span("field".intern()),
+        name: Ident::new_no_span(field.name.clone().intern()),
         repeat: None,
         type_specifier: use_type_specifier.then(|| {
             TypeSpecifier {
@@ -549,7 +574,7 @@ fn convert_field(field: &Field) -> Result<Node<'static>, DynError> {
                 conversion: field
                     .field_conversion
                     .as_ref()
-                    .map(convert_field_conversion),
+                    .map(|fc| convert_field_conversion(fc, arena)),
             }
             .with_dummy_span()
         }),
@@ -574,18 +599,19 @@ fn convert_field(field: &Field) -> Result<Node<'static>, DynError> {
         properties: Vec::new(),
         sub_nodes: Vec::new(),
         span: Span::empty(),
-    })
+    };
+    Ok(arena.alloc_node(node))
 }
 
-fn convert_buffer(buffer: &Buffer) -> Result<Node<'static>, DynError> {
-    Ok(Node {
+fn convert_buffer(buffer: &Buffer, arena: &mut AstArena) -> Result<NodeId, DynError> {
+    Ok(arena.alloc_node(Node {
         doc_comments: buffer
             .description
             .lines()
-            .map(|l| (l.to_owned().leak() as &str).with_dummy_span())
+            .map(|l| l.intern().with_dummy_span())
             .collect(),
-        node_type: Ident::new_no_span("buffer"),
-        name: Ident::new_no_span(buffer.name.clone().leak()),
+        node_type: Ident::new_no_span("buffer".intern()),
+        name: Ident::new_no_span(buffer.name.clone().intern()),
         repeat: None,
         type_specifier: None,
         short_properties: Vec::new(),
@@ -593,7 +619,7 @@ fn convert_buffer(buffer: &Buffer) -> Result<Node<'static>, DynError> {
             (!matches!(buffer.access, V1Access::RW)).then(|| {
                 Property {
                     doc_comments: Vec::new(),
-                    name: Ident::new_no_span("access"),
+                    name: Ident::new_no_span("access".intern()),
                     expression: Expression::Access(convert_access(buffer.access)).with_dummy_span(),
                 }
                 .with_dummy_span()
@@ -601,7 +627,7 @@ fn convert_buffer(buffer: &Buffer) -> Result<Node<'static>, DynError> {
             Some(
                 Property {
                     doc_comments: Vec::new(),
-                    name: Ident::new_no_span("address"),
+                    name: Ident::new_no_span("address".intern()),
                     expression: Expression::Number(buffer.address.into()).with_dummy_span(),
                 }
                 .with_dummy_span(),
@@ -612,18 +638,22 @@ fn convert_buffer(buffer: &Buffer) -> Result<Node<'static>, DynError> {
         .collect(),
         sub_nodes: Vec::new(),
         span: Span::empty(),
-    })
+    }))
 }
 
-fn convert_block(block: &Block, all_objects: &[Object]) -> Result<Node<'static>, DynError> {
-    Ok(Node {
+fn convert_block(
+    block: &Block,
+    all_objects: &[Object],
+    arena: &mut AstArena,
+) -> Result<NodeId, DynError> {
+    let node = Node {
         doc_comments: block
             .description
             .lines()
-            .map(|l| (l.to_owned().leak() as &str).with_dummy_span())
+            .map(|l| l.intern().with_dummy_span())
             .collect(),
-        node_type: Ident::new_no_span("block"),
-        name: Ident::new_no_span(block.name.clone().leak()),
+        node_type: Ident::new_no_span("block".intern()),
+        name: Ident::new_no_span(block.name.intern()),
         repeat: block
             .repeat
             .map(convert_repeat)
@@ -634,7 +664,7 @@ fn convert_block(block: &Block, all_objects: &[Object]) -> Result<Node<'static>,
         properties: vec![
             Property {
                 doc_comments: Vec::new(),
-                name: Ident::new_no_span("address-offset"),
+                name: Ident::new_no_span("address-offset".intern()),
                 expression: Expression::Number(block.address_offset.into()).with_dummy_span(),
             }
             .with_dummy_span(),
@@ -643,15 +673,16 @@ fn convert_block(block: &Block, all_objects: &[Object]) -> Result<Node<'static>,
             .objects
             .iter()
             .map(|o| {
-                convert_object(o, all_objects)
+                convert_object(o, all_objects, arena)
                     .with_message(|| format!("converting object {}", object_name(o)))
             })
             .collect::<Result<Vec<_>, _>>()?,
         span: Span::empty(),
-    })
+    };
+    Ok(arena.alloc_node(node))
 }
 
-fn convert_repeat(repeat: V1Repeat) -> Result<Repeat<'static>, DynError> {
+fn convert_repeat(repeat: V1Repeat) -> Result<Repeat, DynError> {
     Ok(Repeat {
         source: RepeatSource::Count(
             NonZeroU32::new(
@@ -686,26 +717,26 @@ fn convert_base_type(value: V1BaseType) -> BaseType {
     }
 }
 
-fn convert_field_conversion(fs: &FieldConversion) -> TypeConversion<'static> {
+fn convert_field_conversion(fs: &FieldConversion, arena: &mut AstArena) -> TypeConversion {
     match fs {
         FieldConversion::Direct { type_name, .. } => {
-            TypeConversion::Reference(Ident::new_no_span(type_name.clone().leak()))
+            TypeConversion::Reference(Ident::new_no_span(type_name.intern()))
         }
         FieldConversion::Enum { enum_value, .. } => {
-            TypeConversion::Subnode(Box::new(convert_enum(enum_value)))
+            TypeConversion::Subnode(convert_enum(enum_value, arena))
         }
     }
 }
 
-fn convert_enum(enum_value: &Enum) -> Node<'static> {
-    Node {
+fn convert_enum(enum_value: &Enum, arena: &mut AstArena) -> NodeId {
+    arena.alloc_node(Node {
         doc_comments: enum_value
             .description
             .lines()
-            .map(|l| (l.to_owned().leak() as &str).with_dummy_span())
+            .map(|l| l.intern().with_dummy_span())
             .collect(),
-        node_type: Ident::new_no_span("enum"),
-        name: Ident::new_no_span(enum_value.name.clone().leak()),
+        node_type: Ident::new_no_span("enum".intern()),
+        name: Ident::new_no_span(enum_value.name.intern()),
         repeat: None,
         type_specifier: None,
         short_properties: Vec::new(),
@@ -717,9 +748,9 @@ fn convert_enum(enum_value: &Enum) -> Node<'static> {
                     doc_comments: variant
                         .description
                         .lines()
-                        .map(|l| (l.to_owned().leak() as &str).with_dummy_span())
+                        .map(|l| l.intern().with_dummy_span())
                         .collect(),
-                    name: Ident::new_no_span(variant.name.clone().leak()),
+                    name: Ident::new_no_span(variant.name.intern()),
                     expression: match variant.value {
                         device_driver_generation::mir::EnumValue::Unspecified => Expression::Auto,
                         device_driver_generation::mir::EnumValue::Specified(num) => {
@@ -739,5 +770,5 @@ fn convert_enum(enum_value: &Enum) -> Node<'static> {
             .collect(),
         sub_nodes: Vec::new(),
         span: Span::empty(),
-    }
+    })
 }

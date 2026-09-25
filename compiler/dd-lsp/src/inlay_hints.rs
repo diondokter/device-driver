@@ -1,0 +1,222 @@
+use std::str::FromStr;
+
+use device_driver_common::{
+    span::Span,
+    specifiers::{BaseType, NodeType},
+};
+use device_driver_parser::{Ast, AstArena, Expression, Node};
+use tower_lsp_server::ls_types::{
+    InlayHint, InlayHintKind, InlayHintLabel, InlayHintTooltip, TextEdit,
+};
+
+use crate::document::Document;
+
+pub(crate) fn get_hints(ast: &Ast, visible_span: Span, document: &Document) -> Vec<InlayHint> {
+    ast.nodes()
+        .iter()
+        .filter(|node| visible_span.overlaps(node.span))
+        .flat_map(|node| {
+            auto_name_hint(node, document)
+                .into_iter()
+                .chain(auto_base_type_hint(node, document))
+                .chain(enum_variant_hints(node, document).into_iter().flatten())
+        })
+        .collect()
+}
+
+fn auto_name_hint(node: &Node, document: &Document) -> Option<InlayHint> {
+    if !node.name.is_auto() {
+        return None;
+    }
+
+    let true_node_name = document
+        .mir()
+        .iter_objects()
+        .find(|object| object.span() == node.span)
+        .map(|object| object.name().original().as_str())?;
+
+    let node_name_range = document.translate_span(node.name.span);
+
+    Some(InlayHint {
+        position: node_name_range.end,
+        label: InlayHintLabel::String(true_node_name.into()),
+        kind: Some(InlayHintKind::TYPE),
+        text_edits: Some(
+            [TextEdit {
+                range: node_name_range,
+                new_text: true_node_name.into(),
+            }]
+            .into(),
+        ),
+        tooltip: Some(InlayHintTooltip::String("Inferred object name".into())),
+        padding_left: Some(true),
+        padding_right: None,
+        data: None,
+    })
+}
+
+fn auto_base_type_hint(node: &Node, document: &Document) -> Option<InlayHint> {
+    // Optimization, skip nodes without base types that are not fieldsets
+    if !matches!(
+        NodeType::from_str(node.node_type.val.as_str()),
+        Ok(NodeType::Enum | NodeType::Extern | NodeType::Field)
+    ) {
+        return None;
+    }
+
+    // Do two searches at once:
+    // - Search for the object (or field) that represents the current node
+    // - Get its base type if that's supported
+    let (mir_base_type, short_properties_span) =
+        document.mir().iter_objects().find_map(|object| {
+            if object.span() == node.span {
+                Some(
+                    object
+                        .base_type()
+                        .map(|bt| (bt, object.short_properties_span())),
+                )
+            } else if let Some(fs) = object.as_field_set() {
+                fs.fields.iter().find_map(|field| {
+                    if field.span == node.span {
+                        Some(Some((&field.base_type, field.short_properties_span)))
+                    } else {
+                        None
+                    }
+                })
+            } else {
+                None
+            }
+        })??;
+
+    match node.type_specifier.as_ref() {
+        Some(ts) => match ts.base_type.value {
+            BaseType::Unspecified => {
+                let base_type_range = document.translate_span(ts.base_type.span);
+
+                Some(InlayHint {
+                    position: base_type_range.end,
+                    label: InlayHintLabel::String(mir_base_type.value.to_string()),
+                    kind: Some(InlayHintKind::TYPE),
+                    text_edits: Some(
+                        [TextEdit {
+                            range: base_type_range,
+                            new_text: mir_base_type.value.to_string(),
+                        }]
+                        .into(),
+                    ),
+                    tooltip: Some(InlayHintTooltip::String("Inferred base type".into())),
+                    padding_left: Some(true),
+                    padding_right: None,
+                    data: None,
+                })
+            }
+            BaseType::Int | BaseType::Uint => {
+                let base_type_range = document.translate_span(ts.base_type.span);
+
+                Some(InlayHint {
+                    position: base_type_range.end,
+                    label: InlayHintLabel::String(
+                        mir_base_type
+                            .value
+                            .as_fixed_size()
+                            .unwrap()
+                            .size_bits()
+                            .to_string(),
+                    ),
+                    kind: Some(InlayHintKind::TYPE),
+                    text_edits: Some(
+                        [TextEdit {
+                            range: base_type_range,
+                            new_text: mir_base_type.value.to_string(),
+                        }]
+                        .into(),
+                    ),
+                    tooltip: Some(InlayHintTooltip::String("Number of inferred bits".into())),
+                    padding_left: None,
+                    padding_right: None,
+                    data: None,
+                })
+            }
+            BaseType::FixedSize(_) | BaseType::Bool => None,
+        },
+        None => {
+            let type_conversion_range =
+                document.translate_span(short_properties_span.collapse_to_end());
+
+            Some(InlayHint {
+                position: type_conversion_range.start,
+                label: InlayHintLabel::String(format!("-> {mir_base_type}")),
+                kind: Some(InlayHintKind::TYPE),
+                text_edits: Some(
+                    [TextEdit {
+                        range: type_conversion_range,
+                        new_text: format!(" -> {mir_base_type}"),
+                    }]
+                    .into(),
+                ),
+                tooltip: Some(InlayHintTooltip::String("Inferred type specifier".into())),
+                padding_left: Some(true),
+                padding_right: None,
+                data: None,
+            })
+        }
+    }
+}
+
+fn enum_variant_hints(node: &Node, document: &Document) -> Option<Vec<InlayHint>> {
+    if !matches!(
+        NodeType::from_str(node.node_type.val.as_str()),
+        Ok(NodeType::Enum)
+    ) {
+        return None;
+    }
+
+    let enum_value = document
+        .mir()
+        .iter_enums()
+        .find(|enum_value| enum_value.span == node.span)?;
+
+    let mut hints = Vec::new();
+
+    // Go over each variant, which are properties in the AST
+    for property in node.properties.iter() {
+        let Some((value, _)) = enum_value
+            .iter_variants_with_discriminant()
+            .find(|(_, variant)| variant.name.original() == property.name.val)
+        else {
+            // Variant not found. Probably removed in a MIR pass
+            continue;
+        };
+
+        let replacement_expression = match &property.expression.value {
+            Expression::DefaultNumber(None) => Expression::DefaultNumber(Some(value)),
+            Expression::CatchAllNumber(None) => Expression::CatchAllNumber(Some(value)),
+            Expression::Auto => Expression::Number(value),
+            _ => continue,
+        };
+
+        let expression_range = document.translate_span(property.expression.span);
+
+        hints.push(InlayHint {
+            position: expression_range.end,
+            label: InlayHintLabel::String(value.to_string()),
+            kind: Some(InlayHintKind::TYPE),
+            text_edits: Some(
+                [TextEdit {
+                    range: expression_range,
+                    new_text: replacement_expression
+                        // Empty AST should be fine here since none of the replacements are subnodes
+                        .print_formatted(&Ast::new(None, AstArena::default(), Span::empty()))
+                        .to_string(),
+                }]
+                .into(),
+            ),
+            tooltip: Some(InlayHintTooltip::String("Inferred value".into())),
+            padding_left: Some(true),
+            padding_right: None,
+            data: None,
+        });
+    }
+
+    Some(hints)
+}

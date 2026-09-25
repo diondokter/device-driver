@@ -1,0 +1,90 @@
+#![allow(deprecated)]
+
+use std::str::FromStr;
+
+use device_driver_common::{interner::Istr, specifiers::NodeType};
+use device_driver_parser::Node;
+use tower_lsp_server::ls_types::{DocumentSymbol, SymbolKind};
+
+use crate::document::Document;
+
+pub fn get_node_symbol(node: &Node, document: &Document) -> DocumentSymbol {
+    let ast = document.ast();
+    let mir = document.mir();
+
+    let kind = node_type_symbol_kind(node.node_type.val);
+
+    let properties = node.properties.iter().map(|prop| DocumentSymbol {
+        name: prop.name.val.to_string(),
+        detail: None,
+        kind: if kind == SymbolKind::ENUM {
+            SymbolKind::ENUM_MEMBER
+        } else {
+            SymbolKind::PROPERTY
+        },
+        tags: None,
+        deprecated: None,
+        range: document.translate_span(prop.span),
+        selection_range: document.translate_span(prop.name.span),
+        children: prop
+            .expression
+            .as_sub_node()
+            .map(|sub_node| vec![get_node_symbol(ast.node(sub_node), document)]),
+    });
+
+    let return_node = node
+        .type_specifier
+        .as_ref()
+        .and_then(|ts| {
+            ts.conversion
+                .as_ref()
+                .and_then(|conversion| conversion.as_subnode())
+        })
+        .into_iter()
+        .map(|node| get_node_symbol(ast.node(node), document));
+
+    let sub_nodes = node
+        .sub_nodes
+        .iter()
+        .map(|node| get_node_symbol(ast.node(*node), document));
+
+    let node_name = if node.name.is_auto() {
+        // If the name is auto, we still want to display the real name instead of just `_`
+        // So we search for object in MIR and take that name
+        // The easiest way is to compare by span. The MIR should have unmodified spans
+        mir.iter_objects()
+            .find(|object| object.span() == node.span)
+            .map(|object| object.name().original().as_str())
+            .unwrap_or("_")
+            .into()
+    } else {
+        node.name.val.to_string()
+    };
+
+    DocumentSymbol {
+        name: node_name,
+        detail: Some(node.node_type.val.to_string()),
+        kind: node_type_symbol_kind(node.node_type.val),
+        tags: None,
+        deprecated: None,
+        range: document.translate_span(node.span),
+        selection_range: document.translate_span(node.name.span),
+        children: Some(properties.chain(return_node).chain(sub_nodes).collect()),
+    }
+}
+
+fn node_type_symbol_kind(node_type: Istr) -> SymbolKind {
+    match NodeType::from_str(node_type.as_str()) {
+        Ok(NodeType::Manifest) => SymbolKind::FILE,
+        Ok(NodeType::Device) => SymbolKind::MODULE,
+        Ok(NodeType::Block) => SymbolKind::MODULE,
+        Ok(NodeType::Register) => SymbolKind::CLASS,
+        Ok(NodeType::Command) => SymbolKind::CLASS,
+        Ok(NodeType::Buffer) => SymbolKind::CLASS,
+        Ok(NodeType::FieldSet) => SymbolKind::STRUCT,
+        Ok(NodeType::Enum) => SymbolKind::ENUM,
+        Ok(NodeType::Extern) => SymbolKind::STRUCT,
+        Ok(NodeType::Field) => SymbolKind::FIELD,
+        Err(_) => SymbolKind::OBJECT,
+    }
+}

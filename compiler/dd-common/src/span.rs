@@ -5,8 +5,8 @@ use std::{
 
 #[derive(Clone, Eq, PartialEq, Copy, Default, Hash)]
 pub struct Span {
-    pub start: usize,
-    pub end: usize,
+    pub start: u32,
+    pub end: u32,
 }
 
 impl Span {
@@ -16,6 +16,10 @@ impl Span {
 
     pub fn is_empty(&self) -> bool {
         self.start == 0 && self.end == 0
+    }
+
+    pub fn len(&self) -> u32 {
+        self.end - self.start
     }
 
     /// Return self if not empty, or the other span if self is empty
@@ -64,12 +68,26 @@ impl Span {
             end: self.end,
         }
     }
+
+    /// Discard the span and keep a zero-length span at the start value
+    #[must_use]
+    pub fn collapse_to_start(&self) -> Span {
+        Span {
+            start: self.start,
+            end: self.start,
+        }
+    }
+
+    /// Returns true if the two spans have some overlap
+    pub fn overlaps(&self, other: Self) -> bool {
+        self.start < other.end && other.start < self.end
+    }
 }
 
 impl chumsky::span::Span for Span {
     type Context = ();
 
-    type Offset = usize;
+    type Offset = u32;
 
     fn new(_context: Self::Context, range: Range<Self::Offset>) -> Self {
         range.into()
@@ -97,8 +115,8 @@ impl Debug for Span {
     }
 }
 
-impl From<(usize, usize)> for Span {
-    fn from(value: (usize, usize)) -> Self {
+impl From<(u32, u32)> for Span {
+    fn from(value: (u32, u32)) -> Self {
         Self {
             start: value.0,
             end: value.1,
@@ -106,8 +124,8 @@ impl From<(usize, usize)> for Span {
     }
 }
 
-impl From<Range<usize>> for Span {
-    fn from(value: Range<usize>) -> Self {
+impl From<Range<u32>> for Span {
+    fn from(value: Range<u32>) -> Self {
         Self {
             start: value.start,
             end: value.end,
@@ -115,15 +133,36 @@ impl From<Range<usize>> for Span {
     }
 }
 
+impl From<Range<usize>> for Span {
+    fn from(value: Range<usize>) -> Self {
+        Self {
+            start: value.start as u32,
+            end: value.end as u32,
+        }
+    }
+}
+
+impl From<Span> for Range<u32> {
+    fn from(value: Span) -> Self {
+        value.start..value.end
+    }
+}
+
 impl From<Span> for Range<usize> {
     fn from(value: Span) -> Self {
+        value.start as usize..value.end as usize
+    }
+}
+
+impl<'a> From<&'a Span> for Range<u32> {
+    fn from(value: &'a Span) -> Self {
         value.start..value.end
     }
 }
 
 impl<'a> From<&'a Span> for Range<usize> {
     fn from(value: &'a Span) -> Self {
-        value.start..value.end
+        value.start as usize..value.end as usize
     }
 }
 

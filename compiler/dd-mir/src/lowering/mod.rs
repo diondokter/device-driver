@@ -1,13 +1,14 @@
 use std::{
     borrow::Cow,
     collections::HashMap,
-    mem::{self, Discriminant, discriminant},
+    mem::{self, discriminant},
     str::FromStr,
 };
 
 use crate::model::{Manifest, Object};
 use device_driver_common::{
     identifier::{Identifier, IdentifierRef, Namespace, Type},
+    interner::{Istr, StrExt},
     span::{Span, SpanExt, Spanned},
     specifiers::{BaseType, NodeType, Repeat, RepeatSource, TypeConversion},
 };
@@ -27,16 +28,17 @@ use itertools::Itertools;
 pub mod gen_docs;
 mod shape_impls;
 
-pub fn lower(ast: Ast, diagnostics: &mut Diagnostics) -> Manifest {
+pub fn lower(ast: &Ast, diagnostics: &mut Diagnostics) -> Manifest {
     let Some(root_node) = ast.root_node else {
         return Default::default();
     };
 
     let result = lower_node(
-        &root_node,
+        ast.node(root_node),
         None,
         None,
         &[NodeType::Manifest, NodeType::Device],
+        ast,
         diagnostics,
     );
 
@@ -62,9 +64,10 @@ fn lower_node(
     parent_node_type: Option<Spanned<NodeType>>,
     parent_node_name: Option<Ident>,
     allowed_node_types: &[NodeType],
+    ast: &Ast,
     diagnostics: &mut Diagnostics,
 ) -> LowerResult {
-    let Ok(node_type) = NodeType::from_str(node.node_type.val) else {
+    let Ok(node_type) = NodeType::from_str(node.node_type.val.as_str()) else {
         diagnostics.add(UnknownNodeType {
             node_type: node.node_type.span,
             allowed_node_types: allowed_node_types.to_vec(),
@@ -83,55 +86,56 @@ fn lower_node(
     }
 
     match node_type.value {
-        NodeType::Manifest => match parse_node_to_shape(node, parent_node_name, diagnostics) {
+        NodeType::Manifest => match parse_node_to_shape(node, parent_node_name, ast, diagnostics) {
             Ok((val, siblings)) => {
                 assert!(siblings.is_empty(), "Manifest has no siblings");
                 LowerResult::Manifest(val)
             }
             Err(siblings) => LowerResult::Error(siblings),
         },
-        NodeType::Device => match parse_node_to_shape(node, parent_node_name, diagnostics) {
+        NodeType::Device => match parse_node_to_shape(node, parent_node_name, ast, diagnostics) {
             Ok((val, siblings)) => LowerResult::Objects(Object::Device(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
-        NodeType::Block => match parse_node_to_shape(node, parent_node_name, diagnostics) {
+        NodeType::Block => match parse_node_to_shape(node, parent_node_name, ast, diagnostics) {
             Ok((val, siblings)) => LowerResult::Objects(Object::Block(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
-        NodeType::Register => match parse_node_to_shape(node, parent_node_name, diagnostics) {
+        NodeType::Register => match parse_node_to_shape(node, parent_node_name, ast, diagnostics) {
             Ok((val, siblings)) => LowerResult::Objects(Object::Register(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
-        NodeType::Command => match parse_node_to_shape(node, parent_node_name, diagnostics) {
+        NodeType::Command => match parse_node_to_shape(node, parent_node_name, ast, diagnostics) {
             Ok((val, siblings)) => LowerResult::Objects(Object::Command(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
-        NodeType::Buffer => match parse_node_to_shape(node, parent_node_name, diagnostics) {
+        NodeType::Buffer => match parse_node_to_shape(node, parent_node_name, ast, diagnostics) {
             Ok((val, siblings)) => LowerResult::Objects(Object::Buffer(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
-        NodeType::FieldSet => match parse_node_to_shape(node, parent_node_name, diagnostics) {
+        NodeType::FieldSet => match parse_node_to_shape(node, parent_node_name, ast, diagnostics) {
             Ok((val, siblings)) => LowerResult::Objects(Object::FieldSet(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
-        NodeType::Enum => match parse_node_to_shape(node, parent_node_name, diagnostics) {
+        NodeType::Enum => match parse_node_to_shape(node, parent_node_name, ast, diagnostics) {
             Ok((val, siblings)) => LowerResult::Objects(Object::Enum(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
-        NodeType::Extern => match parse_node_to_shape(node, parent_node_name, diagnostics) {
+        NodeType::Extern => match parse_node_to_shape(node, parent_node_name, ast, diagnostics) {
             Ok((val, siblings)) => LowerResult::Objects(Object::Extern(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
-        NodeType::Field => match parse_node_to_shape(node, parent_node_name, diagnostics) {
+        NodeType::Field => match parse_node_to_shape(node, parent_node_name, ast, diagnostics) {
             Ok((val, siblings)) => LowerResult::Objects(Object::Field(val), siblings),
             Err(siblings) => LowerResult::Error(siblings),
         },
     }
 }
 
-fn parse_node_to_shape<'src, S: Shape>(
-    node: &Node<'src>,
-    parent_node_name: Option<Ident<'src>>,
+fn parse_node_to_shape<S: Shape>(
+    node: &Node,
+    parent_node_name: Option<Ident>,
+    ast: &Ast,
     diagnostics: &mut Diagnostics,
 ) -> Result<(S, Vec<Object>), Vec<Object>> {
     let mut target = S::default();
@@ -142,7 +146,12 @@ fn parse_node_to_shape<'src, S: Shape>(
 
     // Doc comments
 
-    *target.doc_comments() = node.doc_comments.iter().map(|c| c.value).join("\n");
+    *target.doc_comments() = node
+        .doc_comments
+        .iter()
+        .map(|c| c.value)
+        .join("\n")
+        .intern();
 
     // Object name
 
@@ -190,7 +199,7 @@ fn parse_node_to_shape<'src, S: Shape>(
                 source: match node_repeat.source.value {
                     device_driver_parser::RepeatSource::Count(count) => RepeatSource::Count(count),
                     device_driver_parser::RepeatSource::Enum(ident) => {
-                        RepeatSource::Enum(IdentifierRef::new(ident.val.into()))
+                        RepeatSource::Enum(IdentifierRef::new(ident.val))
                     }
                 }
                 .with_span(node_repeat.source.span),
@@ -235,14 +244,15 @@ fn parse_node_to_shape<'src, S: Shape>(
             *conversion_type = type_specifier.conversion.as_ref().and_then(|c| {
                 let reference = match c {
                     device_driver_parser::TypeConversion::Reference(ident) => {
-                        Some(IdentifierRef::<Type>::new(ident.val.into()).with_span(ident.span))
+                        Some(IdentifierRef::<Type>::new(ident.val).with_span(ident.span))
                     }
                     device_driver_parser::TypeConversion::Subnode(sub_node) => {
                         let sub_node = lower_node(
-                            sub_node,
+                            ast.node(*sub_node),
                             Some(NodeType::Field.with_span(node.node_type.span)),
                             Some(node.name),
                             &[NodeType::Enum, NodeType::Extern],
+                            ast,
                             diagnostics,
                         );
 
@@ -293,7 +303,7 @@ fn parse_node_to_shape<'src, S: Shape>(
             .iter()
             .find(|p| p.name == PropertyName::Exact(property.name.val))
         else {
-            if let Some(original) = removed_properties.get(property.name.val).copied() {
+            if let Some(original) = removed_properties.get(&property.name.val).copied() {
                 diagnostics.add(DuplicateProperty {
                     original,
                     duplicate: property.name.span,
@@ -305,8 +315,7 @@ fn parse_node_to_shape<'src, S: Shape>(
                     expected_names: S::supported_properties()
                         .iter()
                         .filter_map(|p| p.name.as_exact())
-                        .sorted()
-                        .copied()
+                        .sorted_unstable_by_key(|name| name.as_str())
                         .collect(),
                 });
             }
@@ -329,11 +338,7 @@ fn parse_node_to_shape<'src, S: Shape>(
         }
 
         // Get the discriminant and cast it to the static lifetime which is explicitly allowed in the rust docs
-        let current_expression_type = unsafe {
-            std::mem::transmute::<Discriminant<Expression<'src>>, Discriminant<Expression<'static>>>(
-                mem::discriminant(&property.expression.value),
-            )
-        };
+        let current_expression_type = mem::discriminant(&property.expression.value);
 
         let expression_supported =
             property_info
@@ -358,7 +363,7 @@ fn parse_node_to_shape<'src, S: Shape>(
                 valid_expression_values: property_info
                     .allowed_expression_types
                     .iter()
-                    .map(|e| e.get_human_string())
+                    .map(|e| e.print_formatted(ast))
                     .collect(),
             });
             continue;
@@ -370,6 +375,7 @@ fn parse_node_to_shape<'src, S: Shape>(
             node,
             diagnostics,
             sibling_objects: &mut sibling_objects,
+            ast,
         });
 
         if !property_info.multiple_allowed {
@@ -381,7 +387,7 @@ fn parse_node_to_shape<'src, S: Shape>(
         *target.properties_span() = node
             .sub_nodes
             .iter()
-            .map(|n| n.span)
+            .map(|n| ast.node(*n).span)
             .reduce(|acc, val| acc.to(val));
     }
 
@@ -419,11 +425,11 @@ fn parse_node_to_shape<'src, S: Shape>(
                             p.name.as_short().map(|purpose| {
                                 p.allowed_expression_types
                                     .iter()
-                                    .map(|e| (e.to_string(), purpose.to_string()))
+                                    .map(move |e| (e.to_string(), purpose))
                             })
                         })
                         .flatten()
-                        .sorted()
+                        .sorted_unstable_by_key(|(_, purpose)| purpose.as_str())
                         .collect(),
                 });
             }
@@ -435,13 +441,14 @@ fn parse_node_to_shape<'src, S: Shape>(
             target_object: &mut target,
             property: &Property {
                 doc_comments: Vec::new(),
-                name: Ident::new("", short_property.span),
+                name: Ident::new("".intern(), short_property.span),
                 expression: short_property.clone(),
             }
             .with_span(short_property.span),
             node,
             diagnostics,
             sibling_objects: &mut sibling_objects,
+            ast,
         });
 
         if !property_info.multiple_allowed {
@@ -486,7 +493,7 @@ fn parse_node_to_shape<'src, S: Shape>(
                 example_values: missing_info
                     .allowed_expression_types
                     .iter()
-                    .map(|e| e.get_human_string())
+                    .map(|e| e.print_formatted(ast))
                     .collect(),
                 properties_span: if short {
                     Some(*target.short_properties_span())
@@ -503,10 +510,11 @@ fn parse_node_to_shape<'src, S: Shape>(
     if let Some(supported_subnodes) = S::supported_subnodes() {
         for sub_node in node.sub_nodes.iter() {
             let sub_node_result = lower_node(
-                sub_node,
+                ast.node(*sub_node),
                 Some(S::NODE_TYPE.with_span(node.node_type.span)),
                 None,
                 supported_subnodes,
+                ast,
                 diagnostics,
             );
 
@@ -524,7 +532,7 @@ fn parse_node_to_shape<'src, S: Shape>(
     } else if let Some(subnode) = node.sub_nodes.first() {
         diagnostics.add(InvalidSubnode {
             node_type: S::NODE_TYPE.with_span(node.node_type.span),
-            subnode: subnode.span,
+            subnode: ast.node(*subnode).span,
         });
     }
 
@@ -548,7 +556,7 @@ trait Shape: Default + 'static {
     const NODE_TYPE: NodeType;
     type NameIdentifierType: Namespace + Default;
 
-    fn doc_comments(&mut self) -> &mut String;
+    fn doc_comments(&mut self) -> &mut Istr;
     fn name(&mut self) -> &mut Spanned<Identifier<Self::NameIdentifierType>>;
 
     /// All the supported properties
@@ -581,12 +589,12 @@ trait Shape: Default + 'static {
 }
 
 struct PropertyInfo<T: ?Sized> {
-    name: PropertyName<'static>,
+    name: PropertyName,
     description: &'static str,
     /// The types of expressions that are supported.
     /// Comparison is done using discriminants only.
     /// The values of the expressions are used for suggestions in diagnostics.
-    allowed_expression_types: Cow<'static, [Expression<'static>]>,
+    allowed_expression_types: Cow<'static, [Expression]>,
     /// If true, multiple of these properties are allowed
     multiple_allowed: bool,
     /// If true, the property must be set by the user.
@@ -595,7 +603,7 @@ struct PropertyInfo<T: ?Sized> {
     /// If false, a warning is emitted when the property has doc comments
     supports_doc_comments: bool,
     /// If setter returns true, there's an error
-    setter: for<'a, 'src> fn(SetterArgs<'a, 'src, T>) -> bool,
+    setter: for<'a> fn(SetterArgs<'a, T>) -> bool,
 }
 
 impl<T: ?Sized> Clone for PropertyInfo<T> {
@@ -612,43 +620,44 @@ impl<T: ?Sized> Clone for PropertyInfo<T> {
     }
 }
 
-struct SetterArgs<'a, 'src, T: ?Sized> {
+struct SetterArgs<'a, T: ?Sized> {
     /// The target object that needs a property set
     target_object: &'a mut T,
     /// The property that needs to be set
-    property: &'a Spanned<Property<'src>>,
+    property: &'a Spanned<Property>,
     /// The node that's being parsed
-    node: &'a Node<'src>,
+    node: &'a Node,
     diagnostics: &'a mut Diagnostics,
     sibling_objects: &'a mut Vec<Object>,
+    ast: &'a Ast,
 }
 
 #[derive(Clone, Copy)]
-enum PropertyName<'a> {
-    Exact(&'a str),
+enum PropertyName {
+    Exact(Istr),
     Any,
-    Short(&'a str),
+    Short(Istr),
 }
 
-impl<'a> PropertyName<'a> {
-    fn as_exact(&self) -> Option<&&'a str> {
+impl PropertyName {
+    fn as_exact(&self) -> Option<Istr> {
         if let Self::Exact(v) = self {
-            Some(v)
+            Some(*v)
         } else {
             None
         }
     }
 
-    fn as_short(&self) -> Option<&&'a str> {
+    fn as_short(&self) -> Option<Istr> {
         if let Self::Short(v) = self {
-            Some(v)
+            Some(*v)
         } else {
             None
         }
     }
 }
 
-impl<'a> PartialEq for PropertyName<'a> {
+impl PartialEq for PropertyName {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Exact(l0), Self::Exact(r0)) => l0 == r0,

@@ -59,7 +59,7 @@ pub fn compile(source: &str, options: CompileOptions) -> Result<(String, Diagnos
     };
     let (mir, mir_timings) = {
         let _t = timings.start_mir();
-        device_driver_mir::lower_ast(ast, &options.mir_options, &mut diagnostics)
+        device_driver_mir::lower_ast(&ast, &options.mir_options, &mut diagnostics)
             .with_message(|| "could not lower AST to MIR")?
     };
     timings.set_mir_timings(mir_timings);

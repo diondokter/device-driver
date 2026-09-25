@@ -49,7 +49,7 @@ impl Pass for DeviceNameIsPascal {
 
             let converted_driver_name = &device.name.original().to_case(lenient_pascal_case);
 
-            if device.name.value.original() != converted_driver_name {
+            if device.name.value.original().as_str() != converted_driver_name {
                 diagnostics.add(DeviceNameNotPascal {
                     device_name: device.name.span,
                     suggestion: converted_driver_name.clone(),
