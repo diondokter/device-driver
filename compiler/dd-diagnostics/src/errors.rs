@@ -1184,7 +1184,7 @@ impl Diagnostic for OverlappingFields {
     }
 
     fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
-        const HELP_TEXT: &str = "if overlap is intended, the warning can be suppressed by allowing overlap on both fields";
+        const HELP_TEXT: &str = "if overlap is intended, the warning can be suppressed by adding the bit-overlap property to the fieldset";
         const INFO_TEXT: &str = "overlapping fields are usually the result of a copy paste mistake. This warning exists to alert to that possibility";
 
         [
