@@ -21,8 +21,11 @@ Install with:
 ```sh
 cargo install device-driver-cli
 
-# Or if you need the extended feature set (e.g. for converting formats):
-cargo install device-driver-cli --all-features
+# If you want to use the v1 converter
+cargo install device-driver-cli --features converter-dd-v1
+
+# Using the all-features flag is possible, but requires nightly
+cargo +nightly install device-driver-cli --all-features
 ```
 
 Then check out the options with:
