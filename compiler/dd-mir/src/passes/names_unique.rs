@@ -121,7 +121,7 @@ mod tests {
                 .unwrap()
                 .with_dummy_span(),
             device_config: global_config,
-            objects: vec![
+            children: vec![
                 Object::Buffer(Buffer {
                     name: Identifier::try_parse("MyBuffer".intern())
                         .unwrap()
@@ -156,7 +156,7 @@ mod tests {
                 .unwrap()
                 .with_dummy_span(),
             device_config: global_config,
-            objects: vec![Object::FieldSet(FieldSet {
+            children: vec![Object::FieldSet(FieldSet {
                 name: Identifier::try_parse("Reg".intern())
                     .unwrap()
                     .with_dummy_span(),
@@ -197,7 +197,7 @@ mod tests {
                 .unwrap()
                 .with_dummy_span(),
             device_config: global_config,
-            objects: vec![Object::Enum(Enum {
+            children: vec![Object::Enum(Enum {
                 name: Identifier::try_parse("Enum".intern())
                     .unwrap()
                     .with_dummy_span(),

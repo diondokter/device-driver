@@ -57,7 +57,7 @@ mod tests {
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
-            objects: vec![
+            children: vec![
                 Object::FieldSet(FieldSet {
                     name: Identifier::try_parse("MyRegister".intern())
                         .unwrap()
@@ -89,7 +89,7 @@ mod tests {
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
-            objects: vec![Object::FieldSet(FieldSet {
+            children: vec![Object::FieldSet(FieldSet {
                 name: Identifier::try_parse("MyRegister".intern())
                     .unwrap()
                     .with_dummy_span(),
@@ -117,7 +117,7 @@ mod tests {
                 .unwrap()
                 .with_dummy_span(),
             device_config: global_config,
-            objects: vec![Object::FieldSet(FieldSet {
+            children: vec![Object::FieldSet(FieldSet {
                 name: Identifier::try_parse("MyRegister".intern())
                     .unwrap()
                     .with_dummy_span(),

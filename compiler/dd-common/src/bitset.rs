@@ -1,10 +1,11 @@
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct BitSet {
     words: Vec<usize>,
     len: usize,
 }
 
 impl BitSet {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             words: Vec::new(),
             len: 0,

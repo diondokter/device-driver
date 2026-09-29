@@ -1,18 +1,154 @@
-use std::{fmt::Display, rc::Rc, sync::Arc};
+use std::{
+    marker::PhantomData,
+    ops::{Index, IndexMut, Not},
+};
 
 use convert_case::Boundary;
-#[cfg(test)]
-use device_driver_common::identifier::Namespace;
 use device_driver_common::{
-    identifier::{Global, Identifier, IdentifierRef, Local, Operation, RuntimeNamespace, Type},
+    bitset::BitSet,
+    identifier::{
+        Global, Identifier, IdentifierRef, Local, Namespace, Operation, RuntimeNamespace, Type,
+    },
     interner::Istr,
-    span::{Span, SpanExt, Spanned},
+    span::{Span, Spanned},
     specifiers::{
         Access, AddressMode, AddressRange, BaseType, ByteOrder, Integer, NodeType, Repeat,
         ResetValue, TypeConversion,
     },
 };
-use device_driver_diagnostics::DynError;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum ObjectType {
+    Device,
+    Block,
+    Register,
+    Command,
+    Buffer,
+    FieldSet,
+    Field,
+    Enum,
+    EnumVariant,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ObjectId(ObjectType, u32);
+
+trait Id: Copy {
+    fn index(&self) -> usize;
+    fn create(val: usize) -> Self;
+}
+
+macro_rules! create_id {
+    ($name:ident, $object_type:ident) => {
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+        pub struct $name(u32);
+
+        impl From<$name> for ObjectId {
+            fn from(value: $name) -> Self {
+                Self(ObjectType::$object_type, value.0)
+            }
+        }
+
+        impl Id for $name {
+            fn index(&self) -> usize {
+                self.0 as usize
+            }
+
+            fn create(val: usize) -> Self {
+                debug_assert!(u32::try_from(val).is_ok());
+                Self(val as u32)
+            }
+        }
+    };
+}
+
+create_id!(DeviceId, Device);
+create_id!(BlockId, Block);
+create_id!(RegisterId, Register);
+create_id!(CommandId, Command);
+create_id!(BufferId, Buffer);
+create_id!(FieldSetId, FieldSet);
+create_id!(FieldId, Field);
+create_id!(EnumId, Enum);
+create_id!(EnumVariantId, EnumVariant);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ObjectArena<O, ID: Id> {
+    inner: Vec<O>,
+    removed: BitSet,
+    _phantom: PhantomData<ID>,
+}
+
+impl<O: Default, ID: Id> Default for ObjectArena<O, ID> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<O, ID: Id> ObjectArena<O, ID> {
+    pub const fn new() -> Self {
+        Self {
+            inner: Vec::new(),
+            removed: BitSet::new(),
+            _phantom: PhantomData,
+        }
+    }
+
+    pub fn get(&self, id: ID) -> Option<&O> {
+        if !self.removed.get(id.index())? {
+            self.inner.get(id.index())
+        } else {
+            None
+        }
+    }
+
+    pub fn get_mut(&mut self, id: ID) -> Option<&mut O> {
+        if !self.removed.get(id.index())? {
+            self.inner.get_mut(id.index())
+        } else {
+            None
+        }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &O> {
+        self.inner
+            .iter()
+            .enumerate()
+            .filter_map(|(i, obj)| self.removed.get(i)?.not().then_some(obj))
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut O> {
+        self.inner
+            .iter_mut()
+            .enumerate()
+            .filter_map(|(i, obj)| self.removed.get(i)?.not().then_some(obj))
+    }
+
+    pub fn push(&mut self, obj: O) -> ID {
+        let new_id = ID::create(self.inner.len());
+        self.inner.push(obj);
+        self.removed.push(false);
+        new_id
+    }
+
+    pub fn remove(&mut self, id: ID) {
+        self.removed.set(id.index(), true);
+    }
+}
+
+impl<O, ID: Id> Index<ID> for ObjectArena<O, ID> {
+    type Output = O;
+
+    fn index(&self, index: ID) -> &Self::Output {
+        self.get(index).unwrap()
+    }
+}
+
+impl<O, ID: Id> IndexMut<ID> for ObjectArena<O, ID> {
+    fn index_mut(&mut self, index: ID) -> &mut Self::Output {
+        self.get_mut(index).unwrap()
+    }
+}
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Manifest {
@@ -20,7 +156,16 @@ pub struct Manifest {
     pub name: Spanned<Identifier<Global>>,
     pub default_access: Option<Access>,
     pub config: DeviceConfig,
-    pub objects: Vec<Object>,
+
+    pub devices: ObjectArena<Device, DeviceId>,
+    pub blocks: ObjectArena<Block, BlockId>,
+    pub registers: ObjectArena<Register, RegisterId>,
+    pub commands: ObjectArena<Command, CommandId>,
+    pub buffers: ObjectArena<Buffer, BufferId>,
+    pub fieldsets: ObjectArena<FieldSet, FieldSetId>,
+    pub fields: ObjectArena<Field, FieldId>,
+    pub enums: ObjectArena<Enum, EnumId>,
+    pub enum_variants: ObjectArena<EnumVariant, EnumVariantId>,
 
     pub short_properties_span: Span,
     pub properties_span: Option<Span>,
@@ -28,222 +173,93 @@ pub struct Manifest {
 }
 
 impl Manifest {
-    pub fn iter_objects_with_config_mut(&mut self) -> ObjectIterMut<'_> {
-        ObjectIterMut {
-            children: &mut self.objects,
-            parent: None,
-            collection_object_returned: false,
-            current_device_config: Rc::new(self.config.clone()),
+    pub fn objects(&self) -> impl Iterator<Item = Object<'_>> {
+        self.devices
+            .iter()
+            .map(Object::Device)
+            .chain(self.blocks.iter().map(Object::Block))
+            .chain(self.registers.iter().map(Object::Register))
+            .chain(self.commands.iter().map(Object::Command))
+            .chain(self.buffers.iter().map(Object::Buffer))
+            .chain(self.fieldsets.iter().map(Object::FieldSet))
+            .chain(self.fields.iter().map(Object::Field))
+            .chain(self.enums.iter().map(Object::Enum))
+            .chain(self.enum_variants.iter().map(Object::EnumVariant))
+    }
+
+    pub fn objects_mut(&mut self) -> impl Iterator<Item = ObjectMut<'_>> {
+        self.devices
+            .iter_mut()
+            .map(ObjectMut::Device)
+            .chain(self.blocks.iter_mut().map(ObjectMut::Block))
+            .chain(self.registers.iter_mut().map(ObjectMut::Register))
+            .chain(self.commands.iter_mut().map(ObjectMut::Command))
+            .chain(self.buffers.iter_mut().map(ObjectMut::Buffer))
+            .chain(self.fieldsets.iter_mut().map(ObjectMut::FieldSet))
+            .chain(self.fields.iter_mut().map(ObjectMut::Field))
+            .chain(self.enums.iter_mut().map(ObjectMut::Enum))
+            .chain(self.enum_variants.iter_mut().map(ObjectMut::EnumVariant))
+    }
+
+    pub fn object(&self, id: ObjectId) -> Option<Object<'_>> {
+        match id.0 {
+            ObjectType::Device => self.devices.get(DeviceId(id.1)).map(Object::Device),
+            ObjectType::Block => self.blocks.get(BlockId(id.1)).map(Object::Block),
+            ObjectType::Register => self.registers.get(RegisterId(id.1)).map(Object::Register),
+            ObjectType::Command => self.commands.get(CommandId(id.1)).map(Object::Command),
+            ObjectType::Buffer => self.buffers.get(BufferId(id.1)).map(Object::Buffer),
+            ObjectType::FieldSet => self.fieldsets.get(FieldSetId(id.1)).map(Object::FieldSet),
+            ObjectType::Field => self.fields.get(FieldId(id.1)).map(Object::Field),
+            ObjectType::Enum => self.enums.get(EnumId(id.1)).map(Object::Enum),
+            ObjectType::EnumVariant => self
+                .enum_variants
+                .get(EnumVariantId(id.1))
+                .map(Object::EnumVariant),
         }
     }
 
-    pub fn iter_objects(&self) -> impl Iterator<Item = &Object> {
-        ObjectIter {
-            children: &self.objects,
-            parent: None,
-            collection_object_returned: false,
-            current_device_config: Rc::new(self.config.clone()),
-        }
-        .map(|(object, _)| object)
+    /// This assumes [crate::passes::Assumption::NamesUnique]
+    pub fn search_object<T: Namespace>(&self, name: &IdentifierRef<T>) -> Option<Object<'_>> {
+        self.objects().find(|o| name.is_ref_to(o.name()))
     }
 
-    #[must_use]
-    pub fn iter_objects_with_config(&self) -> ObjectIter<'_> {
-        ObjectIter {
-            children: &self.objects,
-            parent: None,
-            collection_object_returned: false,
-            current_device_config: Rc::new(self.config.clone()),
-        }
-    }
-
-    pub fn iter_enums(&self) -> impl Iterator<Item = &'_ Enum> {
-        self.iter_objects_with_config().filter_map(|(o, _)| {
-            if let Object::Enum(e) = o {
-                Some(e)
-            } else {
-                None
-            }
-        })
-    }
-
-    pub fn iter_enums_with_config(&self) -> impl Iterator<Item = (&'_ Enum, Rc<DeviceConfig>)> {
-        self.iter_objects_with_config().filter_map(|(o, config)| {
-            if let Object::Enum(e) = o {
-                Some((e, config))
-            } else {
-                None
-            }
-        })
-    }
-
-    pub fn iter_devices_with_config(&self) -> impl Iterator<Item = (&'_ Device, Rc<DeviceConfig>)> {
-        self.iter_objects_with_config().filter_map(|(o, config)| {
-            if let Object::Device(d) = o {
-                Some((d, config))
-            } else {
-                None
-            }
-        })
-    }
-}
-
-#[derive(Default)]
-pub struct ObjectIterMut<'a> {
-    children: &'a mut [Object],
-    parent: Option<Box<ObjectIterMut<'a>>>,
-    collection_object_returned: bool,
-    current_device_config: Rc<DeviceConfig>,
-}
-
-/// A GAT based lending iterator.
-/// Can't do anything fancy with it yet though.
-pub trait LendingIterator {
-    type Item<'a>
-    where
-        Self: 'a;
-
-    fn next(&mut self) -> Option<Self::Item<'_>>;
-}
-
-impl LendingIterator for ObjectIterMut<'_> {
-    type Item<'b>
-        = (&'b mut Object, Rc<DeviceConfig>)
-    where
-        Self: 'b;
-
-    fn next(&mut self) -> Option<Self::Item<'_>> {
-        if self.children.is_empty() {
-            match self.parent.take() {
-                Some(parent) => {
-                    // continue with the parent node
-                    *self = *parent;
-                    self.next()
-                }
-                None => None,
-            }
-        } else if self.children[0].child_objects_mut().is_empty() {
-            let (first, rest) = std::mem::take(&mut self.children)
-                .split_first_mut()
-                .expect("Already checked not empty");
-            self.children = rest;
-            Some((first, self.current_device_config.clone()))
-        } else if !self.collection_object_returned {
-            self.collection_object_returned = true;
-
-            let next_device_config = if let Some(new_config) = self.children[0].device_config() {
-                Rc::new(self.current_device_config.override_with(new_config))
-            } else {
-                self.current_device_config.clone()
-            };
-
-            Some((&mut self.children[0], next_device_config))
-        } else {
-            self.collection_object_returned = false;
-
-            let next_device_config = if let Some(new_config) = self.children[0].device_config() {
-                Rc::new(self.current_device_config.override_with(new_config))
-            } else {
-                self.current_device_config.clone()
-            };
-
-            let (first, rest) = std::mem::take(&mut self.children)
-                .split_first_mut()
-                .expect("Already checked not empty");
-            self.children = rest;
-
-            *self = ObjectIterMut {
-                children: first.child_objects_mut(),
-                parent: Some(Box::new(std::mem::take(self))),
-                collection_object_returned: false,
-                current_device_config: next_device_config,
-            };
-            self.next()
+    pub fn object_mut(&mut self, id: ObjectId) -> Option<ObjectMut<'_>> {
+        match id.0 {
+            ObjectType::Device => self.devices.get_mut(DeviceId(id.1)).map(ObjectMut::Device),
+            ObjectType::Block => self.blocks.get_mut(BlockId(id.1)).map(ObjectMut::Block),
+            ObjectType::Register => self
+                .registers
+                .get_mut(RegisterId(id.1))
+                .map(ObjectMut::Register),
+            ObjectType::Command => self
+                .commands
+                .get_mut(CommandId(id.1))
+                .map(ObjectMut::Command),
+            ObjectType::Buffer => self.buffers.get_mut(BufferId(id.1)).map(ObjectMut::Buffer),
+            ObjectType::FieldSet => self
+                .fieldsets
+                .get_mut(FieldSetId(id.1))
+                .map(ObjectMut::FieldSet),
+            ObjectType::Field => self.fields.get_mut(FieldId(id.1)).map(ObjectMut::Field),
+            ObjectType::Enum => self.enums.get_mut(EnumId(id.1)).map(ObjectMut::Enum),
+            ObjectType::EnumVariant => self
+                .enum_variants
+                .get_mut(EnumVariantId(id.1))
+                .map(ObjectMut::EnumVariant),
         }
     }
-}
 
-#[derive(Default)]
-pub struct ObjectIter<'a> {
-    children: &'a [Object],
-    parent: Option<Box<ObjectIter<'a>>>,
-    collection_object_returned: bool,
-    current_device_config: Rc<DeviceConfig>,
-}
-
-impl<'a> Iterator for ObjectIter<'a> {
-    type Item = (&'a Object, Rc<DeviceConfig>);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let children = std::mem::take(&mut self.children);
-
-        match children.split_first() {
-            None => match self.parent.take() {
-                Some(parent) => {
-                    // continue with the parent node
-                    *self = *parent;
-                    self.next()
-                }
-                None => None,
-            },
-            Some((first, rest)) => {
-                self.children = rest;
-
-                if first.child_objects().is_empty() {
-                    Some((first, self.current_device_config.clone()))
-                } else if !self.collection_object_returned {
-                    self.collection_object_returned = true;
-
-                    let next_device_config = if let Some(new_config) = first.device_config() {
-                        Rc::new(self.current_device_config.override_with(new_config))
-                    } else {
-                        self.current_device_config.clone()
-                    };
-
-                    self.children = children;
-
-                    Some((&children[0], next_device_config))
-                } else {
-                    self.collection_object_returned = false;
-
-                    let next_device_config = if let Some(new_config) = first.device_config() {
-                        Rc::new(self.current_device_config.override_with(new_config))
-                    } else {
-                        self.current_device_config.clone()
-                    };
-
-                    *self = ObjectIter {
-                        children: first.child_objects(),
-                        parent: Some(Box::new(std::mem::take(self))),
-                        collection_object_returned: false,
-                        current_device_config: next_device_config,
-                    };
-                    self.next()
-                }
-            }
-        }
-    }
-}
-
-/// Implementation meant for testing to easily create a manifest with just one device
-impl From<Device> for Manifest {
-    fn from(value: Device) -> Self {
-        let default_access = value.default_access;
-
-        Self {
-            description: Istr::default(),
-            name: value
-                .name
-                .value
-                .clone()
-                .cast_unchecked()
-                .with_span(value.name.span),
-            short_properties_span: value.short_properties_span,
-            properties_span: value.properties_span,
-            span: value.span,
-            objects: vec![Object::Device(value)],
-            default_access,
-            config: DeviceConfig::default(),
+    pub fn remove_object(&mut self, id: ObjectId) {
+        match id.0 {
+            ObjectType::Device => self.devices.remove(DeviceId(id.1)),
+            ObjectType::Block => self.blocks.remove(BlockId(id.1)),
+            ObjectType::Register => self.registers.remove(RegisterId(id.1)),
+            ObjectType::Command => self.commands.remove(CommandId(id.1)),
+            ObjectType::Buffer => self.buffers.remove(BufferId(id.1)),
+            ObjectType::FieldSet => self.fieldsets.remove(FieldSetId(id.1)),
+            ObjectType::Field => self.fields.remove(FieldId(id.1)),
+            ObjectType::Enum => self.enums.remove(EnumId(id.1)),
+            ObjectType::EnumVariant => self.enum_variants.remove(EnumVariantId(id.1)),
         }
     }
 }
@@ -255,25 +271,12 @@ pub struct Device {
     pub default_access: Option<Access>,
     pub address_offset: Spanned<i128>,
     pub device_config: DeviceConfig,
-    pub objects: Vec<Object>,
+    pub children: Vec<ObjectId>,
 
     pub short_properties_span: Span,
     pub properties_span: Option<Span>,
     /// Span of the whole object
     pub span: Span,
-}
-
-impl Device {
-    pub fn iter_objects(&self) -> impl Iterator<Item = &Object> {
-        ObjectIter {
-            children: &self.objects,
-            parent: None,
-            collection_object_returned: false,
-            // Note: We can't give the config from here because there might be a config in the manifest we don't know about
-            current_device_config: Rc::new(DeviceConfig::default()),
-        }
-        .map(|(object, _)| object)
-    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -307,20 +310,108 @@ impl DeviceConfig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum Object {
-    Device(Device),
-    Block(Block),
-    Register(Register),
-    Command(Command),
-    Buffer(Buffer),
-    FieldSet(FieldSet),
-    Enum(Enum),
-    Extern(Extern),
-    Field(Field),
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum Object<'a> {
+    Device(&'a Device),
+    Block(&'a Block),
+    Register(&'a Register),
+    Command(&'a Command),
+    Buffer(&'a Buffer),
+    FieldSet(&'a FieldSet),
+    Enum(&'a Enum),
+    Extern(&'a Extern),
+    Field(&'a Field),
+    EnumVariant(&'a EnumVariant),
 }
 
-impl Object {
+#[derive(Debug, PartialEq)]
+pub enum ObjectMut<'a> {
+    Device(&'a mut Device),
+    Block(&'a mut Block),
+    Register(&'a mut Register),
+    Command(&'a mut Command),
+    Buffer(&'a mut Buffer),
+    FieldSet(&'a mut FieldSet),
+    Enum(&'a mut Enum),
+    Extern(&'a mut Extern),
+    Field(&'a mut Field),
+    EnumVariant(&'a mut EnumVariant),
+}
+
+impl<'a> ObjectMut<'a> {
+    pub fn as_ref(&self) -> Object<'_> {
+        match self {
+            ObjectMut::Device(device) => Object::Device(device),
+            ObjectMut::Block(block) => Object::Block(block),
+            ObjectMut::Register(register) => Object::Register(register),
+            ObjectMut::Command(command) => Object::Command(command),
+            ObjectMut::Buffer(buffer) => Object::Buffer(buffer),
+            ObjectMut::FieldSet(field_set) => Object::FieldSet(field_set),
+            ObjectMut::Enum(e) => Object::Enum(e),
+            ObjectMut::Extern(e) => Object::Extern(e),
+            ObjectMut::Field(field) => Object::Field(field),
+            ObjectMut::EnumVariant(field) => Object::EnumVariant(field),
+        }
+    }
+
+    pub fn child_objects_mut(&mut self) -> &mut [ObjectId] {
+        match self {
+            ObjectMut::Device(device) => &mut device.children,
+            ObjectMut::Block(block) => &mut block.children,
+            _ => &mut [],
+        }
+    }
+
+    /// Get a mutable reference to the name of the specific object
+    pub fn name_mut(&mut self) -> &mut Identifier<RuntimeNamespace> {
+        match self {
+            ObjectMut::Device(val) => val.name.as_runtime_namespace_mut(),
+            ObjectMut::Block(val) => val.name.as_runtime_namespace_mut(),
+            ObjectMut::Register(val) => val.name.as_runtime_namespace_mut(),
+            ObjectMut::Command(val) => val.name.as_runtime_namespace_mut(),
+            ObjectMut::Buffer(val) => val.name.as_runtime_namespace_mut(),
+            ObjectMut::FieldSet(val) => val.name.as_runtime_namespace_mut(),
+            ObjectMut::Enum(val) => val.name.as_runtime_namespace_mut(),
+            ObjectMut::Extern(val) => val.name.as_runtime_namespace_mut(),
+            ObjectMut::Field(val) => val.name.as_runtime_namespace_mut(),
+            ObjectMut::EnumVariant(val) => val.name.as_runtime_namespace_mut(),
+        }
+    }
+
+    /// Return the repeat value if it exists
+    pub fn repeat_mut(&mut self) -> Option<&mut Repeat> {
+        match self {
+            ObjectMut::Device(_) => None,
+            ObjectMut::Block(block) => block.repeat.as_mut(),
+            ObjectMut::Register(register) => register.repeat.as_mut(),
+            ObjectMut::Command(command) => command.repeat.as_mut(),
+            ObjectMut::Buffer(_) => None,
+            ObjectMut::FieldSet(_) => None,
+            ObjectMut::Enum(_) => None,
+            ObjectMut::Extern(_) => None,
+            ObjectMut::Field(field) => field.repeat.as_mut(),
+            ObjectMut::EnumVariant(_) => None,
+        }
+    }
+
+    pub fn as_field_set_mut(&mut self) -> Option<&mut FieldSet> {
+        if let Self::FieldSet(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    pub fn as_enum_mut(&mut self) -> Option<&mut Enum> {
+        if let Self::Enum(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+}
+
+impl<'a> Object<'a> {
     pub fn device_config(&self) -> Option<&DeviceConfig> {
         match self {
             Object::Device(device) => Some(&device.device_config),
@@ -328,42 +419,11 @@ impl Object {
         }
     }
 
-    pub fn child_objects_mut(&mut self) -> &mut [Object] {
+    pub fn child_objects(&self) -> &[ObjectId] {
         match self {
-            Object::Device(device) => &mut device.objects,
-            Object::Block(block) => &mut block.objects,
-            _ => &mut [],
-        }
-    }
-
-    pub fn child_objects_vec(&mut self) -> Option<&mut Vec<Object>> {
-        match self {
-            Object::Device(device) => Some(&mut device.objects),
-            Object::Block(block) => Some(&mut block.objects),
-            _ => None,
-        }
-    }
-
-    pub fn child_objects(&self) -> &[Object] {
-        match self {
-            Object::Device(device) => &device.objects,
-            Object::Block(block) => &block.objects,
+            Object::Device(device) => &device.children,
+            Object::Block(block) => &block.children,
             _ => &[],
-        }
-    }
-
-    /// Get a mutable reference to the name of the specific object
-    pub fn name_mut(&mut self) -> &mut Identifier<RuntimeNamespace> {
-        match self {
-            Object::Device(val) => val.name.as_runtime_namespace_mut(),
-            Object::Block(val) => val.name.as_runtime_namespace_mut(),
-            Object::Register(val) => val.name.as_runtime_namespace_mut(),
-            Object::Command(val) => val.name.as_runtime_namespace_mut(),
-            Object::Buffer(val) => val.name.as_runtime_namespace_mut(),
-            Object::FieldSet(val) => val.name.as_runtime_namespace_mut(),
-            Object::Enum(val) => val.name.as_runtime_namespace_mut(),
-            Object::Extern(val) => val.name.as_runtime_namespace_mut(),
-            Object::Field(val) => val.name.as_runtime_namespace_mut(),
         }
     }
 
@@ -379,6 +439,7 @@ impl Object {
             Object::Enum(val) => val.name.as_runtime_namespace(),
             Object::Extern(val) => val.name.as_runtime_namespace(),
             Object::Field(val) => val.name.as_runtime_namespace(),
+            Object::EnumVariant(val) => val.name.as_runtime_namespace(),
         }
     }
 
@@ -394,6 +455,7 @@ impl Object {
             Object::Enum(val) => val.name.span,
             Object::Extern(val) => val.name.span,
             Object::Field(val) => val.name.span,
+            Object::EnumVariant(val) => val.name.span,
         }
     }
 
@@ -409,6 +471,7 @@ impl Object {
             Object::Enum(_) => None,
             Object::Extern(_) => None,
             Object::Field(_) => None,
+            Object::EnumVariant(_) => None,
         }
     }
 
@@ -424,21 +487,7 @@ impl Object {
             Object::Enum(_) => None,
             Object::Extern(_) => None,
             Object::Field(field) => field.repeat.as_ref(),
-        }
-    }
-
-    /// Return the repeat value if it exists
-    pub fn repeat_mut(&mut self) -> Option<&mut Repeat> {
-        match self {
-            Object::Device(_) => None,
-            Object::Block(block) => block.repeat.as_mut(),
-            Object::Register(register) => register.repeat.as_mut(),
-            Object::Command(command) => command.repeat.as_mut(),
-            Object::Buffer(_) => None,
-            Object::FieldSet(_) => None,
-            Object::Enum(_) => None,
-            Object::Extern(_) => None,
-            Object::Field(field) => field.repeat.as_mut(),
+            Object::EnumVariant(_) => None,
         }
     }
 
@@ -450,23 +499,7 @@ impl Object {
         }
     }
 
-    pub fn as_field_set_mut(&mut self) -> Option<&mut FieldSet> {
-        if let Self::FieldSet(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-
     pub fn as_enum(&self) -> Option<&Enum> {
-        if let Self::Enum(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-
-    pub fn as_enum_mut(&mut self) -> Option<&mut Enum> {
         if let Self::Enum(v) = self {
             Some(v)
         } else {
@@ -485,6 +518,7 @@ impl Object {
             Object::Enum(enum_value) => Some(&enum_value.base_type),
             Object::Extern(extern_value) => Some(&extern_value.base_type),
             Object::Field(field) => Some(&field.base_type),
+            Object::EnumVariant(_) => None,
         }
     }
 
@@ -499,6 +533,7 @@ impl Object {
             Object::Enum(_) => false,
             Object::Extern(_) => false,
             Object::Field(_) => false,
+            Object::EnumVariant(_) => false,
         }
     }
 
@@ -514,6 +549,7 @@ impl Object {
             Object::Enum(val) => val.span,
             Object::Extern(val) => val.span,
             Object::Field(val) => val.span,
+            Object::EnumVariant(val) => val.span,
         }
     }
 
@@ -528,6 +564,7 @@ impl Object {
             Object::Enum(enum_value) => enum_value.short_properties_span,
             Object::Extern(extern_value) => extern_value.short_properties_span,
             Object::Field(field) => field.short_properties_span,
+            Object::EnumVariant(_) => Span::empty(),
         }
     }
 
@@ -542,6 +579,7 @@ impl Object {
             Object::Enum(_) => NodeType::Enum,
             Object::Extern(_) => NodeType::Extern,
             Object::Field(_) => NodeType::Field,
+            Object::EnumVariant(_) => panic!("Object has no valid node type"),
         }
     }
 
@@ -560,6 +598,7 @@ impl Object {
             Object::Enum(_) => Vec::new(),
             Object::Extern(_) => Vec::new(),
             Object::Field(_) => Vec::new(),
+            Object::EnumVariant(_) => Vec::new(),
         }
     }
 
@@ -574,6 +613,7 @@ impl Object {
             Object::Enum(val) => val.properties_span,
             Object::Extern(val) => val.properties_span,
             Object::Field(val) => val.properties_span,
+            Object::EnumVariant(_) => None,
         }
     }
 }
@@ -584,26 +624,13 @@ pub struct Block {
     pub name: Spanned<Identifier<Global>>,
     pub address_offset: Spanned<i128>,
     pub repeat: Option<Repeat>,
-    pub objects: Vec<Object>,
+    pub children: Vec<ObjectId>,
     pub default_access: Option<Access>,
 
     pub short_properties_span: Span,
     pub properties_span: Option<Span>,
     /// Span of the whole object
     pub span: Span,
-}
-
-impl Block {
-    pub fn iter_objects(&self) -> impl Iterator<Item = &Object> {
-        ObjectIter {
-            children: &self.objects,
-            parent: None,
-            collection_object_returned: false,
-            // Note: We can't give the config from here because there might be a config in the manifest we don't know about
-            current_device_config: Rc::new(DeviceConfig::default()),
-        }
-        .map(|(object, _)| object)
-    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -631,7 +658,7 @@ pub struct FieldSet {
     pub byte_order: Option<ByteOrder>,
     pub allow_bit_overlap: bool,
     pub default_access: Option<Access>,
-    pub fields: Vec<Field>,
+    pub fields: Vec<FieldId>,
 
     pub short_properties_span: Span,
     pub properties_span: Option<Span>,
@@ -682,7 +709,7 @@ impl Field {
 pub struct Enum {
     pub description: Istr,
     pub name: Spanned<Identifier<Type>>,
-    pub variants: Vec<EnumVariant>,
+    pub variants: Vec<EnumVariantId>,
     pub base_type: Spanned<BaseType>,
     pub size_bits: Option<u32>,
     pub generation_style: Option<EnumGenerationStyle>,
@@ -698,7 +725,7 @@ impl Enum {
     pub fn new(
         description: Istr,
         name: Spanned<Identifier<Type>>,
-        variants: Vec<EnumVariant>,
+        variants: Vec<EnumVariantId>,
         base_type: Spanned<BaseType>,
         size_bits: Option<u32>,
         span: Span,
@@ -720,7 +747,7 @@ impl Enum {
     pub fn new_with_style(
         description: Istr,
         name: Spanned<Identifier<Type>>,
-        variants: Vec<EnumVariant>,
+        variants: Vec<EnumVariantId>,
         base_type: Spanned<BaseType>,
         size_bits: Option<u32>,
         generation_style: EnumGenerationStyle,
@@ -743,36 +770,22 @@ impl Enum {
     ///
     /// *Note:* The validity of this is checked in the [`passes::enum_values_checked`] pass. If this function is run
     /// before that pass, there might be weird results.
-    pub fn iter_variants_with_discriminant(&self) -> impl Iterator<Item = (i128, &EnumVariant)> {
+    pub fn iter_variants_with_discriminant<'m>(
+        &self,
+        manifest: &'m Manifest,
+    ) -> impl Iterator<Item = (i128, EnumVariantId)> {
         let mut next_discriminant = 0;
         self.variants.iter().map(move |variant| {
-            if let Some(discriminant) = variant.value.specified_discriminant() {
+            if let Some(discriminant) = manifest.enum_variants[*variant]
+                .value
+                .specified_discriminant()
+            {
                 next_discriminant = discriminant + 1;
-                (discriminant, variant)
+                (discriminant, *variant)
             } else {
                 let discriminant = next_discriminant;
                 next_discriminant += 1;
-                (discriminant, variant)
-            }
-        })
-    }
-
-    /// Get an iterator over the variants, but with an extra counter to get the specified discriminant for each.
-    ///
-    /// *Note:* The validity of this is checked in the [`passes::enum_values_checked`] pass. If this function is run
-    /// before that pass, there might be weird results.
-    pub fn iter_variants_with_discriminant_mut(
-        &mut self,
-    ) -> impl Iterator<Item = (i128, &mut EnumVariant)> {
-        let mut next_discriminant = 0;
-        self.variants.iter_mut().map(move |variant| {
-            if let Some(discriminant) = variant.value.specified_discriminant() {
-                next_discriminant = discriminant + 1;
-                (discriminant, variant)
-            } else {
-                let discriminant = next_discriminant;
-                next_discriminant += 1;
-                (discriminant, variant)
+                (discriminant, *variant)
             }
         })
     }
@@ -891,231 +904,4 @@ pub struct Extern {
     pub properties_span: Option<Span>,
     /// Span of the whole object
     pub span: Span,
-}
-
-#[derive(Debug, Clone, Eq)]
-pub struct ObjectId {
-    object_name: Spanned<Identifier<RuntimeNamespace>>,
-}
-
-impl PartialEq for ObjectId {
-    fn eq(&self, other: &Self) -> bool {
-        self.object_name.original() == other.object_name.original()
-            && self.object_name.namespace() == other.object_name.namespace()
-    }
-}
-
-impl std::hash::Hash for ObjectId {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.object_name.original().hash(state);
-        self.object_name.namespace().hash(state);
-    }
-}
-
-impl ObjectId {
-    #[must_use]
-    pub fn span(&self) -> Span {
-        self.object_name.span
-    }
-
-    pub fn identifier(&self) -> &Identifier<RuntimeNamespace> {
-        &self.object_name
-    }
-
-    /// *Only for tests:* Create a new instance with a dummy span.
-    #[cfg(test)]
-    pub fn new_test<T: Namespace>(identifier: Identifier<T>) -> Self {
-        use device_driver_common::span::SpanExt;
-
-        Self {
-            object_name: identifier.to_runtime_namespace().with_dummy_span(),
-        }
-    }
-
-    pub fn concrete_namespace_ids(
-        &self,
-    ) -> Result<impl Iterator<Item = Result<Self, DynError>>, DynError> {
-        let concretes = self.identifier().namespace().concrete_namespaces();
-
-        Ok(concretes.into_iter().map(|namespace| {
-            Ok(Self {
-                object_name: self
-                    .object_name
-                    .value
-                    .clone()
-                    .cast_concrete(namespace)
-                    .with_span(self.object_name.span),
-            })
-        }))
-    }
-
-    pub fn words(&self) -> ObjectWords {
-        ObjectWords(self.object_name.words())
-    }
-}
-
-impl Display for ObjectId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{} ({:?})",
-            self.object_name.original(),
-            self.object_name.namespace()
-        )
-    }
-}
-
-#[derive(Hash, PartialEq, Eq)]
-pub struct ObjectWords(Arc<[String]>);
-
-pub trait Id {
-    fn id(&self) -> ObjectId;
-    fn has_id(&self, id: &ObjectId) -> bool;
-}
-
-macro_rules! impl_unique_object {
-    ($t:ty) => {
-        impl Id for $t {
-            fn id(&self) -> ObjectId {
-                ObjectId {
-                    object_name: self
-                        .name
-                        .value
-                        .clone()
-                        .to_runtime_namespace()
-                        .with_span(self.name.span),
-                }
-            }
-
-            fn has_id(&self, id: &ObjectId) -> bool {
-                self.name.as_runtime_namespace() == &id.object_name.value
-            }
-        }
-    };
-}
-
-impl_unique_object!(Device);
-impl_unique_object!(Register);
-impl_unique_object!(Command);
-impl_unique_object!(Buffer);
-impl_unique_object!(Block);
-impl_unique_object!(Enum);
-impl_unique_object!(FieldSet);
-impl_unique_object!(Extern);
-impl_unique_object!(Field);
-impl_unique_object!(EnumVariant);
-
-impl Id for Object {
-    fn id(&self) -> ObjectId {
-        match self {
-            Object::Device(val) => val.id(),
-            Object::Block(val) => val.id(),
-            Object::Register(val) => val.id(),
-            Object::Command(val) => val.id(),
-            Object::Buffer(val) => val.id(),
-            Object::FieldSet(val) => val.id(),
-            Object::Enum(val) => val.id(),
-            Object::Extern(val) => val.id(),
-            // Special
-            Object::Field(_) => unimplemented!(),
-        }
-    }
-
-    fn has_id(&self, id: &ObjectId) -> bool {
-        match self {
-            Object::Device(val) => val.has_id(id),
-            Object::Block(val) => val.has_id(id),
-            Object::Register(val) => val.has_id(id),
-            Object::Command(val) => val.has_id(id),
-            Object::Buffer(val) => val.has_id(id),
-            Object::FieldSet(val) => val.has_id(id),
-            Object::Enum(val) => val.has_id(id),
-            Object::Extern(val) => val.has_id(id),
-            // Special
-            Object::Field(_) => unimplemented!(),
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use device_driver_common::{interner::StrExt, span::SpanExt};
-
-    use super::*;
-
-    #[test]
-    fn iter_works() {
-        const NAME_ORDER: &[&str] = &["a", "b", "c", "d"];
-
-        let mut manifest = Manifest {
-            description: Default::default(),
-            name: Default::default(),
-            objects: vec![
-                Object::Device(Device {
-                    description: Istr::default(),
-                    name: Identifier::try_parse("a".intern())
-                        .unwrap()
-                        .with_dummy_span(),
-                    objects: vec![
-                        Object::Extern(Extern {
-                            name: Identifier::try_parse("b".intern())
-                                .unwrap()
-                                .with_dummy_span(),
-                            ..Default::default()
-                        }),
-                        Object::Extern(Extern {
-                            name: Identifier::try_parse("c".intern())
-                                .unwrap()
-                                .with_dummy_span(),
-                            ..Default::default()
-                        }),
-                    ],
-                    ..Default::default()
-                }),
-                Object::Extern(Extern {
-                    name: Identifier::try_parse("d".intern())
-                        .unwrap()
-                        .with_dummy_span(),
-                    ..Default::default()
-                }),
-            ],
-            ..Default::default()
-        };
-
-        let names: Vec<_> = manifest
-            .iter_objects()
-            .map(|o| o.name().original().as_str())
-            .collect();
-        assert_eq!(&names, NAME_ORDER);
-
-        let mut names = Vec::new();
-        let mut lender = manifest.iter_objects_with_config_mut();
-        while let Some((object, _)) = lender.next() {
-            names.push(object.name().original().as_str());
-        }
-        assert_eq!(&names, NAME_ORDER);
-    }
-
-    #[test]
-    fn correct_integer_size_bits() {
-        assert_eq!(Integer::U8.bits_required(0, 0), 0);
-        assert_eq!(Integer::U8.bits_required(0, 1), 1);
-        assert_eq!(Integer::U8.bits_required(0, 2), 2);
-        assert_eq!(Integer::U8.bits_required(0, 3), 2);
-        assert_eq!(Integer::U8.bits_required(0, 4), 3);
-
-        assert_eq!(Integer::I8.bits_required(0, 0), 0);
-        assert_eq!(Integer::I8.bits_required(-1, 0), 1);
-        assert_eq!(Integer::I8.bits_required(-1, 1), 2);
-        assert_eq!(Integer::I8.bits_required(0, 1), 2);
-        assert_eq!(Integer::I8.bits_required(-2, 1), 2);
-        assert_eq!(Integer::I8.bits_required(0, 2), 3);
-        assert_eq!(Integer::I8.bits_required(-128, 0), 8);
-        assert_eq!(Integer::I8.bits_required(-129, 0), 9);
-        assert_eq!(Integer::I8.bits_required(0, 127), 8);
-        assert_eq!(Integer::I8.bits_required(0, 128), 9);
-        assert_eq!(Integer::I8.bits_required(-16, 15), 5);
-        assert_eq!(Integer::I8.bits_required(-16, 16), 6);
-        assert_eq!(Integer::I8.bits_required(-17, 15), 6);
-    }
 }

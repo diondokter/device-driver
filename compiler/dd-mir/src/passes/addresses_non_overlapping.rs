@@ -115,7 +115,7 @@ fn find_object_addresses<'m>(
 ) -> Result<Vec<ObjectAddress>, DynError> {
     let mut object_addresses = Vec::new();
 
-    let mut children_left = vec![device.objects.len()];
+    let mut children_left = vec![device.children.len()];
     let mut address_offsets = vec![device.address_offset.value];
 
     for object in device.iter_objects() {
@@ -211,11 +211,11 @@ fn find_object_addresses<'m>(
         match object {
             Object::Device(d) => {
                 address_offsets.push(d.address_offset.value);
-                children_left.push(d.objects.len());
+                children_left.push(d.children.len());
             }
             Object::Block(b) => {
                 address_offsets.push(b.address_offset.value);
-                children_left.push(b.objects.len());
+                children_left.push(b.children.len());
             }
             _ => (),
         }

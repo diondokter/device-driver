@@ -483,7 +483,7 @@ If this is not specified, the address offset defaults to 0.",
     }
 
     fn push_subnode(&mut self, object: Object) {
-        self.objects.push(object);
+        self.children.push(object);
     }
 
     fn span(&mut self) -> &mut Span {
@@ -571,7 +571,7 @@ If this is not desired, then keep the address offset at 0.",
     }
 
     fn push_subnode(&mut self, object: Object) {
-        self.objects.push(object);
+        self.children.push(object);
     }
 
     fn repeat(&mut self) -> Option<&mut Option<Repeat>> {

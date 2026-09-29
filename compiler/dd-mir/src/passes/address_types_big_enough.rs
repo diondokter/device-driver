@@ -123,7 +123,7 @@ mod tests {
                 register_address_type: Some(Integer::I8.with_dummy_span()),
                 ..Default::default()
             },
-            objects: vec![Object::Register(Register {
+            children: vec![Object::Register(Register {
                 name: Identifier::try_parse("MyReg".intern())
                     .unwrap()
                     .with_dummy_span(),
@@ -153,7 +153,7 @@ mod tests {
                 command_address_type: Some(Integer::U16.with_dummy_span()),
                 ..Default::default()
             },
-            objects: vec![Object::Command(Command {
+            children: vec![Object::Command(Command {
                 name: Identifier::try_parse("MyReg".intern())
                     .unwrap()
                     .with_dummy_span(),

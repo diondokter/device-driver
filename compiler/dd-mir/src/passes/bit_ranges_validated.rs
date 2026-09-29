@@ -177,7 +177,7 @@ mod tests {
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
-            objects: vec![Object::FieldSet(FieldSet {
+            children: vec![Object::FieldSet(FieldSet {
                 name: Identifier::try_parse("MyReg".intern())
                     .unwrap()
                     .with_dummy_span(),
@@ -203,7 +203,7 @@ mod tests {
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
-            objects: vec![Object::FieldSet(FieldSet {
+            children: vec![Object::FieldSet(FieldSet {
                 name: Identifier::try_parse("MyReg".intern())
                     .unwrap()
                     .with_dummy_span(),
@@ -229,7 +229,7 @@ mod tests {
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
-            objects: vec![Object::FieldSet(FieldSet {
+            children: vec![Object::FieldSet(FieldSet {
                 name: Identifier::try_parse("MyReg".intern())
                     .unwrap()
                     .with_dummy_span(),
@@ -263,7 +263,7 @@ mod tests {
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
-            objects: vec![Object::FieldSet(FieldSet {
+            children: vec![Object::FieldSet(FieldSet {
                 name: Identifier::try_parse("MyReg".intern())
                     .unwrap()
                     .with_dummy_span(),
@@ -298,7 +298,7 @@ mod tests {
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
-            objects: vec![Object::FieldSet(FieldSet {
+            children: vec![Object::FieldSet(FieldSet {
                 name: Identifier::try_parse("MyReg".intern())
                     .unwrap()
                     .with_dummy_span(),
@@ -334,7 +334,7 @@ mod tests {
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
-            objects: vec![Object::FieldSet(FieldSet {
+            children: vec![Object::FieldSet(FieldSet {
                 name: Identifier::try_parse("MyReg".intern())
                     .unwrap()
                     .with_dummy_span(),
@@ -370,7 +370,7 @@ mod tests {
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
-            objects: vec![Object::FieldSet(FieldSet {
+            children: vec![Object::FieldSet(FieldSet {
                 name: Identifier::try_parse("MyReg".intern())
                     .unwrap()
                     .with_dummy_span(),

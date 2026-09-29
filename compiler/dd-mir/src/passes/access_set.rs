@@ -34,11 +34,11 @@ fn set_access(
         match object {
             Object::Device(device) => {
                 let default_access = device.default_access.or(default_access);
-                set_access(default_access, &mut device.objects, diagnostics);
+                set_access(default_access, &mut device.children, diagnostics);
             }
             Object::Block(block) => {
                 let default_access = block.default_access.or(default_access);
-                set_access(default_access, &mut block.objects, diagnostics);
+                set_access(default_access, &mut block.children, diagnostics);
             }
             Object::FieldSet(field_set) => {
                 let default_access = field_set.default_access.or(default_access);

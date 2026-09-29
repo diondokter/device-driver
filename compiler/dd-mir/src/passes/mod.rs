@@ -182,12 +182,9 @@ impl PassInfo {
     ) -> Result<(), DynError> {
         let removals = P::run_pass(manifest, diagnostics)
             .with_message(|| format!("could not finish {} MIR pass", type_name::<P>()))?;
-        crate::remove_objects(manifest, removals).with_message(|| {
-            format!(
-                "could not remove objects from {} MIR pass",
-                type_name::<P>()
-            )
-        })?;
+        for removal in removals {
+            manifest.remove_object(removal);
+        }
         Ok(())
     }
 }

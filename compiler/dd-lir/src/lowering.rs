@@ -479,7 +479,7 @@ impl<'o> From<&'o mir::Block> for BorrowedBlock<'o> {
             name,
             address_offset,
             repeat,
-            objects,
+            children: objects,
             default_access: _,
             short_properties_span: _,
             properties_span: _,

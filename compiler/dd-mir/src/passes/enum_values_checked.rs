@@ -306,7 +306,7 @@ mod tests {
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
-            objects: vec![Object::Enum(Enum::new(
+            children: vec![Object::Enum(Enum::new(
                 Default::default(),
                 Identifier::try_parse("MyEnum".intern())
                     .unwrap()
@@ -353,7 +353,7 @@ mod tests {
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
-            objects: vec![Object::Enum(Enum::new_with_style(
+            children: vec![Object::Enum(Enum::new_with_style(
                 Default::default(),
                 Identifier::try_parse("MyEnum".intern())
                     .unwrap()
@@ -410,7 +410,7 @@ mod tests {
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
-            objects: vec![Object::Enum(Enum::new(
+            children: vec![Object::Enum(Enum::new(
                 Default::default(),
                 Identifier::try_parse("MyEnum".intern())
                     .unwrap()
@@ -443,7 +443,7 @@ mod tests {
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
-            objects: vec![Object::Enum(Enum::new_with_style(
+            children: vec![Object::Enum(Enum::new_with_style(
                 Default::default(),
                 Identifier::try_parse("MyEnum".intern())
                     .unwrap()
@@ -486,7 +486,7 @@ mod tests {
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
-            objects: vec![Object::Enum(Enum::new(
+            children: vec![Object::Enum(Enum::new(
                 Default::default(),
                 Identifier::try_parse("MyEnum".intern())
                     .unwrap()
@@ -510,7 +510,7 @@ mod tests {
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
-            objects: vec![Object::Enum(Enum::new_with_style(
+            children: vec![Object::Enum(Enum::new_with_style(
                 Default::default(),
                 Identifier::try_parse("MyEnum".intern())
                     .unwrap()
@@ -544,7 +544,7 @@ mod tests {
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
-            objects: vec![Object::Enum(Enum::new(
+            children: vec![Object::Enum(Enum::new(
                 Default::default(),
                 Identifier::try_parse("MyEnum".intern())
                     .unwrap()
@@ -595,7 +595,7 @@ mod tests {
             name: Identifier::try_parse("Device".intern())
                 .unwrap()
                 .with_dummy_span(),
-            objects: vec![Object::Enum(Enum::new(
+            children: vec![Object::Enum(Enum::new(
                 Default::default(),
                 Identifier::try_parse("MyEnum".intern())
                     .unwrap()
