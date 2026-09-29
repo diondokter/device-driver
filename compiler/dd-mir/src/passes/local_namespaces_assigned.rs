@@ -17,25 +17,25 @@ impl Pass for LocalNamespacesAssigned {
         manifest: &mut Manifest,
         _diagnostics: &mut Diagnostics,
     ) -> Result<HashSet<ObjectId>, DynError> {
-        let mut next_size_id = NonZero::new(1).unwrap();
+        let mut next_site_id = NonZero::new(1).unwrap();
 
         let mut iter = manifest.iter_objects_with_config_mut();
         while let Some((object, _)) = iter.next() {
             if let Object::FieldSet(fs) = object {
                 for field in fs.fields.iter_mut() {
-                    field.name.set_local_site(next_size_id);
-                    next_size_id = next_size_id
-                        .checked_add(1)
-                        .ok_or_else(|| DynError::new("too many local sites"))?;
+                    field.name.set_local_site(next_site_id);
                 }
+                next_site_id = next_site_id
+                    .checked_add(1)
+                    .ok_or_else(|| DynError::new("too many local sites"))?;
             }
             if let Object::Enum(e) = object {
                 for variant in e.variants.iter_mut() {
-                    variant.name.set_local_site(next_size_id);
-                    next_size_id = next_size_id
-                        .checked_add(1)
-                        .ok_or_else(|| DynError::new("too many local sites"))?;
+                    variant.name.set_local_site(next_site_id);
                 }
+                next_site_id = next_site_id
+                    .checked_add(1)
+                    .ok_or_else(|| DynError::new("too many local sites"))?;
             }
         }
 
