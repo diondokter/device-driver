@@ -3,8 +3,8 @@ use std::{borrow::Cow, collections::HashMap, str::FromStr, sync::LazyLock};
 use crate::{
     lowering::{LowerResult, PropertyInfo, PropertyName, SetterArgs, Shape, lower_node},
     model::{
-        Block, Buffer, Command, Device, Enum, EnumValue, EnumVariant, Extern, Field, FieldSet,
-        Manifest, Object, Register,
+        Block, Buffer, Command, Device, Enum, EnumValue, EnumVariant, Extern, Field, FieldId,
+        FieldSet, Manifest, ObjectId, Register,
     },
 };
 use convert_case::Boundary;
@@ -252,8 +252,8 @@ If this value is specified, then it permits bulk register reads and writes.",
         ])
     }
 
-    fn push_subnode(&mut self, object: Object) {
-        self.objects.push(object);
+    fn push_subnode(&mut self, _: ObjectId) {
+        // Ignore, since we as the manifest will own the objects outright
     }
 
     fn span(&mut self) -> &mut Span {
@@ -482,7 +482,7 @@ If this is not specified, the address offset defaults to 0.",
         ])
     }
 
-    fn push_subnode(&mut self, object: Object) {
+    fn push_subnode(&mut self, object: ObjectId) {
         self.children.push(object);
     }
 
@@ -570,7 +570,7 @@ If this is not desired, then keep the address offset at 0.",
         ])
     }
 
-    fn push_subnode(&mut self, object: Object) {
+    fn push_subnode(&mut self, object: ObjectId) {
         self.children.push(object);
     }
 
@@ -883,8 +883,8 @@ impl Shape for FieldSet {
         Some(&[NodeType::Field])
     }
 
-    fn push_subnode(&mut self, object: Object) {
-        let Object::Field(field) = object else {
+    fn push_subnode(&mut self, object: ObjectId) {
+        let Ok(field) = FieldId::try_from(object) else {
             unreachable!("{object:?}")
         };
         self.fields.push(field);

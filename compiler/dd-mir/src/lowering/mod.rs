@@ -5,7 +5,7 @@ use std::{
     str::FromStr,
 };
 
-use crate::model::{Manifest, Object};
+use crate::model::{Manifest, Object, ObjectId};
 use device_driver_common::{
     identifier::{Identifier, IdentifierRef, Namespace, Type},
     interner::{Istr, StrExt},
@@ -566,7 +566,7 @@ trait Shape: Default + 'static {
         None
     }
 
-    fn push_subnode(&mut self, _: Object) {
+    fn push_subnode(&mut self, _: ObjectId) {
         unimplemented!()
     }
 

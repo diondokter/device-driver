@@ -49,6 +49,17 @@ macro_rules! create_id {
             }
         }
 
+        impl TryFrom<ObjectId> for $name {
+            type Error = ();
+            fn try_from(value: ObjectId) -> Result<Self, Self::Error> {
+                if value.0 == ObjectType::$object_type {
+                    Ok(Self(value.1))
+                } else {
+                    Err(())
+                }
+            }
+        }
+
         impl Id for $name {
             fn index(&self) -> usize {
                 self.0 as usize
