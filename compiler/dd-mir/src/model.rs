@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    error::Error,
     fmt::Display,
     marker::PhantomData,
     ops::{Index, IndexMut, Not},
@@ -32,6 +33,22 @@ pub enum ObjectType {
     EnumVariant,
     Extern,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ObjectIdConversionError {
+    source: ObjectType,
+    target: ObjectType,
+}
+impl Display for ObjectIdConversionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "cannot convert from an ObjectId with type {:?} to {:?}",
+            self.source, self.target
+        )
+    }
+}
+impl Error for ObjectIdConversionError {}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ObjectId(ObjectType, u32);
@@ -83,12 +100,15 @@ macro_rules! create_id {
         }
 
         impl TryFrom<ObjectId> for $name {
-            type Error = ();
+            type Error = ObjectIdConversionError;
             fn try_from(value: ObjectId) -> Result<Self, Self::Error> {
                 if value.0 == ObjectType::$object_type {
                     Ok(Self(value.1))
                 } else {
-                    Err(())
+                    Err(ObjectIdConversionError {
+                        source: value.0,
+                        target: ObjectType::$object_type,
+                    })
                 }
             }
         }
@@ -450,21 +470,40 @@ impl Manifest {
     }
 
     pub fn remove_object(&mut self, id: impl Into<ObjectId>) {
-        // TODO: Also remove references to this object from parents
-        // TODO: Also remove all children
-
         let id = id.into();
-        match id.0 {
-            ObjectType::Device => self.devices.remove(DeviceId(id.1)),
-            ObjectType::Block => self.blocks.remove(BlockId(id.1)),
-            ObjectType::Register => self.registers.remove(RegisterId(id.1)),
-            ObjectType::Command => self.commands.remove(CommandId(id.1)),
-            ObjectType::Buffer => self.buffers.remove(BufferId(id.1)),
-            ObjectType::FieldSet => self.fieldsets.remove(FieldSetId(id.1)),
-            ObjectType::Field => self.fields.remove(FieldId(id.1)),
-            ObjectType::Enum => self.enums.remove(EnumId(id.1)),
-            ObjectType::EnumVariant => self.enum_variants.remove(EnumVariantId(id.1)),
-            ObjectType::Extern => self.externs.remove(ExternId(id.1)),
+
+        fn remove(manifest: &mut Manifest, id: ObjectId) {
+            match id.0 {
+                ObjectType::Device => manifest.devices.remove(DeviceId(id.1)),
+                ObjectType::Block => manifest.blocks.remove(BlockId(id.1)),
+                ObjectType::Register => manifest.registers.remove(RegisterId(id.1)),
+                ObjectType::Command => manifest.commands.remove(CommandId(id.1)),
+                ObjectType::Buffer => manifest.buffers.remove(BufferId(id.1)),
+                ObjectType::FieldSet => manifest.fieldsets.remove(FieldSetId(id.1)),
+                ObjectType::Field => manifest.fields.remove(FieldId(id.1)),
+                ObjectType::Enum => manifest.enums.remove(EnumId(id.1)),
+                ObjectType::EnumVariant => manifest.enum_variants.remove(EnumVariantId(id.1)),
+                ObjectType::Extern => manifest.externs.remove(ExternId(id.1)),
+            }
+        }
+
+        remove(self, id);
+
+        // Remove the children
+        let mut children = Vec::new();
+        for object_id in self.object_ids() {
+            let parents = self.object_parents(object_id);
+            if parents.contains(&id) {
+                children.push(object_id);
+            }
+        }
+        for child in children {
+            remove(self, child);
+        }
+
+        // Remove from parent
+        if let Some(parent) = self.object_parents(id).last() {
+            self.object_mut(*parent).unwrap().remove_child(id);
         }
     }
 
@@ -658,14 +697,6 @@ impl<'a> ObjectMut<'a> {
         }
     }
 
-    pub fn child_objects_mut(&mut self) -> &mut [ObjectId] {
-        match self {
-            ObjectMut::Device(device) => &mut device.children,
-            ObjectMut::Block(block) => &mut block.children,
-            _ => &mut [],
-        }
-    }
-
     /// Get a mutable reference to the name of the specific object
     pub fn name_mut(&mut self) -> &mut Identifier<RuntimeNamespace> {
         match self {
@@ -711,6 +742,45 @@ impl<'a> ObjectMut<'a> {
             Some(v)
         } else {
             None
+        }
+    }
+
+    fn remove_child(&mut self, id: ObjectId) {
+        match self {
+            ObjectMut::Device(device) => {
+                if let Some(pos) = device.children.iter().position(|child| *child == id) {
+                    device.children.remove(pos);
+                }
+            }
+            ObjectMut::Block(block) => {
+                if let Some(pos) = block.children.iter().position(|child| *child == id) {
+                    block.children.remove(pos);
+                }
+            }
+            ObjectMut::Register(_) => {}
+            ObjectMut::Command(_) => {}
+            ObjectMut::Buffer(_) => {}
+            ObjectMut::FieldSet(field_set) => {
+                if let Some(pos) = field_set
+                    .fields
+                    .iter()
+                    .position(|child| ObjectId::from(*child) == id)
+                {
+                    field_set.fields.remove(pos);
+                }
+            }
+            ObjectMut::Enum(enum_value) => {
+                if let Some(pos) = enum_value
+                    .variants
+                    .iter()
+                    .position(|child| ObjectId::from(*child) == id)
+                {
+                    enum_value.variants.remove(pos);
+                }
+            }
+            ObjectMut::Extern(_) => {}
+            ObjectMut::Field(_) => {}
+            ObjectMut::EnumVariant(_) => {}
         }
     }
 }

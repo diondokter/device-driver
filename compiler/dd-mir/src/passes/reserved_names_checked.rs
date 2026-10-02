@@ -1,14 +1,14 @@
 use std::collections::HashSet;
 
 use convert_case::Case;
-use device_driver_common::identifier::RuntimeNamespace;
+use device_driver_common::{identifier::RuntimeNamespace, specifiers::Access};
 use device_driver_diagnostics::{
-    Diagnostics, DynError,
+    Diagnostics, DynError, ResultExt,
     errors::{FieldSetterNameCollision, ReservedOperationNameUsed},
 };
 
 use crate::{
-    model::{Manifest, Object, ObjectId, ObjectType},
+    model::{FieldId, Manifest, Object, ObjectId, ObjectType},
     passes::Pass,
 };
 
@@ -27,6 +27,8 @@ impl Pass for ReservedNamesChecked {
         diagnostics: &mut Diagnostics,
     ) -> Result<HashSet<ObjectId>, DynError> {
         let mut removals = HashSet::new();
+
+        let mut field_setter_colliders = Vec::new();
 
         for (object_id, object) in manifest.objects_enumerated() {
             if object
@@ -69,7 +71,7 @@ impl Pass for ReservedNamesChecked {
                     continue;
                 };
 
-                removals.insert(object_id);
+                field_setter_colliders.push(FieldId::try_from(object_id).into_dyn_result()?);
 
                 diagnostics.add(FieldSetterNameCollision {
                     field: field.name.span,
@@ -77,6 +79,10 @@ impl Pass for ReservedNamesChecked {
                     collision_field: colliding_field.name.span,
                 });
             }
+        }
+
+        for field_id in field_setter_colliders {
+            manifest.fields.get_mut(field_id).unwrap().access = Some(Access::RO)
         }
 
         Ok(removals)
