@@ -58,6 +58,10 @@ impl BitSet {
         self.len
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
     fn index_to_word_index(index: usize) -> (usize, usize) {
         let word = index / usize::BITS as usize;
         let bits = index % usize::BITS as usize;

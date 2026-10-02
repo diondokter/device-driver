@@ -52,7 +52,7 @@ pub fn get_node_symbol(node: &Node, document: &Document) -> DocumentSymbol {
         // If the name is auto, we still want to display the real name instead of just `_`
         // So we search for object in MIR and take that name
         // The easiest way is to compare by span. The MIR should have unmodified spans
-        mir.iter_objects()
+        mir.objects()
             .find(|object| object.span() == node.span)
             .map(|object| object.name().original().as_str())
             .unwrap_or("_")

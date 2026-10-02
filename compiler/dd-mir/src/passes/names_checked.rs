@@ -33,9 +33,7 @@ impl Pass for NamesChecked {
                 .name_word_boundaries
                 .as_deref()
                 .unwrap_or(&const { convert_case::Boundary::defaults() })
-                .iter()
-                .copied()
-                .collect::<Vec<_>>();
+                .to_vec();
 
             let mut object = manifest.object_mut(object_id).unwrap();
 

@@ -256,16 +256,24 @@ If this value is specified, then it permits bulk register reads and writes.",
         // Ignore, since we as the manifest will own the objects outright
     }
 
-    fn span(&mut self) -> &mut Span {
-        &mut self.span
-    }
-
     fn properties_span(&mut self) -> &mut Option<Span> {
         &mut self.properties_span
     }
 
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
+    }
+
+    fn span(&mut self) -> &mut Span {
+        &mut self.span
+    }
+
+    fn add_to_manifest(self, _manifest: &mut Manifest) -> ObjectId {
+        unimplemented!()
+    }
+
+    fn become_manifest(self, manifest: &mut Manifest) {
+        *manifest = self;
     }
 }
 
@@ -497,6 +505,10 @@ If this is not specified, the address offset defaults to 0.",
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
     }
+
+    fn add_to_manifest(self, manifest: &mut Manifest) -> ObjectId {
+        manifest.devices.push(self).into()
+    }
 }
 
 impl Shape for Block {
@@ -588,6 +600,10 @@ If this is not desired, then keep the address offset at 0.",
 
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
+    }
+
+    fn add_to_manifest(self, manifest: &mut Manifest) -> ObjectId {
+        manifest.blocks.push(self).into()
     }
 }
 
@@ -781,6 +797,10 @@ The value can be expressed in two ways:
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
     }
+
+    fn add_to_manifest(self, manifest: &mut Manifest) -> ObjectId {
+        manifest.registers.push(self).into()
+    }
 }
 
 impl Shape for FieldSet {
@@ -900,6 +920,10 @@ impl Shape for FieldSet {
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
     }
+
+    fn add_to_manifest(self, manifest: &mut Manifest) -> ObjectId {
+        manifest.fieldsets.push(self).into()
+    }
 }
 
 impl Shape for Extern {
@@ -982,6 +1006,10 @@ impl Shape for Extern {
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
     }
+
+    fn add_to_manifest(self, manifest: &mut Manifest) -> ObjectId {
+        manifest.externs.push(self).into()
+    }
 }
 
 impl Shape for Buffer {
@@ -1050,6 +1078,10 @@ impl Shape for Buffer {
 
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
+    }
+
+    fn add_to_manifest(self, manifest: &mut Manifest) -> ObjectId {
+        manifest.buffers.push(self).into()
     }
 }
 
@@ -1138,6 +1170,10 @@ impl Shape for Enum {
 
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
+    }
+
+    fn add_to_manifest(self, manifest: &mut Manifest) -> ObjectId {
+        manifest.enums.push(self).into()
     }
 }
 
@@ -1338,6 +1374,10 @@ impl Shape for Command {
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
     }
+
+    fn add_to_manifest(self, manifest: &mut Manifest) -> ObjectId {
+        manifest.commands.push(self).into()
+    }
 }
 
 impl Shape for Field {
@@ -1450,5 +1490,9 @@ impl Shape for Field {
 
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
+    }
+
+    fn add_to_manifest(self, manifest: &mut Manifest) -> ObjectId {
+        manifest.fields.push(self).into()
     }
 }

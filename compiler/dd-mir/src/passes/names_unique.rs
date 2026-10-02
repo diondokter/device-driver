@@ -5,13 +5,10 @@ use std::{
 };
 
 use crate::{
-    model::{Manifest, Object, ObjectId},
+    model::{Manifest, ObjectId},
     passes::{Assumption, Pass},
 };
-use device_driver_common::{
-    identifier::{Identifier, RuntimeNamespace},
-    interner::Istr,
-};
+use device_driver_common::{identifier::RuntimeNamespace, interner::Istr};
 use device_driver_diagnostics::{Diagnostics, DynError, errors::DuplicateName};
 
 /// Checks if all names are unique to prevent later name collisions.

@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    fmt::Display,
     marker::PhantomData,
     ops::{Index, IndexMut, Not},
 };
@@ -39,9 +40,17 @@ impl ObjectId {
     pub fn object_type(self) -> ObjectType {
         self.0
     }
+
+    pub fn get(self, manifest: &Manifest) -> Option<Object<'_>> {
+        manifest.object(self)
+    }
+
+    pub fn get_mut(self, manifest: &mut Manifest) -> Option<ObjectMut<'_>> {
+        manifest.object_mut(self)
+    }
 }
 
-trait Id: Copy {
+pub trait Id: Copy {
     fn index(&self) -> usize;
     fn create(val: usize) -> Self;
 }
@@ -512,14 +521,50 @@ impl Manifest {
         let parents = self.object_parents(object);
 
         for object_id in parents.iter().rev() {
-            if let Some(object) = self.object(*object_id) {
-                if let Some(config) = object.device_config() {
-                    return config;
-                }
+            if let Some(object) = self.object(*object_id)
+                && let Some(config) = object.device_config()
+            {
+                return config;
             }
         }
 
         &self.config
+    }
+
+    /// Get the device config that applies to the given object
+    pub fn object_default_access(&self, object: impl Into<ObjectId>) -> Option<Access> {
+        let parents = self.object_parents(object);
+
+        for object_id in parents.iter().rev() {
+            if let Some(object) = self.object(*object_id) {
+                match object {
+                    Object::Device(val) => {
+                        if val.default_access.is_some() {
+                            return val.default_access;
+                        }
+                    }
+                    Object::Block(val) => {
+                        if val.default_access.is_some() {
+                            return val.default_access;
+                        }
+                    }
+                    Object::FieldSet(val) => {
+                        if val.default_access.is_some() {
+                            return val.default_access;
+                        }
+                    }
+                    Object::Register(_) => {}
+                    Object::Command(_) => {}
+                    Object::Buffer(_) => {}
+                    Object::Enum(_) => {}
+                    Object::Extern(_) => {}
+                    Object::Field(_) => {}
+                    Object::EnumVariant(_) => {}
+                }
+            }
+        }
+
+        self.default_access
     }
 }
 
@@ -541,7 +586,7 @@ pub struct Device {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct DeviceConfig {
     /// The id of the device that owns this config. If None, then this is a manifest config
-    pub owner: Option<ObjectId>,
+    pub owner: Option<DeviceId>,
     pub byte_order: Option<ByteOrder>,
     pub register_address_type: Option<Spanned<Integer>>,
     pub command_address_type: Option<Spanned<Integer>>,
@@ -554,7 +599,7 @@ impl DeviceConfig {
     #[must_use]
     pub fn override_with(&self, other: &Self) -> DeviceConfig {
         Self {
-            owner: other.owner.clone().or(self.owner.clone()),
+            owner: other.owner.or(self.owner),
             byte_order: other.byte_order.or(self.byte_order),
             register_address_type: other.register_address_type.or(self.register_address_type),
             command_address_type: other.command_address_type.or(self.command_address_type),
@@ -923,6 +968,15 @@ impl Default for FieldsetRef {
     }
 }
 
+impl Display for FieldsetRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FieldsetRef::Identifier(identifier_ref) => write!(f, "{}", identifier_ref.original()),
+            FieldsetRef::Id(field_set_id) => write!(f, "{field_set_id:?}"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct FieldSet {
     pub description: Istr,
@@ -1043,9 +1097,9 @@ impl Enum {
     ///
     /// *Note:* The validity of this is checked in the [`passes::enum_values_checked`] pass. If this function is run
     /// before that pass, there might be weird results.
-    pub fn iter_variants_with_discriminant<'m>(
+    pub fn iter_variants_with_discriminant(
         &self,
-        enum_variants: &'m ObjectArena<EnumVariant, EnumVariantId>,
+        enum_variants: &ObjectArena<EnumVariant, EnumVariantId>,
     ) -> impl Iterator<Item = (i128, EnumVariantId)> {
         let mut next_discriminant = 0;
         self.variants.iter().map(move |variant| {

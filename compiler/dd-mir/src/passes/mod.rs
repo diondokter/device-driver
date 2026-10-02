@@ -9,7 +9,7 @@ use crate::{
         addresses_non_overlapping::AddressesNonOverlapping,
         base_types_specified::BaseTypesSpecified, bit_ranges_validated::BitRangesValidated,
         bool_fields_checked::BoolFieldsChecked, byte_order_specified::ByteOrderSpecified,
-        device_configs_owned::DeviceConfigsValid, device_name_is_pascal::DeviceNameIsPascal,
+        device_configs_valid::DeviceConfigsValid, device_name_is_pascal::DeviceNameIsPascal,
         enum_values_checked::EnumValuesChecked, extern_values_checked::ExternValuesChecked,
         field_conversion_valid::FieldConversionValid, field_set_refs_valid::FieldsetRefsValid,
         local_namespaces_assigned::LocalNamespacesAssigned, names_checked::NamesChecked,
@@ -29,7 +29,7 @@ mod base_types_specified;
 mod bit_ranges_validated;
 mod bool_fields_checked;
 mod byte_order_specified;
-mod device_configs_owned;
+mod device_configs_valid;
 mod device_name_is_pascal;
 mod enum_values_checked;
 mod extern_values_checked;

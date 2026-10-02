@@ -20,7 +20,7 @@ impl Pass for DeviceConfigsValid {
     ) -> Result<HashSet<ObjectId>, DynError> {
         for (device_id, device) in manifest.devices.iter_enumerated_mut() {
             device.device_config = manifest.config.override_with(&device.device_config);
-            device.device_config.owner = Some(device_id.into());
+            device.device_config.owner = Some(device_id);
         }
 
         Ok(Default::default())

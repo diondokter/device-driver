@@ -51,7 +51,6 @@ pub fn lower_ast(
 /// Returns None if device has no objects that pass the filter
 ///
 /// This assumes [passes::Assumption::RepeatStrideNonZero], [passes::Assumption::NamesUnique] & [passes::Assumption::RepeatEnumRefValid]
-#[expect(clippy::type_complexity, reason = "I disagree")]
 pub fn find_min_max_addresses<'m>(
     manifest: &'m Manifest,
     device: &'m Device,
@@ -115,7 +114,9 @@ pub fn find_min_max_addresses<'m>(
                         .as_enum()
                         .expect("A mir pass checked this is an enum");
 
-                    for (discriminant, _) in enum_value.iter_variants_with_discriminant(manifest) {
+                    for (discriminant, _) in
+                        enum_value.iter_variants_with_discriminant(&manifest.enum_variants)
+                    {
                         let address = total_address_offsets
                             + address.value
                             + (discriminant * repeat.stride.value);

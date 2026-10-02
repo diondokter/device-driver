@@ -1,5 +1,4 @@
 use std::{
-    any::TypeId,
     borrow::Cow,
     collections::HashMap,
     mem::{self, discriminant},
@@ -151,7 +150,7 @@ fn lower_node(
     // If we know the objects have no parent, already insert them into the parent map so that information is kept
     if parent_node_type.is_none_or(|node_type| node_type.value == NodeType::Manifest) {
         match &result {
-            LowerResult::Manifest => unreachable!(),
+            LowerResult::Manifest => {}
             LowerResult::Objects(object_id, object_ids) => {
                 manifest.parent_map.insert(*object_id, Box::new([]));
                 for object_id in object_ids.iter() {
@@ -593,100 +592,10 @@ fn parse_node_to_shape<S: Shape>(
     if !error {
         match S::NODE_TYPE {
             NodeType::Manifest => {
-                debug_assert_eq!(TypeId::of::<S>(), TypeId::of::<Manifest>());
-                *manifest = unsafe { std::mem::transmute_copy(&target) };
+                target.become_manifest(manifest);
                 LowerResult::Manifest
             }
-            NodeType::Device => {
-                debug_assert_eq!(TypeId::of::<S>(), TypeId::of::<Manifest>());
-                LowerResult::Objects(
-                    manifest
-                        .devices
-                        .push(unsafe { std::mem::transmute_copy(&target) })
-                        .into(),
-                    sibling_objects,
-                )
-            }
-            NodeType::Block => {
-                debug_assert_eq!(TypeId::of::<S>(), TypeId::of::<Manifest>());
-                LowerResult::Objects(
-                    manifest
-                        .blocks
-                        .push(unsafe { std::mem::transmute_copy(&target) })
-                        .into(),
-                    sibling_objects,
-                )
-            }
-            NodeType::Register => {
-                debug_assert_eq!(TypeId::of::<S>(), TypeId::of::<Manifest>());
-                LowerResult::Objects(
-                    manifest
-                        .registers
-                        .push(unsafe { std::mem::transmute_copy(&target) })
-                        .into(),
-                    sibling_objects,
-                )
-            }
-            NodeType::Command => {
-                debug_assert_eq!(TypeId::of::<S>(), TypeId::of::<Manifest>());
-                LowerResult::Objects(
-                    manifest
-                        .commands
-                        .push(unsafe { std::mem::transmute_copy(&target) })
-                        .into(),
-                    sibling_objects,
-                )
-            }
-            NodeType::Buffer => {
-                debug_assert_eq!(TypeId::of::<S>(), TypeId::of::<Manifest>());
-                LowerResult::Objects(
-                    manifest
-                        .buffers
-                        .push(unsafe { std::mem::transmute_copy(&target) })
-                        .into(),
-                    sibling_objects,
-                )
-            }
-            NodeType::FieldSet => {
-                debug_assert_eq!(TypeId::of::<S>(), TypeId::of::<Manifest>());
-                LowerResult::Objects(
-                    manifest
-                        .fieldsets
-                        .push(unsafe { std::mem::transmute_copy(&target) })
-                        .into(),
-                    sibling_objects,
-                )
-            }
-            NodeType::Enum => {
-                debug_assert_eq!(TypeId::of::<S>(), TypeId::of::<Manifest>());
-                LowerResult::Objects(
-                    manifest
-                        .enums
-                        .push(unsafe { std::mem::transmute_copy(&target) })
-                        .into(),
-                    sibling_objects,
-                )
-            }
-            NodeType::Extern => {
-                debug_assert_eq!(TypeId::of::<S>(), TypeId::of::<Manifest>());
-                LowerResult::Objects(
-                    manifest
-                        .externs
-                        .push(unsafe { std::mem::transmute_copy(&target) })
-                        .into(),
-                    sibling_objects,
-                )
-            }
-            NodeType::Field => {
-                debug_assert_eq!(TypeId::of::<S>(), TypeId::of::<Manifest>());
-                LowerResult::Objects(
-                    manifest
-                        .devices
-                        .push(unsafe { std::mem::transmute_copy(&target) })
-                        .into(),
-                    sibling_objects,
-                )
-            }
+            _ => LowerResult::Objects(target.add_to_manifest(manifest), sibling_objects),
         }
     } else {
         LowerResult::Error(sibling_objects)
@@ -727,6 +636,11 @@ trait Shape: Default + 'static {
     fn properties_span(&mut self) -> &mut Option<Span>;
     fn short_properties_span(&mut self) -> &mut Span;
     fn span(&mut self) -> &mut Span;
+
+    fn add_to_manifest(self, manifest: &mut Manifest) -> ObjectId;
+    fn become_manifest(self, _manifest: &mut Manifest) {
+        unimplemented!()
+    }
 }
 
 struct PropertyInfo<T: ?Sized> {

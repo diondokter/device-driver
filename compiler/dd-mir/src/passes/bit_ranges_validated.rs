@@ -147,7 +147,7 @@ fn get_repeat_iter(manifest: &Manifest, field: &Field) -> (Vec<i128>, bool) {
                     .expect("Checked in earlier pass")
                     .as_enum()
                     .expect("Checked in earlier pass")
-                    .iter_variants_with_discriminant(manifest)
+                    .iter_variants_with_discriminant(&manifest.enum_variants)
                     .map(move |(discriminant, _)| discriminant * stride.value)
                     .collect(),
                 true,

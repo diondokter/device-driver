@@ -39,14 +39,11 @@ impl Pass for FieldsetRefsValid {
                     }
                 };
 
-                let pointee = match manifest.search_object(&id_ref) {
-                    Some(found_object) => Some(found_object.name_span()),
-                    None => None,
-                };
-
                 diagnostics.add(InvalidFieldsetRef {
                     reference: fieldset_ref.span,
-                    pointee,
+                    pointee: manifest
+                        .search_object(&id_ref)
+                        .map(|found_object| found_object.name_span()),
                 });
 
                 removals.insert(object_id);
