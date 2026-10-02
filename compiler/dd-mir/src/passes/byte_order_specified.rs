@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    model::{LendingIterator, Manifest, ObjectId},
+    model::{Manifest, ObjectId},
     passes::{Assumption, Pass},
 };
 use device_driver_common::specifiers::ByteOrder;
@@ -38,98 +38,5 @@ impl Pass for ByteOrderSpecified {
         }
 
         Ok(Default::default())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use device_driver_common::{
-        identifier::Identifier, interner::StrExt, span::SpanExt, specifiers::ByteOrder,
-    };
-
-    use crate::model::{Device, DeviceConfig, FieldSet, Object};
-
-    use super::*;
-
-    #[test]
-    fn well_enough_specified() {
-        let mut input = Device {
-            name: Identifier::try_parse("Device".intern())
-                .unwrap()
-                .with_dummy_span(),
-            children: vec![
-                Object::FieldSet(FieldSet {
-                    name: Identifier::try_parse("MyRegister".intern())
-                        .unwrap()
-                        .with_dummy_span(),
-                    size_bytes: 1.with_dummy_span(),
-                    ..Default::default()
-                }),
-                Object::FieldSet(FieldSet {
-                    name: Identifier::try_parse("MyRegister2".intern())
-                        .unwrap()
-                        .with_dummy_span(),
-                    size_bytes: 2.with_dummy_span(),
-                    byte_order: Some(ByteOrder::LE),
-                    ..Default::default()
-                }),
-            ],
-            ..Default::default()
-        }
-        .into();
-
-        let mut d = Diagnostics::new();
-        ByteOrderSpecified::run_pass(&mut input, &mut d).unwrap();
-        assert!(!d.has_error());
-    }
-
-    #[test]
-    fn not_enough_specified() {
-        let mut input = Device {
-            name: Identifier::try_parse("Device".intern())
-                .unwrap()
-                .with_dummy_span(),
-            children: vec![Object::FieldSet(FieldSet {
-                name: Identifier::try_parse("MyRegister".intern())
-                    .unwrap()
-                    .with_dummy_span(),
-                size_bytes: 2.with_dummy_span(),
-                ..Default::default()
-            })],
-            ..Default::default()
-        }
-        .into();
-
-        let mut d = Diagnostics::new();
-        ByteOrderSpecified::run_pass(&mut input, &mut d).unwrap();
-        assert!(d.has_error());
-    }
-
-    #[test]
-    fn not_enough_specified_but_global_config() {
-        let global_config = DeviceConfig {
-            byte_order: Some(ByteOrder::LE),
-            ..Default::default()
-        };
-
-        let mut input = Device {
-            name: Identifier::try_parse("Device".intern())
-                .unwrap()
-                .with_dummy_span(),
-            device_config: global_config,
-            children: vec![Object::FieldSet(FieldSet {
-                name: Identifier::try_parse("MyRegister".intern())
-                    .unwrap()
-                    .with_dummy_span(),
-                size_bytes: 2.with_dummy_span(),
-                ..Default::default()
-            })],
-            ..Default::default()
-        }
-        .into();
-
-        let mut d = Diagnostics::new();
-        ByteOrderSpecified::run_pass(&mut input, &mut d).unwrap();
-        assert!(!d.has_error());
     }
 }

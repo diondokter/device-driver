@@ -4,7 +4,7 @@ use crate::{
     lowering::{LowerResult, PropertyInfo, PropertyName, SetterArgs, Shape, lower_node},
     model::{
         Block, Buffer, Command, Device, Enum, EnumValue, EnumVariant, Extern, Field, FieldId,
-        FieldSet, Manifest, ObjectId, Register,
+        FieldSet, FieldSetId, FieldsetRef, Manifest, ObjectId, Register,
     },
 };
 use convert_case::Boundary;
@@ -720,15 +720,17 @@ The value can be expressed in two ways:
                                  diagnostics,
                                  sibling_objects,
                                  ast,
+                                 manifest,
                              }| {
                         match &property.expression.value {
                             Expression::TypeReference(ident) => {
-                                r.field_set_ref =
-                                    IdentifierRef::new(ident.val).with_span(ident.span);
+                                r.field_set_ref = FieldsetRef::Identifier(
+                                    IdentifierRef::new(ident.val)).with_span(ident.span);
                                 false
                             }
                             Expression::SubNode(sub_node) => {
                                 let result = lower_node(
+                                    manifest,
                                     ast.node( *sub_node),
                                     Some(NodeType::Register.with_span(node.node_type.span)),
                                     Some(Ident::new(r.name.original(), r.name.span)),
@@ -739,13 +741,10 @@ The value can be expressed in two ways:
 
                                 match result {
                                     LowerResult::Objects(fs, fs_siblings) => {
-                                        r.field_set_ref = fs
-                                            .name()
-                                            .clone()
-                                            // This should always be a fieldset is a Type identifier
-                                            .cast_assert()
-                                            .take_ref()
-                                            .with_span(fs.name_span());
+                                        let fs_id = FieldSetId::try_from(fs).unwrap();
+
+                                        r.field_set_ref = FieldsetRef::Id(fs_id)
+                                            .with_span(manifest.fieldsets.get(fs_id).unwrap().name.span);
                                         sibling_objects.push(fs);
                                         sibling_objects.extend(fs_siblings);
                                         false
@@ -754,7 +753,7 @@ The value can be expressed in two ways:
                                         sibling_objects.extend(fs_siblings);
                                         true
                                     }
-                                    LowerResult::Manifest(_) => unreachable!(),
+                                    LowerResult::Manifest => unreachable!(),
                                 }
                             }
                             _ => unreachable!(),
@@ -1087,6 +1086,7 @@ impl Shape for Enum {
                                 target_object: enum_value,
                                 property,
                                 diagnostics,
+                                manifest,
                                 ..
                             }| {
                         let identifier = match Identifier::try_parse(property.name.val) {
@@ -1100,7 +1100,7 @@ impl Shape for Enum {
                             }
                         };
 
-                        enum_value.variants.push(EnumVariant {
+                        let variant_id = manifest.enum_variants.push(EnumVariant {
                             description: property.doc_comments.iter().map(|c| c.value).join("\n").intern(),
                             name: identifier.with_span(property.name.span),
                             value: match &property.expression.value {
@@ -1114,6 +1114,8 @@ impl Shape for Enum {
                             },
                             span: property.span,
                         });
+                        enum_value.variants.push(variant_id);
+
                         false
                     },
                 }
@@ -1208,16 +1210,18 @@ impl Shape for Command {
                                  diagnostics,
                                  sibling_objects,
                                  ast,
+                                 manifest,
                              }| {
                         match &property.expression.value {
                             Expression::TypeReference(ident) => {
                                 command.field_set_ref_in = Some(
-                                    IdentifierRef::new(ident.val).with_span(ident.span),
+                                    FieldsetRef::Identifier(IdentifierRef::new(ident.val)).with_span(ident.span),
                                 );
                                 false
                             }
                             Expression::SubNode(sub_node) => {
                                 let result = lower_node(
+                                    manifest,
                                     ast.node(*sub_node),
                                     Some(NodeType::Register.with_span(node.node_type.span)),
                                     Some(Ident::new(command.name.original(), command.name.span)),
@@ -1228,14 +1232,13 @@ impl Shape for Command {
 
                                 match result {
                                     LowerResult::Objects(fs, fs_siblings) => {
+                                        let fs_id = FieldSetId::try_from(fs).unwrap();
+
                                         command.field_set_ref_in = Some(
-                                            fs.name()
-                                                .clone()
-                                                // Always a fieldset, so should be fine
-                                                .cast_assert()
-                                                .take_ref()
-                                                .with_span(fs.name_span()),
+                                            FieldsetRef::Id(fs_id)
+                                                .with_span(manifest.fieldsets.get(fs_id).unwrap().name.span)
                                         );
+
                                         sibling_objects.push(fs);
                                         sibling_objects.extend(fs_siblings);
                                         false
@@ -1244,7 +1247,7 @@ impl Shape for Command {
                                         sibling_objects.extend(fs_siblings);
                                         true
                                     }
-                                    LowerResult::Manifest(_) => unreachable!(),
+                                    LowerResult::Manifest => unreachable!(),
                                 }
                             }
                             _ => unreachable!(),
@@ -1270,16 +1273,18 @@ impl Shape for Command {
                                  diagnostics,
                                  sibling_objects,
                                  ast,
+                                 manifest,
                              }| {
                         match &property.expression.value {
                             Expression::TypeReference(ident) => {
                                 command.field_set_ref_out = Some(
-                                    IdentifierRef::new(ident.val).with_span(ident.span),
+                                    FieldsetRef::Identifier(IdentifierRef::new(ident.val)).with_span(ident.span),
                                 );
                                 false
                             }
                             Expression::SubNode(sub_node) => {
                                 let result = lower_node(
+                                    manifest,
                                     ast.node(*sub_node),
                                     Some(NodeType::Register.with_span(node.node_type.span)),
                                     Some(Ident::new(command.name.original(), command.name.span)),
@@ -1290,14 +1295,13 @@ impl Shape for Command {
 
                                 match result {
                                     LowerResult::Objects(fs, fs_siblings) => {
+                                        let fs_id = FieldSetId::try_from(fs).unwrap();
+
                                         command.field_set_ref_out = Some(
-                                            fs.name()
-                                                .clone()
-                                                // Always a fieldset, so should be fine
-                                                .cast_assert()
-                                                .take_ref()
-                                                .with_span(fs.name_span()),
+                                            FieldsetRef::Id(fs_id)
+                                                .with_span(manifest.fieldsets.get(fs_id).unwrap().name.span)
                                         );
+
                                         sibling_objects.push(fs);
                                         sibling_objects.extend(fs_siblings);
                                         false
@@ -1306,7 +1310,7 @@ impl Shape for Command {
                                         sibling_objects.extend(fs_siblings);
                                         true
                                     }
-                                    LowerResult::Manifest(_) => unreachable!(),
+                                    LowerResult::Manifest => unreachable!(),
                                 }
                             }
                             _ => unreachable!(),

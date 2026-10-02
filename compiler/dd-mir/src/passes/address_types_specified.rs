@@ -5,7 +5,6 @@ use device_driver_diagnostics::{Diagnostics, DynError, errors::AddressTypeUndefi
 use crate::{
     model::{Manifest, Object, ObjectId},
     passes::{Assumption, Pass},
-    search_object,
 };
 
 /// Checks if the various address types are specified. If not an error is given out.
@@ -13,7 +12,7 @@ pub struct AddressTypesSpecified;
 
 impl Pass for AddressTypesSpecified {
     const ASSUMPTIONS_MADE: &[Assumption] =
-        &[Assumption::DeviceConfigsOwned, Assumption::NamesUnique];
+        &[Assumption::DeviceConfigsValid, Assumption::NamesUnique];
     const ASSUMPTIONS_RELEASED: &[Assumption] = &[Assumption::AddressTypesSpecified];
 
     fn run_pass(

@@ -9,7 +9,7 @@ use crate::{
         addresses_non_overlapping::AddressesNonOverlapping,
         base_types_specified::BaseTypesSpecified, bit_ranges_validated::BitRangesValidated,
         bool_fields_checked::BoolFieldsChecked, byte_order_specified::ByteOrderSpecified,
-        device_configs_owned::DeviceConfigsOwned, device_name_is_pascal::DeviceNameIsPascal,
+        device_configs_owned::DeviceConfigsValid, device_name_is_pascal::DeviceNameIsPascal,
         enum_values_checked::EnumValuesChecked, extern_values_checked::ExternValuesChecked,
         field_conversion_valid::FieldConversionValid, field_set_refs_valid::FieldsetRefsValid,
         local_namespaces_assigned::LocalNamespacesAssigned, names_checked::NamesChecked,
@@ -47,7 +47,7 @@ mod reset_values_converted;
 fn get_default_passes() -> [PassInfo; 21] {
     [
         PassInfo::get::<LocalNamespacesAssigned>(),
-        PassInfo::get::<DeviceConfigsOwned>(),
+        PassInfo::get::<DeviceConfigsValid>(),
         PassInfo::get::<EnumValuesChecked>(),
         PassInfo::get::<ExternValuesChecked>(),
         PassInfo::get::<BaseTypesSpecified>(),
@@ -116,7 +116,7 @@ trait Pass {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum Assumption {
-    DeviceConfigsOwned,
+    DeviceConfigsValid,
     FieldsetRefsValid,
     FieldBaseTypesSpecified,
     ExternBaseTypesSpecified,
@@ -137,7 +137,7 @@ pub(crate) enum Assumption {
 
 impl Assumption {
     const ALL_ASSUMPTIONS: &[Assumption] = &[
-        Assumption::DeviceConfigsOwned,
+        Assumption::DeviceConfigsValid,
         Assumption::FieldsetRefsValid,
         Assumption::FieldBaseTypesSpecified,
         Assumption::ExternBaseTypesSpecified,

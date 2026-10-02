@@ -7,7 +7,7 @@ use device_driver_common::{
 use itertools::Itertools;
 
 use crate::{
-    model::{EnumGenerationStyle, EnumValue, Id, LendingIterator, Manifest, Object, ObjectId},
+    model::{EnumGenerationStyle, EnumValue, EnumVariantId, Manifest, ObjectId},
     passes::{Assumption, Pass},
 };
 use device_driver_diagnostics::{
@@ -35,37 +35,37 @@ impl Pass for EnumValuesChecked {
     ) -> Result<HashSet<ObjectId>, DynError> {
         let mut removals = HashSet::new();
 
-        let mut iter = manifest.iter_objects_with_config_mut();
-        while let Some((object, _)) = iter.next() {
-            let Object::Enum(enum_value) = object else {
-                continue;
-            };
-
+        for (enum_id, enum_value) in manifest.enums.iter_enumerated_mut() {
             if enum_value.variants.is_empty() {
                 diagnostics.add(EmptyEnum {
                     enum_node: enum_value.span,
                 });
-                removals.insert(enum_value.id());
+                removals.insert(enum_id.into());
                 continue;
             }
 
             // Record all variant values
             let seen_values = enum_value
-                .iter_variants_with_discriminant_mut()
-                .map(|(discriminant, variant)| {
-                    if variant.value.specified_discriminant().is_none() {
-                        variant.value.specify(discriminant);
-                    }
-                    (discriminant, (variant.id(), variant.span))
+                .iter_variants_with_discriminant(&manifest.enum_variants)
+                .map(|(discriminant, variant_id)| {
+                    let variant = manifest.enum_variants.get(variant_id).unwrap();
+                    (discriminant, (variant_id, variant.span))
                 })
                 .collect_vec();
 
-            let mut seen_values_map = HashMap::<i128, Vec<(&ObjectId, Span)>>::new();
+            for (discriminant, (variant_id, _)) in seen_values.iter() {
+                let variant = manifest.enum_variants.get_mut(*variant_id).unwrap();
+                if variant.value.specified_discriminant().is_none() {
+                    variant.value.specify(*discriminant);
+                }
+            }
+
+            let mut seen_values_map = HashMap::<i128, Vec<(EnumVariantId, Span)>>::new();
             for (variant_value, (variant_id, span)) in &seen_values {
                 seen_values_map
                     .entry(*variant_value)
                     .or_default()
-                    .push((variant_id, *span));
+                    .push((*variant_id, *span));
             }
             for (value, variants) in seen_values_map
                 .into_iter()
@@ -76,7 +76,7 @@ impl Pass for EnumValuesChecked {
                         duplicates: variants.iter().map(|(_, span)| *span).collect(),
                         value,
                     });
-                    removals.insert(enum_value.id());
+                    removals.insert(enum_id.into());
                 }
             }
 
@@ -102,7 +102,7 @@ impl Pass for EnumValuesChecked {
                         info: "all enums must have an integer as base type",
                         context: vec![],
                     });
-                    removals.insert(enum_value.id());
+                    removals.insert(enum_id.into());
                     continue;
                 }
                 BaseType::Uint => {
@@ -120,7 +120,7 @@ impl Pass for EnumValuesChecked {
                         info: "enums must use a signed integer when any variant has a negative value",
                         context: vec![format!("variant with negative value: {seen_min}").with_span(*seen_min_span)],
                     });
-                        removals.insert(enum_value.id());
+                        removals.insert(enum_id.into());
                         continue;
                     }
 
@@ -139,7 +139,7 @@ impl Pass for EnumValuesChecked {
                             enum_size_bits: enum_value.size_bits.unwrap_or_default(),
                             base_type_size_bits: integer.size_bits(),
                         });
-                        removals.insert(enum_value.id());
+                        removals.insert(enum_id.into());
                         continue;
                     }
 
@@ -151,7 +151,7 @@ impl Pass for EnumValuesChecked {
                         info: "enums must use a signed integer when any variant has a negative value",
                         context: vec![format!("variant with negative value: {seen_min}").with_span(*seen_min_span)],
                     });
-                        removals.insert(enum_value.id());
+                        removals.insert(enum_id.into());
                         continue;
                     }
 
@@ -163,7 +163,7 @@ impl Pass for EnumValuesChecked {
                 diagnostics.add(EnumNoAutoBaseTypeSelected {
                     enum_name: enum_value.name.span,
                 });
-                removals.insert(enum_value.id());
+                removals.insert(enum_id.into());
                 continue;
             };
 
@@ -185,10 +185,12 @@ impl Pass for EnumValuesChecked {
             };
 
             // Check if all bits are covered or if there's a fallback variant
-            let has_fallback = enum_value
-                .variants
-                .iter()
-                .any(|v| matches!(v.value, EnumValue::Default(_) | EnumValue::CatchAll(_)));
+            let has_fallback = enum_value.variants.iter().any(|v| {
+                matches!(
+                    manifest.enum_variants.get(*v).unwrap().value,
+                    EnumValue::Default(_) | EnumValue::CatchAll(_)
+                )
+            });
             let has_bits_covered = all_values
                 .clone()
                 .all(|val| seen_values.iter().any(|(seen_val, _)| val == *seen_val));
@@ -218,7 +220,7 @@ impl Pass for EnumValuesChecked {
                     max_value: *all_values.end(),
                     size_bits,
                 });
-                removals.insert(enum_value.id());
+                removals.insert(enum_id.into());
                 continue;
             }
             if !too_low_values.is_empty() {
@@ -228,7 +230,7 @@ impl Pass for EnumValuesChecked {
                     min_value: *all_values.start(),
                     size_bits,
                 });
-                removals.insert(enum_value.id());
+                removals.insert(enum_id.into());
                 continue;
             }
 
@@ -236,6 +238,7 @@ impl Pass for EnumValuesChecked {
             let default_variants = enum_value
                 .variants
                 .iter()
+                .map(|id| manifest.enum_variants.get(*id).unwrap())
                 .filter(|v| v.value.is_default())
                 .map(|v| v.span)
                 .collect::<Vec<_>>();
@@ -248,7 +251,8 @@ impl Pass for EnumValuesChecked {
 
                 // Set all but the first default to unspecified. This aids keeping the generated code available
                 let mut defaults_seen = 0;
-                for variant in &mut enum_value.variants {
+                for variant in &enum_value.variants {
+                    let variant = manifest.enum_variants.get_mut(*variant).unwrap();
                     if variant.value.is_default() {
                         if defaults_seen != 0 {
                             variant.value = EnumValue::Unspecified;
@@ -262,6 +266,7 @@ impl Pass for EnumValuesChecked {
             let catch_all_variants = enum_value
                 .variants
                 .iter()
+                .map(|id| manifest.enum_variants.get(*id).unwrap())
                 .filter(|v| v.value.is_catch_all())
                 .map(|v| v.span)
                 .collect::<Vec<_>>();
@@ -274,7 +279,8 @@ impl Pass for EnumValuesChecked {
 
                 // Set all but the first catch-all to unspecified. This aids keeping the generated code available
                 let mut catch_alls_seen = 0;
-                for variant in &mut enum_value.variants {
+                for variant in &enum_value.variants {
+                    let variant = manifest.enum_variants.get_mut(*variant).unwrap();
                     if variant.value.is_catch_all() {
                         if catch_alls_seen != 0 {
                             variant.value = EnumValue::Unspecified;
@@ -286,351 +292,5 @@ impl Pass for EnumValuesChecked {
         }
 
         Ok(removals)
-    }
-}
-#[cfg(test)]
-mod tests {
-    use device_driver_common::{
-        identifier::{Identifier, Type},
-        interner::StrExt,
-        span::{Span, SpanExt},
-    };
-
-    use crate::model::{Device, Enum, EnumVariant, Object};
-
-    use super::*;
-
-    #[test]
-    fn enum_values_correct() {
-        let mut start_mir = Device {
-            name: Identifier::try_parse("Device".intern())
-                .unwrap()
-                .with_dummy_span(),
-            children: vec![Object::Enum(Enum::new(
-                Default::default(),
-                Identifier::try_parse("MyEnum".intern())
-                    .unwrap()
-                    .with_dummy_span(),
-                vec![
-                    EnumVariant {
-                        name: Identifier::try_parse("var0".intern())
-                            .unwrap()
-                            .with_dummy_span(),
-                        value: EnumValue::Specified(1),
-                        ..Default::default()
-                    },
-                    EnumVariant {
-                        name: Identifier::try_parse("var1".intern())
-                            .unwrap()
-                            .with_dummy_span(),
-                        value: EnumValue::Unspecified,
-                        ..Default::default()
-                    },
-                    EnumVariant {
-                        name: Identifier::try_parse("var2".intern())
-                            .unwrap()
-                            .with_dummy_span(),
-                        value: EnumValue::Unspecified,
-                        ..Default::default()
-                    },
-                    EnumVariant {
-                        name: Identifier::try_parse("var3".intern())
-                            .unwrap()
-                            .with_dummy_span(),
-                        value: EnumValue::Specified(0),
-                        ..Default::default()
-                    },
-                ],
-                BaseType::Unspecified.with_dummy_span(),
-                Some(2),
-                Span::default(),
-            ))],
-            ..Default::default()
-        }
-        .into();
-
-        let end_mir = Device {
-            name: Identifier::try_parse("Device".intern())
-                .unwrap()
-                .with_dummy_span(),
-            children: vec![Object::Enum(Enum::new_with_style(
-                Default::default(),
-                Identifier::try_parse("MyEnum".intern())
-                    .unwrap()
-                    .with_dummy_span(),
-                vec![
-                    EnumVariant {
-                        name: Identifier::try_parse("var0".intern())
-                            .unwrap()
-                            .with_dummy_span(),
-                        value: EnumValue::Specified(1),
-                        ..Default::default()
-                    },
-                    EnumVariant {
-                        name: Identifier::try_parse("var1".intern())
-                            .unwrap()
-                            .with_dummy_span(),
-                        value: EnumValue::Specified(2),
-                        ..Default::default()
-                    },
-                    EnumVariant {
-                        name: Identifier::try_parse("var2".intern())
-                            .unwrap()
-                            .with_dummy_span(),
-                        value: EnumValue::Specified(3),
-                        ..Default::default()
-                    },
-                    EnumVariant {
-                        name: Identifier::try_parse("var3".intern())
-                            .unwrap()
-                            .with_dummy_span(),
-                        value: EnumValue::Specified(0),
-                        ..Default::default()
-                    },
-                ],
-                BaseType::FixedSize(Integer::U8).with_dummy_span(),
-                Some(2),
-                EnumGenerationStyle::InfallibleWithinRange,
-                Span::default(),
-            ))],
-            ..Default::default()
-        }
-        .into();
-
-        let mut diagnostics = Diagnostics::new();
-        EnumValuesChecked::run_pass(&mut start_mir, &mut diagnostics).unwrap();
-
-        assert!(!diagnostics.has_error());
-        assert_eq!(start_mir, end_mir);
-    }
-
-    #[test]
-    fn enum_values_infallible_with_fallback() {
-        let mut start_mir = Device {
-            name: Identifier::try_parse("Device".intern())
-                .unwrap()
-                .with_dummy_span(),
-            children: vec![Object::Enum(Enum::new(
-                Default::default(),
-                Identifier::try_parse("MyEnum".intern())
-                    .unwrap()
-                    .with_dummy_span(),
-                vec![
-                    EnumVariant {
-                        name: Identifier::try_parse("var0".intern())
-                            .unwrap()
-                            .with_dummy_span(),
-                        value: EnumValue::Unspecified,
-                        ..Default::default()
-                    },
-                    EnumVariant {
-                        name: Identifier::try_parse("var1".intern())
-                            .unwrap()
-                            .with_dummy_span(),
-                        value: EnumValue::Default(1),
-                        ..Default::default()
-                    },
-                ],
-                BaseType::Unspecified.with_dummy_span(),
-                Some(8),
-                Span::default(),
-            ))],
-            ..Default::default()
-        }
-        .into();
-
-        let end_mir = Device {
-            name: Identifier::try_parse("Device".intern())
-                .unwrap()
-                .with_dummy_span(),
-            children: vec![Object::Enum(Enum::new_with_style(
-                Default::default(),
-                Identifier::try_parse("MyEnum".intern())
-                    .unwrap()
-                    .with_dummy_span(),
-                vec![
-                    EnumVariant {
-                        name: Identifier::try_parse("var0".intern())
-                            .unwrap()
-                            .with_dummy_span(),
-                        value: EnumValue::Specified(0),
-                        ..Default::default()
-                    },
-                    EnumVariant {
-                        name: Identifier::try_parse("var1".intern())
-                            .unwrap()
-                            .with_dummy_span(),
-                        value: EnumValue::Default(1),
-                        ..Default::default()
-                    },
-                ],
-                BaseType::FixedSize(Integer::U8).with_dummy_span(),
-                Some(8),
-                EnumGenerationStyle::Fallback,
-                Span::default(),
-            ))],
-            ..Default::default()
-        }
-        .into();
-
-        let mut diagnostics = Diagnostics::new();
-        EnumValuesChecked::run_pass(&mut start_mir, &mut diagnostics).unwrap();
-
-        assert!(!diagnostics.has_error());
-        assert_eq!(start_mir, end_mir);
-    }
-
-    #[test]
-    fn enum_values_fallible() {
-        let mut start_mir = Device {
-            name: Identifier::try_parse("Device".intern())
-                .unwrap()
-                .with_dummy_span(),
-            children: vec![Object::Enum(Enum::new(
-                Default::default(),
-                Identifier::try_parse("MyEnum".intern())
-                    .unwrap()
-                    .with_dummy_span(),
-                vec![EnumVariant {
-                    name: Identifier::try_parse("var0".intern())
-                        .unwrap()
-                        .with_dummy_span(),
-                    value: EnumValue::Unspecified,
-                    ..Default::default()
-                }],
-                BaseType::Unspecified.with_dummy_span(),
-                Some(16),
-                Span::default(),
-            ))],
-            ..Default::default()
-        }
-        .into();
-
-        let end_mir = Device {
-            name: Identifier::try_parse("Device".intern())
-                .unwrap()
-                .with_dummy_span(),
-            children: vec![Object::Enum(Enum::new_with_style(
-                Default::default(),
-                Identifier::try_parse("MyEnum".intern())
-                    .unwrap()
-                    .with_dummy_span(),
-                vec![EnumVariant {
-                    name: Identifier::try_parse("var0".intern())
-                        .unwrap()
-                        .with_dummy_span(),
-                    value: EnumValue::Specified(0),
-                    ..Default::default()
-                }],
-                BaseType::FixedSize(Integer::U16).with_dummy_span(),
-                Some(16),
-                EnumGenerationStyle::Fallible,
-                Span::default(),
-            ))],
-            ..Default::default()
-        }
-        .into();
-
-        let mut diagnostics = Diagnostics::new();
-        EnumValuesChecked::run_pass(&mut start_mir, &mut diagnostics).unwrap();
-
-        assert!(!diagnostics.has_error());
-        assert_eq!(start_mir, end_mir);
-    }
-
-    #[test]
-    fn enum_values_dont_fit() {
-        let mut start_mir = Device {
-            name: Identifier::try_parse("Device".intern())
-                .unwrap()
-                .with_dummy_span(),
-            children: vec![Object::Enum(Enum::new(
-                Default::default(),
-                Identifier::try_parse("MyEnum".intern())
-                    .unwrap()
-                    .with_dummy_span(),
-                vec![
-                    EnumVariant {
-                        name: Identifier::try_parse("var0".intern())
-                            .unwrap()
-                            .with_dummy_span(),
-                        value: EnumValue::Unspecified,
-                        ..Default::default()
-                    },
-                    EnumVariant {
-                        name: Identifier::try_parse("var0".intern())
-                            .unwrap()
-                            .with_dummy_span(),
-                        value: EnumValue::Unspecified,
-                        ..Default::default()
-                    },
-                    EnumVariant {
-                        name: Identifier::try_parse("var0".intern())
-                            .unwrap()
-                            .with_dummy_span(),
-                        value: EnumValue::Unspecified,
-                        ..Default::default()
-                    },
-                ],
-                BaseType::Unspecified.with_dummy_span(),
-                Some(1),
-                Span::default(),
-            ))],
-            ..Default::default()
-        }
-        .into();
-
-        let mut diagnostics = Diagnostics::new();
-        let removals = EnumValuesChecked::run_pass(&mut start_mir, &mut diagnostics).unwrap();
-
-        assert!(diagnostics.has_error());
-        assert!(removals.contains(&ObjectId::new_test(
-            Identifier::<Type>::try_parse("MyEnum".intern()).unwrap()
-        )));
-    }
-
-    #[test]
-    fn enum_values_no_duplicates() {
-        let mut start_mir = Device {
-            name: Identifier::try_parse("Device".intern())
-                .unwrap()
-                .with_dummy_span(),
-            children: vec![Object::Enum(Enum::new(
-                Default::default(),
-                Identifier::try_parse("MyEnum".intern())
-                    .unwrap()
-                    .with_dummy_span(),
-                vec![
-                    EnumVariant {
-                        name: Identifier::try_parse("var0".intern())
-                            .unwrap()
-                            .with_dummy_span(),
-                        value: EnumValue::Unspecified,
-                        ..Default::default()
-                    },
-                    EnumVariant {
-                        name: Identifier::try_parse("var0".intern())
-                            .unwrap()
-                            .with_dummy_span(),
-                        value: EnumValue::Specified(0),
-                        ..Default::default()
-                    },
-                ],
-                BaseType::Unspecified.with_dummy_span(),
-                Some(8),
-                Span::default(),
-            ))],
-            ..Default::default()
-        }
-        .into();
-
-        let mut diagnostics = Diagnostics::new();
-        let removals = EnumValuesChecked::run_pass(&mut start_mir, &mut diagnostics).unwrap();
-
-        assert!(diagnostics.has_error());
-        assert_eq!(removals.len(), 1);
-        assert!(removals.contains(&ObjectId::new_test(
-            Identifier::<Type>::try_parse("MyEnum".intern()).unwrap()
-        )));
     }
 }

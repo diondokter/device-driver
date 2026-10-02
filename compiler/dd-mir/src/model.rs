@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     marker::PhantomData,
     ops::{Index, IndexMut, Not},
 };
@@ -17,8 +18,8 @@ use device_driver_common::{
     },
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-enum ObjectType {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ObjectType {
     Device,
     Block,
     Register,
@@ -28,10 +29,17 @@ enum ObjectType {
     Field,
     Enum,
     EnumVariant,
+    Extern,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ObjectId(ObjectType, u32);
+
+impl ObjectId {
+    pub fn object_type(self) -> ObjectType {
+        self.0
+    }
+}
 
 trait Id: Copy {
     fn index(&self) -> usize;
@@ -39,9 +47,25 @@ trait Id: Copy {
 }
 
 macro_rules! create_id {
-    ($name:ident, $object_type:ident) => {
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+    ($name:ident, $object_type:ident, $manifest_collection:ident) => {
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
         pub struct $name(u32);
+
+        impl $name {
+            pub fn get(self, manifest: &Manifest) -> Option<&$object_type> {
+                manifest.$manifest_collection.get(self)
+            }
+
+            pub fn get_mut(self, manifest: &mut Manifest) -> Option<&mut $object_type> {
+                manifest.$manifest_collection.get_mut(self)
+            }
+        }
+
+        impl Default for $name {
+            fn default() -> Self {
+                Self(u32::MAX)
+            }
+        }
 
         impl From<$name> for ObjectId {
             fn from(value: $name) -> Self {
@@ -73,15 +97,16 @@ macro_rules! create_id {
     };
 }
 
-create_id!(DeviceId, Device);
-create_id!(BlockId, Block);
-create_id!(RegisterId, Register);
-create_id!(CommandId, Command);
-create_id!(BufferId, Buffer);
-create_id!(FieldSetId, FieldSet);
-create_id!(FieldId, Field);
-create_id!(EnumId, Enum);
-create_id!(EnumVariantId, EnumVariant);
+create_id!(DeviceId, Device, devices);
+create_id!(BlockId, Block, blocks);
+create_id!(RegisterId, Register, registers);
+create_id!(CommandId, Command, commands);
+create_id!(BufferId, Buffer, buffers);
+create_id!(FieldSetId, FieldSet, fieldsets);
+create_id!(FieldId, Field, fields);
+create_id!(EnumId, Enum, enums);
+create_id!(EnumVariantId, EnumVariant, enum_variants);
+create_id!(ExternId, Extern, externs);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ObjectArena<O, ID: Id> {
@@ -128,11 +153,29 @@ impl<O, ID: Id> ObjectArena<O, ID> {
             .filter_map(|(i, obj)| self.removed.get(i)?.not().then_some(obj))
     }
 
+    pub fn iter_enumerated(&self) -> impl Iterator<Item = (ID, &O)> {
+        self.inner
+            .iter()
+            .enumerate()
+            .filter_map(|(i, obj)| self.removed.get(i)?.not().then_some((ID::create(i), obj)))
+    }
+
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut O> {
         self.inner
             .iter_mut()
             .enumerate()
             .filter_map(|(i, obj)| self.removed.get(i)?.not().then_some(obj))
+    }
+
+    pub fn iter_enumerated_mut(&mut self) -> impl Iterator<Item = (ID, &mut O)> {
+        self.inner
+            .iter_mut()
+            .enumerate()
+            .filter_map(|(i, obj)| self.removed.get(i)?.not().then_some((ID::create(i), obj)))
+    }
+
+    pub fn ids(&self) -> impl Iterator<Item = ID> {
+        (0..self.inner.len()).filter_map(|i| self.removed.get(i)?.not().then_some(ID::create(i)))
     }
 
     pub fn push(&mut self, obj: O) -> ID {
@@ -177,6 +220,9 @@ pub struct Manifest {
     pub fields: ObjectArena<Field, FieldId>,
     pub enums: ObjectArena<Enum, EnumId>,
     pub enum_variants: ObjectArena<EnumVariant, EnumVariantId>,
+    pub externs: ObjectArena<Extern, ExternId>,
+
+    pub parent_map: HashMap<ObjectId, Box<[ObjectId]>>,
 
     pub short_properties_span: Span,
     pub properties_span: Option<Span>,
@@ -196,6 +242,58 @@ impl Manifest {
             .chain(self.fields.iter().map(Object::Field))
             .chain(self.enums.iter().map(Object::Enum))
             .chain(self.enum_variants.iter().map(Object::EnumVariant))
+            .chain(self.externs.iter().map(Object::Extern))
+    }
+
+    pub fn objects_enumerated(&self) -> impl Iterator<Item = (ObjectId, Object<'_>)> {
+        self.devices
+            .iter_enumerated()
+            .map(|(id, obj)| (id.into(), Object::Device(obj)))
+            .chain(
+                self.blocks
+                    .iter_enumerated()
+                    .map(|(id, obj)| (id.into(), Object::Block(obj))),
+            )
+            .chain(
+                self.registers
+                    .iter_enumerated()
+                    .map(|(id, obj)| (id.into(), Object::Register(obj))),
+            )
+            .chain(
+                self.commands
+                    .iter_enumerated()
+                    .map(|(id, obj)| (id.into(), Object::Command(obj))),
+            )
+            .chain(
+                self.buffers
+                    .iter_enumerated()
+                    .map(|(id, obj)| (id.into(), Object::Buffer(obj))),
+            )
+            .chain(
+                self.fieldsets
+                    .iter_enumerated()
+                    .map(|(id, obj)| (id.into(), Object::FieldSet(obj))),
+            )
+            .chain(
+                self.fields
+                    .iter_enumerated()
+                    .map(|(id, obj)| (id.into(), Object::Field(obj))),
+            )
+            .chain(
+                self.enums
+                    .iter_enumerated()
+                    .map(|(id, obj)| (id.into(), Object::Enum(obj))),
+            )
+            .chain(
+                self.enum_variants
+                    .iter_enumerated()
+                    .map(|(id, obj)| (id.into(), Object::EnumVariant(obj))),
+            )
+            .chain(
+                self.externs
+                    .iter_enumerated()
+                    .map(|(id, obj)| (id.into(), Object::Extern(obj))),
+            )
     }
 
     pub fn objects_mut(&mut self) -> impl Iterator<Item = ObjectMut<'_>> {
@@ -210,9 +308,77 @@ impl Manifest {
             .chain(self.fields.iter_mut().map(ObjectMut::Field))
             .chain(self.enums.iter_mut().map(ObjectMut::Enum))
             .chain(self.enum_variants.iter_mut().map(ObjectMut::EnumVariant))
+            .chain(self.externs.iter_mut().map(ObjectMut::Extern))
     }
 
-    pub fn object(&self, id: ObjectId) -> Option<Object<'_>> {
+    pub fn objects_enumerated_mut(&mut self) -> impl Iterator<Item = (ObjectId, ObjectMut<'_>)> {
+        self.devices
+            .iter_enumerated_mut()
+            .map(|(id, obj)| (id.into(), ObjectMut::Device(obj)))
+            .chain(
+                self.blocks
+                    .iter_enumerated_mut()
+                    .map(|(id, obj)| (id.into(), ObjectMut::Block(obj))),
+            )
+            .chain(
+                self.registers
+                    .iter_enumerated_mut()
+                    .map(|(id, obj)| (id.into(), ObjectMut::Register(obj))),
+            )
+            .chain(
+                self.commands
+                    .iter_enumerated_mut()
+                    .map(|(id, obj)| (id.into(), ObjectMut::Command(obj))),
+            )
+            .chain(
+                self.buffers
+                    .iter_enumerated_mut()
+                    .map(|(id, obj)| (id.into(), ObjectMut::Buffer(obj))),
+            )
+            .chain(
+                self.fieldsets
+                    .iter_enumerated_mut()
+                    .map(|(id, obj)| (id.into(), ObjectMut::FieldSet(obj))),
+            )
+            .chain(
+                self.fields
+                    .iter_enumerated_mut()
+                    .map(|(id, obj)| (id.into(), ObjectMut::Field(obj))),
+            )
+            .chain(
+                self.enums
+                    .iter_enumerated_mut()
+                    .map(|(id, obj)| (id.into(), ObjectMut::Enum(obj))),
+            )
+            .chain(
+                self.enum_variants
+                    .iter_enumerated_mut()
+                    .map(|(id, obj)| (id.into(), ObjectMut::EnumVariant(obj))),
+            )
+            .chain(
+                self.externs
+                    .iter_enumerated_mut()
+                    .map(|(id, obj)| (id.into(), ObjectMut::Extern(obj))),
+            )
+    }
+
+    pub fn object_ids(&self) -> impl Iterator<Item = ObjectId> {
+        self.devices
+            .ids()
+            .map(ObjectId::from)
+            .chain(self.blocks.ids().map(ObjectId::from))
+            .chain(self.registers.ids().map(ObjectId::from))
+            .chain(self.commands.ids().map(ObjectId::from))
+            .chain(self.buffers.ids().map(ObjectId::from))
+            .chain(self.fieldsets.ids().map(ObjectId::from))
+            .chain(self.fields.ids().map(ObjectId::from))
+            .chain(self.enums.ids().map(ObjectId::from))
+            .chain(self.enum_variants.ids().map(ObjectId::from))
+            .chain(self.externs.ids().map(ObjectId::from))
+    }
+
+    pub fn object(&self, id: impl Into<ObjectId>) -> Option<Object<'_>> {
+        let id = id.into();
         match id.0 {
             ObjectType::Device => self.devices.get(DeviceId(id.1)).map(Object::Device),
             ObjectType::Block => self.blocks.get(BlockId(id.1)).map(Object::Block),
@@ -226,15 +392,12 @@ impl Manifest {
                 .enum_variants
                 .get(EnumVariantId(id.1))
                 .map(Object::EnumVariant),
+            ObjectType::Extern => self.externs.get(ExternId(id.1)).map(Object::Extern),
         }
     }
 
-    /// This assumes [crate::passes::Assumption::NamesUnique]
-    pub fn search_object<T: Namespace>(&self, name: &IdentifierRef<T>) -> Option<Object<'_>> {
-        self.objects().find(|o| name.is_ref_to(o.name()))
-    }
-
-    pub fn object_mut(&mut self, id: ObjectId) -> Option<ObjectMut<'_>> {
+    pub fn object_mut(&mut self, id: impl Into<ObjectId>) -> Option<ObjectMut<'_>> {
+        let id = id.into();
         match id.0 {
             ObjectType::Device => self.devices.get_mut(DeviceId(id.1)).map(ObjectMut::Device),
             ObjectType::Block => self.blocks.get_mut(BlockId(id.1)).map(ObjectMut::Block),
@@ -257,10 +420,31 @@ impl Manifest {
                 .enum_variants
                 .get_mut(EnumVariantId(id.1))
                 .map(ObjectMut::EnumVariant),
+            ObjectType::Extern => self.externs.get_mut(ExternId(id.1)).map(ObjectMut::Extern),
         }
     }
 
-    pub fn remove_object(&mut self, id: ObjectId) {
+    /// This assumes [crate::passes::Assumption::NamesUnique]
+    pub fn search_object<T: Namespace>(&self, name: &IdentifierRef<T>) -> Option<Object<'_>> {
+        self.objects().find(|o| name.is_ref_to(o.name()))
+    }
+
+    /// This assumes [crate::passes::Assumption::NamesUnique]
+    pub fn search_fieldset(&self, ref_val: &FieldsetRef) -> Option<&FieldSet> {
+        match ref_val {
+            FieldsetRef::Identifier(identifier_ref) => self
+                .fieldsets
+                .iter()
+                .find(|fs| identifier_ref.is_ref_to(&fs.name.value)),
+            FieldsetRef::Id(id) => self.fieldsets.get(*id),
+        }
+    }
+
+    pub fn remove_object(&mut self, id: impl Into<ObjectId>) {
+        // TODO: Also remove references to this object from parents
+        // TODO: Also remove all children
+
+        let id = id.into();
         match id.0 {
             ObjectType::Device => self.devices.remove(DeviceId(id.1)),
             ObjectType::Block => self.blocks.remove(BlockId(id.1)),
@@ -271,7 +455,71 @@ impl Manifest {
             ObjectType::Field => self.fields.remove(FieldId(id.1)),
             ObjectType::Enum => self.enums.remove(EnumId(id.1)),
             ObjectType::EnumVariant => self.enum_variants.remove(EnumVariantId(id.1)),
+            ObjectType::Extern => self.externs.remove(ExternId(id.1)),
         }
+    }
+
+    pub(crate) fn populate_parent_map(&mut self) {
+        fn populate(
+            parent_map: &mut HashMap<ObjectId, Box<[ObjectId]>>,
+            manifest: &Manifest,
+            parent_list: Vec<ObjectId>,
+            children: impl Iterator<Item = ObjectId>,
+        ) {
+            for child in children {
+                parent_map.insert(child, parent_list.clone().into());
+
+                let child_object = manifest.object(child).unwrap();
+                if let Some(grand_children) = child_object.child_objects() {
+                    let mut grand_parent_list = parent_list.clone();
+                    grand_parent_list.push(child);
+                    populate(parent_map, manifest, grand_parent_list, grand_children);
+                }
+            }
+        }
+
+        let mut parent_map: HashMap<ObjectId, Box<[ObjectId]>> = Default::default();
+
+        // We know all devices are children of the manifest and nothing else
+        for root_object_id in self
+            .object_ids()
+            .filter(|object_id| self.parent_map.contains_key(object_id))
+        {
+            let object = self.object(root_object_id).unwrap();
+
+            if let Some(children) = object.child_objects() {
+                let parent_list = vec![root_object_id];
+                populate(&mut parent_map, self, parent_list, children);
+            }
+        }
+
+        self.parent_map = parent_map;
+    }
+
+    /// Get the parent list for this object.
+    /// The last parent is the most direct parent.
+    ///
+    /// It is possible one of the parents has been removed.
+    pub fn object_parents(&self, object: impl Into<ObjectId>) -> &[ObjectId] {
+        self.parent_map
+            .get(&object.into())
+            .map(|parent_list| &parent_list[..])
+            .unwrap_or(&[])
+    }
+
+    /// Get the device config that applies to the given object
+    pub fn object_config(&self, object: impl Into<ObjectId>) -> &DeviceConfig {
+        let parents = self.object_parents(object);
+
+        for object_id in parents.iter().rev() {
+            if let Some(object) = self.object(*object_id) {
+                if let Some(config) = object.device_config() {
+                    return config;
+                }
+            }
+        }
+
+        &self.config
     }
 }
 
@@ -423,23 +671,25 @@ impl<'a> ObjectMut<'a> {
 }
 
 impl<'a> Object<'a> {
-    pub fn device_config(&self) -> Option<&DeviceConfig> {
+    pub fn device_config(&self) -> Option<&'a DeviceConfig> {
         match self {
             Object::Device(device) => Some(&device.device_config),
             _ => None,
         }
     }
 
-    pub fn child_objects(&self) -> &[ObjectId] {
+    pub fn child_objects(&self) -> Option<Box<dyn Iterator<Item = ObjectId> + 'a>> {
         match self {
-            Object::Device(device) => &device.children,
-            Object::Block(block) => &block.children,
-            _ => &[],
+            Object::Device(device) => Some(Box::new(device.children.iter().copied())),
+            Object::Block(block) => Some(Box::new(block.children.iter().copied())),
+            Object::FieldSet(fs) => Some(Box::new(fs.fields.iter().copied().map(ObjectId::from))),
+            Object::Enum(e) => Some(Box::new(e.variants.iter().copied().map(ObjectId::from))),
+            _ => None,
         }
     }
 
     /// Get a reference to the name of the specific object
-    pub fn name(&self) -> &Identifier<RuntimeNamespace> {
+    pub fn name(&self) -> &'a Identifier<RuntimeNamespace> {
         match self {
             Object::Device(val) => val.name.as_runtime_namespace(),
             Object::Block(val) => val.name.as_runtime_namespace(),
@@ -487,7 +737,7 @@ impl<'a> Object<'a> {
     }
 
     /// Return the repeat value if it exists
-    pub fn repeat(&self) -> Option<&Repeat> {
+    pub fn repeat(&self) -> Option<&'a Repeat> {
         match self {
             Object::Device(_) => None,
             Object::Block(block) => block.repeat.as_ref(),
@@ -502,7 +752,7 @@ impl<'a> Object<'a> {
         }
     }
 
-    pub fn as_field_set(&self) -> Option<&FieldSet> {
+    pub fn as_field_set(&self) -> Option<&'a FieldSet> {
         if let Self::FieldSet(v) = self {
             Some(v)
         } else {
@@ -510,7 +760,7 @@ impl<'a> Object<'a> {
         }
     }
 
-    pub fn as_enum(&self) -> Option<&Enum> {
+    pub fn as_enum(&self) -> Option<&'a Enum> {
         if let Self::Enum(v) = self {
             Some(v)
         } else {
@@ -518,7 +768,7 @@ impl<'a> Object<'a> {
         }
     }
 
-    pub fn base_type(&self) -> Option<&Spanned<BaseType>> {
+    pub fn base_type(&self) -> Option<&'a Spanned<BaseType>> {
         match self {
             Object::Device(_) => None,
             Object::Block(_) => None,
@@ -595,7 +845,7 @@ impl<'a> Object<'a> {
     }
 
     /// Get the fieldset refs of the object. Only returns non-zero for registers and commands
-    pub fn fieldset_refs(&self) -> Vec<Spanned<IdentifierRef<Type>>> {
+    pub fn fieldset_refs(&self) -> Vec<Spanned<FieldsetRef>> {
         match self {
             Object::Device(_) => Vec::new(),
             Object::Block(_) => Vec::new(),
@@ -653,12 +903,24 @@ pub struct Register {
     pub address: Spanned<i128>,
     pub reset_value: Option<Spanned<ResetValue>>,
     pub repeat: Option<Repeat>,
-    pub field_set_ref: Spanned<IdentifierRef<Type>>,
+    pub field_set_ref: Spanned<FieldsetRef>,
 
     pub short_properties_span: Span,
     pub properties_span: Option<Span>,
     /// Span of the whole object
     pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum FieldsetRef {
+    Identifier(IdentifierRef<Type>),
+    Id(FieldSetId),
+}
+
+impl Default for FieldsetRef {
+    fn default() -> Self {
+        Self::Id(FieldSetId::default())
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -783,14 +1045,11 @@ impl Enum {
     /// before that pass, there might be weird results.
     pub fn iter_variants_with_discriminant<'m>(
         &self,
-        manifest: &'m Manifest,
+        enum_variants: &'m ObjectArena<EnumVariant, EnumVariantId>,
     ) -> impl Iterator<Item = (i128, EnumVariantId)> {
         let mut next_discriminant = 0;
         self.variants.iter().map(move |variant| {
-            if let Some(discriminant) = manifest.enum_variants[*variant]
-                .value
-                .specified_discriminant()
-            {
+            if let Some(discriminant) = enum_variants[*variant].value.specified_discriminant() {
                 next_discriminant = discriminant + 1;
                 (discriminant, *variant)
             } else {
@@ -878,8 +1137,8 @@ pub struct Command {
     pub allow_address_overlap: bool,
     pub repeat: Option<Repeat>,
 
-    pub field_set_ref_in: Option<Spanned<IdentifierRef<Type>>>,
-    pub field_set_ref_out: Option<Spanned<IdentifierRef<Type>>>,
+    pub field_set_ref_in: Option<Spanned<FieldsetRef>>,
+    pub field_set_ref_out: Option<Spanned<FieldsetRef>>,
 
     pub short_properties_span: Span,
     pub properties_span: Option<Span>,

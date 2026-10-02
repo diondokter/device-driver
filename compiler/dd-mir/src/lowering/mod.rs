@@ -1,11 +1,15 @@
 use std::{
+    any::TypeId,
     borrow::Cow,
     collections::HashMap,
     mem::{self, discriminant},
     str::FromStr,
 };
 
-use crate::model::{Manifest, Object, ObjectId};
+use crate::model::{
+    Block, Buffer, Command, Device, Enum, Extern, Field, FieldSet, Manifest, Object, ObjectId,
+    Register,
+};
 use device_driver_common::{
     identifier::{Identifier, IdentifierRef, Namespace, Type},
     interner::{Istr, StrExt},
@@ -33,7 +37,10 @@ pub fn lower(ast: &Ast, diagnostics: &mut Diagnostics) -> Manifest {
         return Default::default();
     };
 
+    let mut manifest = Manifest::default();
+
     let result = lower_node(
+        &mut manifest,
         ast.node(root_node),
         None,
         None,
@@ -42,24 +49,47 @@ pub fn lower(ast: &Ast, diagnostics: &mut Diagnostics) -> Manifest {
         diagnostics,
     );
 
-    match result {
-        LowerResult::Manifest(m) => m,
-        LowerResult::Objects(Object::Device(d), siblings) => {
+    let mut manifest = match result {
+        LowerResult::Manifest => manifest,
+        LowerResult::Objects(device_id, siblings) => {
             assert!(siblings.is_empty(), "Device doesn't have sibling objects");
-            d.into()
+            let Object::Device(device) = manifest.object(device_id).unwrap() else {
+                panic!()
+            };
+
+            let manifest_name = device
+                .name
+                .value
+                .clone()
+                .cast_unchecked()
+                .with_span(device.name.span);
+            let manifest_short_properties_span = device.short_properties_span;
+            let manifest_properties_span = device.properties_span;
+            let manifest_span = device.span;
+
+            manifest.name = manifest_name;
+            manifest.short_properties_span = manifest_short_properties_span;
+            manifest.properties_span = manifest_properties_span;
+            manifest.span = manifest_span;
+
+            manifest
         }
-        LowerResult::Objects(_, _) => unreachable!(),
         LowerResult::Error(_) => Default::default(),
-    }
+    };
+
+    manifest.populate_parent_map();
+
+    manifest
 }
 
 enum LowerResult {
-    Manifest(Manifest),
-    Objects(Object, Vec<Object>),
-    Error(Vec<Object>),
+    Manifest,
+    Objects(ObjectId, Vec<ObjectId>),
+    Error(Vec<ObjectId>),
 }
 
 fn lower_node(
+    manifest: &mut Manifest,
     node: &Node,
     parent_node_type: Option<Spanned<NodeType>>,
     parent_node_name: Option<Ident>,
@@ -85,59 +115,67 @@ fn lower_node(
         return LowerResult::Error(Vec::new());
     }
 
-    match node_type.value {
-        NodeType::Manifest => match parse_node_to_shape(node, parent_node_name, ast, diagnostics) {
-            Ok((val, siblings)) => {
-                assert!(siblings.is_empty(), "Manifest has no siblings");
-                LowerResult::Manifest(val)
+    let result = match node_type.value {
+        NodeType::Manifest => {
+            parse_node_to_shape::<Manifest>(manifest, node, parent_node_name, ast, diagnostics)
+        }
+        NodeType::Device => {
+            parse_node_to_shape::<Device>(manifest, node, parent_node_name, ast, diagnostics)
+        }
+        NodeType::Block => {
+            parse_node_to_shape::<Block>(manifest, node, parent_node_name, ast, diagnostics)
+        }
+        NodeType::Register => {
+            parse_node_to_shape::<Register>(manifest, node, parent_node_name, ast, diagnostics)
+        }
+        NodeType::Command => {
+            parse_node_to_shape::<Command>(manifest, node, parent_node_name, ast, diagnostics)
+        }
+        NodeType::Buffer => {
+            parse_node_to_shape::<Buffer>(manifest, node, parent_node_name, ast, diagnostics)
+        }
+        NodeType::FieldSet => {
+            parse_node_to_shape::<FieldSet>(manifest, node, parent_node_name, ast, diagnostics)
+        }
+        NodeType::Enum => {
+            parse_node_to_shape::<Enum>(manifest, node, parent_node_name, ast, diagnostics)
+        }
+        NodeType::Extern => {
+            parse_node_to_shape::<Extern>(manifest, node, parent_node_name, ast, diagnostics)
+        }
+        NodeType::Field => {
+            parse_node_to_shape::<Field>(manifest, node, parent_node_name, ast, diagnostics)
+        }
+    };
+
+    // If we know the objects have no parent, already insert them into the parent map so that information is kept
+    if parent_node_type.is_none_or(|node_type| node_type.value == NodeType::Manifest) {
+        match &result {
+            LowerResult::Manifest => unreachable!(),
+            LowerResult::Objects(object_id, object_ids) => {
+                manifest.parent_map.insert(*object_id, Box::new([]));
+                for object_id in object_ids.iter() {
+                    manifest.parent_map.insert(*object_id, Box::new([]));
+                }
             }
-            Err(siblings) => LowerResult::Error(siblings),
-        },
-        NodeType::Device => match parse_node_to_shape(node, parent_node_name, ast, diagnostics) {
-            Ok((val, siblings)) => LowerResult::Objects(Object::Device(val), siblings),
-            Err(siblings) => LowerResult::Error(siblings),
-        },
-        NodeType::Block => match parse_node_to_shape(node, parent_node_name, ast, diagnostics) {
-            Ok((val, siblings)) => LowerResult::Objects(Object::Block(val), siblings),
-            Err(siblings) => LowerResult::Error(siblings),
-        },
-        NodeType::Register => match parse_node_to_shape(node, parent_node_name, ast, diagnostics) {
-            Ok((val, siblings)) => LowerResult::Objects(Object::Register(val), siblings),
-            Err(siblings) => LowerResult::Error(siblings),
-        },
-        NodeType::Command => match parse_node_to_shape(node, parent_node_name, ast, diagnostics) {
-            Ok((val, siblings)) => LowerResult::Objects(Object::Command(val), siblings),
-            Err(siblings) => LowerResult::Error(siblings),
-        },
-        NodeType::Buffer => match parse_node_to_shape(node, parent_node_name, ast, diagnostics) {
-            Ok((val, siblings)) => LowerResult::Objects(Object::Buffer(val), siblings),
-            Err(siblings) => LowerResult::Error(siblings),
-        },
-        NodeType::FieldSet => match parse_node_to_shape(node, parent_node_name, ast, diagnostics) {
-            Ok((val, siblings)) => LowerResult::Objects(Object::FieldSet(val), siblings),
-            Err(siblings) => LowerResult::Error(siblings),
-        },
-        NodeType::Enum => match parse_node_to_shape(node, parent_node_name, ast, diagnostics) {
-            Ok((val, siblings)) => LowerResult::Objects(Object::Enum(val), siblings),
-            Err(siblings) => LowerResult::Error(siblings),
-        },
-        NodeType::Extern => match parse_node_to_shape(node, parent_node_name, ast, diagnostics) {
-            Ok((val, siblings)) => LowerResult::Objects(Object::Extern(val), siblings),
-            Err(siblings) => LowerResult::Error(siblings),
-        },
-        NodeType::Field => match parse_node_to_shape(node, parent_node_name, ast, diagnostics) {
-            Ok((val, siblings)) => LowerResult::Objects(Object::Field(val), siblings),
-            Err(siblings) => LowerResult::Error(siblings),
-        },
+            LowerResult::Error(object_ids) => {
+                for object_id in object_ids.iter() {
+                    manifest.parent_map.insert(*object_id, Box::new([]));
+                }
+            }
+        }
     }
+
+    result
 }
 
 fn parse_node_to_shape<S: Shape>(
+    manifest: &mut Manifest,
     node: &Node,
     parent_node_name: Option<Ident>,
     ast: &Ast,
     diagnostics: &mut Diagnostics,
-) -> Result<(S, Vec<Object>), Vec<Object>> {
+) -> LowerResult {
     let mut target = S::default();
     let mut sibling_objects = Vec::new();
     let mut error = false;
@@ -248,6 +286,7 @@ fn parse_node_to_shape<S: Shape>(
                     }
                     device_driver_parser::TypeConversion::Subnode(sub_node) => {
                         let sub_node = lower_node(
+                            manifest,
                             ast.node(*sub_node),
                             Some(NodeType::Field.with_span(node.node_type.span)),
                             Some(node.name),
@@ -257,8 +296,9 @@ fn parse_node_to_shape<S: Shape>(
                         );
 
                         match sub_node {
-                            LowerResult::Manifest(_) => unreachable!(),
-                            LowerResult::Objects(object, objects) => {
+                            LowerResult::Manifest => unreachable!(),
+                            LowerResult::Objects(object_id, objects) => {
+                                let object = manifest.object(object_id).unwrap();
                                 let reference = object
                                     .name()
                                     .clone()
@@ -266,7 +306,7 @@ fn parse_node_to_shape<S: Shape>(
                                     .cast_assert()
                                     .take_ref()
                                     .with_span(object.name_span());
-                                sibling_objects.push(object);
+                                sibling_objects.push(object_id);
                                 sibling_objects.extend(objects);
                                 Some(reference)
                             }
@@ -376,6 +416,7 @@ fn parse_node_to_shape<S: Shape>(
             diagnostics,
             sibling_objects: &mut sibling_objects,
             ast,
+            manifest,
         });
 
         if !property_info.multiple_allowed {
@@ -449,6 +490,7 @@ fn parse_node_to_shape<S: Shape>(
             diagnostics,
             sibling_objects: &mut sibling_objects,
             ast,
+            manifest,
         });
 
         if !property_info.multiple_allowed {
@@ -510,6 +552,7 @@ fn parse_node_to_shape<S: Shape>(
     if let Some(supported_subnodes) = S::supported_subnodes() {
         for sub_node in node.sub_nodes.iter() {
             let sub_node_result = lower_node(
+                manifest,
                 ast.node(*sub_node),
                 Some(S::NODE_TYPE.with_span(node.node_type.span)),
                 None,
@@ -519,7 +562,7 @@ fn parse_node_to_shape<S: Shape>(
             );
 
             match sub_node_result {
-                LowerResult::Manifest(_) => unreachable!(),
+                LowerResult::Manifest => unreachable!(),
                 LowerResult::Objects(object, siblings) => {
                     target.push_subnode(object);
                     sibling_objects.extend(siblings);
@@ -539,16 +582,114 @@ fn parse_node_to_shape<S: Shape>(
     // Make all sibling objects into subnodes if supported
     if let Some(supported_subnodes) = S::supported_subnodes() {
         for i in (0..sibling_objects.len()).rev() {
-            if supported_subnodes.contains(&sibling_objects[i].node_type()) {
+            if supported_subnodes
+                .contains(&manifest.object(sibling_objects[i]).unwrap().node_type())
+            {
                 target.push_subnode(sibling_objects.remove(i));
             }
         }
     }
 
     if !error {
-        Ok((target, sibling_objects))
+        match S::NODE_TYPE {
+            NodeType::Manifest => {
+                debug_assert_eq!(TypeId::of::<S>(), TypeId::of::<Manifest>());
+                *manifest = unsafe { std::mem::transmute_copy(&target) };
+                LowerResult::Manifest
+            }
+            NodeType::Device => {
+                debug_assert_eq!(TypeId::of::<S>(), TypeId::of::<Manifest>());
+                LowerResult::Objects(
+                    manifest
+                        .devices
+                        .push(unsafe { std::mem::transmute_copy(&target) })
+                        .into(),
+                    sibling_objects,
+                )
+            }
+            NodeType::Block => {
+                debug_assert_eq!(TypeId::of::<S>(), TypeId::of::<Manifest>());
+                LowerResult::Objects(
+                    manifest
+                        .blocks
+                        .push(unsafe { std::mem::transmute_copy(&target) })
+                        .into(),
+                    sibling_objects,
+                )
+            }
+            NodeType::Register => {
+                debug_assert_eq!(TypeId::of::<S>(), TypeId::of::<Manifest>());
+                LowerResult::Objects(
+                    manifest
+                        .registers
+                        .push(unsafe { std::mem::transmute_copy(&target) })
+                        .into(),
+                    sibling_objects,
+                )
+            }
+            NodeType::Command => {
+                debug_assert_eq!(TypeId::of::<S>(), TypeId::of::<Manifest>());
+                LowerResult::Objects(
+                    manifest
+                        .commands
+                        .push(unsafe { std::mem::transmute_copy(&target) })
+                        .into(),
+                    sibling_objects,
+                )
+            }
+            NodeType::Buffer => {
+                debug_assert_eq!(TypeId::of::<S>(), TypeId::of::<Manifest>());
+                LowerResult::Objects(
+                    manifest
+                        .buffers
+                        .push(unsafe { std::mem::transmute_copy(&target) })
+                        .into(),
+                    sibling_objects,
+                )
+            }
+            NodeType::FieldSet => {
+                debug_assert_eq!(TypeId::of::<S>(), TypeId::of::<Manifest>());
+                LowerResult::Objects(
+                    manifest
+                        .fieldsets
+                        .push(unsafe { std::mem::transmute_copy(&target) })
+                        .into(),
+                    sibling_objects,
+                )
+            }
+            NodeType::Enum => {
+                debug_assert_eq!(TypeId::of::<S>(), TypeId::of::<Manifest>());
+                LowerResult::Objects(
+                    manifest
+                        .enums
+                        .push(unsafe { std::mem::transmute_copy(&target) })
+                        .into(),
+                    sibling_objects,
+                )
+            }
+            NodeType::Extern => {
+                debug_assert_eq!(TypeId::of::<S>(), TypeId::of::<Manifest>());
+                LowerResult::Objects(
+                    manifest
+                        .externs
+                        .push(unsafe { std::mem::transmute_copy(&target) })
+                        .into(),
+                    sibling_objects,
+                )
+            }
+            NodeType::Field => {
+                debug_assert_eq!(TypeId::of::<S>(), TypeId::of::<Manifest>());
+                LowerResult::Objects(
+                    manifest
+                        .devices
+                        .push(unsafe { std::mem::transmute_copy(&target) })
+                        .into(),
+                    sibling_objects,
+                )
+            }
+        }
     } else {
-        Err(sibling_objects)
+        LowerResult::Error(sibling_objects)
     }
 }
 
@@ -628,8 +769,9 @@ struct SetterArgs<'a, T: ?Sized> {
     /// The node that's being parsed
     node: &'a Node,
     diagnostics: &'a mut Diagnostics,
-    sibling_objects: &'a mut Vec<Object>,
+    sibling_objects: &'a mut Vec<ObjectId>,
     ast: &'a Ast,
+    manifest: &'a mut Manifest,
 }
 
 #[derive(Clone, Copy)]

@@ -6,9 +6,8 @@ use device_driver_common::{
 };
 
 use crate::{
-    model::{Device, DeviceConfig, Id, Manifest, Object, ObjectId},
+    model::{Device, DeviceConfig, Manifest, Object, ObjectId},
     passes::{Assumption, Pass},
-    search_object,
 };
 use device_driver_diagnostics::{Diagnostics, DynError, ResultExt, errors::AddressOverlap};
 

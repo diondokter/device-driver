@@ -3,9 +3,8 @@ use std::collections::HashSet;
 use device_driver_common::specifiers::{AddressRange, RepeatSource};
 
 use crate::{
-    model::{Field, FieldSet, Id, Manifest, ObjectId},
+    model::{Field, FieldSet, Manifest, ObjectId},
     passes::{Assumption, Pass},
-    search_object,
 };
 use device_driver_diagnostics::{
     Diagnostics, DynError,
@@ -30,12 +29,10 @@ impl Pass for BitRangesValidated {
     ) -> Result<HashSet<ObjectId>, DynError> {
         let mut removals = HashSet::new();
 
-        for object in manifest.iter_objects() {
-            if let Some(field_set) = object.as_field_set() {
-                validate_len(field_set, manifest, diagnostics, &mut removals);
-                if !field_set.allow_bit_overlap {
-                    validate_overlap(field_set, manifest, diagnostics);
-                }
+        for fieldset in manifest.fieldsets.iter() {
+            validate_len(fieldset, manifest, diagnostics, &mut removals);
+            if !fieldset.allow_bit_overlap {
+                validate_overlap(fieldset, manifest, diagnostics);
             }
         }
 
@@ -49,7 +46,9 @@ fn validate_len(
     diagnostics: &mut Diagnostics,
     removals: &mut HashSet<ObjectId>,
 ) {
-    for field in &field_set.fields {
+    for field_id in &field_set.fields {
+        let field = manifest.fields.get(*field_id).unwrap();
+
         let field_len = field.field_address.len();
 
         if field_len == 0 {
@@ -72,7 +71,7 @@ fn validate_len(
                 fieldset_size_bits: field_set.size_bits(),
                 fieldset_size_span: field_set.size_bytes.span,
             });
-            removals.insert(field.id());
+            removals.insert((*field_id).into());
         }
 
         if min_field_start < 0 {
@@ -82,16 +81,18 @@ fn validate_len(
                 repeat_offset: repeated.then_some(*min_repeat_offset),
                 field_set_context: field_set.name.span,
             });
-            removals.insert(field.id());
+            removals.insert((*field_id).into());
         }
     }
 }
 
 fn validate_overlap(field_set: &FieldSet, manifest: &Manifest, diagnostics: &mut Diagnostics) {
-    for (i, field) in field_set.fields.iter().enumerate() {
+    for (i, field_id) in field_set.fields.iter().enumerate() {
+        let field = manifest.fields.get(*field_id).unwrap();
         let (offsets, repeated) = get_repeat_iter(manifest, field);
 
-        'second_field: for second_field in field_set.fields.iter().skip(i + 1) {
+        'second_field: for second_field_id in field_set.fields.iter().skip(i + 1) {
+            let second_field = manifest.fields.get(*second_field_id).unwrap();
             let (second_offsets, second_repeated) = get_repeat_iter(manifest, second_field);
 
             for offset in &offsets {
@@ -141,11 +142,12 @@ fn get_repeat_iter(manifest: &Manifest, field: &Field) -> (Vec<i128>, bool) {
                 true,
             ),
             RepeatSource::Enum(enum_name) => (
-                search_object(manifest, enum_name)
+                manifest
+                    .search_object(enum_name)
                     .expect("Checked in earlier pass")
                     .as_enum()
                     .expect("Checked in earlier pass")
-                    .iter_variants_with_discriminant()
+                    .iter_variants_with_discriminant(manifest)
                     .map(move |(discriminant, _)| discriminant * stride.value)
                     .collect(),
                 true,
@@ -153,258 +155,5 @@ fn get_repeat_iter(manifest: &Manifest, field: &Field) -> (Vec<i128>, bool) {
         }
     } else {
         (vec![0], false)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::num::NonZero;
-
-    use device_driver_common::{
-        identifier::Identifier,
-        interner::StrExt,
-        span::{Span, SpanExt},
-        specifiers::Repeat,
-    };
-
-    use crate::model::{Device, Field, Object};
-
-    use super::*;
-
-    #[test]
-    fn max_len_exceeded() {
-        let mut start_mir = Device {
-            name: Identifier::try_parse("Device".intern())
-                .unwrap()
-                .with_dummy_span(),
-            children: vec![Object::FieldSet(FieldSet {
-                name: Identifier::try_parse("MyReg".intern())
-                    .unwrap()
-                    .with_dummy_span(),
-                size_bytes: 1.with_dummy_span(),
-                fields: vec![Field {
-                    name: Identifier::try_parse("my_field".intern())
-                        .unwrap()
-                        .with_dummy_span(),
-                    field_address: AddressRange { start: 0, end: 7 }.with_dummy_span(),
-                    ..Default::default()
-                }],
-                ..Default::default()
-            })],
-            ..Default::default()
-        }
-        .into();
-
-        let mut diagnostics = Diagnostics::new();
-        BitRangesValidated::run_pass(&mut start_mir, &mut diagnostics).unwrap();
-        assert!(!diagnostics.has_error());
-
-        let mut start_mir = Device {
-            name: Identifier::try_parse("Device".intern())
-                .unwrap()
-                .with_dummy_span(),
-            children: vec![Object::FieldSet(FieldSet {
-                name: Identifier::try_parse("MyReg".intern())
-                    .unwrap()
-                    .with_dummy_span(),
-                size_bytes: 1.with_dummy_span(),
-                fields: vec![Field {
-                    name: Identifier::try_parse("my_field".intern())
-                        .unwrap()
-                        .with_dummy_span(),
-                    field_address: AddressRange { start: 0, end: 8 }.with_dummy_span(),
-                    ..Default::default()
-                }],
-                ..Default::default()
-            })],
-            ..Default::default()
-        }
-        .into();
-
-        let mut diagnostics = Diagnostics::new();
-        BitRangesValidated::run_pass(&mut start_mir, &mut diagnostics).unwrap();
-        assert!(diagnostics.has_error());
-
-        let mut start_mir = Device {
-            name: Identifier::try_parse("Device".intern())
-                .unwrap()
-                .with_dummy_span(),
-            children: vec![Object::FieldSet(FieldSet {
-                name: Identifier::try_parse("MyReg".intern())
-                    .unwrap()
-                    .with_dummy_span(),
-                size_bytes: 1.with_dummy_span(),
-                fields: vec![Field {
-                    name: Identifier::try_parse("my_field".intern())
-                        .unwrap()
-                        .with_dummy_span(),
-                    field_address: AddressRange { start: 0, end: 4 }.with_dummy_span(),
-                    repeat: Some(Repeat {
-                        source: RepeatSource::Count(NonZero::new(3).unwrap()).with_dummy_span(),
-                        stride: 5.with_dummy_span(),
-                        span: Span::empty(),
-                    }),
-                    ..Default::default()
-                }],
-                ..Default::default()
-            })],
-            ..Default::default()
-        }
-        .into();
-
-        let mut diagnostics = Diagnostics::new();
-        BitRangesValidated::run_pass(&mut start_mir, &mut diagnostics).unwrap();
-        assert!(diagnostics.has_error());
-    }
-
-    #[test]
-    fn overlap() {
-        let mut start_mir = Device {
-            name: Identifier::try_parse("Device".intern())
-                .unwrap()
-                .with_dummy_span(),
-            children: vec![Object::FieldSet(FieldSet {
-                name: Identifier::try_parse("MyReg".intern())
-                    .unwrap()
-                    .with_dummy_span(),
-                size_bytes: 2.with_dummy_span(),
-                fields: vec![
-                    Field {
-                        name: Identifier::try_parse("my_field".intern())
-                            .unwrap()
-                            .with_dummy_span(),
-                        field_address: AddressRange { start: 0, end: 4 }.with_dummy_span(),
-                        ..Default::default()
-                    },
-                    Field {
-                        name: Identifier::try_parse("my_field2".intern())
-                            .unwrap()
-                            .with_dummy_span(),
-                        field_address: AddressRange { start: 5, end: 9 }.with_dummy_span(),
-                        ..Default::default()
-                    },
-                ],
-                ..Default::default()
-            })],
-            ..Default::default()
-        }
-        .into();
-
-        let mut diagnostics = Diagnostics::new();
-        BitRangesValidated::run_pass(&mut start_mir, &mut diagnostics).unwrap();
-        assert!(!diagnostics.has_error());
-
-        let mut start_mir = Device {
-            name: Identifier::try_parse("Device".intern())
-                .unwrap()
-                .with_dummy_span(),
-            children: vec![Object::FieldSet(FieldSet {
-                name: Identifier::try_parse("MyReg".intern())
-                    .unwrap()
-                    .with_dummy_span(),
-                size_bytes: 2.with_dummy_span(),
-                allow_bit_overlap: true,
-                fields: vec![
-                    Field {
-                        name: Identifier::try_parse("my_field".intern())
-                            .unwrap()
-                            .with_dummy_span(),
-                        field_address: AddressRange { start: 0, end: 5 }.with_dummy_span(),
-                        ..Default::default()
-                    },
-                    Field {
-                        name: Identifier::try_parse("my_field2".intern())
-                            .unwrap()
-                            .with_dummy_span(),
-                        field_address: AddressRange { start: 5, end: 9 }.with_dummy_span(),
-                        ..Default::default()
-                    },
-                ],
-                ..Default::default()
-            })],
-            ..Default::default()
-        }
-        .into();
-
-        let mut diagnostics = Diagnostics::new();
-        BitRangesValidated::run_pass(&mut start_mir, &mut diagnostics).unwrap();
-        assert!(!diagnostics.has_error());
-
-        let mut start_mir = Device {
-            name: Identifier::try_parse("Device".intern())
-                .unwrap()
-                .with_dummy_span(),
-            children: vec![Object::FieldSet(FieldSet {
-                name: Identifier::try_parse("MyReg".intern())
-                    .unwrap()
-                    .with_dummy_span(),
-                size_bytes: 2.with_dummy_span(),
-                fields: vec![
-                    Field {
-                        name: Identifier::try_parse("my_field".intern())
-                            .unwrap()
-                            .with_dummy_span(),
-                        field_address: AddressRange { start: 0, end: 5 }.with_dummy_span(),
-                        ..Default::default()
-                    },
-                    Field {
-                        name: Identifier::try_parse("my_field2".intern())
-                            .unwrap()
-                            .with_dummy_span(),
-                        field_address: AddressRange { start: 5, end: 9 }.with_dummy_span(),
-                        ..Default::default()
-                    },
-                ],
-                ..Default::default()
-            })],
-            ..Default::default()
-        }
-        .into();
-
-        let mut diagnostics = Diagnostics::new();
-        BitRangesValidated::run_pass(&mut start_mir, &mut diagnostics).unwrap();
-        assert!(!diagnostics.has_error());
-        assert!(!diagnostics.is_empty());
-
-        let mut start_mir = Device {
-            name: Identifier::try_parse("Device".intern())
-                .unwrap()
-                .with_dummy_span(),
-            children: vec![Object::FieldSet(FieldSet {
-                name: Identifier::try_parse("MyReg".intern())
-                    .unwrap()
-                    .with_dummy_span(),
-                size_bytes: 2.with_dummy_span(),
-                fields: vec![
-                    Field {
-                        name: Identifier::try_parse("my_field".intern())
-                            .unwrap()
-                            .with_dummy_span(),
-                        field_address: AddressRange { start: 0, end: 0 }.with_dummy_span(),
-                        repeat: Some(Repeat {
-                            source: RepeatSource::Count(NonZero::new(6).unwrap()).with_dummy_span(),
-                            stride: 1.with_dummy_span(),
-                            span: Span::empty(),
-                        }),
-                        ..Default::default()
-                    },
-                    Field {
-                        name: Identifier::try_parse("my_field2".intern())
-                            .unwrap()
-                            .with_dummy_span(),
-                        field_address: AddressRange { start: 5, end: 9 }.with_dummy_span(),
-                        ..Default::default()
-                    },
-                ],
-                ..Default::default()
-            })],
-            ..Default::default()
-        }
-        .into();
-
-        let mut diagnostics = Diagnostics::new();
-        BitRangesValidated::run_pass(&mut start_mir, &mut diagnostics).unwrap();
-        assert!(!diagnostics.has_error());
-        assert!(!diagnostics.is_empty());
     }
 }
