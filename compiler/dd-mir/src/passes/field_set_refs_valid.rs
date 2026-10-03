@@ -28,7 +28,7 @@ impl Pass for FieldsetRefsValid {
                 }
 
                 // We could not find the fieldset.
-                // If the ref was an id, it was simply removed by another pass alread.
+                // If the ref was an id, it was simply removed by another pass already.
                 // But if it's an identifier ref, then maybe there's a typo or it points to an object of the wrong type.
                 // In that case we should create a diagnostic
 
