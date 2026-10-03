@@ -258,6 +258,7 @@ impl Node {
             for node in self.sub_nodes.iter() {
                 let node = ast.node(*node);
                 node.fmt_formatted(f, ast, indentation_level + 1)?;
+                writeln!(f, ",")?;
             }
 
             write!(f, "{indentation}}}")?;

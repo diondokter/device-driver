@@ -8,7 +8,7 @@ fieldset Example {
     bit-overlap: allow,
     default-access: RW,
 
-    field node,
+    field my_field,
 }
 ```
 ## Table
