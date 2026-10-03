@@ -56,7 +56,7 @@ impl Pass for AccessSet {
                         diagnostics.add(UnspecifiedAccess {
                             object_name: val.name.span,
                             short_property: true,
-                            properties_span: val.properties_span,
+                            properties_span: Some(val.short_properties_span),
                         });
                     }
                 }
