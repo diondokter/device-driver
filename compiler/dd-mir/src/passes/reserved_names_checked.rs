@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use convert_case::Case;
 use device_driver_common::{identifier::RuntimeNamespace, specifiers::Access};
@@ -8,11 +8,13 @@ use device_driver_diagnostics::{
 };
 
 use crate::{
-    model::{FieldSet, Id, LendingIterator, Manifest, Object, ObjectId},
+    model::{FieldId, Manifest, Object, ObjectId, ObjectType},
     passes::Pass,
 };
 
 use super::Assumption;
+
+const RESERVED_NAMES: &[&str] = &["new", "init", "deinit", "free"];
 
 pub struct ReservedNamesChecked;
 
@@ -26,93 +28,63 @@ impl Pass for ReservedNamesChecked {
     ) -> Result<HashSet<ObjectId>, DynError> {
         let mut removals = HashSet::new();
 
-        let mut iter = manifest.iter_objects_with_config_mut();
-        while let Some((object, _)) = iter.next() {
-            let new_removals = match object {
-                Object::Device(device) => {
-                    check_block_reserved_names(device.iter_objects(), diagnostics)
+        let mut field_setter_colliders = Vec::new();
+
+        for (object_id, object) in manifest.objects_enumerated() {
+            if object
+                .name()
+                .namespace()
+                .shares_namespace_with(RuntimeNamespace::Operation)
+                || object_id.object_type() == ObjectType::Field
+            {
+                let object_operation_name = object.name().to_case(convert_case::Case::Snake);
+                if RESERVED_NAMES.contains(&object_operation_name.as_str()) {
+                    removals.insert(object_id);
+                    diagnostics.add(ReservedOperationNameUsed {
+                        name: object.name_span(),
+                        operation_name: object_operation_name,
+                        reserved_names: RESERVED_NAMES,
+                    });
+                    continue;
                 }
-                Object::Block(block) => {
-                    check_block_reserved_names(block.iter_objects(), diagnostics)
+            }
+
+            // Specifically for writable fields we need to check if the `set_*` name doesn't collide with another
+            if let Object::Field(field) = object {
+                if !field
+                    .access
+                    .ok_or_else(|| DynError::new("access is not set"))?
+                    .is_writable()
+                {
+                    continue;
                 }
-                Object::FieldSet(field_set) => {
-                    check_field_names(field_set, diagnostics).with_message(|| {
-                        format!("checking field names of {}", field_set.name.original())
-                    })?;
-                    HashSet::new()
-                }
-                _ => HashSet::new(),
-            };
-            removals.extend(new_removals);
+
+                let setter_name = format!("set_{}", field.name.to_case(Case::Snake));
+
+                let Some(colliding_field) = manifest
+                    .fields
+                    .iter()
+                    // Filter to the same namespace (so defined within the same fieldset)
+                    .filter(|other_field| other_field.name.namespace() == field.name.namespace())
+                    .find(|other_field| other_field.name.to_case(Case::Snake) == setter_name)
+                else {
+                    continue;
+                };
+
+                field_setter_colliders.push(FieldId::try_from(object_id).into_dyn_result()?);
+
+                diagnostics.add(FieldSetterNameCollision {
+                    field: field.name.span,
+                    setter_name: field.name.words_display_prepended("set".into()),
+                    collision_field: colliding_field.name.span,
+                });
+            }
+        }
+
+        for field_id in field_setter_colliders {
+            manifest.fields.get_mut(field_id).unwrap().access = Some(Access::RO)
         }
 
         Ok(removals)
     }
-}
-
-fn check_block_reserved_names<'a>(
-    objects: impl Iterator<Item = &'a Object>,
-    diagnostics: &mut Diagnostics,
-) -> HashSet<ObjectId> {
-    let mut removals = HashSet::new();
-
-    const RESERVED_NAMES: &[&str] = &["new", "init", "deinit", "free"];
-
-    for object in objects {
-        let object_operation_name = object.name().to_case(convert_case::Case::Snake);
-
-        if object
-            .name()
-            .namespace()
-            .shares_namespace_with(RuntimeNamespace::Operation)
-            && RESERVED_NAMES.contains(&object_operation_name.as_str())
-        {
-            removals.insert(object.id());
-            diagnostics.add(ReservedOperationNameUsed {
-                name: object.name_span(),
-                operation_name: object_operation_name,
-                reserved_names: RESERVED_NAMES,
-            });
-        }
-    }
-
-    removals
-}
-
-fn check_field_names(
-    field_set: &mut FieldSet,
-    diagnostics: &mut Diagnostics,
-) -> Result<(), DynError> {
-    let field_names: HashMap<_, _> = field_set
-        .fields
-        .iter()
-        .map(|field| (field.name.to_case(Case::Snake), field.name.span))
-        .collect();
-
-    for field in &mut field_set.fields {
-        if !field
-            .access
-            .ok_or_else(|| DynError::new("access is not set"))?
-            .is_writable()
-        {
-            continue;
-        }
-
-        let setter_name = format!("set_{}", field.name.to_case(Case::Snake));
-
-        let Some(collision_field) = field_names.get(&setter_name).copied() else {
-            continue;
-        };
-
-        // The setter collides with another field. To fix it for further compilation, we set it to read only so the setter is not generated
-        field.access = Some(Access::RO);
-
-        diagnostics.add(FieldSetterNameCollision {
-            field: field.name.span,
-            setter_name: field.name.words_display_prepended("set".into()),
-            collision_field,
-        });
-    }
-
-    Ok(())
 }

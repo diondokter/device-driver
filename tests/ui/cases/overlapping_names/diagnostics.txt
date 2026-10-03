@@ -29,13 +29,13 @@ info: names may not collide within their namespace. There are 4 namespaces:
       - Enum variants: unique within an enum
 
 error: duplicate name found
-  --> input.ddsl:29:50
+  --> input.ddsl:42:16
    |
-LL |                 field quux 7:0 -> u8 as try enum _ { // Enum same name as field
-   |                                                  - the original: "quux", after word split: "quux"
+LL |         block Wheee { // Should overlap with both operations and types
+   |               ----- the original: "Wheee", after word split: "wheee"
 ...
-LL |                 field quux 7:0 -> u8 as try enum _ {
-   |                                                  ^ the duplicate: "quux", after word split: "quux"
+LL |         buffer Wheee {
+   |                ^^^^^ the duplicate: "Wheee", after word split: "wheee"
    |
 info: names may not collide within their namespace. There are 4 namespaces:
       - Types: a type definition
@@ -59,13 +59,13 @@ info: names may not collide within their namespace. There are 4 namespaces:
       - Enum variants: unique within an enum
 
 error: duplicate name found
-  --> input.ddsl:42:16
+  --> input.ddsl:29:50
    |
-LL |         block Wheee { // Should overlap with both operations and types
-   |               ----- the original: "Wheee", after word split: "wheee"
+LL |                 field quux 7:0 -> u8 as try enum _ { // Enum same name as field
+   |                                                  - the original: "quux", after word split: "quux"
 ...
-LL |         buffer Wheee {
-   |                ^^^^^ the duplicate: "Wheee", after word split: "wheee"
+LL |                 field quux 7:0 -> u8 as try enum _ {
+   |                                                  ^ the duplicate: "quux", after word split: "quux"
    |
 info: names may not collide within their namespace. There are 4 namespaces:
       - Types: a type definition

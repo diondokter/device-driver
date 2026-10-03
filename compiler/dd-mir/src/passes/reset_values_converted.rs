@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use device_driver_common::{
     span::{Span, SpanExt, Spanned},
@@ -6,9 +6,8 @@ use device_driver_common::{
 };
 
 use crate::{
-    model::{FieldSet, Id, LendingIterator, Manifest, Object, ObjectId, Register},
+    model::{Manifest, ObjectId},
     passes::{Assumption, Pass},
-    search_object,
 };
 use device_driver_diagnostics::{
     Diagnostics, DynError,
@@ -37,49 +36,31 @@ impl Pass for ResetValuesConverted {
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,
     ) -> Result<HashSet<ObjectId>, DynError> {
-        let mut new_reset_values = HashMap::new();
+        let mut new_reset_values = Vec::new();
 
-        for object in manifest.iter_objects() {
-            if let Object::Register(reg) = object {
-                let target_field_set = get_target_field_set(reg, manifest);
+        for (reg_id, reg) in manifest.registers.iter_enumerated() {
+            let target_field_set = manifest
+                .search_fieldset(&reg.field_set_ref)
+                .expect("All fieldset refs should already be checked and valid here");
 
-                if let Some(reset_value) = reg.reset_value.as_ref() {
-                    let new_reset_value = convert_reset_value(
-                        reset_value.clone(),
-                        target_field_set.size_bytes.value,
-                        target_field_set.byte_order.unwrap(),
-                        diagnostics,
-                        reg.name.span,
-                    );
-                    assert_eq!(
-                        new_reset_values.insert(reg.id(), new_reset_value),
-                        None,
-                        "All names must be unique"
-                    );
-                }
+            if let Some(reset_value) = reg.reset_value.as_ref() {
+                let new_reset_value = convert_reset_value(
+                    reset_value.clone(),
+                    target_field_set.size_bytes.value,
+                    target_field_set.byte_order.unwrap(),
+                    diagnostics,
+                    reg.name.span,
+                );
+                new_reset_values.push((reg_id, new_reset_value));
             }
         }
 
-        let mut iter = manifest.iter_objects_with_config_mut();
-        while let Some((object, _)) = iter.next() {
-            if let Object::Register(register) = object
-                && let Some(new_reset_value) = new_reset_values.remove(&register.id())
-            {
-                register.reset_value = new_reset_value;
-            }
+        for (reg_id, new_reset_value) in new_reset_values {
+            reg_id.get_mut(manifest).unwrap().reset_value = new_reset_value;
         }
-
-        assert!(new_reset_values.is_empty());
 
         Ok(Default::default())
     }
-}
-
-fn get_target_field_set<'m>(reg: &Register, manifest: &'m Manifest) -> &'m FieldSet {
-    search_object(manifest, &reg.field_set_ref)
-        .expect("All fieldset refs should already be checked and valid here")
-        .as_field_set()
-        .expect("All fieldset refs should already be checked and valid here")
 }
 
 fn convert_reset_value(

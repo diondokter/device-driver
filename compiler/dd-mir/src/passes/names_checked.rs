@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    model::{Id, LendingIterator, Manifest, Object, ObjectId},
+    model::{Manifest, ObjectId, ObjectType},
     passes::{Assumption, Pass},
 };
 use device_driver_diagnostics::{Diagnostics, DynError, errors::InvalidIdentifier};
@@ -19,54 +19,32 @@ impl Pass for NamesChecked {
     ) -> Result<HashSet<ObjectId>, DynError> {
         let mut removals = HashSet::new();
 
-        let mut iter = manifest.iter_objects_with_config_mut();
-        while let Some((object, config)) = iter.next() {
-            if let Object::Device(_) = object {
+        let all_objects = manifest.object_ids().collect::<Vec<_>>();
+
+        for object_id in all_objects {
+            if object_id.object_type() == ObjectType::Device {
                 // The name rules for devices are slightly different and are done in a different pass
                 continue;
             }
 
+            let config = manifest.object_config(object_id);
+
             let boundaries = config
                 .name_word_boundaries
                 .as_deref()
-                .unwrap_or(&const { convert_case::Boundary::defaults() });
+                .unwrap_or(&const { convert_case::Boundary::defaults() })
+                .to_vec();
+
+            let mut object = manifest.object_mut(object_id).unwrap();
 
             if let Err(e) = object
                 .name_mut()
-                .apply_boundaries(boundaries)
+                .apply_boundaries(&boundaries)
                 .check_validity()
             {
-                diagnostics.add(InvalidIdentifier::new(e, object.name_span()));
-                removals.insert(object.id());
+                diagnostics.add(InvalidIdentifier::new(e, object.as_ref().name_span()));
+                removals.insert(object_id);
                 continue;
-            }
-
-            if let Object::FieldSet(field_set) = object {
-                let mut field_removals = HashSet::new();
-                for field in &mut field_set.fields {
-                    if let Err(e) = field.name.apply_boundaries(boundaries).check_validity() {
-                        diagnostics.add(InvalidIdentifier::new(e, field.name.span));
-                        field_removals.insert(field.id());
-                    }
-                }
-
-                field_set
-                    .fields
-                    .retain(|field| !field_removals.contains(&field.id()));
-            }
-
-            if let Object::Enum(enum_value) = object {
-                let mut variant_removals = HashSet::new();
-                for variant in &mut enum_value.variants {
-                    if let Err(e) = variant.name.apply_boundaries(boundaries).check_validity() {
-                        diagnostics.add(InvalidIdentifier::new(e, variant.name.span));
-                        variant_removals.insert(variant.id());
-                    }
-                }
-
-                enum_value
-                    .variants
-                    .retain(|variant| !variant_removals.contains(&variant.id()));
             }
         }
 

@@ -329,7 +329,7 @@ impl ResetValue {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum NodeType {
     Manifest,
     Device,
@@ -430,5 +430,33 @@ impl FromStr for AddressMode {
             "indexed" => Ok(Self::Indexed),
             _ => Err(()),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn correct_integer_size_bits() {
+        assert_eq!(Integer::U8.bits_required(0, 0), 0);
+        assert_eq!(Integer::U8.bits_required(0, 1), 1);
+        assert_eq!(Integer::U8.bits_required(0, 2), 2);
+        assert_eq!(Integer::U8.bits_required(0, 3), 2);
+        assert_eq!(Integer::U8.bits_required(0, 4), 3);
+
+        assert_eq!(Integer::I8.bits_required(0, 0), 0);
+        assert_eq!(Integer::I8.bits_required(-1, 0), 1);
+        assert_eq!(Integer::I8.bits_required(-1, 1), 2);
+        assert_eq!(Integer::I8.bits_required(0, 1), 2);
+        assert_eq!(Integer::I8.bits_required(-2, 1), 2);
+        assert_eq!(Integer::I8.bits_required(0, 2), 3);
+        assert_eq!(Integer::I8.bits_required(-128, 0), 8);
+        assert_eq!(Integer::I8.bits_required(-129, 0), 9);
+        assert_eq!(Integer::I8.bits_required(0, 127), 8);
+        assert_eq!(Integer::I8.bits_required(0, 128), 9);
+        assert_eq!(Integer::I8.bits_required(-16, 15), 5);
+        assert_eq!(Integer::I8.bits_required(-16, 16), 6);
+        assert_eq!(Integer::I8.bits_required(-17, 15), 6);
     }
 }
