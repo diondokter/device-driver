@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{HashMap, HashSet, hash_map::Entry},
     num::NonZeroU32,
     sync::Arc,
 };
@@ -33,17 +33,26 @@ impl Pass for NamesUnique {
                 let (seen_originals, seen_words) =
                     namespace_seen_names.entry(object_namespace).or_default();
 
-                if seen_originals
-                    .insert(object.name().original(), object_id)
-                    .is_some()
-                    || !seen_words.insert(object.name().words().clone())
-                {
+                let originals_collision = {
+                    let entry = seen_originals.entry(object.name().original());
+                    match entry {
+                        Entry::Occupied(_) => true,
+                        Entry::Vacant(vacant_entry) => {
+                            vacant_entry.insert(object_id);
+                            false
+                        }
+                    }
+                };
+                let words_collision = !seen_words.insert(object.name().words().clone());
+
+                if originals_collision || words_collision {
                     let original_id = seen_originals.get(&object.name().original()).unwrap();
                     let original = manifest.object(*original_id).unwrap();
+
                     diagnostics.add(DuplicateName {
-                        original: original.span(),
+                        original: original.name_span(),
                         original_value: original.name().clone(),
-                        duplicate: object.span(),
+                        duplicate: object.name_span(),
                         duplicate_value: object.name().clone(),
                     });
 
