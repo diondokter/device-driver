@@ -273,7 +273,36 @@ If this value is specified, then it permits bulk register reads and writes.",
     }
 
     fn become_manifest(self, manifest: &mut Manifest) {
-        *manifest = self;
+        let Manifest {
+            description,
+            name,
+            default_access,
+            config,
+            devices: _,       // Keep old
+            blocks: _,        // Keep old
+            registers: _,     // Keep old
+            commands: _,      // Keep old
+            buffers: _,       // Keep old
+            fieldsets: _,     // Keep old
+            fields: _,        // Keep old
+            enums: _,         // Keep old
+            enum_variants: _, // Keep old
+            externs: _,       // Keep old
+            parent_map,
+            short_properties_span,
+            properties_span,
+            span,
+        } = manifest;
+
+        *description = self.description;
+        *name = self.name;
+        *default_access = self.default_access;
+        *config = self.config;
+
+        *parent_map = self.parent_map;
+        *short_properties_span = self.short_properties_span;
+        *properties_span = self.properties_span;
+        *span = self.span;
     }
 }
 
