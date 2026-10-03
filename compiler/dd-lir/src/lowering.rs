@@ -12,14 +12,15 @@ use device_driver_diagnostics::{DynError, ResultExt};
 use crate::model as lir;
 use device_driver_mir::{
     find_min_max_addresses,
-    model::{self as mir, Object},
-    search_object,
+    model::{self as mir, ObjectId},
 };
 
 pub fn transform_devices(manifest: &mir::Manifest) -> Result<Vec<lir::Device>, DynError> {
     manifest
-        .iter_devices_with_config()
-        .map(|(device, device_config)| {
+        .devices
+        .iter()
+        .map(|device| {
+            let device_config = &device.device_config;
             // Create a root block and pass the device objects to it
             let blocks = collect_into_blocks(
                 BorrowedBlock {
@@ -37,10 +38,10 @@ pub fn transform_devices(manifest: &mir::Manifest) -> Result<Vec<lir::Device>, D
                     name: &device.name.value.clone().cast_unchecked(),
                     address_offset: &device.address_offset.value,
                     repeat: &None,
-                    objects: &device.objects,
+                    objects: &device.children,
                 },
                 true,
-                &device_config,
+                device_config,
                 manifest,
             )
             .with_message(|| "could not collect into blocks")?;
@@ -74,10 +75,10 @@ fn collect_into_blocks(
 
     for object in objects {
         let Some(method) =
-            get_method(object, &mut blocks, device_config, manifest).with_message(|| {
+            get_method(*object, &mut blocks, device_config, manifest).with_message(|| {
                 format!(
                     "could not get method for object {}",
-                    object.name().original()
+                    manifest.object(*object).unwrap().name().original()
                 )
             })?
         else {
@@ -113,12 +114,12 @@ fn collect_into_blocks(
 }
 
 fn get_method(
-    object: &mir::Object,
+    object: ObjectId,
     blocks: &mut Vec<lir::Block>,
     device_config: &mir::DeviceConfig,
     manifest: &mir::Manifest,
 ) -> Result<Option<lir::BlockMethod>, DynError> {
-    let method = match object {
+    let method = match manifest.object(object).unwrap() {
         mir::Object::Device(_) => None,
         mir::Object::Block(
             b @ mir::Block {
@@ -156,9 +157,11 @@ fn get_method(
             reset_value,
             ..
         }) => {
-            let field_set = search_object(manifest, field_set_ref).ok_or(DynError::new(
-                format!("fieldset {} could not be found", field_set_ref.original()),
-            ))?;
+            let field_set = manifest
+                .search_fieldset(field_set_ref)
+                .ok_or(DynError::new(format!(
+                    "fieldset {field_set_ref} could not be found",
+                )))?;
 
             Some(lir::BlockMethod {
                 description: *description,
@@ -166,7 +169,7 @@ fn get_method(
                 address: address.value,
                 repeat: repeat_to_method_kind(repeat, manifest),
                 method_type: lir::BlockMethodType::Register {
-                    field_set_name: field_set.name().clone().cast_assert(),
+                    field_set_name: field_set.name.value.clone().cast_assert(),
                     access: access.ok_or_else(|| DynError::new("access is not set"))?,
                     reset_value: reset_value.as_ref().map(|rv| {
                         rv.as_array().cloned().map(|array| array.with_span(rv.span)).ok_or_else(
@@ -189,19 +192,21 @@ fn get_method(
             let field_set_in = field_set_ref_in
                 .as_ref()
                 .map(|id_ref| {
-                    search_object(manifest, id_ref).ok_or(DynError::new(format!(
-                        "fieldset {} could not be found",
-                        id_ref.original()
-                    )))
+                    manifest
+                        .search_fieldset(id_ref)
+                        .ok_or(DynError::new(format!(
+                            "fieldset {id_ref} could not be found",
+                        )))
                 })
                 .transpose()?;
             let field_set_out = field_set_ref_out
                 .as_ref()
                 .map(|id_ref| {
-                    search_object(manifest, id_ref).ok_or(DynError::new(format!(
-                        "fieldset {} could not be found",
-                        id_ref.original()
-                    )))
+                    manifest
+                        .search_fieldset(id_ref)
+                        .ok_or(DynError::new(format!(
+                            "fieldset {id_ref} could not be found",
+                        )))
                 })
                 .transpose()?;
 
@@ -211,9 +216,10 @@ fn get_method(
                 address: address.value,
                 repeat: repeat_to_method_kind(repeat, manifest),
                 method_type: lir::BlockMethodType::Command {
-                    field_set_name_in: field_set_in.map(|fs_in| fs_in.name().clone().cast_assert()),
+                    field_set_name_in: field_set_in
+                        .map(|fs_in| fs_in.name.value.clone().cast_assert()),
                     field_set_name_out: field_set_out
-                        .map(|fs_out| fs_out.name().clone().cast_assert()),
+                        .map(|fs_out| fs_out.name.value.clone().cast_assert()),
                 },
             })
         }
@@ -238,6 +244,7 @@ fn get_method(
         mir::Object::Enum(_) => None,
         mir::Object::Extern(_) => None,
         mir::Object::Field(_) => None,
+        mir::Object::EnumVariant(_) => None,
     };
 
     Ok(method)
@@ -245,16 +252,11 @@ fn get_method(
 
 pub fn transform_field_sets(manifest: &mir::Manifest) -> Result<Vec<lir::FieldSet>, DynError> {
     manifest
-        .iter_objects()
-        .filter_map(|o| {
-            if let Object::FieldSet(fs) = o {
-                Some(
-                    transform_field_set(manifest, fs)
-                        .with_message(|| format!("transforming fieldset {}", fs.name.original())),
-                )
-            } else {
-                None
-            }
+        .fieldsets
+        .iter()
+        .map(|fs| {
+            transform_field_set(manifest, fs)
+                .with_message(|| format!("transforming fieldset {}", fs.name.original()))
         })
         .collect()
 }
@@ -267,6 +269,7 @@ fn transform_field_set(
         .fields
         .iter()
         .map(|field| {
+            let field = manifest.fields.get(*field).unwrap();
             transform_field(manifest, field)
                 .with_message(|| format!("transforming field {}", field.name.original()))
         })
@@ -318,7 +321,8 @@ fn transform_field(manifest: &mir::Manifest, field: &mir::Field) -> Result<lir::
         (BaseType::FixedSize(integer), Some(fc)) => (integer.name().intern(), {
             let field_bits = field.field_address.len() as u32;
 
-            let fc_identifier = search_object(manifest, &fc.type_name)
+            let fc_identifier = manifest
+                .search_object(&fc.type_name)
                 .ok_or_else(|| {
                     DynError::new(format!(
                         "{} existence checked in MIR pass",
@@ -338,7 +342,8 @@ fn transform_field(manifest: &mir::Manifest, field: &mir::Field) -> Result<lir::
                 size_bits,
                 ..
             }) = manifest
-                .iter_enums()
+                .enums
+                .iter()
                 .find(|e| e.name.take_ref() == fc.type_name.value)
                 && field_bits
                     <= size_bits.ok_or_else(|| {
@@ -371,7 +376,7 @@ fn transform_field(manifest: &mir::Manifest, field: &mir::Field) -> Result<lir::
 }
 
 pub fn transform_enums(manifest: &mir::Manifest) -> Vec<lir::Enum> {
-    manifest.iter_enums().map(|e| {
+    manifest.enums.iter().map(|e| {
         let mir::Enum {
             description,
             name,
@@ -392,14 +397,14 @@ pub fn transform_enums(manifest: &mir::Manifest) -> Vec<lir::Enum> {
         };
 
         let variants = e
-            .iter_variants_with_discriminant()
+            .iter_variants_with_discriminant(&manifest.enum_variants)
             .map(|(discriminant, v)| {
                 let mir::EnumVariant {
                     description,
                     name,
                     value,
                     span: _
-               } = v;
+               } = manifest.enum_variants.get(v).unwrap();
 
                 lir::EnumVariant {
                     description: *description,
@@ -443,7 +448,8 @@ fn repeat_to_method_kind(repeat: &Option<Repeat>, manifest: &mir::Manifest) -> l
             stride,
             span: _,
         }) => {
-            let target_enum = search_object(manifest, enum_name)
+            let target_enum = manifest
+                .search_object(enum_name)
                 .expect("Existence checked in MIR pass")
                 .as_enum()
                 .expect("checked in MIR pass");
@@ -452,7 +458,15 @@ fn repeat_to_method_kind(repeat: &Option<Repeat>, manifest: &mir::Manifest) -> l
                 enum_variants: target_enum
                     .variants
                     .iter()
-                    .map(|variant| variant.name.value.clone())
+                    .map(|variant| {
+                        manifest
+                            .enum_variants
+                            .get(*variant)
+                            .unwrap()
+                            .name
+                            .value
+                            .clone()
+                    })
                     .collect(),
                 stride: stride.value,
             }
@@ -469,7 +483,7 @@ pub struct BorrowedBlock<'o> {
     pub address_offset: &'o i128,
     #[expect(unused, reason = "included for completeness")]
     pub repeat: &'o Option<Repeat>,
-    pub objects: &'o [mir::Object],
+    pub objects: &'o [mir::ObjectId],
 }
 
 impl<'o> From<&'o mir::Block> for BorrowedBlock<'o> {
@@ -479,7 +493,7 @@ impl<'o> From<&'o mir::Block> for BorrowedBlock<'o> {
             name,
             address_offset,
             repeat,
-            objects,
+            children: objects,
             default_access: _,
             short_properties_span: _,
             properties_span: _,

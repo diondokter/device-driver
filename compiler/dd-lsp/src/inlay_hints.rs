@@ -31,7 +31,7 @@ fn auto_name_hint(node: &Node, document: &Document) -> Option<InlayHint> {
 
     let true_node_name = document
         .mir()
-        .iter_objects()
+        .objects()
         .find(|object| object.span() == node.span)
         .map(|object| object.name().original().as_str())?;
 
@@ -68,21 +68,13 @@ fn auto_base_type_hint(node: &Node, document: &Document) -> Option<InlayHint> {
     // - Search for the object (or field) that represents the current node
     // - Get its base type if that's supported
     let (mir_base_type, short_properties_span) =
-        document.mir().iter_objects().find_map(|object| {
+        document.mir().objects().find_map(|object| {
             if object.span() == node.span {
                 Some(
                     object
                         .base_type()
                         .map(|bt| (bt, object.short_properties_span())),
                 )
-            } else if let Some(fs) = object.as_field_set() {
-                fs.fields.iter().find_map(|field| {
-                    if field.span == node.span {
-                        Some(Some((&field.base_type, field.short_properties_span)))
-                    } else {
-                        None
-                    }
-                })
             } else {
                 None
             }
@@ -173,7 +165,8 @@ fn enum_variant_hints(node: &Node, document: &Document) -> Option<Vec<InlayHint>
 
     let enum_value = document
         .mir()
-        .iter_enums()
+        .enums
+        .iter()
         .find(|enum_value| enum_value.span == node.span)?;
 
     let mut hints = Vec::new();
@@ -181,8 +174,17 @@ fn enum_variant_hints(node: &Node, document: &Document) -> Option<Vec<InlayHint>
     // Go over each variant, which are properties in the AST
     for property in node.properties.iter() {
         let Some((value, _)) = enum_value
-            .iter_variants_with_discriminant()
-            .find(|(_, variant)| variant.name.original() == property.name.val)
+            .iter_variants_with_discriminant(&document.mir().enum_variants)
+            .find(|(_, variant)| {
+                document
+                    .mir()
+                    .enum_variants
+                    .get(*variant)
+                    .unwrap()
+                    .name
+                    .original()
+                    == property.name.val
+            })
         else {
             // Variant not found. Probably removed in a MIR pass
             continue;

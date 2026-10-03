@@ -53,7 +53,7 @@ fn gen_doc<S: Shape>(folder: &Path) -> Result<(), DynError> {
     generate_shape_example::<S>()
         .fmt_formatted(&mut doc, &ast_example().ast, 0)
         .into_dyn_result()?;
-    writeln!(doc, "```").into_dyn_result()?;
+    writeln!(doc, "\n```").into_dyn_result()?;
 
     writeln!(doc, "## Table\n").into_dyn_result()?;
 

@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    model::{LendingIterator, Manifest, ObjectId},
+    model::{Manifest, Object, ObjectId},
     passes::{Assumption, Pass},
 };
 use device_driver_common::specifiers::BaseType;
@@ -18,30 +18,38 @@ impl Pass for BoolFieldsChecked {
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,
     ) -> Result<HashSet<ObjectId>, DynError> {
-        let mut iter = manifest.iter_objects_with_config_mut();
-        while let Some((object, _)) = iter.next() {
-            let Some(field_set) = object.as_field_set_mut() else {
-                continue;
-            };
+        let mut fixups = Vec::new();
 
-            for field in field_set.fields.iter_mut() {
-                if field.base_type == BaseType::Bool && field.field_address.len() != 1 {
-                    diagnostics.add(BoolFieldTooLarge {
-                        base_type: if field.base_type.span.is_empty() {
-                            None
-                        } else {
-                            Some(field.base_type.span)
-                        },
-                        address: field.field_address.span,
-                        address_bits: field.field_address.len() as u32,
-                        address_start: field.field_address.start,
+        for (field_id, field) in manifest.fields.iter_enumerated() {
+            if field.base_type == BaseType::Bool && field.field_address.len() != 1 {
+                let Some(fieldset) = manifest.object_parents(field_id).last() else {
+                    continue;
+                };
+                let Some(Object::FieldSet(fieldset)) = manifest.object(*fieldset) else {
+                    continue;
+                };
 
-                        field_set_context: field_set.name.span,
-                    });
-                    // To fix for further use, set the len to just 1
-                    field.field_address.end = field.field_address.start;
-                }
+                diagnostics.add(BoolFieldTooLarge {
+                    base_type: if field.base_type.span.is_empty() {
+                        None
+                    } else {
+                        Some(field.base_type.span)
+                    },
+                    address: field.field_address.span,
+                    address_bits: field.field_address.len() as u32,
+                    address_start: field.field_address.start,
+
+                    field_set_context: fieldset.name.span,
+                });
+
+                fixups.push(field_id);
             }
+        }
+
+        for field_id in fixups {
+            let field = manifest.fields.get_mut(field_id).unwrap();
+            // To fix for further use, set the len to just 1
+            field.field_address.end = field.field_address.start;
         }
 
         Ok(Default::default())

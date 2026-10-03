@@ -3,8 +3,8 @@ use std::{borrow::Cow, collections::HashMap, str::FromStr, sync::LazyLock};
 use crate::{
     lowering::{LowerResult, PropertyInfo, PropertyName, SetterArgs, Shape, lower_node},
     model::{
-        Block, Buffer, Command, Device, Enum, EnumValue, EnumVariant, Extern, Field, FieldSet,
-        Manifest, Object, Register,
+        Block, Buffer, Command, Device, Enum, EnumValue, EnumVariant, Extern, Field, FieldId,
+        FieldSet, FieldSetId, FieldsetRef, Manifest, ObjectId, Register,
     },
 };
 use convert_case::Boundary;
@@ -252,12 +252,8 @@ If this value is specified, then it permits bulk register reads and writes.",
         ])
     }
 
-    fn push_subnode(&mut self, object: Object) {
-        self.objects.push(object);
-    }
-
-    fn span(&mut self) -> &mut Span {
-        &mut self.span
+    fn push_subnode(&mut self, _: ObjectId) {
+        // Ignore, since we as the manifest will own the objects outright
     }
 
     fn properties_span(&mut self) -> &mut Option<Span> {
@@ -266,6 +262,46 @@ If this value is specified, then it permits bulk register reads and writes.",
 
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
+    }
+
+    fn span(&mut self) -> &mut Span {
+        &mut self.span
+    }
+
+    fn add_to_manifest(self, _manifest: &mut Manifest) -> ObjectId {
+        unimplemented!()
+    }
+
+    fn become_manifest(self, manifest: &mut Manifest) {
+        let Manifest {
+            description,
+            name,
+            default_access,
+            config,
+            devices: _,       // Keep old
+            blocks: _,        // Keep old
+            registers: _,     // Keep old
+            commands: _,      // Keep old
+            buffers: _,       // Keep old
+            fieldsets: _,     // Keep old
+            fields: _,        // Keep old
+            enums: _,         // Keep old
+            enum_variants: _, // Keep old
+            externs: _,       // Keep old
+            parent_map: _,    // Keep old
+            short_properties_span,
+            properties_span,
+            span,
+        } = manifest;
+
+        *description = self.description;
+        *name = self.name;
+        *default_access = self.default_access;
+        *config = self.config;
+
+        *short_properties_span = self.short_properties_span;
+        *properties_span = self.properties_span;
+        *span = self.span;
     }
 }
 
@@ -482,8 +518,8 @@ If this is not specified, the address offset defaults to 0.",
         ])
     }
 
-    fn push_subnode(&mut self, object: Object) {
-        self.objects.push(object);
+    fn push_subnode(&mut self, object: ObjectId) {
+        self.children.push(object);
     }
 
     fn span(&mut self) -> &mut Span {
@@ -496,6 +532,10 @@ If this is not specified, the address offset defaults to 0.",
 
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
+    }
+
+    fn add_to_manifest(self, manifest: &mut Manifest) -> ObjectId {
+        manifest.devices.push(self).into()
     }
 }
 
@@ -570,8 +610,8 @@ If this is not desired, then keep the address offset at 0.",
         ])
     }
 
-    fn push_subnode(&mut self, object: Object) {
-        self.objects.push(object);
+    fn push_subnode(&mut self, object: ObjectId) {
+        self.children.push(object);
     }
 
     fn repeat(&mut self) -> Option<&mut Option<Repeat>> {
@@ -588,6 +628,10 @@ If this is not desired, then keep the address offset at 0.",
 
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
+    }
+
+    fn add_to_manifest(self, manifest: &mut Manifest) -> ObjectId {
+        manifest.blocks.push(self).into()
     }
 }
 
@@ -720,15 +764,17 @@ The value can be expressed in two ways:
                                  diagnostics,
                                  sibling_objects,
                                  ast,
+                                 manifest,
                              }| {
                         match &property.expression.value {
                             Expression::TypeReference(ident) => {
-                                r.field_set_ref =
-                                    IdentifierRef::new(ident.val).with_span(ident.span);
+                                r.field_set_ref = FieldsetRef::Identifier(
+                                    IdentifierRef::new(ident.val)).with_span(ident.span);
                                 false
                             }
                             Expression::SubNode(sub_node) => {
                                 let result = lower_node(
+                                    manifest,
                                     ast.node( *sub_node),
                                     Some(NodeType::Register.with_span(node.node_type.span)),
                                     Some(Ident::new(r.name.original(), r.name.span)),
@@ -739,13 +785,10 @@ The value can be expressed in two ways:
 
                                 match result {
                                     LowerResult::Objects(fs, fs_siblings) => {
-                                        r.field_set_ref = fs
-                                            .name()
-                                            .clone()
-                                            // This should always be a fieldset is a Type identifier
-                                            .cast_assert()
-                                            .take_ref()
-                                            .with_span(fs.name_span());
+                                        let fs_id = FieldSetId::try_from(fs).unwrap();
+
+                                        r.field_set_ref = FieldsetRef::Id(fs_id)
+                                            .with_span(manifest.fieldsets.get(fs_id).unwrap().name.span);
                                         sibling_objects.push(fs);
                                         sibling_objects.extend(fs_siblings);
                                         false
@@ -754,7 +797,7 @@ The value can be expressed in two ways:
                                         sibling_objects.extend(fs_siblings);
                                         true
                                     }
-                                    LowerResult::Manifest(_) => unreachable!(),
+                                    LowerResult::Manifest => unreachable!(),
                                 }
                             }
                             _ => unreachable!(),
@@ -781,6 +824,10 @@ The value can be expressed in two ways:
 
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
+    }
+
+    fn add_to_manifest(self, manifest: &mut Manifest) -> ObjectId {
+        manifest.registers.push(self).into()
     }
 }
 
@@ -883,8 +930,8 @@ impl Shape for FieldSet {
         Some(&[NodeType::Field])
     }
 
-    fn push_subnode(&mut self, object: Object) {
-        let Object::Field(field) = object else {
+    fn push_subnode(&mut self, object: ObjectId) {
+        let Ok(field) = FieldId::try_from(object) else {
             unreachable!("{object:?}")
         };
         self.fields.push(field);
@@ -900,6 +947,10 @@ impl Shape for FieldSet {
 
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
+    }
+
+    fn add_to_manifest(self, manifest: &mut Manifest) -> ObjectId {
+        manifest.fieldsets.push(self).into()
     }
 }
 
@@ -983,6 +1034,10 @@ impl Shape for Extern {
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
     }
+
+    fn add_to_manifest(self, manifest: &mut Manifest) -> ObjectId {
+        manifest.externs.push(self).into()
+    }
 }
 
 impl Shape for Buffer {
@@ -1052,6 +1107,10 @@ impl Shape for Buffer {
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
     }
+
+    fn add_to_manifest(self, manifest: &mut Manifest) -> ObjectId {
+        manifest.buffers.push(self).into()
+    }
 }
 
 impl Shape for Enum {
@@ -1087,6 +1146,7 @@ impl Shape for Enum {
                                 target_object: enum_value,
                                 property,
                                 diagnostics,
+                                manifest,
                                 ..
                             }| {
                         let identifier = match Identifier::try_parse(property.name.val) {
@@ -1100,7 +1160,7 @@ impl Shape for Enum {
                             }
                         };
 
-                        enum_value.variants.push(EnumVariant {
+                        let variant_id = manifest.enum_variants.push(EnumVariant {
                             description: property.doc_comments.iter().map(|c| c.value).join("\n").intern(),
                             name: identifier.with_span(property.name.span),
                             value: match &property.expression.value {
@@ -1114,6 +1174,8 @@ impl Shape for Enum {
                             },
                             span: property.span,
                         });
+                        enum_value.variants.push(variant_id);
+
                         false
                     },
                 }
@@ -1136,6 +1198,10 @@ impl Shape for Enum {
 
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
+    }
+
+    fn add_to_manifest(self, manifest: &mut Manifest) -> ObjectId {
+        manifest.enums.push(self).into()
     }
 }
 
@@ -1208,16 +1274,18 @@ impl Shape for Command {
                                  diagnostics,
                                  sibling_objects,
                                  ast,
+                                 manifest,
                              }| {
                         match &property.expression.value {
                             Expression::TypeReference(ident) => {
                                 command.field_set_ref_in = Some(
-                                    IdentifierRef::new(ident.val).with_span(ident.span),
+                                    FieldsetRef::Identifier(IdentifierRef::new(ident.val)).with_span(ident.span),
                                 );
                                 false
                             }
                             Expression::SubNode(sub_node) => {
                                 let result = lower_node(
+                                    manifest,
                                     ast.node(*sub_node),
                                     Some(NodeType::Register.with_span(node.node_type.span)),
                                     Some(Ident::new(command.name.original(), command.name.span)),
@@ -1228,14 +1296,13 @@ impl Shape for Command {
 
                                 match result {
                                     LowerResult::Objects(fs, fs_siblings) => {
+                                        let fs_id = FieldSetId::try_from(fs).unwrap();
+
                                         command.field_set_ref_in = Some(
-                                            fs.name()
-                                                .clone()
-                                                // Always a fieldset, so should be fine
-                                                .cast_assert()
-                                                .take_ref()
-                                                .with_span(fs.name_span()),
+                                            FieldsetRef::Id(fs_id)
+                                                .with_span(manifest.fieldsets.get(fs_id).unwrap().name.span)
                                         );
+
                                         sibling_objects.push(fs);
                                         sibling_objects.extend(fs_siblings);
                                         false
@@ -1244,7 +1311,7 @@ impl Shape for Command {
                                         sibling_objects.extend(fs_siblings);
                                         true
                                     }
-                                    LowerResult::Manifest(_) => unreachable!(),
+                                    LowerResult::Manifest => unreachable!(),
                                 }
                             }
                             _ => unreachable!(),
@@ -1270,16 +1337,18 @@ impl Shape for Command {
                                  diagnostics,
                                  sibling_objects,
                                  ast,
+                                 manifest,
                              }| {
                         match &property.expression.value {
                             Expression::TypeReference(ident) => {
                                 command.field_set_ref_out = Some(
-                                    IdentifierRef::new(ident.val).with_span(ident.span),
+                                    FieldsetRef::Identifier(IdentifierRef::new(ident.val)).with_span(ident.span),
                                 );
                                 false
                             }
                             Expression::SubNode(sub_node) => {
                                 let result = lower_node(
+                                    manifest,
                                     ast.node(*sub_node),
                                     Some(NodeType::Register.with_span(node.node_type.span)),
                                     Some(Ident::new(command.name.original(), command.name.span)),
@@ -1290,14 +1359,13 @@ impl Shape for Command {
 
                                 match result {
                                     LowerResult::Objects(fs, fs_siblings) => {
+                                        let fs_id = FieldSetId::try_from(fs).unwrap();
+
                                         command.field_set_ref_out = Some(
-                                            fs.name()
-                                                .clone()
-                                                // Always a fieldset, so should be fine
-                                                .cast_assert()
-                                                .take_ref()
-                                                .with_span(fs.name_span()),
+                                            FieldsetRef::Id(fs_id)
+                                                .with_span(manifest.fieldsets.get(fs_id).unwrap().name.span)
                                         );
+
                                         sibling_objects.push(fs);
                                         sibling_objects.extend(fs_siblings);
                                         false
@@ -1306,7 +1374,7 @@ impl Shape for Command {
                                         sibling_objects.extend(fs_siblings);
                                         true
                                     }
-                                    LowerResult::Manifest(_) => unreachable!(),
+                                    LowerResult::Manifest => unreachable!(),
                                 }
                             }
                             _ => unreachable!(),
@@ -1333,6 +1401,10 @@ impl Shape for Command {
 
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
+    }
+
+    fn add_to_manifest(self, manifest: &mut Manifest) -> ObjectId {
+        manifest.commands.push(self).into()
     }
 }
 
@@ -1446,5 +1518,9 @@ impl Shape for Field {
 
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
+    }
+
+    fn add_to_manifest(self, manifest: &mut Manifest) -> ObjectId {
+        manifest.fields.push(self).into()
     }
 }

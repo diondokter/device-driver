@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use convert_case::Casing;
 
 use crate::{
-    model::{Id, LendingIterator, Manifest, Object, ObjectId},
+    model::{Manifest, ObjectId},
     passes::{Assumption, Pass},
 };
 use device_driver_diagnostics::{
@@ -23,12 +23,7 @@ impl Pass for DeviceNameIsPascal {
     ) -> Result<HashSet<ObjectId>, DynError> {
         let mut removals = HashSet::new();
 
-        let mut iter = manifest.iter_objects_with_config_mut();
-        while let Some((object, _)) = iter.next() {
-            let Object::Device(device) = object else {
-                continue;
-            };
-
+        for (device_id, device) in manifest.devices.iter_enumerated_mut() {
             let lenient_pascal_boundaries =
                 convert_case::Boundary::defaults_from("aA:AAa:_:-: :a1:A1:1A");
             let lenient_pascal_case = convert_case::Case::Custom {
@@ -43,7 +38,7 @@ impl Pass for DeviceNameIsPascal {
                 .check_validity()
             {
                 diagnostics.add(InvalidIdentifier::new(e, device.name.span));
-                removals.insert(device.id());
+                removals.insert(device_id.into());
                 continue;
             }
 

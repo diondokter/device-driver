@@ -1,10 +1,11 @@
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct BitSet {
     words: Vec<usize>,
     len: usize,
 }
 
 impl BitSet {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             words: Vec::new(),
             len: 0,
@@ -55,6 +56,10 @@ impl BitSet {
 
     pub fn len(&self) -> usize {
         self.len
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
     }
 
     fn index_to_word_index(index: usize) -> (usize, usize) {
