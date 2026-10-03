@@ -33,7 +33,7 @@ impl Pass for FieldConversionValid {
 
         for (field_id, field) in manifest.fields.iter_enumerated() {
             if let Some(conversion) = field.field_conversion.as_ref() {
-                let target_object = manifest.search_object(&conversion.type_name);
+                let target_object = manifest.search_type(&conversion.type_ref);
 
                 match target_object {
                     Some(Object::Enum(target_enum)) => {
@@ -49,7 +49,7 @@ impl Pass for FieldConversionValid {
                                 field: field.name.span,
                                 field_address: field.field_address.span,
                                 conversion_type: target_enum.name.span,
-                                conversion: conversion.type_name.span,
+                                conversion: conversion.type_ref.span,
                                 field_len: field.field_address.len(),
                                 conversion_len: target_enum_size.into(),
                             });
@@ -61,7 +61,7 @@ impl Pass for FieldConversionValid {
                             diagnostics.add(DifferentBaseTypes {
                                 field: field.name.span,
                                 field_base_type: field.base_type.value,
-                                conversion: conversion.type_name.span,
+                                conversion: conversion.type_ref.span,
                                 conversion_object: target_enum.name.span,
                                 conversion_base_type: target_enum.base_type.value,
                             });
@@ -79,13 +79,13 @@ impl Pass for FieldConversionValid {
                                 EnumGenerationStyle::Fallible => {
                                     diagnostics.add(InvalidInfallibleConversion {
                                         field: field.name.span,
-                                        conversion: conversion.type_name.span,
+                                        conversion: conversion.type_ref.span,
                                         context: vec![
                                             Cow::from("target only supports fallible conversion")
                                                 .with_span(target_enum.name.span),
                                         ],
                                         existing_type_specifier_content: field
-                                            .get_type_specifier_string(),
+                                            .get_type_specifier_string(manifest),
                                     });
                                     removals.insert(field_id.into());
                                     continue;
@@ -99,7 +99,7 @@ impl Pass for FieldConversionValid {
                                     if field_bits > enum_bits {
                                         diagnostics.add(InvalidInfallibleConversion {
                                     field: field.name.span,
-                                                conversion: conversion.type_name.span,
+                                                conversion: conversion.type_ref.span,
                                                 context: vec![
                                                         Cow::from(format!(
                                                                 "The field has a size of {field_bits} bits"
@@ -112,7 +112,7 @@ impl Pass for FieldConversionValid {
                                                             target_enum.name.span,
                                                         ),
                                                     ],
-                                                existing_type_specifier_content: field.get_type_specifier_string()
+                                                existing_type_specifier_content: field.get_type_specifier_string(manifest)
                                             });
                                         removals.insert(field_id.into());
                                         continue;
@@ -142,7 +142,7 @@ impl Pass for FieldConversionValid {
                                 field: field.name.span,
                                 field_address: field.field_address.span,
                                 conversion_type: target_extern.name.span,
-                                conversion: conversion.type_name.span,
+                                conversion: conversion.type_ref.span,
                                 field_len: field.field_address.len(),
                                 conversion_len: target_extern_size,
                             });
@@ -154,7 +154,7 @@ impl Pass for FieldConversionValid {
                             diagnostics.add(DifferentBaseTypes {
                                 field: field.name.span,
                                 field_base_type: field.base_type.value,
-                                conversion: conversion.type_name.span,
+                                conversion: conversion.type_ref.span,
                                 conversion_object: target_extern.name.span,
                                 conversion_base_type: target_extern.base_type.value,
                             });
@@ -165,12 +165,13 @@ impl Pass for FieldConversionValid {
                         if !conversion.fallible && !target_extern.supports_infallible {
                             diagnostics.add(InvalidInfallibleConversion {
                                 field: field.name.span,
-                                conversion: conversion.type_name.span,
+                                conversion: conversion.type_ref.span,
                                 context: vec![
                                     Cow::from("target only supports fallible conversion")
                                         .with_span(target_extern.name.span),
                                 ],
-                                existing_type_specifier_content: field.get_type_specifier_string(),
+                                existing_type_specifier_content: field
+                                    .get_type_specifier_string(manifest),
                             });
                             removals.insert(field_id.into());
                             continue;
@@ -178,7 +179,7 @@ impl Pass for FieldConversionValid {
                     }
                     Some(invalid_object) => {
                         diagnostics.add(InvalidConversionType {
-                            object_reference: conversion.type_name.span,
+                            object_reference: conversion.type_ref.span,
                             referenced_object: invalid_object.name_span(),
                         });
                         removals.insert(field_id.into());
@@ -186,7 +187,7 @@ impl Pass for FieldConversionValid {
                     }
                     None => {
                         diagnostics.add(ReferencedObjectDoesNotExist {
-                            object_reference: conversion.type_name.span,
+                            object_reference: conversion.type_ref.span,
                         });
                         removals.insert(field_id.into());
                         continue;

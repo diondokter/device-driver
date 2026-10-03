@@ -29,11 +29,7 @@ impl Pass for NamesChecked {
 
             let config = manifest.object_config(object_id);
 
-            let boundaries = config
-                .name_word_boundaries
-                .as_deref()
-                .unwrap_or(&const { convert_case::Boundary::defaults() })
-                .to_vec();
+            let boundaries = config.name_word_boundaries_or_defaults();
 
             let mut object = manifest.object_mut(object_id).unwrap();
 

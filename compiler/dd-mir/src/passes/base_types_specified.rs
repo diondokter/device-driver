@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::{
-    model::{Manifest, Object, ObjectId},
+    model::{Manifest, Object, ObjectId, TypeRef},
     passes::{Assumption, Pass},
 };
 use device_driver_common::specifiers::{BaseType, Integer};
@@ -38,11 +38,18 @@ impl Pass for BaseTypesSpecified {
                 let size_bits = field.field_address.len();
                 let new_base_type = match field.base_type.value {
                     BaseType::Unspecified => {
-                        match field
-                            .field_conversion
-                            .as_ref()
-                            .and_then(|conversion| base_types.get(&conversion.type_name.value))
-                        {
+                        match field.field_conversion.as_ref().and_then(|conversion| {
+                            base_types.get(&match &conversion.type_ref.value {
+                                TypeRef::Identifier(identifier_ref) => identifier_ref.clone(),
+                                TypeRef::Id(object_id) => object_id
+                                    .get(manifest)
+                                    .unwrap()
+                                    .name()
+                                    .clone()
+                                    .cast_assert()
+                                    .take_ref(),
+                            })
+                        }) {
                             Some(conversion_base_type) => conversion_base_type.value,
                             None => {
                                 // No conversion type? Then base it off of the size bits

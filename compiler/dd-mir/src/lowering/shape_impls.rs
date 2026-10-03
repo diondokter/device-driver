@@ -4,7 +4,7 @@ use crate::{
     lowering::{LowerResult, PropertyInfo, PropertyName, SetterArgs, Shape, lower_node},
     model::{
         Block, Buffer, Command, Device, Enum, EnumValue, EnumVariant, Extern, Field, FieldId,
-        FieldSet, FieldSetId, FieldsetRef, Manifest, ObjectId, Register,
+        FieldSet, FieldSetId, FieldsetRef, Manifest, ObjectId, Register, TypeConversion,
     },
 };
 use convert_case::Boundary;
@@ -14,7 +14,7 @@ use device_driver_common::{
     span::{Span, SpanExt, Spanned},
     specifiers::{
         Access, AddressMode, AddressRange, BaseType, ByteOrder, Integer, NodeType, Repeat,
-        ResetValue, TypeConversion, VariantNames,
+        ResetValue, VariantNames,
     },
 };
 use device_driver_diagnostics::errors::{

@@ -30,7 +30,7 @@ fn auto_name_hint(node: &Node, document: &Document) -> Option<InlayHint> {
     }
 
     let true_node_name = document
-        .mir()
+        .mir_manifest()
         .objects()
         .find(|object| object.span() == node.span)
         .map(|object| object.name().original().as_str())?;
@@ -68,7 +68,7 @@ fn auto_base_type_hint(node: &Node, document: &Document) -> Option<InlayHint> {
     // - Search for the object (or field) that represents the current node
     // - Get its base type if that's supported
     let (mir_base_type, short_properties_span) =
-        document.mir().objects().find_map(|object| {
+        document.mir_manifest().objects().find_map(|object| {
             if object.span() == node.span {
                 Some(
                     object
@@ -164,7 +164,7 @@ fn enum_variant_hints(node: &Node, document: &Document) -> Option<Vec<InlayHint>
     }
 
     let enum_value = document
-        .mir()
+        .mir_manifest()
         .enums
         .iter()
         .find(|enum_value| enum_value.span == node.span)?;
@@ -174,10 +174,10 @@ fn enum_variant_hints(node: &Node, document: &Document) -> Option<Vec<InlayHint>
     // Go over each variant, which are properties in the AST
     for property in node.properties.iter() {
         let Some((value, _)) = enum_value
-            .iter_variants_with_discriminant(&document.mir().enum_variants)
+            .iter_variants_with_discriminant(&document.mir_manifest().enum_variants)
             .find(|(_, variant)| {
                 document
-                    .mir()
+                    .mir_manifest()
                     .enum_variants
                     .get(*variant)
                     .unwrap()

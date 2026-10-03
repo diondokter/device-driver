@@ -82,6 +82,15 @@ impl Span {
     pub fn overlaps(&self, other: Self) -> bool {
         self.start < other.end && other.start < self.end
     }
+
+    /// Returns true if a cursor at the given offset would select the span
+    ///
+    /// Note that one offset can select multiple non-overlapping (but touching) spans!
+    pub fn is_selected_at(&self, offset: u32) -> bool {
+        // Normally end is exclusive, but that's not how cursor positions work
+        // We want to be able to put the cursor right after a word and have it select the word
+        self.start <= offset && offset <= self.end
+    }
 }
 
 impl chumsky::span::Span for Span {

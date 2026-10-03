@@ -159,12 +159,12 @@ impl<T: Namespace> Identifier<T> {
     where
         T: Default,
     {
-        Self::try_parse_with_type(value, T::default())
+        Self::try_parse_with_namespace(value, T::default())
     }
 
     /// Try parse a string as an identifier.
     /// It will not have boundaries applied yet.
-    pub fn try_parse_with_type(value: Istr, id_type: T) -> Result<Self, Error> {
+    pub fn try_parse_with_namespace(value: Istr, namespace: T) -> Result<Self, Error> {
         if value.is_empty() {
             return Err(Error::Empty);
         }
@@ -174,7 +174,7 @@ impl<T: Namespace> Identifier<T> {
             original: value,
             words: [value.as_str().into()].into(),
             duplicate_id: None,
-            namespace: id_type,
+            namespace,
         })
     }
 
@@ -287,7 +287,7 @@ impl<T: Namespace> Identifier<T> {
     {
         IdentifierRef {
             original: self.original,
-            id_type: self.namespace.clone(),
+            namespace: self.namespace.clone(),
         }
     }
 
@@ -420,7 +420,7 @@ impl<T: Namespace + Default> Default for Identifier<T> {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct IdentifierRef<T: Namespace> {
     original: Istr,
-    id_type: T,
+    namespace: T,
 }
 
 impl<T: Namespace> IdentifierRef<T> {
@@ -430,7 +430,7 @@ impl<T: Namespace> IdentifierRef<T> {
     {
         Self {
             original: identifier_original,
-            id_type: T::default(),
+            namespace: T::default(),
         }
     }
 
@@ -439,8 +439,26 @@ impl<T: Namespace> IdentifierRef<T> {
     }
 
     pub fn is_ref_to<U: Namespace>(&self, identifier: &Identifier<U>) -> bool {
-        identifier.namespace.runtime_value() == self.id_type.runtime_value()
+        identifier
+            .namespace
+            .runtime_value()
+            .shares_namespace_with(self.namespace.runtime_value())
             && self.original() == identifier.original()
+    }
+
+    pub fn is_same_ref_as<U: Namespace>(&self, identifier: &IdentifierRef<U>) -> bool {
+        identifier
+            .namespace
+            .runtime_value()
+            .shares_namespace_with(self.namespace.runtime_value())
+            && self.original() == identifier.original()
+    }
+
+    pub fn to_runtime_namespace(self) -> IdentifierRef<RuntimeNamespace> {
+        IdentifierRef {
+            original: self.original,
+            namespace: self.namespace.runtime_value(),
+        }
     }
 }
 
@@ -612,14 +630,15 @@ mod tests {
             Identifier::<Type>::try_parse("a".intern())
                 .unwrap()
                 .to_runtime_namespace(),
-            Identifier::try_parse_with_type("a".intern(), RuntimeNamespace::Type).unwrap()
+            Identifier::try_parse_with_namespace("a".intern(), RuntimeNamespace::Type).unwrap()
         );
 
         assert_ne!(
             Identifier::<Type>::try_parse("a".intern())
                 .unwrap()
                 .to_runtime_namespace(),
-            Identifier::try_parse_with_type("a".intern(), RuntimeNamespace::Operation).unwrap()
+            Identifier::try_parse_with_namespace("a".intern(), RuntimeNamespace::Operation)
+                .unwrap()
         );
     }
 

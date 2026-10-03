@@ -9,10 +9,11 @@ use tower_lsp_server::{
     jsonrpc::Error,
     ls_types::{
         DiagnosticSeverity, DidOpenTextDocumentParams, DocumentSymbolResponse, InitializeResult,
-        InlayHint, MessageType, OneOf, SemanticTokensFullOptions, SemanticTokensLegend,
-        SemanticTokensOptions, SemanticTokensRangeResult, SemanticTokensResult,
-        SemanticTokensServerCapabilities, ServerCapabilities, TextDocumentSyncCapability,
-        TextDocumentSyncKind, Uri,
+        InlayHint, MessageType, OneOf, PrepareRenameResponse, RenameOptions,
+        SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
+        SemanticTokensRangeResult, SemanticTokensResult, SemanticTokensServerCapabilities,
+        ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind, Uri,
+        WorkDoneProgressOptions,
     },
 };
 
@@ -21,6 +22,7 @@ use crate::document::Document;
 mod document;
 mod document_symbol;
 mod inlay_hints;
+mod rename;
 mod semantic_tokens;
 
 pub struct Backend {
@@ -57,7 +59,7 @@ impl Backend {
 
         drop(documents);
 
-        match Document::compile(source, version) {
+        match Document::compile(source, version, uri.clone()) {
             Ok((document, diagnostics)) => {
                 let diags = diagnostics
                     .iter()
@@ -132,6 +134,10 @@ impl LanguageServer for Backend {
                         },
                     ),
                 ),
+                rename_provider: Some(OneOf::Right(RenameOptions {
+                    prepare_provider: Some(true),
+                    work_done_progress_options: WorkDoneProgressOptions::default(),
+                })),
                 ..Default::default()
             },
             server_info: Some(tower_lsp_server::ls_types::ServerInfo {
@@ -286,6 +292,69 @@ impl LanguageServer for Backend {
             .await;
 
         Ok(Some(SemanticTokensRangeResult::Tokens(tokens)))
+    }
+
+    async fn prepare_rename(
+        &self,
+        params: tower_lsp_server::ls_types::TextDocumentPositionParams,
+    ) -> tower_lsp_server::jsonrpc::Result<Option<PrepareRenameResponse>> {
+        let start = Instant::now();
+
+        let guard = self.documents.read().await;
+        let Some(document) = guard.get(&params.text_document.uri) else {
+            return Err(Error::invalid_params(params.text_document.uri.to_string()));
+        };
+
+        let prep_rename_result = rename::find_rename_target(document, params.position);
+
+        let elapsed = start.elapsed();
+        self.client
+            .log_message(
+                MessageType::LOG,
+                format!("prepare_rename took {}ms", elapsed.as_secs_f32() * 1000.0,),
+            )
+            .await;
+
+        match prep_rename_result {
+            Ok((range, placeholder)) => Ok(Some(PrepareRenameResponse::RangeWithPlaceholder {
+                range,
+                placeholder: placeholder.original().to_string(),
+            })),
+            Err(message) => Err(Error::invalid_params(message)),
+        }
+    }
+
+    async fn rename(
+        &self,
+        params: tower_lsp_server::ls_types::RenameParams,
+    ) -> tower_lsp_server::jsonrpc::Result<Option<tower_lsp_server::ls_types::WorkspaceEdit>> {
+        let start = Instant::now();
+
+        let guard = self.documents.read().await;
+        let Some(document) = guard.get(&params.text_document_position.text_document.uri) else {
+            return Err(Error::invalid_params(
+                params.text_document_position.text_document.uri.to_string(),
+            ));
+        };
+
+        let edit = rename::rename(
+            document,
+            params.text_document_position.position,
+            params.new_name,
+        );
+
+        let elapsed = start.elapsed();
+        self.client
+            .log_message(
+                MessageType::LOG,
+                format!("rename took {}ms", elapsed.as_secs_f32() * 1000.0),
+            )
+            .await;
+
+        match edit {
+            Ok(edit) => Ok(Some(edit)),
+            Err(message) => Err(Error::invalid_params(message)),
+        }
     }
 
     async fn shutdown(&self) -> tower_lsp_server::jsonrpc::Result<()> {

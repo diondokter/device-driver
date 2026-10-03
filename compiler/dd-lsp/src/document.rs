@@ -2,17 +2,22 @@ use device_driver_common::span::Span;
 use device_driver_diagnostics::{Diagnostics, DynError, ResultExt};
 use device_driver_mir::model::Manifest;
 use device_driver_parser::Ast;
-use tower_lsp_server::ls_types::{Position, Range};
+use tower_lsp_server::ls_types::{Position, Range, Uri};
 
 pub struct Document {
     version: i32,
+    uri: Uri,
     source_cache: SourceCache,
     ast: Ast,
     mir: Manifest,
 }
 
 impl Document {
-    pub fn compile(source: String, version: i32) -> Result<(Self, Diagnostics), DynError> {
+    pub fn compile(
+        source: String,
+        version: i32,
+        uri: Uri,
+    ) -> Result<(Self, Diagnostics), DynError> {
         let mut diagnostics = Diagnostics::new();
 
         let tokens = device_driver_lexer::lex(&source);
@@ -23,6 +28,7 @@ impl Document {
         Ok((
             Document {
                 version,
+                uri,
                 source_cache: SourceCache::new(source),
                 ast,
                 mir,
@@ -39,6 +45,10 @@ impl Document {
         self.source_cache.translate_range_to_span(range)
     }
 
+    pub fn translate_position(&self, position: Position) -> u32 {
+        self.source_cache.translate_position_to_offset(position)
+    }
+
     pub fn source(&self) -> &str {
         &self.source_cache.source
     }
@@ -47,12 +57,16 @@ impl Document {
         self.version
     }
 
-    pub fn mir(&self) -> &Manifest {
+    pub fn mir_manifest(&self) -> &Manifest {
         &self.mir
     }
 
     pub fn ast(&self) -> &Ast {
         &self.ast
+    }
+
+    pub fn uri(&self) -> &Uri {
+        &self.uri
     }
 }
 
@@ -141,10 +155,10 @@ impl SourceCache {
 
         let line_slice = &self.source[line_offset as usize..next_line_offset as usize];
         for (offset, c) in line_slice.char_indices() {
-            position.character = position.character.saturating_sub(c.len_utf16() as u32);
             if position.character == 0 {
                 return line_offset + offset as u32;
             }
+            position.character = position.character.saturating_sub(c.len_utf16() as u32);
         }
 
         // Didn't find it? Fall back

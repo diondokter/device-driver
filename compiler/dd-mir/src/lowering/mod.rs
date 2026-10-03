@@ -9,14 +9,14 @@ use crate::{
     lowering::shape_impls::ast_example,
     model::{
         Block, Buffer, Command, Device, Enum, Extern, Field, FieldSet, Manifest, Object, ObjectId,
-        Register,
+        Register, TypeConversion, TypeRef,
     },
 };
 use device_driver_common::{
     identifier::{Identifier, IdentifierRef, Namespace, Type},
     interner::{Istr, StrExt},
     span::{Span, SpanExt, Spanned},
-    specifiers::{BaseType, NodeType, Repeat, RepeatSource, TypeConversion},
+    specifiers::{BaseType, NodeType, Repeat, RepeatSource},
 };
 use device_driver_diagnostics::{
     Diagnostics,
@@ -283,9 +283,10 @@ fn parse_node_to_shape<S: Shape>(
         (Some(conversion_type), Some(type_specifier)) => {
             *conversion_type = type_specifier.conversion.as_ref().and_then(|c| {
                 let reference = match c {
-                    device_driver_parser::TypeConversion::Reference(ident) => {
-                        Some(IdentifierRef::<Type>::new(ident.val).with_span(ident.span))
-                    }
+                    device_driver_parser::TypeConversion::Reference(ident) => Some(
+                        TypeRef::Identifier(IdentifierRef::<Type>::new(ident.val))
+                            .with_span(ident.span),
+                    ),
                     device_driver_parser::TypeConversion::Subnode(sub_node) => {
                         let sub_node = lower_node(
                             manifest,
@@ -301,13 +302,8 @@ fn parse_node_to_shape<S: Shape>(
                             LowerResult::Manifest => unreachable!(),
                             LowerResult::Objects(object_id, objects) => {
                                 let object = manifest.object(object_id).unwrap();
-                                let reference = object
-                                    .name()
-                                    .clone()
-                                    // The only allowed subnodes are types, so this should be fine
-                                    .cast_assert()
-                                    .take_ref()
-                                    .with_span(object.name_span());
+                                let reference =
+                                    TypeRef::Id(object_id).with_span(object.name_span());
                                 sibling_objects.push(object_id);
                                 sibling_objects.extend(objects);
                                 Some(reference)
@@ -321,7 +317,7 @@ fn parse_node_to_shape<S: Shape>(
                 };
 
                 reference.map(|reference| TypeConversion {
-                    type_name: reference,
+                    type_ref: reference,
                     fallible: type_specifier.use_try,
                 })
             })

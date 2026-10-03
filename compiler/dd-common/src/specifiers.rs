@@ -292,14 +292,6 @@ impl Display for BaseType {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct TypeConversion {
-    /// The name of the type we're converting to
-    pub type_name: Spanned<IdentifierRef<Type>>,
-    /// True when we want to use the fallible interface (like a Result<type, error>)
-    pub fallible: bool,
-}
-
-#[derive(Debug, Clone, PartialEq)]
 pub struct Repeat {
     pub source: Spanned<RepeatSource>,
     pub stride: Spanned<i128>,

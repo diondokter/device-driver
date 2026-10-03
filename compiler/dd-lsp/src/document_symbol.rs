@@ -10,7 +10,7 @@ use crate::document::Document;
 
 pub fn get_node_symbol(node: &Node, document: &Document) -> DocumentSymbol {
     let ast = document.ast();
-    let mir = document.mir();
+    let mir = document.mir_manifest();
 
     let kind = node_type_symbol_kind(node.node_type.val);
 

@@ -16,7 +16,7 @@ use device_driver_common::{
     span::{Span, Spanned},
     specifiers::{
         Access, AddressMode, AddressRange, BaseType, ByteOrder, Integer, NodeType, Repeat,
-        ResetValue, TypeConversion,
+        ResetValue,
     },
 };
 
@@ -64,6 +64,12 @@ impl ObjectId {
 
     pub fn get_mut(self, manifest: &mut Manifest) -> Option<ObjectMut<'_>> {
         manifest.object_mut(self)
+    }
+}
+
+impl Default for ObjectId {
+    fn default() -> Self {
+        Self(ObjectType::Device, u32::MAX)
     }
 }
 
@@ -469,6 +475,14 @@ impl Manifest {
         }
     }
 
+    /// This assumes [crate::passes::Assumption::NamesUnique]
+    pub fn search_type(&self, ref_val: &TypeRef) -> Option<Object<'_>> {
+        match ref_val {
+            TypeRef::Identifier(identifier_ref) => self.search_object(identifier_ref),
+            TypeRef::Id(id) => self.object(*id),
+        }
+    }
+
     pub fn remove_object(&mut self, id: impl Into<ObjectId>) {
         let id = id.into();
 
@@ -650,6 +664,13 @@ impl DeviceConfig {
                 .cloned(),
             register_address_mode: other.register_address_mode.or(self.register_address_mode),
         }
+    }
+
+    pub fn name_word_boundaries_or_defaults(&self) -> Vec<Boundary> {
+        self.name_word_boundaries
+            .as_deref()
+            .unwrap_or(&const { convert_case::Boundary::defaults() })
+            .to_vec()
     }
 }
 
@@ -867,6 +888,22 @@ impl<'a> Object<'a> {
         }
     }
 
+    /// Return the type conversion value if it exists
+    pub fn type_conversion(&self) -> Option<&'a TypeConversion> {
+        match self {
+            Object::Device(_) => None,
+            Object::Block(_) => None,
+            Object::Register(_) => None,
+            Object::Command(_) => None,
+            Object::Buffer(_) => None,
+            Object::FieldSet(_) => None,
+            Object::Enum(_) => None,
+            Object::Extern(_) => None,
+            Object::Field(field) => field.field_conversion.as_ref(),
+            Object::EnumVariant(_) => None,
+        }
+    }
+
     pub fn as_field_set(&self) -> Option<&'a FieldSet> {
         if let Self::FieldSet(v) = self {
             Some(v)
@@ -1069,6 +1106,35 @@ impl FieldSet {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct TypeConversion {
+    /// The name of the type we're converting to
+    pub type_ref: Spanned<TypeRef>,
+    /// True when we want to use the fallible interface (like a Result<type, error>)
+    pub fallible: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TypeRef {
+    Identifier(IdentifierRef<Type>),
+    Id(ObjectId),
+}
+
+impl Default for TypeRef {
+    fn default() -> Self {
+        Self::Id(ObjectId::default())
+    }
+}
+
+impl Display for TypeRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TypeRef::Identifier(identifier_ref) => write!(f, "{}", identifier_ref.original()),
+            TypeRef::Id(field_set_id) => write!(f, "{field_set_id:?}"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Field {
     pub description: Istr,
@@ -1087,13 +1153,17 @@ pub struct Field {
 
 impl Field {
     #[must_use]
-    pub fn get_type_specifier_string(&self) -> String {
+    pub fn get_type_specifier_string(&self, manifest: &Manifest) -> String {
         match &self.field_conversion {
             Some(fc) => {
                 format!(
                     "{}:{}{}",
                     self.base_type,
-                    fc.type_name.original(),
+                    match &fc.type_ref.value {
+                        TypeRef::Identifier(identifier_ref) => identifier_ref.original(),
+                        TypeRef::Id(object_id) =>
+                            manifest.object(*object_id).unwrap().name().original(),
+                    },
                     if fc.fallible { "?" } else { "" }
                 )
             }

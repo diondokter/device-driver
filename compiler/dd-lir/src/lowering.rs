@@ -12,7 +12,7 @@ use device_driver_diagnostics::{DynError, ResultExt};
 use crate::model as lir;
 use device_driver_mir::{
     find_min_max_addresses,
-    model::{self as mir, ObjectId},
+    model::{self as mir, ObjectId, TypeRef},
 };
 
 pub fn transform_devices(manifest: &mir::Manifest) -> Result<Vec<lir::Device>, DynError> {
@@ -322,12 +322,9 @@ fn transform_field(manifest: &mir::Manifest, field: &mir::Field) -> Result<lir::
             let field_bits = field.field_address.len() as u32;
 
             let fc_identifier = manifest
-                .search_object(&fc.type_name)
+                .search_type(&fc.type_ref)
                 .ok_or_else(|| {
-                    DynError::new(format!(
-                        "{} existence checked in MIR pass",
-                        fc.type_name.original()
-                    ))
+                    DynError::new(format!("{} existence checked in MIR pass", fc.type_ref))
                 })?
                 .name()
                 .clone();
@@ -337,19 +334,26 @@ fn transform_field(manifest: &mir::Manifest, field: &mir::Field) -> Result<lir::
                 lir::FieldConversionMethod::TryInto(fc_identifier.cast_assert())
             }
             // Are we pointing at a potentially infallible enum and do we fulfil the requirements?
-            else if let Some(mir::Enum {
-                generation_style: Some(mir::EnumGenerationStyle::InfallibleWithinRange),
-                size_bits,
-                ..
-            }) = manifest
-                .enums
-                .iter()
-                .find(|e| e.name.take_ref() == fc.type_name.value)
+            else if let Some((
+                _,
+                mir::Enum {
+                    generation_style: Some(mir::EnumGenerationStyle::InfallibleWithinRange),
+                    size_bits,
+                    ..
+                },
+            )) =
+                manifest
+                    .enums
+                    .iter_enumerated()
+                    .find(|(id, e)| match &fc.type_ref.value {
+                        TypeRef::Identifier(identifier_ref) => identifier_ref.is_ref_to(&e.name),
+                        TypeRef::Id(object_id) => *object_id == (*id).into(),
+                    })
                 && field_bits
                     <= size_bits.ok_or_else(|| {
                         DynError::new(format!(
                             "enum {} size_bits must have been set in an earlier mir pass",
-                            fc.type_name.original()
+                            fc.type_ref
                         ))
                     })?
             {
