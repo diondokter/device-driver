@@ -5,9 +5,12 @@ use std::{
     str::FromStr,
 };
 
-use crate::model::{
-    Block, Buffer, Command, Device, Enum, Extern, Field, FieldSet, Manifest, Object, ObjectId,
-    Register,
+use crate::{
+    lowering::shape_impls::ast_example,
+    model::{
+        Block, Buffer, Command, Device, Enum, Extern, Field, FieldSet, Manifest, Object, ObjectId,
+        Register,
+    },
 };
 use device_driver_common::{
     identifier::{Identifier, IdentifierRef, Namespace, Type},
@@ -402,7 +405,7 @@ fn parse_node_to_shape<S: Shape>(
                 valid_expression_values: property_info
                     .allowed_expression_types
                     .iter()
-                    .map(|e| e.print_formatted(ast))
+                    .map(|e| e.print_formatted(&ast_example().ast))
                     .collect(),
             });
             continue;
@@ -534,7 +537,7 @@ fn parse_node_to_shape<S: Shape>(
                 example_values: missing_info
                     .allowed_expression_types
                     .iter()
-                    .map(|e| e.print_formatted(ast))
+                    .map(|e| e.print_formatted(&ast_example().ast))
                     .collect(),
                 properties_span: if short {
                     Some(*target.short_properties_span())
