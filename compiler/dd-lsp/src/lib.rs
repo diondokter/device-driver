@@ -174,6 +174,14 @@ impl LanguageServer for Backend {
         }
     }
 
+    async fn did_close(&self, params: tower_lsp_server::ls_types::DidCloseTextDocumentParams) {
+        // Remove the document from memory
+        self.documents
+            .write()
+            .await
+            .remove(&params.text_document.uri);
+    }
+
     async fn document_symbol(
         &self,
         params: tower_lsp_server::ls_types::DocumentSymbolParams,
