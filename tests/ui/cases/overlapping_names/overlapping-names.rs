@@ -387,7 +387,7 @@ impl BarDup4 {
     /// `7:0` - Read the `quux` field.
     ///
     #[must_use]
-    pub fn quux(&self) -> Result<Quux, <Quux as TryFrom<u8>>::Error> {
+    pub fn quux(&self) -> Result<QuuxDup5, <QuuxDup5 as TryFrom<u8>>::Error> {
         let start = 0;
         let end = 7;
         let raw = unsafe {
@@ -400,7 +400,7 @@ impl BarDup4 {
     }
     /// `7:0` - Set the `quux` field.
     ///
-    pub fn set_quux(&mut self, value: Quux) {
+    pub fn set_quux(&mut self, value: QuuxDup5) {
         let start = 0;
         let end = 7;
         let raw = value.into();
