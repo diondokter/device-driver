@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::OnceLock};
 
 use device_driver_common::{instant::Instant, specifiers::VariantNames};
 use device_driver_diagnostics::Severity;
@@ -8,12 +8,12 @@ use tower_lsp_server::{
     Client, LanguageServer, LspService, Server,
     jsonrpc::Error,
     ls_types::{
-        DeclarationCapability, DiagnosticSeverity, DidOpenTextDocumentParams,
-        DocumentSymbolResponse, InitializeResult, InlayHint, MessageType, OneOf,
-        PrepareRenameResponse, RenameOptions, SemanticTokensFullOptions, SemanticTokensLegend,
-        SemanticTokensOptions, SemanticTokensRangeResult, SemanticTokensResult,
-        SemanticTokensServerCapabilities, ServerCapabilities, TextDocumentSyncCapability,
-        TextDocumentSyncKind, Uri, WorkDoneProgressOptions,
+        ClientCapabilities, DeclarationCapability, DiagnosticSeverity, DidOpenTextDocumentParams,
+        DocumentSymbolResponse, GotoDefinitionResponse, InitializeResult, InlayHint, Location,
+        MessageType, OneOf, PrepareRenameResponse, RenameOptions, SemanticTokensFullOptions,
+        SemanticTokensLegend, SemanticTokensOptions, SemanticTokensRangeResult,
+        SemanticTokensResult, SemanticTokensServerCapabilities, ServerCapabilities,
+        TextDocumentSyncCapability, TextDocumentSyncKind, Uri, WorkDoneProgressOptions,
     },
 };
 
@@ -30,6 +30,7 @@ mod util;
 pub struct Backend {
     client: Client,
     documents: RwLock<HashMap<Uri, Document>>,
+    client_capabilities: OnceLock<ClientCapabilities>,
 }
 
 impl Backend {
@@ -43,6 +44,7 @@ impl Backend {
             let (service, socket) = LspService::new(|client| Backend {
                 client,
                 documents: RwLock::new(HashMap::new()),
+                client_capabilities: Default::default(),
             });
             Server::new(stdin, stdout, socket).serve(service).await;
         });
@@ -108,8 +110,10 @@ impl Backend {
 impl LanguageServer for Backend {
     async fn initialize(
         &self,
-        _params: tower_lsp_server::ls_types::InitializeParams,
+        params: tower_lsp_server::ls_types::InitializeParams,
     ) -> tower_lsp_server::jsonrpc::Result<InitializeResult> {
+        let _ = self.client_capabilities.set(params.capabilities);
+
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(
@@ -381,8 +385,7 @@ impl LanguageServer for Backend {
     async fn goto_definition(
         &self,
         params: tower_lsp_server::ls_types::GotoDefinitionParams,
-    ) -> tower_lsp_server::jsonrpc::Result<Option<tower_lsp_server::ls_types::GotoDefinitionResponse>>
-    {
+    ) -> tower_lsp_server::jsonrpc::Result<Option<GotoDefinitionResponse>> {
         let start = Instant::now();
 
         let guard = self.documents.read().await;
@@ -402,6 +405,25 @@ impl LanguageServer for Backend {
             params.text_document_position_params.position,
         );
 
+        let link_support = self
+            .client_capabilities
+            .get()
+            .and_then(|caps| caps.text_document.as_ref())
+            .and_then(|txt_doc| txt_doc.definition)
+            .and_then(|def| def.link_support)
+            .unwrap_or(false);
+
+        let result = if link_support {
+            definition.map(|location| GotoDefinitionResponse::Link(vec![location]))
+        } else {
+            definition.map(|location| {
+                GotoDefinitionResponse::Scalar(Location {
+                    uri: location.target_uri,
+                    range: location.target_range,
+                })
+            })
+        };
+
         let elapsed = start.elapsed();
         self.client
             .log_message(
@@ -410,9 +432,7 @@ impl LanguageServer for Backend {
             )
             .await;
 
-        Ok(definition.map(|location| {
-            tower_lsp_server::ls_types::GotoDefinitionResponse::Link(vec![location])
-        }))
+        Ok(result)
     }
 
     async fn shutdown(&self) -> tower_lsp_server::jsonrpc::Result<()> {
