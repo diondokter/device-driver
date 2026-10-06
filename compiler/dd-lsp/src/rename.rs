@@ -5,70 +5,17 @@ use device_driver_common::{
 use device_driver_mir::model::{FieldsetRef, TypeRef};
 use tower_lsp_server::ls_types::{Position, Range, TextEdit, WorkspaceEdit};
 
-use crate::document::Document;
+use crate::{document::Document, util::find_identifier_at_position};
 
-pub(crate) fn find_rename_target(
+pub fn find_rename_target(
     document: &Document,
     position: Position,
 ) -> Result<(Range, IdentifierRef<RuntimeNamespace>), String> {
-    let offset = document.translate_position(position);
-
-    if document.mir_manifest().name.span.is_selected_at(offset) {
-        return Ok((
-            document.translate_span(document.mir_manifest().name.span),
-            document
-                .mir_manifest()
-                .name
-                .value
-                .as_runtime_namespace()
-                .take_ref(),
-        ));
-    }
-
-    for object in document.mir_manifest().objects() {
-        if object.name_span().is_selected_at(offset) {
-            return Ok((
-                document.translate_span(object.name_span()),
-                object.name().take_ref(),
-            ));
-        }
-
-        if let Some(repeat) = object.repeat()
-            && repeat.source.span.is_selected_at(offset)
-            && let RepeatSource::Enum(identifier_ref) = &repeat.source.value
-        {
-            return Ok((
-                document.translate_span(repeat.source.span),
-                identifier_ref.clone().to_runtime_namespace(),
-            ));
-        }
-
-        if let Some(conversion) = &object.type_conversion()
-            && let TypeRef::Identifier(identifier) = &conversion.type_ref.value
-            && conversion.type_ref.span.is_selected_at(offset)
-        {
-            return Ok((
-                document.translate_span(conversion.type_ref.span),
-                identifier.clone().to_runtime_namespace(),
-            ));
-        }
-
-        for fs_ref in object.fieldset_refs() {
-            if let FieldsetRef::Identifier(identifier) = &fs_ref.value
-                && fs_ref.span.is_selected_at(offset)
-            {
-                return Ok((
-                    document.translate_span(fs_ref.span),
-                    identifier.clone().to_runtime_namespace(),
-                ));
-            }
-        }
-    }
-
-    Err("cursor position is not a valid rename target".into())
+    find_identifier_at_position(document, position)
+        .ok_or_else(|| "cursor position is not a valid rename target".into())
 }
 
-pub(crate) fn rename(
+pub fn rename(
     document: &Document,
     position: Position,
     new_name: String,

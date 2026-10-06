@@ -11,7 +11,7 @@ use tower_lsp_server::ls_types::{
 
 use crate::document::Document;
 
-pub(crate) fn get_hints(ast: &Ast, visible_span: Span, document: &Document) -> Vec<InlayHint> {
+pub fn get_hints(ast: &Ast, visible_span: Span, document: &Document) -> Vec<InlayHint> {
     ast.nodes()
         .iter()
         .filter(|node| visible_span.overlaps(node.span))

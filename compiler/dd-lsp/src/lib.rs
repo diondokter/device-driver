@@ -8,12 +8,12 @@ use tower_lsp_server::{
     Client, LanguageServer, LspService, Server,
     jsonrpc::Error,
     ls_types::{
-        DiagnosticSeverity, DidOpenTextDocumentParams, DocumentSymbolResponse, InitializeResult,
-        InlayHint, MessageType, OneOf, PrepareRenameResponse, RenameOptions,
-        SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
-        SemanticTokensRangeResult, SemanticTokensResult, SemanticTokensServerCapabilities,
-        ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind, Uri,
-        WorkDoneProgressOptions,
+        DeclarationCapability, DiagnosticSeverity, DidOpenTextDocumentParams,
+        DocumentSymbolResponse, InitializeResult, InlayHint, MessageType, OneOf,
+        PrepareRenameResponse, RenameOptions, SemanticTokensFullOptions, SemanticTokensLegend,
+        SemanticTokensOptions, SemanticTokensRangeResult, SemanticTokensResult,
+        SemanticTokensServerCapabilities, ServerCapabilities, TextDocumentSyncCapability,
+        TextDocumentSyncKind, Uri, WorkDoneProgressOptions,
     },
 };
 
@@ -21,9 +21,11 @@ use crate::document::Document;
 
 mod document;
 mod document_symbol;
+mod goto_definition;
 mod inlay_hints;
 mod rename;
 mod semantic_tokens;
+mod util;
 
 pub struct Backend {
     client: Client,
@@ -138,6 +140,8 @@ impl LanguageServer for Backend {
                     prepare_provider: Some(true),
                     work_done_progress_options: WorkDoneProgressOptions::default(),
                 })),
+                definition_provider: Some(OneOf::Left(true)),
+                declaration_provider: Some(DeclarationCapability::Simple(true)),
                 ..Default::default()
             },
             server_info: Some(tower_lsp_server::ls_types::ServerInfo {
@@ -363,6 +367,52 @@ impl LanguageServer for Backend {
             Ok(edit) => Ok(Some(edit)),
             Err(message) => Err(Error::invalid_params(message)),
         }
+    }
+
+    async fn goto_declaration(
+        &self,
+        params: tower_lsp_server::ls_types::request::GotoDeclarationParams,
+    ) -> tower_lsp_server::jsonrpc::Result<
+        Option<tower_lsp_server::ls_types::request::GotoDeclarationResponse>,
+    > {
+        self.goto_definition(params).await
+    }
+
+    async fn goto_definition(
+        &self,
+        params: tower_lsp_server::ls_types::GotoDefinitionParams,
+    ) -> tower_lsp_server::jsonrpc::Result<Option<tower_lsp_server::ls_types::GotoDefinitionResponse>>
+    {
+        let start = Instant::now();
+
+        let guard = self.documents.read().await;
+        let Some(document) = guard.get(&params.text_document_position_params.text_document.uri)
+        else {
+            return Err(Error::invalid_params(
+                params
+                    .text_document_position_params
+                    .text_document
+                    .uri
+                    .to_string(),
+            ));
+        };
+
+        let definition = goto_definition::goto_definition(
+            document,
+            params.text_document_position_params.position,
+        );
+
+        let elapsed = start.elapsed();
+        self.client
+            .log_message(
+                MessageType::LOG,
+                format!("goto_definition took {}ms", elapsed.as_secs_f32() * 1000.0),
+            )
+            .await;
+
+        Ok(definition.map(|location| {
+            tower_lsp_server::ls_types::GotoDefinitionResponse::Link(vec![location])
+        }))
     }
 
     async fn shutdown(&self) -> tower_lsp_server::jsonrpc::Result<()> {
