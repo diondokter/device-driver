@@ -19,6 +19,8 @@ enum Command {
     GenDocs(GenDocsArgs),
     #[cfg(feature = "_converter")]
     Convert(ConverterArgs),
+    /// Run the lsp server
+    Lsp,
 }
 
 #[derive(Parser, Debug)]
@@ -76,6 +78,17 @@ fn run() -> Result<ExitCode, DynError> {
         Command::GenDocs(args) => gen_docs(args),
         #[cfg(feature = "_converter")]
         Command::Convert(args) => convert(args),
+        Command::Lsp => {
+            let result = std::panic::catch_unwind(|| {
+                device_driver_lsp::Backend::run();
+            });
+            std::thread::sleep(std::time::Duration::from_mins(1));
+            if result.is_ok() {
+                Ok(ExitCode::SUCCESS)
+            } else {
+                Ok(ExitCode::FAILURE)
+            }
+        }
     }
 }
 

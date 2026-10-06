@@ -109,7 +109,7 @@ pub fn compile_output(output_path: &Path) -> String {
     cmd.arg("+nightly");
     cmd.arg("-Zscript");
     cmd.arg(output_path);
-    cmd.env("CARGO_TARGET_DIR", "../../target");
+    cmd.env("CARGO_TARGET_DIR", "../../target/ui-tests");
     cmd.env("CARGO_TERM_COLOR", "never");
     #[cfg(windows)]
     cmd.env("CARGO_INCREMENTAL", "0");

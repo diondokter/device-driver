@@ -81,12 +81,19 @@ impl<I> FooDup1<I> {
     #[doc(alias = "Bar")]
     pub fn bar_dup_2(
         &mut self,
-    ) -> ::device_driver::RegisterOperation<'_, Self, Bar, u8, ::device_driver::RW, ()>
+    ) -> ::device_driver::RegisterOperation<
+        '_,
+        Self,
+        BarDup4,
+        u8,
+        ::device_driver::RW,
+        (),
+    >
     where
         I: ::device_driver::RegisterInterfaceBase<AddressType = u8>,
     {
         let address = self.base_address + 0;
-        ::device_driver::RegisterOperation::new(self, address as u8, Bar::default)
+        ::device_driver::RegisterOperation::new(self, address as u8, BarDup4::default)
     }
 }
 impl<I> ::device_driver::Block for FooDup1<I> {
@@ -127,7 +134,7 @@ impl<I> Blah<I> {
     /// Buffer operation:
     /// - Address: `0`
     #[doc(alias = "Wheee")]
-    pub fn wheee_dup_5(
+    pub fn wheee_dup_3(
         &mut self,
     ) -> ::device_driver::BufferOperation<'_, Self, u8, ::device_driver::RW>
     where
@@ -380,7 +387,7 @@ impl BarDup4 {
     /// `7:0` - Read the `quux` field.
     ///
     #[must_use]
-    pub fn quux(&self) -> Result<Quux, <Quux as TryFrom<u8>>::Error> {
+    pub fn quux(&self) -> Result<QuuxDup5, <QuuxDup5 as TryFrom<u8>>::Error> {
         let start = 0;
         let end = 7;
         let raw = unsafe {
@@ -393,7 +400,7 @@ impl BarDup4 {
     }
     /// `7:0` - Set the `quux` field.
     ///
-    pub fn set_quux(&mut self, value: Quux) {
+    pub fn set_quux(&mut self, value: QuuxDup5) {
         let start = 0;
         let end = 7;
         let raw = value.into();
@@ -535,7 +542,7 @@ impl ::device_driver::EnumIndex for Quux {
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub enum QuuxDup3 {
+pub enum QuuxDup5 {
     #[doc(alias = "quux")]
     Quux = 0,
     #[doc(alias = "bar")]
@@ -543,7 +550,7 @@ pub enum QuuxDup3 {
     #[doc(alias = "foo")]
     Foo = 2,
 }
-impl core::convert::TryFrom<u8> for QuuxDup3 {
+impl core::convert::TryFrom<u8> for QuuxDup5 {
     type Error = ::device_driver::ConversionError<u8>;
     fn try_from(val: u8) -> Result<Self, Self::Error> {
         match val {
@@ -553,23 +560,23 @@ impl core::convert::TryFrom<u8> for QuuxDup3 {
             val => {
                 Err(::device_driver::ConversionError {
                     source: val,
-                    target: "QuuxDup3",
+                    target: "QuuxDup5",
                 })
             }
         }
     }
 }
-impl From<QuuxDup3> for u8 {
-    fn from(val: QuuxDup3) -> Self {
+impl From<QuuxDup5> for u8 {
+    fn from(val: QuuxDup5) -> Self {
         match val {
-            QuuxDup3::Quux => 0,
-            QuuxDup3::Bar => 1,
-            QuuxDup3::Foo => 2,
+            QuuxDup5::Quux => 0,
+            QuuxDup5::Bar => 1,
+            QuuxDup5::Foo => 2,
         }
     }
 }
 #[doc(hidden)]
-impl ::device_driver::EnumIndex for QuuxDup3 {
+impl ::device_driver::EnumIndex for QuuxDup5 {
     #[track_caller]
     fn index(&self) -> i32 {
         let index = u8::from(*self);

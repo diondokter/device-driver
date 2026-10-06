@@ -48,7 +48,7 @@ The fieldset that represents the input data of the command. This can be a refere
 // type reference
 fields-in: MyFieldset,
 // sub node
-fields-in: fieldset MyFieldSet
+fields-in: fieldset my_fieldset
 ```
 #### Info
 - required: `no`
@@ -60,7 +60,7 @@ The fieldset that represents the output data of the command. This can be a refer
 // type reference
 fields-out: MyFieldset,
 // sub node
-fields-out: fieldset MyFieldSet
+fields-out: fieldset my_fieldset
 ```
 #### Info
 - required: `no`

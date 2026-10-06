@@ -1,15 +1,14 @@
-use std::{collections::HashSet, num::NonZero, time::Duration};
+use std::{collections::VecDeque, num::NonZero, time::Duration};
 
 use clap::Parser;
 use device_driver_common::{
-    identifier::{IdentifierRef, Namespace},
     span::{Span, SpanExt},
     specifiers::{Repeat, RepeatSource},
 };
 use device_driver_diagnostics::{Diagnostics, DynError};
 use device_driver_parser::Ast;
 
-use crate::model::{Device, Id, LendingIterator, Manifest, Object, ObjectId};
+use crate::model::{Device, Manifest, Object};
 
 mod lowering;
 pub mod model;
@@ -38,7 +37,7 @@ pub struct MirOptions {
 }
 
 pub fn lower_ast(
-    ast: Ast,
+    ast: &Ast,
     options: &MirOptions,
     diagnostics: &mut Diagnostics,
 ) -> Result<(model::Manifest, Vec<PassTiming>), DynError> {
@@ -49,32 +48,27 @@ pub fn lower_ast(
     Ok((mir, pass_timings))
 }
 
-/// This assumes [passes::Assumption::NamesUnique]
-pub fn search_object<'o, T: Namespace>(
-    manifest: &'o Manifest,
-    name: &IdentifierRef<T>,
-) -> Option<&'o Object> {
-    manifest.iter_objects().find(|o| name.is_ref_to(o.name()))
-}
-
 /// Returns None if device has no objects that pass the filter
 ///
 /// This assumes [passes::Assumption::RepeatStrideNonZero], [passes::Assumption::NamesUnique] & [passes::Assumption::RepeatEnumRefValid]
-#[expect(clippy::type_complexity, reason = "I disagree")]
 pub fn find_min_max_addresses<'m>(
     manifest: &'m Manifest,
     device: &'m Device,
-    filter: impl Fn(&'m Object) -> bool,
-) -> Option<((i128, &'m Object), (i128, &'m Object))> {
+    filter: impl Fn(Object<'m>) -> bool,
+) -> Option<((i128, Object<'m>), (i128, Object<'m>))> {
     let mut min_address_found = i128::MAX;
     let mut min_obj_found = None;
     let mut max_address_found = i128::MIN;
     let mut max_obj_found = None;
 
-    let mut children_left = vec![device.objects.len()];
+    let mut children_left = vec![device.children.len()];
     let mut address_offsets = vec![device.address_offset.value];
 
-    for object in device.iter_objects() {
+    let mut children_queue = VecDeque::from(device.children.clone());
+
+    while let Some(object) = children_queue.pop_front() {
+        let object = manifest.object(object).unwrap();
+
         while children_left.last() == Some(&0) {
             children_left.pop();
             address_offsets.pop();
@@ -114,12 +108,15 @@ pub fn find_min_max_addresses<'m>(
                     }
                 }
                 RepeatSource::Enum(enum_name) => {
-                    let enum_value = search_object(manifest, &enum_name)
+                    let enum_value = manifest
+                        .search_object(&enum_name)
                         .expect("A mir pass checked this enum exists")
                         .as_enum()
                         .expect("A mir pass checked this is an enum");
 
-                    for (discriminant, _) in enum_value.iter_variants_with_discriminant() {
+                    for (discriminant, _) in
+                        enum_value.iter_variants_with_discriminant(&manifest.enum_variants)
+                    {
                         let address = total_address_offsets
                             + address.value
                             + (discriminant * repeat.stride.value);
@@ -140,11 +137,17 @@ pub fn find_min_max_addresses<'m>(
         match object {
             Object::Device(d) => {
                 address_offsets.push(d.address_offset.value);
-                children_left.push(d.objects.len());
+                children_left.push(d.children.len());
+                for sub_child in d.children.iter().rev() {
+                    children_queue.push_front(*sub_child);
+                }
             }
             Object::Block(b) => {
                 address_offsets.push(b.address_offset.value);
-                children_left.push(b.objects.len());
+                children_left.push(b.children.len());
+                for sub_child in b.children.iter().rev() {
+                    children_queue.push_front(*sub_child);
+                }
             }
             _ => (),
         }
@@ -154,76 +157,6 @@ pub fn find_min_max_addresses<'m>(
         (min_address_found, min_obj_found?),
         (max_address_found, max_obj_found?),
     ))
-}
-
-fn remove_objects(
-    manifest: &mut Manifest,
-    mut removals: HashSet<ObjectId>,
-) -> Result<(), DynError> {
-    fn try_remove_from_vec(objects: &mut Vec<Object>, removals: &mut HashSet<ObjectId>) {
-        removals.retain(|removal| {
-            if let Some((index, _)) = objects
-                .iter()
-                .enumerate()
-                .find(|(_, obj)| obj.has_id(removal))
-            {
-                objects.remove(index);
-                false
-            } else {
-                // Find a field
-                for fs in objects.iter_mut().filter_map(|o| o.as_field_set_mut()) {
-                    for index in 0..fs.fields.len() {
-                        if fs.fields[index].has_id(removal) {
-                            fs.fields.remove(index);
-                            return false;
-                        }
-                    }
-                }
-                // Find an enum variant
-                for enum_value in objects.iter_mut().filter_map(|o| o.as_enum_mut()) {
-                    for index in 0..enum_value.variants.len() {
-                        if enum_value.variants[index].has_id(removal) {
-                            enum_value.variants.remove(index);
-                            return false;
-                        }
-                    }
-                }
-
-                true
-            }
-        });
-    }
-
-    if removals.is_empty() {
-        return Ok(());
-    }
-
-    for removal in removals.iter() {
-        if !removal.identifier().is_valid() {
-            return Err(DynError::new(format!("removal {} is invalid", removal)));
-        }
-    }
-
-    try_remove_from_vec(&mut manifest.objects, &mut removals);
-
-    if removals.is_empty() {
-        return Ok(());
-    }
-
-    let mut iter = manifest.iter_objects_with_config_mut();
-    while let Some((object, _)) = iter.next() {
-        let Some(child_objects) = object.child_objects_vec() else {
-            continue;
-        };
-
-        try_remove_from_vec(child_objects, &mut removals);
-
-        if removals.is_empty() {
-            return Ok(());
-        }
-    }
-
-    Ok(())
 }
 
 #[derive(Debug)]
