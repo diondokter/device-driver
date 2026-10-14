@@ -23,6 +23,7 @@ mod document;
 mod document_symbol;
 mod goto_definition;
 mod inlay_hints;
+mod references;
 mod rename;
 mod semantic_tokens;
 mod util;
@@ -146,6 +147,7 @@ impl LanguageServer for Backend {
                 })),
                 definition_provider: Some(OneOf::Left(true)),
                 declaration_provider: Some(DeclarationCapability::Simple(true)),
+                references_provider: Some(OneOf::Left(true)),
                 ..Default::default()
             },
             server_info: Some(tower_lsp_server::ls_types::ServerInfo {
@@ -429,6 +431,36 @@ impl LanguageServer for Backend {
             .log_message(
                 MessageType::LOG,
                 format!("goto_definition took {}ms", elapsed.as_secs_f32() * 1000.0),
+            )
+            .await;
+
+        Ok(result)
+    }
+
+    async fn references(
+        &self,
+        params: tower_lsp_server::ls_types::ReferenceParams,
+    ) -> tower_lsp_server::jsonrpc::Result<Option<Vec<Location>>> {
+        let start = Instant::now();
+
+        let guard = self.documents.read().await;
+        let Some(document) = guard.get(&params.text_document_position.text_document.uri) else {
+            return Err(Error::invalid_params(
+                params.text_document_position.text_document.uri.to_string(),
+            ));
+        };
+
+        let result = references::find_references(
+            document,
+            params.text_document_position.position,
+            params.context.include_declaration,
+        );
+
+        let elapsed = start.elapsed();
+        self.client
+            .log_message(
+                MessageType::LOG,
+                format!("references took {}ms", elapsed.as_secs_f32() * 1000.0),
             )
             .await;
 
