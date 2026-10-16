@@ -277,7 +277,7 @@ impl SemanticTokenObject for Node {
                 .with_semantics(TokenType::Comment, &[TokenModifier::Documentation])
         }));
         tokens.push(
-            Token::Ident(self.node_type.val.as_str()).with_semantics(TokenType::NodeType, &[]),
+            Token::Ident(self.node_type.val.as_str()).with_semantics(TokenType::Keyword, &[]),
         );
         tokens.push(Token::Ident(self.name.val.as_str()).with_semantics(
             TokenType::Type,
@@ -328,9 +328,11 @@ impl SemanticTokenObject for TypeSpecifier {
         tokens.push(Token::Arrow.without_semantics());
         self.base_type.to_tokens_in(&(), tokens);
         if let Some(conversion) = self.conversion.as_ref() {
-            tokens.push(Token::As.with_semantics(TokenType::Keyword, &[]));
+            tokens.push(Token::As.with_semantics(TokenType::Keyword, &[TokenModifier::Expression]));
             if self.use_try {
-                tokens.push(Token::Try.with_semantics(TokenType::Keyword, &[]));
+                tokens.push(
+                    Token::Try.with_semantics(TokenType::Keyword, &[TokenModifier::Expression]),
+                );
             }
             conversion.to_tokens_in(ctx, tokens);
         }
@@ -620,7 +622,7 @@ impl SemanticTokenObject for Repeat {
     fn to_tokens_in(&self, ctx: &Self::Context, tokens: &mut Vec<SemanticToken<'_>>) {
         tokens.push(Token::BracketOpen.without_semantics());
         self.source.to_tokens_in(ctx, tokens);
-        tokens.push(Token::Stride.with_semantics(TokenType::Keyword, &[]));
+        tokens.push(Token::Stride.with_semantics(TokenType::Keyword, &[TokenModifier::Expression]));
         tokens.push(
             Token::Num(self.stride.to_string().intern().as_str())
                 .with_semantics(TokenType::Number, &[]),

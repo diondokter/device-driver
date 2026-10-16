@@ -103,7 +103,7 @@ impl SemanticTokenObject for Access {
     type Context = ();
 
     fn to_tokens_in(&self, _ctx: &Self::Context, tokens: &mut Vec<SemanticToken<'_>>) {
-        tokens.push(Token::Access(*self).with_semantics(TokenType::Access, &[]));
+        tokens.push(Token::Access(*self).with_semantics(TokenType::Keyword, &[]));
     }
 }
 
@@ -111,7 +111,7 @@ impl SemanticTokenObject for ByteOrder {
     type Context = ();
 
     fn to_tokens_in(&self, _ctx: &Self::Context, tokens: &mut Vec<SemanticToken<'_>>) {
-        tokens.push(Token::ByteOrder(*self).with_semantics(TokenType::ByteOrder, &[]));
+        tokens.push(Token::ByteOrder(*self).with_semantics(TokenType::Keyword, &[]));
     }
 }
 
@@ -140,6 +140,6 @@ impl SemanticTokenObject for AddressMode {
     type Context = ();
 
     fn to_tokens_in(&self, _ctx: &Self::Context, tokens: &mut Vec<SemanticToken<'_>>) {
-        tokens.push(Token::AddressMode(*self).with_semantics(TokenType::AddressMode, &[]));
+        tokens.push(Token::AddressMode(*self).with_semantics(TokenType::Keyword, &[]));
     }
 }

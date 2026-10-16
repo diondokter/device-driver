@@ -295,6 +295,8 @@ pub enum TokenModifier {
     Modification = 0b1000_0000,
     Documentation = 0b1_0000_0000,
     DefaultLibrary = 0b10_0000_0000,
+    // Custom:
+    Expression = 0b100_0000_0000,
 }
 
 impl VariantNames for TokenModifier {
@@ -309,6 +311,7 @@ impl VariantNames for TokenModifier {
         "modification",
         "documentation",
         "defaultlibrary",
+        "expression",
     ];
     fn name(&self) -> &'static str {
         Self::VARIANTS[*self as usize]
