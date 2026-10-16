@@ -9,11 +9,12 @@ use tower_lsp_server::{
     jsonrpc::Error,
     ls_types::{
         ClientCapabilities, DeclarationCapability, DiagnosticSeverity, DidOpenTextDocumentParams,
-        DocumentSymbolResponse, GotoDefinitionResponse, InitializeResult, InlayHint, Location,
-        MessageType, OneOf, PrepareRenameResponse, RenameOptions, SemanticTokensFullOptions,
-        SemanticTokensLegend, SemanticTokensOptions, SemanticTokensRangeResult,
-        SemanticTokensResult, SemanticTokensServerCapabilities, ServerCapabilities,
-        TextDocumentSyncCapability, TextDocumentSyncKind, Uri, WorkDoneProgressOptions,
+        DocumentSymbolResponse, GotoDefinitionResponse, HoverProviderCapability, InitializeResult,
+        InlayHint, Location, MessageType, OneOf, PrepareRenameResponse, RenameOptions,
+        SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
+        SemanticTokensRangeResult, SemanticTokensResult, SemanticTokensServerCapabilities,
+        ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind, Uri,
+        WorkDoneProgressOptions,
     },
 };
 
@@ -23,6 +24,7 @@ mod document;
 mod document_highlight;
 mod document_symbol;
 mod goto_definition;
+mod hover;
 mod inlay_hints;
 mod references;
 mod rename;
@@ -150,6 +152,7 @@ impl LanguageServer for Backend {
                 declaration_provider: Some(DeclarationCapability::Simple(true)),
                 references_provider: Some(OneOf::Left(true)),
                 document_highlight_provider: Some(OneOf::Left(true)),
+                hover_provider: Some(HoverProviderCapability::Simple(true)),
                 ..Default::default()
             },
             server_info: Some(tower_lsp_server::ls_types::ServerInfo {
@@ -501,6 +504,37 @@ impl LanguageServer for Backend {
                     "document_highlight took {}ms",
                     elapsed.as_secs_f32() * 1000.0
                 ),
+            )
+            .await;
+
+        Ok(result)
+    }
+
+    async fn hover(
+        &self,
+        params: tower_lsp_server::ls_types::HoverParams,
+    ) -> tower_lsp_server::jsonrpc::Result<Option<tower_lsp_server::ls_types::Hover>> {
+        let start = Instant::now();
+
+        let guard = self.documents.read().await;
+        let Some(document) = guard.get(&params.text_document_position_params.text_document.uri)
+        else {
+            return Err(Error::invalid_params(
+                params
+                    .text_document_position_params
+                    .text_document
+                    .uri
+                    .to_string(),
+            ));
+        };
+
+        let result = hover::get_hover(document, params.text_document_position_params.position);
+
+        let elapsed = start.elapsed();
+        self.client
+            .log_message(
+                MessageType::LOG,
+                format!("hover took {}ms", elapsed.as_secs_f32() * 1000.0),
             )
             .await;
 

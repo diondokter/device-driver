@@ -145,6 +145,7 @@ pub struct Node {
     pub short_properties: Vec<Spanned<Expression>>,
     pub properties: Vec<Spanned<Property>>,
     pub sub_nodes: Vec<NodeId>,
+    pub body_span: Option<Span>,
     pub span: Span,
 }
 
@@ -1019,6 +1020,7 @@ pub fn node<'tokens, 'src: 'tokens>()
             )
             .then(
                 node_body(node.clone())
+                    .map_with(|body, extra| (body, extra.span()))
                     .labelled("node-body")
                     .as_non_terminal()
                     .or_not(),
@@ -1029,7 +1031,7 @@ pub fn node<'tokens, 'src: 'tokens>()
                     body,
                 ),
                  extra| {
-                    let (properties, sub_nodes) = body.unwrap_or_default();
+                    let ((properties, sub_nodes), body_span) = body.unwrap_or_default();
 
                     let mut span: Span = extra.span();
                     span = span.start_from(node_type.span);
@@ -1043,6 +1045,11 @@ pub fn node<'tokens, 'src: 'tokens>()
                         properties,
                         short_properties: expressions,
                         sub_nodes,
+                        body_span: if body_span.is_empty() {
+                            None
+                        } else {
+                            Some(body_span)
+                        },
                         span,
                     })
                 },

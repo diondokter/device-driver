@@ -230,6 +230,7 @@ fn get_method(
             address,
             short_properties_span: _,
             properties_span: _,
+            body_span: _,
             span: _,
         }) => Some(lir::BlockMethod {
             description: *description,
@@ -298,6 +299,7 @@ fn transform_field(manifest: &mir::Manifest, field: &mir::Field) -> Result<lir::
         repeat,
         short_properties_span: _,
         properties_span: _,
+        body_span: _,
         span: _,
     } = field;
 
@@ -390,6 +392,7 @@ pub fn transform_enums(manifest: &mir::Manifest) -> Vec<lir::Enum> {
             generation_style: _,
             short_properties_span: _,
             properties_span: _,
+            body_span: _,
             span: _
         } = e;
 
@@ -501,6 +504,7 @@ impl<'o> From<&'o mir::Block> for BorrowedBlock<'o> {
             default_access: _,
             short_properties_span: _,
             properties_span: _,
+            body_span: _,
             span: _,
         } = value;
 

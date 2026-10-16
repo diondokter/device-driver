@@ -114,6 +114,7 @@ pub fn convert(source: &str, sub_format: DeviceDriverV1Format) -> Result<String,
                     .with_message(|| format!("converting object `{}`", object_name(o)))
             })
             .collect::<Result<Vec<_>, _>>()?,
+        body_span: None,
         span: Span::empty(),
     };
 
@@ -367,6 +368,7 @@ fn convert_register(
         .flatten()
         .collect(),
         sub_nodes: Vec::new(),
+        body_span: None,
         span: Span::empty(),
     };
     Ok(arena.alloc_node(node))
@@ -471,6 +473,7 @@ fn convert_command(
         .flatten()
         .collect(),
         sub_nodes: Vec::new(),
+        body_span: None,
         span: Span::empty(),
     };
     Ok(arena.alloc_node(node))
@@ -539,6 +542,7 @@ fn convert_fieldset(
                 convert_field(f, arena).with_message(|| format!("converting field {}", f.name))
             })
             .collect::<Result<Vec<_>, _>>()?,
+        body_span: None,
         span: Span::empty(),
     };
     Ok(arena.alloc_node(node))
@@ -598,6 +602,7 @@ fn convert_field(field: &Field, arena: &mut AstArena) -> Result<NodeId, DynError
         .collect(),
         properties: Vec::new(),
         sub_nodes: Vec::new(),
+        body_span: None,
         span: Span::empty(),
     };
     Ok(arena.alloc_node(node))
@@ -637,6 +642,7 @@ fn convert_buffer(buffer: &Buffer, arena: &mut AstArena) -> Result<NodeId, DynEr
         .flatten()
         .collect(),
         sub_nodes: Vec::new(),
+        body_span: None,
         span: Span::empty(),
     }))
 }
@@ -677,6 +683,7 @@ fn convert_block(
                     .with_message(|| format!("converting object {}", object_name(o)))
             })
             .collect::<Result<Vec<_>, _>>()?,
+        body_span: None,
         span: Span::empty(),
     };
     Ok(arena.alloc_node(node))
@@ -769,6 +776,7 @@ fn convert_enum(enum_value: &Enum, arena: &mut AstArena) -> NodeId {
             })
             .collect(),
         sub_nodes: Vec::new(),
+        body_span: None,
         span: Span::empty(),
     })
 }

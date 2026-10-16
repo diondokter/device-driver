@@ -261,6 +261,7 @@ pub struct Manifest {
 
     pub short_properties_span: Span,
     pub properties_span: Option<Span>,
+    pub body_span: Option<Span>,
     pub span: Span,
 }
 
@@ -632,6 +633,7 @@ pub struct Device {
 
     pub short_properties_span: Span,
     pub properties_span: Option<Span>,
+    pub body_span: Option<Span>,
     /// Span of the whole object
     pub span: Span,
 }
@@ -840,6 +842,22 @@ impl<'a> Object<'a> {
         }
     }
 
+    /// Get the (markdown) description of the object
+    pub fn description(&self) -> Istr {
+        match self {
+            Object::Device(val) => val.description,
+            Object::Block(val) => val.description,
+            Object::Register(val) => val.description,
+            Object::Command(val) => val.description,
+            Object::Buffer(val) => val.description,
+            Object::FieldSet(val) => val.description,
+            Object::Enum(val) => val.description,
+            Object::Extern(val) => val.description,
+            Object::Field(val) => val.description,
+            Object::EnumVariant(val) => val.description,
+        }
+    }
+
     /// Get the span of the name of the object
     pub fn name_span(&self) -> Span {
         match self {
@@ -1029,6 +1047,21 @@ impl<'a> Object<'a> {
             Object::EnumVariant(_) => None,
         }
     }
+
+    pub fn body_span(&self) -> Option<Span> {
+        match self {
+            Object::Device(val) => val.body_span,
+            Object::Block(val) => val.body_span,
+            Object::Register(val) => val.body_span,
+            Object::Command(val) => val.body_span,
+            Object::Buffer(val) => val.body_span,
+            Object::FieldSet(val) => val.body_span,
+            Object::Enum(val) => val.body_span,
+            Object::Extern(val) => val.body_span,
+            Object::Field(val) => val.body_span,
+            Object::EnumVariant(_) => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -1042,6 +1075,7 @@ pub struct Block {
 
     pub short_properties_span: Span,
     pub properties_span: Option<Span>,
+    pub body_span: Option<Span>,
     /// Span of the whole object
     pub span: Span,
 }
@@ -1059,6 +1093,7 @@ pub struct Register {
 
     pub short_properties_span: Span,
     pub properties_span: Option<Span>,
+    pub body_span: Option<Span>,
     /// Span of the whole object
     pub span: Span,
 }
@@ -1096,6 +1131,7 @@ pub struct FieldSet {
 
     pub short_properties_span: Span,
     pub properties_span: Option<Span>,
+    pub body_span: Option<Span>,
     /// Span of the whole object
     pub span: Span,
 }
@@ -1147,6 +1183,7 @@ pub struct Field {
 
     pub short_properties_span: Span,
     pub properties_span: Option<Span>,
+    pub body_span: Option<Span>,
     /// Span of the whole object
     pub span: Span,
 }
@@ -1183,56 +1220,12 @@ pub struct Enum {
 
     pub short_properties_span: Span,
     pub properties_span: Option<Span>,
+    pub body_span: Option<Span>,
     /// Span of the whole object
     pub span: Span,
 }
 
 impl Enum {
-    #[cfg(test)]
-    pub fn new(
-        description: Istr,
-        name: Spanned<Identifier<Type>>,
-        variants: Vec<EnumVariantId>,
-        base_type: Spanned<BaseType>,
-        size_bits: Option<u32>,
-        span: Span,
-    ) -> Self {
-        Self {
-            description,
-            name,
-            variants,
-            base_type,
-            size_bits,
-            generation_style: None,
-            short_properties_span: Span::empty(),
-            properties_span: None,
-            span,
-        }
-    }
-
-    #[cfg(test)]
-    pub fn new_with_style(
-        description: Istr,
-        name: Spanned<Identifier<Type>>,
-        variants: Vec<EnumVariantId>,
-        base_type: Spanned<BaseType>,
-        size_bits: Option<u32>,
-        generation_style: EnumGenerationStyle,
-        span: Span,
-    ) -> Self {
-        Self {
-            description,
-            name,
-            variants,
-            base_type,
-            size_bits,
-            generation_style: Some(generation_style),
-            short_properties_span: Span::empty(),
-            properties_span: None,
-            span,
-        }
-    }
-
     /// Get an iterator over the variants, but with an extra counter to get the specified discriminant for each.
     ///
     /// *Note:* The validity of this is checked in the [`passes::enum_values_checked`] pass. If this function is run
@@ -1336,6 +1329,7 @@ pub struct Command {
 
     pub short_properties_span: Span,
     pub properties_span: Option<Span>,
+    pub body_span: Option<Span>,
     /// Span of the whole object
     pub span: Span,
 }
@@ -1349,6 +1343,7 @@ pub struct Buffer {
 
     pub short_properties_span: Span,
     pub properties_span: Option<Span>,
+    pub body_span: Option<Span>,
     /// Span of the whole object
     pub span: Span,
 }
@@ -1366,6 +1361,7 @@ pub struct Extern {
 
     pub short_properties_span: Span,
     pub properties_span: Option<Span>,
+    pub body_span: Option<Span>,
     /// Span of the whole object
     pub span: Span,
 }

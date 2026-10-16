@@ -46,6 +46,7 @@ pub(crate) fn ast_example() -> &'static AstExample {
                     properties: Vec::new(),
                     short_properties: Vec::new(),
                     sub_nodes: Vec::new(),
+                    body_span: None,
                     span: Span::empty(),
                 });
 
@@ -264,6 +265,10 @@ If this value is specified, then it permits bulk register reads and writes.",
         &mut self.short_properties_span
     }
 
+    fn body_span(&mut self) -> &mut Option<Span> {
+        &mut self.body_span
+    }
+
     fn span(&mut self) -> &mut Span {
         &mut self.span
     }
@@ -291,6 +296,7 @@ If this value is specified, then it permits bulk register reads and writes.",
             parent_map: _,    // Keep old
             short_properties_span,
             properties_span,
+            body_span,
             span,
         } = manifest;
 
@@ -301,6 +307,7 @@ If this value is specified, then it permits bulk register reads and writes.",
 
         *short_properties_span = self.short_properties_span;
         *properties_span = self.properties_span;
+        *body_span = self.body_span;
         *span = self.span;
     }
 }
@@ -522,16 +529,20 @@ If this is not specified, the address offset defaults to 0.",
         self.children.push(object);
     }
 
-    fn span(&mut self) -> &mut Span {
-        &mut self.span
-    }
-
     fn properties_span(&mut self) -> &mut Option<Span> {
         &mut self.properties_span
     }
 
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
+    }
+
+    fn body_span(&mut self) -> &mut Option<Span> {
+        &mut self.body_span
+    }
+
+    fn span(&mut self) -> &mut Span {
+        &mut self.span
     }
 
     fn add_to_manifest(self, manifest: &mut Manifest) -> ObjectId {
@@ -618,16 +629,20 @@ If this is not desired, then keep the address offset at 0.",
         Some(&mut self.repeat)
     }
 
-    fn span(&mut self) -> &mut Span {
-        &mut self.span
-    }
-
     fn properties_span(&mut self) -> &mut Option<Span> {
         &mut self.properties_span
     }
 
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
+    }
+
+    fn body_span(&mut self) -> &mut Option<Span> {
+        &mut self.body_span
+    }
+
+    fn span(&mut self) -> &mut Span {
+        &mut self.span
     }
 
     fn add_to_manifest(self, manifest: &mut Manifest) -> ObjectId {
@@ -814,16 +829,20 @@ The value can be expressed in two ways:
         Some(&mut self.repeat)
     }
 
-    fn span(&mut self) -> &mut Span {
-        &mut self.span
-    }
-
     fn properties_span(&mut self) -> &mut Option<Span> {
         &mut self.properties_span
     }
 
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
+    }
+
+    fn body_span(&mut self) -> &mut Option<Span> {
+        &mut self.body_span
+    }
+
+    fn span(&mut self) -> &mut Span {
+        &mut self.span
     }
 
     fn add_to_manifest(self, manifest: &mut Manifest) -> ObjectId {
@@ -937,16 +956,20 @@ impl Shape for FieldSet {
         self.fields.push(field);
     }
 
-    fn span(&mut self) -> &mut Span {
-        &mut self.span
-    }
-
     fn properties_span(&mut self) -> &mut Option<Span> {
         &mut self.properties_span
     }
 
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
+    }
+
+    fn body_span(&mut self) -> &mut Option<Span> {
+        &mut self.body_span
+    }
+
+    fn span(&mut self) -> &mut Span {
+        &mut self.span
     }
 
     fn add_to_manifest(self, manifest: &mut Manifest) -> ObjectId {
@@ -1023,16 +1046,20 @@ impl Shape for Extern {
         Some(&mut self.base_type)
     }
 
-    fn span(&mut self) -> &mut Span {
-        &mut self.span
-    }
-
     fn properties_span(&mut self) -> &mut Option<Span> {
         &mut self.properties_span
     }
 
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
+    }
+
+    fn body_span(&mut self) -> &mut Option<Span> {
+        &mut self.body_span
+    }
+
+    fn span(&mut self) -> &mut Span {
+        &mut self.span
     }
 
     fn add_to_manifest(self, manifest: &mut Manifest) -> ObjectId {
@@ -1096,16 +1123,20 @@ impl Shape for Buffer {
         &MAP
     }
 
-    fn span(&mut self) -> &mut Span {
-        &mut self.span
-    }
-
     fn properties_span(&mut self) -> &mut Option<Span> {
         &mut self.properties_span
     }
 
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
+    }
+
+    fn body_span(&mut self) -> &mut Option<Span> {
+        &mut self.body_span
+    }
+
+    fn span(&mut self) -> &mut Span {
+        &mut self.span
     }
 
     fn add_to_manifest(self, manifest: &mut Manifest) -> ObjectId {
@@ -1188,16 +1219,20 @@ impl Shape for Enum {
         Some(&mut self.base_type)
     }
 
-    fn span(&mut self) -> &mut Span {
-        &mut self.span
-    }
-
     fn properties_span(&mut self) -> &mut Option<Span> {
         &mut self.properties_span
     }
 
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
+    }
+
+    fn body_span(&mut self) -> &mut Option<Span> {
+        &mut self.body_span
+    }
+
+    fn span(&mut self) -> &mut Span {
+        &mut self.span
     }
 
     fn add_to_manifest(self, manifest: &mut Manifest) -> ObjectId {
@@ -1391,16 +1426,20 @@ impl Shape for Command {
         Some(&mut self.repeat)
     }
 
-    fn span(&mut self) -> &mut Span {
-        &mut self.span
-    }
-
     fn properties_span(&mut self) -> &mut Option<Span> {
         &mut self.properties_span
     }
 
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
+    }
+
+    fn body_span(&mut self) -> &mut Option<Span> {
+        &mut self.body_span
+    }
+
+    fn span(&mut self) -> &mut Span {
+        &mut self.span
     }
 
     fn add_to_manifest(self, manifest: &mut Manifest) -> ObjectId {
@@ -1508,16 +1547,20 @@ impl Shape for Field {
         Some(&mut self.repeat)
     }
 
-    fn span(&mut self) -> &mut Span {
-        &mut self.span
-    }
-
     fn properties_span(&mut self) -> &mut Option<Span> {
         &mut self.properties_span
     }
 
     fn short_properties_span(&mut self) -> &mut Span {
         &mut self.short_properties_span
+    }
+
+    fn body_span(&mut self) -> &mut Option<Span> {
+        &mut self.body_span
+    }
+
+    fn span(&mut self) -> &mut Span {
+        &mut self.span
     }
 
     fn add_to_manifest(self, manifest: &mut Manifest) -> ObjectId {

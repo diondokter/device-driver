@@ -183,6 +183,7 @@ fn parse_node_to_shape<S: Shape>(
     let mut error = false;
 
     *target.span() = node.span;
+    *target.body_span() = node.body_span;
 
     // Doc comments
 
@@ -634,6 +635,7 @@ trait Shape: Default + 'static {
 
     fn properties_span(&mut self) -> &mut Option<Span>;
     fn short_properties_span(&mut self) -> &mut Span;
+    fn body_span(&mut self) -> &mut Option<Span>;
     fn span(&mut self) -> &mut Span;
 
     fn add_to_manifest(self, manifest: &mut Manifest) -> ObjectId;

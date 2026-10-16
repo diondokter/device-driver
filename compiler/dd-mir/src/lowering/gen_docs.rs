@@ -266,6 +266,7 @@ fn generate_shape_example<S: Shape>() -> Node {
             .iter()
             .map(|node_type| node_example(*node_type))
             .collect(),
+        body_span: None,
         span: Span::empty(),
     }
 }

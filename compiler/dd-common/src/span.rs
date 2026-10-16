@@ -91,6 +91,22 @@ impl Span {
         // We want to be able to put the cursor right after a word and have it select the word
         self.start <= offset && offset <= self.end
     }
+
+    /// Take the start of self until the end of other (max is end of self)
+    pub fn until_end_of(&self, other: Self) -> Self {
+        Self {
+            start: self.start,
+            end: self.end.min(other.end),
+        }
+    }
+
+    /// Take the start of self until the start of other (max is end of self)
+    pub fn until_start_of(&self, other: Self) -> Self {
+        Self {
+            start: self.start,
+            end: self.end.min(other.start),
+        }
+    }
 }
 
 impl chumsky::span::Span for Span {
