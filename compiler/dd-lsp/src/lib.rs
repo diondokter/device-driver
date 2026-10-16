@@ -20,6 +20,7 @@ use tower_lsp_server::{
 use crate::document::Document;
 
 mod document;
+mod document_highlight;
 mod document_symbol;
 mod goto_definition;
 mod inlay_hints;
@@ -148,6 +149,7 @@ impl LanguageServer for Backend {
                 definition_provider: Some(OneOf::Left(true)),
                 declaration_provider: Some(DeclarationCapability::Simple(true)),
                 references_provider: Some(OneOf::Left(true)),
+                document_highlight_provider: Some(OneOf::Left(true)),
                 ..Default::default()
             },
             server_info: Some(tower_lsp_server::ls_types::ServerInfo {
@@ -461,6 +463,44 @@ impl LanguageServer for Backend {
             .log_message(
                 MessageType::LOG,
                 format!("references took {}ms", elapsed.as_secs_f32() * 1000.0),
+            )
+            .await;
+
+        Ok(result)
+    }
+
+    async fn document_highlight(
+        &self,
+        params: tower_lsp_server::ls_types::DocumentHighlightParams,
+    ) -> tower_lsp_server::jsonrpc::Result<Option<Vec<tower_lsp_server::ls_types::DocumentHighlight>>>
+    {
+        let start = Instant::now();
+
+        let guard = self.documents.read().await;
+        let Some(document) = guard.get(&params.text_document_position_params.text_document.uri)
+        else {
+            return Err(Error::invalid_params(
+                params
+                    .text_document_position_params
+                    .text_document
+                    .uri
+                    .to_string(),
+            ));
+        };
+
+        let result = document_highlight::find_highlights(
+            document,
+            params.text_document_position_params.position,
+        );
+
+        let elapsed = start.elapsed();
+        self.client
+            .log_message(
+                MessageType::LOG,
+                format!(
+                    "document_highlight took {}ms",
+                    elapsed.as_secs_f32() * 1000.0
+                ),
             )
             .await;
 
