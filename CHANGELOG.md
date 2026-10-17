@@ -2,6 +2,10 @@
 
 ### Unreleased
 
+- Fixed code generation for enums where converting from a base type would ignore the default variant in the presence of a catch-all variant
+  - When both are present, the catch-all should be used as fallback.
+  - But when a variant exactly matches the default, that should still be used instead of falling through to the catch-all
+
 ### 2.1.1 (24-08-26)
 
 - Added defmt::Format derives for generated devices/blocks
