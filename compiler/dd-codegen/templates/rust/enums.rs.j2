@@ -32,7 +32,7 @@ impl From<{{enum_value.base_type}}> for {{enum_value.name.to_case(Case::Pascal)}
     fn from(val: {{enum_value.base_type}}) -> Self {
         match val {
             {% for variant in enum_value.variants %}
-                {% if !(variant.default || variant.catch_all) %}
+                {% if !variant.catch_all %}
                     {{variant.discriminant}} => Self::{{variant.name.to_case(Case::Pascal)}},
                 {% endif %}
             {% endfor %}
