@@ -13,6 +13,7 @@ use crate::model::{Device, Manifest, Object};
 mod lowering;
 pub mod model;
 pub(crate) mod passes;
+pub mod runtime;
 
 #[cfg(feature = "gen-docs")]
 pub use lowering::gen_docs::gen_docs;

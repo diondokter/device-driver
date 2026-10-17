@@ -1,6 +1,6 @@
 use std::ops::{Not, Range};
 
-use device_driver_mir::model::Object;
+use device_driver_mir::model::{Manifest, Object, Register};
 use itertools::Itertools;
 use tower_lsp_server::ls_types::{Hover, HoverContents, MarkedString, Position};
 
@@ -14,7 +14,7 @@ pub(crate) fn get_hover(document: &Document, position: Position) -> Option<Hover
         let mut contents = Vec::new();
 
         contents.push(MarkedString::from_markdown(format!(
-            "### {} ({})\n",
+            "## {} ({})\n",
             target.name().original(),
             target.name().words_display()
         )));
@@ -38,6 +38,8 @@ pub(crate) fn get_hover(document: &Document, position: Position) -> Option<Hover
             "ddsl".into(),
             node_header_text.into(),
         ));
+
+        let mut field_table = None;
 
         let mut properties = Vec::<(&str, String)>::new();
         match target {
@@ -75,6 +77,11 @@ pub(crate) fn get_hover(document: &Document, position: Position) -> Option<Hover
                         format!("`{}` (size: {})", fs.name.original(), fs.size_bytes),
                     ));
                 }
+
+                field_table = Some(MarkedString::from_markdown(get_reset_fieldset_table(
+                    document.mir_manifest(),
+                    register,
+                )));
             }
             Object::Command(command) => {
                 let address_text = &document.source()[Range::from(command.address.span)];
@@ -147,6 +154,10 @@ pub(crate) fn get_hover(document: &Document, position: Position) -> Option<Hover
             .join(", ");
         contents.push(MarkedString::from_markdown(properties_list));
 
+        if let Some(field_table) = field_table {
+            contents.push(field_table);
+        }
+
         if !target.description().is_empty() {
             contents.push(MarkedString::from_markdown(format!(
                 "\n---\n{}",
@@ -161,4 +172,42 @@ pub(crate) fn get_hover(document: &Document, position: Position) -> Option<Hover
     }
 
     None
+}
+
+fn get_reset_fieldset_table(mir_manifest: &Manifest, register: &Register) -> String {
+    let fieldset = mir_manifest
+        .search_fieldset(&register.field_set_ref)
+        .unwrap();
+    let reset_value = register
+        .reset_value
+        .as_ref()
+        .map(|rv| rv.as_array().unwrap().clone())
+        .unwrap_or_else(|| vec![0; fieldset.size_bytes.value as usize]);
+
+    let decoded =
+        match device_driver_mir::runtime::decode_fieldset(mir_manifest, fieldset, &reset_value) {
+            Ok(decoded) => decoded,
+            Err(e) => return e.to_string(),
+        };
+
+    // Build a markdown table
+    let mut table = String::new();
+
+    table += "| field | value | conversion |\n";
+    table += "| :--- | ---: | :--- |\n";
+
+    for field in decoded.fields {
+        table += &format!(
+            "| {}{} | {} | `{}` |\n",
+            field.name,
+            field
+                .index_name
+                .map(|name| format!("[{name}]"))
+                .unwrap_or_default(),
+            field.base_value,
+            field.converted_value.as_deref().unwrap_or_default()
+        );
+    }
+
+    table
 }
