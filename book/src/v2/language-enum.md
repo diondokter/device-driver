@@ -11,6 +11,7 @@ Any [field] that uses the enum as conversion type must have the same base type a
 An enum that covers all bit patterns for its bit size can be used for infallible conversion. This is possible by having a variant for each bit pattern or by having a default or catch-all variant.
 
 An enum with a default value will collapse the value into the default if the value is not expressed by any other variant. A catch-all catches the value and retains it. You should prefer using a default value and only use catch-all when you require reflexivity.
+When both a default and catch-all are present, the catch-all takes precedence when converting from unknown values in order to keep the reflexivity.
 
 {{#include ../gen-docs/mir-shapes/enum.md}}
 
