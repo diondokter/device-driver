@@ -3,6 +3,7 @@ use std::{
     error::Error,
     fmt::Display,
     marker::PhantomData,
+    num::NonZeroU32,
     ops::{Index, IndexMut, Not},
 };
 
@@ -13,10 +14,10 @@ use device_driver_common::{
         Global, Identifier, IdentifierRef, Local, Namespace, Operation, RuntimeNamespace, Type,
     },
     interner::Istr,
-    span::{Span, Spanned},
+    span::{Span, SpanExt, Spanned},
     specifiers::{
         Access, AddressMode, AddressRange, BaseType, ByteOrder, Integer, NodeType, Repeat,
-        ResetValue,
+        RepeatSource, ResetValue,
     },
 };
 
@@ -487,6 +488,8 @@ impl Manifest {
     pub fn remove_object(&mut self, id: impl Into<ObjectId>) {
         let id = id.into();
 
+        let object_ref = self.object(id).map(|object| object.name().take_ref());
+
         fn remove(manifest: &mut Manifest, id: ObjectId) {
             match id.0 {
                 ObjectType::Device => manifest.devices.remove(DeviceId(id.1)),
@@ -519,6 +522,31 @@ impl Manifest {
         // Remove from parent
         if let Some(parent) = self.object_parents(id).last() {
             self.object_mut(*parent).unwrap().remove_child(id);
+        }
+
+        if let Some(object_ref) = object_ref {
+            // Remove conversion types and repeat sources that target this object
+            for mut object in self.objects_mut() {
+                if let Some(repeat) = object.repeat_mut()
+                    && let RepeatSource::Enum(target) = &repeat.source.value
+                    && target.is_same_ref_as(&object_ref)
+                {
+                    repeat.source = RepeatSource::Count(NonZeroU32::new(1).unwrap())
+                        .with_span(repeat.source.span);
+                }
+
+                if let Some(type_conversion) = object.as_ref().type_conversion() {
+                    let targets_removed_object = match &type_conversion.type_ref.value {
+                        TypeRef::Identifier(identifier_ref) => {
+                            identifier_ref.is_same_ref_as(&object_ref)
+                        }
+                        TypeRef::Id(object_id) => *object_id == id,
+                    };
+                    if targets_removed_object {
+                        object.remove_type_conversion();
+                    }
+                }
+            }
         }
     }
 
@@ -749,6 +777,22 @@ impl<'a> ObjectMut<'a> {
             ObjectMut::Extern(_) => None,
             ObjectMut::Field(field) => field.repeat.as_mut(),
             ObjectMut::EnumVariant(_) => None,
+        }
+    }
+
+    /// Return the type conversion value if it exists
+    pub fn remove_type_conversion(&mut self) {
+        match self {
+            ObjectMut::Device(_) => {}
+            ObjectMut::Block(_) => {}
+            ObjectMut::Register(_) => {}
+            ObjectMut::Command(_) => {}
+            ObjectMut::Buffer(_) => {}
+            ObjectMut::FieldSet(_) => {}
+            ObjectMut::Enum(_) => {}
+            ObjectMut::Extern(_) => {}
+            ObjectMut::Field(field) => field.field_conversion = None,
+            ObjectMut::EnumVariant(_) => {}
         }
     }
 
