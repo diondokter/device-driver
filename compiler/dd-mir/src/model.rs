@@ -752,22 +752,6 @@ impl<'a> ObjectMut<'a> {
         }
     }
 
-    pub fn as_field_set_mut(&mut self) -> Option<&mut FieldSet> {
-        if let Self::FieldSet(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-
-    pub fn as_enum_mut(&mut self) -> Option<&mut Enum> {
-        if let Self::Enum(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-
     fn remove_child(&mut self, id: ObjectId) {
         match self {
             ObjectMut::Device(device) => {
@@ -919,14 +903,6 @@ impl<'a> Object<'a> {
             Object::Extern(_) => None,
             Object::Field(field) => field.field_conversion.as_ref(),
             Object::EnumVariant(_) => None,
-        }
-    }
-
-    pub fn as_field_set(&self) -> Option<&'a FieldSet> {
-        if let Self::FieldSet(v) = self {
-            Some(v)
-        } else {
-            None
         }
     }
 
