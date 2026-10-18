@@ -88,13 +88,17 @@ If you're looking for a language detail, go see one of the reference sections.
 
 Looking at existing drivers and examples can also be very helpful.
 
+## Tooling
+
+An editor extension is available for [vscode](https://marketplace.visualstudio.com/items?itemName=diondokter.device-driver).
+This makes the editor experience way nicer with syntax highlighting, goto definition and lots more.
+
 ## Future plans
 
 There are many more features this toolkit wishes to support.
 To get an up-to-date overview, check out the [issue tracker](https://github.com/diondokter/device-driver/issues).
 
 Zooming out, the plans can be summarized to:
-- LSP support for DDSL
 - Output to typst/pdf/html for auto docs
 - Add support for other languages like C/C++/Zig/TinyGo/MicroPython
 - A simple general programming language in DDSL
