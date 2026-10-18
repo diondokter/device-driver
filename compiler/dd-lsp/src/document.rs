@@ -103,8 +103,12 @@ impl SourceCache {
                 let line = next_line - 1;
                 let line_offset = self.line_cache[line];
 
-                let line_slice =
-                    &self.source[line_offset as usize..self.line_cache[next_line] as usize];
+                let line_slice = &self.source[line_offset as usize
+                    ..self
+                        .line_cache
+                        .get(next_line)
+                        .map(|line_offset| *line_offset as usize)
+                        .unwrap_or(self.source.len())];
                 let line_char_offset = offset - line_offset;
 
                 if line_slice.is_ascii() {
