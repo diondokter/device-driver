@@ -1,2 +1,7 @@
 [alias]
 accept = "run -p device-driver-tests -- --cases tests/ui/cases accept"
+
+[target.wasm32-unknown-unknown]
+rustflags = [
+    "-C", "opt-level=z",
+]

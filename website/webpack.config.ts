@@ -40,6 +40,7 @@ const config = (env: any, argv: any): webpack.Configuration => {
                 ],
                 outDir: path.resolve(__dirname, "pkg"),
                 outName: "device_driver_wasm",
+                forceMode: "production",
             }),
             new CopyWebpackPlugin({
                 patterns: [
