@@ -194,7 +194,7 @@ fn get_reset_fieldset_table(mir_manifest: &Manifest, register: &Register) -> Str
     let mut table = String::new();
 
     table += "| field | value | conversion |\n";
-    table += "| :--- | ---: | :--- |\n";
+    table += "| :--- | ---: | ---: |\n";
 
     for field in decoded.fields {
         table += &format!(
@@ -205,7 +205,7 @@ fn get_reset_fieldset_table(mir_manifest: &Manifest, register: &Register) -> Str
                 .map(|name| format!("[{name}]"))
                 .unwrap_or_default(),
             field.base_value,
-            field.converted_value.as_deref().unwrap_or_default()
+            field.converted_value.as_deref().unwrap_or("_")
         );
     }
 
