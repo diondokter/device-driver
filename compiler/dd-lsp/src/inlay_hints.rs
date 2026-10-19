@@ -32,7 +32,7 @@ fn auto_name_hint(node: &Node, document: &Document) -> Option<InlayHint> {
     let true_node_name = document
         .mir_manifest()
         .objects()
-        .find(|object| object.span() == node.span)
+        .find(|object| object.span() == node.non_docs_span())
         .map(|object| object.name().original().as_str())?;
 
     let node_name_range = document.translate_span(node.name.span);
@@ -69,7 +69,7 @@ fn auto_base_type_hint(node: &Node, document: &Document) -> Option<InlayHint> {
     // - Get its base type if that's supported
     let (mir_base_type, short_properties_span) =
         document.mir_manifest().objects().find_map(|object| {
-            if object.span() == node.span {
+            if object.span() == node.non_docs_span() {
                 Some(
                     object
                         .base_type()
@@ -167,7 +167,7 @@ fn enum_variant_hints(node: &Node, document: &Document) -> Option<Vec<InlayHint>
         .mir_manifest()
         .enums
         .iter()
-        .find(|enum_value| enum_value.span == node.span)?;
+        .find(|enum_value| enum_value.span == node.non_docs_span())?;
 
     let mut hints = Vec::new();
 

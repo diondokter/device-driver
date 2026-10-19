@@ -53,7 +53,7 @@ pub fn get_node_symbol(node: &Node, document: &Document) -> DocumentSymbol {
         // So we search for object in MIR and take that name
         // The easiest way is to compare by span. The MIR should have unmodified spans
         mir.objects()
-            .find(|object| object.span() == node.span)
+            .find(|object| object.span() == node.non_docs_span())
             .map(|object| object.name().original().as_str())
             .unwrap_or("_")
             .into()

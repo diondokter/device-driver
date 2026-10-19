@@ -182,7 +182,7 @@ fn parse_node_to_shape<S: Shape>(
     let mut sibling_objects = Vec::new();
     let mut error = false;
 
-    *target.span() = node.span;
+    *target.span() = node.non_docs_span();
     *target.body_span() = node.body_span;
 
     // Doc comments
@@ -427,7 +427,7 @@ fn parse_node_to_shape<S: Shape>(
         *target.properties_span() = node
             .sub_nodes
             .iter()
-            .map(|n| ast.node(*n).span)
+            .map(|n| ast.node(*n).non_docs_span())
             .reduce(|acc, val| acc.to(val));
     }
 
@@ -574,7 +574,7 @@ fn parse_node_to_shape<S: Shape>(
     } else if let Some(subnode) = node.sub_nodes.first() {
         diagnostics.add(InvalidSubnode {
             node_type: S::NODE_TYPE.with_span(node.node_type.span),
-            subnode: ast.node(*subnode).span,
+            subnode: ast.node(*subnode).non_docs_span(),
         });
     }
 

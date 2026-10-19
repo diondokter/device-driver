@@ -888,7 +888,7 @@ impl Shape for FieldSet {
                         _ => {
                             diagnostics.add(SizeBytesTooLarge {
                                 value: property.expression.span,
-                                field_set: fs_node.span,
+                                field_set: fs_node.non_docs_span(),
                             });
                             true
                         }

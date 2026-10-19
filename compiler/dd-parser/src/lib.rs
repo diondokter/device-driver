@@ -146,10 +146,17 @@ pub struct Node {
     pub properties: Vec<Spanned<Property>>,
     pub sub_nodes: Vec<NodeId>,
     pub body_span: Option<Span>,
+    /// Span of the whole node including docs.
+    /// Don't want docs? Use [Self::non_docs_span()]
     pub span: Span,
 }
 
 impl Node {
+    /// Get the span of the node, excluding docs
+    pub fn non_docs_span(&self) -> Span {
+        self.span.start_from(self.node_type.span)
+    }
+
     pub fn to_string_formatted(&self, ast: &Ast) -> String {
         let mut buf = String::new();
         self.fmt_formatted(&mut buf, ast, 0).unwrap();
@@ -1033,8 +1040,7 @@ pub fn node<'tokens, 'src: 'tokens>()
                  extra| {
                     let ((properties, sub_nodes), body_span) = body.unwrap_or_default();
 
-                    let mut span: Span = extra.span();
-                    span = span.start_from(node_type.span);
+                    let span: Span = extra.span();
 
                     extra.state().alloc_node(Node {
                         doc_comments,

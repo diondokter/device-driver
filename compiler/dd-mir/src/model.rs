@@ -662,7 +662,7 @@ pub struct Device {
     pub short_properties_span: Span,
     pub properties_span: Option<Span>,
     pub body_span: Option<Span>,
-    /// Span of the whole object
+    /// Span of the whole object excluding docs
     pub span: Span,
 }
 
@@ -988,7 +988,7 @@ impl<'a> Object<'a> {
         }
     }
 
-    /// The span of the entire object
+    /// The span of the entire object excluding docs
     pub fn span(&self) -> Span {
         match self {
             Object::Device(val) => val.span,
@@ -1096,7 +1096,7 @@ pub struct Block {
     pub short_properties_span: Span,
     pub properties_span: Option<Span>,
     pub body_span: Option<Span>,
-    /// Span of the whole object
+    /// Span of the whole object excluding docs
     pub span: Span,
 }
 
@@ -1114,7 +1114,7 @@ pub struct Register {
     pub short_properties_span: Span,
     pub properties_span: Option<Span>,
     pub body_span: Option<Span>,
-    /// Span of the whole object
+    /// Span of the whole object excluding docs
     pub span: Span,
 }
 
@@ -1152,7 +1152,7 @@ pub struct FieldSet {
     pub short_properties_span: Span,
     pub properties_span: Option<Span>,
     pub body_span: Option<Span>,
-    /// Span of the whole object
+    /// Span of the whole object excluding docs
     pub span: Span,
 }
 
@@ -1204,7 +1204,7 @@ pub struct Field {
     pub short_properties_span: Span,
     pub properties_span: Option<Span>,
     pub body_span: Option<Span>,
-    /// Span of the whole object
+    /// Span of the whole object excluding docs
     pub span: Span,
 }
 
@@ -1241,7 +1241,7 @@ pub struct Enum {
     pub short_properties_span: Span,
     pub properties_span: Option<Span>,
     pub body_span: Option<Span>,
-    /// Span of the whole object
+    /// Span of the whole object excluding docs
     pub span: Span,
 }
 
@@ -1294,7 +1294,7 @@ pub struct EnumVariant {
     pub description: Istr,
     pub name: Spanned<Identifier<Local>>,
     pub value: EnumValue,
-    /// Span of the whole object
+    /// Span of the whole object excluding docs
     pub span: Span,
 }
 
@@ -1350,7 +1350,7 @@ pub struct Command {
     pub short_properties_span: Span,
     pub properties_span: Option<Span>,
     pub body_span: Option<Span>,
-    /// Span of the whole object
+    /// Span of the whole object excluding docs
     pub span: Span,
 }
 
@@ -1364,7 +1364,7 @@ pub struct Buffer {
     pub short_properties_span: Span,
     pub properties_span: Option<Span>,
     pub body_span: Option<Span>,
-    /// Span of the whole object
+    /// Span of the whole object excluding docs
     pub span: Span,
 }
 
@@ -1382,6 +1382,6 @@ pub struct Extern {
     pub short_properties_span: Span,
     pub properties_span: Option<Span>,
     pub body_span: Option<Span>,
-    /// Span of the whole object
+    /// Span of the whole object excluding docs
     pub span: Span,
 }
