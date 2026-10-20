@@ -1,5 +1,5 @@
 error: duplicate name found
-  --> input.ddsl:23:12
+  --> input.ddsl:LL:12
    |
 LL |     device Foo {
    |            --- the original: "Foo", after word split: "foo"
@@ -14,7 +14,7 @@ info: names may not collide within their namespace. There are 4 namespaces:
       - Enum variants: unique within an enum
 
 error: duplicate name found
-  --> input.ddsl:24:18
+  --> input.ddsl:LL:18
    |
 LL |         register Bar {
    |                  --- the original: "Bar", after word split: "bar"
@@ -29,7 +29,7 @@ info: names may not collide within their namespace. There are 4 namespaces:
       - Enum variants: unique within an enum
 
 error: duplicate name found
-  --> input.ddsl:42:16
+  --> input.ddsl:LL:16
    |
 LL |         block Wheee { // Should overlap with both operations and types
    |               ----- the original: "Wheee", after word split: "wheee"
@@ -44,7 +44,7 @@ info: names may not collide within their namespace. There are 4 namespaces:
       - Enum variants: unique within an enum
 
 error: duplicate name found
-  --> input.ddsl:26:30
+  --> input.ddsl:LL:30
    |
 LL |             fields: fieldset _ { // Fieldset same name as register
    |                              - the original: "Bar", after word split: "bar"
@@ -59,7 +59,7 @@ info: names may not collide within their namespace. There are 4 namespaces:
       - Enum variants: unique within an enum
 
 error: duplicate name found
-  --> input.ddsl:29:50
+  --> input.ddsl:LL:50
    |
 LL |                 field quux 7:0 -> u8 as try enum _ { // Enum same name as field
    |                                                  - the original: "quux", after word split: "quux"
@@ -74,7 +74,7 @@ info: names may not collide within their namespace. There are 4 namespaces:
       - Enum variants: unique within an enum
 
 error: duplicate name found
-  --> input.ddsl:48:14
+  --> input.ddsl:LL:14
    |
 LL |         block Wheee2 { // Should overlap with both operations and types
    |               ------ the original: "Wheee2", after word split: "wheee·2"
@@ -89,7 +89,7 @@ info: names may not collide within their namespace. There are 4 namespaces:
       - Enum variants: unique within an enum
 
 error: duplicate name found
-  --> input.ddsl:55:16
+  --> input.ddsl:LL:16
    |
 LL |         extern multiple_words -> u8, // Should overlap with multiple-words
    |                ^^^^^^^^^^^^^^

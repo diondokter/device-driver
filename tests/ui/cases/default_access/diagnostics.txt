@@ -1,5 +1,5 @@
 error: object needs access specified
-  --> input.ddsl:31:18
+  --> input.ddsl:LL:18
    |
 LL |         register E {
    |                  ^ object requires an access to be specified, but none is
@@ -10,7 +10,7 @@ LL +             access: RW,
    |
 
 error: object needs access specified
-  --> input.ddsl:38:16
+  --> input.ddsl:LL:16
    |
 LL |         buffer G {
    |                ^ object requires an access to be specified, but none is
@@ -21,7 +21,7 @@ LL +             access: RW,
    |
 
 error: object needs access specified
-  --> input.ddsl:35:23
+  --> input.ddsl:LL:23
    |
 LL |                 field a 0,
    |                       ^ object requires an access to be specified, but none is

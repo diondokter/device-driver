@@ -119,6 +119,7 @@ impl Metadata<'_> {
             DecorStyle::Ascii
         })
         .anonymized_snippet_line_numbers(self.anonymized_line_numbers)
+        .anonymized_origin_line_numbers(self.anonymized_line_numbers)
     }
 }
 
