@@ -8,7 +8,7 @@ use device_driver_diagnostics::{
 };
 
 use crate::{
-    model::{FieldId, Manifest, Object, ObjectId, ObjectType},
+    model::{FieldId, Manifest, Object, ObjectId},
     passes::Pass,
 };
 
@@ -35,7 +35,6 @@ impl Pass for ReservedNamesChecked {
                 .name()
                 .namespace()
                 .shares_namespace_with(RuntimeNamespace::Operation)
-                || object_id.object_type() == ObjectType::Field
             {
                 let object_operation_name = object.name().to_case(convert_case::Case::Snake);
                 if RESERVED_NAMES.contains(&object_operation_name.as_str()) {
