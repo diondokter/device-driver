@@ -118,7 +118,7 @@ impl Metadata<'_> {
         } else {
             DecorStyle::Ascii
         })
-        .anonymized_line_numbers(self.anonymized_line_numbers)
+        .anonymized_snippet_line_numbers(self.anonymized_line_numbers)
     }
 }
 
@@ -351,13 +351,13 @@ mod tests {
         let output = annotate_snippets::Renderer::plain().render(&report);
         pretty_assertions::assert_str_eq!(
             "error: @level 5 - Something deep down went wrong!
-  |
-  = note: @level 4 - Something deep down went wrong!
-  = note: @level 3 - Something deep down went wrong!
-  = note: @level 2 - Something deep down went wrong!
-  = note: @level 1 - Something deep down went wrong!
-  = note: @level 0 - Something deep down went wrong!
-  = note: Something went wrong!",
+ |
+ = note: @level 4 - Something deep down went wrong!
+ = note: @level 3 - Something deep down went wrong!
+ = note: @level 2 - Something deep down went wrong!
+ = note: @level 1 - Something deep down went wrong!
+ = note: @level 0 - Something deep down went wrong!
+ = note: Something went wrong!",
             output
         );
     }
@@ -369,8 +369,8 @@ mod tests {
         let output = annotate_snippets::Renderer::plain().render(&report);
         pretty_assertions::assert_str_eq!(
             "error: Here's some context!
-  |
-  = note: Something went wrong!",
+ |
+ = note: Something went wrong!",
             output
         );
     }
