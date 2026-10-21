@@ -6,6 +6,7 @@ Commands:
   build     Compile DDSL to the target output
   gen-docs  Generate docs about the compiler
   convert   The format to convert into DDSL
+  lsp       Run the lsp server
   help      Print this message or the help of the given subcommand(s)
 
 Options:

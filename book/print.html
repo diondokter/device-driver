@@ -1,4 +1,4 @@
-<!doctype html><html lang=en class="light sidebar-visible" dir=ltr><head><meta charset=UTF-8><title>device-driver-book</title><meta name=robots content=noindex><meta name=description content><meta name=viewport content="width=device-width,initial-scale=1"><meta name=theme-color content=#ffffff><link rel=icon href=favicon-de23e50b.svg><link rel="shortcut icon" href=favicon-8114d1fc.png><link rel=stylesheet href=css/variables-8adf115d.css><link rel=stylesheet href=css/general-e96d0476.css><link rel=stylesheet href=css/chrome-d279d366.css><link rel=stylesheet href=css/print-9e4910d8.css media=print><link rel=stylesheet href=fonts/fonts-9644e21d.css><link rel=stylesheet id=mdbook-highlight-css href=highlight-493f70e1.css><link rel=stylesheet id=mdbook-tomorrow-night-css href=tomorrow-night-4c0ae647.css><link rel=stylesheet id=mdbook-ayu-highlight-css href=ayu-highlight-3fdfc3ac.css><script>const path_to_root="",default_light_theme="light",default_dark_theme="navy";window.path_to_searchindex_js="searchindex-183fe7f3.js";</script><script src=toc-3f8de81c.js></script></head><body>
+<!doctype html><html lang=en class="light sidebar-visible" dir=ltr><head><meta charset=UTF-8><title>device-driver-book</title><meta name=robots content=noindex><meta name=description content><meta name=viewport content="width=device-width,initial-scale=1"><meta name=theme-color content=#ffffff><link rel=icon href=favicon-de23e50b.svg><link rel="shortcut icon" href=favicon-8114d1fc.png><link rel=stylesheet href=css/variables-8adf115d.css><link rel=stylesheet href=css/general-e96d0476.css><link rel=stylesheet href=css/chrome-d279d366.css><link rel=stylesheet href=css/print-9e4910d8.css media=print><link rel=stylesheet href=fonts/fonts-9644e21d.css><link rel=stylesheet id=mdbook-highlight-css href=highlight-493f70e1.css><link rel=stylesheet id=mdbook-tomorrow-night-css href=tomorrow-night-4c0ae647.css><link rel=stylesheet id=mdbook-ayu-highlight-css href=ayu-highlight-3fdfc3ac.css><script>const path_to_root="",default_light_theme="light",default_dark_theme="navy";window.path_to_searchindex_js="searchindex-80e70c6b.js";</script><script src=toc-3f8de81c.js></script></head><body>
     <div id=mdbook-help-container>
         <div id=mdbook-help-popup>
             <h2 class=mdbook-help-title>Keyboard shortcuts</h2>
@@ -259,12 +259,14 @@ device.foo().write(|reg| reg.set_value_1(GeneratedEnum::B)).unwrap();</code></pr
 <p>If you’re new, head over to one of the tutorial sections.
 If you’re looking for a language detail, go see one of the reference sections.</p>
 <p>Looking at existing drivers and examples can also be very helpful.</p>
+<h2 id=tooling><a class=header href=#tooling>Tooling</a></h2>
+<p>An editor extension is available for <a href="https://marketplace.visualstudio.com/items?itemName=diondokter.device-driver">vscode</a>.
+This makes the editor experience way nicer with syntax highlighting, goto definition and lots more.</p>
 <h2 id=future-plans><a class=header href=#future-plans>Future plans</a></h2>
 <p>There are many more features this toolkit wishes to support.
 To get an up-to-date overview, check out the <a href=https://github.com/diondokter/device-driver/issues>issue tracker</a>.</p>
 <p>Zooming out, the plans can be summarized to:</p>
 <ul>
-<li>LSP support for DDSL</li>
 <li>Output to typst/pdf/html for auto docs</li>
 <li>Add support for other languages like C/C++/Zig/TinyGo/MicroPython</li>
 <li>A simple general programming language in DDSL
@@ -367,6 +369,8 @@ operator is always the address of the first operator plus three).
 </div>
 <p>First the address needs to be written, then you must wait 4us, then the data needs to be written and then you must wait 23us.</p>
 <h2 id=writing-the-driver><a class=header href=#writing-the-driver>Writing the driver</a></h2>
+<p>If you’re using vscode, make sure install the <a href="https://marketplace.visualstudio.com/items?itemName=diondokter.device-driver">extension</a> to make the editing experience better!
+You’ll have syntax highlighting, goto definition and lots more.</p>
 <h3 id=ddsl><a class=header href=#ddsl>DDSL</a></h3>
 <p>First we create a file named <code>ym3812.ddsl</code> (or something else to your liking). Then we write the basic setup:</p>
 <pre><code class=language-ddsl>device Ym3812 {
@@ -1343,10 +1347,10 @@ manifest Example {
     register-address-mode: mapped,
     default-access: RW,
 
-    device node,
-    fieldset node,
-    enum node,
-    extern node,
+    device my_device,
+    fieldset my_fieldset,
+    enum my_enum,
+    extern my_extern,
 }
 </code></pre>
 <h2 id=table><a class=header href=#table>Table</a></h2>
@@ -1496,13 +1500,13 @@ device Example {
     default-access: RW,
     address-offset: 0,
 
-    block node,
-    register node,
-    command node,
-    buffer node,
-    fieldset node,
-    enum node,
-    extern node,
+    block my_block,
+    register my_register,
+    command my_command,
+    buffer my_buffer,
+    fieldset my_fieldset,
+    enum my_enum,
+    extern my_extern,
 }
 </code></pre>
 <h2 id=table-1><a class=header href=#table-1>Table</a></h2>
@@ -1660,13 +1664,13 @@ block Example[8 stride 4] {
     address-offset: 0,
     default-access: RW,
 
-    block node,
-    register node,
-    command node,
-    buffer node,
-    fieldset node,
-    enum node,
-    extern node,
+    block my_block,
+    register my_register,
+    command my_command,
+    buffer my_buffer,
+    fieldset my_fieldset,
+    enum my_enum,
+    extern my_extern,
 }
 </code></pre>
 <h2 id=table-2><a class=header href=#table-2>Table</a></h2>
@@ -1817,7 +1821,7 @@ reset: 1234
 <pre><code class=language-ddsl>// type reference
 fields: MyFieldset,
 // sub node
-fields: fieldset MyFieldSet
+fields: fieldset my_fieldset
 </code></pre>
 <h4 id=info-4-2><a class=header href=#info-4-2>Info</a></h4>
 <ul>
@@ -1900,7 +1904,7 @@ address-overlap: allow
 <pre><code class=language-ddsl>// type reference
 fields-in: MyFieldset,
 // sub node
-fields-in: fieldset MyFieldSet
+fields-in: fieldset my_fieldset
 </code></pre>
 <h4 id=info-2-3><a class=header href=#info-2-3>Info</a></h4>
 <ul>
@@ -1913,7 +1917,7 @@ fields-in: fieldset MyFieldSet
 <pre><code class=language-ddsl>// type reference
 fields-out: MyFieldset,
 // sub node
-fields-out: fieldset MyFieldSet
+fields-out: fieldset my_fieldset
 </code></pre>
 <h4 id=info-3-3><a class=header href=#info-3-3>Info</a></h4>
 <ul>
@@ -2009,7 +2013,7 @@ fieldset Example {
     bit-overlap: allow,
     default-access: RW,
 
-    field node,
+    field my_field,
 }
 </code></pre>
 <h2 id=table-6><a class=header href=#table-6>Table</a></h2>
@@ -2088,7 +2092,8 @@ When a variant doesn’t specify a number value, it will be incremented by one f
 <p>The bit size of the enum is automatically determined based on the variants of the enum and the base type.
 Any <a href=#field>field</a> that uses the enum as conversion type must have the same base type as the enum.</p>
 <p>An enum that covers all bit patterns for its bit size can be used for infallible conversion. This is possible by having a variant for each bit pattern or by having a default or catch-all variant.</p>
-<p>An enum with a default value will collapse the value into the default if the value is not expressed by any other variant. A catch-all catches the value and retains it. You should prefer using a default value and only use catch-all when you require reflexivity.</p>
+<p>An enum with a default value will collapse the value into the default if the value is not expressed by any other variant. A catch-all catches the value and retains it. You should prefer using a default value and only use catch-all when you require reflexivity.
+When both a default and catch-all are present, the catch-all takes precedence when converting from unknown values in order to keep the reflexivity.</p>
 <h2 id=example-7><a class=header href=#example-7>Example</a></h2>
 <pre><code class=language-ddsl>/// doc comment line
 enum Example -> uint {
@@ -2334,6 +2339,7 @@ Commands:
   build     Compile DDSL to the target output
   gen-docs  Generate docs about the compiler
   convert   The format to convert into DDSL
+  lsp       Run the lsp server
   help      Print this message or the help of the given subcommand(s)
 
 Options:
