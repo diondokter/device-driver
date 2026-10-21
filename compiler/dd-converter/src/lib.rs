@@ -25,11 +25,7 @@ pub enum DeviceDriverV1Format {
     TOML,
 }
 
-/// Convert the source to ddsl.
-///
-/// Don't use in long running programs since conversion may leak memory.
-/// That's because we're running the ddsl parser in reverse while the parser is
-/// optimized for speed and memory use and so usually borrows from the DDSL source.
+/// Convert the source to ddsl
 pub fn convert(_source: &str, format: SourceFormat) -> Result<String, DynError> {
     match format {
         #[cfg(feature = "dd-v1")]

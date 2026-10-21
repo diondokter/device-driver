@@ -75,7 +75,7 @@ The fieldset that represents the data of the register. This can be a reference t
 // type reference
 fields: MyFieldset,
 // sub node
-fields: fieldset MyFieldSet
+fields: fieldset my_fieldset
 ```
 #### Info
 - required: `yes`

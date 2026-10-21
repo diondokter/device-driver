@@ -1,4 +1,7 @@
-use std::{collections::HashSet, num::NonZero};
+use std::{
+    collections::{HashSet, VecDeque},
+    num::NonZero,
+};
 
 use device_driver_common::{
     span::{Span, SpanExt, Spanned},
@@ -6,9 +9,8 @@ use device_driver_common::{
 };
 
 use crate::{
-    model::{Device, DeviceConfig, Id, Manifest, Object, ObjectId},
+    model::{Device, Manifest, Object, ObjectId},
     passes::{Assumption, Pass},
-    search_object,
 };
 use device_driver_diagnostics::{Diagnostics, DynError, ResultExt, errors::AddressOverlap};
 
@@ -28,18 +30,18 @@ impl Pass for AddressesNonOverlapping {
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,
     ) -> Result<HashSet<ObjectId>, DynError> {
-        for (device, config) in manifest.iter_devices_with_config() {
-            let register_addresses = find_object_addresses(manifest, device, &config, |o| {
+        for device in manifest.devices.iter() {
+            let register_addresses = find_object_addresses(manifest, device, |o| {
                 matches!(o, Object::Block(_) | Object::Register(_))
             })
             .with_message(|| "finding register object addresses")?;
             check_for_overlap(&register_addresses, diagnostics);
-            let command_addresses = find_object_addresses(manifest, device, &config, |o| {
+            let command_addresses = find_object_addresses(manifest, device, |o| {
                 matches!(o, Object::Block(_) | Object::Command(_))
             })
             .with_message(|| "finding command object addresses")?;
             check_for_overlap(&command_addresses, diagnostics);
-            let buffer_addresses = find_object_addresses(manifest, device, &config, |o| {
+            let buffer_addresses = find_object_addresses(manifest, device, |o| {
                 matches!(o, Object::Block(_) | Object::Buffer(_))
             })
             .with_message(|| "finding buffer object addresses")?;
@@ -84,11 +86,11 @@ fn check_for_overlap(addresses: &[ObjectAddress], diagnostics: &mut Diagnostics)
             {
                 diagnostics.add(AddressOverlap {
                     address: overlap_point,
-                    object_1: address.id.span(),
+                    object_1: address.id.span,
                     object_1_address: address.address.span,
                     object_1_size: address.size.span,
                     repeat_offset_1: address.repeat_offset,
-                    object_2: check_address.id.span(),
+                    object_2: check_address.id.span,
                     object_2_address: check_address.address.span,
                     object_2_size: check_address.size.span,
                     repeat_offset_2: check_address.repeat_offset,
@@ -99,7 +101,7 @@ fn check_for_overlap(addresses: &[ObjectAddress], diagnostics: &mut Diagnostics)
 }
 
 struct ObjectAddress {
-    id: ObjectId,
+    id: Spanned<ObjectId>,
     // Address including repeat offset
     address: Spanned<i128>,
     size: Spanned<u32>,
@@ -110,15 +112,17 @@ struct ObjectAddress {
 fn find_object_addresses<'m>(
     manifest: &'m Manifest,
     device: &'m Device,
-    config: &DeviceConfig,
-    filter: impl Fn(&'m Object) -> bool,
+    filter: impl Fn(Object<'m>) -> bool,
 ) -> Result<Vec<ObjectAddress>, DynError> {
     let mut object_addresses = Vec::new();
 
-    let mut children_left = vec![device.objects.len()];
+    let mut children_left = vec![device.children.len()];
     let mut address_offsets = vec![device.address_offset.value];
 
-    for object in device.iter_objects() {
+    let mut children_queue = VecDeque::from(device.children.clone());
+
+    while let Some(object_id) = children_queue.pop_front() {
+        let object = manifest.object(object_id).unwrap();
         while children_left.last() == Some(&0) {
             children_left.pop();
             address_offsets.pop();
@@ -138,16 +142,14 @@ fn find_object_addresses<'m>(
             )
         {
             let size = if matches!(
-                config.register_address_mode.map(|s| s.value),
+                device.device_config.register_address_mode.map(|s| s.value),
                 Some(AddressMode::Mapped)
             ) && let Object::Register(object) = object
             {
-                let Some(Object::FieldSet(fs)) =
-                    search_object(manifest, &object.field_set_ref.value)
-                else {
+                let Some(fs) = manifest.search_fieldset(&object.field_set_ref.value) else {
                     return Err(DynError::new(format!(
                         "returned object for `{}` is none or not a fieldset, but it was safe to assume it would be",
-                        object.field_set_ref.original()
+                        object.field_set_ref
                     )));
                 };
 
@@ -175,7 +177,7 @@ fn find_object_addresses<'m>(
                         let address_value = total_address_offsets + address.value + repeat_offset;
 
                         object_addresses.push(ObjectAddress {
-                            id: object.id(),
+                            id: object_id.with_span(object.name_span()),
                             address: address_value.with_span(address.span),
                             size,
                             repeat_offset: object.repeat().map(|_| repeat_offset),
@@ -184,20 +186,21 @@ fn find_object_addresses<'m>(
                     }
                 }
                 RepeatSource::Enum(enum_name) => {
-                    let enum_value = search_object(manifest, &enum_name)
+                    let enum_value = manifest
+                        .search_object(&enum_name)
                         .expect("A mir pass checked this enum exists")
                         .as_enum()
                         .expect("A mir pass checked this is an enum");
 
                     for (discriminant, _) in enum_value
-                        .iter_variants_with_discriminant()
+                        .iter_variants_with_discriminant(&manifest.enum_variants)
                         .take(max_elements)
                     {
                         let repeat_offset = discriminant * repeat.stride.value;
                         let address_value = total_address_offsets + address.value + repeat_offset;
 
                         object_addresses.push(ObjectAddress {
-                            id: object.id(),
+                            id: object_id.with_span(object.name_span()),
                             address: address_value.with_span(address.span),
                             size,
                             repeat_offset: Some(repeat_offset),
@@ -211,11 +214,17 @@ fn find_object_addresses<'m>(
         match object {
             Object::Device(d) => {
                 address_offsets.push(d.address_offset.value);
-                children_left.push(d.objects.len());
+                children_left.push(d.children.len());
+                for sub_child in d.children.iter().rev() {
+                    children_queue.push_front(*sub_child);
+                }
             }
             Object::Block(b) => {
                 address_offsets.push(b.address_offset.value);
-                children_left.push(b.objects.len());
+                children_left.push(b.children.len());
+                for sub_child in b.children.iter().rev() {
+                    children_queue.push_front(*sub_child);
+                }
             }
             _ => (),
         }

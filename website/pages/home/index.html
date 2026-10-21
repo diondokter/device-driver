@@ -126,7 +126,8 @@
             Everything can be called both <em>blocking</em> and <em>async</em>.
         </p>
         <p>
-            Read, write and modify registers, either per register or in <em><a href="/book/v2/runtime-rust.html#bulk-operations">bulk</a></em>.
+            Read, write and modify registers, either per register or in <em><a
+                    href="/book/v2/runtime-rust.html#bulk-operations">bulk</a></em>.
         </p>
         <p>
             Commands can be dispatched with optional input and output data.
@@ -167,6 +168,34 @@ let (foo, bar) = device
 device.wo_buf().write(&[0, 1, 2, 3])?;
 let len = device.ro_buf().read(&mut buffer)?;
 </code></pre>
+</div>
+
+<hr />
+
+<div class="showcase reverse">
+    <div>
+        <img src="../assets/images/lsp-showcase.gif" style="width: 100%; min-width: 35ch;" />
+    </div>
+    <div>
+        <h2>Editor support & LSP</h2>
+
+        <p>
+            Make sure to use the official editor extension for
+            <a href="https://marketplace.visualstudio.com/items?itemName=diondokter.device-driver">vscode</a>
+            to get the best experience.
+            An <em>LSP</em> implementation is provided to enable <em>Goto Definition</em>,
+            <em>Rename</em>, <em>Inlay Hints</em> and more!
+        </p>
+
+        <p>
+            This ensures the cost of using new language is minimized and provides even more features
+            than you had otherwise with things like rendered tables for register reset values.
+        </p>
+
+        <p>
+            Unofficial editor support is welcome! Post an issue on github to let us know it exists.
+        </p>
+    </div>
 </div>
 
 <hr />

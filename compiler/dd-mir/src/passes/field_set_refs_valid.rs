@@ -1,9 +1,8 @@
 use std::collections::HashSet;
 
 use crate::{
-    model::{Id, Manifest, Object, ObjectId},
+    model::{FieldsetRef, Manifest, ObjectId},
     passes::{Assumption, Pass},
-    search_object,
 };
 use device_driver_diagnostics::{Diagnostics, DynError, errors::InvalidFieldsetRef};
 
@@ -20,22 +19,34 @@ impl Pass for FieldsetRefsValid {
     ) -> Result<HashSet<ObjectId>, DynError> {
         let mut removals = HashSet::new();
 
-        for object in manifest.iter_objects() {
+        for (object_id, object) in manifest.objects_enumerated() {
             let fieldset_refs = object.fieldset_refs();
 
             for fieldset_ref in fieldset_refs {
-                let pointee = match search_object(manifest, &fieldset_ref) {
-                    Some(Object::FieldSet(_)) => continue,
-                    Some(found_object) => Some(found_object.name_span()),
-                    None => None,
+                if manifest.search_fieldset(&fieldset_ref).is_some() {
+                    continue;
+                }
+
+                // We could not find the fieldset.
+                // If the ref was an id, it was simply removed by another pass already.
+                // But if it's an identifier ref, then maybe there's a typo or it points to an object of the wrong type.
+                // In that case we should create a diagnostic
+
+                let id_ref = match fieldset_ref.value {
+                    FieldsetRef::Identifier(identifier_ref) => identifier_ref,
+                    FieldsetRef::Id(_) => {
+                        continue;
+                    }
                 };
 
                 diagnostics.add(InvalidFieldsetRef {
                     reference: fieldset_ref.span,
-                    pointee,
+                    pointee: manifest
+                        .search_object(&id_ref)
+                        .map(|found_object| found_object.name_span()),
                 });
 
-                removals.insert(object.id());
+                removals.insert(object_id);
                 break;
             }
         }

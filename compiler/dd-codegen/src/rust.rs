@@ -152,7 +152,7 @@ fn get_address_mode_const_value(value: &Option<AddressMode>) -> &'static str {
 }
 
 fn maybe_doc_alias<T: Namespace>(identifier: &Identifier<T>, case: Case) -> String {
-    if identifier.to_case(case) == identifier.original() {
+    if identifier.to_case(case) == identifier.original().as_str() {
         return String::new();
     }
 

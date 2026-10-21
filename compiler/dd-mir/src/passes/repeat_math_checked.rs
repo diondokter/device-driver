@@ -6,9 +6,8 @@ use device_driver_common::{
 };
 
 use crate::{
-    model::{Enum, Id, LendingIterator, Manifest, Object, ObjectId},
+    model::{Enum, Manifest, Object, ObjectId},
     passes::{Assumption, Pass},
-    search_object,
 };
 use device_driver_diagnostics::{
     Diagnostics, DynError,
@@ -29,49 +28,18 @@ impl Pass for RepeatMathChecked {
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,
     ) -> Result<HashSet<ObjectId>, DynError> {
-        let mut bad_object_repeat = HashSet::new();
-        let mut bad_field_repeat = HashSet::new();
+        let all_objects = manifest.object_ids().collect::<Vec<_>>();
 
-        for object in manifest.iter_objects() {
+        for object_id in all_objects {
+            let object = manifest.object(object_id).unwrap();
+
             if let Some(repeat) = object.repeat().as_ref()
                 && !repeat_is_ok(repeat, manifest, diagnostics)
             {
-                bad_object_repeat.insert(object.id());
-            }
-
-            if let Object::FieldSet(fs) = object {
-                for field in &fs.fields {
-                    if let Some(repeat) = field.repeat.as_ref()
-                        && !repeat_is_ok(repeat, manifest, diagnostics)
-                    {
-                        bad_field_repeat.insert((object.id(), field.id()));
-                    }
-                }
-            }
-        }
-
-        // Second pass: Go though all repeats that have a bad enum and replace it with a count of 1.
-        // This way we can still pass them on for further
-        let mut iter = manifest.iter_objects_with_config_mut();
-        while let Some((object, _)) = iter.next() {
-            let id = object.id();
-            if let Some(repeat) = object.repeat_mut()
-                && bad_object_repeat.contains(&id)
-            {
+                let mut object = manifest.object_mut(object_id).unwrap();
+                let repeat = object.repeat_mut().unwrap();
                 repeat.source.value = RepeatSource::Count(NonZero::new(1).unwrap());
                 repeat.stride.value = 1;
-            }
-
-            if let Object::FieldSet(fs) = object {
-                for field in &mut fs.fields {
-                    let field_id = field.id();
-                    if let Some(repeat) = field.repeat.as_mut()
-                        && bad_field_repeat.contains(&(id.clone(), field_id))
-                    {
-                        repeat.source.value = RepeatSource::Count(NonZero::new(1).unwrap());
-                        repeat.stride.value = 1;
-                    }
-                }
             }
         }
 
@@ -82,14 +50,14 @@ impl Pass for RepeatMathChecked {
 fn repeat_is_ok(repeat: &Repeat, manifest: &Manifest, diagnostics: &mut Diagnostics) -> bool {
     let (biggest_raw_value, biggest_value_span) = match &repeat.source.value {
         RepeatSource::Enum(repeat_enum) => {
-            let Some(Object::Enum(enum_value)) = search_object(manifest, repeat_enum) else {
+            let Some(Object::Enum(enum_value)) = manifest.search_object(repeat_enum) else {
                 diagnostics.add(ReferencedObjectDoesNotExist {
                     object_reference: repeat.source.span,
                 });
                 return false;
             };
 
-            if let Some(catch_all) = enum_catch_all(enum_value) {
+            if let Some(catch_all) = enum_catch_all(enum_value, manifest) {
                 diagnostics.add(RepeatEnumWithCatchAll {
                     repeat_enum: repeat.source.span,
                     enum_name: enum_value.name.span,
@@ -99,8 +67,8 @@ fn repeat_is_ok(repeat: &Repeat, manifest: &Manifest, diagnostics: &mut Diagnost
             }
 
             enum_value
-                .iter_variants_with_discriminant()
-                .map(|(discr, v)| (discr, v.span))
+                .iter_variants_with_discriminant(&manifest.enum_variants)
+                .map(|(discr, v)| (discr, manifest.enum_variants.get(v).unwrap().span))
                 .max_by_key(|(discr, _)| (*discr * repeat.stride.value).abs())
                 .expect("enums are not empty")
         }
@@ -121,10 +89,9 @@ fn repeat_is_ok(repeat: &Repeat, manifest: &Manifest, diagnostics: &mut Diagnost
     true
 }
 
-fn enum_catch_all(enum_value: &Enum) -> Option<Span> {
-    enum_value
-        .variants
-        .iter()
-        .find(|v| v.value.is_catch_all())
-        .map(|v| v.name.span)
+fn enum_catch_all(enum_value: &Enum, manifest: &Manifest) -> Option<Span> {
+    enum_value.variants.iter().find_map(|v| {
+        let variant = manifest.enum_variants.get(*v).unwrap();
+        variant.value.is_catch_all().then_some(variant.name.span)
+    })
 }

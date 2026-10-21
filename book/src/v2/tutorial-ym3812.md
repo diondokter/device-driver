@@ -86,6 +86,9 @@ First the address needs to be written, then you must wait 4us, then the data nee
 
 ## Writing the driver
 
+If you're using vscode, make sure install the [extension](https://marketplace.visualstudio.com/items?itemName=diondokter.device-driver) to make the editing experience better!
+You'll have syntax highlighting, goto definition and lots more.
+
 ### DDSL
 
 First we create a file named `ym3812.ddsl` (or something else to your liking). Then we write the basic setup:

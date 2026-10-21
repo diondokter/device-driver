@@ -1,0 +1,2558 @@
+manifest foo {
+    device S2Lp {
+        default-byte-order: BE,
+        register-address-type: u8,
+        command-address-type: u8,
+        buffer-address-type: u8,
+        word-boundaries: "_:-: :bB:A1:1A:1a:a1:AAa",
+        default-access: RW,
+
+        /// The TX and RX fifo. Writing writes to TX, reading reads from RX.
+        buffer fifo {
+            address: 255,
+        },
+        /// Send the S2-LP to TX state for transmission.
+        /// Valid from `READY` and `SYNTH_SETUP`.
+        command TX {
+            address: 96,
+        },
+        /// Send the S2-LP to RX state for reception.
+        /// Valid from `READY` and `SYNTH_SETUP`.
+        command RX {
+            address: 97,
+        },
+        /// Go to READY state.
+        /// Valid from `STANDBY`, `SLEEP` and `LOCK`.
+        command READY {
+            address: 98,
+        },
+        /// Go to STANDBY state.
+        /// Valid from `READY` and `SYNTH_SETUP`.
+        command STANDBY {
+            address: 99,
+        },
+        /// Go to SLEEP state.
+        /// Valid from `READY`, `SYNTH_SETUP` and `WAIT_SLEEP`.
+        command SLEEP {
+            address: 100,
+        },
+        /// Go to LOCK state by using the RX configuration of the synthesizer.
+        /// Valid from `READY` and `SYNTH_SETUP`.
+        command LOCK_RX {
+            address: 101,
+        },
+        /// Go to LOCK state by using the TX configuration of the synthesizer.
+        /// Valid from `READY` and `SYNTH_SETUP`.
+        command LOCK_TX {
+            address: 102,
+        },
+        /// Exit from TX or RX states and go to READY state.
+        /// Valid from `TX` and `RX`.
+        command ABORT {
+            address: 103,
+        },
+        /// Reload the LDC timer with a pre-programmed value stored in registers.
+        /// Valid from `ANY`.
+        command LDC_RELOAD {
+            address: 104,
+        },
+        /// Reset the S2-LP state machine and registers values.
+        /// Valid from `ANY`.
+        command RESET {
+            address: 112,
+        },
+        /// Clean the RX FIFO.
+        /// Valid from `ALL`.
+        command FLUSH_RX_FIFO {
+            address: 113,
+        },
+        /// Clean the TX FIFO.
+        /// Valid from `ALL`.
+        command FLUSH_TX_FIFO {
+            address: 114,
+        },
+        /// Reload the packet sequence counter with the value stored in register.
+        /// Valid from `ANY`.
+        command SEQUENCE_UPDATE {
+            address: 115,
+        },
+        register GPIO_CONF[4 stride 1] {
+            address: 0,
+            reset: 10,
+            fields: fieldset _ {
+                size-bytes: 1,
+                bit-overlap: allow,
+            
+                field GPIO_MODE 1:0 -> _ as enum GPIO_MODE {
+                    HiZ: 0,
+                    Input: 1,
+                    OutputLowPower: 2,
+                    OutputHighPower: 3,
+                },
+                field GPIO_SELECT_OUTPUT 7:3 -> _ as enum GPIO_SELECT_OUTPUT {
+                    /// nIRQ (interrupt request, active low)
+                    Irq: 0,
+                    /// POR inverted (active low)
+                    POR: 1,
+                    /// Wake-up timer expiration. `1` when WUT has expired
+                    WakeUpTimerExpiration: 2,
+                    /// Low battery detection. `1` when battery is below threshold setting
+                    LowBatteryDetection: 3,
+                    /// TX data internal clock output (TX data are sampled on the rising edge of it)
+                    TxDataInternalClockOutput: 4,
+                    /// TX state outputs a command information coming from the RADIO_TX block
+                    TxStateCommandInfo: 5,
+                    /// TX/RX FIFO almost empty flag
+                    FifoAlmostEmpty: 6,
+                    /// TX/RX FIFO almost full flag
+                    FifoAlmostFull: 7,
+                    /// RX data output
+                    RxDataOutput: 8,
+                    /// RX clock output (recovered from received data)
+                    RxClockOutput: 9,
+                    /// RX state indication. `1` when the S2-LP is transiting in the RX state
+                    RxState: 10,
+                    /// Device in a state other than SLEEP or STANDBY. `0` when in SLEEP/STANDBY
+                    DeviceNotSleepOrStandby: 11,
+                    /// Device in STANDBY state
+                    DeviceStandby: 12,
+                    /// Antenna switch signal used for antenna diversity
+                    AntennaSwitch: 13,
+                    /// Valid preamble detected flag
+                    ValidPreambleDetected: 14,
+                    /// Sync word detected flag
+                    SyncWordDetected: 15,
+                    /// RSSI above threshold (same indication of CS register)
+                    RssiThreshold: 16,
+                    /// Reserved value
+                    Reserved: default _,
+                    /// TX or RX mode indicator (to enable an external range extender)
+                    TxOrRxMode: 18,
+                    /// VDD (to emulate an additional GPIO of the MCU, programmable by SPI)
+                    VDD: 19,
+                    /// GND (to emulate an additional GPIO of the MCU, programmable by SPI)
+                    GND: 20,
+                    /// External SMPS enable signal (active high)
+                    ExternalSmps: 21,
+                    /// Device in SLEEP state
+                    DeviceSleep: 22,
+                    /// Device in READY state
+                    DeviceReady: 23,
+                    /// Device in LOCK state
+                    DeviceLock: 24,
+                    /// Device waiting for a high level of the lock-detector output signal
+                    WaitingForLockDetector: 25,
+                    /// TX_DATA_OOK signal (internal control signal generated in the OOK analog smooth mode)
+                    TxDataOok: 26,
+                    /// Device waiting for a high level of the READY2 signal from XO
+                    WaitingForReady2: 27,
+                    /// Device waiting for timer expiration to allow PM block settling
+                    WaitingForPmBlockSettling: 28,
+                    /// Device waiting for end of VCO calibration
+                    WaitingForEndOfVcoCalibration: 29,
+                    /// Device enables the full circuitry of the SYNTH block
+                    SynthBlockFullCircuitry: 30,
+                },
+                field GPIO_SELECT_INPUT 7:3 -> _ as enum GPIO_SELECT_INPUT {
+                    /// 1 >> TX command
+                    TxCommand: 0,
+                    /// 1 >> RX command
+                    RxCommand: 1,
+                    /// TX data input for direct modulation
+                    TxDataInput: 2,
+                    /// Wake-up from external input (sensor output)
+                    Wakeup: 3,
+                    /// External clock @ 34.7 kHz (used for LDC modes timing)
+                    ExternalClock: 4,
+                    /// Not used
+                    NotUsed: default _,
+                },
+            },
+        },
+        register SYNT {
+            address: 5,
+            reset: 1108748130,
+            fields: fieldset _ {
+                size-bytes: 4,
+            
+                /// Set the charge pump current according to the XTAL frequency (see Table 37. Table 34).
+                field PLL_CP_ISEL 31:29,
+                /// Synthesizer band select. This parameter selects the out-of loop
+                /// divide factor of the synthesizer:
+                /// - false: 4, band select factor for high band
+                /// - true: 8, band select factor for middle band
+                /// (see Section 5.3.1 RF channel frequency settings).
+                field BS 28,
+                /// The PLL programmable divider (see Section 5.3.1 RF channel frequency settings).
+                field SYNT 27:0,
+            },
+        },
+        /// Intermediate frequency setting for the analog RF synthesizer, default: 300 kHz, see Eq. (15).
+        register IF_OFFSET_ANA {
+            address: 9,
+            reset: 42,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field value 7:0,
+            },
+        },
+        /// Intermediate frequency setting for the digital shift-to-baseband circuits, default: 300 kHz, see Eq. (15).
+        register IF_OFFSET_DIG {
+            address: 10,
+            reset: 184,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field value 7:0,
+            },
+        },
+        /// Channel spacing setting, see Eq. (16).
+        register ChSpace {
+            address: 12,
+            reset: 63,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field value 7:0,
+            },
+        },
+        /// Channel number. This value is multiplied by the channel spacing and added to the synthesizer base frequency to generate the actual RF carrier frequency, see Eq. (16).
+        register ChNum {
+            address: 13,
+            reset: 0,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field value 7:0,
+            },
+        },
+        /// The mantissa value of the data rate equation, see Eq. (14).
+        register MOD4 {
+            address: 14,
+            reset: 33579,
+            fields: fieldset _ {
+                size-bytes: 2,
+            
+                field value 15:0,
+            },
+        },
+        register MOD2 {
+            address: 16,
+            reset: 119,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field ModulationType 7:4 -> _ as enum ModulationType {
+                    /// 2-FSK
+                    FSK2: 0,
+                    /// 4-FSK
+                    FSK4: 1,
+                    /// 2-GFSK BT=1
+                    GFSK2BT1: 2,
+                    /// 4-GFSK BT=1
+                    GFSK4BT1: 3,
+                    /// ASK/OOK
+                    AskOok: 5,
+                    /// Unmodulated
+                    Unmodulated: 7,
+                    /// 2-GFSK BT=0.5
+                    GFSK2BT0_5: 10,
+                    /// 4-GFSK BT=0.5
+                    GFSK4BT0_5: 11,
+                    /// Invalid value, do not use
+                    illegal: catch-all _,
+                },
+                /// The exponent value of the data rate equation (see Eq. (14) ).
+                field DATARATE_E 3:0,
+            },
+        },
+        register MOD1 {
+            address: 17,
+            reset: 3,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// Enable the PA power interpolator (see Section 5.6.1 PA configuration).
+                field PA_INTERP_EN 7,
+                /// Enable frequency interpolator for the GFSK shaping (see Section 5.4.1.1 Gaussian shaping).
+                field MOD_INTERP_EN 6,
+                /// Select the constellation map for 4-(G)FSK or 2-(G)FSK modulations (see Table 41. Constellation mapping 2-(G)FSK and Table 42. Constellation mapping 4-(G)FSK).
+                field CONST_MAP 5:4,
+                /// The exponent value of the frequency deviation equation (see Eq. (10)).
+                field FDEV_E 3:0,
+            },
+        },
+        /// The mantissa value of the frequency deviation equation (see Eq. (10)).
+        register MOD0 {
+            address: 18,
+            reset: 147,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field fdev_m 7:0,
+            },
+        },
+        /// Receiver channel filter
+        register ChFlt {
+            address: 19,
+            reset: 35,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// The mantissa value of the receiver channel filter (see Table 44. Channel filter words).
+                field ChFlt_M 7:4,
+                /// The exponent value of the receiver channel filter (see Table 44. Channel filter words).
+                field ChFlt_E 3:0,
+            },
+        },
+        /// Automatic frequency compensation register 2
+        register AFC2 {
+            address: 20,
+            reset: 200,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// Enable the freeze AFC correction upon sync word detection.
+                field AFC_FREEZE_ON_SYNC 7,
+                /// Enable the AFC correction.
+                field AFC_ENABLED 6,
+                field AFC_MODE 5 -> _ as enum AFC_MODE {
+                    ClosedOnSlicer: 0,
+                    ClosedOnSecondConversionStage: 1,
+                },
+            },
+        },
+        /// Automatic frequency compensation register 1
+        register AFC1 {
+            address: 21,
+            reset: 24,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field AFC_FAST_PERIOD 7:0,
+            },
+        },
+        /// Automatic frequency compensation register 0
+        register AFC0 {
+            address: 22,
+            reset: 37,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// The AFC loop gain in fast mode (2's log).
+                field AFC_FAST_GAIN 7:4,
+                /// The AFC loop gain in slow mode (2's log).
+                field AFC_SLOW_GAIN 3:0,
+            },
+        },
+        /// RSSI filter
+        register RSSI_FLT {
+            address: 23,
+            reset: 227,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// Gain of the RSSI filter.
+                field RSSI_FLT 7:4,
+                /// Carrier sense mode (see Section 5.5.8.2 Carrier sense)
+                field CS_MODE 3:2 -> _ as enum CS_MODE {
+                    /// Static CS
+                    StaticCS: 0,
+                    /// Dynamic CS with 6dB dynamic threshold
+                    DynamicCS6db: 1,
+                    /// Dynamic CS with 12dB dynamic threshold
+                    DynamicCS12db: 2,
+                    /// Dynamic CS with 18dB dynamic threshold
+                    DynamicCS18db: 3,
+                },
+            },
+        },
+        /// Signal detect threshold in 1 dB steps. The RSSI_TH can be converted in dBm using the formula RSSI_TH-146.
+        register RSSI_TH {
+            address: 24,
+            reset: 40,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field value 7:0,
+            },
+        },
+        /// Automatic gain control 4
+        register AgcCtrl4 {
+            address: 26,
+            reset: 84,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// Low threshold 0 for the AGC
+                field LOW_THRESHOLD_0 7:4,
+                /// Low threshold 1 for the AGC
+                field LOW_THRESHOLD_1 3:0,
+            },
+        },
+        /// Automatic gain control 3
+        register AgcCtrl3 {
+            address: 27,
+            reset: 16,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// Low threshold selection (defined in the AGCCTRL4). Bitmask for each attenuation step.
+                field LOW_THRESHOLD_SEL 7:0,
+            },
+        },
+        /// Automatic gain control 2
+        register AgcCtrl2 {
+            address: 28,
+            reset: 34,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// Enable the AGC algorithm to be frozen on SYNC
+                field FREEZE_ON_SYNC 5,
+                /// AGC measurement time
+                field MEAS_TIME 3:0,
+            },
+        },
+        /// Automatic gain control 1
+        register AgcCtrl1 {
+            address: 29,
+            reset: 89,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// High threshold for the AGC
+                field HIGH_THRESHOLD 7:4,
+            },
+        },
+        /// Automatic gain control 0
+        register AgcCtrl0 {
+            address: 30,
+            reset: 140,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// Enable the AGC
+                field AGC_ENABLE 7,
+                /// Hold time for after gain adjustment for the AGC.
+                field HOLD_TIME 5:0,
+            },
+        },
+        register ANT_SELECT_CONF {
+            address: 31,
+            reset: 69,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// Hold time for after gain adjustment for the AGC.
+                field EQU_CTRL 6:5 -> _ as try enum EQU_CTRL {
+                    /// Equalization disabled
+                    disabled: 0,
+                    /// Single pass equalization
+                    single_pass: 1,
+                    /// Dual pass equalization
+                    dual_pass: 2,
+                },
+                /// Do not fill the RX FIFO with data if the CS is threshold (see Section 5.5.9 CS blanking).
+                field CS_BLANKING 4,
+                /// Enable the antenna switching (see Section 5.5.10 Antenna switching).
+                field AS_ENABLE 3,
+                /// Set the measurement time.
+                field AS_MEAS_TIME 2:0,
+            },
+        },
+        /// Clock recovery 2
+        register CLOCKREC2 {
+            address: 32,
+            reset: 192,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// Clock recovery slow loop gain (log2).
+                field CLK_REC_P_GAIN_SLOW 7:5,
+                /// Symbol timing recovery algorithm selection
+                field CLK_REC_ALGO_SEL 4 -> _ as enum CLK_REC_ALGO_SEL {
+                    DLL: 0,
+                    PLL: 1,
+                },
+                /// Set the integral slow gain for symbol timing recovery (PLL mode only).
+                field CLK_REC_I_GAIN_SLOW 3:0,
+            },
+        },
+        /// Clock recovery 1
+        register CLOCKREC1 {
+            address: 33,
+            reset: 88,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// Clock recovery fast loop gain (log2).
+                field CLK_REC_P_GAIN_FAST 7:5,
+                /// Post filter length
+                field PstFlt_Len 4 -> _ as enum PstFlt_Len {
+                    symbols8: 0,
+                    symbols16: 1,
+                },
+                /// Set the integral fast gain for symbol timing recovery (PLL mode only).
+                field CLK_REC_I_GAIN_FAST 3:0,
+            },
+        },
+        /// Packet control 6
+        register PcktCtrl6 {
+            address: 43,
+            reset: 32784,
+            fields: fieldset _ {
+                size-bytes: 2,
+            
+                /// The number of bits used for the SYNC field in the packet.
+                field SYNC_LEN 15:10,
+                /// The number of '01 or '10' of the preamble of the packet.
+                field PREAMBLE_LEN 9:0,
+            },
+        },
+        /// Packet control 4
+        register PcktCtrl4 {
+            address: 45,
+            reset: 0,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// The number of bytes used for the length field.
+                field LEN_WID 7 -> _ as enum LEN_WID {
+                    bytes1: 0,
+                    bytes2: 1,
+                },
+                /// Include the ADDRESS field in the packet.
+                field ADDRESS_LEN 3,
+            },
+        },
+        /// Packet control 3
+        register PcktCtrl3 {
+            address: 46,
+            reset: 32,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// The number of bytes used for the length field.
+                field PCKT_FRMT 7:6 -> _ as enum PacketFormat {
+                    basic: 0,
+                    ieee802_15_4g: 1,
+                    uart_ota: 2,
+                    stack: 3,
+                },
+                field RX_MODE 5:4 -> _ as try enum RX_MODE {
+                    normal: 0,
+                    direct_through_fifo: 1,
+                    direct_through_gpio: 2,
+                },
+                /// Select the symbol mapping for 4(G)FSK.
+                field FSK4_SYM_SWAP 3,
+                /// Select the transmission order between MSB and LSB.
+                field BYTE_SWAP 2,
+                /// Select the preamble pattern.
+                field PREAMBLE_SEL 1:0,
+            },
+        },
+        /// Packet control 2
+        register PcktCtrl2 {
+            address: 47,
+            reset: 0,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// This is the FCS type in header field of 802.15.4g packet.
+                field FCS_TYPE_4G 5,
+                /// - If the 802.15.4 mode is enabled, this is the FCS type in
+                /// header field of 802.15.4g packet. Select the FEC type of
+                /// 802.15.4g packet:
+                ///  - 0: NRNSC
+                ///  - 1: RSC.
+                /// - If the UART packet is enabled, this is the value of the
+                /// STOP_BIT.
+                field FEC_TYPE_4G_OR_STOP_BIT 4,
+                /// - If the 802.15.4 mode is enabled, 1: enable the interleaving
+                /// of 802.15.4g packet.
+                /// - If the UART packet is enabled, this is the value of the
+                /// START_BIT.
+                field INT_EN_4G_OR_START_BIT 3,
+                /// Enable the 3-out-of-6 encoding/decoding.
+                field MBUS_3OF6_EN 2,
+                /// Enable the Manchester encoding/decoding.
+                field MANCHESTER_EN 1,
+                /// Packet length mode.
+                field FIX_VAR_LEN 0 -> _ as enum FIX_VAR_LEN {
+                    fixed: 0,
+                    /// in variable mode the field LEN_WID of PCKTCTRL3 register must be configured
+                    variable: 1,
+                },
+            },
+        },
+        /// Packet control 1
+        register PcktCtrl1 {
+            address: 48,
+            reset: 44,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field CRC_MODE 7:5 -> _ as try enum CRC_MODE {
+                    no_crc: 0,
+                    crc_poly_0x07: 1,
+                    crc_poly_0x8005: 2,
+                    crc_poly_0x1021: 3,
+                    crc_poly_0x864CBF: 4,
+                    crc_poly_0x04C011BB7: 5,
+                },
+                /// Enable the whitening mode.
+                field WHIT_EN 4,
+                field TxSource 3:2 -> _ as enum TxSource {
+                    normal: 0,
+                    direct_through_fifo: 1,
+                    direct_through_gpio: 2,
+                    on9: 3,
+                },
+                /// - In tx mode:
+                ///  - false: select the primary SYNC word
+                ///  - true: select the secondary SYNC word
+                /// - In rx mode:
+                ///  - true: enable the dual SYNC word detection mode
+                field SECOND_SYNC_SEL 1,
+                /// Enable the FEC encoding in TX or the Viterbi decoding in RX.
+                field FEC_EN 0,
+            },
+        },
+        /// Length of packet in bytes.
+        register PcktLen {
+            address: 49,
+            reset: 20,
+            fields: fieldset _ {
+                size-bytes: 2,
+            
+                field value 15:0,
+            },
+        },
+        /// SYNC word
+        register SYNC {
+            address: 51,
+            reset: 2290649224,
+            fields: fieldset _ {
+                size-bytes: 4,
+            
+                field value 31:0,
+            },
+        },
+        register QI {
+            address: 55,
+            reset: 1,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// SQI threshold.
+                field SQI_TH 7:5,
+                /// PQI threshold.
+                field PQI_TH 4:1,
+                /// Enable the SQI check.
+                field SQI_EN 0,
+            },
+        },
+        /// Set the packet postamble length.
+        register PCKT_PSTMBL {
+            address: 56,
+            reset: 0,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field value 7:0,
+            },
+        },
+        register PROTOCOL2 {
+            address: 57,
+            reset: 64,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// Enable the CS value contributes to timeout disabling.
+                field CS_TIMEOUT_MASK 7,
+                /// Enable the SQI value contributes to timeout disabling.
+                field SQI_TIMEOUT_MASK 6,
+                /// Enable the PQI value contributes to timeout disabling.
+                field PQI_TIMEOUT_MASK 5,
+                /// TX sequence number to be used when counting reset is required using the related command.
+                field TX_SEQ_NUM_RELOAD 4:3,
+                /// - 0: select the almost empty/full control for TX FIFO.
+                /// - 1: select the almost empty/full control for RX FIFO.
+                field FIFO_GPIO_OUT_MUX_SEL 2,
+                /// Set the LDC timer multiplier factor
+                field LDC_TIMER_MULT 1:0 -> _ as enum LDC_TIMER_MULT {
+                    x1: 0,
+                    x2: 1,
+                    x4: 2,
+                    x8: 3,
+                },
+            },
+        },
+        register PROTOCOL1 {
+            address: 58,
+            reset: 0,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// Enable the Low Duty Cycle mode.
+                field LDC_MODE 7,
+                /// Enable the LDC timer reload mode.
+                field LDC_RELOAD_ON_SYNC 6,
+                /// Enable the piggybacking.
+                field PIGGYBACKING 5,
+                /// Enable the RX sniff timer.
+                field FAST_CS_TERM_EN 4,
+                /// Enable the reload of the back-off random generator seed using the value written in the BU_COUNTER_SEED.
+                field SEED_RELOAD 3,
+                /// Enable the CSMA channel access mode.
+                field CSMA_ON 2,
+                /// Enable the CSMA persistent mode (no back-off cycles).
+                field CSMA_PERS_ON 1,
+                /// Enable the automatic packet filtering control.
+                field AUTO_PCKT_FLT 0,
+            },
+        },
+        register PROTOCOL0 {
+            address: 59,
+            reset: 8,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// Max. number of re-TX (from 0 to 15)(0: re-transmission is not performed).
+                field NMAX_RETX 7:4,
+                /// Field NO_ACK=1 on transmitted packet.
+                field NACK_TX 3,
+                /// Enable the automatic acknowledgment if packet received request.
+                field AUTO_ACK 2,
+                /// Enable the persistent RX mode.
+                field PERS_RX 1,
+            },
+        },
+        /// Set the RX FIFO almost full threshold.
+        register FIFO_CONFIG3 {
+            address: 60,
+            reset: 48,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field RX_AFTHR 6:0,
+            },
+        },
+        /// Set the RX FIFO almost empty threshold.
+        register FIFO_CONFIG2 {
+            address: 61,
+            reset: 48,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field RX_AETHR 6:0,
+            },
+        },
+        /// Set the TX FIFO almost full threshold.
+        register FIFO_CONFIG1 {
+            address: 62,
+            reset: 48,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field TX_AFTHR 6:0,
+            },
+        },
+        /// Set the TX FIFO almost empty threshold.
+        register FIFO_CONFIG0 {
+            address: 63,
+            reset: 48,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field TX_AETHR 6:0,
+            },
+        },
+        /// Packet filter options
+        register PCKT_FLT_OPTIONS {
+            address: 64,
+            reset: 64,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// Logical Boolean function applied to CS/SQI/PQI values: 1: OR, 0: AND.
+                field RX_TIMEOUT_AND_OR_SEL 6,
+                /// RX packet accepted if its source field matches with RX_SOURCE_ADDR register
+                field SOURCE_ADDR_FLT 4,
+                /// RX packet accepted if its source field matches with BROADCAST_ADDR register.
+                field DEST_VS_BROADCAST_ADDR 3,
+                /// RX packet accepted if its destination address matches with MULTICAST_ADDR register.
+                field DEST_VS_MULTICAST_ADDR 2,
+                /// RX packet accepted if its destination address matches with RX_SOURCE_ADDR register.
+                field DEST_VS_SOURCE_ADDR 1,
+                /// Packet discarded if CRC is not valid.
+                field CRC_FLT 0,
+            },
+        },
+        /// Mask register for source address filtering.
+        register PCKT_FLT_GOALS4 {
+            address: 65,
+            reset: 0,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field RX_SOURCE_MASK 7:0,
+            },
+        },
+        /// If dual sync mode enabled: dual SYNC word byte 3, Otherwise RX packet source or TX packet destination field.
+        register PCKT_FLT_GOALS3 {
+            address: 66,
+            reset: 0,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field RX_SOURCE_ADDR_OR_DUAL_SYNC3 7:0,
+            },
+        },
+        /// If dual sync mode enabled: dual SYNC word byte 2, Broadcast address.
+        register PCKT_FLT_GOALS2 {
+            address: 67,
+            reset: 0,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field BROADCAST_ADDR_OR_DUAL_SYNC2 7:0,
+            },
+        },
+        /// If dual sync mode enabled: dual SYNC word byte 1, Multicast address.
+        register PCKT_FLT_GOALS1 {
+            address: 68,
+            reset: 0,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field MULTICAST_ADDR_OR_DUAL_SYNC1 7:0,
+            },
+        },
+        /// If dual sync mode enabled: dual SYNC word byte 0, Tx packet source or RX packet destination field.
+        register PCKT_FLT_GOALS0 {
+            address: 69,
+            reset: 0,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field TX_SOURCE_ADDR_OR_DUAL_SYNC0 7:0,
+            },
+        },
+        /// Counter for RX timer.
+        register TIMERS5 {
+            address: 70,
+            reset: 1,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field RX_TIMER_CNTR 7:0,
+            },
+        },
+        /// Prescaler for RX timer.
+        register TIMERS4 {
+            address: 71,
+            reset: 0,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field RX_TIMER_PRESC 7:0,
+            },
+        },
+        /// Prescaler for wake up timer.
+        register TIMERS3 {
+            address: 72,
+            reset: 1,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field LDC_TIMER_PRESC 7:0,
+            },
+        },
+        /// Counter for wake up timer.
+        register TIMERS2 {
+            address: 73,
+            reset: 0,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field LDC_TIMER_CNTR 7:0,
+            },
+        },
+        /// Prescaler value for reload operation of wake up timer.
+        register TIMERS1 {
+            address: 74,
+            reset: 1,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field LDC_RELOAD_PRSC 7:0,
+            },
+        },
+        /// Counter value for reload operation of wake up timer.
+        register TIMERS0 {
+            address: 75,
+            reset: 0,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field LDC_RELOAD_CNTR 7:0,
+            },
+        },
+        /// The seed for the random generator used to apply the CSMA algorithm.
+        register CSMA_CONF3 {
+            address: 76,
+            reset: 19456,
+            fields: fieldset _ {
+                size-bytes: 2,
+            
+                field BU_CNTR_SEED 15:0,
+            },
+        },
+        register CSMA_CONF1 {
+            address: 78,
+            reset: 4,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// Prescaler value for the back-off unit BU.
+                field BU_PRSC 7:2,
+                /// Multiplier for the Tcca timer.
+                field CCA_PERIOD 1:0 -> _ as enum CcaPeriod {
+                    /// A period of 64 bits
+                    Bits64: 0,
+                    /// A period of 128 bits
+                    Bits128: 1,
+                    /// A period of 256 bits
+                    Bits256: 2,
+                    /// A period of 512 bits
+                    Bits512: 3,
+                },
+            },
+        },
+        register CSMA_CONF0 {
+            address: 79,
+            reset: 0,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// The number of time in which the listen operation is performed.
+                field CCA_LEN 7:4,
+                /// Max number of back-off cycles.
+                field NBACKOFF_MAX 2:0,
+            },
+        },
+        /// Enable the routing of the interrupt flag on the configured IRQ GPIO.
+        register IRQ_MASK {
+            address: 80,
+            reset: 0,
+            fields: fieldset _ {
+                size-bytes: 4,
+            
+                /// RX data ready
+                field RX_DATA_READY 0,
+                /// RX data discarded (upon filtering)
+                field RX_DATA_DISC 1,
+                /// TX data sent
+                field TX_DATA_SENT 2,
+                /// Max. re-TX reached
+                field MAX_RE_TX_REACH 3,
+                /// CRC error
+                field CRC_ERROR 4,
+                /// TX FIFO underflow/overflow error
+                field TX_FIFO_ERROR 5,
+                /// RX FIFO underflow/overflow error
+                field RX_FIFO_ERROR 6,
+                /// TX FIFO almost full
+                field TX_FIFO_ALMOST_FULL 7,
+                /// TX FIFO almost empty
+                field TX_FIFO_ALMOST_EMPTY 8,
+                /// RX FIFO almost full
+                field RX_FIFO_ALMOST_FULL 9,
+                /// RX FIFO almost empty
+                field RX_FIFO_ALMOST_EMPTY 10,
+                /// Max. number of back-off during CCA
+                field MAX_BO_CCA_REACH 11,
+                /// Valid preamble detected
+                field VALID_PREAMBLE 12,
+                /// Sync word detected
+                field VALID_SYNC 13,
+                /// RSSI above threshold (CS)
+                field RSSI_ABOVE_TH 14,
+                /// Wake-up timeout in LDCR mode
+                /// 
+                /// The interrupt flag is set (and consequently the interrupt request) only when the XO clock is available for the state
+                /// machine. This time may be delayed compared to the actual timer expiration. However, the real time event can be sensed
+                /// putting the end-of-counting signal on a GPIO output.
+                field WKUP_TIMEOUT_LDC 15,
+                /// Ready
+                /// 
+                /// The interrupt flag is set each time the S2-LP goes to READY state and the XO has completed its setting transient (XO
+                /// ready condition detected).
+                field READY 16,
+                /// STANDBY state switching in progress
+                field STANDBY_DELAYED 17,
+                /// Low battery level
+                field LOW_BATT_LVL 18,
+                /// Power-on reset
+                field POR 19,
+                /// RX timer timeout
+                field RX_TIMEOUT 28,
+                /// Sniff timer timeout
+                field RX_SNIFF_TIMEOUT 29,
+            },
+        },
+        /// Sniff timer configuration.
+        register FAST_RX_TIMER {
+            address: 84,
+            reset: 40,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field RSSI_SETTLING_LIMIT 7:0,
+            },
+        },
+        /// Output power level for 8th slot.
+        register PA_POWER8 {
+            address: 90,
+            reset: 1,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field value 6:0,
+            },
+        },
+        /// Output power level for 7th slot.
+        register PA_POWER7 {
+            address: 91,
+            reset: 12,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field value 6:0,
+            },
+        },
+        /// Output power level for 6th slot.
+        register PA_POWER6 {
+            address: 92,
+            reset: 24,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field value 6:0,
+            },
+        },
+        /// Output power level for 5th slot.
+        register PA_POWER5 {
+            address: 93,
+            reset: 36,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field value 6:0,
+            },
+        },
+        /// Output power level for 4th slot.
+        register PA_POWER4 {
+            address: 94,
+            reset: 48,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field value 6:0,
+            },
+        },
+        /// Output power level for 3th slot.
+        register PA_POWER3 {
+            address: 95,
+            reset: 72,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field value 6:0,
+            },
+        },
+        /// Output power level for 2nd slot.
+        register PA_POWER2 {
+            address: 96,
+            reset: 96,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field value 6:0,
+            },
+        },
+        /// Output power level for 1st slot.
+        register PA_POWER1 {
+            address: 97,
+            reset: 0,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field value 6:0,
+            },
+        },
+        register PA_POWER0 {
+            address: 98,
+            reset: 71,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// Enable the generation of the internal signal TX_DATA which is the input of the FIR. Needed when FIR_EN=1.
+                field DIG_SMOOTH_EN 7,
+                /// Configure the PA to send maximum output power. Power ramping is disable with this bit set to 1.
+                field PA_MAXDBM 6,
+                /// Enable the power ramping.
+                field PA_RAMP_EN 5,
+                /// Set the step width (unit: 1/8 of bit period).
+                field PA_RAMP_STEP_LEN 4:3,
+                /// Final level for power ramping or selected output power index.
+                field PA_LEVEL_MAX_IDX 2:0,
+            },
+        },
+        register PA_CONFIG1 {
+            address: 99,
+            reset: 3,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// FIR configuration
+                field FIR_CFG 3:2 -> _ as try enum FIR_CFG {
+                    filtering: 0,
+                    ramping: 1,
+                    /// (see Section 5.4.2.1 OOK smoothing)
+                    switching: 2,
+                },
+                /// Enable FIR (see Section 5.4.2.1 OOK smoothing)
+                field FIR_EN 1,
+            },
+        },
+        register PA_CONFIG0 {
+            address: 100,
+            reset: 138,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field PA_DEGEN_TRIM_CODE_TH 7:6 -> _ as enum PA_DEGEN_TRIM_CODE_TH {
+                    code_threshold_418: 0,
+                    code_threshold_439: 1,
+                    code_threshold_465: 2,
+                    code_threshold_485: 3,
+                },
+                field PA_DEGEN_TRIM_CLAMP_VOLTAGE 5:4 -> _ as enum PA_DEGEN_TRIM_CLAMP_VOLTAGE {
+                    voltage_0_40: 0,
+                    voltage_0_45: 1,
+                    voltage_0_50: 2,
+                    voltage_0_55: 3,
+                },
+                /// Enables the 'degeneration' mode that introduces a pre-distortion to linearize the power control curve.
+                field PA_DEGEN_ON 3,
+                /// During a TX operation, enables and starts the digital ASK calibrator.
+                field SAFE_ASK_CAL 2,
+                /// PA bessel filter bandwidth (see Section 5.4.2.1 OOK smoothing).
+                field PA_FC 1:0 -> _ as enum PA_FC {
+                    /// 12.5 kHz (data rate 16.2 kbps)
+                    khz12p5: 0,
+                    /// 25 kHz (data rate 32 kbps)
+                    khz25: 1,
+                    /// 50 kHz (data rate 62.5 kbps)
+                    khz50: 2,
+                    /// 100 kHz (data rate 125 kbps)
+                    khz100: 3,
+                },
+            },
+        },
+        register SYNTH_CONFIG2 {
+            address: 101,
+            reset: 208,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// Enables increased DN current pulses to improve linearization of CP/PFD (see Table 37. Charge pump words).
+                field PLL_PFD_SPLIT_EN 2,
+            },
+        },
+        register VCO_CONFIG {
+            address: 104,
+            reset: 3,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// VCO amplitude calibration is skipped (external amplitude word forced on VCO).
+                field VCO_CALAMP_EXT_SEL 5,
+                /// VCO frequency calibration is skipped (external amplitude word forced on VCO).
+                field VCO_CALFREQ_EXT_SEL 4,
+            },
+        },
+        register XO_RCO_CONF1 {
+            address: 108,
+            reset: 69,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// Disable both dividers of digital clock (and reference clock for the SMPS) and IF-ADC clock.
+                field PD_CLKDIV 4,
+            },
+        },
+        register XO_RCO_CONF0 {
+            address: 109,
+            reset: 48,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field EXT_REF 7 -> _ as enum EXT_REF {
+                    XO: 0,
+                    XIN: 1,
+                },
+                /// Set the driver gm of the XO at start up.
+                field GM_CONF 6:4,
+                /// Enable the the reference clock divider.
+                field REFDIV 3,
+                /// The 34.7 kHz signal must be supplied from any GPIO.
+                field EXT_RCO_OSC 1,
+                /// Enable the automatic RCO calibration.
+                field RCO_CALIBRATION 0,
+            },
+        },
+        register RCO_CALIBR_CONF3 {
+            address: 110,
+            reset: 28749,
+            fields: fieldset _ {
+                size-bytes: 2,
+            
+                /// RWT word value for the RCO.
+                field RWT_IN 15:12,
+                /// Part of RFB word value for RCO.
+                field RFB_IN 11:7,
+            },
+        },
+        register PM_CONF4 {
+            address: 117,
+            reset: 23,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// Disable the internal SMPS.
+                field EXT_SMPS 5,
+            },
+        },
+        register PM_CONF3 {
+            address: 118,
+            reset: 8192,
+            fields: fieldset _ {
+                size-bytes: 2,
+            
+                /// - 0: divider by 4 enabled (SMPS' switching frequency is
+                /// FSW=Fdig/4)
+                /// - 1: rate multiplier enabled (SMPS' switching frequency is
+                /// FSW=KRM*Fdig/(2^15).
+                field KRM_EN 15,
+                /// Sets the divider ratio of the rate multiplier (default: Fsw=Fdig/4)
+                field KRM 14:0,
+            },
+        },
+        register PM_CONF1 {
+            address: 120,
+            reset: 57,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// Enable battery level detector circuit.
+                field BATTERY_LVL_EN 6,
+                /// Set the battery level detector threshold
+                field SET_BLD_TH 5:4 -> _ as enum SET_BLD_TH {
+                    /// 2.7V
+                    v2_7: 0,
+                    /// 2.5V
+                    v2_5: 1,
+                    /// 2.3V
+                    v2_3: 2,
+                    /// 2.1V
+                    v2_1: 3,
+                },
+                /// - 0: SMPS output level depends upon the value written in
+                /// the PM_CONFIG0 register (SET_SMPS_LEVEL field) both
+                /// in RX and TX state.
+                /// - 1: SMPS output level depends upon the value in
+                /// PM_CONFIG register just in TX state, while in RX state it
+                /// is fixed to 1.4 V
+                field SMPS_LVL_MODE 3,
+                /// Set to 0 (default value)
+                field BYPASS_LDO 2,
+            },
+        },
+        register PM_CONF0 {
+            address: 121,
+            reset: 66,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// SMPS output voltage
+                field SET_SMPS_LVL 6:4 -> _ as try enum SET_SMPS_LVL {
+                    /// 1.2V
+                    v1_2: 1,
+                    /// 1.3V
+                    v1_3: 2,
+                    /// 1.4V
+                    v1_4: 3,
+                    /// 1.5V
+                    v1_5: 4,
+                    /// 1.6V
+                    v1_6: 5,
+                    /// 1.7V
+                    v1_7: 6,
+                    /// 1.8V
+                    v1_8: 7,
+                },
+                /// Select whether to retain the fifo in sleep
+                field SLEEP_MODE_SEL 0 -> _ as enum SLEEP_MODE_SEL {
+                    /// Sleep A
+                    without_fifo_retention: 0,
+                    /// Sleep B
+                    with_fifo_retention: 1,
+                },
+            },
+        },
+        register MC_STATE1 {
+            address: 141,
+            reset: 82,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// RCO calibration successfully terminated.
+                field RCO_CAL_OK 4,
+                /// Currently selected antenna.
+                field ANT_SEL 3,
+                /// TX FIFO is full.
+                field TX_FIFO_FULL 2,
+                /// RX FIFO is empty.
+                field RX_FIFO_EMPTY 1,
+                /// RCO calibrator error.
+                field ERROR_LOCK 0,
+            },
+        },
+        register MC_STATE0 {
+            address: 142,
+            reset: 7,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// Current state
+                field STATE 7:1 -> _ as try enum STATE {
+                    /// No wake-up timer active
+                    STANDBY: 2,
+                    /// Wake-up timer active, no FIFO retention
+                    SLEEP_A: 1,
+                    /// Wake-up timer active, FIFO retention
+                    SLEEP_B: 3,
+                    /// Radio in ready state
+                    READY: 0,
+                    /// Error state due to a failure in LOCK operation
+                    LOCKST: 20,
+                    /// High precision LO signal available
+                    LOCKON: 12,
+                    /// Radio in receiver mode
+                    RX: 48,
+                    /// Radio in transmitter mode
+                    TX: 92,
+                    /// Non desirable state reached when a pair of SABORT and RX (or TX) commands are sent during SLEEP state and before sending the READY command
+                    SYNTH_SETUP: 80,
+                    /// State entered if, in LDC RX mode, at least one interrupt is generated at the end of the RX cycle
+                    WAIT_SLEEP: 124,
+                },
+                /// XO is operating.
+                field XO_ON 0,
+            },
+        },
+        /// Number of elements in TX FIFO.
+        register TX_FIFO_STATUS {
+            address: 143,
+            reset: 0,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// Number of elements in TX FIFO.
+                field N_ELEM_TXFIFO 7:0,
+            },
+        },
+        /// Number of elements in RX FIFO.
+        register RX_FIFO_STATUS {
+            address: 144,
+            reset: 0,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// Number of elements in RX FIFO.
+                field N_ELEM_RXFIFO 7:0,
+            },
+        },
+        register RCO_CALIBR_OUT4 {
+            address: 148,
+            reset: 112,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// RWT word from internal RCO calibrator.
+                field RWT_OUT 7:4,
+                /// RFB word (MSB [4:1]) from internal RCO calibrator.
+                field RFB_OUT 3:0,
+            },
+        },
+        register RCO_CALIBR_OUT3 {
+            address: 149,
+            reset: 0,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// RFB word (LSB [0]) from internal RCO calibrator.
+                field RFB_OUT 7,
+            },
+        },
+        register VCO_CALIBR_OUT1 {
+            address: 153,
+            reset: 0,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// VCO magnitude calibration output word (binary coding internally converted from thermometric coding).
+                field VCO_CAL_AMP_OUT 3:0,
+            },
+        },
+        register VCO_CALIBR_OUT0 {
+            address: 154,
+            reset: 0,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// VCO Cbank frequency calibration output word (binary coding internally converted from thermometric coding).
+                field VCO_CAL_FREQ_OUT 6:0,
+            },
+        },
+        register TX_PCKT_INFO {
+            address: 156,
+            reset: 0,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// Current TX packet sequence number.
+                field TX_SEQ_NUM 5:4,
+                /// Number of re-transmissions done for the last TX packet.
+                field N_RETX 3:0,
+            },
+        },
+        register RX_PCKT_INFO {
+            address: 157,
+            reset: 0,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// NACK field of the received packet.
+                field NACK_RX 2,
+                /// Sequence number of the received packet.
+                field RX_SEQ_NUM 1:0,
+            },
+        },
+        /// AFC corrected value.
+        register AFC_CORR {
+            address: 158,
+            reset: 0,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field value 7:0,
+            },
+        },
+        /// PQI value of the received packet.
+        register LINK_QUALIF2 {
+            address: 159,
+            reset: 0,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// PQI value of the received packet.
+                field PQI 7:0,
+            },
+        },
+        register LINK_QUALIF1 {
+            address: 160,
+            reset: 0,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// Carrier sense indication.
+                field CS 7,
+                /// SQI value of the received packet.
+                field SQI 6:0,
+            },
+        },
+        /// RSSI level captured at the end of the SYNC word detection of the received packet.
+        register RSSI_LEVEL {
+            address: 162,
+            reset: 0,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                /// The measured RSSI is in steps of 1 dB, from 0 to 255 (1 byte value) and it is offset in such a way that
+                /// the number 0 corresponds to -146 dBm, so the register value can be converted in dBm by subtracting 146.
+                field value 7:0,
+            },
+        },
+        /// The length of the packet received.
+        register RX_PCKT_LEN {
+            address: 164,
+            reset: 0,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 2,
+            
+                field value 15:0,
+            },
+        },
+        /// CRC field 3 of the received packet.
+        register CRC_FIELD3 {
+            address: 166,
+            reset: 0,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field value 7:0,
+            },
+        },
+        /// CRC field 2 of the received packet.
+        register CRC_FIELD2 {
+            address: 167,
+            reset: 0,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field value 7:0,
+            },
+        },
+        /// CRC field 1 of the received packet.
+        register CRC_FIELD1 {
+            address: 168,
+            reset: 0,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field value 7:0,
+            },
+        },
+        /// CRC field 0 of the received packet.
+        register CRC_FIELD0 {
+            address: 169,
+            reset: 0,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field value 7:0,
+            },
+        },
+        /// Source address field of the received packet.
+        register RX_ADDRE_FIELD1 {
+            address: 170,
+            reset: 0,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field value 7:0,
+            },
+        },
+        /// Destination address field of the received packet.
+        register RX_ADDRE_FIELD0 {
+            address: 171,
+            reset: 0,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field value 7:0,
+            },
+        },
+        /// RSSI level of the received packet, which supports continuous fast SPI reading.
+        register RSSI_LEVEL_RUN {
+            address: 239,
+            reset: 0,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field value 7:0,
+            },
+        },
+        /// S2-LP part number
+        register DEVICE_INFO1 {
+            address: 240,
+            reset: 3,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field PARTNUM 7:0,
+            },
+        },
+        /// S2-LP version number
+        register DEVICE_INFO0 {
+            address: 241,
+            reset: 193,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+            
+                field VERSION 7:0,
+            },
+        },
+        /// Interrupt status register
+        register IRQ_STATUS {
+            address: 250,
+            reset: 591104,
+            access: RO,
+            fields: IRQ_MASK,
+        },
+    },
+    device Ym3812 {
+        register-address-type: u8,
+        default-access: RW,
+
+        /// Register containing the Waveform Select Enable and some test fields
+        register Enable_waveform_control {
+            address: 0x01,
+            fields: fieldset _ {
+                size-bytes: 1,
+                /// If clear, all channels will use normal sine wave.
+                /// If set, register E0-F5 (Waveform Select) contents will be used.
+                field WS 5,
+            }
+        },
+        /// If Timer 1 is enabled, the value in this 
+        /// register will be incremented until it overflows.  Upon
+        /// overflow, the sound card will signal a TIMER interrupt
+        /// (INT 08) and set bits 7 and 6 in its status byte.  The
+        /// value for this timer is incremented every eighty (80)
+        /// microseconds.
+        register Timer_1_Data {
+            address: 0x02,
+            fields: fieldset _ {
+                size-bytes: 1,
+                field value 7:0,
+            }
+        },
+        /// Timer 2 Data.  If Timer 2 is enabled, the value in this 
+        /// register will be incremented until it overflows.  Upon
+        /// overflow, the sound card will signal a TIMER interrupt
+        /// (INT 08) and set bits 7 and 5 in its status byte.  The
+        /// value for this timer is incremented every three hundred
+        /// twenty (320) microseconds.
+        register Timer_2_Data {
+            address: 0x03,
+            fields: fieldset _ {
+                size-bytes: 1,
+                field value 7:0,
+            }
+        },
+        /// Controls the IRQ and timer settings
+        register Timer_Control_Byte {
+            address: 0x04,
+            fields: fieldset _ {
+                size-bytes: 1,
+                /// Resets timers and IRQ flags in status register. All other bits are ignored when this bit is set.
+                field irq_reset 7,
+                /// If set, status register is not affected in timer 1 overflow.
+                field timer1_mask 6,
+                /// If set, status register is not affected in timer 2 overflow.
+                field timer2_mask 5,
+                /// Timer 2 on or off
+                field timer2_start 1,
+                /// Timer 1 on or off
+                field timer1_start 0,
+            }
+        },
+        register note_select {
+            address: 0x05,
+            fields: fieldset _ {
+                size-bytes: 1,
+                /// Composite sine wave mode on/off. All KEY-ON bits must be clear in order to use this mode.
+                /// The card is unable to create any other sound when in CSW mode.
+                /// The CSW mode is not implemented on an OPL3 and this bit is ignored.
+                field composite_sine_wave 7,
+                /// Controls the split point of the keyboard. When 0, the keyboard split is the second bit from the bit 8 of the F-Number. When 1, the MSb of the F-Number is used.
+                field note_select 6,
+            }
+        },
+
+        /// Enum to select the channel for the operator settings block
+        enum ChannelOperators {
+            C1: 0x00,
+            C2: 0x01,
+            C3: 0x02,
+            C4: 0x08,
+            C5: 0x09,
+            C6: 0x0A,
+            C7: 0x10,
+            C8: 0x11,
+            C9: 0x12,
+        },
+        /// Each channel has two operators
+        enum Operator {
+            O1: 0,
+            O2: 1,
+        },
+
+        /// Block containing all operator settings for a channel
+        block ChannelOperatorSettings[ChannelOperators stride 1] {
+            address-offset: 0,
+
+            register operator_settings0[Operator stride 3] {
+                address: 0x20,
+                fields: fieldset _ {
+                    size-bytes: 1,
+                    /// Apply amplitude modulation when set; AM depth is controlled by the AM-Depth flag in address BD.
+                    field amplitude_modulation 7,
+                    /// Apply vibrato when set; vibrato depth is controlled by the Vib-Depth flag in address BD.
+                    field vibrato 6,
+                    /// When set, the sustain level of the voice is maintained until released; when clear, the sound begins to decay immediately after hitting the SUSTAIN phase.
+                    field sustain 5,
+                    /// Keyboard scaling rate. This is another incomprehensible bit in the Sound Blaster manual. From experience, if this bit is set, the sound's envelope is foreshortened as it rises in pitch.
+                    field keyboard_scaling_rate 4,
+                    /// These bits indicate which harmonic the operator will produce sound (or modulation) in relation to the voice's specified frequency.
+                    field modulator_frequency_multiple 3:0 -> _ as enum _ {
+                        /// Factor 0.5
+                        OneOctaveBelow: 0x0,
+                        /// Factor 1
+                        AtSpecified: 0x1,
+                        /// Factor 2
+                        OneOctaveAbove: 0x2,
+                        /// Factor 3
+                        OneOctaveFifthAbove: 0x3,
+                        /// Factor 4
+                        TwoOctaveAbove: 0x4,
+                        /// Factor 5
+                        TwoOctaveMajorThirdAbove: 0x5,
+                        /// Factor 6
+                        TwoOctaveFifthAbove: 0x6,
+                        /// Factor 7
+                        TwoOctaveMinorSeventhAbove: 0x7,
+                        /// Factor 8
+                        ThreeOctaveAbove: 0x8,
+                        /// Factor 9
+                        ThreeOctaveMajorSecondAbove: 0x9,
+                        /// Factor 10
+                        ThreeOctaveMajorThirdAbove: 0xA,
+                        /// Same as ThreeOctaveMajorThirdAbove
+                        ThreeOctaveMajorThirdAboveAlt: 0xB,
+                        /// Factor 12
+                        ThreeOctaveFifthAbove: 0xC,
+                        /// Same as ThreeOctaveFifthAbove
+                        ThreeOctaveFifthAboveAlt: 0xD,
+                        /// Factor 15
+                        ThreeOctaveMajorSeventhAbove: 0xE,
+                        /// Same as ThreeOctaveMajorSeventhAbove
+                        ThreeOctaveMajorSeventhAboveAlt: 0xF,
+                    }
+                }
+            },
+            register operator_settings1[Operator stride 3] {
+                address: 0x40,
+                fields: fieldset _ {
+                    size-bytes: 1,
+                    /// Causes output levels to decrease as the frequency rises
+                    field level_key_scaling 7:6 -> _ as enum ScalingLevel {
+                        NoChange: 0b00,
+                        DB3PerOctave: 0b01,
+                        DB1_5PerOctave: 0b10,
+                        DB6PerOctave: 0b11,
+                    },
+                    /// Attenuates the operator output level. 0 is the loudest, 3F is the softest. Attenuation range is 48dB with 0.75dB resolution.
+                    field output_level 5:0,
+                },
+            },
+            register operator_settings2[Operator stride 3] {
+                address: 0x60,
+                fields: fieldset _ {
+                    size-bytes: 1,
+                    /// Determines the rising time for the sound. The higher the value, the faster the attack. If value is 0, the sound will never attack, and if value is 15, the volume jumps directly from minimum to maximum.
+                    field attack_rate 7:4,
+                    /// Determines the diminishing time for the sound. The higher the value, the shorter the decay. If value is 0, the sound does not decay towards sustain level and stays at maximum volume after attack.
+                    field decay_rate 3:0,
+                }
+            },
+            register operator_settings3[Operator stride 3] {
+                address: 0x80,
+                fields: fieldset _ {
+                    size-bytes: 1,
+                    /// Determines the point at which the sound ceases to decay and changes to a sound having a constant level.
+                    /// The sustain level is expressed as a fraction of the maximum level. 15 is the softest and 0 is the loudest sustain level.
+                    ///
+                    /// *Note: the Sustain-bit in the register 20-35 must be set for this to have an effect.
+                    /// Otherwise the sound will continue with release phase after hitting sustain level.*
+                    ///
+                    /// LSB is -3dB
+                    ///
+                    /// There is an exception when all bits are set (value=15), the actual level is -93dB instead, matching as if the value were 31.
+                    field sustain_level 7:4,
+                    /// Determines the rate at which the sound disappears after KEY-OFF. The higher the value, the shorter the release. Value of 0 causes the sound not to release at all, it will continue to produce sound at level before KEY-OFF.
+                    field release_rate 3:0,
+                },
+            },
+            register operator_settings4[Operator stride 3] {
+                address: 0xE0,
+                fields: fieldset _ {
+                    size-bytes: 1,
+                    field waveform 1:0 -> _ as enum WaveformType {
+                        /// ```txt
+                        /// |  ---         ---         ---         ---         ---         ---
+                        /// | /   \       /   \       /   \       /   \       /   \       /   
+                        /// |/     \     /     \     /     \     /     \     /     \     /    
+                        /// |       \   /       \   /       \   /       \   /       \   /     
+                        /// |        ---         ---         ---         ---         ---      
+                        /// ```
+                        Sine: 0b00,
+                        /// ```txt
+                        /// |  ---         ---         ---         ---         ---         ---
+                        /// | /   \       /   \       /   \       /   \       /   \       /   
+                        /// |/     \-----/     \-----/     \-----/     \-----/     \-----/    
+                        /// |
+                        /// |
+                        /// ```
+                        HalfSine: 0b01,
+                        /// ```txt
+                        /// |  ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---
+                        /// | /   \ /   \ /   \ /   \ /   \ /   \ /   \ /   \ /   \ /   \ /   
+                        /// |Y     Y     Y     Y     Y     Y     Y     Y     Y     Y     Y    
+                        /// |    
+                        /// |    
+                        /// ```
+                        AbsSine: 0b10,
+                        /// ```txt
+                        /// |  /|           /|           /|           /|           /|         
+                        /// | / |          / |          / |          / |          / |         
+                        /// |/  |---------/  |---------/  |---------/  |---------/  |---------
+                        /// |    
+                        /// |    
+                        /// ```
+                        PulseSine: 0b11,
+                    },
+                }
+            },
+        },
+
+        enum Channel {
+            C1: _,
+            C2: _,
+            C3: _,
+            C4: _,
+            C5: _,
+            C6: _,
+            C7: _,
+            C8: _,
+            C9: _,
+        },
+
+        block ChannelGeneralSettings[Channel stride 1] {
+            address-offset: 0,
+
+            register channel_settings0 {
+                address: 0xA0,
+                fields: fieldset _ {
+                    size-bytes: 1,
+                    field frequency_number_lsb 7:0,
+                }
+            },
+            register channel_settings1 {
+                address: 0xB0,
+                fields: fieldset _ {
+                    size-bytes: 1,
+                    /// Channel is voiced when set, silent when clear.
+                    field key_on 5,
+                    /// Octave (0-7). 0 is lowest, 7 is highest.
+                    field block_number 4:2,
+                    field frequency_number_high 1:0,
+                }
+            },
+            register channel_settings2 {
+                address: 0xC0,
+                fields: fieldset _ {
+                    size-bytes: 1,
+                    /// Feedback strength.  If all three bits are set to
+                    /// zero, no feedback is present.  With values 1-7,
+                    /// operator 1 will send a portion of its output back
+                    /// into itself.  1 is the least amount of feedback,
+                    /// 7 is the most.
+                    field feedback 3:1,
+                    field synthesis_type 0 -> _ as
+                        /// How the operators interact.
+                        /// Complex sounds are more easily created if the algorithm is set to FrequencyModulation.
+                        enum SynthesisType {
+                            /// Operator 1 modulates operator 2. In this case, operator 2 is the only one producing sound.
+                            FrequencyModulation: 0b0,
+                            /// Both operators produce sound directly.
+                            AdditiveSynthesis: 0b1,
+                        },
+                }
+            },
+        },
+        register rhythm_settings {
+            address: 0xBD,
+            fields: fieldset _ {
+                size-bytes: 1,
+                /// Tremolo (Amplitude Vibrato) Depth. 0 = 1.0dB, 1 = 4.8dB
+                field tremolo_depth 7 -> _ as enum _ {
+                    /// 1.0dB
+                    Low: 0b0,
+                    /// 4.8dB
+                    High: 0b1,
+                },
+                /// Frequency Vibrato Depth. 0 = 7 cents, 1 = 14 cents. A "cent" is 1/100 of a semi-tone.
+                field vibrato_depth 6 -> _ as enum _ {
+                    /// 7 cents
+                    Low: 0b0,
+                    /// 14 cents
+                    High: 0b1,
+                },
+                /// Percussion Mode. 0 = Melodic Mode, 1 = Percussion Mode.
+                field instrument_mode 5 -> _ as enum _ {
+                    Melodic: 0b0,
+                    Percussion: 0b1,
+                },
+                field bass_drum_on 4,
+                field snare_drum_on 3,
+                field tom_tom_on 2,
+                field cymbal_on 1,
+                field hi_hat_on 0,
+            }
+        }
+    },
+    device Ads7028 {
+        register-address-type: u8,
+        register-address-mode: mapped,
+        word-boundaries: "_:-: :bB:A1:1A:1a:a1:AAa",
+        default-access: RW,
+
+        /// System status and error flags.
+        register SystemStatus {
+            address: 0x00,
+            reset: 0x81,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                /// Channel sequencer running (true = sequence in progress).
+                field seq_status 6 RO,
+                /// I2C high-speed mode active.
+                field i2c_speed 5 RO,
+                /// Oversampling complete. Write 1 to clear.
+                field osr_done 3,
+                /// Power-up CRC error; device configuration not loaded correctly.
+                field crc_err_fuse 2 RO,
+                /// CRC error on incoming data. Write 1 to clear. Blocks register writes until cleared.
+                field crc_err_in 1,
+                /// Brown-out reset indicator. Write 1 to clear. Set on every power-up.
+                field bor 0,
+            },
+        },
+        /// General device configuration.
+        register GeneralCfg {
+            address: 0x01,
+            reset: 0x00,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                /// Enable CRC appended to output data and CRC check on incoming data.
+                field crc_en 6,
+                /// Enable statistics module; clears and updates MAX/MIN/RECENT registers.
+                field stats_en 5,
+                /// Enable digital window comparator.
+                field dwc_en 4,
+                /// Write 1 to initiate conversion immediately without SCL stretching.
+                field cnvst 3 WO,
+                /// Force all channels to analog inputs regardless of PIN_CFG/GPIO_CFG.
+                field ch_rst 2,
+                /// Write 1 to initiate ADC offset calibration; auto-clears when complete.
+                field cal 1,
+                /// Write 1 to reset all registers to defaults.
+                field rst 0 WO,
+            },
+        },
+        /// Output data format configuration.
+        register DataCfg {
+            address: 0x02,
+            reset: 0x00,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                /// Output fixed debug code 0xA5A instead of ADC conversion data.
+                field fix_pat 7,
+                /// Append 4-bit channel ID or status flags to ADC output data.
+                field append_status 5:4 -> _ as
+                    /// Controls what is appended after the ADC output word.
+                    enum AppendStatus {
+                        /// No additional bits appended.
+                        None: 0,
+                        /// Append 4-bit channel ID.
+                        ChannelId: 1,
+                        /// Append 4-bit status flags.
+                        StatusFlags: 2,
+                        /// Reserved.
+                        Reserved: catch-all _,
+                    },
+            },
+        },
+        /// Oversampling ratio configuration.
+        register OsrCfg {
+            address: 0x03,
+            reset: 0x00,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                /// Number of samples averaged per conversion result.
+                field osr 2:0 -> _ as
+                    /// Number of samples averaged per conversion result.
+                    enum OversamplingRatio {
+                        /// No averaging (single sample).
+                        Osr1: 0,
+                        /// Average 2 samples.
+                        Osr2: 1,
+                        /// Average 4 samples.
+                        Osr4: 2,
+                        /// Average 8 samples.
+                        Osr8: 3,
+                        /// Average 16 samples.
+                        Osr16: 4,
+                        /// Average 32 samples.
+                        Osr32: 5,
+                        /// Average 64 samples.
+                        Osr64: 6,
+                        /// Average 128 samples.
+                        Osr128: 7,
+                    },
+            },
+        },
+        /// Operating mode, oscillator selection, and autonomous-mode clock divider.
+        register OpmodeCfg {
+            address: 0x04,
+            reset: 0x00,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                /// On CRC error in autonomous mode, pause sequencing and force channels to analog inputs.
+                field conv_on_err 7,
+                /// Conversion initiation mode.
+                field conv_mode 6:5 -> _ as
+                    /// Selects how conversions are initiated.
+                    enum ConvMode {
+                        /// Conversions triggered by host (SCL-stretch, CNVST, or SPI frame).
+                        Manual: 0,
+                        /// Device runs conversions continuously at the configured rate.
+                        Autonomous: 1,
+                        /// Reserved.
+                        Reserved: catch-all _,
+                    },
+                /// Oscillator select (false = high-speed, true = low-power).
+                field osc_sel 4,
+                /// Clock divider for autonomous-mode sampling rate.
+                field clk_div 3:0,
+            },
+        },
+        /// Per-channel function select (bit N = 0 -> AIN, bit N = 1 -> GPIO).
+        register PinCfg {
+            address: 0x05,
+            reset: 0x00,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                field pin_cfg 7:0,
+            },
+        },
+        /// GPIO direction (bit N = 0 -> input, bit N = 1 -> output). Only applies to pins set as GPIO in PinCfg.
+        register GpioCfg {
+            address: 0x07,
+            reset: 0x00,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                field gpio_cfg 7:0,
+            },
+        },
+        /// GPO driver type (bit N = 0 -> open-drain, bit N = 1 -> push-pull).
+        register GpoDriveCfg {
+            address: 0x09,
+            reset: 0x00,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                field gpo_drive_cfg 7:0,
+            },
+        },
+        /// Logic level to drive on GPO outputs (bit N = 1 -> high).
+        register GpoValue {
+            address: 0x0B,
+            reset: 0x00,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                field gpo_value 7:0,
+            },
+        },
+        /// GPI input logic level readback (bit N reflects GPIO[N]).
+        register GpiValue {
+            address: 0x0D,
+            reset: 0x00,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                field gpi_value 7:0,
+            },
+        },
+        /// Zero-crossing detection blanking time configuration.
+        register ZcdBlankingCfg {
+            address: 0x0F,
+            reset: 0x00,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                /// Blanking time multiplier (false = 1x, true = 8x).
+                field mult_en 7,
+                /// Blanking time value (7-bit).
+                field zcd_blanking 6:0,
+            },
+        },
+        /// Channel sequencer mode and start/stop control.
+        register SequenceCfg {
+            address: 0x10,
+            reset: 0x00,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                /// Start (true) or stop (false) the auto-sequence.
+                field seq_start 4,
+                /// Scanning mode selection.
+                field seq_mode 1:0 -> _ as
+                    /// Channel scanning mode for the sequencer.
+                    enum SeqMode {
+                        /// Host selects channel via MANUAL_CHID each conversion.
+                        Manual: 0,
+                        /// Sequencer cycles through channels enabled in AUTO_SEQ_CHSEL.
+                        AutoSequence: 1,
+                        /// Reserved.
+                        Reserved: catch-all _,
+                    },
+            },
+        },
+        /// Channel ID for next conversion in manual mode.
+        register ManualChSel {
+            address: 0x11,
+            reset: 0x00,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                /// Target channel (0-7 = AIN0-AIN7; channel must not be configured as GPIO).
+                field manual_chid 3:0 -> _ as
+                    /// Analog input channel selection.
+                    enum ChannelId {
+                        /// Analog input AIN0.
+                        Ain0: 0,
+                        /// Analog input AIN1.
+                        Ain1: 1,
+                        /// Analog input AIN2.
+                        Ain2: 2,
+                        /// Analog input AIN3.
+                        Ain3: 3,
+                        /// Analog input AIN4.
+                        Ain4: 4,
+                        /// Analog input AIN5.
+                        Ain5: 5,
+                        /// Analog input AIN6.
+                        Ain6: 6,
+                        /// Analog input AIN7.
+                        Ain7: 7,
+                        /// Reserved.
+                        Reserved: catch-all _,
+                    },
+            },
+        },
+        /// Channel enable bitmask for auto-sequence (bit N = 1 includes AIN[N]).
+        register AutoSeqChSel {
+            address: 0x12,
+            reset: 0x00,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                field auto_seq_ch_sel 7:0,
+            },
+        },
+        /// Channel alert enable for ALERT pin assertion (bit N = 1 enables CH[N]).
+        register AlertChSel {
+            address: 0x14,
+            reset: 0x00,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                field alert_ch_sel 7:0,
+            },
+        },
+        /// Map CRC error condition to ALERT pin.
+        register AlertFuncSel {
+            address: 0x16,
+            reset: 0x00,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                /// Assert ALERT pin when CRC_ERR_IN is set.
+                field alert_crcin 0,
+            },
+        },
+        /// ALERT pin driver type and assertion polarity/mode.
+        register AlertPinCfg {
+            address: 0x17,
+            reset: 0x00,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                /// ALERT driver type (false = open-drain, true = push-pull).
+                field alert_drive 2,
+                /// ALERT assertion behavior.
+                field alert_logic 1:0 -> _ as
+                    /// ALERT pin assertion behavior.
+                    enum AlertLogic {
+                        /// ALERT is asserted low and held until flags are cleared.
+                        ActiveLow: 0,
+                        /// ALERT is asserted high and held until flags are cleared.
+                        ActiveHigh: 1,
+                        /// ALERT pulses low on each new alert event.
+                        PulsedLow: 2,
+                        /// ALERT pulses high on each new alert event.
+                        PulsedHigh: 3,
+                    },
+            },
+        },
+        /// Combined alert event flags (OR of EventHighFlag and EventLowFlag per channel).
+        register EventFlag {
+            address: 0x18,
+            reset: 0x00,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                /// Bit N = 1 indicates a pending alert event on CH[N].
+                field event_flag 7:0,
+            },
+        },
+        /// High-threshold (analog) or logic-1 (digital) alert flags. Write 1 to clear.
+        register EventHighFlag {
+            address: 0x1A,
+            reset: 0x00,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                /// Bit N = 1 indicates a high alert on CH[N].
+                field event_high_flag 7:0,
+            },
+        },
+        /// Low-threshold (analog) or logic-0 (digital) alert flags. Write 1 to clear.
+        register EventLowFlag {
+            address: 0x1C,
+            reset: 0x00,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                /// Bit N = 1 indicates a low alert on CH[N].
+                field event_low_flag 7:0,
+            },
+        },
+        /// Alert region selection per channel (bit N = 0 -> out-of-window, bit N = 1 -> in-window).
+        register EventRgn {
+            address: 0x1E,
+            reset: 0x00,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                field event_rgn 7:0,
+            },
+        },
+        /// High-threshold lower 4 bits [bits 7:4] and 4-bit hysteresis value [bits 3:0] for channel N.
+        register HysteresisCh[8 stride 4] {
+            address: 0x20,
+            reset: 0xF0,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                /// Bits [3:0] of the 12-bit high threshold (combined with HighThCh for full value).
+                field high_threshold_lsb 7:4,
+                /// Hysteresis applied to both thresholds; effective value is this field left-shifted by 3.
+                field hysteresis 3:0,
+            },
+        },
+        /// High-threshold upper 8 bits [bits 11:4] for channel N.
+        register HighThCh[8 stride 4] {
+            address: 0x21,
+            reset: 0xFF,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                field high_threshold_msb 7:0,
+            },
+        },
+        /// Low-threshold lower 4 bits [bits 7:4] and event counter threshold [bits 3:0] for channel N.
+        register EventCountCh[8 stride 4] {
+            address: 0x22,
+            reset: 0x00,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                /// Bits [3:0] of the 12-bit low threshold (combined with LowThCh for full value).
+                field low_threshold_lsb 7:4,
+                /// Alert fires after (event_count + 1) consecutive threshold violations.
+                field event_count 3:0,
+            },
+        },
+        /// Low-threshold upper 8 bits [bits 11:4] for channel N.
+        register LowThCh[8 stride 4] {
+            address: 0x23,
+            reset: 0x00,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                field low_threshold_msb 7:0,
+            },
+        },
+        /// Maximum ADC result lower byte for channel N. Resets to 0x00 after read.
+        register MaxChLsb[8 stride 2] {
+            address: 0x60,
+            reset: 0x00,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                field value 7:0,
+            },
+        },
+        /// Maximum ADC result upper byte for channel N. Resets to 0x00 after read.
+        register MaxChMsb[8 stride 2] {
+            address: 0x61,
+            reset: 0x00,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                field value 7:0,
+            },
+        },
+        /// Minimum ADC result lower byte for channel N. Resets to 0xFF after read.
+        register MinChLsb[8 stride 2] {
+            address: 0x80,
+            reset: 0xFF,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                field value 7:0,
+            },
+        },
+        /// Minimum ADC result upper byte for channel N. Resets to 0xFF after read.
+        register MinChMsb[8 stride 2] {
+            address: 0x81,
+            reset: 0xFF,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                field value 7:0,
+            },
+        },
+        /// Most-recent ADC result lower byte for channel N.
+        register RecentChLsb[8 stride 2] {
+            address: 0xA0,
+            reset: 0x00,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                field value 7:0,
+            },
+        },
+        /// Most-recent ADC result upper byte for channel N.
+        register RecentChMsb[8 stride 2] {
+            address: 0xA1,
+            reset: 0x00,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                field value 7:0,
+            },
+        },
+        /// RMS calculation channel, DC subtraction, and sample-count configuration.
+        register RmsCfg {
+            address: 0xC0,
+            reset: 0x00,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                /// Channel to compute RMS on.
+                field rms_chid 7:4 -> _ as
+                    /// Analog input channel to compute RMS on.
+                    enum RmsChannelId {
+                        /// Compute RMS on AIN0.
+                        Ain0: 0,
+                        /// Compute RMS on AIN1.
+                        Ain1: 1,
+                        /// Compute RMS on AIN2.
+                        Ain2: 2,
+                        /// Compute RMS on AIN3.
+                        Ain3: 3,
+                        /// Compute RMS on AIN4.
+                        Ain4: 4,
+                        /// Compute RMS on AIN5.
+                        Ain5: 5,
+                        /// Compute RMS on AIN6.
+                        Ain6: 6,
+                        /// Compute RMS on AIN7.
+                        Ain7: 7,
+                        /// Reserved.
+                        Reserved: catch-all _,
+                    },
+                /// Subtract DC component before computing RMS.
+                field rms_dc_sub 2,
+                /// Number of samples used for RMS accumulation.
+                field rms_samples 1:0 -> _ as
+                    /// Number of samples accumulated for the RMS calculation.
+                    enum RmsSampleCount {
+                        /// Accumulate 1024 samples.
+                        Samples1024: 0,
+                        /// Accumulate 4096 samples.
+                        Samples4096: 1,
+                        /// Accumulate 16384 samples.
+                        Samples16384: 2,
+                        /// Accumulate 65536 samples.
+                        Samples65536: 3,
+                    },
+            },
+        },
+        /// RMS result lower byte.
+        register RmsLsb {
+            address: 0xC1,
+            reset: 0x00,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                field value 7:0,
+            },
+        },
+        /// RMS result upper byte.
+        register RmsMsb {
+            address: 0xC2,
+            reset: 0x00,
+            access: RO,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                field value 7:0,
+            },
+        },
+        /// Alert-event source bitmask for trigger-based update of GPO[N].
+        register GpoTrigEventSel[8 stride 2] {
+            address: 0xC3,
+            reset: 0x02,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                field trig_event_sel 7:0,
+            },
+        },
+        /// GPO output value on zero-crossing event for channels 0-3 (2 bits per channel).
+        register GpoValueZcdCfgCh0Ch3 {
+            address: 0xE3,
+            reset: 0x00,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                /// GPO value driven on rising/falling ZCD edge for CH3.
+                field ch3 7:6 -> _ as ZcdGpoValue,
+                /// GPO value driven on rising/falling ZCD edge for CH2.
+                field ch2 5:4 -> _ as ZcdGpoValue,
+                /// GPO value driven on rising/falling ZCD edge for CH1.
+                field ch1 3:2 -> _ as ZcdGpoValue,
+                /// GPO value driven on rising/falling ZCD edge for CH0.
+                field ch0 1:0 -> _ as ZcdGpoValue,
+            },
+        },
+        /// GPO output value on zero-crossing event for channels 4-7 (2 bits per channel).
+        register GpoValueZcdCfgCh4Ch7 {
+            address: 0xE4,
+            reset: 0x00,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                /// GPO value driven on rising/falling ZCD edge for CH7.
+                field ch7 7:6 -> _ as ZcdGpoValue,
+                /// GPO value driven on rising/falling ZCD edge for CH6.
+                field ch6 5:4 -> _ as ZcdGpoValue,
+                /// GPO value driven on rising/falling ZCD edge for CH5.
+                field ch5 3:2 -> _ as ZcdGpoValue,
+                /// GPO value driven on rising/falling ZCD edge for CH4.
+                field ch4 1:0 -> _ as ZcdGpoValue,
+            },
+        },
+        /// Enable GPO update on zero-crossing detection (bit N = 1 enables GPO[N]).
+        register GpoZcdUpdateEn {
+            address: 0xE7,
+            reset: 0x00,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                field gpo_zcd_update_en 7:0,
+            },
+        },
+        /// Enable trigger-based GPO updates from alert events (bit N = 1 enables GPO[N]).
+        register GpoTriggerCfg {
+            address: 0xE9,
+            reset: 0x00,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                field gpo_trigger_update_en 7:0,
+            },
+        },
+        /// Logic level to drive on each GPO when its trigger event fires (bit N = 1 -> high).
+        register GpoValueTrig {
+            address: 0xEB,
+            reset: 0x00,
+            fields: fieldset _ {
+                size-bytes: 1,
+
+                field gpo_value_on_trigger 7:0,
+            },
+        },
+
+        /// GPO output value applied on a zero-crossing detection edge (rise/fall).
+        /// Defined in Rust as `crate::ZcdGpoValue`; covers all 4 bit patterns, so
+        /// the conversion is infallible.
+        extern ZcdGpoValue -> u8 {
+            infallible: allow,
+            size-bits: 2,
+        },
+    }
+}

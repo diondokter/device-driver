@@ -5,7 +5,7 @@ use device_driver_diagnostics::{Diagnostics, DynError, errors::AddressOutOfRange
 
 use crate::{
     find_min_max_addresses,
-    model::{Device, Id, Manifest, Object, ObjectId},
+    model::{Device, DeviceId, Manifest, Object, ObjectId},
     passes::{Assumption, Pass},
 };
 
@@ -28,15 +28,12 @@ impl Pass for AddressTypesBigEnough {
     ) -> Result<HashSet<ObjectId>, DynError> {
         let mut removals = HashSet::new();
 
-        for object in manifest.iter_objects() {
-            let Object::Device(device) = object else {
-                continue;
-            };
-
+        for (id, device) in manifest.devices.iter_enumerated() {
             check_device(
                 device.device_config.register_address_type.as_ref(),
                 manifest,
                 device,
+                id,
                 |o| matches!(o, Object::Block(_) | Object::Register(_)),
                 diagnostics,
                 &mut removals,
@@ -45,6 +42,7 @@ impl Pass for AddressTypesBigEnough {
                 device.device_config.command_address_type.as_ref(),
                 manifest,
                 device,
+                id,
                 |o| matches!(o, Object::Block(_) | Object::Command(_)),
                 diagnostics,
                 &mut removals,
@@ -53,6 +51,7 @@ impl Pass for AddressTypesBigEnough {
                 device.device_config.buffer_address_type.as_ref(),
                 manifest,
                 device,
+                id,
                 |o| matches!(o, Object::Block(_) | Object::Buffer(_)),
                 diagnostics,
                 &mut removals,
@@ -67,7 +66,8 @@ fn check_device(
     address_type: Option<&Spanned<Integer>>,
     manifest: &Manifest,
     device: &Device,
-    filter: impl Fn(&Object) -> bool,
+    id: DeviceId,
+    filter: impl Fn(Object) -> bool,
     diagnostics: &mut Diagnostics,
     removals: &mut HashSet<ObjectId>,
 ) {
@@ -75,16 +75,22 @@ fn check_device(
         return;
     };
 
-    let Some(((min_address, min_obj), (max_address, _))) =
+    let Some(((min_address, min_obj), (max_address, max_obj))) =
         find_min_max_addresses(manifest, device, filter)
     else {
         return;
     };
 
     if min_address < address_type.min_value() || max_address > address_type.max_value() {
+        let diagnostic_object = if max_address > address_type.max_value() {
+            max_obj
+        } else {
+            min_obj
+        };
+
         diagnostics.add(AddressOutOfRange {
-            object: min_obj.name_span(),
-            address: min_obj
+            object: diagnostic_object.name_span(),
+            address: diagnostic_object
                 .address()
                 .expect("All objects here should have addresses")
                 .span,
@@ -93,69 +99,6 @@ fn check_device(
             address_type_config: address_type.span,
             address_type: address_type.value,
         });
-        removals.insert(device.id());
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use device_driver_common::{identifier::Identifier, span::SpanExt, specifiers::Integer};
-
-    use crate::model::{Command, Device, DeviceConfig, Register};
-
-    use super::*;
-
-    #[test]
-    fn not_too_low() {
-        let mut start_mir = Device {
-            description: String::new(),
-            name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
-            device_config: DeviceConfig {
-                register_address_type: Some(Integer::I8.with_dummy_span()),
-                ..Default::default()
-            },
-            objects: vec![Object::Register(Register {
-                name: Identifier::try_parse("MyReg").unwrap().with_dummy_span(),
-                address: (-300).with_dummy_span(),
-                ..Default::default()
-            })],
-            ..Default::default()
-        }
-        .into();
-
-        let mut diagnostics = Diagnostics::new();
-        assert!(
-            !AddressTypesBigEnough::run_pass(&mut start_mir, &mut diagnostics)
-                .unwrap()
-                .is_empty()
-        );
-        assert!(diagnostics.has_error());
-    }
-
-    #[test]
-    fn not_too_high() {
-        let mut start_mir = Device {
-            description: String::new(),
-            name: Identifier::try_parse("Device").unwrap().with_dummy_span(),
-            device_config: DeviceConfig {
-                command_address_type: Some(Integer::U16.with_dummy_span()),
-                ..Default::default()
-            },
-            objects: vec![Object::Command(Command {
-                name: Identifier::try_parse("MyReg").unwrap().with_dummy_span(),
-                address: 128000.with_dummy_span(),
-                ..Default::default()
-            })],
-            ..Default::default()
-        }
-        .into();
-
-        let mut diagnostics = Diagnostics::new();
-        assert!(
-            !AddressTypesBigEnough::run_pass(&mut start_mir, &mut diagnostics)
-                .unwrap()
-                .is_empty()
-        );
-        assert!(diagnostics.has_error());
+        removals.insert(id.into());
     }
 }

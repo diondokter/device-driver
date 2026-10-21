@@ -6,13 +6,13 @@ block Example[8 stride 4] {
     address-offset: 0,
     default-access: RW,
 
-    block node,
-    register node,
-    command node,
-    buffer node,
-    fieldset node,
-    enum node,
-    extern node,
+    block my_block,
+    register my_register,
+    command my_command,
+    buffer my_buffer,
+    fieldset my_fieldset,
+    enum my_enum,
+    extern my_extern,
 }
 ```
 ## Table

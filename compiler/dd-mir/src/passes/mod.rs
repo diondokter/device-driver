@@ -9,7 +9,7 @@ use crate::{
         addresses_non_overlapping::AddressesNonOverlapping,
         base_types_specified::BaseTypesSpecified, bit_ranges_validated::BitRangesValidated,
         bool_fields_checked::BoolFieldsChecked, byte_order_specified::ByteOrderSpecified,
-        device_configs_owned::DeviceConfigsOwned, device_name_is_pascal::DeviceNameIsPascal,
+        device_configs_valid::DeviceConfigsValid, device_name_is_pascal::DeviceNameIsPascal,
         enum_values_checked::EnumValuesChecked, extern_values_checked::ExternValuesChecked,
         field_conversion_valid::FieldConversionValid, field_set_refs_valid::FieldsetRefsValid,
         local_namespaces_assigned::LocalNamespacesAssigned, names_checked::NamesChecked,
@@ -29,7 +29,7 @@ mod base_types_specified;
 mod bit_ranges_validated;
 mod bool_fields_checked;
 mod byte_order_specified;
-mod device_configs_owned;
+mod device_configs_valid;
 mod device_name_is_pascal;
 mod enum_values_checked;
 mod extern_values_checked;
@@ -47,7 +47,7 @@ mod reset_values_converted;
 fn get_default_passes() -> [PassInfo; 21] {
     [
         PassInfo::get::<LocalNamespacesAssigned>(),
-        PassInfo::get::<DeviceConfigsOwned>(),
+        PassInfo::get::<DeviceConfigsValid>(),
         PassInfo::get::<EnumValuesChecked>(),
         PassInfo::get::<ExternValuesChecked>(),
         PassInfo::get::<BaseTypesSpecified>(),
@@ -116,7 +116,7 @@ trait Pass {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum Assumption {
-    DeviceConfigsOwned,
+    DeviceConfigsValid,
     FieldsetRefsValid,
     FieldBaseTypesSpecified,
     ExternBaseTypesSpecified,
@@ -137,7 +137,7 @@ pub(crate) enum Assumption {
 
 impl Assumption {
     const ALL_ASSUMPTIONS: &[Assumption] = &[
-        Assumption::DeviceConfigsOwned,
+        Assumption::DeviceConfigsValid,
         Assumption::FieldsetRefsValid,
         Assumption::FieldBaseTypesSpecified,
         Assumption::ExternBaseTypesSpecified,
@@ -182,12 +182,9 @@ impl PassInfo {
     ) -> Result<(), DynError> {
         let removals = P::run_pass(manifest, diagnostics)
             .with_message(|| format!("could not finish {} MIR pass", type_name::<P>()))?;
-        crate::remove_objects(manifest, removals).with_message(|| {
-            format!(
-                "could not remove objects from {} MIR pass",
-                type_name::<P>()
-            )
-        })?;
+        for removal in removals {
+            manifest.remove_object(removal);
+        }
         Ok(())
     }
 }

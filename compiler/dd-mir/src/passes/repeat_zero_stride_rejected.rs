@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    model::{Id, Manifest, ObjectId},
+    model::{Manifest, ObjectId},
     passes::{Assumption, Pass},
 };
 use device_driver_diagnostics::{Diagnostics, DynError, errors::ZeroStrideRepeat};
@@ -18,7 +18,7 @@ impl Pass for RepeatZeroStrideRejected {
     ) -> Result<HashSet<ObjectId>, DynError> {
         let mut removals = HashSet::new();
 
-        for object in manifest.iter_objects() {
+        for (object_id, object) in manifest.objects_enumerated() {
             let Some(repeat) = object.repeat() else {
                 continue;
             };
@@ -27,7 +27,7 @@ impl Pass for RepeatZeroStrideRejected {
                 diagnostics.add(ZeroStrideRepeat {
                     stride: repeat.stride.span,
                 });
-                removals.insert(object.id());
+                removals.insert(object_id);
             }
         }
 

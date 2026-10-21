@@ -1,7 +1,7 @@
 use std::{collections::HashSet, num::NonZero};
 
 use crate::{
-    model::{LendingIterator, Manifest, Object, ObjectId},
+    model::{Manifest, ObjectId},
     passes::{Assumption, Pass},
 };
 use device_driver_diagnostics::{Diagnostics, DynError};
@@ -17,26 +17,28 @@ impl Pass for LocalNamespacesAssigned {
         manifest: &mut Manifest,
         _diagnostics: &mut Diagnostics,
     ) -> Result<HashSet<ObjectId>, DynError> {
-        let mut next_size_id = NonZero::new(1).unwrap();
+        let mut next_site_id = NonZero::new(1).unwrap();
 
-        let mut iter = manifest.iter_objects_with_config_mut();
-        while let Some((object, _)) = iter.next() {
-            if let Object::FieldSet(fs) = object {
-                for field in fs.fields.iter_mut() {
-                    field.name.set_local_site(next_size_id);
-                    next_size_id = next_size_id
-                        .checked_add(1)
-                        .ok_or_else(|| DynError::new("too many local sites"))?;
+        for fieldset in manifest.fieldsets.iter() {
+            for field_id in fieldset.fields.iter() {
+                if let Some(field) = manifest.fields.get_mut(*field_id) {
+                    field.name.set_local_site(next_site_id);
                 }
             }
-            if let Object::Enum(e) = object {
-                for variant in e.variants.iter_mut() {
-                    variant.name.set_local_site(next_size_id);
-                    next_size_id = next_size_id
-                        .checked_add(1)
-                        .ok_or_else(|| DynError::new("too many local sites"))?;
+            next_site_id = next_site_id
+                .checked_add(1)
+                .ok_or_else(|| DynError::new("too many local sites"))?;
+        }
+
+        for enum_value in manifest.enums.iter() {
+            for variant_id in enum_value.variants.iter() {
+                if let Some(variant) = manifest.enum_variants.get_mut(*variant_id) {
+                    variant.name.set_local_site(next_site_id);
                 }
             }
+            next_site_id = next_site_id
+                .checked_add(1)
+                .ok_or_else(|| DynError::new("too many local sites"))?;
         }
 
         Ok(Default::default())

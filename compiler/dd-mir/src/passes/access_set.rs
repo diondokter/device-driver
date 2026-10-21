@@ -4,7 +4,7 @@ use device_driver_common::specifiers::Access;
 use device_driver_diagnostics::{Diagnostics, DynError, errors::UnspecifiedAccess};
 
 use crate::{
-    model::{Manifest, Object, ObjectId},
+    model::{Manifest, ObjectId, ObjectMut},
     passes::Pass,
 };
 
@@ -20,72 +20,56 @@ impl Pass for AccessSet {
         manifest: &mut Manifest,
         diagnostics: &mut Diagnostics,
     ) -> Result<HashSet<ObjectId>, DynError> {
-        set_access(manifest.default_access, &mut manifest.objects, diagnostics);
-        Ok(Default::default())
-    }
-}
+        let all_objects = manifest.object_ids().collect::<Vec<_>>();
 
-fn set_access(
-    default_access: Option<Access>,
-    objects: &mut [Object],
-    diagnostics: &mut Diagnostics,
-) {
-    for object in objects {
-        match object {
-            Object::Device(device) => {
-                let default_access = device.default_access.or(default_access);
-                set_access(default_access, &mut device.objects, diagnostics);
-            }
-            Object::Block(block) => {
-                let default_access = block.default_access.or(default_access);
-                set_access(default_access, &mut block.objects, diagnostics);
-            }
-            Object::FieldSet(field_set) => {
-                let default_access = field_set.default_access.or(default_access);
-                for field in field_set.fields.iter_mut() {
-                    field.access = field.access.or(default_access);
+        for object_id in all_objects {
+            let default_access = manifest.object_default_access(object_id);
 
-                    if field.access.is_none() {
-                        field.access = Some(Access::RW);
+            let object = object_id.get_mut(manifest).unwrap();
+            match object {
+                ObjectMut::Register(val) => {
+                    val.access = val.access.or(default_access);
+                    if val.access.is_none() {
+                        val.access = Some(Access::RW);
                         diagnostics.add(UnspecifiedAccess {
-                            object_name: field.name.span,
-                            short_property: true,
-                            properties_span: Some(field.short_properties_span),
+                            object_name: val.name.span,
+                            short_property: false,
+                            properties_span: val.properties_span,
                         });
                     }
                 }
-            }
-            Object::Register(register) => {
-                register.access = register.access.or(default_access);
-
-                if register.access.is_none() {
-                    register.access = Some(Access::RW);
-                    diagnostics.add(UnspecifiedAccess {
-                        object_name: register.name.span,
-                        short_property: false,
-                        properties_span: register.properties_span,
-                    });
+                ObjectMut::Buffer(val) => {
+                    val.access = val.access.or(default_access);
+                    if val.access.is_none() {
+                        val.access = Some(Access::RW);
+                        diagnostics.add(UnspecifiedAccess {
+                            object_name: val.name.span,
+                            short_property: false,
+                            properties_span: val.properties_span,
+                        });
+                    }
                 }
-            }
-            Object::Buffer(buffer) => {
-                buffer.access = buffer.access.or(default_access);
-
-                if buffer.access.is_none() {
-                    buffer.access = Some(Access::RW);
-                    diagnostics.add(UnspecifiedAccess {
-                        object_name: buffer.name.span,
-                        short_property: false,
-                        properties_span: buffer.properties_span,
-                    });
+                ObjectMut::Field(val) => {
+                    val.access = val.access.or(default_access);
+                    if val.access.is_none() {
+                        val.access = Some(Access::RW);
+                        diagnostics.add(UnspecifiedAccess {
+                            object_name: val.name.span,
+                            short_property: true,
+                            properties_span: Some(val.short_properties_span),
+                        });
+                    }
                 }
-            }
-
-            Object::Field(_) => {
-                // Intentionally left empty as fields are done inline in the fieldset case
-            }
-            Object::Command(_) | Object::Enum(_) | Object::Extern(_) => {
-                // Intentionally left empty as they don't have children we care about and they don't carry an access specifier themselves
+                ObjectMut::Device(_) => {}
+                ObjectMut::Block(_) => {}
+                ObjectMut::Command(_) => {}
+                ObjectMut::FieldSet(_) => {}
+                ObjectMut::Enum(_) => {}
+                ObjectMut::Extern(_) => {}
+                ObjectMut::EnumVariant(_) => {}
             }
         }
+
+        Ok(Default::default())
     }
 }

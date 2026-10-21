@@ -11,10 +11,10 @@ manifest Example {
     register-address-mode: mapped,
     default-access: RW,
 
-    device node,
-    fieldset node,
-    enum node,
-    extern node,
+    device my_device,
+    fieldset my_fieldset,
+    enum my_enum,
+    extern my_extern,
 }
 ```
 ## Table
