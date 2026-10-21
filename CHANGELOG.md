@@ -2,9 +2,17 @@
 
 ### Unreleased
 
+### 2.2.0 (21-10-26)
+
+- Added LSP support, enabled by default in the cli under the `lsp` command
+  - Best used with the new [vscode extension](https://marketplace.visualstudio.com/items?itemName=diondokter.device-driver)
 - Fixed code generation for enums where converting from a base type would ignore the default variant in the presence of a catch-all variant
   - When both are present, the catch-all should be used as fallback.
   - But when a variant exactly matches the default, that should still be used instead of falling through to the catch-all
+- The timings output is a little more complete now
+- Flattened the AST and MIR
+  - This was a large internal change to enable building the LSP
+  - Please open an issue if you find any regression
 
 ### 2.1.1 (24-08-26)
 
