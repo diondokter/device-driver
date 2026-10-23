@@ -4,7 +4,8 @@ use crate::{
     MirOptions, PassTiming,
     model::{Manifest, ObjectId},
     passes::{
-        access_set::AccessSet, address_types_big_enough::AddressTypesBigEnough,
+        access_set::AccessSet, address_properties_used::AddressPropertiesUsed,
+        address_types_big_enough::AddressTypesBigEnough,
         address_types_specified::AddressTypesSpecified,
         addresses_non_overlapping::AddressesNonOverlapping,
         base_types_specified::BaseTypesSpecified, bit_ranges_validated::BitRangesValidated,
@@ -22,6 +23,7 @@ use device_driver_common::instant::Instant;
 use device_driver_diagnostics::{Diagnostics, DynError, ResultExt};
 
 mod access_set;
+mod address_properties_used;
 mod address_types_big_enough;
 mod address_types_specified;
 mod addresses_non_overlapping;
@@ -44,10 +46,11 @@ mod reserved_names_checked;
 mod reset_values_converted;
 
 // TODO: Make const when possible in a future Rust version
-fn get_default_passes() -> [PassInfo; 21] {
+fn get_default_passes() -> [PassInfo; 22] {
     [
         PassInfo::get::<LocalNamespacesAssigned>(),
         PassInfo::get::<DeviceConfigsValid>(),
+        PassInfo::get::<AddressPropertiesUsed>(),
         PassInfo::get::<EnumValuesChecked>(),
         PassInfo::get::<ExternValuesChecked>(),
         PassInfo::get::<BaseTypesSpecified>(),

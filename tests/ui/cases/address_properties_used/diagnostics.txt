@@ -1,0 +1,30 @@
+warning: unused address property
+  --> input.ddsl:LL:31
+   |
+LL |         command-address-type: u8,
+   |                               ^^ this command address type is unused because the device has no commands
+
+warning: unused address property
+  --> input.ddsl:LL:30
+   |
+LL |         buffer-address-type: u8,
+   |                              ^^ this buffer address type is unused because the device has no buffers
+
+warning: unused address property
+  --> input.ddsl:LL:27
+   |
+LL |     command-address-type: u8,
+   |                           ^^ this command address type is unused because there's no device that doesn't override the value that also has commands
+
+warning: unused address property
+  --> input.ddsl:LL:26
+   |
+LL |     buffer-address-type: u8,
+   |                          ^^ this buffer address type is unused because there's no device that doesn't override the value that also has buffers
+
+warning: unused address property
+  --> input.ddsl:LL:28
+   |
+LL |     register-address-mode: mapped,
+   |                            ^^^^^^ this register address mode is unused because there's no device that doesn't override the value that also has registers
+
