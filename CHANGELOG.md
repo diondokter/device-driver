@@ -2,6 +2,8 @@
 
 ### Unreleased
 
+- Added warnings for unused address properties. This happens when you have a `register-address-type` specified, but there's no register for it to apply for
+
 ### 2.2.0 (21-10-26)
 
 - Added LSP support, enabled by default in the cli under the `lsp` command

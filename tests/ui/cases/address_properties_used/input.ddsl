@@ -1,0 +1,22 @@
+// Check that we get proper warnings for unused address properties
+manifest foo {
+    default-access: RW,
+
+    register-address-type: u8,
+    command-address-type: u8,
+    buffer-address-type: u8,
+    register-address-mode: mapped,
+
+    device Bar {
+        register-address-mode: mapped,
+        command-address-type: u8,
+        buffer-address-type: u8,
+        
+        register reg {
+            address: 0,
+            fields: fieldset _ {
+                size-bytes: 1,
+            }
+        }
+    }
+}

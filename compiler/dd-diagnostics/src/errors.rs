@@ -2650,3 +2650,54 @@ impl Diagnostic for FieldSetterNameCollision {
         "field setter name collision".into()
     }
 }
+
+#[derive(Debug)]
+pub struct UnusedAddressProperty {
+    pub property: Span,
+    pub manifest: bool,
+    pub property_type: &'static str,
+    pub child_type: &'static str,
+}
+
+impl Diagnostic for UnusedAddressProperty {
+    fn severity(&self) -> Severity {
+        Severity::Warning
+    }
+
+    fn as_report<'a>(&'a self, source: &'a str, path: &'a str) -> Vec<Group<'a>> {
+        [
+            self.title_snippet().element(
+                Snippet::source(source)
+                    .path(path)
+                    .annotation(
+                        AnnotationKind::Primary
+                            .span(self.property.into())
+                            .label(
+                                if self.manifest {
+                                    format!(
+                                        "this {} is unused because there's no device that doesn't override the value that also has {}s",
+                                        self.property_type,
+                                        self.child_type,
+                                    )
+                                } else {
+                                    format!(
+                                        "this {} is unused because the device has no {}s",
+                                        self.property_type,
+                                        self.child_type,
+                                    )
+                                }
+                            ),
+                    )
+            ),
+        ]
+        .to_vec()
+    }
+
+    fn primary_span(&self) -> Span {
+        self.property
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        "unused address property".into()
+    }
+}
