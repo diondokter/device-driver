@@ -107,21 +107,24 @@ fn build(args: BuildArgs) -> Result<ExitCode, DynError> {
 
     let diagnostics_has_error = diagnostics.has_error();
 
+    let metadata = Metadata {
+        source: &source,
+        source_path: &source_path.display().to_string(),
+        term_width: None,
+        ansi: true,
+        unicode: true,
+        anonymized_line_numbers: false,
+    };
+
+    let diagnostics_summary = diagnostics.summary();
     diagnostics
-        .print_to(
-            std::io::stderr().lock(),
-            Metadata {
-                source: &source,
-                source_path: &source_path.display().to_string(),
-                term_width: None,
-                ansi: true,
-                unicode: true,
-                anonymized_line_numbers: false,
-            },
-        )
+        .print_to(std::io::stderr().lock(), &metadata)
         .into_dyn_result()?;
 
     if diagnostics_has_error {
+        diagnostics_summary
+            .print_to(std::io::stderr().lock(), &metadata)
+            .into_dyn_result()?;
         return Ok(ExitCode::FAILURE);
     }
 
@@ -145,6 +148,11 @@ fn build(args: BuildArgs) -> Result<ExitCode, DynError> {
                     .map_or_else(|| "stdout".into(), |path| format!("{:?}", path.display()))
             )
         })?;
+    output_writer.flush().into_dyn_result()?;
+
+    diagnostics_summary
+        .print_to(std::io::stderr().lock(), &metadata)
+        .into_dyn_result()?;
 
     Ok(ExitCode::SUCCESS)
 }

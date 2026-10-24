@@ -51,7 +51,7 @@ impl Diagnostics {
 
     pub fn render_for_each<E>(
         &self,
-        metadata: Metadata<'_>,
+        metadata: &Metadata<'_>,
         mut f: impl FnMut(&dyn Diagnostic, String) -> Result<(), E>,
     ) -> Result<(), E> {
         let renderer = metadata.get_renderer();
@@ -73,7 +73,7 @@ impl Diagnostics {
     pub fn print_to<W: std::io::Write>(
         self,
         mut writer: W,
-        metadata: Metadata<'_>,
+        metadata: &Metadata<'_>,
     ) -> std::io::Result<()> {
         self.render_for_each(metadata, |_, rendered| writeln!(writer, "{rendered}\n"))
     }
@@ -81,9 +81,125 @@ impl Diagnostics {
     pub fn print_to_fmt<W: std::fmt::Write>(
         self,
         mut writer: W,
-        metadata: Metadata<'_>,
+        metadata: &Metadata<'_>,
     ) -> std::fmt::Result {
         self.render_for_each(metadata, |_, rendered| writeln!(writer, "{rendered}\n"))
+    }
+
+    pub fn summary(&self) -> Summary {
+        self.diagnostics
+            .iter()
+            .fold(Summary::default(), |prev, diag| match diag.severity() {
+                Severity::Error => Summary {
+                    errors: prev.errors + 1,
+                    ..prev
+                },
+                Severity::Warning => Summary {
+                    warnings: prev.warnings + 1,
+                    ..prev
+                },
+                Severity::Info => Summary {
+                    infos: prev.infos + 1,
+                    ..prev
+                },
+                Severity::Note => Summary {
+                    notes: prev.notes + 1,
+                    ..prev
+                },
+                Severity::Help => Summary {
+                    helps: prev.helps + 1,
+                    ..prev
+                },
+            })
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct Summary {
+    pub errors: u32,
+    pub warnings: u32,
+    pub infos: u32,
+    pub notes: u32,
+    pub helps: u32,
+}
+
+impl Summary {
+    pub fn print_to<W: std::io::Write>(
+        self,
+        mut writer: W,
+        metadata: &Metadata<'_>,
+    ) -> std::io::Result<()> {
+        let highest_severity = match self {
+            Summary { errors: 1.., .. } => Severity::Error,
+            Summary { warnings: 1.., .. } => Severity::Warning,
+            Summary { infos: 1.., .. } => Severity::Info,
+            Summary { notes: 1.., .. } => Severity::Note,
+            Summary { helps: 1.., .. } => Severity::Help,
+            _ => return Ok(()),
+        };
+
+        let file_name = metadata
+            .source_path
+            .split(['\\', '/'])
+            .next_back()
+            .unwrap_or(metadata.source_path);
+
+        let report_string = match highest_severity {
+            Severity::Error => format!("could not compile `{file_name}` due to "),
+            _ => format!("`{file_name}` generated ",),
+        };
+
+        let mut stats = Vec::new();
+        if self.errors > 0 {
+            stats.push(format!(
+                "{} error{}",
+                self.errors,
+                if self.errors > 1 { "s" } else { "" }
+            ));
+        }
+        if self.warnings > 0 {
+            stats.push(format!(
+                "{} warning{}",
+                self.warnings,
+                if self.warnings > 1 { "s" } else { "" }
+            ));
+        }
+        if self.infos > 0 {
+            stats.push(format!(
+                "{} info{}",
+                self.infos,
+                if self.infos > 1 { "s" } else { "" }
+            ));
+        }
+        if self.notes > 0 {
+            stats.push(format!(
+                "{} note{}",
+                self.notes,
+                if self.notes > 1 { "s" } else { "" }
+            ));
+        }
+        if self.helps > 0 {
+            stats.push(format!(
+                "{} help{}",
+                self.helps,
+                if self.helps > 1 { "s" } else { "" }
+            ));
+        }
+
+        let diagnostic = SimpleReport(
+            highest_severity,
+            format!("{report_string}{}", stats.join("; ")),
+        );
+        let renderer = metadata.get_renderer();
+
+        let mut rendered =
+            renderer.render(&diagnostic.as_report(metadata.source, metadata.source_path));
+
+        if !metadata.ansi {
+            rendered = strip_ansi_urls(&rendered);
+        }
+
+        writeln!(writer, "{rendered}")
     }
 }
 
@@ -177,14 +293,7 @@ pub trait Diagnostic: Debug + Send {
     fn title(&self) -> Cow<'static, str>;
 
     fn title_snippet(&self) -> Title<'static> {
-        match self.severity() {
-            Severity::Error => Level::ERROR,
-            Severity::Warning => Level::WARNING,
-            Severity::Info => Level::INFO,
-            Severity::Note => Level::NOTE,
-            Severity::Help => Level::HELP,
-        }
-        .primary_title(self.title())
+        Level::from(self.severity()).primary_title(self.title())
     }
 }
 
@@ -214,6 +323,27 @@ impl<E: Error + Send> Diagnostic for E {
     }
 }
 
+#[derive(Debug)]
+struct SimpleReport(pub Severity, pub String);
+
+impl Diagnostic for SimpleReport {
+    fn severity(&self) -> Severity {
+        self.0
+    }
+
+    fn as_report<'a>(&'a self, _source: &'a str, _path: &'a str) -> Vec<Group<'a>> {
+        [Group::with_title(self.title_snippet())].into()
+    }
+
+    fn primary_span(&self) -> Span {
+        Span::empty()
+    }
+
+    fn title(&self) -> Cow<'static, str> {
+        self.1.clone().into()
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Severity {
     Error,
@@ -221,6 +351,18 @@ pub enum Severity {
     Info,
     Note,
     Help,
+}
+
+impl From<Severity> for Level<'_> {
+    fn from(value: Severity) -> Self {
+        match value {
+            Severity::Error => Level::ERROR,
+            Severity::Warning => Level::WARNING,
+            Severity::Info => Level::INFO,
+            Severity::Note => Level::NOTE,
+            Severity::Help => Level::HELP,
+        }
+    }
 }
 
 #[derive(Debug)]
