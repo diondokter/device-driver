@@ -2149,7 +2149,7 @@ impl Diagnostic for SizeBytesTooLarge {
                 .element(
                     Snippet::source(source)
                         .path(path)
-                        .patch(Patch::new(self.value.into(), "0xFFFF_FFFF")),
+                        .patch(Patch::new(self.value.into(), "0x10_0000")),
                 ),
         ]
         .to_vec()
