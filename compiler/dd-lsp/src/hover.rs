@@ -193,7 +193,6 @@ fn try_get_address_hover(document: &Document, position: Position) -> Option<Hove
 
     let map: Vec<(String, String, i128)> = match &repeat.source.value {
         RepeatSource::Count(non_zero) => (0..non_zero.get())
-            .into_iter()
             .map(|i| {
                 (
                     i.to_string(),
@@ -259,7 +258,6 @@ fn try_get_field_address_hover(document: &Document, position: Position) -> Optio
 
     let map: Vec<(String, String, i128)> = match &repeat.source.value {
         RepeatSource::Count(non_zero) => (0..non_zero.get())
-            .into_iter()
             .map(|i| {
                 (
                     i.to_string(),
