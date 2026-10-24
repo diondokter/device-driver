@@ -4,6 +4,8 @@
 
 - Added warnings for unused address properties. This happens when you have a `register-address-type` specified, but there's no register for it to apply for
 - CLI now reports the number of emitted errors, warnings and other diagnostics
+- Added an LSP hover over an address. If the object is repeated, you'll get an overview of all the address for each repeat index
+- Rendered fieldsets in LSP hover now use hex for the (base) value instead of decimal
 
 ### 2.2.0 (21-10-26)
 
