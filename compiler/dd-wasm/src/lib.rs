@@ -54,7 +54,7 @@ pub fn compile(source: &str, chars_per_line: usize, target: TargetArg, options: 
             diagnostics
                 .print_to_fmt(
                     &mut diagnostics_string,
-                    Metadata {
+                    &Metadata {
                         source,
                         source_path: "input.ddsl",
                         term_width: Some(chars_per_line),

@@ -41,7 +41,7 @@ pub fn run_test(source_paths: &[&Path], output_path: &Path) {
                 diagnostics
                     .print_to_fmt(
                         &mut diagnostics_output,
-                        Metadata {
+                        &Metadata {
                             source: &source,
                             source_path: "input.ddsl",
                             term_width: None,

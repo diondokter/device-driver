@@ -28,7 +28,7 @@ fuzz_target!(|input: Input<'_>| {
             diagnostics
                 .print_to_fmt(
                     &mut d,
-                    device_driver_core::Metadata {
+                    &device_driver_core::Metadata {
                         source: input.source,
                         source_path: "fuzz.ddsl",
                         term_width: None,

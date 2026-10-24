@@ -66,7 +66,7 @@ fn accept(cases_dir: &Path) {
                     diagnostics
                         .print_to_fmt(
                             &mut diagnostics_output,
-                            Metadata {
+                            &Metadata {
                                 source: &source,
                                 source_path: "input.ddsl",
                                 term_width: None,

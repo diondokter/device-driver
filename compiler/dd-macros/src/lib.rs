@@ -111,7 +111,7 @@ fn try_create_device(input: Input) -> Result<TokenStream, DynError> {
     diagnostics
         .print_to(
             stderr().lock(),
-            Metadata {
+            &Metadata {
                 source: &source,
                 source_path: &source_path,
                 term_width: None,

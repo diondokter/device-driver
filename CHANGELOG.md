@@ -3,6 +3,7 @@
 ### Unreleased
 
 - Added warnings for unused address properties. This happens when you have a `register-address-type` specified, but there's no register for it to apply for
+- CLI now reports the number of emitted errors, warnings and other diagnostics
 
 ### 2.2.0 (21-10-26)
 
