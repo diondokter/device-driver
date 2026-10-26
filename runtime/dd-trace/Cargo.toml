@@ -1,0 +1,22 @@
+[package]
+name = "device-driver-trace"
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+keywords = ["no_std", "device", "driver", "toolkit"]
+categories = ["embedded", "hardware-support", "no-std::no-alloc", "no-std"]
+description = "Tracing format for the device-driver toolkit"
+
+[dependencies]
+
+[dev-dependencies]
+critical-section = { version = "1.2.0", features = ["std"] }
+
+[features]
+default = ["std"]
+
+std = []
