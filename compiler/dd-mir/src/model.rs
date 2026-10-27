@@ -20,19 +20,40 @@ use device_driver_common::{
         RepeatSource, ResetValue,
     },
 };
+use device_driver_diagnostics::DynError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ObjectType {
-    Device,
-    Block,
-    Register,
-    Command,
-    Buffer,
-    FieldSet,
-    Field,
-    Enum,
-    EnumVariant,
-    Extern,
+    Device = 1,
+    Block = 2,
+    Register = 3,
+    Command = 4,
+    Buffer = 5,
+    FieldSet = 6,
+    Field = 7,
+    Enum = 8,
+    EnumVariant = 9,
+    Extern = 10,
+}
+
+impl TryFrom<u8> for ObjectType {
+    type Error = DynError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            1 => Ok(Self::Device),
+            2 => Ok(Self::Block),
+            3 => Ok(Self::Register),
+            4 => Ok(Self::Command),
+            5 => Ok(Self::Buffer),
+            6 => Ok(Self::FieldSet),
+            7 => Ok(Self::Field),
+            8 => Ok(Self::Enum),
+            9 => Ok(Self::EnumVariant),
+            10 => Ok(Self::Extern),
+            _ => Err(DynError::new("invalid object type value")),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -52,11 +73,23 @@ impl Display for ObjectIdConversionError {
 impl Error for ObjectIdConversionError {}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ObjectId(ObjectType, u32);
+pub struct ObjectId(NonZeroU32);
 
 impl ObjectId {
+    pub const fn new(ot: ObjectType, index: u32) -> Self {
+        assert!(index < (1 << 24), "object id index must fit in 24 bit");
+        Self(NonZeroU32::new(((ot as u32) << 24) | index).unwrap())
+    }
+
+    #[track_caller]
     pub fn object_type(self) -> ObjectType {
-        self.0
+        let ot_val = ((self.0.get() & 0xFF00_0000) >> 24) as u8;
+        ObjectType::try_from(ot_val)
+            .expect("object type should only be gotten from initialized object types")
+    }
+
+    const fn object_index(self) -> u32 {
+        self.0.get() & 0x00FF_FFFF
     }
 
     pub fn get(self, manifest: &Manifest) -> Option<Object<'_>> {
@@ -70,7 +103,8 @@ impl ObjectId {
 
 impl Default for ObjectId {
     fn default() -> Self {
-        Self(ObjectType::Device, u32::MAX)
+        // This is fine because there's no object type with value 0
+        Self(NonZeroU32::new(1).unwrap())
     }
 }
 
@@ -102,18 +136,20 @@ macro_rules! create_id {
 
         impl From<$name> for ObjectId {
             fn from(value: $name) -> Self {
-                Self(ObjectType::$object_type, value.0)
+                Self::new(ObjectType::$object_type, value.0)
             }
         }
 
         impl TryFrom<ObjectId> for $name {
             type Error = ObjectIdConversionError;
             fn try_from(value: ObjectId) -> Result<Self, Self::Error> {
-                if value.0 == ObjectType::$object_type {
-                    Ok(Self(value.1))
+                let ot = value.object_type();
+
+                if ot == ObjectType::$object_type {
+                    Ok(Self(value.object_index()))
                 } else {
                     Err(ObjectIdConversionError {
-                        source: value.0,
+                        source: ot,
                         target: ObjectType::$object_type,
                     })
                 }
@@ -416,48 +452,90 @@ impl Manifest {
 
     pub fn object(&self, id: impl Into<ObjectId>) -> Option<Object<'_>> {
         let id = id.into();
-        match id.0 {
-            ObjectType::Device => self.devices.get(DeviceId(id.1)).map(Object::Device),
-            ObjectType::Block => self.blocks.get(BlockId(id.1)).map(Object::Block),
-            ObjectType::Register => self.registers.get(RegisterId(id.1)).map(Object::Register),
-            ObjectType::Command => self.commands.get(CommandId(id.1)).map(Object::Command),
-            ObjectType::Buffer => self.buffers.get(BufferId(id.1)).map(Object::Buffer),
-            ObjectType::FieldSet => self.fieldsets.get(FieldSetId(id.1)).map(Object::FieldSet),
-            ObjectType::Field => self.fields.get(FieldId(id.1)).map(Object::Field),
-            ObjectType::Enum => self.enums.get(EnumId(id.1)).map(Object::Enum),
+        match id.object_type() {
+            ObjectType::Device => self
+                .devices
+                .get(DeviceId(id.object_index()))
+                .map(Object::Device),
+            ObjectType::Block => self
+                .blocks
+                .get(BlockId(id.object_index()))
+                .map(Object::Block),
+            ObjectType::Register => self
+                .registers
+                .get(RegisterId(id.object_index()))
+                .map(Object::Register),
+            ObjectType::Command => self
+                .commands
+                .get(CommandId(id.object_index()))
+                .map(Object::Command),
+            ObjectType::Buffer => self
+                .buffers
+                .get(BufferId(id.object_index()))
+                .map(Object::Buffer),
+            ObjectType::FieldSet => self
+                .fieldsets
+                .get(FieldSetId(id.object_index()))
+                .map(Object::FieldSet),
+            ObjectType::Field => self
+                .fields
+                .get(FieldId(id.object_index()))
+                .map(Object::Field),
+            ObjectType::Enum => self.enums.get(EnumId(id.object_index())).map(Object::Enum),
             ObjectType::EnumVariant => self
                 .enum_variants
-                .get(EnumVariantId(id.1))
+                .get(EnumVariantId(id.object_index()))
                 .map(Object::EnumVariant),
-            ObjectType::Extern => self.externs.get(ExternId(id.1)).map(Object::Extern),
+            ObjectType::Extern => self
+                .externs
+                .get(ExternId(id.object_index()))
+                .map(Object::Extern),
         }
     }
 
     pub fn object_mut(&mut self, id: impl Into<ObjectId>) -> Option<ObjectMut<'_>> {
         let id = id.into();
-        match id.0 {
-            ObjectType::Device => self.devices.get_mut(DeviceId(id.1)).map(ObjectMut::Device),
-            ObjectType::Block => self.blocks.get_mut(BlockId(id.1)).map(ObjectMut::Block),
+        match id.object_type() {
+            ObjectType::Device => self
+                .devices
+                .get_mut(DeviceId(id.object_index()))
+                .map(ObjectMut::Device),
+            ObjectType::Block => self
+                .blocks
+                .get_mut(BlockId(id.object_index()))
+                .map(ObjectMut::Block),
             ObjectType::Register => self
                 .registers
-                .get_mut(RegisterId(id.1))
+                .get_mut(RegisterId(id.object_index()))
                 .map(ObjectMut::Register),
             ObjectType::Command => self
                 .commands
-                .get_mut(CommandId(id.1))
+                .get_mut(CommandId(id.object_index()))
                 .map(ObjectMut::Command),
-            ObjectType::Buffer => self.buffers.get_mut(BufferId(id.1)).map(ObjectMut::Buffer),
+            ObjectType::Buffer => self
+                .buffers
+                .get_mut(BufferId(id.object_index()))
+                .map(ObjectMut::Buffer),
             ObjectType::FieldSet => self
                 .fieldsets
-                .get_mut(FieldSetId(id.1))
+                .get_mut(FieldSetId(id.object_index()))
                 .map(ObjectMut::FieldSet),
-            ObjectType::Field => self.fields.get_mut(FieldId(id.1)).map(ObjectMut::Field),
-            ObjectType::Enum => self.enums.get_mut(EnumId(id.1)).map(ObjectMut::Enum),
+            ObjectType::Field => self
+                .fields
+                .get_mut(FieldId(id.object_index()))
+                .map(ObjectMut::Field),
+            ObjectType::Enum => self
+                .enums
+                .get_mut(EnumId(id.object_index()))
+                .map(ObjectMut::Enum),
             ObjectType::EnumVariant => self
                 .enum_variants
-                .get_mut(EnumVariantId(id.1))
+                .get_mut(EnumVariantId(id.object_index()))
                 .map(ObjectMut::EnumVariant),
-            ObjectType::Extern => self.externs.get_mut(ExternId(id.1)).map(ObjectMut::Extern),
+            ObjectType::Extern => self
+                .externs
+                .get_mut(ExternId(id.object_index()))
+                .map(ObjectMut::Extern),
         }
     }
 
@@ -491,17 +569,19 @@ impl Manifest {
         let object_ref = self.object(id).map(|object| object.name().take_ref());
 
         fn remove(manifest: &mut Manifest, id: ObjectId) {
-            match id.0 {
-                ObjectType::Device => manifest.devices.remove(DeviceId(id.1)),
-                ObjectType::Block => manifest.blocks.remove(BlockId(id.1)),
-                ObjectType::Register => manifest.registers.remove(RegisterId(id.1)),
-                ObjectType::Command => manifest.commands.remove(CommandId(id.1)),
-                ObjectType::Buffer => manifest.buffers.remove(BufferId(id.1)),
-                ObjectType::FieldSet => manifest.fieldsets.remove(FieldSetId(id.1)),
-                ObjectType::Field => manifest.fields.remove(FieldId(id.1)),
-                ObjectType::Enum => manifest.enums.remove(EnumId(id.1)),
-                ObjectType::EnumVariant => manifest.enum_variants.remove(EnumVariantId(id.1)),
-                ObjectType::Extern => manifest.externs.remove(ExternId(id.1)),
+            match id.object_type() {
+                ObjectType::Device => manifest.devices.remove(DeviceId(id.object_index())),
+                ObjectType::Block => manifest.blocks.remove(BlockId(id.object_index())),
+                ObjectType::Register => manifest.registers.remove(RegisterId(id.object_index())),
+                ObjectType::Command => manifest.commands.remove(CommandId(id.object_index())),
+                ObjectType::Buffer => manifest.buffers.remove(BufferId(id.object_index())),
+                ObjectType::FieldSet => manifest.fieldsets.remove(FieldSetId(id.object_index())),
+                ObjectType::Field => manifest.fields.remove(FieldId(id.object_index())),
+                ObjectType::Enum => manifest.enums.remove(EnumId(id.object_index())),
+                ObjectType::EnumVariant => manifest
+                    .enum_variants
+                    .remove(EnumVariantId(id.object_index())),
+                ObjectType::Extern => manifest.externs.remove(ExternId(id.object_index())),
             }
         }
 

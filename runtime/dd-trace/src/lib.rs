@@ -44,7 +44,6 @@ struct Bytes {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Operation {
-    object_type: u8,
     object_id: u32,
     index: Option<i32>,
     operation: RWOp,
@@ -117,30 +116,28 @@ pub mod encoder {
     }
 
     impl Operation {
-        pub fn new(object_type: u8, object_id: u32, index: Option<i32>, operation: RWOp) -> Self {
+        pub fn new(object_id: u32, index: Option<i32>, operation: RWOp) -> Self {
             Self {
-                object_type,
                 object_id,
                 index,
                 operation,
             }
         }
 
-        const MAX_LEN: usize = 10;
+        const MAX_LEN: usize = 9;
 
         fn encode<'b>(&self, buffer: &'b mut [u8]) -> &'b [u8] {
             debug_assert!(buffer.len() >= Self::MAX_LEN);
-            debug_assert!(self.object_type < 32);
 
-            buffer[0] = MessageType::Operation as u8;
-            // | 7 | 6 | 5 | 4 | 3 | 2 | 1 |   0   |
-            // |    object_type    |  op   | index |
-            buffer[1] =
-                self.object_type << 3 | (self.operation as u8) << 1 | self.index.is_some() as u8;
+            // | 7 | 6 | 5 | 4 |   3   | 2 | 1 | 0 |
+            // |   0   |  op   | index |   mtype   |
+            buffer[0] = (self.operation as u8) << 4
+                | (self.index.is_some() as u8) << 3
+                | MessageType::Operation as u8;
 
-            buffer[2..][..4].copy_from_slice(&self.object_id.to_le_bytes());
+            buffer[1..][..4].copy_from_slice(&self.object_id.to_le_bytes());
 
-            let mut buffer_pos = 6;
+            let mut buffer_pos = 5;
 
             if let Some(index) = self.index {
                 buffer[buffer_pos..][..4].copy_from_slice(&index.to_le_bytes());
@@ -315,26 +312,24 @@ pub mod decoder {
             }
 
             let mut operation = Operation {
-                object_type: 0,
                 object_id: 0,
                 index: None,
                 operation: RWOp::None,
             };
 
-            operation.object_type = (bytes[1] & 0b1111_1000) >> 3;
-            operation.operation = RWOp::from_byte((bytes[1] & 0b0000_0110) >> 1);
-            let index = (bytes[1] & 0b0000_0001) > 0;
+            operation.operation = RWOp::from_byte((bytes[0] & 0b0011_0000) >> 4);
+            let index = (bytes[0] & 0b0000_1000) > 0;
 
-            operation.object_id = u32::from_le_bytes(*bytes[2..6].as_array().unwrap());
+            operation.object_id = u32::from_le_bytes(*bytes[1..5].as_array().unwrap());
 
             if index {
-                if bytes.len() < 10 {
+                if bytes.len() < 9 {
                     return Err(DecodeError::Incomplete);
                 }
-                operation.index = Some(i32::from_le_bytes(*bytes[6..10].as_array().unwrap()));
+                operation.index = Some(i32::from_le_bytes(*bytes[5..9].as_array().unwrap()));
             }
 
-            Ok((operation, if index { 10 } else { 6 }))
+            Ok((operation, if index { 9 } else { 5 }))
         }
     }
 
@@ -573,19 +568,19 @@ mod tests {
     fn roundtrip_single_events() {
         let _ = EncodeEvent::init_single_with(
             55,
-            Operation::new(16, 5, None, crate::RWOp::None),
+            Operation::new(5, None, crate::RWOp::None),
             &[],
             true,
         );
         let modify_event = EncodeEvent::init_single_with(
             56,
-            Operation::new(16, 5, None, crate::RWOp::Modify),
+            Operation::new(5, None, crate::RWOp::Modify),
             &[1, 2, 3],
             false,
         );
         let _ = EncodeEvent::init_single_with(
             57,
-            Operation::new(16, 5, None, crate::RWOp::Read),
+            Operation::new(5, None, crate::RWOp::Read),
             &[1, 2, 3],
             true,
         );
@@ -610,10 +605,7 @@ mod tests {
             Ok(DecodeEvent {
                 instance: 55,
                 timestamp: Some(5),
-                operations: vec![(
-                    vec![Operation::new(16, 5, None, crate::RWOp::None)],
-                    Vec::new()
-                )]
+                operations: vec![(vec![Operation::new(5, None, crate::RWOp::None)], Vec::new())]
             })
         );
         assert_eq!(
@@ -622,7 +614,7 @@ mod tests {
                 instance: 56,
                 timestamp: Some(5),
                 operations: vec![(
-                    vec![Operation::new(16, 5, None, crate::RWOp::Modify)],
+                    vec![Operation::new(5, None, crate::RWOp::Modify)],
                     vec![vec![1, 2, 3], vec![1, 2, 5]]
                 )]
             })
@@ -633,7 +625,7 @@ mod tests {
                 instance: 57,
                 timestamp: Some(5),
                 operations: vec![(
-                    vec![Operation::new(16, 5, None, crate::RWOp::Read)],
+                    vec![Operation::new(5, None, crate::RWOp::Read)],
                     vec![vec![1, 2, 3]]
                 )]
             })
@@ -643,8 +635,8 @@ mod tests {
     #[test]
     fn roundtrip_bulk_events() {
         let bulk_event = EncodeEvent::init(123);
-        bulk_event.send_operation(Operation::new(16, 654, Some(-90), crate::RWOp::Modify));
-        bulk_event.send_operation(Operation::new(16, 655, Some(1), crate::RWOp::Modify));
+        bulk_event.send_operation(Operation::new(654, Some(-90), crate::RWOp::Modify));
+        bulk_event.send_operation(Operation::new(655, Some(1), crate::RWOp::Modify));
         bulk_event.send_bytes(&[1, 2, 3, 4], false);
         bulk_event.send_bytes(&[0, 2, 3, 4], true);
 
@@ -661,8 +653,8 @@ mod tests {
                 timestamp: Some(5),
                 operations: vec![(
                     vec![
-                        Operation::new(16, 654, Some(-90), crate::RWOp::Modify),
-                        Operation::new(16, 655, Some(1), crate::RWOp::Modify)
+                        Operation::new(654, Some(-90), crate::RWOp::Modify),
+                        Operation::new(655, Some(1), crate::RWOp::Modify)
                     ],
                     vec![vec![1, 2, 3, 4], vec![0, 2, 3, 4]]
                 )]
