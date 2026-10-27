@@ -39,7 +39,8 @@ struct Instance {
 }
 
 struct Bytes {
-    len: NonZero<usize>,
+    // When none, that signals the end of an array
+    len: Option<NonZero<usize>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -107,11 +108,13 @@ pub mod encoder {
 
     impl Bytes {
         fn encode(&self) -> [u8; 1] {
-            debug_assert!(self.len.get() <= 32);
+            let len = self.len.map(|len| len.get()).unwrap_or(0);
+
+            debug_assert!(len < 32);
 
             // | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
-            // |       len-1       |   mtype   |
-            [((self.len.get() - 1) as u8) << 3 | MessageType::Bytes as u8]
+            // |        len        |   mtype   |
+            [(len as u8) << 3 | MessageType::Bytes as u8]
         }
     }
 
@@ -185,15 +188,21 @@ pub mod encoder {
                     _device_driver_trace_write(b)
                 });
 
-                for byte_chunk in bytes.chunks(32) {
+                for byte_chunk in bytes.chunks(31) {
                     encoder.write(
                         &Bytes {
-                            len: NonZero::new(byte_chunk.len()).unwrap(),
+                            len: NonZero::new(byte_chunk.len()),
                         }
                         .encode(),
                         |b| _device_driver_trace_write(b),
                     );
                     encoder.write(byte_chunk, |b| _device_driver_trace_write(b));
+                }
+                if !bytes.is_empty() {
+                    // Signal the end of the bytes
+                    encoder.write(&Bytes { len: None }.encode(), |b| {
+                        _device_driver_trace_write(b)
+                    });
                 }
 
                 if finalize {
@@ -256,16 +265,19 @@ pub mod encoder {
                 _device_driver_trace_acquire();
                 encoder.start_frame(|b| _device_driver_trace_write(b));
                 encoder.write(&self.id.to_le_bytes(), |b| _device_driver_trace_write(b));
-                for byte_chunk in bytes.chunks(32) {
+                for byte_chunk in bytes.chunks(31) {
                     encoder.write(
                         &Bytes {
-                            len: NonZero::new(byte_chunk.len()).unwrap(),
+                            len: NonZero::new(byte_chunk.len()),
                         }
                         .encode(),
                         |b| _device_driver_trace_write(b),
                     );
                     encoder.write(byte_chunk, |b| _device_driver_trace_write(b));
                 }
+                encoder.write(&Bytes { len: None }.encode(), |b| {
+                    _device_driver_trace_write(b)
+                });
 
                 if finalize {
                     encoder.write(&[MessageType::Finalize as u8], |b| {
@@ -334,7 +346,7 @@ pub mod decoder {
     }
 
     impl Bytes {
-        fn decode(bytes: &[u8]) -> Result<(Vec<u8>, usize), DecodeError> {
+        fn decode(bytes: &[u8]) -> Result<(BytesOutput, usize), DecodeError> {
             if bytes.is_empty() {
                 return Err(DecodeError::Incomplete);
             }
@@ -343,11 +355,20 @@ pub mod decoder {
                 return Err(DecodeError::Malformed);
             }
 
-            let len = ((bytes[0] & 0b1111_1000) >> 3) + 1;
-            let bytes = &bytes[1..][..len as usize];
+            let len = (bytes[0] & 0b1111_1000) >> 3;
 
-            Ok((bytes.to_vec(), bytes.len() + 1))
+            let output = match len {
+                0 => BytesOutput::EndOfBytesSignal,
+                1.. => BytesOutput::Data(bytes[1..][..len as usize].to_vec()),
+            };
+
+            Ok((output, 1 + len as usize))
         }
+    }
+
+    enum BytesOutput {
+        Data(Vec<u8>),
+        EndOfBytesSignal,
     }
 
     impl Instance {
@@ -405,7 +426,7 @@ pub mod decoder {
                             let (op, len) = Operation::decode(bytes)?;
                             if push_new_op {
                                 push_new_op = false;
-                                event.operations.push((vec![op], Vec::new()));
+                                event.operations.push((vec![op], vec![Vec::new()]));
                             } else {
                                 event.operations.last_mut().unwrap().0.push(op);
                             }
@@ -413,7 +434,15 @@ pub mod decoder {
                         }
                         MessageType::Bytes => {
                             let (bytes_vec, len) = Bytes::decode(bytes)?;
-                            event.operations.last_mut().unwrap().1.push(bytes_vec);
+                            let operation_bytes = &mut event.operations.last_mut().unwrap().1;
+                            match bytes_vec {
+                                BytesOutput::Data(data) => {
+                                    operation_bytes.last_mut().unwrap().extend_from_slice(&data);
+                                }
+                                BytesOutput::EndOfBytesSignal => {
+                                    operation_bytes.push(Vec::new());
+                                }
+                            }
                             push_new_op = true;
                             len
                         }
@@ -427,6 +456,12 @@ pub mod decoder {
                             if !instance_seen {
                                 return Err(DecodeError::Malformed);
                             } else {
+                                // Fix up the operations
+                                // Remove empty operation vecs
+                                for (_, op_bytes) in event.operations.iter_mut() {
+                                    op_bytes.retain(|bytes| !bytes.is_empty());
+                                }
+
                                 return Ok(event);
                             }
                         }
@@ -637,7 +672,7 @@ mod tests {
         let bulk_event = EncodeEvent::init(123);
         bulk_event.send_operation(Operation::new(654, Some(-90), crate::RWOp::Modify));
         bulk_event.send_operation(Operation::new(655, Some(1), crate::RWOp::Modify));
-        bulk_event.send_bytes(&[1, 2, 3, 4], false);
+        bulk_event.send_bytes(&[0xDD; 60], false);
         bulk_event.send_bytes(&[0, 2, 3, 4], true);
 
         let events = EVENTS.lock().unwrap();
@@ -656,7 +691,7 @@ mod tests {
                         Operation::new(654, Some(-90), crate::RWOp::Modify),
                         Operation::new(655, Some(1), crate::RWOp::Modify)
                     ],
-                    vec![vec![1, 2, 3, 4], vec![0, 2, 3, 4]]
+                    vec![vec![0xDD; 60], vec![0, 2, 3, 4]]
                 )]
             })
         );

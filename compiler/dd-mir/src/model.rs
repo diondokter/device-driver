@@ -76,15 +76,15 @@ impl Error for ObjectIdConversionError {}
 pub struct ObjectId(NonZeroU32);
 
 impl ObjectId {
-    pub const fn new(ot: ObjectType, index: u32) -> Self {
+    pub const fn new(object_type: ObjectType, index: u32) -> Self {
         assert!(index < (1 << 24), "object id index must fit in 24 bit");
-        Self(NonZeroU32::new(((ot as u32) << 24) | index).unwrap())
+        Self(NonZeroU32::new(((object_type as u32) << 24) | index).unwrap())
     }
 
     #[track_caller]
     pub fn object_type(self) -> ObjectType {
-        let ot_val = ((self.0.get() & 0xFF00_0000) >> 24) as u8;
-        ObjectType::try_from(ot_val)
+        let val = ((self.0.get() & 0xFF00_0000) >> 24) as u8;
+        ObjectType::try_from(val)
             .expect("object type should only be gotten from initialized object types")
     }
 
@@ -143,13 +143,13 @@ macro_rules! create_id {
         impl TryFrom<ObjectId> for $name {
             type Error = ObjectIdConversionError;
             fn try_from(value: ObjectId) -> Result<Self, Self::Error> {
-                let ot = value.object_type();
+                let object_type = value.object_type();
 
-                if ot == ObjectType::$object_type {
+                if object_type == ObjectType::$object_type {
                     Ok(Self(value.object_index()))
                 } else {
                     Err(ObjectIdConversionError {
-                        source: ot,
+                        source: object_type,
                         target: ObjectType::$object_type,
                     })
                 }
