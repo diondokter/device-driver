@@ -1,7 +1,5 @@
 #![cfg_attr(not(any(test, feature = "std")), no_std)]
 
-use core::num::NonZero;
-
 mod rzcobs;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -10,7 +8,6 @@ enum MessageType {
     Timestamp = 1,
     Operation = 2,
     Bytes = 3,
-    Instance = 4,
     Finalize = 5,
 }
 
@@ -23,31 +20,26 @@ impl MessageType {
             1 => Some(MessageType::Timestamp),
             2 => Some(MessageType::Operation),
             3 => Some(MessageType::Bytes),
-            4 => Some(MessageType::Instance),
             5 => Some(MessageType::Finalize),
             _ => None,
         }
     }
 }
-
-struct Timestamp {
-    timestamp: u64,
-}
-
-struct Instance {
-    val: u8,
-}
-
-struct Bytes {
-    // When none, that signals the end of an array
-    len: Option<NonZero<usize>>,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Operation {
     object_id: u32,
     index: Option<i32>,
     operation: RWOp,
+}
+
+impl Operation {
+    pub fn new(object_id: u32, index: Option<i32>, operation: RWOp) -> Self {
+        Self {
+            object_id,
+            index,
+            operation,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -73,220 +65,139 @@ impl RWOp {
 }
 
 pub mod encoder {
-    use core::{
-        num::NonZero,
-        sync::atomic::{AtomicU16, Ordering},
-    };
+    use core::sync::atomic::{AtomicU8, Ordering};
 
-    use crate::{Bytes, Instance, MessageType, Operation, RWOp, Timestamp, rzcobs::Encoder};
+    use crate::{MessageType, Operation, rzcobs::Encoder};
 
-    unsafe extern "Rust" {
-        safe fn _device_driver_trace_acquire();
-        unsafe fn _device_driver_trace_write(byte: u8);
-        unsafe fn _device_driver_trace_release();
-        safe fn _device_driver_trace_timestamp() -> Option<u64>;
-    }
-
-    impl Timestamp {
-        const MAX_LEN: usize = 9;
-
-        fn encode<'b>(&self, buffer: &'b mut [u8]) -> &'b [u8] {
-            debug_assert!(buffer.len() >= Self::MAX_LEN);
-
-            buffer[0] = MessageType::Timestamp as u8;
-            buffer[1..][..8].copy_from_slice(&self.timestamp.to_le_bytes());
-
-            &buffer[..9]
+    pub trait TraceInterface {
+        fn instance(&self) -> u8;
+        fn write(&mut self, byte: u8);
+        fn timestamp(&mut self) -> Option<u64>;
+        fn id(&mut self) -> u8 {
+            static NEXT_ID: AtomicU8 = AtomicU8::new(0);
+            NEXT_ID.fetch_add(1, Ordering::Relaxed)
         }
     }
 
-    impl Instance {
-        fn encode(&self) -> [u8; 2] {
-            [MessageType::Instance as u8, self.val]
-        }
+    pub struct Frame<'i, TI: TraceInterface> {
+        encoder: Encoder,
+        interface: &'i mut TI,
     }
 
-    impl Bytes {
-        fn encode(&self) -> [u8; 1] {
-            let len = self.len.map(|len| len.get()).unwrap_or(0);
+    impl<'i, TI: TraceInterface> Frame<'i, TI> {
+        pub fn new(interface: &'i mut TI, id: u8) -> Self {
+            let mut encoder = Encoder::new();
+            encoder.start_frame(|b| interface.write(b));
 
-            debug_assert!(len < 32);
+            encoder.write(&[interface.instance(), id], |b| interface.write(b));
 
-            // | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
-            // |        len        |   mtype   |
-            [(len as u8) << 3 | MessageType::Bytes as u8]
+            Self { encoder, interface }
         }
-    }
 
-    impl Operation {
-        pub fn new(object_id: u32, index: Option<i32>, operation: RWOp) -> Self {
-            Self {
-                object_id,
-                index,
-                operation,
+        fn write(&mut self, bytes: &[u8]) {
+            self.encoder.write(bytes, |b| self.interface.write(b));
+        }
+
+        pub fn send_timestamp(&mut self) {
+            if let Some(timestamp) = self.interface.timestamp() {
+                let mut buffer = [0; 9];
+
+                // | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
+                // |         0         |   mtype   |
+                buffer[0] = MessageType::Timestamp as u8;
+                buffer[1..][..8].copy_from_slice(&timestamp.to_le_bytes());
+
+                self.write(&buffer[..9]);
             }
         }
 
-        const MAX_LEN: usize = 9;
-
-        fn encode<'b>(&self, buffer: &'b mut [u8]) -> &'b [u8] {
-            debug_assert!(buffer.len() >= Self::MAX_LEN);
+        pub fn send_operation(&mut self, operation: &Operation) {
+            let mut buffer = [0; 9];
 
             // | 7 | 6 | 5 | 4 |   3   | 2 | 1 | 0 |
             // |   0   |  op   | index |   mtype   |
-            buffer[0] = (self.operation as u8) << 4
-                | (self.index.is_some() as u8) << 3
+            buffer[0] = (operation.operation as u8) << 4
+                | (operation.index.is_some() as u8) << 3
                 | MessageType::Operation as u8;
 
-            buffer[1..][..4].copy_from_slice(&self.object_id.to_le_bytes());
+            buffer[1..][..4].copy_from_slice(&operation.object_id.to_le_bytes());
 
             let mut buffer_pos = 5;
 
-            if let Some(index) = self.index {
+            if let Some(index) = operation.index {
                 buffer[buffer_pos..][..4].copy_from_slice(&index.to_le_bytes());
                 buffer_pos += 4;
             }
 
-            &buffer[..buffer_pos]
+            self.write(&buffer[..buffer_pos]);
+        }
+
+        pub fn send_bytes(&mut self, bytes: &[u8]) {
+            for byte_chunk in bytes.chunks(31) {
+                // | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
+                // |        len        |   mtype   |
+                let header = [(byte_chunk.len() as u8) << 3 | MessageType::Bytes as u8];
+                self.write(&header);
+                self.write(byte_chunk);
+            }
+
+            if !bytes.is_empty() {
+                // Send an empty tag at the end to signal this bytes message is done
+                // | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
+                // |         0         |   mtype   |
+                let header = [(0 as u8) << 3 | MessageType::Bytes as u8];
+                self.write(&header);
+            }
+        }
+
+        fn send_finalize(&mut self) {
+            self.write(&[MessageType::Finalize as u8]);
+        }
+    }
+
+    impl<'i, TI: TraceInterface> Drop for Frame<'i, TI> {
+        fn drop(&mut self) {
+            self.encoder.end_frame(|b| self.interface.write(b));
         }
     }
 
     pub struct Event {
-        pub(crate) id: u16,
+        pub(crate) id: u8,
+        finalized: bool,
     }
 
-    static NEXT_ID: AtomicU16 = AtomicU16::new(0);
-
     impl Event {
-        pub fn init_single_with(
-            instance: u8,
-            operation: Operation,
-            bytes: &[u8],
-            finalize: bool,
-        ) -> Self {
-            let id = NEXT_ID.fetch_add(1, Ordering::AcqRel);
-            let mut encoder = Encoder::new();
-
-            unsafe {
-                _device_driver_trace_acquire();
-                encoder.start_frame(|b| _device_driver_trace_write(b));
-
-                encoder.write(&id.to_le_bytes(), |b| _device_driver_trace_write(b));
-                encoder.write(&Instance { val: instance }.encode(), |b| {
-                    _device_driver_trace_write(b)
-                });
-
-                if let Some(timestamp) = _device_driver_trace_timestamp() {
-                    let mut buf = [0; Timestamp::MAX_LEN];
-                    encoder.write(Timestamp { timestamp }.encode(&mut buf), |b| {
-                        _device_driver_trace_write(b)
-                    });
-                }
-
-                let mut buf = [0; Operation::MAX_LEN];
-                encoder.write(operation.encode(&mut buf), |b| {
-                    _device_driver_trace_write(b)
-                });
-
-                for byte_chunk in bytes.chunks(31) {
-                    encoder.write(
-                        &Bytes {
-                            len: NonZero::new(byte_chunk.len()),
-                        }
-                        .encode(),
-                        |b| _device_driver_trace_write(b),
-                    );
-                    encoder.write(byte_chunk, |b| _device_driver_trace_write(b));
-                }
-                if !bytes.is_empty() {
-                    // Signal the end of the bytes
-                    encoder.write(&Bytes { len: None }.encode(), |b| {
-                        _device_driver_trace_write(b)
-                    });
-                }
-
-                if finalize {
-                    encoder.write(&[MessageType::Finalize as u8], |b| {
-                        _device_driver_trace_write(b)
-                    });
-                }
-
-                encoder.end_frame(|b| _device_driver_trace_write(b));
-                _device_driver_trace_release();
-            }
-
-            Self { id }
-        }
-
-        pub fn init(instance: u8) -> Self {
-            let id = NEXT_ID.fetch_add(1, Ordering::AcqRel);
-
-            let mut encoder = Encoder::new();
-
-            unsafe {
-                _device_driver_trace_acquire();
-                encoder.start_frame(|b| _device_driver_trace_write(b));
-                encoder.write(&id.to_le_bytes(), |b| _device_driver_trace_write(b));
-                encoder.write(&Instance { val: instance }.encode(), |b| {
-                    _device_driver_trace_write(b)
-                });
-                if let Some(timestamp) = _device_driver_trace_timestamp() {
-                    let mut buf = [0; Timestamp::MAX_LEN];
-                    encoder.write(Timestamp { timestamp }.encode(&mut buf), |b| {
-                        _device_driver_trace_write(b)
-                    });
-                }
-                encoder.end_frame(|b| _device_driver_trace_write(b));
-                _device_driver_trace_release();
-            }
-
-            Self { id }
-        }
-
-        pub fn send_operation(&self, operation: Operation) {
-            let mut buf = [0; Operation::MAX_LEN];
-            let operation_buf = operation.encode(&mut buf);
-
-            let mut encoder = Encoder::new();
-
-            unsafe {
-                _device_driver_trace_acquire();
-                encoder.start_frame(|b| _device_driver_trace_write(b));
-                encoder.write(&self.id.to_le_bytes(), |b| _device_driver_trace_write(b));
-                encoder.write(operation_buf, |b| _device_driver_trace_write(b));
-                encoder.end_frame(|b| _device_driver_trace_write(b));
-                _device_driver_trace_release();
+        pub fn new(interface: &mut impl TraceInterface) -> Self {
+            Self {
+                id: interface.id(),
+                finalized: false,
             }
         }
 
-        pub fn send_bytes(&self, bytes: &[u8], finalize: bool) {
-            let mut encoder = Encoder::new();
-            unsafe {
-                _device_driver_trace_acquire();
-                encoder.start_frame(|b| _device_driver_trace_write(b));
-                encoder.write(&self.id.to_le_bytes(), |b| _device_driver_trace_write(b));
-                for byte_chunk in bytes.chunks(31) {
-                    encoder.write(
-                        &Bytes {
-                            len: NonZero::new(byte_chunk.len()),
-                        }
-                        .encode(),
-                        |b| _device_driver_trace_write(b),
-                    );
-                    encoder.write(byte_chunk, |b| _device_driver_trace_write(b));
-                }
-                encoder.write(&Bytes { len: None }.encode(), |b| {
-                    _device_driver_trace_write(b)
-                });
+        pub fn send_frame<TI: TraceInterface>(
+            &self,
+            interface: &mut TI,
+            f: impl FnOnce(&mut Frame<'_, TI>),
+        ) {
+            f(&mut Frame::new(interface, self.id))
+        }
 
-                if finalize {
-                    encoder.write(&[MessageType::Finalize as u8], |b| {
-                        _device_driver_trace_write(b)
-                    });
-                }
+        pub fn send_final_frame<TI: TraceInterface>(
+            mut self,
+            interface: &mut TI,
+            f: impl FnOnce(&mut Frame<'_, TI>),
+        ) {
+            let mut frame = Frame::new(interface, self.id);
+            f(&mut frame);
+            frame.send_finalize();
+            self.finalized = true;
+        }
+    }
 
-                encoder.end_frame(|b| _device_driver_trace_write(b));
-                _device_driver_trace_release();
+    impl Drop for Event {
+        fn drop(&mut self) {
+            if !self.finalized {
+                panic!("event was not finalized")
             }
         }
     }
@@ -296,10 +207,132 @@ pub mod encoder {
 pub mod decoder {
     use std::collections::{HashMap, vec_deque::VecDeque};
 
-    use crate::{Bytes, Instance, MessageType, Operation, RWOp, Timestamp, rzcobs::rzcobs_decode};
+    use crate::{MessageType, Operation, RWOp, rzcobs::rzcobs_decode};
 
-    impl Timestamp {
-        fn decode(bytes: &[u8]) -> Result<(Self, usize), DecodeError> {
+    enum BytesOutput {
+        Data(Vec<u8>),
+        EndOfBytesSignal,
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Event {
+        pub instance: u8,
+        pub id: u8,
+        pub timestamp: Option<u64>,
+        pub operations: Vec<(Vec<Operation>, Vec<Vec<u8>>)>,
+    }
+
+    impl Event {
+        // bytes must already be decoded and not contain the id bytes anywhere. Full event (possibly consisting of multiple frames) must be present
+        pub fn decode(frames: &[Vec<u8>]) -> Result<Self, DecodeError> {
+            if frames.is_empty() {
+                return Err(DecodeError::Incomplete);
+            }
+
+            if frames[0].len() < 2 {
+                return Err(DecodeError::Incomplete);
+            }
+
+            let mut event = Event {
+                instance: frames[0][0],
+                id: frames[0][1],
+                timestamp: None,
+                operations: Vec::new(),
+            };
+
+            let mut push_new_op = true;
+
+            for frame in frames {
+                if frame.len() < 3 {
+                    return Err(DecodeError::Incomplete);
+                }
+
+                let instance = frame[0];
+                let id = frame[1];
+
+                if instance != event.instance || id != event.id {
+                    return Err(DecodeError::Malformed);
+                }
+
+                let mut frame = &frame[2..];
+                while !frame.is_empty() {
+                    let message_type =
+                        MessageType::from_byte(frame[0]).ok_or(DecodeError::Malformed)?;
+
+                    let bytes_used = match message_type {
+                        MessageType::End => {
+                            break;
+                        }
+                        MessageType::Timestamp => {
+                            if event.timestamp.is_some() {
+                                return Err(DecodeError::Malformed);
+                            }
+                            let (ts, len) = Self::decode_timestamp(frame)?;
+                            event.timestamp = Some(ts);
+                            len
+                        }
+                        MessageType::Operation => {
+                            let (op, len) = Self::decode_operation(frame)?;
+                            if push_new_op {
+                                push_new_op = false;
+                                event.operations.push((vec![op], vec![Vec::new()]));
+                            } else {
+                                event.operations.last_mut().unwrap().0.push(op);
+                            }
+                            len
+                        }
+                        MessageType::Bytes => {
+                            let (bytes_vec, len) = Self::decode_bytes(frame)?;
+                            let operation_bytes = &mut event.operations.last_mut().unwrap().1;
+                            match bytes_vec {
+                                BytesOutput::Data(data) => {
+                                    operation_bytes.last_mut().unwrap().extend_from_slice(&data);
+                                }
+                                BytesOutput::EndOfBytesSignal => {
+                                    operation_bytes.push(Vec::new());
+                                }
+                            }
+                            push_new_op = true;
+                            len
+                        }
+                        MessageType::Finalize => {
+                            // Fix up the operations
+                            // Remove empty operation vecs
+                            for (_, op_bytes) in event.operations.iter_mut() {
+                                op_bytes.retain(|bytes| !bytes.is_empty());
+                            }
+
+                            return Ok(event);
+                        }
+                    };
+
+                    frame = &frame[bytes_used..];
+                }
+            }
+
+            Err(DecodeError::Incomplete)
+        }
+
+        fn decode_bytes(bytes: &[u8]) -> Result<(BytesOutput, usize), DecodeError> {
+            if bytes.is_empty() {
+                return Err(DecodeError::Incomplete);
+            }
+
+            if MessageType::from_byte(bytes[0]) != Some(MessageType::Bytes) {
+                return Err(DecodeError::Malformed);
+            }
+
+            let len = (bytes[0] & 0b1111_1000) >> 3;
+
+            let output = match len {
+                0 => BytesOutput::EndOfBytesSignal,
+                1.. => BytesOutput::Data(bytes[1..][..len as usize].to_vec()),
+            };
+
+            Ok((output, 1 + len as usize))
+        }
+
+        fn decode_timestamp(bytes: &[u8]) -> Result<(u64, usize), DecodeError> {
             if bytes.len() < 9 {
                 return Err(DecodeError::Incomplete);
             }
@@ -309,12 +342,10 @@ pub mod decoder {
             }
 
             let timestamp = u64::from_le_bytes(*bytes[1..][..8].as_array().unwrap());
-            Ok((Self { timestamp }, 9))
+            Ok((timestamp, 9))
         }
-    }
 
-    impl Operation {
-        fn decode(bytes: &[u8]) -> Result<(Self, usize), DecodeError> {
+        fn decode_operation(bytes: &[u8]) -> Result<(Operation, usize), DecodeError> {
             if bytes.len() < 6 {
                 return Err(DecodeError::Incomplete);
             }
@@ -345,151 +376,26 @@ pub mod decoder {
         }
     }
 
-    impl Bytes {
-        fn decode(bytes: &[u8]) -> Result<(BytesOutput, usize), DecodeError> {
-            if bytes.is_empty() {
-                return Err(DecodeError::Incomplete);
-            }
-
-            if MessageType::from_byte(bytes[0]) != Some(MessageType::Bytes) {
-                return Err(DecodeError::Malformed);
-            }
-
-            let len = (bytes[0] & 0b1111_1000) >> 3;
-
-            let output = match len {
-                0 => BytesOutput::EndOfBytesSignal,
-                1.. => BytesOutput::Data(bytes[1..][..len as usize].to_vec()),
-            };
-
-            Ok((output, 1 + len as usize))
-        }
-    }
-
-    enum BytesOutput {
-        Data(Vec<u8>),
-        EndOfBytesSignal,
-    }
-
-    impl Instance {
-        fn decode(bytes: &[u8]) -> Result<(Self, usize), DecodeError> {
-            if bytes.len() < 2 {
-                return Err(DecodeError::Incomplete);
-            }
-
-            if MessageType::from_byte(bytes[0]) != Some(MessageType::Instance) {
-                return Err(DecodeError::Malformed);
-            }
-
-            Ok((Instance { val: bytes[1] }, 2))
-        }
-    }
-
-    #[derive(Debug, Clone, PartialEq, Eq)]
-    pub struct Event {
-        pub instance: u8,
-        pub timestamp: Option<u64>,
-        pub operations: Vec<(Vec<Operation>, Vec<Vec<u8>>)>,
-    }
-
-    impl Event {
-        // bytes must already be decoded and not contain the id bytes anywhere. Full event (possibly consisting of multiple frames) must be present
-        pub fn decode(frames: &[Vec<u8>]) -> Result<Self, DecodeError> {
-            let mut event = Event {
-                instance: 0,
-                timestamp: None,
-                operations: Vec::new(),
-            };
-            let mut instance_seen = false;
-
-            let mut push_new_op = true;
-            for bytes in frames {
-                let mut bytes = &bytes[..];
-                while !bytes.is_empty() {
-                    let message_type =
-                        MessageType::from_byte(*bytes.first().ok_or(DecodeError::Incomplete)?)
-                            .ok_or(DecodeError::Malformed)?;
-
-                    let bytes_used = match message_type {
-                        MessageType::End => {
-                            break;
-                        }
-                        MessageType::Timestamp => {
-                            if event.timestamp.is_some() {
-                                return Err(DecodeError::Malformed);
-                            }
-                            let (ts, len) = Timestamp::decode(bytes)?;
-                            event.timestamp = Some(ts.timestamp);
-                            len
-                        }
-                        MessageType::Operation => {
-                            let (op, len) = Operation::decode(bytes)?;
-                            if push_new_op {
-                                push_new_op = false;
-                                event.operations.push((vec![op], vec![Vec::new()]));
-                            } else {
-                                event.operations.last_mut().unwrap().0.push(op);
-                            }
-                            len
-                        }
-                        MessageType::Bytes => {
-                            let (bytes_vec, len) = Bytes::decode(bytes)?;
-                            let operation_bytes = &mut event.operations.last_mut().unwrap().1;
-                            match bytes_vec {
-                                BytesOutput::Data(data) => {
-                                    operation_bytes.last_mut().unwrap().extend_from_slice(&data);
-                                }
-                                BytesOutput::EndOfBytesSignal => {
-                                    operation_bytes.push(Vec::new());
-                                }
-                            }
-                            push_new_op = true;
-                            len
-                        }
-                        MessageType::Instance => {
-                            instance_seen = true;
-                            let (instance, len) = Instance::decode(bytes)?;
-                            event.instance = instance.val;
-                            len
-                        }
-                        MessageType::Finalize => {
-                            if !instance_seen {
-                                return Err(DecodeError::Malformed);
-                            } else {
-                                // Fix up the operations
-                                // Remove empty operation vecs
-                                for (_, op_bytes) in event.operations.iter_mut() {
-                                    op_bytes.retain(|bytes| !bytes.is_empty());
-                                }
-
-                                return Ok(event);
-                            }
-                        }
-                    };
-
-                    bytes = &bytes[bytes_used..];
-                }
-            }
-
-            Err(DecodeError::Incomplete)
-        }
-    }
-
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum DecodeError {
         Incomplete,
         Malformed,
     }
 
+    struct EventData {
+        id: u8,
+        frames: Vec<Vec<u8>>,
+    }
+
     pub struct StreamingDecoder {
-        event_frames: HashMap<u16, Vec<Vec<u8>>>,
+        instance_event_data: HashMap<u8, EventData>,
         buffer: VecDeque<u8>,
     }
 
     impl StreamingDecoder {
         pub fn new() -> Self {
             Self {
-                event_frames: Default::default(),
+                instance_event_data: Default::default(),
                 buffer: Default::default(),
             }
         }
@@ -515,25 +421,41 @@ pub mod decoder {
 
                 self.buffer.pop_front(); // Pop the extra 0
 
-                let Ok(mut frame) = rzcobs_decode(&frame) else {
-                    return results;
+                let Ok(frame) = rzcobs_decode(&frame) else {
+                    continue;
                 };
 
                 if frame.len() < 2 {
                     continue;
                 }
 
-                let id = u16::from_le_bytes(*frame[0..2].as_array().unwrap());
-                let frames = self.event_frames.entry(id).or_default();
+                let frame_instance = frame[0];
+                let frame_id = frame[1];
+                let event_data =
+                    self.instance_event_data
+                        .entry(frame_instance)
+                        .or_insert(EventData {
+                            id: frame_id,
+                            frames: Vec::new(),
+                        });
 
-                frames.push(frame.split_off(2));
+                if event_data.id != frame_id {
+                    // We're getting newer(?) data. We require everything to arrive in order.
+                    // So to recover, throw away the old data.
+                    *event_data = EventData {
+                        id: frame_id,
+                        frames: Vec::new(),
+                    };
+                }
 
-                let decoded = Event::decode(frames);
+                event_data.frames.push(frame);
+
+                let decoded = Event::decode(&event_data.frames);
 
                 if matches!(decoded, Err(DecodeError::Incomplete)) {
                     continue;
                 } else {
-                    self.event_frames.remove(&id);
+                    self.instance_event_data.remove(&frame_instance);
                     results.push(decoded);
                 }
             }
@@ -551,141 +473,140 @@ pub mod decoder {
 
 #[cfg(test)]
 mod tests {
-    use core::sync::atomic::{AtomicBool, Ordering};
-    use std::sync::Mutex;
-
     use crate::{
-        decoder::{DecodeError, Event as DecodeEvent, StreamingDecoder},
-        encoder::Event as EncodeEvent,
+        decoder::{Event as DecodeEvent, StreamingDecoder},
+        encoder::{Event as EncodeEvent, TraceInterface},
     };
 
     use super::*;
 
-    static TAKEN: AtomicBool = AtomicBool::new(false);
-    static mut RESTORE_STATE: critical_section::RestoreState =
-        critical_section::RestoreState::invalid();
-    static mut DECODER: Option<StreamingDecoder> = None;
-    static EVENTS: Mutex<Vec<Result<DecodeEvent, DecodeError>>> = Mutex::new(Vec::new());
+    pub struct TestTraceInterface {
+        instance: u8,
+        timestamp: Option<u64>,
+        written_bytes: Vec<u8>,
+    }
 
-    #[unsafe(no_mangle)]
-    extern "Rust" fn _device_driver_trace_acquire() {
-        unsafe {
-            let state = critical_section::acquire();
-            if TAKEN.swap(true, Ordering::AcqRel) {
-                panic!("device-driver trace acquire taken reentrantly");
-            }
-            RESTORE_STATE = state;
+    impl TraceInterface for TestTraceInterface {
+        fn instance(&self) -> u8 {
+            self.instance
         }
-    }
-    #[unsafe(no_mangle)]
-    extern "Rust" fn _device_driver_trace_write(byte: u8) {
-        #[allow(static_mut_refs)]
-        unsafe {
-            EVENTS
-                .lock()
-                .unwrap()
-                .extend_from_slice(&DECODER.get_or_insert_default().push_bytes(&[byte]));
+
+        fn write(&mut self, byte: u8) {
+            self.written_bytes.push(byte);
         }
-    }
-    #[unsafe(no_mangle)]
-    extern "Rust" fn _device_driver_trace_release() {
-        unsafe {
-            TAKEN.store(false, Ordering::Release);
-            critical_section::release(RESTORE_STATE);
+
+        fn timestamp(&mut self) -> Option<u64> {
+            self.timestamp
         }
-    }
-    #[unsafe(no_mangle)]
-    extern "Rust" fn _device_driver_trace_timestamp() -> Option<u64> {
-        Some(5)
     }
 
     #[test]
     fn roundtrip_single_events() {
-        let _ = EncodeEvent::init_single_with(
-            55,
-            Operation::new(5, None, crate::RWOp::None),
-            &[],
-            true,
-        );
-        let modify_event = EncodeEvent::init_single_with(
-            56,
-            Operation::new(5, None, crate::RWOp::Modify),
-            &[1, 2, 3],
-            false,
-        );
-        let _ = EncodeEvent::init_single_with(
-            57,
-            Operation::new(5, None, crate::RWOp::Read),
-            &[1, 2, 3],
-            true,
-        );
-        modify_event.send_bytes(&[1, 2, 5], true);
+        let mut interface = TestTraceInterface {
+            instance: 55,
+            timestamp: Some(5),
+            written_bytes: Vec::new(),
+        };
 
-        let events = EVENTS.lock().unwrap();
-        let none_event = events
-            .iter()
-            .find(|e| e.as_ref().is_ok_and(|e| e.instance == 55))
-            .unwrap();
-        let modify_event = events
-            .iter()
-            .find(|e| e.as_ref().is_ok_and(|e| e.instance == 56))
-            .unwrap();
-        let read_event = events
-            .iter()
-            .find(|e| e.as_ref().is_ok_and(|e| e.instance == 57))
-            .unwrap();
+        let none_event = EncodeEvent::new(&mut interface);
+        none_event.send_final_frame(&mut interface, |f| {
+            f.send_timestamp();
+            f.send_operation(&Operation::new(5, None, crate::RWOp::None));
+        });
+
+        let modify_event = EncodeEvent::new(&mut interface);
+        modify_event.send_frame(&mut interface, |f| {
+            f.send_timestamp();
+            f.send_operation(&Operation::new(5, None, crate::RWOp::Modify));
+            f.send_bytes(&[1, 2, 3]);
+        });
+        modify_event.send_final_frame(&mut interface, |f| {
+            f.send_bytes(&[1, 2, 5]);
+        });
+
+        let read_event = EncodeEvent::new(&mut interface);
+        read_event.send_final_frame(&mut interface, |f| {
+            f.send_timestamp();
+            f.send_operation(&Operation::new(5, None, crate::RWOp::Read));
+            f.send_bytes(&[1, 2, 3]);
+        });
+
+        println!(
+            "Cobs encoded written bytes: {:X?}",
+            &interface.written_bytes
+        );
+
+        let mut decoder = StreamingDecoder::new();
+        let decoded_events = decoder.push_bytes(&interface.written_bytes);
+
+        let decoded_none_event = decoded_events[0].clone().unwrap();
+        let decoded_modify_event: DecodeEvent = decoded_events[1].clone().unwrap();
+        let decoded_read_event = decoded_events[2].clone().unwrap();
 
         assert_eq!(
-            *none_event,
-            Ok(DecodeEvent {
+            decoded_none_event,
+            DecodeEvent {
                 instance: 55,
+                id: 0,
                 timestamp: Some(5),
                 operations: vec![(vec![Operation::new(5, None, crate::RWOp::None)], Vec::new())]
-            })
+            }
         );
         assert_eq!(
-            *modify_event,
-            Ok(DecodeEvent {
-                instance: 56,
+            decoded_modify_event,
+            DecodeEvent {
+                instance: 55,
+                id: 1,
                 timestamp: Some(5),
                 operations: vec![(
                     vec![Operation::new(5, None, crate::RWOp::Modify)],
                     vec![vec![1, 2, 3], vec![1, 2, 5]]
                 )]
-            })
+            }
         );
         assert_eq!(
-            *read_event,
-            Ok(DecodeEvent {
-                instance: 57,
+            decoded_read_event,
+            DecodeEvent {
+                instance: 55,
+                id: 2,
                 timestamp: Some(5),
                 operations: vec![(
                     vec![Operation::new(5, None, crate::RWOp::Read)],
                     vec![vec![1, 2, 3]]
                 )]
-            })
+            }
         );
     }
 
     #[test]
     fn roundtrip_bulk_events() {
-        let bulk_event = EncodeEvent::init(123);
-        bulk_event.send_operation(Operation::new(654, Some(-90), crate::RWOp::Modify));
-        bulk_event.send_operation(Operation::new(655, Some(1), crate::RWOp::Modify));
-        bulk_event.send_bytes(&[0xDD; 60], false);
-        bulk_event.send_bytes(&[0, 2, 3, 4], true);
+        let mut interface = TestTraceInterface {
+            instance: 37,
+            timestamp: None,
+            written_bytes: Vec::new(),
+        };
 
-        let events = EVENTS.lock().unwrap();
-        let bulk_event = events
-            .iter()
-            .find(|e| e.as_ref().is_ok_and(|e| e.instance == 123))
-            .unwrap();
+        let bulk_event = EncodeEvent::new(&mut interface);
+        bulk_event.send_frame(&mut interface, |f| {
+            f.send_operation(&Operation::new(654, Some(-90), crate::RWOp::Modify));
+            f.send_operation(&Operation::new(655, Some(1), crate::RWOp::Modify));
+            f.send_bytes(&[0xDD; 60]);
+        });
+        bulk_event.send_final_frame(&mut interface, |f| {
+            f.send_bytes(&[0, 2, 3, 4]);
+        });
+
+        let mut decoder = StreamingDecoder::new();
+        let decoded_events = decoder.push_bytes(&interface.written_bytes);
+
+        let bulk_event = decoded_events[0].clone();
 
         assert_eq!(
-            *bulk_event,
+            bulk_event,
             Ok(DecodeEvent {
-                instance: 123,
-                timestamp: Some(5),
+                instance: 37,
+                id: 0,
+                timestamp: None,
                 operations: vec![(
                     vec![
                         Operation::new(654, Some(-90), crate::RWOp::Modify),

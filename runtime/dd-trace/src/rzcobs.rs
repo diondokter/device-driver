@@ -42,16 +42,11 @@
 pub(crate) struct Encoder {
     run: u8,
     zeros: u8,
-    pub bytes_written: usize,
 }
 
 impl Encoder {
     pub const fn new() -> Self {
-        Self {
-            run: 0,
-            zeros: 0,
-            bytes_written: 0,
-        }
+        Self { run: 0, zeros: 0 }
     }
 
     pub fn start_frame(&mut self, mut write_byte: impl FnMut(u8)) {
@@ -61,7 +56,7 @@ impl Encoder {
         write_byte(0x00);
     }
 
-    pub fn end_frame(self, mut write_byte: impl FnMut(u8)) {
+    pub fn end_frame(&mut self, mut write_byte: impl FnMut(u8)) {
         // Finish writing the previous symbol if needed.
         match self.run {
             0 => {}
@@ -74,7 +69,6 @@ impl Encoder {
     }
 
     pub fn write(&mut self, data: &[u8], mut write_byte: impl FnMut(u8)) {
-        self.bytes_written += data.len();
         for &byte in data {
             if self.run < 7 {
                 if byte == 0 {
