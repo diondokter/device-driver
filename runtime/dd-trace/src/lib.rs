@@ -6,8 +6,8 @@ mod rzcobs;
 enum MessageType {
     End = 0,
     Timestamp = 1,
-    Operation = 2,
-    Bytes = 3,
+    ObjectIdentifier = 2,
+    OperationData = 3,
     Finalize = 5,
 }
 
@@ -18,56 +18,29 @@ impl MessageType {
         match byte & Self::MASK {
             0 => Some(MessageType::End),
             1 => Some(MessageType::Timestamp),
-            2 => Some(MessageType::Operation),
-            3 => Some(MessageType::Bytes),
+            2 => Some(MessageType::ObjectIdentifier),
+            3 => Some(MessageType::OperationData),
             5 => Some(MessageType::Finalize),
             _ => None,
         }
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Operation {
+pub struct ObjectIdentifier {
     object_id: u32,
     index: Option<i32>,
-    operation: RWOp,
 }
 
-impl Operation {
-    pub fn new(object_id: u32, index: Option<i32>, operation: RWOp) -> Self {
-        Self {
-            object_id,
-            index,
-            operation,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RWOp {
-    None = 0b00,
-    Read = 0b01,
-    Write = 0b10,
-    Modify = 0b11,
-}
-
-impl RWOp {
-    const MASK: u8 = 0b0000_0011;
-
-    fn from_byte(byte: u8) -> Self {
-        match byte & Self::MASK {
-            0b00 => RWOp::None,
-            0b01 => RWOp::Read,
-            0b10 => RWOp::Write,
-            0b11 => RWOp::Modify,
-            _ => unreachable!(),
-        }
+impl ObjectIdentifier {
+    pub fn new(object_id: u32, index: Option<i32>) -> Self {
+        Self { object_id, index }
     }
 }
 
 pub mod encoder {
     use core::sync::atomic::{AtomicU8, Ordering};
 
-    use crate::{MessageType, Operation, rzcobs::Encoder};
+    use crate::{MessageType, ObjectIdentifier, rzcobs::Encoder};
 
     pub trait TraceInterface {
         fn instance(&self) -> u8;
@@ -111,14 +84,13 @@ pub mod encoder {
             }
         }
 
-        pub fn send_operation(&mut self, operation: &Operation) {
+        pub fn send_object_identifier(&mut self, operation: &ObjectIdentifier) {
             let mut buffer = [0; 9];
 
             // | 7 | 6 | 5 | 4 |   3   | 2 | 1 | 0 |
-            // |   0   |  op   | index |   mtype   |
-            buffer[0] = (operation.operation as u8) << 4
-                | (operation.index.is_some() as u8) << 3
-                | MessageType::Operation as u8;
+            // |       0       | index |   mtype   |
+            buffer[0] =
+                (operation.index.is_some() as u8) << 3 | MessageType::ObjectIdentifier as u8;
 
             buffer[1..][..4].copy_from_slice(&operation.object_id.to_le_bytes());
 
@@ -132,21 +104,15 @@ pub mod encoder {
             self.write(&buffer[..buffer_pos]);
         }
 
-        pub fn send_bytes(&mut self, bytes: &[u8]) {
-            for byte_chunk in bytes.chunks(31) {
+        pub fn send_bytes(&mut self, write: bool, bytes: &[u8]) {
+            for byte_chunk in bytes.chunks(16) {
                 // | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
-                // |        len        |   mtype   |
-                let header = [(byte_chunk.len() as u8) << 3 | MessageType::Bytes as u8];
+                // |      len      | w |   mtype   |
+                let header = [(byte_chunk.len() as u8 - 1) << 4
+                    | (write as u8) << 3
+                    | MessageType::OperationData as u8];
                 self.write(&header);
                 self.write(byte_chunk);
-            }
-
-            if !bytes.is_empty() {
-                // Send an empty tag at the end to signal this bytes message is done
-                // | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
-                // |         0         |   mtype   |
-                let header = [(0 as u8) << 3 | MessageType::Bytes as u8];
-                self.write(&header);
             }
         }
 
@@ -207,11 +173,18 @@ pub mod encoder {
 pub mod decoder {
     use std::collections::{HashMap, vec_deque::VecDeque};
 
-    use crate::{MessageType, Operation, RWOp, rzcobs::rzcobs_decode};
+    use crate::{MessageType, ObjectIdentifier, rzcobs::rzcobs_decode};
 
-    enum BytesOutput {
-        Data(Vec<u8>),
-        EndOfBytesSignal,
+    struct OperationDataChunk {
+        write: bool,
+        bytes: Vec<u8>,
+    }
+
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Operation {
+        pub objects: Vec<ObjectIdentifier>,
+        pub read_data: Vec<u8>,
+        pub write_data: Vec<u8>,
     }
 
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -219,7 +192,7 @@ pub mod decoder {
         pub instance: u8,
         pub id: u8,
         pub timestamp: Option<u64>,
-        pub operations: Vec<(Vec<Operation>, Vec<Vec<u8>>)>,
+        pub operations: Vec<Operation>,
     }
 
     impl Event {
@@ -271,37 +244,35 @@ pub mod decoder {
                             event.timestamp = Some(ts);
                             len
                         }
-                        MessageType::Operation => {
-                            let (op, len) = Self::decode_operation(frame)?;
+                        MessageType::ObjectIdentifier => {
+                            let (object, len) = Self::decode_object_identifier(frame)?;
                             if push_new_op {
                                 push_new_op = false;
-                                event.operations.push((vec![op], vec![Vec::new()]));
+                                event.operations.push(Operation {
+                                    objects: vec![object],
+                                    read_data: Vec::new(),
+                                    write_data: Vec::new(),
+                                });
                             } else {
-                                event.operations.last_mut().unwrap().0.push(op);
+                                event.operations.last_mut().unwrap().objects.push(object);
                             }
                             len
                         }
-                        MessageType::Bytes => {
-                            let (bytes_vec, len) = Self::decode_bytes(frame)?;
-                            let operation_bytes = &mut event.operations.last_mut().unwrap().1;
-                            match bytes_vec {
-                                BytesOutput::Data(data) => {
-                                    operation_bytes.last_mut().unwrap().extend_from_slice(&data);
-                                }
-                                BytesOutput::EndOfBytesSignal => {
-                                    operation_bytes.push(Vec::new());
-                                }
+                        MessageType::OperationData => {
+                            let (OperationDataChunk { write, bytes }, len) =
+                                Self::decode_operation_data(frame)?;
+                            let active_operation = event.operations.last_mut().unwrap();
+
+                            if write {
+                                active_operation.write_data.extend_from_slice(&bytes);
+                            } else {
+                                active_operation.read_data.extend_from_slice(&bytes);
                             }
+
                             push_new_op = true;
                             len
                         }
                         MessageType::Finalize => {
-                            // Fix up the operations
-                            // Remove empty operation vecs
-                            for (_, op_bytes) in event.operations.iter_mut() {
-                                op_bytes.retain(|bytes| !bytes.is_empty());
-                            }
-
                             return Ok(event);
                         }
                     };
@@ -313,23 +284,25 @@ pub mod decoder {
             Err(DecodeError::Incomplete)
         }
 
-        fn decode_bytes(bytes: &[u8]) -> Result<(BytesOutput, usize), DecodeError> {
+        fn decode_operation_data(bytes: &[u8]) -> Result<(OperationDataChunk, usize), DecodeError> {
             if bytes.is_empty() {
                 return Err(DecodeError::Incomplete);
             }
 
-            if MessageType::from_byte(bytes[0]) != Some(MessageType::Bytes) {
+            if MessageType::from_byte(bytes[0]) != Some(MessageType::OperationData) {
                 return Err(DecodeError::Malformed);
             }
 
-            let len = (bytes[0] & 0b1111_1000) >> 3;
+            let len = ((bytes[0] & 0b1111_0000) >> 4) + 1;
+            let write = (bytes[0] & 0b0000_1000) > 0;
 
-            let output = match len {
-                0 => BytesOutput::EndOfBytesSignal,
-                1.. => BytesOutput::Data(bytes[1..][..len as usize].to_vec()),
-            };
-
-            Ok((output, 1 + len as usize))
+            Ok((
+                OperationDataChunk {
+                    write,
+                    bytes: bytes[1..][..len as usize].to_vec(),
+                },
+                1 + len as usize,
+            ))
         }
 
         fn decode_timestamp(bytes: &[u8]) -> Result<(u64, usize), DecodeError> {
@@ -345,22 +318,22 @@ pub mod decoder {
             Ok((timestamp, 9))
         }
 
-        fn decode_operation(bytes: &[u8]) -> Result<(Operation, usize), DecodeError> {
+        fn decode_object_identifier(
+            bytes: &[u8],
+        ) -> Result<(ObjectIdentifier, usize), DecodeError> {
             if bytes.len() < 6 {
                 return Err(DecodeError::Incomplete);
             }
 
-            if MessageType::from_byte(bytes[0]) != Some(MessageType::Operation) {
+            if MessageType::from_byte(bytes[0]) != Some(MessageType::ObjectIdentifier) {
                 return Err(DecodeError::Malformed);
             }
 
-            let mut operation = Operation {
+            let mut operation = ObjectIdentifier {
                 object_id: 0,
                 index: None,
-                operation: RWOp::None,
             };
 
-            operation.operation = RWOp::from_byte((bytes[0] & 0b0011_0000) >> 4);
             let index = (bytes[0] & 0b0000_1000) > 0;
 
             operation.object_id = u32::from_le_bytes(*bytes[1..5].as_array().unwrap());
@@ -474,7 +447,7 @@ pub mod decoder {
 #[cfg(test)]
 mod tests {
     use crate::{
-        decoder::{Event as DecodeEvent, StreamingDecoder},
+        decoder::{Event as DecodeEvent, Operation, StreamingDecoder},
         encoder::{Event as EncodeEvent, TraceInterface},
     };
 
@@ -511,24 +484,24 @@ mod tests {
         let none_event = EncodeEvent::new(&mut interface);
         none_event.send_final_frame(&mut interface, |f| {
             f.send_timestamp();
-            f.send_operation(&Operation::new(5, None, crate::RWOp::None));
+            f.send_object_identifier(&ObjectIdentifier::new(5, None));
         });
 
         let modify_event = EncodeEvent::new(&mut interface);
         modify_event.send_frame(&mut interface, |f| {
             f.send_timestamp();
-            f.send_operation(&Operation::new(5, None, crate::RWOp::Modify));
-            f.send_bytes(&[1, 2, 3]);
+            f.send_object_identifier(&ObjectIdentifier::new(5, None));
+            f.send_bytes(false, &[1, 2, 3]);
         });
         modify_event.send_final_frame(&mut interface, |f| {
-            f.send_bytes(&[1, 2, 5]);
+            f.send_bytes(true, &[1, 2, 5]);
         });
 
         let read_event = EncodeEvent::new(&mut interface);
         read_event.send_final_frame(&mut interface, |f| {
             f.send_timestamp();
-            f.send_operation(&Operation::new(5, None, crate::RWOp::Read));
-            f.send_bytes(&[1, 2, 3]);
+            f.send_object_identifier(&ObjectIdentifier::new(5, None));
+            f.send_bytes(false, &[1, 2, 3]);
         });
 
         println!(
@@ -549,7 +522,11 @@ mod tests {
                 instance: 55,
                 id: 0,
                 timestamp: Some(5),
-                operations: vec![(vec![Operation::new(5, None, crate::RWOp::None)], Vec::new())]
+                operations: vec![Operation {
+                    objects: vec![ObjectIdentifier::new(5, None)],
+                    read_data: Vec::new(),
+                    write_data: Vec::new()
+                }]
             }
         );
         assert_eq!(
@@ -558,10 +535,11 @@ mod tests {
                 instance: 55,
                 id: 1,
                 timestamp: Some(5),
-                operations: vec![(
-                    vec![Operation::new(5, None, crate::RWOp::Modify)],
-                    vec![vec![1, 2, 3], vec![1, 2, 5]]
-                )]
+                operations: vec![Operation {
+                    objects: vec![ObjectIdentifier::new(5, None)],
+                    read_data: vec![1, 2, 3],
+                    write_data: vec![1, 2, 5],
+                }]
             }
         );
         assert_eq!(
@@ -570,10 +548,11 @@ mod tests {
                 instance: 55,
                 id: 2,
                 timestamp: Some(5),
-                operations: vec![(
-                    vec![Operation::new(5, None, crate::RWOp::Read)],
-                    vec![vec![1, 2, 3]]
-                )]
+                operations: vec![Operation {
+                    objects: vec![ObjectIdentifier::new(5, None)],
+                    read_data: vec![1, 2, 3],
+                    write_data: Vec::new(),
+                }]
             }
         );
     }
@@ -588,12 +567,12 @@ mod tests {
 
         let bulk_event = EncodeEvent::new(&mut interface);
         bulk_event.send_frame(&mut interface, |f| {
-            f.send_operation(&Operation::new(654, Some(-90), crate::RWOp::Modify));
-            f.send_operation(&Operation::new(655, Some(1), crate::RWOp::Modify));
-            f.send_bytes(&[0xDD; 60]);
+            f.send_object_identifier(&ObjectIdentifier::new(654, Some(-90)));
+            f.send_object_identifier(&ObjectIdentifier::new(655, Some(1)));
+            f.send_bytes(false, &[0xDD; 60]);
         });
         bulk_event.send_final_frame(&mut interface, |f| {
-            f.send_bytes(&[0, 2, 3, 4]);
+            f.send_bytes(true, &[0, 2, 3, 4]);
         });
 
         let mut decoder = StreamingDecoder::new();
@@ -607,13 +586,14 @@ mod tests {
                 instance: 37,
                 id: 0,
                 timestamp: None,
-                operations: vec![(
-                    vec![
-                        Operation::new(654, Some(-90), crate::RWOp::Modify),
-                        Operation::new(655, Some(1), crate::RWOp::Modify)
+                operations: vec![Operation {
+                    objects: vec![
+                        ObjectIdentifier::new(654, Some(-90)),
+                        ObjectIdentifier::new(655, Some(1))
                     ],
-                    vec![vec![0xDD; 60], vec![0, 2, 3, 4]]
-                )]
+                    read_data: vec![0xDD; 60],
+                    write_data: vec![0, 2, 3, 4],
+                }]
             })
         );
     }
