@@ -8,6 +8,7 @@ enum MessageType {
     Timestamp = 1,
     ObjectIdentifier = 2,
     OperationData = 3,
+    OperationAddress = 4,
     Finalize = 5,
 }
 
@@ -20,6 +21,7 @@ impl MessageType {
             1 => Some(MessageType::Timestamp),
             2 => Some(MessageType::ObjectIdentifier),
             3 => Some(MessageType::OperationData),
+            4 => Some(MessageType::OperationAddress),
             5 => Some(MessageType::Finalize),
             _ => None,
         }
@@ -116,6 +118,16 @@ pub mod encoder {
             }
         }
 
+        pub fn send_address(&mut self, address: &[u8]) {
+            debug_assert!(!address.is_empty(), "empty address is not allowed");
+            debug_assert!(address.len() <= 16, "max address size is 16 bytes (i/u128)");
+            // | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
+            // |      len      | 0 |   mtype   |
+            let header = [(address.len() as u8 - 1) << 4 | MessageType::OperationAddress as u8];
+            self.write(&header);
+            self.write(address);
+        }
+
         fn send_finalize(&mut self) {
             self.write(&[MessageType::Finalize as u8]);
         }
@@ -180,9 +192,10 @@ pub mod decoder {
         bytes: Vec<u8>,
     }
 
-    #[derive(Debug, Clone, PartialEq, Eq)]
+    #[derive(Debug, Clone, PartialEq, Eq, Default)]
     pub struct Operation {
         pub objects: Vec<ObjectIdentifier>,
+        pub address: Vec<u8>,
         pub read_data: Vec<u8>,
         pub write_data: Vec<u8>,
     }
@@ -213,6 +226,7 @@ pub mod decoder {
                 operations: Vec::new(),
             };
 
+            // When true, a new object identifier will start a new operation
             let mut push_new_op = true;
 
             for frame in frames {
@@ -246,16 +260,13 @@ pub mod decoder {
                         }
                         MessageType::ObjectIdentifier => {
                             let (object, len) = Self::decode_object_identifier(frame)?;
-                            if push_new_op {
+                            let active_operation = if push_new_op {
                                 push_new_op = false;
-                                event.operations.push(Operation {
-                                    objects: vec![object],
-                                    read_data: Vec::new(),
-                                    write_data: Vec::new(),
-                                });
+                                event.operations.push_mut(Operation::default())
                             } else {
-                                event.operations.last_mut().unwrap().objects.push(object);
-                            }
+                                event.operations.last_mut().unwrap()
+                            };
+                            active_operation.objects.push(object);
                             len
                         }
                         MessageType::OperationData => {
@@ -268,6 +279,15 @@ pub mod decoder {
                             } else {
                                 active_operation.read_data.extend_from_slice(&bytes);
                             }
+
+                            push_new_op = true;
+                            len
+                        }
+                        MessageType::OperationAddress => {
+                            let (address, len) = Self::decode_operation_address(frame)?;
+                            let active_operation = event.operations.last_mut().unwrap();
+
+                            active_operation.address = address;
 
                             push_new_op = true;
                             len
@@ -303,6 +323,20 @@ pub mod decoder {
                 },
                 1 + len as usize,
             ))
+        }
+
+        fn decode_operation_address(bytes: &[u8]) -> Result<(Vec<u8>, usize), DecodeError> {
+            if bytes.is_empty() {
+                return Err(DecodeError::Incomplete);
+            }
+
+            if MessageType::from_byte(bytes[0]) != Some(MessageType::OperationAddress) {
+                return Err(DecodeError::Malformed);
+            }
+
+            let len = ((bytes[0] & 0b1111_0000) >> 4) + 1;
+
+            Ok((bytes[1..][..len as usize].to_vec(), 1 + len as usize))
         }
 
         fn decode_timestamp(bytes: &[u8]) -> Result<(u64, usize), DecodeError> {
@@ -491,6 +525,7 @@ mod tests {
         modify_event.send_frame(&mut interface, |f| {
             f.send_timestamp();
             f.send_object_identifier(&ObjectIdentifier::new(5, None));
+            f.send_address(&[1]);
             f.send_bytes(false, &[1, 2, 3]);
         });
         modify_event.send_final_frame(&mut interface, |f| {
@@ -501,6 +536,7 @@ mod tests {
         read_event.send_final_frame(&mut interface, |f| {
             f.send_timestamp();
             f.send_object_identifier(&ObjectIdentifier::new(5, None));
+            f.send_address(&[12, 34, 56]);
             f.send_bytes(false, &[1, 2, 3]);
         });
 
@@ -524,6 +560,7 @@ mod tests {
                 timestamp: Some(5),
                 operations: vec![Operation {
                     objects: vec![ObjectIdentifier::new(5, None)],
+                    address: Vec::new(),
                     read_data: Vec::new(),
                     write_data: Vec::new()
                 }]
@@ -537,6 +574,7 @@ mod tests {
                 timestamp: Some(5),
                 operations: vec![Operation {
                     objects: vec![ObjectIdentifier::new(5, None)],
+                    address: vec![1],
                     read_data: vec![1, 2, 3],
                     write_data: vec![1, 2, 5],
                 }]
@@ -550,6 +588,7 @@ mod tests {
                 timestamp: Some(5),
                 operations: vec![Operation {
                     objects: vec![ObjectIdentifier::new(5, None)],
+                    address: vec![12, 34, 56],
                     read_data: vec![1, 2, 3],
                     write_data: Vec::new(),
                 }]
@@ -569,6 +608,7 @@ mod tests {
         bulk_event.send_frame(&mut interface, |f| {
             f.send_object_identifier(&ObjectIdentifier::new(654, Some(-90)));
             f.send_object_identifier(&ObjectIdentifier::new(655, Some(1)));
+            f.send_address(&[0xFF, 0xFF]);
             f.send_bytes(false, &[0xDD; 60]);
         });
         bulk_event.send_final_frame(&mut interface, |f| {
@@ -591,6 +631,7 @@ mod tests {
                         ObjectIdentifier::new(654, Some(-90)),
                         ObjectIdentifier::new(655, Some(1))
                     ],
+                    address: vec![0xFF, 0xFF],
                     read_data: vec![0xDD; 60],
                     write_data: vec![0, 2, 3, 4],
                 }]
