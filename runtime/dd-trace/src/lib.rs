@@ -516,12 +516,14 @@ mod tests {
         };
 
         let none_event = EncodeEvent::new(&mut interface);
+        let none_event_id = none_event.id;
         none_event.send_final_frame(&mut interface, |f| {
             f.send_timestamp();
             f.send_object_identifier(&ObjectIdentifier::new(5, None));
         });
 
         let modify_event = EncodeEvent::new(&mut interface);
+        let modify_event_id = modify_event.id;
         modify_event.send_frame(&mut interface, |f| {
             f.send_timestamp();
             f.send_object_identifier(&ObjectIdentifier::new(5, None));
@@ -533,6 +535,7 @@ mod tests {
         });
 
         let read_event = EncodeEvent::new(&mut interface);
+        let read_event_id = read_event.id;
         read_event.send_final_frame(&mut interface, |f| {
             f.send_timestamp();
             f.send_object_identifier(&ObjectIdentifier::new(5, None));
@@ -546,17 +549,30 @@ mod tests {
         );
 
         let mut decoder = StreamingDecoder::new();
-        let decoded_events = decoder.push_bytes(&interface.written_bytes);
+        let decoded_events = decoder
+            .push_bytes(&interface.written_bytes)
+            .into_iter()
+            .map(|e| e.unwrap())
+            .collect::<Vec<_>>();
 
-        let decoded_none_event = decoded_events[0].clone().unwrap();
-        let decoded_modify_event: DecodeEvent = decoded_events[1].clone().unwrap();
-        let decoded_read_event = decoded_events[2].clone().unwrap();
+        let decoded_none_event = decoded_events
+            .iter()
+            .find(|e| e.id == none_event_id)
+            .unwrap();
+        let decoded_modify_event = decoded_events
+            .iter()
+            .find(|e| e.id == modify_event_id)
+            .unwrap();
+        let decoded_read_event = decoded_events
+            .iter()
+            .find(|e| e.id == read_event_id)
+            .unwrap();
 
         assert_eq!(
             decoded_none_event,
-            DecodeEvent {
+            &DecodeEvent {
                 instance: 55,
-                id: 0,
+                id: none_event_id,
                 timestamp: Some(5),
                 operations: vec![Operation {
                     objects: vec![ObjectIdentifier::new(5, None)],
@@ -568,9 +584,9 @@ mod tests {
         );
         assert_eq!(
             decoded_modify_event,
-            DecodeEvent {
+            &DecodeEvent {
                 instance: 55,
-                id: 1,
+                id: modify_event_id,
                 timestamp: Some(5),
                 operations: vec![Operation {
                     objects: vec![ObjectIdentifier::new(5, None)],
@@ -582,9 +598,9 @@ mod tests {
         );
         assert_eq!(
             decoded_read_event,
-            DecodeEvent {
+            &DecodeEvent {
                 instance: 55,
-                id: 2,
+                id: read_event_id,
                 timestamp: Some(5),
                 operations: vec![Operation {
                     objects: vec![ObjectIdentifier::new(5, None)],
@@ -605,6 +621,7 @@ mod tests {
         };
 
         let bulk_event = EncodeEvent::new(&mut interface);
+        let bulk_event_id = bulk_event.id;
         bulk_event.send_frame(&mut interface, |f| {
             f.send_object_identifier(&ObjectIdentifier::new(654, Some(-90)));
             f.send_object_identifier(&ObjectIdentifier::new(655, Some(1)));
@@ -616,15 +633,22 @@ mod tests {
         });
 
         let mut decoder = StreamingDecoder::new();
-        let decoded_events = decoder.push_bytes(&interface.written_bytes);
+        let decoded_events = decoder
+            .push_bytes(&interface.written_bytes)
+            .into_iter()
+            .map(|e| e.unwrap())
+            .collect::<Vec<_>>();
 
-        let bulk_event = decoded_events[0].clone();
+        let bulk_event = decoded_events
+            .iter()
+            .find(|e| e.id == bulk_event_id)
+            .unwrap();
 
         assert_eq!(
             bulk_event,
-            Ok(DecodeEvent {
+            &DecodeEvent {
                 instance: 37,
-                id: 0,
+                id: bulk_event_id,
                 timestamp: None,
                 operations: vec![Operation {
                     objects: vec![
@@ -635,7 +659,7 @@ mod tests {
                     read_data: vec![0xDD; 60],
                     write_data: vec![0, 2, 3, 4],
                 }]
-            })
+            }
         );
     }
 }
