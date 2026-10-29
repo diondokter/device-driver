@@ -20,6 +20,15 @@ pub unsafe trait Fieldset: Sized {
             )
         }
     }
+    /// Get the fieldset as a slice
+    fn as_slice(&self) -> &[u8] {
+        unsafe {
+            core::slice::from_raw_parts(
+                (self as *const Self).cast::<u8>(),
+                core::mem::size_of::<Self>(),
+            )
+        }
+    }
 }
 
 unsafe impl<T: Fieldset, const N: usize> Fieldset for [T; N] {

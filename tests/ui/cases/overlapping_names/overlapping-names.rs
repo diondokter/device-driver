@@ -531,7 +531,7 @@ impl From<Quux> for u8 {
     }
 }
 #[doc(hidden)]
-impl ::device_driver::EnumIndex for Quux {
+impl ::device_driver::Index for Quux {
     #[track_caller]
     fn index(&self) -> i32 {
         let index = u8::from(*self);
@@ -576,7 +576,7 @@ impl From<QuuxDup5> for u8 {
     }
 }
 #[doc(hidden)]
-impl ::device_driver::EnumIndex for QuuxDup5 {
+impl ::device_driver::Index for QuuxDup5 {
     #[track_caller]
     fn index(&self) -> i32 {
         let index = u8::from(*self);
@@ -612,7 +612,7 @@ impl From<Wheee2Dup6> for u8 {
     }
 }
 #[doc(hidden)]
-impl ::device_driver::EnumIndex for Wheee2Dup6 {
+impl ::device_driver::Index for Wheee2Dup6 {
     #[track_caller]
     fn index(&self) -> i32 {
         let index = u8::from(*self);

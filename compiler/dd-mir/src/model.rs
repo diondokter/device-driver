@@ -99,6 +99,12 @@ impl ObjectId {
     pub fn get_mut(self, manifest: &mut Manifest) -> Option<ObjectMut<'_>> {
         manifest.object_mut(self)
     }
+
+    /// Turn the object id into a raw value. This is not useful anywhere except when the id needs to become visible outside the MIR
+    /// (for example with tracing)
+    pub fn raw(self) -> u32 {
+        self.0.get()
+    }
 }
 
 impl Default for ObjectId {

@@ -13,6 +13,7 @@ description = "A toolkit to write better device drivers, faster"
 
 [dependencies]
 device-driver-macros = { workspace = true, optional = true }
+device-driver-trace = { workspace = true, optional = true, default-features = false }
 
 embedded-io = { version = "0.7.1", optional = true }
 embedded-io-async = { version = "0.7.0", optional = true }
@@ -32,3 +33,6 @@ macros = ["dep:device-driver-macros"]
 defmt = ["dep:defmt", "embedded-io?/defmt", "embedded-io-async?/defmt"]
 # Enable embedded-io 0.7 impls for buffer operations
 embedded-io-07 = ["dep:embedded-io", "dep:embedded-io-async"]
+
+# Enable tracing output. Note that for this to work, the generated driver code must also have its trace feature enabled
+trace = ["dep:device-driver-trace"]

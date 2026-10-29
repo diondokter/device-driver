@@ -4,6 +4,7 @@ use device_driver_common::{
     span::Spanned,
     specifiers::{Access, AddressMode, AddressRange, ByteOrder, Integer},
 };
+use device_driver_mir::model::ObjectId;
 
 pub struct Driver {
     pub devices: Vec<Device>,
@@ -35,6 +36,7 @@ pub struct BlockMethod {
     pub address: i128,
     pub repeat: Repeat,
     pub method_type: BlockMethodType,
+    pub mir_object_id: ObjectId,
 }
 
 pub enum Repeat {

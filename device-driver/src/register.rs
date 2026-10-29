@@ -1,22 +1,24 @@
 use core::marker::PhantomData;
 
 use crate::{
-    Address, AddressMode, Append, ArrayRepeating, Block, Fieldset, FieldsetMetadata, NotRepeating,
-    RO, RW, ReadCapability, Repeating, ToTuple, WO, WriteCapability,
+    Address, AddressMode, Append, ArrayRepeating, Block, Fieldset, FieldsetMetadata, Interface,
+    NotRepeating, RO, RW, ReadCapability, Repeating, ToTuple, WO, WriteCapability,
 };
 
+#[cfg(feature = "trace")]
+use crate::Index;
 #[cfg(feature = "defmt")]
 use defmt::panic;
 
 /// Common properties shared by [`RegisterInterface`] & [`AsyncRegisterInterface`]
-pub trait RegisterInterfaceBase {
+pub trait RegisterInterfaceBase: Interface {
     /// The error type
     type Error;
     /// The address type used by this interface
     type AddressType: Address;
 }
 
-impl<T: RegisterInterfaceBase> RegisterInterfaceBase for &mut T {
+impl<T: RegisterInterfaceBase + Interface> RegisterInterfaceBase for &mut T {
     type Error = T::Error;
     type AddressType = T::AddressType;
 }
@@ -124,6 +126,8 @@ where
     block: &'b mut B,
     address: AddressType,
     register_new_with_reset: fn() -> RegisterFs,
+    #[cfg(feature = "trace")]
+    object_id: u32,
     _phantom: PhantomData<(RegisterFs, Access, Repeat)>,
 }
 
@@ -140,11 +144,14 @@ where
         block: &'b mut B,
         address: AddressType,
         register_new_with_reset: fn() -> RegisterFs,
+        #[cfg(feature = "trace")] object_id: u32,
     ) -> Self {
         Self {
             block,
             address,
             register_new_with_reset,
+            #[cfg(feature = "trace")]
+            object_id,
             _phantom: PhantomData,
         }
     }
@@ -167,6 +174,10 @@ where
         Plan {
             address: self.address(),
             value: self.reset_value(),
+            #[cfg(feature = "trace")]
+            object_id: self.object_id,
+            #[cfg(feature = "trace")]
+            index: None,
             _phantom: PhantomData,
         }
     }
@@ -180,6 +191,10 @@ where
         Plan {
             address: Repeat::calc_address(self.address, index),
             value: self.reset_value(),
+            #[cfg(feature = "trace")]
+            object_id: self.object_id,
+            #[cfg(feature = "trace")]
+            index: Some(index.index()),
             _phantom: PhantomData,
         }
     }
@@ -194,6 +209,10 @@ where
         Plan {
             address: self.address(),
             value: RegisterFs::ZERO,
+            #[cfg(feature = "trace")]
+            object_id: self.object_id,
+            #[cfg(feature = "trace")]
+            index: None,
             _phantom: PhantomData,
         }
     }
@@ -208,6 +227,10 @@ where
         Plan {
             address: Repeat::calc_address(self.address, index),
             value: RegisterFs::ZERO,
+            #[cfg(feature = "trace")]
+            object_id: self.object_id,
+            #[cfg(feature = "trace")]
+            index: Some(index.index()),
             _phantom: PhantomData,
         }
     }
@@ -222,7 +245,7 @@ where
         Repeat: ArrayRepeating,
         B::RegisterAddressMode: AddressMode,
     {
-        Repeat::assert_len_and_index(N, index.clone());
+        Repeat::assert_len_and_index(N, index);
 
         let address = Repeat::calc_address(self.address, index);
         Self::assert_array_op_legal(address);
@@ -230,6 +253,10 @@ where
         Plan {
             address,
             value: core::array::from_fn(|_| self.reset_value()),
+            #[cfg(feature = "trace")]
+            object_id: self.object_id,
+            #[cfg(feature = "trace")]
+            index: Some(index.index()),
             _phantom: PhantomData,
         }
     }
@@ -245,7 +272,7 @@ where
         B::RegisterAddressMode: AddressMode,
         Access: WriteCapability,
     {
-        Repeat::assert_len_and_index(N, index.clone());
+        Repeat::assert_len_and_index(N, index);
 
         let address = Repeat::calc_address(self.address, index);
         Self::assert_array_op_legal(address);
@@ -253,6 +280,10 @@ where
         Plan {
             address,
             value: Fieldset::ZERO,
+            #[cfg(feature = "trace")]
+            object_id: self.object_id,
+            #[cfg(feature = "trace")]
+            index: Some(index.index()),
             _phantom: PhantomData,
         }
     }
@@ -273,6 +304,20 @@ where
     {
         let mut register = (self.register_new_with_reset)();
         f(&mut register);
+
+        #[cfg(feature = "trace")]
+        device_driver_trace::encoder::Event::new(self.block.interface()).send_final_frame(
+            self.block.interface(),
+            |f| {
+                f.send_timestamp();
+                f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                    self.object_id,
+                    None,
+                ));
+                self.address.get_le_bytes(|address| f.send_address(address));
+                f.send_bytes(true, register.as_slice_mut());
+            },
+        );
 
         self.block.interface().write_register(
             self.address,
@@ -299,6 +344,20 @@ where
         let mut register = (self.register_new_with_reset)();
         f(&mut register);
 
+        #[cfg(feature = "trace")]
+        device_driver_trace::encoder::Event::new(self.block.interface()).send_final_frame(
+            self.block.interface(),
+            |f| {
+                f.send_timestamp();
+                f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                    self.object_id,
+                    Some(index.index()),
+                ));
+                self.address.get_le_bytes(|address| f.send_address(address));
+                f.send_bytes(true, register.as_slice_mut());
+            },
+        );
+
         self.block.interface().write_register(
             Repeat::calc_address(self.address, index),
             register.as_slice_mut(),
@@ -322,13 +381,29 @@ where
         B::RegisterAddressMode: AddressMode,
         Access: WriteCapability,
     {
-        Repeat::assert_len_and_index(N, index.clone());
+        Repeat::assert_len_and_index(N, index);
 
         let mut register = core::array::from_fn(|_| (self.register_new_with_reset)());
         f(&mut register);
 
         let address = Repeat::calc_address(self.address, index);
         Self::assert_array_op_legal(address);
+
+        #[cfg(feature = "trace")]
+        device_driver_trace::encoder::Event::new(self.block.interface()).send_final_frame(
+            self.block.interface(),
+            |f| {
+                f.send_timestamp();
+                for i in 0..N {
+                    f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                        self.object_id,
+                        Some(index.index() + i as i32),
+                    ));
+                }
+                self.address.get_le_bytes(|address| f.send_address(address));
+                f.send_bytes(true, register.as_slice_mut());
+            },
+        );
 
         self.block.interface().write_register(
             address,
@@ -353,6 +428,20 @@ where
     {
         let mut register = (self.register_new_with_reset)();
         f(&mut register);
+
+        #[cfg(feature = "trace")]
+        device_driver_trace::encoder::Event::new(self.block.interface()).send_final_frame(
+            self.block.interface(),
+            |f| {
+                f.send_timestamp();
+                f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                    self.object_id,
+                    None,
+                ));
+                self.address.get_le_bytes(|address| f.send_address(address));
+                f.send_bytes(true, register.as_slice_mut());
+            },
+        );
 
         async move {
             self.block
@@ -382,6 +471,20 @@ where
 
         let address = Repeat::calc_address(self.address, index);
 
+        #[cfg(feature = "trace")]
+        device_driver_trace::encoder::Event::new(self.block.interface()).send_final_frame(
+            self.block.interface(),
+            |f| {
+                f.send_timestamp();
+                f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                    self.object_id,
+                    Some(index.index()),
+                ));
+                self.address.get_le_bytes(|address| f.send_address(address));
+                f.send_bytes(true, register.as_slice_mut());
+            },
+        );
+
         async move {
             self.block
                 .interface()
@@ -406,13 +509,29 @@ where
         B::RegisterAddressMode: AddressMode,
         Access: WriteCapability,
     {
-        Repeat::assert_len_and_index(N, index.clone());
+        Repeat::assert_len_and_index(N, index);
 
         let mut register = core::array::from_fn(|_| (self.register_new_with_reset)());
         f(&mut register);
 
         let address = Repeat::calc_address(self.address, index);
         Self::assert_array_op_legal(address);
+
+        #[cfg(feature = "trace")]
+        device_driver_trace::encoder::Event::new(self.block.interface()).send_final_frame(
+            self.block.interface(),
+            |f| {
+                f.send_timestamp();
+                for i in 0..N {
+                    f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                        self.object_id,
+                        Some(index.index() + i as i32),
+                    ));
+                }
+                self.address.get_le_bytes(|address| f.send_address(address));
+                f.send_bytes(true, register.as_slice_mut());
+            },
+        );
 
         async move {
             self.block
@@ -438,6 +557,20 @@ where
         let mut register = RegisterFs::ZERO;
         f(&mut register);
 
+        #[cfg(feature = "trace")]
+        device_driver_trace::encoder::Event::new(self.block.interface()).send_final_frame(
+            self.block.interface(),
+            |f| {
+                f.send_timestamp();
+                f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                    self.object_id,
+                    None,
+                ));
+                self.address.get_le_bytes(|address| f.send_address(address));
+                f.send_bytes(true, register.as_slice_mut());
+            },
+        );
+
         self.block.interface().write_register(
             self.address,
             register.as_slice_mut(),
@@ -462,6 +595,20 @@ where
         let mut register = RegisterFs::ZERO;
         f(&mut register);
 
+        #[cfg(feature = "trace")]
+        device_driver_trace::encoder::Event::new(self.block.interface()).send_final_frame(
+            self.block.interface(),
+            |f| {
+                f.send_timestamp();
+                f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                    self.object_id,
+                    Some(index.index()),
+                ));
+                self.address.get_le_bytes(|address| f.send_address(address));
+                f.send_bytes(true, register.as_slice_mut());
+            },
+        );
+
         self.block.interface().write_register(
             Repeat::calc_address(self.address, index),
             register.as_slice_mut(),
@@ -484,13 +631,29 @@ where
         B::RegisterAddressMode: AddressMode,
         Access: WriteCapability,
     {
-        Repeat::assert_len_and_index(N, index.clone());
+        Repeat::assert_len_and_index(N, index);
 
         let mut register = <[RegisterFs; N] as Fieldset>::ZERO;
         f(&mut register);
 
         let address = Repeat::calc_address(self.address, index);
         Self::assert_array_op_legal(address);
+
+        #[cfg(feature = "trace")]
+        device_driver_trace::encoder::Event::new(self.block.interface()).send_final_frame(
+            self.block.interface(),
+            |f| {
+                f.send_timestamp();
+                for i in 0..N {
+                    f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                        self.object_id,
+                        Some(index.index() + i as i32),
+                    ));
+                }
+                self.address.get_le_bytes(|address| f.send_address(address));
+                f.send_bytes(true, register.as_slice_mut());
+            },
+        );
 
         self.block.interface().write_register(
             address,
@@ -514,6 +677,20 @@ where
     {
         let mut register = RegisterFs::ZERO;
         f(&mut register);
+
+        #[cfg(feature = "trace")]
+        device_driver_trace::encoder::Event::new(self.block.interface()).send_final_frame(
+            self.block.interface(),
+            |f| {
+                f.send_timestamp();
+                f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                    self.object_id,
+                    None,
+                ));
+                self.address.get_le_bytes(|address| f.send_address(address));
+                f.send_bytes(true, register.as_slice_mut());
+            },
+        );
 
         async move {
             self.block
@@ -542,6 +719,20 @@ where
 
         let address = Repeat::calc_address(self.address, index);
 
+        #[cfg(feature = "trace")]
+        device_driver_trace::encoder::Event::new(self.block.interface()).send_final_frame(
+            self.block.interface(),
+            |f| {
+                f.send_timestamp();
+                f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                    self.object_id,
+                    Some(index.index()),
+                ));
+                self.address.get_le_bytes(|address| f.send_address(address));
+                f.send_bytes(true, register.as_slice_mut());
+            },
+        );
+
         async move {
             self.block
                 .interface()
@@ -565,13 +756,29 @@ where
         B::RegisterAddressMode: AddressMode,
         Access: WriteCapability,
     {
-        Repeat::assert_len_and_index(N, index.clone());
+        Repeat::assert_len_and_index(N, index);
 
         let mut register = <[RegisterFs; N] as Fieldset>::ZERO;
         f(&mut register);
 
         let address = Repeat::calc_address(self.address, index);
         Self::assert_array_op_legal(address);
+
+        #[cfg(feature = "trace")]
+        device_driver_trace::encoder::Event::new(self.block.interface()).send_final_frame(
+            self.block.interface(),
+            |f| {
+                f.send_timestamp();
+                for i in 0..N {
+                    f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                        self.object_id,
+                        Some(index.index() + i as i32),
+                    ));
+                }
+                self.address.get_le_bytes(|address| f.send_address(address));
+                f.send_bytes(true, register.as_slice_mut());
+            },
+        );
 
         async move {
             self.block
@@ -591,10 +798,29 @@ where
     {
         let mut register = RegisterFs::ZERO;
 
-        self.block
+        let result = self
+            .block
             .interface()
             .read_register(self.address, register.as_slice_mut(), &RegisterFs::METADATA)
-            .map(|_| register)
+            .map(|_| register);
+
+        #[cfg(feature = "trace")]
+        if let Ok(register) = result.as_ref() {
+            device_driver_trace::encoder::Event::new(self.block.interface()).send_final_frame(
+                self.block.interface(),
+                |f| {
+                    f.send_timestamp();
+                    f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                        self.object_id,
+                        None,
+                    ));
+                    self.address.get_le_bytes(|address| f.send_address(address));
+                    f.send_bytes(false, register.as_slice());
+                },
+            );
+        }
+
+        result
     }
 
     /// Read the register from the device at a given index
@@ -610,14 +836,33 @@ where
     {
         let mut register = RegisterFs::ZERO;
 
-        self.block
+        let result = self
+            .block
             .interface()
             .read_register(
                 Repeat::calc_address(self.address, index),
                 register.as_slice_mut(),
                 &RegisterFs::METADATA,
             )
-            .map(|_| register)
+            .map(|_| register);
+
+        #[cfg(feature = "trace")]
+        if let Ok(register) = result.as_ref() {
+            device_driver_trace::encoder::Event::new(self.block.interface()).send_final_frame(
+                self.block.interface(),
+                |f| {
+                    f.send_timestamp();
+                    f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                        self.object_id,
+                        Some(index.index()),
+                    ));
+                    self.address.get_le_bytes(|address| f.send_address(address));
+                    f.send_bytes(false, register.as_slice());
+                },
+            );
+        }
+
+        result
     }
 
     /// Read an array of registers from the device at a given index and length
@@ -632,16 +877,37 @@ where
         B::RegisterAddressMode: AddressMode,
         Access: ReadCapability,
     {
-        Repeat::assert_len_and_index(N, index.clone());
+        Repeat::assert_len_and_index(N, index);
 
         let mut register = <[RegisterFs; N] as Fieldset>::ZERO;
         let address = Repeat::calc_address(self.address, index);
         Self::assert_array_op_legal(address);
 
-        self.block
+        let result = self
+            .block
             .interface()
             .read_register(address, register.as_slice_mut(), &RegisterFs::METADATA)
-            .map(|_| register)
+            .map(|_| register);
+
+        #[cfg(feature = "trace")]
+        if let Ok(register) = result.as_ref() {
+            device_driver_trace::encoder::Event::new(self.block.interface()).send_final_frame(
+                self.block.interface(),
+                |f| {
+                    f.send_timestamp();
+                    for i in 0..N {
+                        f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                            self.object_id,
+                            Some(index.index() + i as i32),
+                        ));
+                    }
+                    self.address.get_le_bytes(|address| f.send_address(address));
+                    f.send_bytes(false, Fieldset::as_slice(register));
+                },
+            );
+        }
+
+        result
     }
 
     /// Read the register from the device
@@ -657,11 +923,30 @@ where
         let mut register = RegisterFs::ZERO;
 
         async move {
-            self.block
+            let result = self
+                .block
                 .interface()
                 .read_register(self.address, register.as_slice_mut(), &RegisterFs::METADATA)
                 .await
-                .map(|_| register)
+                .map(|_| register);
+
+            #[cfg(feature = "trace")]
+            if let Ok(register) = result.as_ref() {
+                device_driver_trace::encoder::Event::new(self.block.interface()).send_final_frame(
+                    self.block.interface(),
+                    |f| {
+                        f.send_timestamp();
+                        f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                            self.object_id,
+                            None,
+                        ));
+                        self.address.get_le_bytes(|address| f.send_address(address));
+                        f.send_bytes(false, register.as_slice());
+                    },
+                );
+            }
+
+            result
         }
     }
 
@@ -680,11 +965,30 @@ where
         let address = Repeat::calc_address(self.address, index);
 
         async move {
-            self.block
+            let result = self
+                .block
                 .interface()
                 .read_register(address, register.as_slice_mut(), &RegisterFs::METADATA)
                 .await
-                .map(|_| register)
+                .map(|_| register);
+
+            #[cfg(feature = "trace")]
+            if let Ok(register) = result.as_ref() {
+                device_driver_trace::encoder::Event::new(self.block.interface()).send_final_frame(
+                    self.block.interface(),
+                    |f| {
+                        f.send_timestamp();
+                        f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                            self.object_id,
+                            Some(index.index()),
+                        ));
+                        self.address.get_le_bytes(|address| f.send_address(address));
+                        f.send_bytes(false, register.as_slice());
+                    },
+                );
+            }
+
+            result
         }
     }
 
@@ -699,18 +1003,39 @@ where
         B::RegisterAddressMode: AddressMode,
         Access: ReadCapability,
     {
-        Repeat::assert_len_and_index(N, index.clone());
+        Repeat::assert_len_and_index(N, index);
 
         let mut register = <[RegisterFs; N] as Fieldset>::ZERO;
         let address = Repeat::calc_address(self.address, index);
         Self::assert_array_op_legal(address);
 
         async move {
-            self.block
+            let result = self
+                .block
                 .interface()
                 .read_register(address, register.as_slice_mut(), &RegisterFs::METADATA)
                 .await
-                .map(|_| register)
+                .map(|_| register);
+
+            #[cfg(feature = "trace")]
+            if let Ok(register) = result.as_ref() {
+                device_driver_trace::encoder::Event::new(self.block.interface()).send_final_frame(
+                    self.block.interface(),
+                    |f| {
+                        f.send_timestamp();
+                        for i in 0..N {
+                            f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                                self.object_id,
+                                Some(index.index() + i as i32),
+                            ));
+                        }
+                        self.address.get_le_bytes(|address| f.send_address(address));
+                        f.send_bytes(false, Fieldset::as_slice(register));
+                    },
+                );
+            }
+
+            result
         }
     }
 
@@ -736,7 +1061,26 @@ where
             &RegisterFs::METADATA,
         )?;
 
+        #[cfg(feature = "trace")]
+        let event = device_driver_trace::encoder::Event::new(self.block.interface()).send_frame(
+            self.block.interface(),
+            |f| {
+                f.send_timestamp();
+                f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                    self.object_id,
+                    None,
+                ));
+                self.address.get_le_bytes(|address| f.send_address(address));
+                f.send_bytes(false, register.as_slice());
+            },
+        );
+
         f(&mut register);
+
+        #[cfg(feature = "trace")]
+        event.send_final_frame(self.block.interface(), |f| {
+            f.send_bytes(true, register.as_slice())
+        });
 
         self.block.interface().write_register(
             self.address,
@@ -769,7 +1113,26 @@ where
             &RegisterFs::METADATA,
         )?;
 
+        #[cfg(feature = "trace")]
+        let event = device_driver_trace::encoder::Event::new(self.block.interface()).send_frame(
+            self.block.interface(),
+            |f| {
+                f.send_timestamp();
+                f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                    self.object_id,
+                    Some(index.index()),
+                ));
+                self.address.get_le_bytes(|address| f.send_address(address));
+                f.send_bytes(false, register.as_slice());
+            },
+        );
+
         f(&mut register);
+
+        #[cfg(feature = "trace")]
+        event.send_final_frame(self.block.interface(), |f| {
+            f.send_bytes(true, register.as_slice())
+        });
 
         self.block.interface().write_register(
             address,
@@ -794,7 +1157,7 @@ where
         B::RegisterAddressMode: AddressMode,
         Access: ReadCapability + WriteCapability,
     {
-        Repeat::assert_len_and_index(N, index.clone());
+        Repeat::assert_len_and_index(N, index);
 
         let mut register = <[RegisterFs; N] as Fieldset>::ZERO;
 
@@ -807,7 +1170,28 @@ where
             &RegisterFs::METADATA,
         )?;
 
+        #[cfg(feature = "trace")]
+        let event = device_driver_trace::encoder::Event::new(self.block.interface()).send_frame(
+            self.block.interface(),
+            |f| {
+                f.send_timestamp();
+                for i in 0..N {
+                    f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                        self.object_id,
+                        Some(index.index() + i as i32),
+                    ));
+                }
+                self.address.get_le_bytes(|address| f.send_address(address));
+                f.send_bytes(false, Fieldset::as_slice(&register));
+            },
+        );
+
         f(&mut register);
+
+        #[cfg(feature = "trace")]
+        event.send_final_frame(self.block.interface(), |f| {
+            f.send_bytes(true, Fieldset::as_slice(&register))
+        });
 
         self.block.interface().write_register(
             address,
@@ -838,7 +1222,24 @@ where
                 .read_register(self.address, register.as_slice_mut(), &RegisterFs::METADATA)
                 .await?;
 
+            #[cfg(feature = "trace")]
+            let event = device_driver_trace::encoder::Event::new(self.block.interface())
+                .send_frame(self.block.interface(), |f| {
+                    f.send_timestamp();
+                    f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                        self.object_id,
+                        None,
+                    ));
+                    self.address.get_le_bytes(|address| f.send_address(address));
+                    f.send_bytes(false, register.as_slice());
+                });
+
             f(&mut register);
+
+            #[cfg(feature = "trace")]
+            event.send_final_frame(self.block.interface(), |f| {
+                f.send_bytes(true, Fieldset::as_slice(&register))
+            });
 
             self.block
                 .interface()
@@ -871,7 +1272,24 @@ where
                 .read_register(address, register.as_slice_mut(), &RegisterFs::METADATA)
                 .await?;
 
+            #[cfg(feature = "trace")]
+            let event = device_driver_trace::encoder::Event::new(self.block.interface())
+                .send_frame(self.block.interface(), |f| {
+                    f.send_timestamp();
+                    f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                        self.object_id,
+                        Some(index.index()),
+                    ));
+                    self.address.get_le_bytes(|address| f.send_address(address));
+                    f.send_bytes(false, register.as_slice());
+                });
+
             f(&mut register);
+
+            #[cfg(feature = "trace")]
+            event.send_final_frame(self.block.interface(), |f| {
+                f.send_bytes(true, Fieldset::as_slice(&register))
+            });
 
             self.block
                 .interface()
@@ -896,7 +1314,7 @@ where
         B::RegisterAddressMode: AddressMode,
         Access: ReadCapability + WriteCapability,
     {
-        Repeat::assert_len_and_index(N, index.clone());
+        Repeat::assert_len_and_index(N, index);
 
         let mut register = <[RegisterFs; N] as Fieldset>::ZERO;
 
@@ -909,7 +1327,26 @@ where
                 .read_register(address, register.as_slice_mut(), &RegisterFs::METADATA)
                 .await?;
 
+            #[cfg(feature = "trace")]
+            let event = device_driver_trace::encoder::Event::new(self.block.interface())
+                .send_frame(self.block.interface(), |f| {
+                    f.send_timestamp();
+                    for i in 0..N {
+                        f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                            self.object_id,
+                            Some(index.index() + i as i32),
+                        ));
+                    }
+                    self.address.get_le_bytes(|address| f.send_address(address));
+                    f.send_bytes(false, Fieldset::as_slice(&register));
+                });
+
             f(&mut register);
+
+            #[cfg(feature = "trace")]
+            event.send_final_frame(self.block.interface(), |f| {
+                f.send_bytes(true, Fieldset::as_slice(&register))
+            });
 
             self.block
                 .interface()
@@ -945,6 +1382,10 @@ pub struct Plan<AddressType: Copy, FS, Access> {
     pub address: AddressType,
     /// The starting value of the register. This is either the reset value or all-0's
     pub value: FS,
+    #[cfg(feature = "trace")]
+    object_id: u32,
+    #[cfg(feature = "trace")]
+    index: Option<i32>,
     _phantom: PhantomData<Access>,
 }
 

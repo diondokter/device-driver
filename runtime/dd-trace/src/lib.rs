@@ -39,20 +39,38 @@ impl ObjectIdentifier {
     }
 }
 
-pub mod encoder {
-    use core::sync::atomic::{AtomicU8, Ordering};
+pub trait TraceInterface {
+    fn instance(&mut self) -> u8;
+    fn write(&mut self, byte: u8);
+    fn timestamp(&mut self) -> Option<u64>;
+    fn id(&mut self) -> u8 {
+        use core::sync::atomic::{AtomicU8, Ordering};
 
-    use crate::{MessageType, ObjectIdentifier, rzcobs::Encoder};
-
-    pub trait TraceInterface {
-        fn instance(&self) -> u8;
-        fn write(&mut self, byte: u8);
-        fn timestamp(&mut self) -> Option<u64>;
-        fn id(&mut self) -> u8 {
-            static NEXT_ID: AtomicU8 = AtomicU8::new(0);
-            NEXT_ID.fetch_add(1, Ordering::Relaxed)
-        }
+        static NEXT_ID: AtomicU8 = AtomicU8::new(0);
+        NEXT_ID.fetch_add(1, Ordering::Relaxed)
     }
+}
+
+impl<T: TraceInterface> TraceInterface for &mut T {
+    fn instance(&mut self) -> u8 {
+        (*self).instance()
+    }
+
+    fn write(&mut self, byte: u8) {
+        (*self).write(byte)
+    }
+
+    fn timestamp(&mut self) -> Option<u64> {
+        (*self).timestamp()
+    }
+
+    fn id(&mut self) -> u8 {
+        (*self).id()
+    }
+}
+
+pub mod encoder {
+    use crate::{MessageType, ObjectIdentifier, TraceInterface, rzcobs::Encoder};
 
     pub struct Frame<'i, TI: TraceInterface> {
         encoder: Encoder,
@@ -153,11 +171,12 @@ pub mod encoder {
         }
 
         pub fn send_frame<TI: TraceInterface>(
-            &self,
+            self,
             interface: &mut TI,
             f: impl FnOnce(&mut Frame<'_, TI>),
-        ) {
-            f(&mut Frame::new(interface, self.id))
+        ) -> Self {
+            f(&mut Frame::new(interface, self.id));
+            self
         }
 
         pub fn send_final_frame<TI: TraceInterface>(
@@ -487,7 +506,7 @@ pub mod decoder {
 mod tests {
     use crate::{
         decoder::{Event as DecodeEvent, Operation, StreamingDecoder},
-        encoder::{Event as EncodeEvent, TraceInterface},
+        encoder::Event as EncodeEvent,
     };
 
     use super::*;
@@ -499,7 +518,7 @@ mod tests {
     }
 
     impl TraceInterface for TestTraceInterface {
-        fn instance(&self) -> u8 {
+        fn instance(&mut self) -> u8 {
             self.instance
         }
 
@@ -529,7 +548,7 @@ mod tests {
 
         let modify_event = EncodeEvent::new(&mut interface);
         let modify_event_id = modify_event.id;
-        modify_event.send_frame(&mut interface, |f| {
+        let modify_event = modify_event.send_frame(&mut interface, |f| {
             f.send_timestamp();
             f.send_object_identifier(&ObjectIdentifier::new(5, None));
             f.send_address(&[1]);
@@ -627,7 +646,7 @@ mod tests {
 
         let bulk_event = EncodeEvent::new(&mut interface);
         let bulk_event_id = bulk_event.id;
-        bulk_event.send_frame(&mut interface, |f| {
+        let bulk_event = bulk_event.send_frame(&mut interface, |f| {
             f.send_object_identifier(&ObjectIdentifier::new(654, Some(-90)));
             f.send_object_identifier(&ObjectIdentifier::new(655, Some(1)));
             f.send_address(&[0xFF, 0xFF]);

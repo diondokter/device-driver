@@ -184,6 +184,8 @@ pub trait Address: Copy + Eq + Display + Debug + defmt::Format + SealedAddress {
     const ZERO: Self;
     #[doc(hidden)]
     fn add(self, val: i32) -> Self;
+    #[doc(hidden)]
+    fn get_le_bytes(self, f: impl FnOnce(&[u8]));
 }
 /// A trait implemented for the types that can be used as an address
 #[expect(private_bounds, reason = "sealed on purpose")]
@@ -193,6 +195,8 @@ pub trait Address: Copy + Eq + Display + Debug + SealedAddress {
     const ZERO: Self;
     #[doc(hidden)]
     fn add(self, val: i32) -> Self;
+    #[doc(hidden)]
+    fn get_le_bytes(self, f: impl FnOnce(&[u8]));
 }
 
 impl SealedAddress for u8 {}
@@ -201,12 +205,18 @@ impl Address for u8 {
     fn add(self, val: i32) -> Self {
         (self as i32 + val).try_into().unwrap()
     }
+    fn get_le_bytes(self, f: impl FnOnce(&[u8])) {
+        f(&self.to_le_bytes())
+    }
 }
 impl SealedAddress for u16 {}
 impl Address for u16 {
     const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
         (self as i32 + val).try_into().unwrap()
+    }
+    fn get_le_bytes(self, f: impl FnOnce(&[u8])) {
+        f(&self.to_le_bytes())
     }
 }
 impl SealedAddress for u32 {}
@@ -215,12 +225,18 @@ impl Address for u32 {
     fn add(self, val: i32) -> Self {
         self.checked_add_signed(val).unwrap()
     }
+    fn get_le_bytes(self, f: impl FnOnce(&[u8])) {
+        f(&self.to_le_bytes())
+    }
 }
 impl SealedAddress for u64 {}
 impl Address for u64 {
     const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
         self.checked_add_signed(val as i64).unwrap()
+    }
+    fn get_le_bytes(self, f: impl FnOnce(&[u8])) {
+        f(&self.to_le_bytes())
     }
 }
 impl SealedAddress for i8 {}
@@ -229,12 +245,18 @@ impl Address for i8 {
     fn add(self, val: i32) -> Self {
         (self as i32 + val).try_into().unwrap()
     }
+    fn get_le_bytes(self, f: impl FnOnce(&[u8])) {
+        f(&self.to_le_bytes())
+    }
 }
 impl SealedAddress for i16 {}
 impl Address for i16 {
     const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
         (self as i32 + val).try_into().unwrap()
+    }
+    fn get_le_bytes(self, f: impl FnOnce(&[u8])) {
+        f(&self.to_le_bytes())
     }
 }
 impl SealedAddress for i32 {}
@@ -243,12 +265,18 @@ impl Address for i32 {
     fn add(self, val: i32) -> Self {
         self + val
     }
+    fn get_le_bytes(self, f: impl FnOnce(&[u8])) {
+        f(&self.to_le_bytes())
+    }
 }
 impl SealedAddress for i64 {}
 impl Address for i64 {
     const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
         self + val as i64
+    }
+    fn get_le_bytes(self, f: impl FnOnce(&[u8])) {
+        f(&self.to_le_bytes())
     }
 }
 
@@ -282,5 +310,20 @@ impl AddressMode for IndexedAddressMode {
     #[inline]
     fn next_address<A: Address>(current_address: A, _current_size: usize) -> A {
         current_address.add(1)
+    }
+}
+
+cfg_select! {
+    feature = "trace" => {
+        #[doc(hidden)]
+        /// Common interface capabilities
+        pub trait Interface: device_driver_trace::TraceInterface {}
+        impl<T: device_driver_trace::TraceInterface> Interface for T {}
+    }
+    _ => {
+        #[doc(hidden)]
+        /// Common interface capabilities
+        pub trait Interface {}
+        impl<T> Interface for T {}
     }
 }
