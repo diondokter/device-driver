@@ -287,6 +287,11 @@ pub mod decoder {
                             let (address, len) = Self::decode_operation_address(frame)?;
                             let active_operation = event.operations.last_mut().unwrap();
 
+                            if !active_operation.address.is_empty() {
+                                // Can't set the address twice
+                                return Err(DecodeError::Malformed);
+                            }
+
                             active_operation.address = address;
 
                             push_new_op = true;
