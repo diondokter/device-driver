@@ -4,6 +4,7 @@ mod rzcobs;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum MessageType {
+    #[cfg_attr(not(any(test, feature = "std")), expect(unused))]
     End = 0,
     Timestamp = 1,
     ObjectIdentifier = 2,
@@ -13,8 +14,10 @@ enum MessageType {
 }
 
 impl MessageType {
+    #[cfg_attr(not(any(test, feature = "std")), expect(unused))]
     const MASK: u8 = 0b0000_0111;
 
+    #[cfg_attr(not(any(test, feature = "std")), expect(unused))]
     fn from_byte(byte: u8) -> Option<Self> {
         match byte & Self::MASK {
             0 => Some(MessageType::End),
