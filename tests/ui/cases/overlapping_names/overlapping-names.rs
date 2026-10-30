@@ -43,7 +43,12 @@ impl<I> Foo<I> {
         I: ::device_driver::RegisterInterfaceBase<AddressType = u8>,
     {
         let address = self.base_address + 0;
-        ::device_driver::RegisterOperation::new(self, address as u8, Bar::default)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u8,
+            Bar::default,
+            0x3000000,
+        )
     }
 }
 impl<I> ::device_driver::Block for Foo<I> {
@@ -93,7 +98,12 @@ impl<I> FooDup1<I> {
         I: ::device_driver::RegisterInterfaceBase<AddressType = u8>,
     {
         let address = self.base_address + 0;
-        ::device_driver::RegisterOperation::new(self, address as u8, BarDup4::default)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u8,
+            BarDup4::default,
+            0x3000001,
+        )
     }
 }
 impl<I> ::device_driver::Block for FooDup1<I> {
@@ -531,7 +541,7 @@ impl From<Quux> for u8 {
     }
 }
 #[doc(hidden)]
-impl ::device_driver::EnumIndex for Quux {
+impl ::device_driver::Index for Quux {
     #[track_caller]
     fn index(&self) -> i32 {
         let index = u8::from(*self);
@@ -576,7 +586,7 @@ impl From<QuuxDup5> for u8 {
     }
 }
 #[doc(hidden)]
-impl ::device_driver::EnumIndex for QuuxDup5 {
+impl ::device_driver::Index for QuuxDup5 {
     #[track_caller]
     fn index(&self) -> i32 {
         let index = u8::from(*self);
@@ -612,7 +622,7 @@ impl From<Wheee2Dup6> for u8 {
     }
 }
 #[doc(hidden)]
-impl ::device_driver::EnumIndex for Wheee2Dup6 {
+impl ::device_driver::Index for Wheee2Dup6 {
     #[track_caller]
     fn index(&self) -> i32 {
         let index = u8::from(*self);

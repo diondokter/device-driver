@@ -121,6 +121,7 @@ impl{{block_generics}} {{ block.name.to_case(Case::Pascal) }}{{block_generics}} 
                         {% else %}
                             {{field_set_name.to_case(Case::Pascal)}}::default,
                         {% endif %}
+                        {{method.mir_object_id.raw() | fmt("{:#X}")}},
                     )
                 {% endwhen %}
                 {% when BlockMethodType::Command { field_set_name_in, field_set_name_out } %}

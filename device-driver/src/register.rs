@@ -1,12 +1,19 @@
 use core::marker::PhantomData;
 
 use crate::{
-    Address, AddressMode, Append, ArrayRepeating, Block, Fieldset, FieldsetMetadata, NotRepeating,
-    RO, RW, ReadCapability, Repeating, ToTuple, WO, WriteCapability,
+    Address, AddressMode, Append, ArrayRepeating, Block, Fieldset, FieldsetMetadata, Index,
+    NotRepeating, RO, RW, ReadCapability, Repeating, ToTuple, WO, WriteCapability,
 };
 
 #[cfg(feature = "defmt")]
 use defmt::panic;
+#[cfg(feature = "trace")]
+use device_driver_trace::{DummyInterface, TraceInterface, encoder::Event};
+
+#[cfg(feature = "trace")]
+type ModifyEvent = Option<Event>;
+#[cfg(not(feature = "trace"))]
+type ModifyEvent = ();
 
 /// Common properties shared by [`RegisterInterface`] & [`AsyncRegisterInterface`]
 pub trait RegisterInterfaceBase {
@@ -14,6 +21,11 @@ pub trait RegisterInterfaceBase {
     type Error;
     /// The address type used by this interface
     type AddressType: Address;
+
+    #[cfg(feature = "trace")]
+    fn trace_interface(&mut self) -> Option<&mut impl TraceInterface> {
+        Option::<&mut DummyInterface>::None
+    }
 }
 
 impl<T: RegisterInterfaceBase> RegisterInterfaceBase for &mut T {
@@ -124,6 +136,8 @@ where
     block: &'b mut B,
     address: AddressType,
     register_new_with_reset: fn() -> RegisterFs,
+    #[cfg(feature = "trace")]
+    object_id: u32,
     _phantom: PhantomData<(RegisterFs, Access, Repeat)>,
 }
 
@@ -140,11 +154,14 @@ where
         block: &'b mut B,
         address: AddressType,
         register_new_with_reset: fn() -> RegisterFs,
+        _object_id: u32,
     ) -> Self {
         Self {
             block,
             address,
             register_new_with_reset,
+            #[cfg(feature = "trace")]
+            object_id: _object_id,
             _phantom: PhantomData,
         }
     }
@@ -159,34 +176,142 @@ where
         (self.register_new_with_reset)()
     }
 
+    fn send_single_event(&mut self, _index: Option<i32>, _register: &impl Fieldset, _write: bool) {
+        #[cfg(feature = "trace")]
+        if let Some(trace_interface) = self.block.interface().trace_interface() {
+            Event::new(trace_interface).send_final_frame(trace_interface, |f| {
+                f.send_timestamp();
+                f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                    self.object_id,
+                    _index,
+                ));
+                self.address.get_le_bytes(|address| f.send_address(address));
+                f.send_bytes(_write, _register.as_slice());
+            });
+        }
+    }
+
+    fn send_array_event(
+        &mut self,
+        _start_index: i32,
+        _array_len: usize,
+        _register: &impl Fieldset,
+        _write: bool,
+    ) {
+        #[cfg(feature = "trace")]
+        if let Some(trace_interface) = self.block.interface().trace_interface() {
+            Event::new(trace_interface).send_final_frame(trace_interface, |f| {
+                f.send_timestamp();
+                for i in 0.._array_len {
+                    f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                        self.object_id,
+                        Some(_start_index + i as i32),
+                    ));
+                }
+                self.address.get_le_bytes(|address| f.send_address(address));
+                f.send_bytes(_write, _register.as_slice());
+            });
+        }
+    }
+
+    fn start_single_modify_event(
+        &mut self,
+        _index: Option<i32>,
+        _register: &impl Fieldset,
+    ) -> ModifyEvent {
+        #[cfg(feature = "trace")]
+        if let Some(trace_interface) = self.block.interface().trace_interface() {
+            Some(
+                Event::new(trace_interface).send_frame(trace_interface, |f| {
+                    f.send_timestamp();
+                    f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                        self.object_id,
+                        _index,
+                    ));
+                    self.address.get_le_bytes(|address| f.send_address(address));
+                    f.send_bytes(false, _register.as_slice());
+                }),
+            )
+        } else {
+            None
+        }
+    }
+
+    fn start_array_modify_event(
+        &mut self,
+        _start_index: i32,
+        _array_len: usize,
+        _register: &impl Fieldset,
+    ) -> ModifyEvent {
+        #[cfg(feature = "trace")]
+        if let Some(trace_interface) = self.block.interface().trace_interface() {
+            Some(
+                Event::new(trace_interface).send_frame(trace_interface, |f| {
+                    f.send_timestamp();
+                    for i in 0.._array_len {
+                        f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                            self.object_id,
+                            Some(_start_index + i as i32),
+                        ));
+                    }
+                    self.address.get_le_bytes(|address| f.send_address(address));
+                    f.send_bytes(false, _register.as_slice());
+                }),
+            )
+        } else {
+            None
+        }
+    }
+
+    fn finish_modify_event(&mut self, _event: ModifyEvent, _register: &impl Fieldset) {
+        #[cfg(feature = "trace")]
+        if let Some(event) = _event {
+            if let Some(trace_interface) = self.block.interface().trace_interface() {
+                event.send_final_frame(trace_interface, |f| {
+                    f.send_bytes(true, _register.as_slice());
+                });
+            } else {
+                event.discard();
+            }
+        }
+    }
+
     /// Get a plan to read, write or modify for bulk register operations
-    pub fn plan(&self) -> Plan<AddressType, RegisterFs, Access>
+    pub fn plan(self) -> Plan<AddressType, RegisterFs, Access>
     where
         Repeat: NotRepeating,
     {
         Plan {
             address: self.address(),
             value: self.reset_value(),
+            #[cfg(feature = "trace")]
+            object_id: self.object_id,
+            #[cfg(feature = "trace")]
+            index: None,
             _phantom: PhantomData,
         }
     }
 
     /// Get a plan to read, write or modify for bulk register operations at a given index
     #[track_caller]
-    pub fn plan_at(&self, index: Repeat::Index) -> Plan<AddressType, RegisterFs, Access>
+    pub fn plan_at(self, index: Repeat::Index) -> Plan<AddressType, RegisterFs, Access>
     where
         Repeat: Repeating,
     {
         Plan {
             address: Repeat::calc_address(self.address, index),
             value: self.reset_value(),
+            #[cfg(feature = "trace")]
+            object_id: self.object_id,
+            #[cfg(feature = "trace")]
+            index: Some(index.index()),
             _phantom: PhantomData,
         }
     }
 
     /// Same as [`Self::plan`], but initialize the fieldset with all zeroes
     #[track_caller]
-    pub fn plan_with_zero(&self) -> Plan<AddressType, RegisterFs, Access>
+    pub fn plan_with_zero(self) -> Plan<AddressType, RegisterFs, Access>
     where
         Repeat: NotRepeating,
         Access: WriteCapability,
@@ -194,13 +319,17 @@ where
         Plan {
             address: self.address(),
             value: RegisterFs::ZERO,
+            #[cfg(feature = "trace")]
+            object_id: self.object_id,
+            #[cfg(feature = "trace")]
+            index: None,
             _phantom: PhantomData,
         }
     }
 
     /// Same as [`Self::plan_at`], but initialize the fieldset with all zeroes
     #[track_caller]
-    pub fn plan_with_zero_at(&self, index: Repeat::Index) -> Plan<AddressType, RegisterFs, Access>
+    pub fn plan_with_zero_at(self, index: Repeat::Index) -> Plan<AddressType, RegisterFs, Access>
     where
         Repeat: Repeating,
         Access: WriteCapability,
@@ -208,6 +337,10 @@ where
         Plan {
             address: Repeat::calc_address(self.address, index),
             value: RegisterFs::ZERO,
+            #[cfg(feature = "trace")]
+            object_id: self.object_id,
+            #[cfg(feature = "trace")]
+            index: Some(index.index()),
             _phantom: PhantomData,
         }
     }
@@ -222,7 +355,7 @@ where
         Repeat: ArrayRepeating,
         B::RegisterAddressMode: AddressMode,
     {
-        Repeat::assert_len_and_index(N, index.clone());
+        Repeat::assert_len_and_index(N, index);
 
         let address = Repeat::calc_address(self.address, index);
         Self::assert_array_op_legal(address);
@@ -230,6 +363,10 @@ where
         Plan {
             address,
             value: core::array::from_fn(|_| self.reset_value()),
+            #[cfg(feature = "trace")]
+            object_id: self.object_id,
+            #[cfg(feature = "trace")]
+            index: Some(index.index()),
             _phantom: PhantomData,
         }
     }
@@ -245,7 +382,7 @@ where
         B::RegisterAddressMode: AddressMode,
         Access: WriteCapability,
     {
-        Repeat::assert_len_and_index(N, index.clone());
+        Repeat::assert_len_and_index(N, index);
 
         let address = Repeat::calc_address(self.address, index);
         Self::assert_array_op_legal(address);
@@ -253,6 +390,10 @@ where
         Plan {
             address,
             value: Fieldset::ZERO,
+            #[cfg(feature = "trace")]
+            object_id: self.object_id,
+            #[cfg(feature = "trace")]
+            index: Some(index.index()),
             _phantom: PhantomData,
         }
     }
@@ -263,7 +404,7 @@ where
     /// If no reset value is specified for this register, this function is the same as [`Self::write_with_zero`].
     #[track_caller]
     pub fn write(
-        self,
+        mut self,
         f: impl FnOnce(&mut RegisterFs),
     ) -> Result<(), <B::Interface as RegisterInterfaceBase>::Error>
     where
@@ -273,6 +414,8 @@ where
     {
         let mut register = (self.register_new_with_reset)();
         f(&mut register);
+
+        self.send_single_event(None, &register, true);
 
         self.block.interface().write_register(
             self.address,
@@ -287,7 +430,7 @@ where
     /// If no reset value is specified for this register, this function is the same as [`Self::write_with_zero_at`].
     #[track_caller]
     pub fn write_at(
-        self,
+        mut self,
         index: Repeat::Index,
         f: impl FnOnce(&mut RegisterFs),
     ) -> Result<(), <B::Interface as RegisterInterfaceBase>::Error>
@@ -298,6 +441,8 @@ where
     {
         let mut register = (self.register_new_with_reset)();
         f(&mut register);
+
+        self.send_single_event(Some(index.index()), &register, true);
 
         self.block.interface().write_register(
             Repeat::calc_address(self.address, index),
@@ -312,7 +457,7 @@ where
     /// If no reset value is specified for this register, this function is the same as [`Self::write_array_with_zero_at`].
     #[track_caller]
     pub fn write_array_at<const N: usize>(
-        self,
+        mut self,
         index: Repeat::Index,
         f: impl FnOnce(&mut [RegisterFs; N]),
     ) -> Result<(), <B::Interface as RegisterInterfaceBase>::Error>
@@ -322,13 +467,15 @@ where
         B::RegisterAddressMode: AddressMode,
         Access: WriteCapability,
     {
-        Repeat::assert_len_and_index(N, index.clone());
+        Repeat::assert_len_and_index(N, index);
 
         let mut register = core::array::from_fn(|_| (self.register_new_with_reset)());
         f(&mut register);
 
         let address = Repeat::calc_address(self.address, index);
         Self::assert_array_op_legal(address);
+
+        self.send_array_event(index.index(), N, &register, true);
 
         self.block.interface().write_register(
             address,
@@ -343,7 +490,7 @@ where
     /// If no reset value is specified for this register, this function is the same as [`Self::write_with_zero`].
     #[track_caller]
     pub fn write_async(
-        self,
+        mut self,
         f: impl FnOnce(&mut RegisterFs),
     ) -> impl Future<Output = Result<(), <B::Interface as RegisterInterfaceBase>::Error>>
     where
@@ -353,6 +500,8 @@ where
     {
         let mut register = (self.register_new_with_reset)();
         f(&mut register);
+
+        self.send_single_event(None, &register, true);
 
         async move {
             self.block
@@ -368,7 +517,7 @@ where
     /// If no reset value is specified for this register, this function is the same as [`Self::write_with_zero_at_async`].
     #[track_caller]
     pub fn write_at_async(
-        self,
+        mut self,
         index: Repeat::Index,
         f: impl FnOnce(&mut RegisterFs),
     ) -> impl Future<Output = Result<(), <B::Interface as RegisterInterfaceBase>::Error>>
@@ -381,6 +530,8 @@ where
         f(&mut register);
 
         let address = Repeat::calc_address(self.address, index);
+
+        self.send_single_event(Some(index.index()), &register, true);
 
         async move {
             self.block
@@ -396,7 +547,7 @@ where
     /// If no reset value is specified for this register, this function is the same as [`Self::write_array_with_zero_at_async`].
     #[track_caller]
     pub fn write_array_at_async<const N: usize>(
-        self,
+        mut self,
         index: Repeat::Index,
         f: impl FnOnce(&mut [RegisterFs; N]),
     ) -> impl Future<Output = Result<(), <B::Interface as RegisterInterfaceBase>::Error>>
@@ -406,13 +557,15 @@ where
         B::RegisterAddressMode: AddressMode,
         Access: WriteCapability,
     {
-        Repeat::assert_len_and_index(N, index.clone());
+        Repeat::assert_len_and_index(N, index);
 
         let mut register = core::array::from_fn(|_| (self.register_new_with_reset)());
         f(&mut register);
 
         let address = Repeat::calc_address(self.address, index);
         Self::assert_array_op_legal(address);
+
+        self.send_array_event(index.index(), N, &register, true);
 
         async move {
             self.block
@@ -427,7 +580,7 @@ where
     /// The closure is given the write object initialized to all zero.
     #[track_caller]
     pub fn write_with_zero(
-        self,
+        mut self,
         f: impl FnOnce(&mut RegisterFs),
     ) -> Result<(), <B::Interface as RegisterInterfaceBase>::Error>
     where
@@ -437,6 +590,8 @@ where
     {
         let mut register = RegisterFs::ZERO;
         f(&mut register);
+
+        self.send_single_event(None, &register, true);
 
         self.block.interface().write_register(
             self.address,
@@ -450,7 +605,7 @@ where
     /// The closure is given the write object initialized to all zero.
     #[track_caller]
     pub fn write_with_zero_at(
-        self,
+        mut self,
         index: Repeat::Index,
         f: impl FnOnce(&mut RegisterFs),
     ) -> Result<(), <B::Interface as RegisterInterfaceBase>::Error>
@@ -461,6 +616,8 @@ where
     {
         let mut register = RegisterFs::ZERO;
         f(&mut register);
+
+        self.send_single_event(Some(index.index()), &register, true);
 
         self.block.interface().write_register(
             Repeat::calc_address(self.address, index),
@@ -474,7 +631,7 @@ where
     /// The closure is given the write object initialized to all zero.
     #[track_caller]
     pub fn write_array_with_zero_at<const N: usize>(
-        self,
+        mut self,
         index: Repeat::Index,
         f: impl FnOnce(&mut [RegisterFs; N]),
     ) -> Result<(), <B::Interface as RegisterInterfaceBase>::Error>
@@ -484,13 +641,15 @@ where
         B::RegisterAddressMode: AddressMode,
         Access: WriteCapability,
     {
-        Repeat::assert_len_and_index(N, index.clone());
+        Repeat::assert_len_and_index(N, index);
 
         let mut register = <[RegisterFs; N] as Fieldset>::ZERO;
         f(&mut register);
 
         let address = Repeat::calc_address(self.address, index);
         Self::assert_array_op_legal(address);
+
+        self.send_array_event(index.index(), N, &register, true);
 
         self.block.interface().write_register(
             address,
@@ -504,7 +663,7 @@ where
     /// The closure is given the write object initialized to all zero.
     #[track_caller]
     pub fn write_with_zero_async(
-        self,
+        mut self,
         f: impl FnOnce(&mut RegisterFs),
     ) -> impl Future<Output = Result<(), <B::Interface as RegisterInterfaceBase>::Error>>
     where
@@ -514,6 +673,8 @@ where
     {
         let mut register = RegisterFs::ZERO;
         f(&mut register);
+
+        self.send_single_event(None, &register, true);
 
         async move {
             self.block
@@ -528,7 +689,7 @@ where
     /// The closure is given the write object initialized to all zero.
     #[track_caller]
     pub fn write_with_zero_at_async(
-        self,
+        mut self,
         index: Repeat::Index,
         f: impl FnOnce(&mut RegisterFs),
     ) -> impl Future<Output = Result<(), <B::Interface as RegisterInterfaceBase>::Error>>
@@ -541,6 +702,8 @@ where
         f(&mut register);
 
         let address = Repeat::calc_address(self.address, index);
+
+        self.send_single_event(None, &register, true);
 
         async move {
             self.block
@@ -555,7 +718,7 @@ where
     /// The closure is given the write object initialized to all zero.
     #[track_caller]
     pub fn write_array_with_zero_at_async<const N: usize>(
-        self,
+        mut self,
         index: Repeat::Index,
         f: impl FnOnce(&mut [RegisterFs; N]),
     ) -> impl Future<Output = Result<(), <B::Interface as RegisterInterfaceBase>::Error>>
@@ -565,13 +728,15 @@ where
         B::RegisterAddressMode: AddressMode,
         Access: WriteCapability,
     {
-        Repeat::assert_len_and_index(N, index.clone());
+        Repeat::assert_len_and_index(N, index);
 
         let mut register = <[RegisterFs; N] as Fieldset>::ZERO;
         f(&mut register);
 
         let address = Repeat::calc_address(self.address, index);
         Self::assert_array_op_legal(address);
+
+        self.send_single_event(Some(index.index()), &register, true);
 
         async move {
             self.block
@@ -583,7 +748,7 @@ where
 
     /// Read the register from the device
     #[track_caller]
-    pub fn read(self) -> Result<RegisterFs, <B::Interface as RegisterInterfaceBase>::Error>
+    pub fn read(mut self) -> Result<RegisterFs, <B::Interface as RegisterInterfaceBase>::Error>
     where
         Repeat: NotRepeating,
         B::Interface: RegisterInterface,
@@ -591,16 +756,23 @@ where
     {
         let mut register = RegisterFs::ZERO;
 
-        self.block
+        let result = self
+            .block
             .interface()
             .read_register(self.address, register.as_slice_mut(), &RegisterFs::METADATA)
-            .map(|_| register)
+            .map(|_| register);
+
+        if let Ok(register) = result.as_ref() {
+            self.send_single_event(None, register, false);
+        }
+
+        result
     }
 
     /// Read the register from the device at a given index
     #[track_caller]
     pub fn read_at(
-        self,
+        mut self,
         index: Repeat::Index,
     ) -> Result<RegisterFs, <B::Interface as RegisterInterfaceBase>::Error>
     where
@@ -610,20 +782,27 @@ where
     {
         let mut register = RegisterFs::ZERO;
 
-        self.block
+        let result = self
+            .block
             .interface()
             .read_register(
                 Repeat::calc_address(self.address, index),
                 register.as_slice_mut(),
                 &RegisterFs::METADATA,
             )
-            .map(|_| register)
+            .map(|_| register);
+
+        if let Ok(register) = result.as_ref() {
+            self.send_single_event(Some(index.index()), register, false);
+        }
+
+        result
     }
 
     /// Read an array of registers from the device at a given index and length
     #[track_caller]
     pub fn read_array_at<const N: usize>(
-        self,
+        mut self,
         index: Repeat::Index,
     ) -> Result<[RegisterFs; N], <B::Interface as RegisterInterfaceBase>::Error>
     where
@@ -632,22 +811,29 @@ where
         B::RegisterAddressMode: AddressMode,
         Access: ReadCapability,
     {
-        Repeat::assert_len_and_index(N, index.clone());
+        Repeat::assert_len_and_index(N, index);
 
         let mut register = <[RegisterFs; N] as Fieldset>::ZERO;
         let address = Repeat::calc_address(self.address, index);
         Self::assert_array_op_legal(address);
 
-        self.block
+        let result = self
+            .block
             .interface()
             .read_register(address, register.as_slice_mut(), &RegisterFs::METADATA)
-            .map(|_| register)
+            .map(|_| register);
+
+        if let Ok(register) = result.as_ref() {
+            self.send_array_event(index.index(), N, register, false);
+        }
+
+        result
     }
 
     /// Read the register from the device
     #[track_caller]
     pub fn read_async(
-        self,
+        mut self,
     ) -> impl Future<Output = Result<RegisterFs, <B::Interface as RegisterInterfaceBase>::Error>>
     where
         Repeat: NotRepeating,
@@ -657,17 +843,24 @@ where
         let mut register = RegisterFs::ZERO;
 
         async move {
-            self.block
+            let result = self
+                .block
                 .interface()
                 .read_register(self.address, register.as_slice_mut(), &RegisterFs::METADATA)
                 .await
-                .map(|_| register)
+                .map(|_| register);
+
+            if let Ok(register) = result.as_ref() {
+                self.send_single_event(None, register, false);
+            }
+
+            result
         }
     }
 
     /// Read the register from the device at a given index
     pub fn read_at_async(
-        self,
+        mut self,
         index: Repeat::Index,
     ) -> impl Future<Output = Result<RegisterFs, <B::Interface as RegisterInterfaceBase>::Error>>
     where
@@ -680,17 +873,24 @@ where
         let address = Repeat::calc_address(self.address, index);
 
         async move {
-            self.block
+            let result = self
+                .block
                 .interface()
                 .read_register(address, register.as_slice_mut(), &RegisterFs::METADATA)
                 .await
-                .map(|_| register)
+                .map(|_| register);
+
+            if let Ok(register) = result.as_ref() {
+                self.send_single_event(Some(index.index()), register, false);
+            }
+
+            result
         }
     }
 
     /// Read an array of registers from the device at a given index and length
     pub fn read_array_at_async<const N: usize>(
-        self,
+        mut self,
         index: Repeat::Index,
     ) -> impl Future<Output = Result<[RegisterFs; N], <B::Interface as RegisterInterfaceBase>::Error>>
     where
@@ -699,18 +899,25 @@ where
         B::RegisterAddressMode: AddressMode,
         Access: ReadCapability,
     {
-        Repeat::assert_len_and_index(N, index.clone());
+        Repeat::assert_len_and_index(N, index);
 
         let mut register = <[RegisterFs; N] as Fieldset>::ZERO;
         let address = Repeat::calc_address(self.address, index);
         Self::assert_array_op_legal(address);
 
         async move {
-            self.block
+            let result = self
+                .block
                 .interface()
                 .read_register(address, register.as_slice_mut(), &RegisterFs::METADATA)
                 .await
-                .map(|_| register)
+                .map(|_| register);
+
+            if let Ok(register) = result.as_ref() {
+                self.send_array_event(index.index(), N, register, false);
+            }
+
+            result
         }
     }
 
@@ -720,7 +927,7 @@ where
     /// The result is then written back to the device.
     #[track_caller]
     pub fn modify(
-        self,
+        mut self,
         f: impl FnOnce(&mut RegisterFs),
     ) -> Result<(), <B::Interface as RegisterInterfaceBase>::Error>
     where
@@ -736,7 +943,11 @@ where
             &RegisterFs::METADATA,
         )?;
 
+        let event = self.start_single_modify_event(None, &register);
+
         f(&mut register);
+
+        self.finish_modify_event(event, &register);
 
         self.block.interface().write_register(
             self.address,
@@ -751,7 +962,7 @@ where
     /// The result is then written back to the device.
     #[track_caller]
     pub fn modify_at(
-        self,
+        mut self,
         index: Repeat::Index,
         f: impl FnOnce(&mut RegisterFs),
     ) -> Result<(), <B::Interface as RegisterInterfaceBase>::Error>
@@ -769,7 +980,11 @@ where
             &RegisterFs::METADATA,
         )?;
 
+        let event = self.start_single_modify_event(Some(index.index()), &register);
+
         f(&mut register);
+
+        self.finish_modify_event(event, &register);
 
         self.block.interface().write_register(
             address,
@@ -784,7 +999,7 @@ where
     /// The result is then written back to the device.
     #[track_caller]
     pub fn modify_array_at<const N: usize>(
-        self,
+        mut self,
         index: Repeat::Index,
         f: impl FnOnce(&mut [RegisterFs; N]),
     ) -> Result<(), <B::Interface as RegisterInterfaceBase>::Error>
@@ -794,7 +1009,7 @@ where
         B::RegisterAddressMode: AddressMode,
         Access: ReadCapability + WriteCapability,
     {
-        Repeat::assert_len_and_index(N, index.clone());
+        Repeat::assert_len_and_index(N, index);
 
         let mut register = <[RegisterFs; N] as Fieldset>::ZERO;
 
@@ -807,7 +1022,11 @@ where
             &RegisterFs::METADATA,
         )?;
 
+        let event = self.start_array_modify_event(index.index(), N, &register);
+
         f(&mut register);
+
+        self.finish_modify_event(event, &register);
 
         self.block.interface().write_register(
             address,
@@ -822,7 +1041,7 @@ where
     /// The result is then written back to the device.
     #[track_caller]
     pub fn modify_async(
-        self,
+        mut self,
         f: impl FnOnce(&mut RegisterFs),
     ) -> impl Future<Output = Result<(), <B::Interface as RegisterInterfaceBase>::Error>>
     where
@@ -838,7 +1057,11 @@ where
                 .read_register(self.address, register.as_slice_mut(), &RegisterFs::METADATA)
                 .await?;
 
+            let event = self.start_single_modify_event(None, &register);
+
             f(&mut register);
+
+            self.finish_modify_event(event, &register);
 
             self.block
                 .interface()
@@ -853,7 +1076,7 @@ where
     /// The result is then written back to the device.
     #[track_caller]
     pub fn modify_at_async(
-        self,
+        mut self,
         index: Repeat::Index,
         f: impl FnOnce(&mut RegisterFs),
     ) -> impl Future<Output = Result<(), <B::Interface as RegisterInterfaceBase>::Error>>
@@ -871,7 +1094,11 @@ where
                 .read_register(address, register.as_slice_mut(), &RegisterFs::METADATA)
                 .await?;
 
+            let event = self.start_single_modify_event(Some(index.index()), &register);
+
             f(&mut register);
+
+            self.finish_modify_event(event, &register);
 
             self.block
                 .interface()
@@ -886,7 +1113,7 @@ where
     /// The result is then written back to the device.
     #[track_caller]
     pub fn modify_array_at_async<const N: usize>(
-        self,
+        mut self,
         index: Repeat::Index,
         f: impl FnOnce(&mut [RegisterFs; N]),
     ) -> impl Future<Output = Result<(), <B::Interface as RegisterInterfaceBase>::Error>>
@@ -896,7 +1123,7 @@ where
         B::RegisterAddressMode: AddressMode,
         Access: ReadCapability + WriteCapability,
     {
-        Repeat::assert_len_and_index(N, index.clone());
+        Repeat::assert_len_and_index(N, index);
 
         let mut register = <[RegisterFs; N] as Fieldset>::ZERO;
 
@@ -909,7 +1136,11 @@ where
                 .read_register(address, register.as_slice_mut(), &RegisterFs::METADATA)
                 .await?;
 
+            let event = self.start_array_modify_event(index.index(), N, &register);
+
             f(&mut register);
+
+            self.finish_modify_event(event, &register);
 
             self.block
                 .interface()
@@ -945,6 +1176,10 @@ pub struct Plan<AddressType: Copy, FS, Access> {
     pub address: AddressType,
     /// The starting value of the register. This is either the reset value or all-0's
     pub value: FS,
+    #[cfg(feature = "trace")]
+    object_id: u32,
+    #[cfg(feature = "trace")]
+    index: Option<i32>,
     _phantom: PhantomData<Access>,
 }
 

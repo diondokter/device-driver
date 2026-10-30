@@ -56,6 +56,7 @@ impl<I> Device<I> {
             self,
             address as u8,
             FooFieldSet::default,
+            0x3000000,
         )
     }
     /// The bar register
@@ -83,6 +84,7 @@ impl<I> Device<I> {
             self,
             address as u8,
             || FooFieldSet::from([86, 52, 18]),
+            0x3000001,
         )
     }
 }

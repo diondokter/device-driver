@@ -56,6 +56,7 @@ impl<I> Device<I> {
             self,
             address as u8,
             FooFieldSet::default,
+            0x3000000,
         )
     }
 }
