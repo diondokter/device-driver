@@ -26,6 +26,9 @@ pub mod ops;
 #[cfg(feature = "macros")]
 pub use device_driver_macros::*;
 
+#[cfg(feature = "trace")]
+pub use device_driver_trace::TraceInterface;
+
 /// Trait implemented on every generated block/device.
 pub trait Block: Sized {
     /// The interface used by the block
@@ -310,20 +313,5 @@ impl AddressMode for IndexedAddressMode {
     #[inline]
     fn next_address<A: Address>(current_address: A, _current_size: usize) -> A {
         current_address.add(1)
-    }
-}
-
-cfg_select! {
-    feature = "trace" => {
-        #[doc(hidden)]
-        /// Common interface capabilities
-        pub trait Interface: device_driver_trace::TraceInterface {}
-        impl<T: device_driver_trace::TraceInterface> Interface for T {}
-    }
-    _ => {
-        #[doc(hidden)]
-        /// Common interface capabilities
-        pub trait Interface {}
-        impl<T> Interface for T {}
     }
 }

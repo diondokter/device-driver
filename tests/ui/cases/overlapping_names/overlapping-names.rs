@@ -43,7 +43,12 @@ impl<I> Foo<I> {
         I: ::device_driver::RegisterInterfaceBase<AddressType = u8>,
     {
         let address = self.base_address + 0;
-        ::device_driver::RegisterOperation::new(self, address as u8, Bar::default)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u8,
+            Bar::default,
+            0x3000000,
+        )
     }
 }
 impl<I> ::device_driver::Block for Foo<I> {
@@ -93,7 +98,12 @@ impl<I> FooDup1<I> {
         I: ::device_driver::RegisterInterfaceBase<AddressType = u8>,
     {
         let address = self.base_address + 0;
-        ::device_driver::RegisterOperation::new(self, address as u8, BarDup4::default)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u8,
+            BarDup4::default,
+            0x3000001,
+        )
     }
 }
 impl<I> ::device_driver::Block for FooDup1<I> {

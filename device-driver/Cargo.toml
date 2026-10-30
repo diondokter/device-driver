@@ -22,11 +22,12 @@ defmt = { version = "1.1.1", optional = true }
 [dev-dependencies]
 bitvec.workspace = true
 rand = "0.10.2"
-# Enable embedded-io for tests
-device-driver = { path = ".", features = ["embedded-io-07", "macros"] }
+# Enable embedded-io and trace for tests
+device-driver = { path = ".", features = ["embedded-io-07", "macros", "trace"] }
+device-driver-trace = { workspace = true, features = ["std"] }
 
 [features]
-# Enable compiling your DDSL with a macro 
+# Enable compiling your DDSL with a macro. This pulls in the full compiler as (dev-)dependencies
 macros = ["dep:device-driver-macros"]
 
 # Enable defmt Format impls for many types
@@ -34,5 +35,7 @@ defmt = ["dep:defmt", "embedded-io?/defmt", "embedded-io-async?/defmt"]
 # Enable embedded-io 0.7 impls for buffer operations
 embedded-io-07 = ["dep:embedded-io", "dep:embedded-io-async"]
 
-# Enable tracing output. Note that for this to work, the generated driver code must also have its trace feature enabled
+# Enable tracing. This adds tracing calls for each operation.
+# This feature should not be enabled by default because it has adverse effects on performance and binary size.
+# For tracing to work, an implementation of `TraceInterface` must be provided through the various interface traits.
 trace = ["dep:device-driver-trace"]

@@ -53,6 +53,7 @@ impl<I> Device<I> {
             self,
             address as u8,
             FooRoFieldSet::default,
+            0x3000000,
         )
     }
     /// Register operation:
@@ -76,6 +77,7 @@ impl<I> Device<I> {
             self,
             address as u8,
             FooRwFieldSet::default,
+            0x3000001,
         )
     }
     /// Register operation:
@@ -99,6 +101,7 @@ impl<I> Device<I> {
             self,
             address as u8,
             FooWoFieldSet::default,
+            0x3000002,
         )
     }
 }

@@ -21,13 +21,6 @@ pub struct RustCodegenOptions {
         require_equals = true
     )]
     pub defmt_feature: Option<String>,
-    /// When specified, trace implementations will be generated using this cfg feature flag
-    #[arg(
-        long = "rust-trace-feature",
-        value_name = "FEATURE",
-        require_equals = true
-    )]
-    pub trace_feature: Option<String>,
 }
 
 #[derive(Template)]

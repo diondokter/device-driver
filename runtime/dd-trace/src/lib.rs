@@ -54,6 +54,7 @@ pub trait TraceInterface {
     }
 }
 
+#[diagnostic::do_not_recommend]
 impl<T: TraceInterface> TraceInterface for &mut T {
     fn instance(&mut self) -> u8 {
         (*self).instance()
@@ -69,6 +70,26 @@ impl<T: TraceInterface> TraceInterface for &mut T {
 
     fn id(&mut self) -> u8 {
         (*self).id()
+    }
+}
+
+pub struct DummyInterface;
+
+impl TraceInterface for DummyInterface {
+    fn instance(&mut self) -> u8 {
+        unimplemented!()
+    }
+
+    fn write(&mut self, _byte: u8) {
+        unimplemented!()
+    }
+
+    fn timestamp(&mut self) -> Option<u64> {
+        unimplemented!()
+    }
+
+    fn id(&mut self) -> u8 {
+        unimplemented!()
     }
 }
 
@@ -183,13 +204,17 @@ pub mod encoder {
         }
 
         pub fn send_final_frame<TI: TraceInterface>(
-            mut self,
+            self,
             interface: &mut TI,
             f: impl FnOnce(&mut Frame<'_, TI>),
         ) {
             let mut frame = Frame::new(interface, self.id);
             f(&mut frame);
             frame.send_finalize();
+            self.discard();
+        }
+
+        pub fn discard(mut self) {
             self.finalized = true;
         }
     }

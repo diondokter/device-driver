@@ -18,7 +18,6 @@ pub fn get_compile_options() -> CompileOptions {
         },
         target: CodegenTarget::Rust(device_driver_core::RustCodegenOptions {
             defmt_feature: Some("defmt".into()),
-            trace_feature: None,
         }),
     }
 }
