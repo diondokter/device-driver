@@ -42,81 +42,48 @@ impl ObjectIdentifier {
     }
 }
 
-pub trait TraceInterface {
-    fn instance(&mut self) -> u8;
-    fn write(&mut self, byte: u8);
-    fn timestamp(&mut self) -> Option<u64>;
-    fn id(&mut self) -> u8 {
-        use core::sync::atomic::{AtomicU8, Ordering};
-
-        static NEXT_ID: AtomicU8 = AtomicU8::new(0);
-        NEXT_ID.fetch_add(1, Ordering::Relaxed)
-    }
-}
-
-#[diagnostic::do_not_recommend]
-impl<T: TraceInterface> TraceInterface for &mut T {
-    fn instance(&mut self) -> u8 {
-        (*self).instance()
-    }
-
-    fn write(&mut self, byte: u8) {
-        (*self).write(byte)
-    }
-
-    fn timestamp(&mut self) -> Option<u64> {
-        (*self).timestamp()
-    }
-
-    fn id(&mut self) -> u8 {
-        (*self).id()
-    }
-}
-
-pub struct DummyInterface;
-
-impl TraceInterface for DummyInterface {
-    fn instance(&mut self) -> u8 {
-        unimplemented!()
-    }
-
-    fn write(&mut self, _byte: u8) {
-        unimplemented!()
-    }
-
-    fn timestamp(&mut self) -> Option<u64> {
-        unimplemented!()
-    }
-
-    fn id(&mut self) -> u8 {
-        unimplemented!()
-    }
+pub struct TraceInterface {
+    /// Acquire global mutable access to the interface.
+    /// This must not be reentrant.
+    pub acquire: fn(),
+    /// Write data into the sink
+    pub write: unsafe fn(buf: &[u8]),
+    /// Get the current time in microseconds.
+    /// If a timestamp is not desired, return None.
+    pub timestamp: unsafe fn() -> Option<u64>,
+    /// Release the global mutable access to the interface.
+    pub release: unsafe fn(),
+    /// Get a new id for trace events.
+    /// Should increment by 1 every time when called and wrap around to 0 at the end.
+    pub id: fn() -> u8,
 }
 
 pub mod encoder {
     use crate::{MessageType, ObjectIdentifier, TraceInterface, rzcobs::Encoder};
 
-    pub struct Frame<'i, TI: TraceInterface> {
+    pub struct Frame {
         encoder: Encoder,
-        interface: &'i mut TI,
+        interface: &'static TraceInterface,
     }
 
-    impl<'i, TI: TraceInterface> Frame<'i, TI> {
-        pub fn new(interface: &'i mut TI, id: u8) -> Self {
+    impl Frame {
+        pub fn new(interface: &'static TraceInterface, instance: u8, id: u8) -> Self {
+            (interface.acquire)();
             let mut encoder = Encoder::new();
-            encoder.start_frame(|b| interface.write(b));
+            encoder.start_frame(|b| unsafe { (interface.write)(&[b]) });
 
-            encoder.write(&[interface.instance(), id], |b| interface.write(b));
+            encoder.write(&[instance, id], |b| unsafe { (interface.write)(&[b]) });
 
             Self { encoder, interface }
         }
 
         fn write(&mut self, bytes: &[u8]) {
-            self.encoder.write(bytes, |b| self.interface.write(b));
+            self.encoder
+                .write(bytes, |b| unsafe { (self.interface.write)(&[b]) });
         }
 
         pub fn send_timestamp(&mut self) {
-            if let Some(timestamp) = self.interface.timestamp() {
+            if let Some(timestamp) = unsafe { (self.interface.timestamp)() } {
                 let mut buffer = [0; 9];
 
                 // | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
@@ -175,9 +142,11 @@ pub mod encoder {
         }
     }
 
-    impl<'i, TI: TraceInterface> Drop for Frame<'i, TI> {
+    impl Drop for Frame {
         fn drop(&mut self) {
-            self.encoder.end_frame(|b| self.interface.write(b));
+            self.encoder
+                .end_frame(|b| unsafe { (self.interface.write)(&[b]) });
+            unsafe { (self.interface.release)() }
         }
     }
 
@@ -187,28 +156,28 @@ pub mod encoder {
     }
 
     impl Event {
-        pub fn new(interface: &mut impl TraceInterface) -> Self {
+        pub fn new(interface: &'static TraceInterface) -> Self {
             Self {
-                id: interface.id(),
+                id: (interface.id)(),
                 finalized: false,
             }
         }
 
-        pub fn send_frame<TI: TraceInterface>(
+        pub fn send_frame(
             self,
-            interface: &mut TI,
-            f: impl FnOnce(&mut Frame<'_, TI>),
+            interface: &'static TraceInterface,
+            f: impl FnOnce(&mut Frame),
         ) -> Self {
-            f(&mut Frame::new(interface, self.id));
+            f(&mut Frame::new(interface, 55, self.id));
             self
         }
 
-        pub fn send_final_frame<TI: TraceInterface>(
+        pub fn send_final_frame(
             self,
-            interface: &mut TI,
-            f: impl FnOnce(&mut Frame<'_, TI>),
+            interface: &'static TraceInterface,
+            f: impl FnOnce(&mut Frame),
         ) {
-            let mut frame = Frame::new(interface, self.id);
+            let mut frame = Frame::new(interface, 55, self.id);
             f(&mut frame);
             frame.send_finalize();
             self.discard();
@@ -532,6 +501,10 @@ pub mod decoder {
 
 #[cfg(test)]
 mod tests {
+    use core::sync::atomic::{AtomicU8, Ordering};
+
+    use critical_section::RestoreState;
+
     use crate::{
         decoder::{Event as DecodeEvent, Operation, StreamingDecoder},
         encoder::Event as EncodeEvent,
@@ -539,70 +512,74 @@ mod tests {
 
     use super::*;
 
-    pub struct TestTraceInterface {
-        instance: u8,
-        timestamp: Option<u64>,
-        written_bytes: Vec<u8>,
-    }
-
-    impl TraceInterface for TestTraceInterface {
-        fn instance(&mut self) -> u8 {
-            self.instance
-        }
-
-        fn write(&mut self, byte: u8) {
-            self.written_bytes.push(byte);
-        }
-
-        fn timestamp(&mut self) -> Option<u64> {
-            self.timestamp
-        }
-    }
-
     #[test]
     fn roundtrip_single_events() {
-        let mut interface = TestTraceInterface {
-            instance: 55,
-            timestamp: Some(5),
-            written_bytes: Vec::new(),
+        static mut WRITTEN_BYTES: Vec<u8> = Vec::new();
+        static mut TAKEN: bool = false;
+        static mut RESTORE_STATE: RestoreState = RestoreState::invalid();
+
+        static INTERFACE: TraceInterface = TraceInterface {
+            acquire: || {
+                unsafe { RESTORE_STATE = critical_section::acquire() };
+                if unsafe { TAKEN } {
+                    panic!("trace interface taken reentrantly");
+                }
+            },
+            write: |buf| unsafe {
+                #[allow(static_mut_refs)]
+                WRITTEN_BYTES.extend(buf);
+            },
+            timestamp: || Some(5),
+            release: || unsafe {
+                TAKEN = false;
+                critical_section::release(RESTORE_STATE);
+            },
+            id: || {
+                static ID: AtomicU8 = AtomicU8::new(0);
+                ID.fetch_add(1, Ordering::Relaxed)
+            },
         };
 
-        let none_event = EncodeEvent::new(&mut interface);
+        let none_event = EncodeEvent::new(&INTERFACE);
         let none_event_id = none_event.id;
-        none_event.send_final_frame(&mut interface, |f| {
+        none_event.send_final_frame(&INTERFACE, |f| {
             f.send_timestamp();
             f.send_object_identifier(&ObjectIdentifier::new(5, None));
         });
 
-        let modify_event = EncodeEvent::new(&mut interface);
+        let modify_event = EncodeEvent::new(&INTERFACE);
         let modify_event_id = modify_event.id;
-        let modify_event = modify_event.send_frame(&mut interface, |f| {
+        let modify_event = modify_event.send_frame(&INTERFACE, |f| {
             f.send_timestamp();
             f.send_object_identifier(&ObjectIdentifier::new(5, None));
             f.send_address(&[1]);
             f.send_bytes(false, &[1, 2, 3]);
         });
-        modify_event.send_final_frame(&mut interface, |f| {
+        modify_event.send_final_frame(&INTERFACE, |f| {
             f.send_bytes(true, &[1, 2, 5]);
         });
 
-        let read_event = EncodeEvent::new(&mut interface);
+        let read_event = EncodeEvent::new(&INTERFACE);
         let read_event_id = read_event.id;
-        read_event.send_final_frame(&mut interface, |f| {
+        read_event.send_final_frame(&INTERFACE, |f| {
             f.send_timestamp();
             f.send_object_identifier(&ObjectIdentifier::new(5, None));
             f.send_address(&[12, 34, 56]);
             f.send_bytes(false, &[1, 2, 3]);
         });
 
-        println!(
-            "Cobs encoded written bytes: {:X?}",
-            &interface.written_bytes
-        );
+        (INTERFACE.acquire)();
+        #[allow(static_mut_refs)]
+        let written_bytes = unsafe { WRITTEN_BYTES.clone() };
+        unsafe {
+            (INTERFACE.release)();
+        }
+
+        println!("Cobs encoded written bytes: {:X?}", &written_bytes);
 
         let mut decoder = StreamingDecoder::new();
         let decoded_events = decoder
-            .push_bytes(&interface.written_bytes)
+            .push_bytes(&written_bytes)
             .into_iter()
             .map(|e| e.unwrap())
             .collect::<Vec<_>>();
@@ -666,27 +643,54 @@ mod tests {
 
     #[test]
     fn roundtrip_bulk_events() {
-        let mut interface = TestTraceInterface {
-            instance: 37,
-            timestamp: None,
-            written_bytes: Vec::new(),
+        static mut WRITTEN_BYTES: Vec<u8> = Vec::new();
+        static mut TAKEN: bool = false;
+        static mut RESTORE_STATE: RestoreState = RestoreState::invalid();
+
+        static INTERFACE: TraceInterface = TraceInterface {
+            acquire: || {
+                unsafe { RESTORE_STATE = critical_section::acquire() };
+                if unsafe { TAKEN } {
+                    panic!("trace interface taken reentrantly");
+                }
+            },
+            write: |buf| unsafe {
+                #[allow(static_mut_refs)]
+                WRITTEN_BYTES.extend(buf);
+            },
+            timestamp: || Some(5),
+            release: || unsafe {
+                TAKEN = false;
+                critical_section::release(RESTORE_STATE);
+            },
+            id: || {
+                static ID: AtomicU8 = AtomicU8::new(0);
+                ID.fetch_add(1, Ordering::Relaxed)
+            },
         };
 
-        let bulk_event = EncodeEvent::new(&mut interface);
+        let bulk_event = EncodeEvent::new(&INTERFACE);
         let bulk_event_id = bulk_event.id;
-        let bulk_event = bulk_event.send_frame(&mut interface, |f| {
+        let bulk_event = bulk_event.send_frame(&INTERFACE, |f| {
             f.send_object_identifier(&ObjectIdentifier::new(654, Some(-90)));
             f.send_object_identifier(&ObjectIdentifier::new(655, Some(1)));
             f.send_address(&[0xFF, 0xFF]);
             f.send_bytes(false, &[0xDD; 60]);
         });
-        bulk_event.send_final_frame(&mut interface, |f| {
+        bulk_event.send_final_frame(&INTERFACE, |f| {
             f.send_bytes(true, &[0, 2, 3, 4]);
         });
 
+        (INTERFACE.acquire)();
+        #[allow(static_mut_refs)]
+        let written_bytes = unsafe { WRITTEN_BYTES.clone() };
+        unsafe {
+            (INTERFACE.release)();
+        }
+
         let mut decoder = StreamingDecoder::new();
         let decoded_events = decoder
-            .push_bytes(&interface.written_bytes)
+            .push_bytes(&written_bytes)
             .into_iter()
             .map(|e| e.unwrap())
             .collect::<Vec<_>>();
@@ -699,7 +703,7 @@ mod tests {
         assert_eq!(
             bulk_event,
             &DecodeEvent {
-                instance: 37,
+                instance: 55,
                 id: bulk_event_id,
                 timestamp: None,
                 operations: vec![Operation {

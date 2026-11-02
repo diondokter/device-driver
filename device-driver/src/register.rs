@@ -1,3 +1,5 @@
+#![cfg_attr(not(feature = "trace"), expect(clippy::let_unit_value))]
+
 use core::marker::PhantomData;
 
 use crate::{
@@ -8,7 +10,7 @@ use crate::{
 #[cfg(feature = "defmt")]
 use defmt::panic;
 #[cfg(feature = "trace")]
-use device_driver_trace::{DummyInterface, TraceInterface, encoder::Event};
+use device_driver_trace::encoder::Event;
 
 #[cfg(feature = "trace")]
 type ModifyEvent = Option<Event>;
@@ -21,11 +23,6 @@ pub trait RegisterInterfaceBase {
     type Error;
     /// The address type used by this interface
     type AddressType: Address;
-
-    #[cfg(feature = "trace")]
-    fn trace_interface(&mut self) -> Option<&mut impl TraceInterface> {
-        Option::<&mut DummyInterface>::None
-    }
 }
 
 impl<T: RegisterInterfaceBase> RegisterInterfaceBase for &mut T {
@@ -178,7 +175,7 @@ where
 
     fn send_single_event(&mut self, _index: Option<i32>, _register: &impl Fieldset, _write: bool) {
         #[cfg(feature = "trace")]
-        if let Some(trace_interface) = self.block.interface().trace_interface() {
+        if let Some(trace_interface) = crate::global_trace_interface() {
             Event::new(trace_interface).send_final_frame(trace_interface, |f| {
                 f.send_timestamp();
                 f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
@@ -199,7 +196,7 @@ where
         _write: bool,
     ) {
         #[cfg(feature = "trace")]
-        if let Some(trace_interface) = self.block.interface().trace_interface() {
+        if let Some(trace_interface) = crate::global_trace_interface() {
             Event::new(trace_interface).send_final_frame(trace_interface, |f| {
                 f.send_timestamp();
                 for i in 0.._array_len {
@@ -220,7 +217,7 @@ where
         _register: &impl Fieldset,
     ) -> ModifyEvent {
         #[cfg(feature = "trace")]
-        if let Some(trace_interface) = self.block.interface().trace_interface() {
+        if let Some(trace_interface) = crate::global_trace_interface() {
             Some(
                 Event::new(trace_interface).send_frame(trace_interface, |f| {
                     f.send_timestamp();
@@ -244,7 +241,7 @@ where
         _register: &impl Fieldset,
     ) -> ModifyEvent {
         #[cfg(feature = "trace")]
-        if let Some(trace_interface) = self.block.interface().trace_interface() {
+        if let Some(trace_interface) = crate::global_trace_interface() {
             Some(
                 Event::new(trace_interface).send_frame(trace_interface, |f| {
                     f.send_timestamp();
@@ -266,7 +263,7 @@ where
     fn finish_modify_event(&mut self, _event: ModifyEvent, _register: &impl Fieldset) {
         #[cfg(feature = "trace")]
         if let Some(event) = _event {
-            if let Some(trace_interface) = self.block.interface().trace_interface() {
+            if let Some(trace_interface) = crate::global_trace_interface() {
                 event.send_final_frame(trace_interface, |f| {
                     f.send_bytes(true, _register.as_slice());
                 });

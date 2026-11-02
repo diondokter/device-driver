@@ -25,6 +25,7 @@ rand = "0.10.2"
 # Enable embedded-io and trace for tests
 device-driver = { path = ".", features = ["embedded-io-07", "macros", "trace"] }
 device-driver-trace = { workspace = true, features = ["std"] }
+critical-section = { version = "1.2.0", features = ["std"] }
 
 [features]
 # Enable compiling your DDSL with a macro. This pulls in the full compiler as (dev-)dependencies
