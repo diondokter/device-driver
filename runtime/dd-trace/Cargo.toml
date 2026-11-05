@@ -12,6 +12,9 @@ categories = ["embedded", "hardware-support", "no-std::no-alloc", "no-std"]
 description = "Tracing format for the device-driver toolkit"
 
 [dependencies]
+device-driver-mir = { workspace = true, optional = true }
+device-driver-diagnostics = { workspace = true, optional = true }
+device-driver-common = { workspace = true, optional = true }
 
 [dev-dependencies]
 critical-section = { version = "1.2.0", features = ["std"] }
@@ -19,4 +22,4 @@ critical-section = { version = "1.2.0", features = ["std"] }
 [features]
 default = ["std"]
 
-std = []
+std = ["dep:device-driver-mir", "dep:device-driver-diagnostics", "dep:device-driver-common"]

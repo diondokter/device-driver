@@ -105,6 +105,11 @@ impl ObjectId {
     pub fn raw(self) -> u32 {
         self.0.get()
     }
+
+    pub fn try_from_raw(val: u32) -> Result<Self, DynError> {
+        ObjectType::try_from(((val & 0xFF00_0000) >> 24) as u8)?;
+        Ok(Self(NonZeroU32::new(val).unwrap()))
+    }
 }
 
 impl Default for ObjectId {
