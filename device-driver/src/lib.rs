@@ -334,9 +334,13 @@ pub(crate) fn global_trace_interface() -> Option<&'static TraceInterface> {
 }
 
 #[cfg(feature = "trace")]
-pub fn set_global_trace_interface(interface: &'static TraceInterface) {
-    GLOBAL_TRACE_INTERFACE.store(
-        interface as *const _ as *mut _,
-        core::sync::atomic::Ordering::Relaxed,
-    );
+pub fn set_global_trace_interface(interface: Option<&'static TraceInterface>) {
+    if let Some(interface) = interface {
+        GLOBAL_TRACE_INTERFACE.store(
+            interface as *const _ as *mut _,
+            core::sync::atomic::Ordering::Relaxed,
+        );
+    } else {
+        GLOBAL_TRACE_INTERFACE.store(null_mut(), core::sync::atomic::Ordering::Relaxed);
+    }
 }

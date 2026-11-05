@@ -111,7 +111,7 @@ fn test_single_write() {
         (INTERFACE.release)();
     }
 
-    device_driver::set_global_trace_interface(&INTERFACE);
+    device_driver::set_global_trace_interface(Some(&INTERFACE));
 
     let mut device = MyTestDevice::new(DeviceInterface::new());
 

@@ -38,5 +38,5 @@ embedded-io-07 = ["dep:embedded-io", "dep:embedded-io-async"]
 
 # Enable tracing. This adds tracing calls for each operation.
 # This feature should not be enabled by default because it has adverse effects on performance and binary size.
-# For tracing to work, an implementation of `TraceInterface` must be provided through the various interface traits.
+# For tracing to work, an implementation of `TraceInterface` must be set.
 trace = ["dep:device-driver-trace"]
