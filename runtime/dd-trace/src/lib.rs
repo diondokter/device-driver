@@ -4,6 +4,8 @@
 pub mod correlator;
 #[cfg(any(test, feature = "std"))]
 pub mod decoder;
+#[cfg(any(test, feature = "std"))]
+pub(crate) mod bitdump;
 pub mod encoder;
 mod rzcobs;
 
