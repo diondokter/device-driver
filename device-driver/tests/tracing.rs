@@ -7,7 +7,7 @@ use critical_section::RestoreState;
 use device_driver::{FieldsetMetadata, RegisterInterface, RegisterInterfaceBase, TraceInterface};
 use device_driver_trace::{
     ObjectIdentifier,
-    decoder::{Event, Operation},
+    decoder::{DecodeError, Event, Operation},
 };
 
 pub struct DeviceInterface {
@@ -55,21 +55,7 @@ impl RegisterInterface for DeviceInterface {
 }
 
 device_driver::compile!(
-    unstable_ddsl: "
-        device MyTestDevice {
-            register-address-type: u8,
-            default-access: RW,
-
-            register SingleByte {
-                address: 0,
-                fields: fieldset FooFields {
-                    size-bytes: 1,
-
-                    field value 7:0,
-                }
-            },
-        }
-    "
+    manifest: "tests/tracing.ddsl"
 );
 
 static TEST_LOCK: Mutex<()> = Mutex::new(());
@@ -88,7 +74,7 @@ static INTERFACE: TraceInterface = TraceInterface {
         #[allow(static_mut_refs)]
         WRITTEN_BYTES.extend(buf);
     },
-    timestamp: || Some(42),
+    timestamp: || Some(1_001_000),
     release: || unsafe {
         TAKEN = false;
         critical_section::release(RESTORE_STATE);
@@ -135,7 +121,7 @@ fn test_single_write() {
         vec![Ok(Event {
             instance: 55,
             id: 0,
-            timestamp: Some(42),
+            timestamp: Some(1_001_000),
             operations: vec![Operation {
                 objects: vec![ObjectIdentifier::new(0x03000000, None)],
                 address: vec![0],
@@ -143,5 +129,39 @@ fn test_single_write() {
                 write_data: vec![0xDD],
             }]
         })]
-    )
+    );
+
+    let trace = render_trace(&events);
+    println!("{trace}");
+}
+
+fn render_trace(events: &[Result<Event, DecodeError>]) -> String {
+    use std::fmt::Write;
+
+    const DDSL: &'static str = include_str!("./tracing.ddsl");
+
+    let mut diagnostics = Default::default();
+    let tokens = device_driver_lexer::lex(DDSL);
+    let ast = device_driver_parser::parse(&tokens, &mut diagnostics);
+    let (manifest, _) =
+        device_driver_mir::lower_ast(&ast, &Default::default(), &mut diagnostics).unwrap();
+    assert_eq!(diagnostics.summary(), Default::default());
+
+    let manifests = [(55, &manifest)].into_iter().collect();
+
+    let mut output = String::new();
+
+    for event in events {
+        match event {
+            Ok(event) => {
+                match device_driver_trace::correlator::correlate(&manifests, event.clone()) {
+                    Ok(event) => writeln!(&mut output, "{event}").unwrap(),
+                    Err(e) => writeln!(&mut output, "Event correlate error: {e}").unwrap(),
+                }
+            }
+            Err(e) => writeln!(&mut output, "Event decode error: {e:?}").unwrap(),
+        }
+    }
+
+    output
 }

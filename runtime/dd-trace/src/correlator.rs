@@ -11,7 +11,7 @@ use device_driver_mir::model::{Manifest, ObjectId, ObjectType};
 use crate::decoder::Operation;
 
 pub fn correlate(
-    manifests: HashMap<u8, &Manifest>,
+    manifests: &HashMap<u8, &Manifest>,
     event: crate::decoder::Event,
 ) -> Result<CorrelatedEvent, DynError> {
     let manifest = *manifests.get(&event.instance).ok_or_else(|| {
@@ -61,7 +61,7 @@ fn correlate_operation(
         ));
     };
 
-    if operation.address.len() != address_type.size_bits() as usize * 8 {
+    if operation.address.len() * 8 != address_type.size_bits() as usize {
         return Err(DynError::new(
             "operation address has an unexpected size. Are we looking at the correct manifest?",
         ));
@@ -126,8 +126,31 @@ pub struct CorrelatedOperation {
 
 impl Display for CorrelatedOperation {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "@{:#X} {}", self.address, self.operation_name)
+        writeln!(f, "> {} @ {:#X}", self.operation_name, self.address)?;
+
+        if !self.read_data.is_empty() {
+            draw_data_table(f, &self.read_data)?;
+        }
+
+        if !self.write_data.is_empty() {
+            draw_data_table(f, &self.write_data)?;
+        }
+
+        Ok(())
     }
+}
+
+fn draw_data_table(f: &mut core::fmt::Formatter<'_>, data: &[u8]) -> core::fmt::Result {
+    for byte in data {
+        write!(f, "|")?;
+        for i in (0..8).rev() {
+            let bit = (byte & 1 << i) > 0;
+            write!(f, " {} |", bit as u8)?;
+        }
+        writeln!(f, "")?;
+    }
+
+    Ok(())
 }
 
 fn operation_name(

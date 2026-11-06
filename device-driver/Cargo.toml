@@ -24,6 +24,9 @@ bitvec.workspace = true
 rand = "0.10.2"
 # Enable embedded-io and trace for tests
 device-driver = { path = ".", features = ["embedded-io-07", "macros", "trace"] }
+device-driver-lexer = { workspace = true }
+device-driver-parser = { workspace = true }
+device-driver-mir = { workspace = true }
 device-driver-trace = { workspace = true, features = ["std"] }
 critical-section = { version = "1.2.0", features = ["std"] }
 

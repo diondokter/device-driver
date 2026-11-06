@@ -1,0 +1,13 @@
+device MyTestDevice {
+    register-address-type: u8,
+    default-access: RW,
+
+    register SingleByte {
+        address: 0,
+        fields: fieldset FooFields {
+            size-bytes: 1,
+
+            field value 7:0,
+        }
+    },
+}
