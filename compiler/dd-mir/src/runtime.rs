@@ -1,22 +1,24 @@
 //! The runtime assumes all objects passed here have gone through all of the MIR passes
 
-use std::fmt::Display;
+use std::{error::Error, fmt::Display};
 
 use device_driver_common::{
     interner::Istr,
-    specifiers::{BaseType, ByteOrder, Integer, RepeatSource},
+    specifiers::{AddressRange, BaseType, ByteOrder, Integer, RepeatSource},
 };
 
 use crate::model::{Enum, Field, FieldSet, Manifest, Object};
 
 #[derive(Debug)]
 pub struct DecodedFieldset {
+    pub name: Istr,
     pub fields: Vec<DecodedField>,
 }
 
 #[derive(Debug)]
 pub struct DecodedField {
     pub name: Istr,
+    pub address: AddressRange,
     pub index_name: Option<String>,
     pub base_value: FieldBaseValue,
     pub converted_value: Option<String>,
@@ -125,7 +127,10 @@ pub fn decode_fieldset(
         }
     }
 
-    Ok(DecodedFieldset { fields })
+    Ok(DecodedFieldset {
+        name: fieldset_model.name.original(),
+        fields,
+    })
 }
 
 pub fn decode_field(
@@ -150,6 +155,7 @@ pub fn decode_field(
 
     DecodedField {
         name: field_model.name.original(),
+        address: field_model.field_address.value,
         index_name,
         base_value: value,
         converted_value,
@@ -189,6 +195,7 @@ pub fn decode_enum(
     Err(DecodeError::InvalidValue)
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DecodeError {
     InvalidValue,
     SizeBytesMismatch,
@@ -202,6 +209,8 @@ impl Display for DecodeError {
         }
     }
 }
+
+impl Error for DecodeError {}
 
 pub fn load_integer(
     bytes: &[u8],

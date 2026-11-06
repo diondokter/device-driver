@@ -51,7 +51,12 @@ impl<I> Device<I> {
         I: ::device_driver::RegisterInterfaceBase<AddressType = u32>,
     {
         let address = self.base_address + 0;
-        ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u32,
+            Foo::default,
+            0x3000000,
+        )
     }
     /// Register operation:
     /// - Address: `1`
@@ -72,7 +77,12 @@ impl<I> Device<I> {
         I: ::device_driver::RegisterInterfaceBase<AddressType = u32>,
     {
         let address = self.base_address + 1;
-        ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u32,
+            Foo::default,
+            0x3000001,
+        )
     }
     /// Register operation:
     /// - Address: `2`
@@ -93,7 +103,12 @@ impl<I> Device<I> {
         I: ::device_driver::RegisterInterfaceBase<AddressType = u32>,
     {
         let address = self.base_address + 2;
-        ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u32,
+            Foo::default,
+            0x3000002,
+        )
     }
     /// Register operation:
     /// - Address: `3`
@@ -114,7 +129,12 @@ impl<I> Device<I> {
         I: ::device_driver::RegisterInterfaceBase<AddressType = u32>,
     {
         let address = self.base_address + 3;
-        ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u32,
+            Foo::default,
+            0x3000003,
+        )
     }
     /// Register operation:
     /// - Address: `4`
@@ -135,7 +155,12 @@ impl<I> Device<I> {
         I: ::device_driver::RegisterInterfaceBase<AddressType = u32>,
     {
         let address = self.base_address + 4;
-        ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u32,
+            Foo::default,
+            0x3000004,
+        )
     }
     /// Register operation:
     /// - Address: `5`
@@ -156,7 +181,12 @@ impl<I> Device<I> {
         I: ::device_driver::RegisterInterfaceBase<AddressType = u32>,
     {
         let address = self.base_address + 5;
-        ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u32,
+            Foo::default,
+            0x3000005,
+        )
     }
     /// Register operation:
     /// - Address: `6`
@@ -177,7 +207,12 @@ impl<I> Device<I> {
         I: ::device_driver::RegisterInterfaceBase<AddressType = u32>,
     {
         let address = self.base_address + 6;
-        ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u32,
+            Foo::default,
+            0x3000006,
+        )
     }
     /// Register operation:
     /// - Address: `7`
@@ -198,7 +233,12 @@ impl<I> Device<I> {
         I: ::device_driver::RegisterInterfaceBase<AddressType = u32>,
     {
         let address = self.base_address + 7;
-        ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u32,
+            Foo::default,
+            0x3000007,
+        )
     }
     /// Register operation:
     /// - Address: `8`
@@ -219,7 +259,12 @@ impl<I> Device<I> {
         I: ::device_driver::RegisterInterfaceBase<AddressType = u32>,
     {
         let address = self.base_address + 8;
-        ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u32,
+            Foo::default,
+            0x3000008,
+        )
     }
     /// Register operation:
     /// - Address: `9`
@@ -240,7 +285,12 @@ impl<I> Device<I> {
         I: ::device_driver::RegisterInterfaceBase<AddressType = u32>,
     {
         let address = self.base_address + 9;
-        ::device_driver::RegisterOperation::new(self, address as u32, Foo::default)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u32,
+            Foo::default,
+            0x3000009,
+        )
     }
 }
 impl<I> ::device_driver::Block for Device<I> {

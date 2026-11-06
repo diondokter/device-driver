@@ -195,7 +195,7 @@ impl From<TooBig> for u32 {
     }
 }
 #[doc(hidden)]
-impl ::device_driver::EnumIndex for TooBig {
+impl ::device_driver::Index for TooBig {
     #[track_caller]
     fn index(&self) -> i32 {
         let index = u32::from(*self);
@@ -244,7 +244,7 @@ impl From<Small> for i8 {
     }
 }
 #[doc(hidden)]
-impl ::device_driver::EnumIndex for Small {
+impl ::device_driver::Index for Small {
     #[track_caller]
     fn index(&self) -> i32 {
         let index = i8::from(*self);

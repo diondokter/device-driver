@@ -43,7 +43,12 @@ impl<I> Y<I> {
         I: ::device_driver::RegisterInterfaceBase<AddressType = u8>,
     {
         let address = self.base_address + 0;
-        ::device_driver::RegisterOperation::new(self, address as u8, A::default)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u8,
+            A::default,
+            0x3000000,
+        )
     }
     /// Block operation:
     /// - Address: `0`
@@ -92,7 +97,12 @@ impl<'i, I> B<'i, I> {
         I: ::device_driver::RegisterInterfaceBase<AddressType = u8>,
     {
         let address = self.base_address + 1;
-        ::device_driver::RegisterOperation::new(self, address as u8, A::default)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u8,
+            A::default,
+            0x3000001,
+        )
     }
 }
 impl<'i, I> ::device_driver::Block for B<'i, I> {
@@ -134,7 +144,12 @@ impl<I> D<I> {
         I: ::device_driver::RegisterInterfaceBase<AddressType = u8>,
     {
         let address = self.base_address + 0;
-        ::device_driver::RegisterOperation::new(self, address as u8, F::default)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u8,
+            F::default,
+            0x3000002,
+        )
     }
     /// Buffer operation:
     /// - Address: `0`
