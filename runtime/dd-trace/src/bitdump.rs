@@ -11,13 +11,13 @@ pub struct Field {
     pub reserved: bool,
 }
 
-const COLORS: &[&str] = &["\x1b[31m", "\x1b[32m", "\x1b[34m", "\x1b[35m"];
+const COLORS: &[&str] = &["\x1b[31m", "\x1b[32m", "\x1b[34m", "\x1b[35m"]; // Red, green, blue, magenta
 const DIM: &str = "\x1b[2m";
 const RESET: &str = "\x1b[0m";
 const YELLOW: &str = "\x1b[33m";
 const GRAY: &str = "\x1b[90m";
 const INVERT: &str = "\x1b[7m";
-const CELL: usize = 5; // visible width of one bit cell in the border calculations
+const CELL: usize = 4; // visible width of one bit cell in the border calculations
 
 #[derive(Debug, Clone)]
 struct Section {
@@ -118,7 +118,7 @@ impl BitdumpFormatter {
         }
         let byte_index = bit_index / 8;
         let bit_offset = bit_index % 8;
-        (self.data[byte_index] >> (7 - bit_offset)) & 1 == 1
+        (self.data[byte_index] & 1 << bit_offset) > 0
     }
 
     /// Return the *global* section index covering a bit, if any.
@@ -249,7 +249,7 @@ impl BitdumpFormatter {
             write!(f, "   ├")?;
         }
 
-        for (si, span_start) in span_starts.iter().enumerate() {
+        for (si, span_start) in span_starts.iter().enumerate().rev() {
             let span_end = if si + 1 < span_starts.len() {
                 span_starts[si + 1]
             } else {
@@ -274,10 +274,10 @@ impl BitdumpFormatter {
                         } else {
                             total_width
                         };
-                        write!(f, "{DIM}{}{RESET}", &label[..effective])?;
                         if total_width > effective {
                             write!(f, "{}", "─".repeat(total_width - effective))?;
                         }
+                        write!(f, "{DIM}{}{RESET}", &label[..effective])?;
                     } else {
                         write!(f, "{}", "─".repeat(total_width))?;
                     }
@@ -289,8 +289,8 @@ impl BitdumpFormatter {
             }
 
             // Junction character at the end of span (except at the very end of the line)
-            if span_end < end_bit {
-                let j = self.junction_char(line, span_end);
+            if *span_start % 8 != 0 {
+                let j = self.junction_char(line, *span_start);
                 write!(f, "{j}")?;
             }
         }
@@ -302,28 +302,38 @@ impl BitdumpFormatter {
         }
 
         // Data row with inner separators and ellipsis borders
-        let continues_left = if start_bit == 0 {
+        let continues_left = if end_bit >= self.total_bits() {
             false
         } else {
-            self.section_index_at(start_bit - 1).is_some()
-                && self.section_index_at(start_bit - 1) == self.section_index_at(start_bit)
+            self.section_index_at(end_bit - 1).is_some()
+                && self.section_index_at(end_bit - 1) == self.section_index_at(end_bit)
         };
         let left_border = if continues_left { '…' } else { '│' };
         write!(f, "{line:02x} {left_border}")?;
 
         let mut display_field = None;
         let mut potentially_displayable_fields = 0;
-        for bit in start_bit..end_bit {
+        for bit in (start_bit..end_bit).rev() {
+            if bit < end_bit - 1 {
+                let left = self.section_index_at(bit + 1);
+                let right = self.section_index_at(bit);
+                if left != right {
+                    write!(f, "│")?;
+                } else {
+                    write!(f, " ")?;
+                }
+            }
+
             let bit_value = if self.get_bit(bit) { "1" } else { "0" };
             let sec_idx = self.section_index_at(bit);
             if let Some(si) = sec_idx {
                 let sec = &self.sections[si];
                 let field = &self.fields[sec.field_index];
                 if field.reserved {
-                    write!(f, "{GRAY}  {bit_value} {RESET}")?; // 2 spaces before, 1 after → visible 4
+                    write!(f, "{GRAY} {bit_value} {RESET}")?; // 2 spaces before, 1 after → visible 4
                 } else {
                     let color = COLORS[sec.color_index];
-                    write!(f, "{color}  {bit_value} {RESET}")?;
+                    write!(f, "{color} {bit_value} {RESET}")?;
 
                     if !displayed_fields.contains(&si) {
                         if display_field.is_some_and(|x| x != sec.field_index) {
@@ -338,17 +348,7 @@ impl BitdumpFormatter {
                     }
                 }
             } else {
-                write!(f, "  {bit_value} ")?;
-            }
-
-            if bit < end_bit - 1 {
-                let left = self.section_index_at(bit);
-                let right = self.section_index_at(bit + 1);
-                if left != right {
-                    write!(f, "│")?;
-                } else {
-                    write!(f, " ")?;
-                }
+                write!(f, " {bit_value} ")?;
             }
         }
 
@@ -360,15 +360,15 @@ impl BitdumpFormatter {
             display_field = None;
         }
 
-        let continues_right = if end_bit >= self.total_bits() {
+        let continues_right = if start_bit == 0 {
             false
         } else {
-            self.section_index_at(end_bit - 1).is_some()
-                && self.section_index_at(end_bit - 1) == self.section_index_at(end_bit)
+            self.section_index_at(start_bit - 1).is_some()
+                && self.section_index_at(start_bit - 1) == self.section_index_at(start_bit)
         };
         let right_border = if continues_right { '…' } else { '│' };
         if line < self.data.len() {
-            write!(f, "{right_border}  {YELLOW}{:02x}{RESET}", self.data[line])?;
+            write!(f, "{right_border}  {YELLOW}{:02X}{RESET}", self.data[line])?;
 
             // This line had a section that we can display
             if let Some(fi) = display_field {
@@ -396,7 +396,7 @@ impl BitdumpFormatter {
         // Border suffix
         if last_line {
             write!(f, "   └")?;
-            for (si, span_start) in span_starts.iter().enumerate() {
+            for (si, span_start) in span_starts.iter().enumerate().rev() {
                 let span_end = if si + 1 < span_starts.len() {
                     span_starts[si + 1]
                 } else {
@@ -411,8 +411,8 @@ impl BitdumpFormatter {
                 write!(f, "{}", "─".repeat(total_width))?;
 
                 // Junction character at the end of span (except at the very end of the line)
-                if span_end < end_bit {
-                    let j = match self.junction_char(line, span_end) {
+                if *span_start % 8 != 0 {
+                    let j = match self.junction_char(line, *span_start) {
                         '┼' | '┬' => '┴',
                         _ => '─',
                     };
@@ -492,10 +492,10 @@ impl BitdumpFormatter {
 
 impl fmt::Display for BitdumpFormatter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "   {DIM}╭─{RESET} {INVERT}{YELLOW}{}{RESET}", self.name)?;
+        writeln!(f, "   {DIM}╭─{RESET} {YELLOW}{}{RESET}", self.name)?;
         writeln!(
             f,
-            "   {DIM}🭭{RESET}  0    {DIM}1{RESET}    2    {DIM}3{RESET}    4    {DIM}5{RESET}    6    {DIM}7{RESET}"
+            "   {DIM}🭭{RESET} 7   {DIM}6{RESET}   5   {DIM}4{RESET}   3   {DIM}2{RESET}   1   {DIM}0{RESET}"
         )?;
 
         let total_bits = self.total_bits();

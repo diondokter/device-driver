@@ -103,7 +103,10 @@ fn test_single_write() {
 
     device
         .single_byte()
-        .write(|reg| reg.set_value(0xD))
+        .modify(|reg| {
+            reg.set_value(Value::A);
+            reg.set_fbool(true);
+        })
         .unwrap();
 
     (INTERFACE.acquire)();

@@ -7,7 +7,12 @@ device MyTestDevice {
         fields: fieldset FooFields {
             byte-order: LE,
             size-bytes: 2,
-            field value 15:4,
+
+            field fbool 0,
+            field low 3:1,
+            field value 12:4 -> _ as try enum _ {
+                A: 0xD,
+            },
         }
     },
 }

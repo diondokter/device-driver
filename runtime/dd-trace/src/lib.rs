@@ -1,11 +1,11 @@
 #![cfg_attr(not(any(test, feature = "std")), no_std)]
 
 #[cfg(any(test, feature = "std"))]
+pub(crate) mod bitdump;
+#[cfg(any(test, feature = "std"))]
 pub mod correlator;
 #[cfg(any(test, feature = "std"))]
 pub mod decoder;
-#[cfg(any(test, feature = "std"))]
-pub(crate) mod bitdump;
 pub mod encoder;
 mod rzcobs;
 

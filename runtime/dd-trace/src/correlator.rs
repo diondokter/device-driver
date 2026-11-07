@@ -265,6 +265,7 @@ impl Display for CorrelatedAction {
                         fs.fields
                             .iter()
                             .map(|field| Field {
+                                #[allow(clippy::single_range_in_vec_init)]
                                 ranges: vec![
                                     field.address.start as usize..field.address.end as usize + 1
                                 ],
