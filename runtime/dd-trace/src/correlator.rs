@@ -211,7 +211,7 @@ impl Display for CorrelatedEvent {
             write!(f, "[{:8.3}] ", timestamp as f32 / 1_000_000.0)?;
         }
 
-        writeln!(f, "TRACE ({})", self.manifest_name)?;
+        write!(f, "TRACE ({}) ", self.manifest_name)?;
         for operation in &self.operations {
             writeln!(f, "{operation}")?;
         }
@@ -227,7 +227,7 @@ pub struct CorrelatedOperation {
 
 impl Display for CorrelatedOperation {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        writeln!(f, "@ {:X}", self.address)?;
+        write!(f, "address: {:#X}, ", self.address)?;
 
         for action in &self.actions {
             writeln!(f, "{action}")?;
@@ -248,7 +248,7 @@ struct CorrelatedAction {
 
 impl Display for CorrelatedAction {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        writeln!(f, "> {} {}", self.action, self.operation_name)?;
+        writeln!(f, "action: {} {}", self.action, self.operation_name)?;
 
         fn fmt_bytes(
             f: &mut core::fmt::Formatter<'_>,
@@ -297,10 +297,12 @@ fn operation_action(
     operation_type: ObjectType,
 ) -> Result<&'static str, DynError> {
     match (used_access, operation_type) {
-        (_, ObjectType::Command) => Ok("dispatch"),
-        (Some(Access::RO), ObjectType::Register | ObjectType::Buffer) => Ok("read"),
-        (Some(Access::WO), ObjectType::Register | ObjectType::Buffer) => Ok("write"),
-        (Some(Access::RW), ObjectType::Register) => Ok("modify"),
+        (_, ObjectType::Command) => Ok("dispatch command"),
+        (Some(Access::RO), ObjectType::Register) => Ok("read register"),
+        (Some(Access::WO), ObjectType::Register) => Ok("write register"),
+        (Some(Access::RO), ObjectType::Buffer) => Ok("read buffer"),
+        (Some(Access::WO), ObjectType::Buffer) => Ok("write buffer"),
+        (Some(Access::RW), ObjectType::Register) => Ok("modify register"),
         _ => Err(DynError::new(
             "unexpected combination of access pattern and operation type. Are we looking at the correct manifest?",
         )),
