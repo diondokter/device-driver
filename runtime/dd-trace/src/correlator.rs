@@ -27,9 +27,24 @@ pub fn correlate(
         ))
     })?;
 
+    let device_name = if let Some(op) = event.operations.first() {
+        let object = op
+            .objects
+            .first()
+            .ok_or_else(|| DynError::new("an operation has no associated objects"))?;
+        manifest
+            .object_config(ObjectId::try_from_raw(object.object_id)?)
+            .owner
+            .map(|owner| owner.get(manifest).map(|dev| dev.name.original()))
+            .flatten()
+    } else {
+        None
+    };
+
     Ok(CorrelatedEvent {
         timestamp: event.timestamp,
         manifest_name: manifest.name.original(),
+        device_name: device_name.unwrap_or(manifest.name.original()),
         operations: event
             .operations
             .into_iter()
@@ -202,6 +217,7 @@ fn correlate_operation(
 pub struct CorrelatedEvent {
     timestamp: Option<u64>,
     manifest_name: Istr,
+    device_name: Istr,
     operations: Vec<CorrelatedOperation>,
 }
 
@@ -211,7 +227,13 @@ impl Display for CorrelatedEvent {
             write!(f, "[{:8.3}] ", timestamp as f32 / 1_000_000.0)?;
         }
 
-        write!(f, "TRACE ({}) ", self.manifest_name)?;
+        write!(f, "TRACE ")?;
+
+        if self.manifest_name == self.device_name {
+            write!(f, "{} ", self.device_name)?;
+        } else {
+            write!(f, "({}) {} ", self.manifest_name, self.device_name)?;
+        }
         for operation in &self.operations {
             writeln!(f, "{operation}")?;
         }

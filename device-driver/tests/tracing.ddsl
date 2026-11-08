@@ -1,18 +1,20 @@
-device MyTestDevice {
-    register-address-type: u8,
-    default-access: RW,
+manifest my-man {
+    device MyTestDevice {
+        register-address-type: u8,
+        default-access: RW,
 
-    register SingleByte {
-        address: 0,
-        fields: fieldset FooFields {
-            byte-order: LE,
-            size-bytes: 2,
+        register SingleByte {
+            address: 0,
+            fields: fieldset FooFields {
+                byte-order: LE,
+                size-bytes: 2,
 
-            field fbool 0,
-            field low 3:1,
-            field value 12:4 -> _ as try enum _ {
-                A: 0xD,
-            },
-        }
-    },
+                field fbool 0,
+                field low 3:1,
+                field value 12:4 -> _ as try enum _ {
+                    A: 0xD,
+                },
+            }
+        },
+    }
 }
