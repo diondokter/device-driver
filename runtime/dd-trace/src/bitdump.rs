@@ -444,6 +444,7 @@ impl BitdumpFormatter {
                 )
             })
             .filter(|(_, f)| !f.reserved)
+            .filter(|(s, _)| !displayed_fields.contains(&s.field_index))
             .collect();
         if non_reserved.is_empty() {
             return Ok(());
@@ -461,10 +462,6 @@ impl BitdumpFormatter {
             .unwrap_or(0);
 
         for (i, (section, field)) in non_reserved.iter().enumerate() {
-            if displayed_fields.contains(&section.field_index) {
-                continue;
-            }
-
             let color = COLORS[section.color_index];
             let border = if i + 1 == non_reserved.len() {
                 '╰'
