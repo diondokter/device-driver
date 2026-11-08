@@ -5,10 +5,7 @@ use std::sync::{
 
 use critical_section::RestoreState;
 use device_driver::{FieldsetMetadata, RegisterInterface, RegisterInterfaceBase, TraceInterface};
-use device_driver_trace::{
-    ObjectIdentifier,
-    decoder::{DecodeError, Event, Operation},
-};
+use device_driver_trace::decoder::{DecodeError, Event};
 
 pub struct DeviceInterface {
     device_memory: [u8; 128],
