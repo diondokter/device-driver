@@ -3,17 +3,18 @@ manifest my-man {
         register-address-type: u8,
         default-access: RW,
 
-        register SingleByte {
+        register MyRegister {
             address: 0,
             fields: fieldset FooFields {
                 byte-order: LE,
-                size-bytes: 2,
+                size-bytes: 4,
 
-                field fbool 0,
-                field low 3:1,
-                field value 12:4 -> _ as try enum _ {
+                field aaa 0,
+                field bbb 3:1,
+                field ccc 12:4 -> _ as try enum _ {
                     A: 0xD,
                 },
+                field ddd 31:13
             }
         },
     }

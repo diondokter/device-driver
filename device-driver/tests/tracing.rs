@@ -99,10 +99,11 @@ fn test_single_write() {
     let mut device = MyTestDevice::new(DeviceInterface::new());
 
     device
-        .single_byte()
+        .my_register()
         .modify(|reg| {
-            reg.set_value(Value::A);
-            reg.set_fbool(true);
+            reg.set_ccc(Ccc::A);
+            reg.set_aaa(true);
+            reg.set_ddd(540);
         })
         .unwrap();
 

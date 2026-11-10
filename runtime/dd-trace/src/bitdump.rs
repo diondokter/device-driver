@@ -157,7 +157,7 @@ impl BitdumpFormatter {
 
     /// Build the list of bit positions where the border should have a junction character.
     /// This is the union of current-line section boundaries and (for middle rows) the above-line boundaries.
-    fn border_breaks(&self, line: usize) -> Vec<usize> {
+    fn border_breaks(&self, line: usize, last_line: bool) -> Vec<usize> {
         let start_bit = line * 8;
         let end_bit = ((line + 1) * 8).min(self.total_bits());
         let mut breaks = Vec::<usize>::new();
@@ -173,18 +173,11 @@ impl BitdumpFormatter {
         }
 
         // Above-line boundaries (to show ┴ where needed)
-        if line > 0 {
+        if !last_line {
             for b in start_bit + 1..end_bit {
-                let up_left = if b >= 9 {
-                    self.section_index_at(b - 1 - 8)
-                } else {
-                    None
-                };
-                let up_right = if b >= 8 {
-                    self.section_index_at(b - 8)
-                } else {
-                    None
-                };
+                let up_left = self.section_index_at(b - 1 + 8);
+                let up_right = self.section_index_at(b + 8);
+
                 if up_left != up_right {
                     breaks.push(b);
                 }
@@ -196,23 +189,16 @@ impl BitdumpFormatter {
         breaks
     }
 
-    fn junction_char(&self, line: usize, boundary_bit: usize) -> char {
+    fn junction_char(&self, last_line: bool, boundary_bit: usize) -> char {
         let left = self.section_index_at(boundary_bit - 1);
         let right = self.section_index_at(boundary_bit);
         let curr_boundary = left != right;
-        let above_boundary = if line == 0 {
+        let above_boundary = if last_line {
             false
         } else {
-            let up_left = if boundary_bit >= 9 {
-                self.section_index_at(boundary_bit - 1 - 8)
-            } else {
-                None
-            };
-            let up_right = if boundary_bit >= 8 {
-                self.section_index_at(boundary_bit - 8)
-            } else {
-                None
-            };
+            let up_left = self.section_index_at(boundary_bit - 1 + 8);
+            let up_right = self.section_index_at(boundary_bit + 8);
+
             up_left != up_right
         };
         match (curr_boundary, above_boundary) {
@@ -235,7 +221,7 @@ impl BitdumpFormatter {
         let line_sections = self.line_sections(line);
 
         // Build border in spans between breakpoints so we can place ┬/┴/┼ exactly at bit boundaries.
-        let breaks = self.border_breaks(line);
+        let breaks = self.border_breaks(line, last_line);
         let mut span_starts = Vec::new();
         span_starts.push(start_bit);
         for b in &breaks {
@@ -243,7 +229,7 @@ impl BitdumpFormatter {
         }
 
         // Border prefix
-        if line == 0 {
+        if last_line {
             write!(f, "   ┌")?;
         } else {
             write!(f, "   ├")?;
@@ -290,12 +276,12 @@ impl BitdumpFormatter {
 
             // Junction character at the end of span (except at the very end of the line)
             if *span_start % 8 != 0 {
-                let j = self.junction_char(line, *span_start);
+                let j = self.junction_char(last_line, *span_start);
                 write!(f, "{j}")?;
             }
         }
 
-        if line == 0 {
+        if last_line {
             writeln!(f, "┐")?;
         } else {
             writeln!(f, "┤")?;
@@ -394,7 +380,7 @@ impl BitdumpFormatter {
         writeln!(f)?;
 
         // Border suffix
-        if last_line {
+        if line == 0 {
             write!(f, "   └")?;
             for (si, span_start) in span_starts.iter().enumerate().rev() {
                 let span_end = if si + 1 < span_starts.len() {
@@ -412,7 +398,7 @@ impl BitdumpFormatter {
 
                 // Junction character at the end of span (except at the very end of the line)
                 if *span_start % 8 != 0 {
-                    let j = match self.junction_char(line, *span_start) {
+                    let j = match self.junction_char(last_line, *span_start) {
                         '┼' | '┬' => '┴',
                         _ => '─',
                     };
@@ -498,7 +484,7 @@ impl fmt::Display for BitdumpFormatter {
         let total_bits = self.total_bits();
         let total_lines = total_bits.div_ceil(8);
         let mut displayed_fields = HashSet::new();
-        for line in 0..total_lines {
+        for line in (0..total_lines).rev() {
             self.generate_line(f, line, line == total_lines - 1, &mut displayed_fields)?;
         }
 
