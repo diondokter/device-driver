@@ -404,15 +404,15 @@ impl BitdumpFormatter {
                     bv = field.base_value,
                 )?;
 
-                if let Some(bv_diff) = &field.base_value_diff {
-                    write!(f, " {DIM}<- {bv_diff}{RESET}")?;
-                }
-
                 if let Some(cv) = &field.converted_value {
                     write!(f, " = {YELLOW}{cv}{RESET}")?;
+                }
 
-                    if let Some(cv_diff) = field.converted_value_diff.as_ref().unwrap() {
-                        write!(f, " {DIM}<- {YELLOW}{cv_diff}{RESET}")?;
+                if let Some(bv_diff) = &field.base_value_diff {
+                    write!(f, " {DIM}~ {bv_diff}{RESET}")?;
+
+                    if let Some(Some(cv_diff)) = field.converted_value_diff.as_ref() {
+                        write!(f, " {DIM}= {YELLOW}{cv_diff}{RESET}")?;
                     }
                 }
             }
@@ -504,15 +504,15 @@ impl BitdumpFormatter {
                 bv_width = max_base_value_width,
             )?;
 
-            if let Some(bv_diff) = &field.base_value_diff {
-                write!(f, " {DIM}<- {bv_diff}{RESET}")?;
-            }
-
             if let Some(cv) = &field.converted_value {
                 write!(f, " = {YELLOW}{cv}{RESET}")?;
+            }
 
-                if let Some(cv_diff) = field.converted_value_diff.as_ref().unwrap() {
-                    write!(f, " {DIM}<- {YELLOW}{cv_diff}{RESET}")?;
+            if let Some(bv_diff) = &field.base_value_diff {
+                write!(f, " {DIM}~ {bv_diff}{RESET}")?;
+
+                if let Some(Some(cv_diff)) = field.converted_value_diff.as_ref() {
+                    write!(f, " {DIM}= {YELLOW}{cv_diff}{RESET}")?;
                 }
             }
 
