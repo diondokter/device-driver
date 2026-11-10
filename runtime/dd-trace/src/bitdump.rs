@@ -387,6 +387,10 @@ impl BitdumpFormatter {
         if line < self.data.len() {
             write!(f, "{right_border}  {YELLOW}{:02X}{RESET}", self.data[line])?;
 
+            if let Some(data_diff) = self.data_diff.as_ref() {
+                write!(f, " {DIM}~ {YELLOW}{:02X}{RESET}", data_diff[line])?;
+            }
+
             // This line had a section that we can display
             if let Some(fi) = display_field {
                 displayed_fields.insert(fi);
