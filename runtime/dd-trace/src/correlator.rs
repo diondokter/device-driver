@@ -35,8 +35,7 @@ pub fn correlate(
         manifest
             .object_config(ObjectId::try_from_raw(object.object_id)?)
             .owner
-            .map(|owner| owner.get(manifest).map(|dev| dev.name.original()))
-            .flatten()
+            .and_then(|owner| owner.get(manifest).map(|dev| dev.name.original()))
     } else {
         None
     };
@@ -194,8 +193,10 @@ fn correlate_operation(
                 operation.write_data.clone()
             };
 
+            let (action, is_modify) = operation_action(used_access, first_object_id.object_type())?;
             Ok(CorrelatedAction {
-                action: operation_action(used_access, first_object_id.object_type())?,
+                action,
+                is_modify,
                 operation_name: info.operation_name,
                 read_fs: info
                     .read_fs
@@ -261,6 +262,7 @@ impl Display for CorrelatedOperation {
 
 struct CorrelatedAction {
     action: &'static str,
+    is_modify: bool,
     operation_name: Istr,
     read_fs: Option<DecodedFieldset>,
     write_fs: Option<DecodedFieldset>,
@@ -275,18 +277,28 @@ impl Display for CorrelatedAction {
         fn fmt_bytes(
             f: &mut core::fmt::Formatter<'_>,
             fs: Option<&DecodedFieldset>,
+            fs_diff: Option<&DecodedFieldset>,
             bytes: &[u8],
+            bytes_diff: Option<&[u8]>,
         ) -> core::fmt::Result {
             if let Some(fs) = fs {
+                let diff_fs = if let Some(fs_diff) = &fs_diff {
+                    fs_diff.fields.iter().map(Some).collect()
+                } else {
+                    vec![None; fs.fields.len()]
+                };
+
                 writeln!(
                     f,
                     "{}",
                     BitdumpFormatter::new(
                         fs.name.to_string(),
                         bytes.to_vec(),
+                        bytes_diff.map(|b| b.to_vec()),
                         fs.fields
                             .iter()
-                            .map(|field| Field {
+                            .zip(diff_fs)
+                            .map(|(field, diff_field)| Field {
                                 #[allow(clippy::single_range_in_vec_init)]
                                 ranges: vec![
                                     field.address.start as usize..field.address.end as usize + 1
@@ -294,6 +306,20 @@ impl Display for CorrelatedAction {
                                 name: field.name.to_string(),
                                 base_value: field.base_value.to_string(),
                                 converted_value: field.converted_value.clone(),
+                                base_value_diff: if let Some(df) = &diff_field
+                                    && df.base_value != field.base_value
+                                {
+                                    Some(df.base_value.to_string())
+                                } else {
+                                    None
+                                },
+                                converted_value_diff: if let Some(df) = &diff_field
+                                    && df.converted_value != field.converted_value
+                                {
+                                    Some(df.converted_value.clone())
+                                } else {
+                                    None
+                                },
                                 reserved: false,
                             })
                             .collect()
@@ -307,8 +333,18 @@ impl Display for CorrelatedAction {
             }
         }
 
-        fmt_bytes(f, self.read_fs.as_ref(), &self.read_data)?;
-        fmt_bytes(f, self.write_fs.as_ref(), &self.write_data)?;
+        if self.is_modify {
+            fmt_bytes(
+                f,
+                self.write_fs.as_ref(),
+                self.read_fs.as_ref(),
+                &self.write_data,
+                Some(&self.read_data),
+            )?;
+        } else {
+            fmt_bytes(f, self.read_fs.as_ref(), None, &self.read_data, None)?;
+            fmt_bytes(f, self.write_fs.as_ref(), None, &self.write_data, None)?;
+        }
 
         Ok(())
     }
@@ -317,14 +353,14 @@ impl Display for CorrelatedAction {
 fn operation_action(
     used_access: Option<Access>,
     operation_type: ObjectType,
-) -> Result<&'static str, DynError> {
+) -> Result<(&'static str, bool), DynError> {
     match (used_access, operation_type) {
-        (_, ObjectType::Command) => Ok("dispatch command"),
-        (Some(Access::RO), ObjectType::Register) => Ok("read register"),
-        (Some(Access::WO), ObjectType::Register) => Ok("write register"),
-        (Some(Access::RO), ObjectType::Buffer) => Ok("read buffer"),
-        (Some(Access::WO), ObjectType::Buffer) => Ok("write buffer"),
-        (Some(Access::RW), ObjectType::Register) => Ok("modify register"),
+        (_, ObjectType::Command) => Ok(("dispatch command", false)),
+        (Some(Access::RO), ObjectType::Register) => Ok(("read register", false)),
+        (Some(Access::WO), ObjectType::Register) => Ok(("write register", false)),
+        (Some(Access::RO), ObjectType::Buffer) => Ok(("read buffer", false)),
+        (Some(Access::WO), ObjectType::Buffer) => Ok(("write buffer", false)),
+        (Some(Access::RW), ObjectType::Register) => Ok(("modify register", true)),
         _ => Err(DynError::new(
             "unexpected combination of access pattern and operation type. Are we looking at the correct manifest?",
         )),

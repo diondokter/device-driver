@@ -10,7 +10,8 @@ manifest my-man {
                 size-bytes: 4,
 
                 field aaa 0,
-                field bbb 3:1,
+                field xxxxxx 1,
+                field bbb 3:2,
                 field ccc 12:4 -> _ as try enum _ {
                     A: 0xD,
                 },

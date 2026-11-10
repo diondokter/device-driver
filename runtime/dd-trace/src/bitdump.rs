@@ -8,6 +8,8 @@ pub struct Field {
     pub name: String,
     pub base_value: String,
     pub converted_value: Option<String>,
+    pub base_value_diff: Option<String>,
+    pub converted_value_diff: Option<Option<String>>,
     pub reserved: bool,
 }
 
@@ -16,7 +18,7 @@ const DIM: &str = "\x1b[2m";
 const RESET: &str = "\x1b[0m";
 const YELLOW: &str = "\x1b[33m";
 const GRAY: &str = "\x1b[90m";
-const INVERT: &str = "\x1b[7m";
+const NDIFF: &str = "\x1b[2m"; // underline
 const CELL: usize = 4; // visible width of one bit cell in the border calculations
 
 #[derive(Debug, Clone)]
@@ -31,12 +33,22 @@ struct Section {
 pub struct BitdumpFormatter {
     name: String,
     data: Vec<u8>,
+    data_diff: Option<Vec<u8>>,
     fields: Vec<Field>,
     sections: Vec<Section>, // contiguous, UNSPLIT across lines
 }
 
 impl BitdumpFormatter {
-    pub fn new(name: String, data: Vec<u8>, fields: Vec<Field>) -> Self {
+    pub fn new(
+        name: String,
+        data: Vec<u8>,
+        data_diff: Option<Vec<u8>>,
+        fields: Vec<Field>,
+    ) -> Self {
+        if let Some(data_diff) = &data_diff {
+            debug_assert_eq!(data.len(), data_diff.len());
+        }
+
         let mut sections = Vec::<Section>::new();
         let mut running_index = 0usize;
 
@@ -103,6 +115,7 @@ impl BitdumpFormatter {
         Self {
             name,
             data,
+            data_diff,
             fields,
             sections,
         }
@@ -119,6 +132,23 @@ impl BitdumpFormatter {
         let byte_index = bit_index / 8;
         let bit_offset = bit_index % 8;
         (self.data[byte_index] & 1 << bit_offset) > 0
+    }
+
+    fn is_bit_diffed(&self, bit_index: usize) -> bool {
+        if let Some(data_diff) = &self.data_diff {
+            if bit_index >= self.total_bits() {
+                return false;
+            }
+            let byte_index = bit_index / 8;
+            let bit_offset = bit_index % 8;
+
+            let original = (self.data[byte_index] & 1 << bit_offset) > 0;
+            let diff = (data_diff[byte_index] & 1 << bit_offset) > 0;
+
+            original != diff
+        } else {
+            true
+        }
     }
 
     /// Return the *global* section index covering a bit, if any.
@@ -311,15 +341,16 @@ impl BitdumpFormatter {
             }
 
             let bit_value = if self.get_bit(bit) { "1" } else { "0" };
+            let bit_style_mod = if !self.is_bit_diffed(bit) { NDIFF } else { "" };
             let sec_idx = self.section_index_at(bit);
             if let Some(si) = sec_idx {
                 let sec = &self.sections[si];
                 let field = &self.fields[sec.field_index];
                 if field.reserved {
-                    write!(f, "{GRAY} {bit_value} {RESET}")?; // 2 spaces before, 1 after → visible 4
+                    write!(f, " {bit_style_mod}{GRAY}{bit_value}{RESET} ")?; // 2 spaces before, 1 after → visible 4
                 } else {
                     let color = COLORS[sec.color_index];
-                    write!(f, "{color} {bit_value} {RESET}")?;
+                    write!(f, " {bit_style_mod}{color}{bit_value}{RESET} ")?;
 
                     if !displayed_fields.contains(&si) {
                         if display_field.is_some_and(|x| x != sec.field_index) {
@@ -334,7 +365,7 @@ impl BitdumpFormatter {
                     }
                 }
             } else {
-                write!(f, " {bit_value} ")?;
+                write!(f, " {bit_style_mod}{bit_value} ")?;
             }
         }
 
@@ -372,8 +403,17 @@ impl BitdumpFormatter {
                     name = field.name,
                     bv = field.base_value,
                 )?;
+
+                if let Some(bv_diff) = &field.base_value_diff {
+                    write!(f, " {DIM}<- {bv_diff}{RESET}")?;
+                }
+
                 if let Some(cv) = &field.converted_value {
                     write!(f, " = {YELLOW}{cv}{RESET}")?;
+
+                    if let Some(cv_diff) = field.converted_value_diff.as_ref().unwrap() {
+                        write!(f, " {DIM}<- {YELLOW}{cv_diff}{RESET}")?;
+                    }
                 }
             }
         }
@@ -441,7 +481,7 @@ impl BitdumpFormatter {
             .map(|(_, f)| f.name.len())
             .max()
             .unwrap_or(0);
-        let max_type_width = non_reserved
+        let max_base_value_width = non_reserved
             .iter()
             .map(|(_, f)| f.base_value.len())
             .max()
@@ -456,18 +496,27 @@ impl BitdumpFormatter {
             };
             write!(
                 f,
-                "   {DIM}{border}─ {idx}{RESET} {color}{name:<name_width$}{RESET}  {ty:<type_width$}",
+                "   {DIM}{border}─ {idx}{RESET} {color}{name:<name_width$}{RESET}  {bv:<bv_width$}",
                 idx = i + 1,
                 name = field.name,
                 name_width = max_name_width,
-                ty = field.base_value,
-                type_width = max_type_width,
+                bv = field.base_value,
+                bv_width = max_base_value_width,
             )?;
-            if let Some(cv) = &field.converted_value {
-                writeln!(f, " = {YELLOW}{cv}{RESET}")?;
-            } else {
-                writeln!(f)?;
+
+            if let Some(bv_diff) = &field.base_value_diff {
+                write!(f, " {DIM}<- {bv_diff}{RESET}")?;
             }
+
+            if let Some(cv) = &field.converted_value {
+                write!(f, " = {YELLOW}{cv}{RESET}")?;
+
+                if let Some(cv_diff) = field.converted_value_diff.as_ref().unwrap() {
+                    write!(f, " {DIM}<- {YELLOW}{cv_diff}{RESET}")?;
+                }
+            }
+
+            writeln!(f)?;
         }
         Ok(())
     }

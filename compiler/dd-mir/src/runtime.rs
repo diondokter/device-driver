@@ -24,7 +24,7 @@ pub struct DecodedField {
     pub converted_value: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum FieldBaseValue {
     Integer(i128),
     Bool(bool),
