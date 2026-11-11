@@ -673,7 +673,6 @@ where
     where
         Repeat: Repeating,
         B::Interface: AsyncRegisterInterface,
-        B::RegisterAddressMode: AddressMode,
         Access: ReadCapability,
     {
         let mut register = RegisterFs::ZERO;
