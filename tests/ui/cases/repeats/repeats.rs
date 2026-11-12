@@ -73,6 +73,9 @@ impl<I> ::device_driver::Block for Repeats<I> {
         &mut self.interface
     }
 }
+impl<I> ::device_driver::ManifestInfo for Repeats<I> {
+    const SOURCE_CRC: u32 = 0x9A7EA62E;
+}
 #[doc(alias = "foo")]
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -102,6 +105,9 @@ impl<'i, I> ::device_driver::Block for Foo<'i, I> {
     fn interface(&mut self) -> &mut Self::Interface {
         self.interface
     }
+}
+impl<'i, I> ::device_driver::ManifestInfo for Foo<'i, I> {
+    const SOURCE_CRC: u32 = 0x9A7EA62E;
 }
 #[doc(alias = "bar")]
 #[derive(Debug)]
@@ -133,6 +139,9 @@ impl<'i, I> ::device_driver::Block for Bar<'i, I> {
         self.interface
     }
 }
+impl<'i, I> ::device_driver::ManifestInfo for Bar<'i, I> {
+    const SOURCE_CRC: u32 = 0x9A7EA62E;
+}
 #[doc(alias = "quux")]
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -162,6 +171,9 @@ impl<'i, I> ::device_driver::Block for Quux<'i, I> {
     fn interface(&mut self) -> &mut Self::Interface {
         self.interface
     }
+}
+impl<'i, I> ::device_driver::ManifestInfo for Quux<'i, I> {
+    const SOURCE_CRC: u32 = 0x9A7EA62E;
 }
 #[doc(alias = "too_big")]
 #[repr(u32)]

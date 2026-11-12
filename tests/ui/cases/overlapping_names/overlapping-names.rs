@@ -61,6 +61,9 @@ impl<I> ::device_driver::Block for Foo<I> {
         &mut self.interface
     }
 }
+impl<I> ::device_driver::ManifestInfo for Foo<I> {
+    const SOURCE_CRC: u32 = 0x71464820;
+}
 /// Root block of the FooDup1 driver
 #[doc(alias = "Foo")]
 #[derive(Debug)]
@@ -115,6 +118,9 @@ impl<I> ::device_driver::Block for FooDup1<I> {
     fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }
+}
+impl<I> ::device_driver::ManifestInfo for FooDup1<I> {
+    const SOURCE_CRC: u32 = 0x71464820;
 }
 /// Root block of the Blah driver
 #[derive(Debug)]
@@ -171,6 +177,9 @@ impl<I> ::device_driver::Block for Blah<I> {
         &mut self.interface
     }
 }
+impl<I> ::device_driver::ManifestInfo for Blah<I> {
+    const SOURCE_CRC: u32 = 0x71464820;
+}
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Wheee<'i, I> {
@@ -199,6 +208,9 @@ impl<'i, I> ::device_driver::Block for Wheee<'i, I> {
     fn interface(&mut self) -> &mut Self::Interface {
         self.interface
     }
+}
+impl<'i, I> ::device_driver::ManifestInfo for Wheee<'i, I> {
+    const SOURCE_CRC: u32 = 0x71464820;
 }
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -229,6 +241,9 @@ impl<'i, I> ::device_driver::Block for Wheee2<'i, I> {
         self.interface
     }
 }
+impl<'i, I> ::device_driver::ManifestInfo for Wheee2<'i, I> {
+    const SOURCE_CRC: u32 = 0x71464820;
+}
 /// Root block of the Words driver
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -257,6 +272,9 @@ impl<I> ::device_driver::Block for Words<I> {
     fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }
+}
+impl<I> ::device_driver::ManifestInfo for Words<I> {
+    const SOURCE_CRC: u32 = 0x71464820;
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]

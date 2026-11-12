@@ -68,6 +68,9 @@ impl<I> ::device_driver::Block for Y<I> {
         &mut self.interface
     }
 }
+impl<I> ::device_driver::ManifestInfo for Y<I> {
+    const SOURCE_CRC: u32 = 0xD207FB80;
+}
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct B<'i, I> {
@@ -114,6 +117,9 @@ impl<'i, I> ::device_driver::Block for B<'i, I> {
     fn interface(&mut self) -> &mut Self::Interface {
         self.interface
     }
+}
+impl<'i, I> ::device_driver::ManifestInfo for B<'i, I> {
+    const SOURCE_CRC: u32 = 0xD207FB80;
 }
 /// Root block of the D driver
 #[derive(Debug)]
@@ -173,6 +179,9 @@ impl<I> ::device_driver::Block for D<I> {
     fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }
+}
+impl<I> ::device_driver::ManifestInfo for D<I> {
+    const SOURCE_CRC: u32 = 0xD207FB80;
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]

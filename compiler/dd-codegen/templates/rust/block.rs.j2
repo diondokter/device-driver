@@ -152,3 +152,7 @@ impl{{block_generics}} ::device_driver::Block for {{ block.name.to_case(Case::Pa
     }
     {% endif %}
 }
+
+impl{{block_generics}} ::device_driver::ManifestInfo for {{ block.name.to_case(Case::Pascal) }}{{block_generics}} {
+    const SOURCE_CRC: u32 = {{driver.source_crc | fmt("{:#X}")}};
+}

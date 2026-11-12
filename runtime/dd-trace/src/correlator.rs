@@ -17,13 +17,13 @@ use crate::{
 };
 
 pub fn correlate(
-    manifests: &HashMap<u8, &Manifest>,
+    manifests: &HashMap<u32, Manifest>,
     event: crate::decoder::Event,
 ) -> Result<CorrelatedEvent, DynError> {
-    let manifest = *manifests.get(&event.instance).ok_or_else(|| {
+    let manifest = manifests.get(&event.source_crc).ok_or_else(|| {
         DynError::new(format!(
-            "got event with instance {}, but no manifest is registered with that value",
-            event.instance
+            "got event for manifest with source CRC of \"{}\", but no manifest is found",
+            event.source_crc
         ))
     })?;
 

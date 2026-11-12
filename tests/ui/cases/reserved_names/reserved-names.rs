@@ -43,6 +43,9 @@ impl<I> ::device_driver::Block for Foo<I> {
         &mut self.interface
     }
 }
+impl<I> ::device_driver::ManifestInfo for Foo<I> {
+    const SOURCE_CRC: u32 = 0xD9CB1CC3;
+}
 #[derive(Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct Bar {

@@ -5,7 +5,10 @@ use std::sync::{
 
 use critical_section::RestoreState;
 use device_driver::{FieldsetMetadata, RegisterInterface, RegisterInterfaceBase, TraceInterface};
-use device_driver_trace::decoder::{DecodeError, Event};
+use device_driver_trace::{
+    crc32,
+    decoder::{DecodeError, Event},
+};
 
 pub struct DeviceInterface {
     device_memory: [u8; 128],
@@ -148,7 +151,7 @@ fn render_trace(events: &[Result<Event, DecodeError>]) -> String {
         device_driver_mir::lower_ast(&ast, &Default::default(), &mut diagnostics).unwrap();
     assert_eq!(diagnostics.summary(), Default::default());
 
-    let manifests = [(55, &manifest)].into_iter().collect();
+    let manifests = [(crc32(DDSL.as_bytes()), manifest)].into_iter().collect();
 
     let mut output = String::new();
 

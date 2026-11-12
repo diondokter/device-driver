@@ -65,6 +65,26 @@ pub struct TraceInterface {
     pub id: fn() -> u8,
 }
 
+pub fn crc32(data: &[u8]) -> u32 {
+    const POLY: u32 = 0x82f6_3b78; // Castagnoli
+
+    let mut crc = 0xFFFF_FFFF;
+
+    for byte in data {
+        crc ^= u32::from(*byte);
+
+        for _ in 0..8 {
+            let lowest_bit_set = crc & 1 > 0;
+            crc >>= 1;
+            if lowest_bit_set {
+                crc ^= POLY;
+            }
+        }
+    }
+
+    !crc
+}
+
 #[cfg(test)]
 mod tests {
     use core::sync::atomic::{AtomicU8, Ordering};
@@ -105,15 +125,16 @@ mod tests {
                 ID.fetch_add(1, Ordering::Relaxed)
             },
         };
+        const SOURCE_CRC: u32 = 54321;
 
-        let none_event = EncodeEvent::new(&INTERFACE);
+        let none_event = EncodeEvent::new(&INTERFACE, SOURCE_CRC);
         let none_event_id = none_event.id;
         none_event.send_final_frame(&INTERFACE, |f| {
             f.send_timestamp();
             f.send_object_identifier(&ObjectIdentifier::new(5, None));
         });
 
-        let modify_event = EncodeEvent::new(&INTERFACE);
+        let modify_event = EncodeEvent::new(&INTERFACE, SOURCE_CRC);
         let modify_event_id = modify_event.id;
         let modify_event = modify_event.send_frame(&INTERFACE, |f| {
             f.send_timestamp();
@@ -125,7 +146,7 @@ mod tests {
             f.send_bytes(true, &[1, 2, 5]);
         });
 
-        let read_event = EncodeEvent::new(&INTERFACE);
+        let read_event = EncodeEvent::new(&INTERFACE, SOURCE_CRC);
         let read_event_id = read_event.id;
         read_event.send_final_frame(&INTERFACE, |f| {
             f.send_timestamp();
@@ -166,7 +187,7 @@ mod tests {
         assert_eq!(
             decoded_none_event,
             &DecodeEvent {
-                instance: 55,
+                source_crc: SOURCE_CRC,
                 id: none_event_id,
                 timestamp: Some(5),
                 operations: vec![Operation {
@@ -180,7 +201,7 @@ mod tests {
         assert_eq!(
             decoded_modify_event,
             &DecodeEvent {
-                instance: 55,
+                source_crc: SOURCE_CRC,
                 id: modify_event_id,
                 timestamp: Some(5),
                 operations: vec![Operation {
@@ -194,7 +215,7 @@ mod tests {
         assert_eq!(
             decoded_read_event,
             &DecodeEvent {
-                instance: 55,
+                source_crc: SOURCE_CRC,
                 id: read_event_id,
                 timestamp: Some(5),
                 operations: vec![Operation {
@@ -234,8 +255,9 @@ mod tests {
                 ID.fetch_add(1, Ordering::Relaxed)
             },
         };
+        const SOURCE_CRC: u32 = 1234;
 
-        let bulk_event = EncodeEvent::new(&INTERFACE);
+        let bulk_event = EncodeEvent::new(&INTERFACE, SOURCE_CRC);
         let bulk_event_id = bulk_event.id;
         let bulk_event = bulk_event.send_frame(&INTERFACE, |f| {
             f.send_object_identifier(&ObjectIdentifier::new(654, Some(-90)));
@@ -269,7 +291,7 @@ mod tests {
         assert_eq!(
             bulk_event,
             &DecodeEvent {
-                instance: 55,
+                source_crc: SOURCE_CRC,
                 id: bulk_event_id,
                 timestamp: None,
                 operations: vec![Operation {

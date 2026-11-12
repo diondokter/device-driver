@@ -6,12 +6,22 @@ pub struct Frame {
 }
 
 impl Frame {
-    pub fn new(interface: &'static TraceInterface, instance: u8, id: u8) -> Self {
+    pub fn new(interface: &'static TraceInterface, source_crc: u32, id: u8) -> Self {
         (interface.acquire)();
         let mut encoder = Encoder::new();
         encoder.start_frame(|b| unsafe { (interface.write)(&[b]) });
 
-        encoder.write(&[instance, id], |b| unsafe { (interface.write)(&[b]) });
+        let source_crc = source_crc.to_le_bytes();
+        encoder.write(
+            &[
+                source_crc[0],
+                source_crc[1],
+                source_crc[2],
+                source_crc[3],
+                id,
+            ],
+            |b| unsafe { (interface.write)(&[b]) },
+        );
 
         Self { encoder, interface }
     }
@@ -91,13 +101,15 @@ impl Drop for Frame {
 pub struct Event {
     pub(crate) id: u8,
     finalized: bool,
+    source_crc: u32,
 }
 
 impl Event {
-    pub fn new(interface: &'static TraceInterface) -> Self {
+    pub fn new(interface: &'static TraceInterface, source_crc: u32) -> Self {
         Self {
             id: (interface.id)(),
             finalized: false,
+            source_crc,
         }
     }
 
@@ -106,12 +118,12 @@ impl Event {
         interface: &'static TraceInterface,
         f: impl FnOnce(&mut Frame),
     ) -> Self {
-        f(&mut Frame::new(interface, 55, self.id));
+        f(&mut Frame::new(interface, self.source_crc, self.id));
         self
     }
 
     pub fn send_final_frame(self, interface: &'static TraceInterface, f: impl FnOnce(&mut Frame)) {
-        let mut frame = Frame::new(interface, 55, self.id);
+        let mut frame = Frame::new(interface, self.source_crc, self.id);
         f(&mut frame);
         frame.send_finalize();
         self.discard();

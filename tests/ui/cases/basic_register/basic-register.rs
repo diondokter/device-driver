@@ -98,6 +98,9 @@ impl<I> ::device_driver::Block for Device<I> {
         &mut self.interface
     }
 }
+impl<I> ::device_driver::ManifestInfo for Device<I> {
+    const SOURCE_CRC: u32 = 0x93F697E2;
+}
 #[derive(Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct FooFieldSet {

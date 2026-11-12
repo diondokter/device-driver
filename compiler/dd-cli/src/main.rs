@@ -3,6 +3,8 @@ use device_driver_core::CompileOptions;
 use device_driver_diagnostics::{DynError, Metadata, ResultExt};
 use std::{io::Write, path::PathBuf, process::ExitCode};
 
+mod decode;
+
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None, bin_name("ddc"))]
 struct Args {
@@ -22,6 +24,8 @@ enum Command {
     #[cfg(feature = "lsp")]
     /// Run the lsp server
     Lsp,
+    /// Decode trace events to human readable output
+    Decode(DecodeArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -60,6 +64,36 @@ struct ConverterArgs {
     source_format: device_driver_converter::SourceFormat,
 }
 
+#[derive(Parser, Debug)]
+#[command(no_binary_name = true, bin_name = "")]
+struct DecodeArgs {
+    #[command(subcommand)]
+    input: DecodeIngest,
+    /// The behavior for when end-of-file is reached
+    #[arg(global = true, long, default_value = "exit")]
+    eof: EofBehavior,
+    /// The manifests the decoder uses to decode the trace events.
+    /// When not specified, the current working directory will be scanned for all `.ddsl` files.
+    #[arg(long, global = true)]
+    manifests: Option<Vec<PathBuf>>,
+}
+
+#[derive(Debug, Clone, clap::Subcommand)]
+enum DecodeIngest {
+    /// Take the trace bytes from stdin
+    Stdin,
+    /// Take the trace bytes from a file
+    File { path: PathBuf },
+}
+
+#[derive(Debug, Clone, clap::ValueEnum)]
+enum EofBehavior {
+    /// Keep reading the stream. This can be used for live data streaming
+    Retry,
+    /// Exit the program when the end of stream is reached
+    Exit,
+}
+
 fn main() -> ExitCode {
     match run() {
         Ok(exit) => exit,
@@ -91,6 +125,7 @@ fn run() -> Result<ExitCode, DynError> {
                 Ok(ExitCode::FAILURE)
             }
         }
+        Command::Decode(decode_args) => decode::decode(decode_args),
     }
 }
 
@@ -183,6 +218,11 @@ fn gen_docs(args: GenDocsArgs) -> Result<ExitCode, DynError> {
         GenDocsArgs::command().render_long_help().to_string(),
     )
     .with_message(|| "writing cli-gen_docs-help")?;
+    std::fs::write(
+        cli_folder.join("cli-decode-help.txt"),
+        DecodeArgs::command().render_long_help().to_string(),
+    )
+    .with_message(|| "writing cli-decode-help")?;
     std::fs::write(
         cli_folder.join("compile-help.txt"),
         device_driver_core::CompileOptions::command()

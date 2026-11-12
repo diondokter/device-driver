@@ -7,6 +7,7 @@ use device_driver_common::{
 use device_driver_mir::model::ObjectId;
 
 pub struct Driver {
+    pub source_crc: u32,
     pub devices: Vec<Device>,
     pub field_sets: Vec<FieldSet>,
     pub enums: Vec<Enum>,

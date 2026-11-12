@@ -115,6 +115,9 @@ impl<I> ::device_driver::Block for Device<I> {
         &mut self.interface
     }
 }
+impl<I> ::device_driver::ManifestInfo for Device<I> {
+    const SOURCE_CRC: u32 = 0xEE76105A;
+}
 #[doc(alias = "foo_roFieldSet")]
 #[derive(Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]

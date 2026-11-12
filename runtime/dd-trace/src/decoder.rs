@@ -17,7 +17,7 @@ pub struct Operation {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Event {
-    pub instance: u8,
+    pub source_crc: u32,
     pub id: u8,
     pub timestamp: Option<u64>,
     pub operations: Vec<Operation>,
@@ -30,13 +30,13 @@ impl Event {
             return Err(DecodeError::Incomplete);
         }
 
-        if frames[0].len() < 2 {
+        if frames[0].len() < 5 {
             return Err(DecodeError::Incomplete);
         }
 
         let mut event = Event {
-            instance: frames[0][0],
-            id: frames[0][1],
+            source_crc: u32::from_le_bytes(frames[0][..4].try_into().unwrap()),
+            id: frames[0][4],
             timestamp: None,
             operations: Vec::new(),
         };
@@ -45,18 +45,18 @@ impl Event {
         let mut push_new_op = true;
 
         for frame in frames {
-            if frame.len() < 3 {
+            if frame.len() < 5 {
                 return Err(DecodeError::Incomplete);
             }
 
-            let instance = frame[0];
-            let id = frame[1];
+            let source_crc = u32::from_le_bytes(frame[..4].try_into().unwrap());
+            let id = frame[4];
 
-            if instance != event.instance || id != event.id {
+            if source_crc != event.source_crc || id != event.id {
                 return Err(DecodeError::Malformed);
             }
 
-            let mut frame = &frame[2..];
+            let mut frame = &frame[5..];
             while !frame.is_empty() {
                 let message_type =
                     MessageType::from_byte(frame[0]).ok_or(DecodeError::Malformed)?;
@@ -79,7 +79,7 @@ impl Event {
                             push_new_op = false;
                             event.operations.push_mut(Operation::default())
                         } else {
-                            event.operations.last_mut().unwrap()
+                            event.operations.last_mut().ok_or(DecodeError::Malformed)?
                         };
                         active_operation.objects.push(object);
                         len
@@ -87,7 +87,8 @@ impl Event {
                     MessageType::OperationData => {
                         let (OperationDataChunk { write, bytes }, len) =
                             Self::decode_operation_data(frame)?;
-                        let active_operation = event.operations.last_mut().unwrap();
+                        let active_operation =
+                            event.operations.last_mut().ok_or(DecodeError::Malformed)?;
 
                         if write {
                             active_operation.write_data.extend_from_slice(&bytes);
@@ -100,7 +101,8 @@ impl Event {
                     }
                     MessageType::OperationAddress => {
                         let (address, len) = Self::decode_operation_address(frame)?;
-                        let active_operation = event.operations.last_mut().unwrap();
+                        let active_operation =
+                            event.operations.last_mut().ok_or(DecodeError::Malformed)?;
 
                         if !active_operation.address.is_empty() {
                             // Can't set the address twice
@@ -213,7 +215,7 @@ struct EventData {
 }
 
 pub struct StreamingDecoder {
-    instance_event_data: HashMap<u8, EventData>,
+    instance_event_data: HashMap<u32, EventData>,
     buffer: VecDeque<u8>,
 }
 
@@ -250,19 +252,19 @@ impl StreamingDecoder {
                 continue;
             };
 
-            if frame.len() < 2 {
+            if frame.len() < 5 {
                 continue;
             }
 
-            let frame_instance = frame[0];
-            let frame_id = frame[1];
-            let event_data = self
-                .instance_event_data
-                .entry(frame_instance)
-                .or_insert(EventData {
-                    id: frame_id,
-                    frames: Vec::new(),
-                });
+            let frame_source_crc = u32::from_le_bytes(frame[..4].try_into().unwrap());
+            let frame_id = frame[4];
+            let event_data =
+                self.instance_event_data
+                    .entry(frame_source_crc)
+                    .or_insert(EventData {
+                        id: frame_id,
+                        frames: Vec::new(),
+                    });
 
             if event_data.id != frame_id {
                 // We're getting newer(?) data. We require everything to arrive in order.
@@ -280,7 +282,7 @@ impl StreamingDecoder {
             if matches!(decoded, Err(DecodeError::Incomplete)) {
                 continue;
             } else {
-                self.instance_event_data.remove(&frame_instance);
+                self.instance_event_data.remove(&frame_source_crc);
                 results.push(decoded);
             }
         }

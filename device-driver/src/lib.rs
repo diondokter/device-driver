@@ -129,6 +129,11 @@ pub trait Block: Sized {
     }
 }
 
+#[doc(hidden)]
+pub trait ManifestInfo {
+    const SOURCE_CRC: u32;
+}
+
 /// Value representing the byte order
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]

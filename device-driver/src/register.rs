@@ -4,7 +4,7 @@ use core::marker::PhantomData;
 
 use crate::{
     Address, AddressMode, Append, ArrayRepeating, Block, Fieldset, FieldsetMetadata, Index,
-    NotRepeating, RO, RW, ReadCapability, Repeating, ToTuple, WO, WriteCapability,
+    ManifestInfo, NotRepeating, RO, RW, ReadCapability, Repeating, ToTuple, WO, WriteCapability,
 };
 
 #[cfg(feature = "defmt")]
@@ -142,7 +142,7 @@ impl<'b, B, RegisterFs, AddressType, Access, Repeat>
     RegisterOperation<'b, B, RegisterFs, AddressType, Access, Repeat>
 where
     RegisterFs: Fieldset,
-    B: Block,
+    B: Block + ManifestInfo,
     B::Interface: RegisterInterfaceBase<AddressType = AddressType>,
     AddressType: Address,
 {
@@ -176,7 +176,7 @@ where
     fn send_single_event(&mut self, _index: Option<i32>, _register: &impl Fieldset, _write: bool) {
         #[cfg(feature = "trace")]
         if let Some(trace_interface) = crate::global_trace_interface() {
-            Event::new(trace_interface).send_final_frame(trace_interface, |f| {
+            Event::new(trace_interface, B::SOURCE_CRC).send_final_frame(trace_interface, |f| {
                 f.send_timestamp();
                 f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
                     self.object_id,
@@ -197,7 +197,7 @@ where
     ) {
         #[cfg(feature = "trace")]
         if let Some(trace_interface) = crate::global_trace_interface() {
-            Event::new(trace_interface).send_final_frame(trace_interface, |f| {
+            Event::new(trace_interface, B::SOURCE_CRC).send_final_frame(trace_interface, |f| {
                 f.send_timestamp();
                 for i in 0.._array_len {
                     f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
@@ -219,7 +219,7 @@ where
         #[cfg(feature = "trace")]
         if let Some(trace_interface) = crate::global_trace_interface() {
             Some(
-                Event::new(trace_interface).send_frame(trace_interface, |f| {
+                Event::new(trace_interface, B::SOURCE_CRC).send_frame(trace_interface, |f| {
                     f.send_timestamp();
                     f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
                         self.object_id,
@@ -243,7 +243,7 @@ where
         #[cfg(feature = "trace")]
         if let Some(trace_interface) = crate::global_trace_interface() {
             Some(
-                Event::new(trace_interface).send_frame(trace_interface, |f| {
+                Event::new(trace_interface, B::SOURCE_CRC).send_frame(trace_interface, |f| {
                     f.send_timestamp();
                     for i in 0.._array_len {
                         f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
