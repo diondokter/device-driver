@@ -5,6 +5,10 @@
 
 use core::fmt::{Debug, Display};
 use core::marker::PhantomData;
+#[cfg(feature = "trace")]
+use core::ptr::null_mut;
+#[cfg(feature = "trace")]
+use core::sync::atomic::AtomicPtr;
 
 mod buffer;
 mod command;
@@ -25,6 +29,9 @@ pub mod ops;
 
 #[cfg(feature = "macros")]
 pub use device_driver_macros::*;
+
+#[cfg(feature = "trace")]
+pub use device_driver_trace::TraceInterface;
 
 /// Trait implemented on every generated block/device.
 pub trait Block: Sized {
@@ -122,6 +129,11 @@ pub trait Block: Sized {
     }
 }
 
+#[doc(hidden)]
+pub trait ManifestInfo {
+    const SOURCE_CRC: u32;
+}
+
 /// Value representing the byte order
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -184,6 +196,8 @@ pub trait Address: Copy + Eq + Display + Debug + defmt::Format + SealedAddress {
     const ZERO: Self;
     #[doc(hidden)]
     fn add(self, val: i32) -> Self;
+    #[doc(hidden)]
+    fn get_le_bytes(self, f: impl FnOnce(&[u8]));
 }
 /// A trait implemented for the types that can be used as an address
 #[expect(private_bounds, reason = "sealed on purpose")]
@@ -193,6 +207,8 @@ pub trait Address: Copy + Eq + Display + Debug + SealedAddress {
     const ZERO: Self;
     #[doc(hidden)]
     fn add(self, val: i32) -> Self;
+    #[doc(hidden)]
+    fn get_le_bytes(self, f: impl FnOnce(&[u8]));
 }
 
 impl SealedAddress for u8 {}
@@ -201,12 +217,18 @@ impl Address for u8 {
     fn add(self, val: i32) -> Self {
         (self as i32 + val).try_into().unwrap()
     }
+    fn get_le_bytes(self, f: impl FnOnce(&[u8])) {
+        f(&self.to_le_bytes())
+    }
 }
 impl SealedAddress for u16 {}
 impl Address for u16 {
     const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
         (self as i32 + val).try_into().unwrap()
+    }
+    fn get_le_bytes(self, f: impl FnOnce(&[u8])) {
+        f(&self.to_le_bytes())
     }
 }
 impl SealedAddress for u32 {}
@@ -215,12 +237,18 @@ impl Address for u32 {
     fn add(self, val: i32) -> Self {
         self.checked_add_signed(val).unwrap()
     }
+    fn get_le_bytes(self, f: impl FnOnce(&[u8])) {
+        f(&self.to_le_bytes())
+    }
 }
 impl SealedAddress for u64 {}
 impl Address for u64 {
     const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
         self.checked_add_signed(val as i64).unwrap()
+    }
+    fn get_le_bytes(self, f: impl FnOnce(&[u8])) {
+        f(&self.to_le_bytes())
     }
 }
 impl SealedAddress for i8 {}
@@ -229,12 +257,18 @@ impl Address for i8 {
     fn add(self, val: i32) -> Self {
         (self as i32 + val).try_into().unwrap()
     }
+    fn get_le_bytes(self, f: impl FnOnce(&[u8])) {
+        f(&self.to_le_bytes())
+    }
 }
 impl SealedAddress for i16 {}
 impl Address for i16 {
     const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
         (self as i32 + val).try_into().unwrap()
+    }
+    fn get_le_bytes(self, f: impl FnOnce(&[u8])) {
+        f(&self.to_le_bytes())
     }
 }
 impl SealedAddress for i32 {}
@@ -243,12 +277,18 @@ impl Address for i32 {
     fn add(self, val: i32) -> Self {
         self + val
     }
+    fn get_le_bytes(self, f: impl FnOnce(&[u8])) {
+        f(&self.to_le_bytes())
+    }
 }
 impl SealedAddress for i64 {}
 impl Address for i64 {
     const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
         self + val as i64
+    }
+    fn get_le_bytes(self, f: impl FnOnce(&[u8])) {
+        f(&self.to_le_bytes())
     }
 }
 
@@ -282,5 +322,30 @@ impl AddressMode for IndexedAddressMode {
     #[inline]
     fn next_address<A: Address>(current_address: A, _current_size: usize) -> A {
         current_address.add(1)
+    }
+}
+
+#[cfg(feature = "trace")]
+static GLOBAL_TRACE_INTERFACE: AtomicPtr<TraceInterface> = AtomicPtr::new(null_mut());
+
+#[cfg(feature = "trace")]
+pub(crate) fn global_trace_interface() -> Option<&'static TraceInterface> {
+    let ptr = GLOBAL_TRACE_INTERFACE.load(core::sync::atomic::Ordering::Relaxed);
+    if ptr.is_null() {
+        None
+    } else {
+        Some(unsafe { &*ptr })
+    }
+}
+
+#[cfg(feature = "trace")]
+pub fn set_global_trace_interface(interface: Option<&'static TraceInterface>) {
+    if let Some(interface) = interface {
+        GLOBAL_TRACE_INTERFACE.store(
+            interface as *const _ as *mut _,
+            core::sync::atomic::Ordering::Relaxed,
+        );
+    } else {
+        GLOBAL_TRACE_INTERFACE.store(null_mut(), core::sync::atomic::Ordering::Relaxed);
     }
 }

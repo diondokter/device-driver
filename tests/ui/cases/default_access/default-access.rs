@@ -43,7 +43,12 @@ impl<I> Y<I> {
         I: ::device_driver::RegisterInterfaceBase<AddressType = u8>,
     {
         let address = self.base_address + 0;
-        ::device_driver::RegisterOperation::new(self, address as u8, A::default)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u8,
+            A::default,
+            0x3000000,
+        )
     }
     /// Block operation:
     /// - Address: `0`
@@ -62,6 +67,9 @@ impl<I> ::device_driver::Block for Y<I> {
     fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }
+}
+impl<I> ::device_driver::ManifestInfo for Y<I> {
+    const SOURCE_CRC: u32 = 0xD207FB80;
 }
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -92,7 +100,12 @@ impl<'i, I> B<'i, I> {
         I: ::device_driver::RegisterInterfaceBase<AddressType = u8>,
     {
         let address = self.base_address + 1;
-        ::device_driver::RegisterOperation::new(self, address as u8, A::default)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u8,
+            A::default,
+            0x3000001,
+        )
     }
 }
 impl<'i, I> ::device_driver::Block for B<'i, I> {
@@ -104,6 +117,9 @@ impl<'i, I> ::device_driver::Block for B<'i, I> {
     fn interface(&mut self) -> &mut Self::Interface {
         self.interface
     }
+}
+impl<'i, I> ::device_driver::ManifestInfo for B<'i, I> {
+    const SOURCE_CRC: u32 = 0xD207FB80;
 }
 /// Root block of the D driver
 #[derive(Debug)]
@@ -134,7 +150,12 @@ impl<I> D<I> {
         I: ::device_driver::RegisterInterfaceBase<AddressType = u8>,
     {
         let address = self.base_address + 0;
-        ::device_driver::RegisterOperation::new(self, address as u8, F::default)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u8,
+            F::default,
+            0x3000002,
+        )
     }
     /// Buffer operation:
     /// - Address: `0`
@@ -158,6 +179,9 @@ impl<I> ::device_driver::Block for D<I> {
     fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }
+}
+impl<I> ::device_driver::ManifestInfo for D<I> {
+    const SOURCE_CRC: u32 = 0xD207FB80;
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]

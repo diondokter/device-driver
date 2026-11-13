@@ -42,7 +42,12 @@ impl<I> Bar<I> {
         I: ::device_driver::RegisterInterfaceBase<AddressType = u8>,
     {
         let address = self.base_address + 0;
-        ::device_driver::RegisterOperation::new(self, address as u8, Reg::default)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u8,
+            Reg::default,
+            0x3000000,
+        )
     }
 }
 impl<I> ::device_driver::Block for Bar<I> {
@@ -54,6 +59,9 @@ impl<I> ::device_driver::Block for Bar<I> {
     fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }
+}
+impl<I> ::device_driver::ManifestInfo for Bar<I> {
+    const SOURCE_CRC: u32 = 0x48900BE7;
 }
 #[doc(alias = "reg")]
 #[derive(Copy, Clone, Eq, PartialEq)]

@@ -65,7 +65,7 @@ pub fn compile(source: &str, options: CompileOptions) -> Result<(String, Diagnos
     timings.set_mir_timings(mir_timings);
     let lir = {
         let _t = timings.start_lir();
-        device_driver_lir::lower_mir(mir).with_message(|| "could not lower MIR to LIR")?
+        device_driver_lir::lower_mir(source, mir).with_message(|| "could not lower MIR to LIR")?
     };
     let mut code = {
         let _t = timings.start_codegen();

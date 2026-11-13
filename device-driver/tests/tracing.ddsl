@@ -1,0 +1,22 @@
+manifest my-man {
+    device MyTestDevice {
+        register-address-type: u8,
+        default-access: RW,
+
+        register MyRegister {
+            address: 0,
+            fields: fieldset FooFields {
+                byte-order: LE,
+                size-bytes: 4,
+
+                field aaa 0,
+                field xxxxxx 1,
+                field bbb 3:2,
+                field ccc 12:4 -> _ as try enum _ {
+                    A: 0xD,
+                },
+                field ddd 31:13
+            }
+        },
+    }
+}

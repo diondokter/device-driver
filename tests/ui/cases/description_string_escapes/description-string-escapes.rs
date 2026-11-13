@@ -56,6 +56,7 @@ impl<I> Device<I> {
             self,
             address as u8,
             FooFieldSet::default,
+            0x3000000,
         )
     }
 }
@@ -68,6 +69,9 @@ impl<I> ::device_driver::Block for Device<I> {
     fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }
+}
+impl<I> ::device_driver::ManifestInfo for Device<I> {
+    const SOURCE_CRC: u32 = 0x81850171;
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]

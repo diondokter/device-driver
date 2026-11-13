@@ -43,7 +43,12 @@ impl<I> Foo<I> {
         I: ::device_driver::RegisterInterfaceBase<AddressType = u8>,
     {
         let address = self.base_address + 0;
-        ::device_driver::RegisterOperation::new(self, address as u8, Bar::default)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u8,
+            Bar::default,
+            0x3000000,
+        )
     }
 }
 impl<I> ::device_driver::Block for Foo<I> {
@@ -55,6 +60,9 @@ impl<I> ::device_driver::Block for Foo<I> {
     fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }
+}
+impl<I> ::device_driver::ManifestInfo for Foo<I> {
+    const SOURCE_CRC: u32 = 0x71464820;
 }
 /// Root block of the FooDup1 driver
 #[doc(alias = "Foo")]
@@ -93,7 +101,12 @@ impl<I> FooDup1<I> {
         I: ::device_driver::RegisterInterfaceBase<AddressType = u8>,
     {
         let address = self.base_address + 0;
-        ::device_driver::RegisterOperation::new(self, address as u8, BarDup4::default)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u8,
+            BarDup4::default,
+            0x3000001,
+        )
     }
 }
 impl<I> ::device_driver::Block for FooDup1<I> {
@@ -105,6 +118,9 @@ impl<I> ::device_driver::Block for FooDup1<I> {
     fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }
+}
+impl<I> ::device_driver::ManifestInfo for FooDup1<I> {
+    const SOURCE_CRC: u32 = 0x71464820;
 }
 /// Root block of the Blah driver
 #[derive(Debug)]
@@ -161,6 +177,9 @@ impl<I> ::device_driver::Block for Blah<I> {
         &mut self.interface
     }
 }
+impl<I> ::device_driver::ManifestInfo for Blah<I> {
+    const SOURCE_CRC: u32 = 0x71464820;
+}
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Wheee<'i, I> {
@@ -189,6 +208,9 @@ impl<'i, I> ::device_driver::Block for Wheee<'i, I> {
     fn interface(&mut self) -> &mut Self::Interface {
         self.interface
     }
+}
+impl<'i, I> ::device_driver::ManifestInfo for Wheee<'i, I> {
+    const SOURCE_CRC: u32 = 0x71464820;
 }
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -219,6 +241,9 @@ impl<'i, I> ::device_driver::Block for Wheee2<'i, I> {
         self.interface
     }
 }
+impl<'i, I> ::device_driver::ManifestInfo for Wheee2<'i, I> {
+    const SOURCE_CRC: u32 = 0x71464820;
+}
 /// Root block of the Words driver
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -247,6 +272,9 @@ impl<I> ::device_driver::Block for Words<I> {
     fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }
+}
+impl<I> ::device_driver::ManifestInfo for Words<I> {
+    const SOURCE_CRC: u32 = 0x71464820;
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]
@@ -531,7 +559,7 @@ impl From<Quux> for u8 {
     }
 }
 #[doc(hidden)]
-impl ::device_driver::EnumIndex for Quux {
+impl ::device_driver::Index for Quux {
     #[track_caller]
     fn index(&self) -> i32 {
         let index = u8::from(*self);
@@ -576,7 +604,7 @@ impl From<QuuxDup5> for u8 {
     }
 }
 #[doc(hidden)]
-impl ::device_driver::EnumIndex for QuuxDup5 {
+impl ::device_driver::Index for QuuxDup5 {
     #[track_caller]
     fn index(&self) -> i32 {
         let index = u8::from(*self);
@@ -612,7 +640,7 @@ impl From<Wheee2Dup6> for u8 {
     }
 }
 #[doc(hidden)]
-impl ::device_driver::EnumIndex for Wheee2Dup6 {
+impl ::device_driver::Index for Wheee2Dup6 {
     #[track_caller]
     fn index(&self) -> i32 {
         let index = u8::from(*self);

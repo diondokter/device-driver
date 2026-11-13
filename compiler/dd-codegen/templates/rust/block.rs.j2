@@ -121,6 +121,7 @@ impl{{block_generics}} {{ block.name.to_case(Case::Pascal) }}{{block_generics}} 
                         {% else %}
                             {{field_set_name.to_case(Case::Pascal)}}::default,
                         {% endif %}
+                        {{method.mir_object_id.raw() | fmt("{:#X}")}},
                     )
                 {% endwhen %}
                 {% when BlockMethodType::Command { field_set_name_in, field_set_name_out } %}
@@ -150,4 +151,8 @@ impl{{block_generics}} ::device_driver::Block for {{ block.name.to_case(Case::Pa
         self.interface
     }
     {% endif %}
+}
+
+impl{{block_generics}} ::device_driver::ManifestInfo for {{ block.name.to_case(Case::Pascal) }}{{block_generics}} {
+    const SOURCE_CRC: u32 = {{driver.source_crc | fmt("{:#X}")}};
 }

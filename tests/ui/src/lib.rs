@@ -111,8 +111,6 @@ pub fn compile_output(output_path: &Path) -> String {
     cmd.arg(output_path);
     cmd.env("CARGO_TARGET_DIR", "../../target/ui-tests");
     cmd.env("CARGO_TERM_COLOR", "never");
-    #[cfg(windows)]
-    cmd.env("CARGO_INCREMENTAL", "0");
 
     let output = cmd.output().unwrap();
 
