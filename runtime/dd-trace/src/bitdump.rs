@@ -493,11 +493,8 @@ impl BitdumpFormatter {
 
         for (i, (section, field)) in non_reserved.iter().enumerate() {
             let color = COLORS[section.color_index];
-            let border = if i + 1 == non_reserved.len() {
-                '╰'
-            } else {
-                '├'
-            };
+            let last = i + 1 == non_reserved.len();
+            let border = if last { '╰' } else { '├' };
             write!(
                 f,
                 "   {DIM}{border}─ {idx}{RESET} {color}{name:<name_width$}{RESET}  {bv:<bv_width$}",
@@ -521,6 +518,9 @@ impl BitdumpFormatter {
             }
 
             writeln!(f)?;
+            if last {
+                writeln!(f)?;
+            }
         }
         Ok(())
     }

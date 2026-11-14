@@ -122,6 +122,15 @@ impl Event {
         self
     }
 
+    pub fn send_frame_ref(
+        &self,
+        interface: &'static TraceInterface,
+        f: impl FnOnce(&mut Frame),
+    ) -> &Self {
+        f(&mut Frame::new(interface, self.source_crc, self.id));
+        self
+    }
+
     pub fn send_final_frame(self, interface: &'static TraceInterface, f: impl FnOnce(&mut Frame)) {
         let mut frame = Frame::new(interface, self.source_crc, self.id);
         f(&mut frame);

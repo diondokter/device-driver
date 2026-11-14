@@ -4,7 +4,7 @@ use core::marker::PhantomData;
 
 use crate::{
     Address, AddressMode, Append, ArrayRepeating, Block, Fieldset, FieldsetMetadata, Index,
-    ManifestInfo, NotRepeating, RO, RW, ReadCapability, Repeating, ToTuple, WO, WriteCapability,
+    NotRepeating, RO, RW, ReadCapability, Repeating, ToTuple, WO, WriteCapability,
 };
 
 #[cfg(feature = "defmt")]
@@ -142,7 +142,7 @@ impl<'b, B, RegisterFs, AddressType, Access, Repeat>
     RegisterOperation<'b, B, RegisterFs, AddressType, Access, Repeat>
 where
     RegisterFs: Fieldset,
-    B: Block + ManifestInfo,
+    B: Block,
     B::Interface: RegisterInterfaceBase<AddressType = AddressType>,
     AddressType: Address,
 {
@@ -192,6 +192,7 @@ where
         &mut self,
         _start_index: i32,
         _array_len: usize,
+        _stride: i32,
         _register: &impl Fieldset,
         _write: bool,
     ) {
@@ -199,7 +200,7 @@ where
         if let Some(trace_interface) = crate::global_trace_interface() {
             Event::new(trace_interface, B::SOURCE_CRC).send_final_frame(trace_interface, |f| {
                 f.send_timestamp();
-                for i in 0.._array_len {
+                for i in 0.._array_len as i32 * _stride {
                     f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
                         self.object_id,
                         Some(_start_index + i as i32),
@@ -238,6 +239,7 @@ where
         &mut self,
         _start_index: i32,
         _array_len: usize,
+        _stride: i32,
         _register: &impl Fieldset,
     ) -> ModifyEvent {
         #[cfg(feature = "trace")]
@@ -245,7 +247,7 @@ where
             Some(
                 Event::new(trace_interface, B::SOURCE_CRC).send_frame(trace_interface, |f| {
                     f.send_timestamp();
-                    for i in 0.._array_len {
+                    for i in 0.._array_len as i32 * _stride {
                         f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
                             self.object_id,
                             Some(_start_index + i as i32),
@@ -285,6 +287,10 @@ where
             object_id: self.object_id,
             #[cfg(feature = "trace")]
             index: None,
+            #[cfg(feature = "trace")]
+            array_len: 1,
+            #[cfg(feature = "trace")]
+            stride: 1,
             _phantom: PhantomData,
         }
     }
@@ -302,6 +308,10 @@ where
             object_id: self.object_id,
             #[cfg(feature = "trace")]
             index: Some(index.index()),
+            #[cfg(feature = "trace")]
+            array_len: 1,
+            #[cfg(feature = "trace")]
+            stride: 1,
             _phantom: PhantomData,
         }
     }
@@ -320,6 +330,10 @@ where
             object_id: self.object_id,
             #[cfg(feature = "trace")]
             index: None,
+            #[cfg(feature = "trace")]
+            array_len: 1,
+            #[cfg(feature = "trace")]
+            stride: 1,
             _phantom: PhantomData,
         }
     }
@@ -338,6 +352,10 @@ where
             object_id: self.object_id,
             #[cfg(feature = "trace")]
             index: Some(index.index()),
+            #[cfg(feature = "trace")]
+            array_len: 1,
+            #[cfg(feature = "trace")]
+            stride: 1,
             _phantom: PhantomData,
         }
     }
@@ -364,6 +382,10 @@ where
             object_id: self.object_id,
             #[cfg(feature = "trace")]
             index: Some(index.index()),
+            #[cfg(feature = "trace")]
+            array_len: N,
+            #[cfg(feature = "trace")]
+            stride: Repeat::STRIDE,
             _phantom: PhantomData,
         }
     }
@@ -391,6 +413,10 @@ where
             object_id: self.object_id,
             #[cfg(feature = "trace")]
             index: Some(index.index()),
+            #[cfg(feature = "trace")]
+            array_len: N,
+            #[cfg(feature = "trace")]
+            stride: Repeat::STRIDE,
             _phantom: PhantomData,
         }
     }
@@ -472,7 +498,7 @@ where
         let address = Repeat::calc_address(self.address, index);
         Self::assert_array_op_legal(address);
 
-        self.send_array_event(index.index(), N, &register, true);
+        self.send_array_event(index.index(), N, Repeat::STRIDE, &register, true);
 
         self.block.interface().write_register(
             address,
@@ -562,7 +588,7 @@ where
         let address = Repeat::calc_address(self.address, index);
         Self::assert_array_op_legal(address);
 
-        self.send_array_event(index.index(), N, &register, true);
+        self.send_array_event(index.index(), N, Repeat::STRIDE, &register, true);
 
         async move {
             self.block
@@ -646,7 +672,7 @@ where
         let address = Repeat::calc_address(self.address, index);
         Self::assert_array_op_legal(address);
 
-        self.send_array_event(index.index(), N, &register, true);
+        self.send_array_event(index.index(), N, Repeat::STRIDE, &register, true);
 
         self.block.interface().write_register(
             address,
@@ -821,7 +847,7 @@ where
             .map(|_| register);
 
         if let Ok(register) = result.as_ref() {
-            self.send_array_event(index.index(), N, register, false);
+            self.send_array_event(index.index(), N, Repeat::STRIDE, register, false);
         }
 
         result
@@ -911,7 +937,7 @@ where
                 .map(|_| register);
 
             if let Ok(register) = result.as_ref() {
-                self.send_array_event(index.index(), N, register, false);
+                self.send_array_event(index.index(), N, Repeat::STRIDE, register, false);
             }
 
             result
@@ -1019,7 +1045,7 @@ where
             &RegisterFs::METADATA,
         )?;
 
-        let event = self.start_array_modify_event(index.index(), N, &register);
+        let event = self.start_array_modify_event(index.index(), N, Repeat::STRIDE, &register);
 
         f(&mut register);
 
@@ -1133,7 +1159,7 @@ where
                 .read_register(address, register.as_slice_mut(), &RegisterFs::METADATA)
                 .await?;
 
-            let event = self.start_array_modify_event(index.index(), N, &register);
+            let event = self.start_array_modify_event(index.index(), N, Repeat::STRIDE, &register);
 
             f(&mut register);
 
@@ -1177,6 +1203,10 @@ pub struct Plan<AddressType: Copy, FS, Access> {
     object_id: u32,
     #[cfg(feature = "trace")]
     index: Option<i32>,
+    #[cfg(feature = "trace")]
+    array_len: usize,
+    #[cfg(feature = "trace")]
+    stride: i32,
     _phantom: PhantomData<Access>,
 }
 
@@ -1186,6 +1216,8 @@ pub struct BulkRegisterOperation<'b, B, AddressType: Address, Fieldsets, Access>
     pub(crate) start_address: Option<AddressType>,
     pub(crate) next_address: Option<AddressType>,
     pub(crate) field_sets: Fieldsets,
+    #[cfg(feature = "trace")]
+    pub(crate) trace_event: Option<Event>,
     pub(crate) _phantom: PhantomData<Access>,
 }
 
@@ -1206,6 +1238,22 @@ where
             );
         }
     }
+
+    fn send_event_frame<FS, LocalAccess>(&mut self, _plan: &Plan<AddressType, FS, LocalAccess>) {
+        #[cfg(feature = "trace")]
+        if let Some(trace_event) = self.trace_event.as_mut()
+            && let Some(trace_interface) = crate::global_trace_interface()
+        {
+            trace_event.send_frame_ref(trace_interface, |f| {
+                for i in 0.._plan.array_len as i32 * _plan.stride {
+                    f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                        _plan.object_id,
+                        _plan.index.map(|index| index + i),
+                    ));
+                }
+            });
+        }
+    }
 }
 
 impl<'b, B, AddressType, FieldSets> BulkRegisterOperation<'b, B, AddressType, FieldSets, WO>
@@ -1223,23 +1271,27 @@ where
     #[track_caller]
     #[inline]
     pub fn with<FS: Fieldset, LocalAccess: WriteCapability>(
-        self,
+        mut self,
         f: impl FnOnce(&mut B) -> Plan<AddressType, FS, LocalAccess>,
     ) -> BulkRegisterOperation<'b, B, AddressType, FieldSets::Appended, WO>
     where
         FieldSets: Append<FS>,
     {
-        let Plan { address, value, .. } = f(self.block);
-        self.assert_legal(address);
+        let plan = f(self.block);
+        self.assert_legal(plan.address);
+
+        self.send_event_frame(&plan);
 
         BulkRegisterOperation {
             block: self.block,
-            start_address: self.start_address.or(Some(address)),
+            start_address: self.start_address.or(Some(plan.address)),
             next_address: Some(B::RegisterAddressMode::next_address(
-                address,
+                plan.address,
                 core::mem::size_of::<FS>(),
             )),
-            field_sets: self.field_sets.append(value),
+            field_sets: self.field_sets.append(plan.value),
+            #[cfg(feature = "trace")]
+            trace_event: self.trace_event,
             _phantom: PhantomData,
         }
     }
@@ -1260,23 +1312,27 @@ where
     #[track_caller]
     #[inline]
     pub fn with<FS: Fieldset, LocalAccess: ReadCapability>(
-        self,
+        mut self,
         f: impl FnOnce(&mut B) -> Plan<AddressType, FS, LocalAccess>,
     ) -> BulkRegisterOperation<'b, B, AddressType, FieldSets::Appended, RO>
     where
         FieldSets: Append<FS>,
     {
-        let Plan { address, value, .. } = f(self.block);
-        self.assert_legal(address);
+        let plan = f(self.block);
+        self.assert_legal(plan.address);
+
+        self.send_event_frame(&plan);
 
         BulkRegisterOperation {
             block: self.block,
-            start_address: self.start_address.or(Some(address)),
+            start_address: self.start_address.or(Some(plan.address)),
             next_address: Some(B::RegisterAddressMode::next_address(
-                address,
+                plan.address,
                 core::mem::size_of::<FS>(),
             )),
-            field_sets: self.field_sets.append(value),
+            field_sets: self.field_sets.append(plan.value),
+            #[cfg(feature = "trace")]
+            trace_event: self.trace_event,
             _phantom: PhantomData,
         }
     }
@@ -1297,24 +1353,68 @@ where
     #[track_caller]
     #[inline]
     pub fn with<FS: Fieldset, LocalAccess: ReadCapability + WriteCapability>(
-        self,
+        mut self,
         f: impl FnOnce(&mut B) -> Plan<AddressType, FS, LocalAccess>,
     ) -> BulkRegisterOperation<'b, B, AddressType, FieldSets::Appended, RW>
     where
         FieldSets: Append<FS>,
     {
-        let Plan { address, value, .. } = f(self.block);
-        self.assert_legal(address);
+        let plan = f(self.block);
+        self.assert_legal(plan.address);
+
+        self.send_event_frame(&plan);
 
         BulkRegisterOperation {
             block: self.block,
-            start_address: self.start_address.or(Some(address)),
+            start_address: self.start_address.or(Some(plan.address)),
             next_address: Some(B::RegisterAddressMode::next_address(
-                address,
+                plan.address,
                 core::mem::size_of::<FS>(),
             )),
-            field_sets: self.field_sets.append(value),
+            field_sets: self.field_sets.append(plan.value),
+            #[cfg(feature = "trace")]
+            trace_event: self.trace_event,
             _phantom: PhantomData,
+        }
+    }
+}
+
+impl<B: Block, Fieldsets, Access>
+    BulkRegisterOperation<
+        '_,
+        B,
+        <B::Interface as RegisterInterfaceBase>::AddressType,
+        Fieldsets,
+        Access,
+    >
+where
+    B: Block,
+    B::Interface: RegisterInterfaceBase,
+    Fieldsets: Fieldset,
+{
+    fn send_modify_start_event(&mut self) {
+        #[cfg(feature = "trace")]
+        if let Some(event) = self.trace_event.as_mut()
+            && let Some(trace_interface) = crate::global_trace_interface()
+        {
+            event.send_frame_ref(trace_interface, |f| {
+                f.send_bytes(false, self.field_sets.as_slice());
+            });
+        }
+    }
+
+    fn send_final_event(&mut self, _write: bool) {
+        #[cfg(feature = "trace")]
+        if let Some(event) = self.trace_event.take()
+            && let Some(trace_interface) = crate::global_trace_interface()
+        {
+            event.send_final_frame(trace_interface, |f| {
+                f.send_timestamp();
+                if let Some(start_address) = self.start_address {
+                    start_address.get_le_bytes(|address| f.send_address(address));
+                }
+                f.send_bytes(_write, self.field_sets.as_slice());
+            });
         }
     }
 }
@@ -1343,14 +1443,17 @@ where
     where
         B::Interface: RegisterInterface,
     {
-        self.block
-            .interface()
-            .read_register(
-                self.start_address.unwrap(),
-                self.field_sets.as_slice_mut(),
-                &Fieldsets::METADATA,
-            )
-            .map(|_| self.field_sets.to_tuple())
+        let result = self.block.interface().read_register(
+            self.start_address.unwrap(),
+            self.field_sets.as_slice_mut(),
+            &Fieldsets::METADATA,
+        );
+
+        if result.is_ok() {
+            self.send_final_event(false);
+        }
+
+        result.map(|_| self.field_sets.to_tuple())
     }
 
     /// Execute the read.
@@ -1364,15 +1467,21 @@ where
     where
         B::Interface: AsyncRegisterInterface,
     {
-        self.block
+        let result = self
+            .block
             .interface()
             .read_register(
                 self.start_address.unwrap(),
                 self.field_sets.as_slice_mut(),
                 &Fieldsets::METADATA,
             )
-            .await
-            .map(|_| self.field_sets.to_tuple())
+            .await;
+
+        if result.is_ok() {
+            self.send_final_event(false);
+        }
+
+        result.map(|_| self.field_sets.to_tuple())
     }
 }
 
@@ -1407,6 +1516,8 @@ where
     {
         f(self.field_sets.to_tuple());
 
+        self.send_final_event(true);
+
         self.block.interface().write_register(
             self.start_address.unwrap(),
             self.field_sets.as_slice_mut(),
@@ -1430,6 +1541,8 @@ where
         B::Interface: AsyncRegisterInterface,
     {
         f(self.field_sets.to_tuple());
+
+        self.send_final_event(true);
 
         async move {
             self.block
@@ -1479,7 +1592,11 @@ where
             &Fieldsets::METADATA,
         )?;
 
+        self.send_modify_start_event();
+
         f(self.field_sets.to_tuple());
+
+        self.send_final_event(true);
 
         self.block.interface().write_register(
             self.start_address.unwrap(),
@@ -1512,7 +1629,11 @@ where
             )
             .await?;
 
+        self.send_modify_start_event();
+
         f(self.field_sets.to_tuple());
+
+        self.send_final_event(true);
 
         self.block
             .interface()

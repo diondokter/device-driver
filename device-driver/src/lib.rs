@@ -19,6 +19,8 @@ mod repeats;
 
 pub use buffer::*;
 pub use command::*;
+#[cfg(feature = "trace")]
+use device_driver_trace::encoder::Event;
 pub use fieldset::*;
 pub use register::*;
 
@@ -34,6 +36,9 @@ pub use device_driver_macros::*;
 pub use device_driver_trace::TraceInterface;
 
 /// Trait implemented on every generated block/device.
+///
+/// Do not implement this trait yourself, it should only be generated.
+/// Implementing this trait is not semver stable.
 pub trait Block: Sized {
     /// The interface used by the block
     type Interface;
@@ -45,6 +50,8 @@ pub trait Block: Sized {
     type BufferAddressType: Address;
     /// The address mode of the registers in this block
     type RegisterAddressMode;
+    /// The CRC of the source that generated this block
+    const SOURCE_CRC: u32;
 
     /// Get a reference to the inner interface.
     /// With it you can do out-of-band operations that aren't defined in the generated code.
@@ -72,6 +79,9 @@ pub trait Block: Sized {
             start_address: None,
             next_address: None,
             field_sets: (),
+            #[cfg(feature = "trace")]
+            trace_event: crate::global_trace_interface()
+                .map(|interface| Event::new(interface, Self::SOURCE_CRC)),
             _phantom: PhantomData,
         }
     }
@@ -98,6 +108,9 @@ pub trait Block: Sized {
             start_address: None,
             next_address: None,
             field_sets: (),
+            #[cfg(feature = "trace")]
+            trace_event: crate::global_trace_interface()
+                .map(|interface| Event::new(interface, Self::SOURCE_CRC)),
             _phantom: PhantomData,
         }
     }
@@ -124,14 +137,12 @@ pub trait Block: Sized {
             start_address: None,
             next_address: None,
             field_sets: (),
+            #[cfg(feature = "trace")]
+            trace_event: crate::global_trace_interface()
+                .map(|interface| Event::new(interface, Self::SOURCE_CRC)),
             _phantom: PhantomData,
         }
     }
-}
-
-#[doc(hidden)]
-pub trait ManifestInfo {
-    const SOURCE_CRC: u32;
 }
 
 /// Value representing the byte order

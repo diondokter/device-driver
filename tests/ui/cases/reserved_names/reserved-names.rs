@@ -39,12 +39,10 @@ impl<I> ::device_driver::Block for Foo<I> {
     type CommandAddressType = u8;
     type BufferAddressType = u16;
     type RegisterAddressMode = ();
+    const SOURCE_CRC: u32 = 0xD9CB1CC3;
     fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }
-}
-impl<I> ::device_driver::ManifestInfo for Foo<I> {
-    const SOURCE_CRC: u32 = 0xD9CB1CC3;
 }
 #[derive(Copy, Clone, Eq, PartialEq)]
 #[repr(transparent)]

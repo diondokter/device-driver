@@ -141,6 +141,7 @@ impl{{block_generics}} ::device_driver::Block for {{ block.name.to_case(Case::Pa
     type CommandAddressType = {{ block.command_address_type }};
     type BufferAddressType = {{ block.buffer_address_type }};
     type RegisterAddressMode = {{self::get_address_mode_const_value(block.register_address_mode)}};
+    const SOURCE_CRC: u32 = {{driver.source_crc | fmt("{:#X}")}};
 
     {% if block.root %}
     fn interface(&mut self) -> &mut Self::Interface {
@@ -151,8 +152,4 @@ impl{{block_generics}} ::device_driver::Block for {{ block.name.to_case(Case::Pa
         self.interface
     }
     {% endif %}
-}
-
-impl{{block_generics}} ::device_driver::ManifestInfo for {{ block.name.to_case(Case::Pascal) }}{{block_generics}} {
-    const SOURCE_CRC: u32 = {{driver.source_crc | fmt("{:#X}")}};
 }

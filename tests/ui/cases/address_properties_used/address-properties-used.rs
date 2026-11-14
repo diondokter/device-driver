@@ -56,12 +56,10 @@ impl<I> ::device_driver::Block for Bar<I> {
     type CommandAddressType = u8;
     type BufferAddressType = u8;
     type RegisterAddressMode = ::device_driver::MappedAddressMode;
+    const SOURCE_CRC: u32 = 0x48900BE7;
     fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }
-}
-impl<I> ::device_driver::ManifestInfo for Bar<I> {
-    const SOURCE_CRC: u32 = 0x48900BE7;
 }
 #[doc(alias = "reg")]
 #[derive(Copy, Clone, Eq, PartialEq)]

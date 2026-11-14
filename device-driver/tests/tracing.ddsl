@@ -2,6 +2,7 @@ manifest my-man {
     device MyTestDevice {
         register-address-type: u8,
         default-access: RW,
+        register-address-mode: mapped,
 
         register MyRegister {
             address: 0,
@@ -18,5 +19,12 @@ manifest my-man {
                 field ddd 31:13
             }
         },
+        register Second[4 stride 1] {
+            address: 4,
+            fields: fieldset SingleByte {
+                size-bytes: 1,
+                field value 7:0
+            }
+        }
     }
 }

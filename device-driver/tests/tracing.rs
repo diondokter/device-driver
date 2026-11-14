@@ -4,10 +4,12 @@ use std::sync::{
 };
 
 use critical_section::RestoreState;
-use device_driver::{FieldsetMetadata, RegisterInterface, RegisterInterfaceBase, TraceInterface};
+use device_driver::{
+    Block, FieldsetMetadata, RegisterInterface, RegisterInterfaceBase, TraceInterface,
+};
 use device_driver_trace::{
-    crc32,
-    decoder::{DecodeError, Event},
+    ObjectIdentifier, crc32,
+    decoder::{DecodeError, Event, Operation},
 };
 
 pub struct DeviceInterface {
@@ -63,6 +65,7 @@ static mut WRITTEN_BYTES: Vec<u8> = Vec::new();
 static mut TAKEN: bool = false;
 static mut RESTORE_STATE: RestoreState = RestoreState::invalid();
 
+static ID: AtomicU8 = AtomicU8::new(0);
 static INTERFACE: TraceInterface = TraceInterface {
     acquire: || {
         unsafe { RESTORE_STATE = critical_section::acquire() };
@@ -79,24 +82,19 @@ static INTERFACE: TraceInterface = TraceInterface {
         TAKEN = false;
         critical_section::release(RESTORE_STATE);
     },
-    id: || {
-        static ID: AtomicU8 = AtomicU8::new(0);
-        ID.fetch_add(1, Ordering::Relaxed)
-    },
+    id: || ID.fetch_add(1, Ordering::Relaxed),
 };
 
 #[test]
-fn test_single_write() {
+fn test_single_modify() {
     let _tl = TEST_LOCK.lock().unwrap();
-    (INTERFACE.acquire)();
     #[allow(static_mut_refs)]
     unsafe {
-        WRITTEN_BYTES.clear()
-    };
-    unsafe {
+        (INTERFACE.acquire)();
+        WRITTEN_BYTES.clear();
+        ID.store(0, Ordering::Relaxed);
         (INTERFACE.release)();
     }
-
     device_driver::set_global_trace_interface(Some(&INTERFACE));
 
     let mut device = MyTestDevice::new(DeviceInterface::new());
@@ -120,17 +118,71 @@ fn test_single_write() {
     let mut decoder = device_driver_trace::decoder::StreamingDecoder::new();
     let events = decoder.push_bytes(&written_bytes);
 
+    assert_eq!(
+        events,
+        vec![Ok(Event {
+            source_crc: device_driver_trace::crc32(include_bytes!("./tracing.ddsl")),
+            id: 0,
+            timestamp: Some(1_001_000),
+            operations: vec![Operation {
+                objects: vec![ObjectIdentifier::new(0x03000000, None)],
+                address: vec![0],
+                read_data: vec![0, 0, 0, 0],
+                write_data: vec![0xD1, 0x80, 0x43, 0x00],
+            }]
+        })]
+    );
+
+    let trace = render_trace(&events);
+    println!("{trace}");
+}
+
+#[test]
+fn test_bulk_modify() {
+    let _tl = TEST_LOCK.lock().unwrap();
+    #[allow(static_mut_refs)]
+    unsafe {
+        (INTERFACE.acquire)();
+        WRITTEN_BYTES.clear();
+        ID.store(0, Ordering::Relaxed);
+        (INTERFACE.release)();
+    }
+    device_driver::set_global_trace_interface(Some(&INTERFACE));
+
+    let mut device = MyTestDevice::new(DeviceInterface::new());
+
+    device
+        .bulk_modify()
+        .with(|d| d.my_register().plan())
+        .with(|d| d.second().plan_array_at::<4>(0))
+        .execute(|(x, y)| {
+            x.set_aaa(true);
+            x.set_ddd(0xFFF);
+            y[0].set_value(42);
+        })
+        .unwrap();
+
+    (INTERFACE.acquire)();
+    #[allow(static_mut_refs)]
+    let written_bytes = unsafe { WRITTEN_BYTES.clone() };
+    unsafe {
+        (INTERFACE.release)();
+    }
+
+    let mut decoder = device_driver_trace::decoder::StreamingDecoder::new();
+    let events = decoder.push_bytes(&written_bytes);
+
     // assert_eq!(
     //     events,
     //     vec![Ok(Event {
-    //         instance: 55,
+    //         source_crc: device_driver_trace::crc32(include_bytes!("./tracing.ddsl")),
     //         id: 0,
     //         timestamp: Some(1_001_000),
     //         operations: vec![Operation {
     //             objects: vec![ObjectIdentifier::new(0x03000000, None)],
     //             address: vec![0],
-    //             read_data: vec![],
-    //             write_data: vec![0xD],
+    //             read_data: vec![0, 0, 0, 0],
+    //             write_data: vec![0xD1, 0x80, 0x43, 0x00],
     //         }]
     //     })]
     // );

@@ -250,10 +250,16 @@ pub struct CorrelatedOperation {
 
 impl Display for CorrelatedOperation {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "address: {:#X}, ", self.address)?;
+        write!(f, "address: {:#X}", self.address)?;
+
+        if self.actions.len() > 1 {
+            writeln!(f)?;
+        } else {
+            write!(f, ", ")?;
+        }
 
         for action in &self.actions {
-            writeln!(f, "{action}")?;
+            write!(f, "{action}")?;
         }
 
         Ok(())
@@ -288,7 +294,7 @@ impl Display for CorrelatedAction {
                     vec![None; fs.fields.len()]
                 };
 
-                writeln!(
+                write!(
                     f,
                     "{}",
                     BitdumpFormatter::new(
