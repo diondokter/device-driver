@@ -289,8 +289,6 @@ where
             index: None,
             #[cfg(feature = "trace")]
             array_len: 1,
-            #[cfg(feature = "trace")]
-            stride: 1,
             _phantom: PhantomData,
         }
     }
@@ -310,8 +308,6 @@ where
             index: Some(index.index()),
             #[cfg(feature = "trace")]
             array_len: 1,
-            #[cfg(feature = "trace")]
-            stride: 1,
             _phantom: PhantomData,
         }
     }
@@ -332,8 +328,6 @@ where
             index: None,
             #[cfg(feature = "trace")]
             array_len: 1,
-            #[cfg(feature = "trace")]
-            stride: 1,
             _phantom: PhantomData,
         }
     }
@@ -354,8 +348,6 @@ where
             index: Some(index.index()),
             #[cfg(feature = "trace")]
             array_len: 1,
-            #[cfg(feature = "trace")]
-            stride: 1,
             _phantom: PhantomData,
         }
     }
@@ -384,8 +376,6 @@ where
             index: Some(index.index()),
             #[cfg(feature = "trace")]
             array_len: N,
-            #[cfg(feature = "trace")]
-            stride: Repeat::STRIDE,
             _phantom: PhantomData,
         }
     }
@@ -415,8 +405,6 @@ where
             index: Some(index.index()),
             #[cfg(feature = "trace")]
             array_len: N,
-            #[cfg(feature = "trace")]
-            stride: Repeat::STRIDE,
             _phantom: PhantomData,
         }
     }
@@ -1205,12 +1193,11 @@ pub struct Plan<AddressType: Copy, FS, Access> {
     index: Option<i32>,
     #[cfg(feature = "trace")]
     array_len: usize,
-    #[cfg(feature = "trace")]
-    stride: i32,
     _phantom: PhantomData<Access>,
 }
 
 /// A register operation for reading or writing multiple registers in one transaction
+#[derive(Debug)]
 pub struct BulkRegisterOperation<'b, B, AddressType: Address, Fieldsets, Access> {
     pub(crate) block: &'b mut B,
     pub(crate) start_address: Option<AddressType>,
@@ -1245,7 +1232,7 @@ where
             && let Some(trace_interface) = crate::global_trace_interface()
         {
             trace_event.send_frame_ref(trace_interface, |f| {
-                for i in 0.._plan.array_len as i32 * _plan.stride {
+                for i in 0.._plan.array_len as i32 {
                     f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
                         _plan.object_id,
                         _plan.index.map(|index| index + i),

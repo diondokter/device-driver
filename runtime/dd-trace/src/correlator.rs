@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 use device_driver_common::{
     interner::Istr,
-    specifiers::{Access, Integer},
+    specifiers::{Access, Integer, RepeatSource},
 };
 use device_driver_diagnostics::{DynError, ResultExt};
 use device_driver_mir::{
@@ -113,13 +113,40 @@ fn correlate_operation(
         .iter()
         .map(|object| {
             let id = ObjectId::try_from_raw(object.object_id)?;
-            match id.get(manifest).ok_or_else(|| {
+
+            let mir_object = id.get(manifest).ok_or_else(|| {
                 DynError::new(
                     "could not find operation object. Are we looking at the correct manifest?",
                 )
-            })? {
+            })?;
+
+            let index = match (object.index, mir_object.repeat()) {
+                (None, None) => None,
+                (None, Some(_)) | (Some(_), None) => return Err(DynError::new("trace and manifest disagree on object index. Are we looking at the correct manifest?")),
+                (Some(num), Some(repeat)) => {
+                    match &repeat.source.value {
+                        RepeatSource::Count(_) => Some(num.to_string()),
+                        RepeatSource::Enum(identifier_ref) => {
+                            let repeat_enum = manifest.search_object(identifier_ref).ok_or_else(|| {
+                                DynError::new(
+                                    "could not find repeat enum. Are we looking at the correct manifest?",
+                                )
+                            })?;
+                            let repeat_enum = repeat_enum.as_enum().ok_or_else(|| DynError::new(
+                                    "repeat type is not an enum. Are we looking at the correct manifest?",
+                                ))?;
+                            let decoded = device_driver_mir::runtime::decode_enum(manifest, repeat_enum, num as _)
+                                .with_message(|| "could not decode repeat enum value")?;
+                            Some(format!("{}::{decoded}", repeat_enum.name.original()))
+                        },
+                    }
+                },
+            };
+
+            match mir_object {
                 Object::Register(register) => Ok(ActionInfo {
                     operation_name: register.name.original(),
+                    index,
                     read_fs: operation
                         .read_data
                         .is_empty()
@@ -133,6 +160,7 @@ fn correlate_operation(
                 }),
                 Object::Command(command) => Ok(ActionInfo {
                     operation_name: command.name.original(),
+                    index,
                     read_fs: command
                         .field_set_ref_in
                         .as_ref()
@@ -144,6 +172,7 @@ fn correlate_operation(
                 }),
                 Object::Buffer(buffer) => Ok(ActionInfo {
                     operation_name: buffer.name.original(),
+                    index,
                     read_fs: None,
                     write_fs: None,
                 }),
@@ -198,6 +227,7 @@ fn correlate_operation(
                 action,
                 is_modify,
                 operation_name: info.operation_name,
+                index: info.index,
                 read_fs: info
                     .read_fs
                     .map(|fs| decode_fieldset(manifest, fs, &read_data).into_dyn_result())
@@ -270,6 +300,7 @@ struct CorrelatedAction {
     action: &'static str,
     is_modify: bool,
     operation_name: Istr,
+    index: Option<String>,
     read_fs: Option<DecodedFieldset>,
     write_fs: Option<DecodedFieldset>,
     read_data: Vec<u8>,
@@ -278,7 +309,12 @@ struct CorrelatedAction {
 
 impl Display for CorrelatedAction {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        writeln!(f, "action: {} {}", self.action, self.operation_name)?;
+        write!(f, "action: {} {}", self.action, self.operation_name)?;
+        if let Some(index) = self.index.as_ref() {
+            writeln!(f, "[{index}]")?;
+        } else {
+            writeln!(f)?;
+        }
 
         fn fmt_bytes(
             f: &mut core::fmt::Formatter<'_>,
@@ -375,6 +411,7 @@ fn operation_action(
 
 struct ActionInfo<'a> {
     operation_name: Istr,
+    index: Option<String>,
     read_fs: Option<&'a FieldSet>,
     write_fs: Option<&'a FieldSet>,
 }

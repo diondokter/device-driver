@@ -98,6 +98,7 @@ impl Drop for Frame {
     }
 }
 
+#[derive(Debug)]
 pub struct Event {
     pub(crate) id: u8,
     finalized: bool,

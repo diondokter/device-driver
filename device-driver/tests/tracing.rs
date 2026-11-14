@@ -155,10 +155,12 @@ fn test_bulk_modify() {
         .bulk_modify()
         .with(|d| d.my_register().plan())
         .with(|d| d.second().plan_array_at::<4>(0))
-        .execute(|(x, y)| {
+        .with(|d| d.third().plan_at(ThirdIndex::A))
+        .execute(|(x, y, z)| {
             x.set_aaa(true);
             x.set_ddd(0xFFF);
             y[0].set_value(42);
+            z.set_value(255);
         })
         .unwrap();
 

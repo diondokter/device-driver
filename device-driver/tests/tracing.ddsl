@@ -22,9 +22,20 @@ manifest my-man {
         register Second[4 stride 1] {
             address: 4,
             fields: fieldset SingleByte {
+                byte-order: LE,
                 size-bytes: 1,
                 field value 7:0
             }
+        },
+        register Third[ThirdIndex stride 1] {
+            address: 8,
+            fields: SingleByte,
+        },
+        enum ThirdIndex {
+            A: _,
+            B: _,
+            C: _,
+            D: _,
         }
     }
 }
