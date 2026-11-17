@@ -69,7 +69,7 @@ impl<I> ::device_driver::Block for Repeats<I> {
     type CommandAddressType = u8;
     type BufferAddressType = u8;
     type RegisterAddressMode = ();
-    const SOURCE_CRC: u32 = 0x9A7EA62E;
+    const SOURCE_CRC: u32 = 0x6D537431;
     fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }
@@ -100,7 +100,7 @@ impl<'i, I> ::device_driver::Block for Foo<'i, I> {
     type CommandAddressType = u8;
     type BufferAddressType = u8;
     type RegisterAddressMode = ();
-    const SOURCE_CRC: u32 = 0x9A7EA62E;
+    const SOURCE_CRC: u32 = 0x6D537431;
     fn interface(&mut self) -> &mut Self::Interface {
         self.interface
     }
@@ -131,7 +131,7 @@ impl<'i, I> ::device_driver::Block for Bar<'i, I> {
     type CommandAddressType = u8;
     type BufferAddressType = u8;
     type RegisterAddressMode = ();
-    const SOURCE_CRC: u32 = 0x9A7EA62E;
+    const SOURCE_CRC: u32 = 0x6D537431;
     fn interface(&mut self) -> &mut Self::Interface {
         self.interface
     }
@@ -162,7 +162,7 @@ impl<'i, I> ::device_driver::Block for Quux<'i, I> {
     type CommandAddressType = u8;
     type BufferAddressType = u8;
     type RegisterAddressMode = ();
-    const SOURCE_CRC: u32 = 0x9A7EA62E;
+    const SOURCE_CRC: u32 = 0x6D537431;
     fn interface(&mut self) -> &mut Self::Interface {
         self.interface
     }

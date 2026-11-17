@@ -56,7 +56,7 @@ impl<I> ::device_driver::Block for Bar<I> {
     type CommandAddressType = u8;
     type BufferAddressType = u8;
     type RegisterAddressMode = ::device_driver::MappedAddressMode;
-    const SOURCE_CRC: u32 = 0x48900BE7;
+    const SOURCE_CRC: u32 = 0x2CB79A93;
     fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }

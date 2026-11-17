@@ -84,7 +84,7 @@ fn test_single_modify() {
     assert_eq!(
         events,
         vec![Ok(Event {
-            source_crc: device_driver_trace::crc32(include_bytes!("./tracing.ddsl")),
+            source_crc: device_driver_trace::crc32(include_str!("./tracing.ddsl")),
             id: 0,
             timestamp: Some(1_001_000),
             operations: vec![Operation {
@@ -158,7 +158,7 @@ fn render_trace(events: &[Result<Event, DecodeError>]) -> String {
         device_driver_mir::lower_ast(&ast, &Default::default(), &mut diagnostics).unwrap();
     assert_eq!(diagnostics.summary(), Default::default());
 
-    let manifests = [(crc32(DDSL.as_bytes()), manifest)].into_iter().collect();
+    let manifests = [(crc32(DDSL), manifest)].into_iter().collect();
 
     let mut output = String::new();
 

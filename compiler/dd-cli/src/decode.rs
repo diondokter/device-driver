@@ -45,7 +45,7 @@ pub fn decode(args: DecodeArgs) -> Result<ExitCode, DynError> {
         }
 
         if manifests
-            .insert(device_driver_trace::crc32(source.as_bytes()), manifest)
+            .insert(device_driver_trace::crc32(&source), manifest)
             .is_some()
         {
             return Err(DynError::new(format!(

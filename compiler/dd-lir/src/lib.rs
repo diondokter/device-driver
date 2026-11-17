@@ -14,20 +14,25 @@ pub fn lower_mir(
         lowering::transform_devices(&manifest).with_message(|| "could not transform devices")?;
 
     Ok(model::Driver {
-        source_crc: crc32(source.as_bytes()),
+        source_crc: crc32(source),
         devices,
         field_sets,
         enums,
     })
 }
 
-fn crc32(data: &[u8]) -> u32 {
+fn crc32(data: &str) -> u32 {
     const POLY: u32 = 0x82f6_3b78; // Castagnoli
 
     let mut crc = 0xFFFF_FFFF;
 
-    for byte in data {
-        crc ^= u32::from(*byte);
+    for byte in data.bytes() {
+        if byte == b'\r' {
+            // Skip carriage-return to get the crc's across operating systems
+            continue;
+        }
+
+        crc ^= u32::from(byte);
 
         for _ in 0..8 {
             let lowest_bit_set = crc & 1 > 0;

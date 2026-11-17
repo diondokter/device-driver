@@ -57,7 +57,7 @@ impl<I> ::device_driver::Block for Foo<I> {
     type CommandAddressType = u8;
     type BufferAddressType = u8;
     type RegisterAddressMode = ();
-    const SOURCE_CRC: u32 = 0x71464820;
+    const SOURCE_CRC: u32 = 0xC08AC2D8;
     fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }
@@ -113,7 +113,7 @@ impl<I> ::device_driver::Block for FooDup1<I> {
     type CommandAddressType = u8;
     type BufferAddressType = u8;
     type RegisterAddressMode = ();
-    const SOURCE_CRC: u32 = 0x71464820;
+    const SOURCE_CRC: u32 = 0xC08AC2D8;
     fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }
@@ -169,7 +169,7 @@ impl<I> ::device_driver::Block for Blah<I> {
     type CommandAddressType = u8;
     type BufferAddressType = u8;
     type RegisterAddressMode = ();
-    const SOURCE_CRC: u32 = 0x71464820;
+    const SOURCE_CRC: u32 = 0xC08AC2D8;
     fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }
@@ -199,7 +199,7 @@ impl<'i, I> ::device_driver::Block for Wheee<'i, I> {
     type CommandAddressType = u8;
     type BufferAddressType = u8;
     type RegisterAddressMode = ();
-    const SOURCE_CRC: u32 = 0x71464820;
+    const SOURCE_CRC: u32 = 0xC08AC2D8;
     fn interface(&mut self) -> &mut Self::Interface {
         self.interface
     }
@@ -229,7 +229,7 @@ impl<'i, I> ::device_driver::Block for Wheee2<'i, I> {
     type CommandAddressType = u8;
     type BufferAddressType = u8;
     type RegisterAddressMode = ();
-    const SOURCE_CRC: u32 = 0x71464820;
+    const SOURCE_CRC: u32 = 0xC08AC2D8;
     fn interface(&mut self) -> &mut Self::Interface {
         self.interface
     }
@@ -259,7 +259,7 @@ impl<I> ::device_driver::Block for Words<I> {
     type CommandAddressType = u8;
     type BufferAddressType = u8;
     type RegisterAddressMode = ();
-    const SOURCE_CRC: u32 = 0x71464820;
+    const SOURCE_CRC: u32 = 0xC08AC2D8;
     fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }

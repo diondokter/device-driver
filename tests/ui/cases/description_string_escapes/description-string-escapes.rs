@@ -66,7 +66,7 @@ impl<I> ::device_driver::Block for Device<I> {
     type CommandAddressType = u8;
     type BufferAddressType = u8;
     type RegisterAddressMode = ();
-    const SOURCE_CRC: u32 = 0x81850171;
+    const SOURCE_CRC: u32 = 0x754D8B8;
     fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }

@@ -64,7 +64,7 @@ impl<I> ::device_driver::Block for Y<I> {
     type CommandAddressType = u8;
     type BufferAddressType = u8;
     type RegisterAddressMode = ();
-    const SOURCE_CRC: u32 = 0xD207FB80;
+    const SOURCE_CRC: u32 = 0x62BA5AE8;
     fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }
@@ -112,7 +112,7 @@ impl<'i, I> ::device_driver::Block for B<'i, I> {
     type CommandAddressType = u8;
     type BufferAddressType = u8;
     type RegisterAddressMode = ();
-    const SOURCE_CRC: u32 = 0xD207FB80;
+    const SOURCE_CRC: u32 = 0x62BA5AE8;
     fn interface(&mut self) -> &mut Self::Interface {
         self.interface
     }
@@ -172,7 +172,7 @@ impl<I> ::device_driver::Block for D<I> {
     type CommandAddressType = u8;
     type BufferAddressType = u8;
     type RegisterAddressMode = ();
-    const SOURCE_CRC: u32 = 0xD207FB80;
+    const SOURCE_CRC: u32 = 0x62BA5AE8;
     fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }
