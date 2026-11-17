@@ -16,9 +16,6 @@ device-driver-mir = { workspace = true, optional = true }
 device-driver-diagnostics = { workspace = true, optional = true }
 device-driver-common = { workspace = true, optional = true }
 
-[dev-dependencies]
-critical-section = { version = "1.2.0", features = ["std"] }
-
 [features]
 default = ["std"]
 

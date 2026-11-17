@@ -1,14 +1,8 @@
-use std::sync::{
-    Mutex,
-    atomic::{AtomicU8, Ordering},
-};
+use std::sync::Mutex;
 
-use critical_section::RestoreState;
-use device_driver::{
-    Block, FieldsetMetadata, RegisterInterface, RegisterInterfaceBase, TraceInterface,
-};
+use device_driver::{Block, FieldsetMetadata, RegisterInterface, RegisterInterfaceBase};
 use device_driver_trace::{
-    ObjectIdentifier, crc32,
+    ObjectIdentifier, TestTraceInterface, crc32,
     decoder::{DecodeError, Event, Operation},
 };
 
@@ -60,42 +54,16 @@ device_driver::compile!(
     manifest: "tests/tracing.ddsl"
 );
 
+// `cargo test` shares global state for tests, so we need to 'serialize' the tests using this lock
 static TEST_LOCK: Mutex<()> = Mutex::new(());
-static mut WRITTEN_BYTES: Vec<u8> = Vec::new();
-static mut TAKEN: bool = false;
-static mut RESTORE_STATE: RestoreState = RestoreState::invalid();
-
-static ID: AtomicU8 = AtomicU8::new(0);
-static INTERFACE: TraceInterface = TraceInterface {
-    acquire: || {
-        unsafe { RESTORE_STATE = critical_section::acquire() };
-        if unsafe { TAKEN } {
-            panic!("trace interface taken reentrantly");
-        }
-    },
-    write: |buf| unsafe {
-        #[allow(static_mut_refs)]
-        WRITTEN_BYTES.extend(buf);
-    },
-    timestamp: || Some(1_001_000),
-    release: || unsafe {
-        TAKEN = false;
-        critical_section::release(RESTORE_STATE);
-    },
-    id: || ID.fetch_add(1, Ordering::Relaxed),
-};
+static INTERFACE: TestTraceInterface = TestTraceInterface::new();
 
 #[test]
 fn test_single_modify() {
     let _tl = TEST_LOCK.lock().unwrap();
-    #[allow(static_mut_refs)]
-    unsafe {
-        (INTERFACE.acquire)();
-        WRITTEN_BYTES.clear();
-        ID.store(0, Ordering::Relaxed);
-        (INTERFACE.release)();
-    }
-    device_driver::set_global_trace_interface(Some(&INTERFACE));
+    let _ = device_driver::set_global_trace_interface(&INTERFACE);
+    INTERFACE.reset();
+    INTERFACE.set_timestamp(Some(1_001_000));
 
     let mut device = MyTestDevice::new(DeviceInterface::new());
 
@@ -108,12 +76,7 @@ fn test_single_modify() {
         })
         .unwrap();
 
-    (INTERFACE.acquire)();
-    #[allow(static_mut_refs)]
-    let written_bytes = unsafe { WRITTEN_BYTES.clone() };
-    unsafe {
-        (INTERFACE.release)();
-    }
+    let written_bytes = INTERFACE.take_bytes();
 
     let mut decoder = device_driver_trace::decoder::StreamingDecoder::new();
     let events = decoder.push_bytes(&written_bytes);
@@ -140,14 +103,9 @@ fn test_single_modify() {
 #[test]
 fn test_bulk_modify() {
     let _tl = TEST_LOCK.lock().unwrap();
-    #[allow(static_mut_refs)]
-    unsafe {
-        (INTERFACE.acquire)();
-        WRITTEN_BYTES.clear();
-        ID.store(0, Ordering::Relaxed);
-        (INTERFACE.release)();
-    }
-    device_driver::set_global_trace_interface(Some(&INTERFACE));
+    let _ = device_driver::set_global_trace_interface(&INTERFACE);
+    INTERFACE.reset();
+    INTERFACE.set_timestamp(None);
 
     let mut device = MyTestDevice::new(DeviceInterface::new());
 
@@ -164,12 +122,7 @@ fn test_bulk_modify() {
         })
         .unwrap();
 
-    (INTERFACE.acquire)();
-    #[allow(static_mut_refs)]
-    let written_bytes = unsafe { WRITTEN_BYTES.clone() };
-    unsafe {
-        (INTERFACE.release)();
-    }
+    let written_bytes = INTERFACE.take_bytes();
 
     let mut decoder = device_driver_trace::decoder::StreamingDecoder::new();
     let events = decoder.push_bytes(&written_bytes);

@@ -1,15 +1,14 @@
-use crate::{MessageType, ObjectIdentifier, TraceInterface, rzcobs::Encoder};
+use crate::{MessageType, ObjectIdentifier, TraceInterface, Write, rzcobs::Encoder};
 
-pub struct Frame {
+pub struct Frame<'w> {
     encoder: Encoder,
-    interface: &'static TraceInterface,
+    writer: &'w mut dyn Write,
 }
 
-impl Frame {
-    pub fn new(interface: &'static TraceInterface, source_crc: u32, id: u8) -> Self {
-        (interface.acquire)();
+impl<'w> Frame<'w> {
+    pub fn new(writer: &'w mut dyn Write, source_crc: u32, id: u8) -> Self {
         let mut encoder = Encoder::new();
-        encoder.start_frame(|b| unsafe { (interface.write)(&[b]) });
+        encoder.start_frame(|b| writer.write(&[b]));
 
         let source_crc = source_crc.to_le_bytes();
         encoder.write(
@@ -20,19 +19,18 @@ impl Frame {
                 source_crc[3],
                 id,
             ],
-            |b| unsafe { (interface.write)(&[b]) },
+            |b| writer.write(&[b]),
         );
 
-        Self { encoder, interface }
+        Self { encoder, writer }
     }
 
     fn write(&mut self, bytes: &[u8]) {
-        self.encoder
-            .write(bytes, |b| unsafe { (self.interface.write)(&[b]) });
+        self.encoder.write(bytes, |b| self.writer.write(&[b]));
     }
 
-    pub fn send_timestamp(&mut self) {
-        if let Some(timestamp) = unsafe { (self.interface.timestamp)() } {
+    pub fn send_timestamp(&mut self, value: Option<u64>) {
+        if let Some(timestamp) = value {
             let mut buffer = [0; 9];
 
             // | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
@@ -90,11 +88,9 @@ impl Frame {
     }
 }
 
-impl Drop for Frame {
+impl Drop for Frame<'_> {
     fn drop(&mut self) {
-        self.encoder
-            .end_frame(|b| unsafe { (self.interface.write)(&[b]) });
-        unsafe { (self.interface.release)() }
+        self.encoder.end_frame(|b| self.writer.write(&[b]));
     }
 }
 
@@ -106,9 +102,9 @@ pub struct Event {
 }
 
 impl Event {
-    pub fn new(interface: &'static TraceInterface, source_crc: u32) -> Self {
+    pub fn new(interface: &'static dyn TraceInterface, source_crc: u32) -> Self {
         Self {
-            id: (interface.id)(),
+            id: interface.next_id(),
             finalized: false,
             source_crc,
         }
@@ -116,26 +112,32 @@ impl Event {
 
     pub fn send_frame(
         self,
-        interface: &'static TraceInterface,
-        f: impl FnOnce(&mut Frame),
+        interface: &'static dyn TraceInterface,
+        mut f: impl FnMut(&mut Frame),
     ) -> Self {
-        f(&mut Frame::new(interface, self.source_crc, self.id));
+        interface.with_writer(&mut |writer| f(&mut Frame::new(writer, self.source_crc, self.id)));
         self
     }
 
     pub fn send_frame_ref(
         &self,
-        interface: &'static TraceInterface,
-        f: impl FnOnce(&mut Frame),
+        interface: &'static dyn TraceInterface,
+        mut f: impl FnMut(&mut Frame),
     ) -> &Self {
-        f(&mut Frame::new(interface, self.source_crc, self.id));
+        interface.with_writer(&mut |writer| f(&mut Frame::new(writer, self.source_crc, self.id)));
         self
     }
 
-    pub fn send_final_frame(self, interface: &'static TraceInterface, f: impl FnOnce(&mut Frame)) {
-        let mut frame = Frame::new(interface, self.source_crc, self.id);
-        f(&mut frame);
-        frame.send_finalize();
+    pub fn send_final_frame(
+        self,
+        interface: &'static dyn TraceInterface,
+        mut f: impl FnMut(&mut Frame),
+    ) {
+        interface.with_writer(&mut |writer| {
+            let mut frame = Frame::new(writer, self.source_crc, self.id);
+            f(&mut frame);
+            frame.send_finalize();
+        });
         self.discard();
     }
 

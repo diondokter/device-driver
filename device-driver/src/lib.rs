@@ -5,10 +5,6 @@
 
 use core::fmt::{Debug, Display};
 use core::marker::PhantomData;
-#[cfg(feature = "trace")]
-use core::ptr::null_mut;
-#[cfg(feature = "trace")]
-use core::sync::atomic::AtomicPtr;
 
 mod buffer;
 mod command;
@@ -25,6 +21,11 @@ pub use fieldset::*;
 pub use register::*;
 
 pub use repeats::*;
+
+#[cfg(feature = "trace")]
+pub use device_driver_trace::set_trace_interface as set_global_trace_interface;
+#[cfg(feature = "trace")]
+pub(crate) use device_driver_trace::trace_interface as global_trace_interface;
 
 #[doc(hidden)]
 pub mod ops;
@@ -333,30 +334,5 @@ impl AddressMode for IndexedAddressMode {
     #[inline]
     fn next_address<A: Address>(current_address: A, _current_size: usize) -> A {
         current_address.add(1)
-    }
-}
-
-#[cfg(feature = "trace")]
-static GLOBAL_TRACE_INTERFACE: AtomicPtr<TraceInterface> = AtomicPtr::new(null_mut());
-
-#[cfg(feature = "trace")]
-pub(crate) fn global_trace_interface() -> Option<&'static TraceInterface> {
-    let ptr = GLOBAL_TRACE_INTERFACE.load(core::sync::atomic::Ordering::Relaxed);
-    if ptr.is_null() {
-        None
-    } else {
-        Some(unsafe { &*ptr })
-    }
-}
-
-#[cfg(feature = "trace")]
-pub fn set_global_trace_interface(interface: Option<&'static TraceInterface>) {
-    if let Some(interface) = interface {
-        GLOBAL_TRACE_INTERFACE.store(
-            interface as *const _ as *mut _,
-            core::sync::atomic::Ordering::Relaxed,
-        );
-    } else {
-        GLOBAL_TRACE_INTERFACE.store(null_mut(), core::sync::atomic::Ordering::Relaxed);
     }
 }

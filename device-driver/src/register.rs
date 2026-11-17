@@ -177,7 +177,7 @@ where
         #[cfg(feature = "trace")]
         if let Some(trace_interface) = crate::global_trace_interface() {
             Event::new(trace_interface, B::SOURCE_CRC).send_final_frame(trace_interface, |f| {
-                f.send_timestamp();
+                f.send_timestamp(trace_interface.timestamp());
                 f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
                     self.object_id,
                     _index,
@@ -199,7 +199,7 @@ where
         #[cfg(feature = "trace")]
         if let Some(trace_interface) = crate::global_trace_interface() {
             Event::new(trace_interface, B::SOURCE_CRC).send_final_frame(trace_interface, |f| {
-                f.send_timestamp();
+                f.send_timestamp(trace_interface.timestamp());
                 for i in 0.._array_len as i32 * _stride {
                     f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
                         self.object_id,
@@ -221,7 +221,7 @@ where
         if let Some(trace_interface) = crate::global_trace_interface() {
             Some(
                 Event::new(trace_interface, B::SOURCE_CRC).send_frame(trace_interface, |f| {
-                    f.send_timestamp();
+                    f.send_timestamp(trace_interface.timestamp());
                     f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
                         self.object_id,
                         _index,
@@ -246,7 +246,7 @@ where
         if let Some(trace_interface) = crate::global_trace_interface() {
             Some(
                 Event::new(trace_interface, B::SOURCE_CRC).send_frame(trace_interface, |f| {
-                    f.send_timestamp();
+                    f.send_timestamp(trace_interface.timestamp());
                     for i in 0.._array_len as i32 * _stride {
                         f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
                             self.object_id,
@@ -1396,7 +1396,7 @@ where
             && let Some(trace_interface) = crate::global_trace_interface()
         {
             event.send_final_frame(trace_interface, |f| {
-                f.send_timestamp();
+                f.send_timestamp(trace_interface.timestamp());
                 if let Some(start_address) = self.start_address {
                     start_address.get_le_bytes(|address| f.send_address(address));
                 }
