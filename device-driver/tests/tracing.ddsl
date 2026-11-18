@@ -1,6 +1,7 @@
 manifest my-man {
     device MyTestDevice {
         register-address-type: u8,
+        command-address-type: i16,
         default-access: RW,
         register-address-mode: mapped,
 
@@ -36,6 +37,23 @@ manifest my-man {
             B: _,
             C: _,
             D: _,
-        }
+        },
+
+        command MyNoneCommand {
+            address: -4,
+        },
+        command MyInCommand {
+            address: 0,
+            fields-in: SingleByte,
+        },
+        command MyOutCommand {
+            address: 4,
+            fields-out: SingleByte,
+        },
+        command MyInOutCommand {
+            address: 5,
+            fields-in: SingleByte,
+            fields-out: FooFields,
+        },
     }
 }

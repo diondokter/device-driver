@@ -162,7 +162,7 @@ fn correlate_operation(
                     operation_name: command.name.original(),
                     index,
                     read_fs: command
-                        .field_set_ref_in
+                        .field_set_ref_out
                         .as_ref()
                         .map(|fs_ref| manifest.search_fieldset(&fs_ref.value).unwrap()),
                     write_fs: command
@@ -222,9 +222,11 @@ fn correlate_operation(
                 operation.write_data.clone()
             };
 
-            let (action, is_modify) = operation_action(used_access, first_object_id.object_type())?;
+            let (action, is_modify, read_first) =
+                operation_action(used_access, first_object_id.object_type())?;
             Ok(CorrelatedAction {
                 action,
+                read_first,
                 is_modify,
                 operation_name: info.operation_name,
                 index: info.index,
@@ -280,7 +282,7 @@ pub struct CorrelatedOperation {
 
 impl Display for CorrelatedOperation {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "address: {:#X}", self.address)?;
+        write!(f, "address: {:#X}", self.address)?; // TODO: This renders negative addresses quite poorly
 
         if self.actions.len() > 1 {
             writeln!(f)?;
@@ -298,6 +300,7 @@ impl Display for CorrelatedOperation {
 
 struct CorrelatedAction {
     action: &'static str,
+    read_first: bool,
     is_modify: bool,
     operation_name: Istr,
     index: Option<String>,
@@ -309,7 +312,7 @@ struct CorrelatedAction {
 
 impl Display for CorrelatedAction {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "action: {} {}", self.action, self.operation_name)?;
+        write!(f, "{} {}", self.action, self.operation_name)?;
         if let Some(index) = self.index.as_ref() {
             writeln!(f, "[{index}]")?;
         } else {
@@ -384,8 +387,13 @@ impl Display for CorrelatedAction {
                 Some(&self.read_data),
             )?;
         } else {
-            fmt_bytes(f, self.read_fs.as_ref(), None, &self.read_data, None)?;
-            fmt_bytes(f, self.write_fs.as_ref(), None, &self.write_data, None)?;
+            if self.read_first {
+                fmt_bytes(f, self.read_fs.as_ref(), None, &self.read_data, None)?;
+                fmt_bytes(f, self.write_fs.as_ref(), None, &self.write_data, None)?;
+            } else {
+                fmt_bytes(f, self.write_fs.as_ref(), None, &self.write_data, None)?;
+                fmt_bytes(f, self.read_fs.as_ref(), None, &self.read_data, None)?;
+            }
         }
 
         Ok(())
@@ -395,14 +403,17 @@ impl Display for CorrelatedAction {
 fn operation_action(
     used_access: Option<Access>,
     operation_type: ObjectType,
-) -> Result<(&'static str, bool), DynError> {
+) -> Result<(&'static str, bool, bool), DynError> {
     match (used_access, operation_type) {
-        (_, ObjectType::Command) => Ok(("dispatch command", false)),
-        (Some(Access::RO), ObjectType::Register) => Ok(("read register", false)),
-        (Some(Access::WO), ObjectType::Register) => Ok(("write register", false)),
-        (Some(Access::RO), ObjectType::Buffer) => Ok(("read buffer", false)),
-        (Some(Access::WO), ObjectType::Buffer) => Ok(("write buffer", false)),
-        (Some(Access::RW), ObjectType::Register) => Ok(("modify register", true)),
+        (None, ObjectType::Command) => Ok(("dispatch command", false, false)),
+        (Some(Access::RO), ObjectType::Command) => Ok(("dispatch out command", false, false)),
+        (Some(Access::WO), ObjectType::Command) => Ok(("dispatch in command", false, false)),
+        (Some(Access::RW), ObjectType::Command) => Ok(("dispatch inout command", false, false)),
+        (Some(Access::RO), ObjectType::Register) => Ok(("read register", false, true)),
+        (Some(Access::WO), ObjectType::Register) => Ok(("write register", false, true)),
+        (Some(Access::RW), ObjectType::Register) => Ok(("modify register", true, true)),
+        (Some(Access::RO), ObjectType::Buffer) => Ok(("read buffer", false, true)),
+        (Some(Access::WO), ObjectType::Buffer) => Ok(("write buffer", false, true)),
         _ => Err(DynError::new(
             "unexpected combination of access pattern and operation type. Are we looking at the correct manifest?",
         )),

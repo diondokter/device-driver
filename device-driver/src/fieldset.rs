@@ -36,8 +36,7 @@ unsafe impl<T: Fieldset, const N: usize> Fieldset for [T; N] {
     const ZERO: Self = [T::ZERO; N];
 }
 
-#[doc(hidden)]
-pub trait NotFieldset {}
+pub(crate) trait NotFieldset {}
 impl NotFieldset for () {}
 
 /// Metadata about fieldsets

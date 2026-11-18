@@ -42,7 +42,7 @@ impl<I> Device<I> {
         I: ::device_driver::CommandInterfaceBase<AddressType = u8>,
     {
         let address = self.base_address + 0;
-        ::device_driver::CommandOperation::new(self, address as u8)
+        ::device_driver::CommandOperation::new(self, address as u8, 0x4000000)
     }
     /// Command operation:
     /// - Address: `1`
@@ -62,7 +62,7 @@ impl<I> Device<I> {
         I: ::device_driver::CommandInterfaceBase<AddressType = u8>,
     {
         let address = self.base_address + 1;
-        ::device_driver::CommandOperation::new(self, address as u8)
+        ::device_driver::CommandOperation::new(self, address as u8, 0x4000001)
     }
 }
 impl<I> ::device_driver::Block for Device<I> {

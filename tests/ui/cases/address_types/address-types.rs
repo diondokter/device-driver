@@ -65,7 +65,7 @@ impl<I> Device<I> {
         I: ::device_driver::CommandInterfaceBase<AddressType = i32>,
     {
         let address = self.base_address + 0;
-        ::device_driver::CommandOperation::new(self, address as i32)
+        ::device_driver::CommandOperation::new(self, address as i32, 0x4000000)
     }
     /// Buffer operation:
     /// - Address: `0`
