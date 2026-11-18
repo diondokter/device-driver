@@ -42,7 +42,12 @@ impl<I> Bar<I> {
         I: ::device_driver::RegisterInterfaceBase<AddressType = u8>,
     {
         let address = self.base_address + 0;
-        ::device_driver::RegisterOperation::new(self, address as u8, Reg::default)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u8,
+            Reg::default,
+            0x3000000,
+        )
     }
 }
 impl<I> ::device_driver::Block for Bar<I> {
@@ -51,6 +56,7 @@ impl<I> ::device_driver::Block for Bar<I> {
     type CommandAddressType = u8;
     type BufferAddressType = u8;
     type RegisterAddressMode = ::device_driver::MappedAddressMode;
+    const SOURCE_CRC: u32 = 0x2CB79A93;
     fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }

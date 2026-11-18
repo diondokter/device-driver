@@ -43,7 +43,12 @@ impl<I> Foo<I> {
         I: ::device_driver::RegisterInterfaceBase<AddressType = u8>,
     {
         let address = self.base_address + 0;
-        ::device_driver::RegisterOperation::new(self, address as u8, Bar::default)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u8,
+            Bar::default,
+            0x3000000,
+        )
     }
 }
 impl<I> ::device_driver::Block for Foo<I> {
@@ -52,6 +57,7 @@ impl<I> ::device_driver::Block for Foo<I> {
     type CommandAddressType = u8;
     type BufferAddressType = u8;
     type RegisterAddressMode = ();
+    const SOURCE_CRC: u32 = 0xC08AC2D8;
     fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }
@@ -93,7 +99,12 @@ impl<I> FooDup1<I> {
         I: ::device_driver::RegisterInterfaceBase<AddressType = u8>,
     {
         let address = self.base_address + 0;
-        ::device_driver::RegisterOperation::new(self, address as u8, BarDup4::default)
+        ::device_driver::RegisterOperation::new(
+            self,
+            address as u8,
+            BarDup4::default,
+            0x3000001,
+        )
     }
 }
 impl<I> ::device_driver::Block for FooDup1<I> {
@@ -102,6 +113,7 @@ impl<I> ::device_driver::Block for FooDup1<I> {
     type CommandAddressType = u8;
     type BufferAddressType = u8;
     type RegisterAddressMode = ();
+    const SOURCE_CRC: u32 = 0xC08AC2D8;
     fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }
@@ -157,6 +169,7 @@ impl<I> ::device_driver::Block for Blah<I> {
     type CommandAddressType = u8;
     type BufferAddressType = u8;
     type RegisterAddressMode = ();
+    const SOURCE_CRC: u32 = 0xC08AC2D8;
     fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }
@@ -186,6 +199,7 @@ impl<'i, I> ::device_driver::Block for Wheee<'i, I> {
     type CommandAddressType = u8;
     type BufferAddressType = u8;
     type RegisterAddressMode = ();
+    const SOURCE_CRC: u32 = 0xC08AC2D8;
     fn interface(&mut self) -> &mut Self::Interface {
         self.interface
     }
@@ -215,6 +229,7 @@ impl<'i, I> ::device_driver::Block for Wheee2<'i, I> {
     type CommandAddressType = u8;
     type BufferAddressType = u8;
     type RegisterAddressMode = ();
+    const SOURCE_CRC: u32 = 0xC08AC2D8;
     fn interface(&mut self) -> &mut Self::Interface {
         self.interface
     }
@@ -244,6 +259,7 @@ impl<I> ::device_driver::Block for Words<I> {
     type CommandAddressType = u8;
     type BufferAddressType = u8;
     type RegisterAddressMode = ();
+    const SOURCE_CRC: u32 = 0xC08AC2D8;
     fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }
@@ -531,7 +547,7 @@ impl From<Quux> for u8 {
     }
 }
 #[doc(hidden)]
-impl ::device_driver::EnumIndex for Quux {
+impl ::device_driver::Index for Quux {
     #[track_caller]
     fn index(&self) -> i32 {
         let index = u8::from(*self);
@@ -576,7 +592,7 @@ impl From<QuuxDup5> for u8 {
     }
 }
 #[doc(hidden)]
-impl ::device_driver::EnumIndex for QuuxDup5 {
+impl ::device_driver::Index for QuuxDup5 {
     #[track_caller]
     fn index(&self) -> i32 {
         let index = u8::from(*self);
@@ -612,7 +628,7 @@ impl From<Wheee2Dup6> for u8 {
     }
 }
 #[doc(hidden)]
-impl ::device_driver::EnumIndex for Wheee2Dup6 {
+impl ::device_driver::Index for Wheee2Dup6 {
     #[track_caller]
     fn index(&self) -> i32 {
         let index = u8::from(*self);

@@ -21,6 +21,10 @@ device-driver-core.workspace = true
 device-driver-diagnostics.workspace = true
 device-driver-converter = { workspace = true, optional = true }
 device-driver-lsp = { workspace = true, optional = true }
+device-driver-trace = { workspace = true, features = ["std"] }
+device-driver-lexer = { workspace = true }
+device-driver-parser = { workspace = true }
+device-driver-mir = { workspace = true }
 
 clap.workspace = true
 

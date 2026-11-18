@@ -53,6 +53,7 @@ impl<I> Device<I> {
             self,
             address as u8,
             FooRoFieldSet::default,
+            0x3000000,
         )
     }
     /// Register operation:
@@ -76,6 +77,7 @@ impl<I> Device<I> {
             self,
             address as u8,
             FooRwFieldSet::default,
+            0x3000001,
         )
     }
     /// Register operation:
@@ -99,6 +101,7 @@ impl<I> Device<I> {
             self,
             address as u8,
             FooWoFieldSet::default,
+            0x3000002,
         )
     }
 }
@@ -108,6 +111,7 @@ impl<I> ::device_driver::Block for Device<I> {
     type CommandAddressType = u8;
     type BufferAddressType = u8;
     type RegisterAddressMode = ();
+    const SOURCE_CRC: u32 = 0x579C3FE2;
     fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }

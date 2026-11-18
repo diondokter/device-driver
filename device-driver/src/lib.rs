@@ -15,10 +15,17 @@ mod repeats;
 
 pub use buffer::*;
 pub use command::*;
+#[cfg(feature = "trace")]
+use device_driver_trace::encoder::Event;
 pub use fieldset::*;
 pub use register::*;
 
 pub use repeats::*;
+
+#[cfg(feature = "trace")]
+pub use device_driver_trace::set_trace_interface as set_global_trace_interface;
+#[cfg(feature = "trace")]
+pub(crate) use device_driver_trace::trace_interface as global_trace_interface;
 
 #[doc(hidden)]
 pub mod ops;
@@ -26,7 +33,13 @@ pub mod ops;
 #[cfg(feature = "macros")]
 pub use device_driver_macros::*;
 
+#[cfg(feature = "trace")]
+pub use device_driver_trace::TraceInterface;
+
 /// Trait implemented on every generated block/device.
+///
+/// Do not implement this trait yourself, it should only be generated.
+/// Implementing this trait is not semver stable.
 pub trait Block: Sized {
     /// The interface used by the block
     type Interface;
@@ -38,6 +51,8 @@ pub trait Block: Sized {
     type BufferAddressType: Address;
     /// The address mode of the registers in this block
     type RegisterAddressMode;
+    /// The CRC of the source that generated this block
+    const SOURCE_CRC: u32;
 
     /// Get a reference to the inner interface.
     /// With it you can do out-of-band operations that aren't defined in the generated code.
@@ -65,6 +80,9 @@ pub trait Block: Sized {
             start_address: None,
             next_address: None,
             field_sets: (),
+            #[cfg(feature = "trace")]
+            trace_event: crate::global_trace_interface()
+                .map(|interface| Event::new(interface, Self::SOURCE_CRC)),
             _phantom: PhantomData,
         }
     }
@@ -91,6 +109,9 @@ pub trait Block: Sized {
             start_address: None,
             next_address: None,
             field_sets: (),
+            #[cfg(feature = "trace")]
+            trace_event: crate::global_trace_interface()
+                .map(|interface| Event::new(interface, Self::SOURCE_CRC)),
             _phantom: PhantomData,
         }
     }
@@ -117,6 +138,9 @@ pub trait Block: Sized {
             start_address: None,
             next_address: None,
             field_sets: (),
+            #[cfg(feature = "trace")]
+            trace_event: crate::global_trace_interface()
+                .map(|interface| Event::new(interface, Self::SOURCE_CRC)),
             _phantom: PhantomData,
         }
     }
@@ -184,6 +208,8 @@ pub trait Address: Copy + Eq + Display + Debug + defmt::Format + SealedAddress {
     const ZERO: Self;
     #[doc(hidden)]
     fn add(self, val: i32) -> Self;
+    #[doc(hidden)]
+    fn get_le_bytes(self, f: impl FnOnce(&[u8]));
 }
 /// A trait implemented for the types that can be used as an address
 #[expect(private_bounds, reason = "sealed on purpose")]
@@ -193,6 +219,8 @@ pub trait Address: Copy + Eq + Display + Debug + SealedAddress {
     const ZERO: Self;
     #[doc(hidden)]
     fn add(self, val: i32) -> Self;
+    #[doc(hidden)]
+    fn get_le_bytes(self, f: impl FnOnce(&[u8]));
 }
 
 impl SealedAddress for u8 {}
@@ -201,12 +229,18 @@ impl Address for u8 {
     fn add(self, val: i32) -> Self {
         (self as i32 + val).try_into().unwrap()
     }
+    fn get_le_bytes(self, f: impl FnOnce(&[u8])) {
+        f(&self.to_le_bytes())
+    }
 }
 impl SealedAddress for u16 {}
 impl Address for u16 {
     const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
         (self as i32 + val).try_into().unwrap()
+    }
+    fn get_le_bytes(self, f: impl FnOnce(&[u8])) {
+        f(&self.to_le_bytes())
     }
 }
 impl SealedAddress for u32 {}
@@ -215,12 +249,18 @@ impl Address for u32 {
     fn add(self, val: i32) -> Self {
         self.checked_add_signed(val).unwrap()
     }
+    fn get_le_bytes(self, f: impl FnOnce(&[u8])) {
+        f(&self.to_le_bytes())
+    }
 }
 impl SealedAddress for u64 {}
 impl Address for u64 {
     const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
         self.checked_add_signed(val as i64).unwrap()
+    }
+    fn get_le_bytes(self, f: impl FnOnce(&[u8])) {
+        f(&self.to_le_bytes())
     }
 }
 impl SealedAddress for i8 {}
@@ -229,12 +269,18 @@ impl Address for i8 {
     fn add(self, val: i32) -> Self {
         (self as i32 + val).try_into().unwrap()
     }
+    fn get_le_bytes(self, f: impl FnOnce(&[u8])) {
+        f(&self.to_le_bytes())
+    }
 }
 impl SealedAddress for i16 {}
 impl Address for i16 {
     const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
         (self as i32 + val).try_into().unwrap()
+    }
+    fn get_le_bytes(self, f: impl FnOnce(&[u8])) {
+        f(&self.to_le_bytes())
     }
 }
 impl SealedAddress for i32 {}
@@ -243,12 +289,18 @@ impl Address for i32 {
     fn add(self, val: i32) -> Self {
         self + val
     }
+    fn get_le_bytes(self, f: impl FnOnce(&[u8])) {
+        f(&self.to_le_bytes())
+    }
 }
 impl SealedAddress for i64 {}
 impl Address for i64 {
     const ZERO: Self = 0;
     fn add(self, val: i32) -> Self {
         self + val as i64
+    }
+    fn get_le_bytes(self, f: impl FnOnce(&[u8])) {
+        f(&self.to_le_bytes())
     }
 }
 

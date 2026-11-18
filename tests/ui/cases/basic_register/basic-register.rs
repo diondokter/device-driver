@@ -56,6 +56,7 @@ impl<I> Device<I> {
             self,
             address as u8,
             FooFieldSet::default,
+            0x3000000,
         )
     }
     /// The bar register
@@ -83,6 +84,7 @@ impl<I> Device<I> {
             self,
             address as u8,
             || FooFieldSet::from([86, 52, 18]),
+            0x3000001,
         )
     }
 }
@@ -92,6 +94,7 @@ impl<I> ::device_driver::Block for Device<I> {
     type CommandAddressType = u8;
     type BufferAddressType = u8;
     type RegisterAddressMode = ();
+    const SOURCE_CRC: u32 = 0xCB11F7E9;
     fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }
