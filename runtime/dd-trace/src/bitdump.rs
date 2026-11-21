@@ -36,6 +36,7 @@ pub struct BitdumpFormatter {
     data_diff: Option<Vec<u8>>,
     fields: Vec<Field>,
     sections: Vec<Section>, // contiguous, UNSPLIT across lines
+    borders: bool,
 }
 
 impl BitdumpFormatter {
@@ -44,6 +45,7 @@ impl BitdumpFormatter {
         data: Vec<u8>,
         data_diff: Option<Vec<u8>>,
         fields: Vec<Field>,
+        borders: bool,
     ) -> Self {
         if let Some(data_diff) = &data_diff {
             debug_assert_eq!(data.len(), data_diff.len());
@@ -118,6 +120,7 @@ impl BitdumpFormatter {
             data_diff,
             fields,
             sections,
+            borders,
         }
     }
 
@@ -258,63 +261,65 @@ impl BitdumpFormatter {
             span_starts.push(*b);
         }
 
-        // Border prefix
-        if last_line {
-            write!(f, "   ┌")?;
-        } else {
-            write!(f, "   ├")?;
-        }
-
-        for (si, span_start) in span_starts.iter().enumerate().rev() {
-            let span_end = if si + 1 < span_starts.len() {
-                span_starts[si + 1]
+        if self.borders {
+            // Border prefix
+            if last_line {
+                write!(f, "   ┌")?;
             } else {
-                end_bit
-            };
-            if span_end <= *span_start {
-                continue;
+                write!(f, "   ├")?;
             }
-            let bits_in_span = span_end - *span_start;
-            let total_width = bits_in_span * CELL - 1;
 
-            // Which line section covers the span start?
-            let sec_opt = line_sections
-                .iter()
-                .find(|s| s.bit_range.contains(span_start));
-            if let Some(sec) = sec_opt {
-                if let Some(label) = &sec.label {
-                    // Only print label at the *first* span of that section in this line
-                    if *span_start == sec.bit_range.start {
-                        let effective = if label.len() <= total_width {
-                            label.len()
+            for (si, span_start) in span_starts.iter().enumerate().rev() {
+                let span_end = if si + 1 < span_starts.len() {
+                    span_starts[si + 1]
+                } else {
+                    end_bit
+                };
+                if span_end <= *span_start {
+                    continue;
+                }
+                let bits_in_span = span_end - *span_start;
+                let total_width = bits_in_span * CELL - 1;
+
+                // Which line section covers the span start?
+                let sec_opt = line_sections
+                    .iter()
+                    .find(|s| s.bit_range.contains(span_start));
+                if let Some(sec) = sec_opt {
+                    if let Some(label) = &sec.label {
+                        // Only print label at the *first* span of that section in this line
+                        if *span_start == sec.bit_range.start {
+                            let effective = if label.len() <= total_width {
+                                label.len()
+                            } else {
+                                total_width
+                            };
+                            if total_width > effective {
+                                write!(f, "{}", "─".repeat(total_width - effective))?;
+                            }
+                            write!(f, "{DIM}{}{RESET}", &label[..effective])?;
                         } else {
-                            total_width
-                        };
-                        if total_width > effective {
-                            write!(f, "{}", "─".repeat(total_width - effective))?;
+                            write!(f, "{}", "─".repeat(total_width))?;
                         }
-                        write!(f, "{DIM}{}{RESET}", &label[..effective])?;
                     } else {
                         write!(f, "{}", "─".repeat(total_width))?;
                     }
                 } else {
                     write!(f, "{}", "─".repeat(total_width))?;
                 }
+
+                // Junction character at the end of span (except at the very end of the line)
+                if *span_start % 8 != 0 {
+                    let j = self.junction_char(last_line, *span_start);
+                    write!(f, "{j}")?;
+                }
+            }
+
+            if last_line {
+                writeln!(f, "┐")?;
             } else {
-                write!(f, "{}", "─".repeat(total_width))?;
+                writeln!(f, "┤")?;
             }
-
-            // Junction character at the end of span (except at the very end of the line)
-            if *span_start % 8 != 0 {
-                let j = self.junction_char(last_line, *span_start);
-                write!(f, "{j}")?;
-            }
-        }
-
-        if last_line {
-            writeln!(f, "┐")?;
-        } else {
-            writeln!(f, "┤")?;
         }
 
         // Data row with inner separators and ellipsis borders
@@ -324,7 +329,11 @@ impl BitdumpFormatter {
             self.section_index_at(end_bit - 1).is_some()
                 && self.section_index_at(end_bit - 1) == self.section_index_at(end_bit)
         };
-        let left_border = if continues_left { '…' } else { '│' };
+        let left_border = if continues_left && self.borders {
+            '…'
+        } else {
+            '│'
+        };
         write!(f, "{line:02x} {left_border}")?;
 
         let mut display_field = None;
@@ -333,7 +342,7 @@ impl BitdumpFormatter {
             if bit < end_bit - 1 {
                 let left = self.section_index_at(bit + 1);
                 let right = self.section_index_at(bit);
-                if left != right {
+                if left != right && self.borders {
                     write!(f, "│")?;
                 } else {
                     write!(f, " ")?;
@@ -346,11 +355,12 @@ impl BitdumpFormatter {
             if let Some(si) = sec_idx {
                 let sec = &self.sections[si];
                 let field = &self.fields[sec.field_index];
+                let space = if self.borders { " " } else { "" };
                 if field.reserved {
-                    write!(f, " {bit_style_mod}{GRAY}{bit_value}{RESET} ")?; // 2 spaces before, 1 after → visible 4
+                    write!(f, "{space}{bit_style_mod}{GRAY}{bit_value}{RESET}{space}")?; // 2 spaces before, 1 after → visible 4
                 } else {
                     let color = COLORS[sec.color_index];
-                    write!(f, " {bit_style_mod}{color}{bit_value}{RESET} ")?;
+                    write!(f, "{space}{bit_style_mod}{color}{bit_value}{RESET}{space}")?;
 
                     if !displayed_fields.contains(&si) {
                         if display_field.is_some_and(|x| x != sec.field_index) {
@@ -383,7 +393,11 @@ impl BitdumpFormatter {
             self.section_index_at(start_bit - 1).is_some()
                 && self.section_index_at(start_bit - 1) == self.section_index_at(start_bit)
         };
-        let right_border = if continues_right { '…' } else { '│' };
+        let right_border = if continues_right && self.borders {
+            '…'
+        } else {
+            '│'
+        };
         if line < self.data.len() {
             write!(f, "{right_border}  {YELLOW}{:02X}{RESET}", self.data[line])?;
 
@@ -424,7 +438,7 @@ impl BitdumpFormatter {
         writeln!(f)?;
 
         // Border suffix
-        if line == 0 {
+        if self.borders && line == 0 {
             write!(f, "   └")?;
             for (si, span_start) in span_starts.iter().enumerate().rev() {
                 let span_end = if si + 1 < span_starts.len() {
@@ -529,10 +543,12 @@ impl BitdumpFormatter {
 impl fmt::Display for BitdumpFormatter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "   {DIM}╭─{RESET} {YELLOW}{}{RESET}", self.name)?;
-        writeln!(
-            f,
-            "   {DIM}🭭{RESET} 7   {DIM}6{RESET}   5   {DIM}4{RESET}   3   {DIM}2{RESET}   1   {DIM}0{RESET}"
-        )?;
+        if self.borders {
+            writeln!(
+                f,
+                "   {DIM}🭭{RESET} 7   {DIM}6{RESET}   5   {DIM}4{RESET}   3   {DIM}2{RESET}   1   {DIM}0{RESET}"
+            )?;
+        }
 
         let total_bits = self.total_bits();
         let total_lines = total_bits.div_ceil(8);
