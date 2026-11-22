@@ -1,8 +1,8 @@
 use std::sync::Mutex;
 
 use device_driver::{
-    Block, CommandInterface, CommandInterfaceBase, FieldsetMetadata, RegisterInterface,
-    RegisterInterfaceBase,
+    Block, BufferInterface, BufferInterfaceBase, CommandInterface, CommandInterfaceBase,
+    FieldsetMetadata, RegisterInterface, RegisterInterfaceBase,
 };
 use device_driver_trace::{
     ObjectIdentifier, TestTraceInterface, crc32,
@@ -67,6 +67,25 @@ impl CommandInterface for DeviceInterface {
     ) -> Result<(), Self::Error> {
         output.fill(0xDD);
         Ok(())
+    }
+}
+
+impl BufferInterfaceBase for DeviceInterface {
+    type Error = !;
+    type AddressType = u32;
+}
+impl BufferInterface for DeviceInterface {
+    fn write(&mut self, _address: Self::AddressType, buf: &[u8]) -> Result<usize, Self::Error> {
+        Ok(buf.len().min(2))
+    }
+
+    fn flush(&mut self, _address: Self::AddressType) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    fn read(&mut self, _address: Self::AddressType, buf: &mut [u8]) -> Result<usize, Self::Error> {
+        buf.fill(0xDD);
+        Ok(buf.len())
     }
 }
 
@@ -307,6 +326,43 @@ fn test_inout_command() {
             }]
         })]
     );
+
+    let trace = render_trace(&events);
+    println!("{trace}");
+}
+
+#[test]
+fn test_buffer() {
+    let _tl = TEST_LOCK.lock().unwrap();
+    let _ = device_driver::set_global_trace_interface(&INTERFACE);
+    INTERFACE.reset();
+    INTERFACE.set_timestamp(Some(1_001_000));
+
+    let mut device = MyTestDevice::new(DeviceInterface::new());
+
+    device.my_buffer().write_all(&[0, 1, 2, 3]).unwrap();
+    let mut buf = [0; 3];
+    device.my_buffer().read(&mut buf).unwrap();
+
+    let written_bytes = INTERFACE.take_bytes();
+
+    let mut decoder = device_driver_trace::decoder::StreamingDecoder::new();
+    let events = decoder.push_bytes(&written_bytes);
+
+    // assert_eq!(
+    //     events,
+    //     vec![Ok(Event {
+    //         source_crc: device_driver_trace::crc32(include_str!("./tracing.ddsl")),
+    //         id: 0,
+    //         timestamp: Some(1_001_000),
+    //         operations: vec![Operation {
+    //             objects: vec![ObjectIdentifier::new(0x4000003, None)],
+    //             address: vec![5, 0],
+    //             read_data: vec![0xDD, 0xDD, 0xDD, 0xDD],
+    //             write_data: vec![42],
+    //         }]
+    //     })]
+    // );
 
     let trace = render_trace(&events);
     println!("{trace}");

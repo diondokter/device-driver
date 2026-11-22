@@ -128,11 +128,15 @@ impl{{block_generics}} {{ block.name.to_case(Case::Pascal) }}{{block_generics}} 
                     ::device_driver::CommandOperation::new(
                         self,
                         address as {{block.command_address_type}},
-                        {{method.mir_object_id.raw() | fmt("{:#X}")}}
+                        {{method.mir_object_id.raw() | fmt("{:#X}")}},
                     )
                 {% endwhen %}
                 {% when BlockMethodType::Buffer { access } %}
-                    ::device_driver::BufferOperation::new(self, address as {{block.buffer_address_type}})
+                    ::device_driver::BufferOperation::new(
+                        self,
+                        address as {{block.buffer_address_type}},
+                        {{method.mir_object_id.raw() | fmt("{:#X}")}},
+                    )
                 {% endwhen %}
             {% endmatch %}
         }

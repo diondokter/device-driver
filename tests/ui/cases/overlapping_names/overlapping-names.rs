@@ -153,7 +153,7 @@ impl<I> Blah<I> {
         I: ::device_driver::BufferInterfaceBase<AddressType = u8>,
     {
         let address = self.base_address + 0;
-        ::device_driver::BufferOperation::new(self, address as u8)
+        ::device_driver::BufferOperation::new(self, address as u8, 0x5000000)
     }
     /// Block operation:
     /// - Address: `0`

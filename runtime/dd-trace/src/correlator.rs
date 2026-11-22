@@ -157,6 +157,7 @@ fn correlate_operation(
                         .is_empty()
                         .not()
                         .then(|| manifest.search_fieldset(&register.field_set_ref).unwrap()),
+                    object_type: ObjectType::Register,
                 }),
                 Object::Command(command) => Ok(ActionInfo {
                     operation_name: command.name.original(),
@@ -169,12 +170,14 @@ fn correlate_operation(
                         .field_set_ref_in
                         .as_ref()
                         .map(|fs_ref| manifest.search_fieldset(&fs_ref.value).unwrap()),
+                    object_type: ObjectType::Command,
                 }),
                 Object::Buffer(buffer) => Ok(ActionInfo {
                     operation_name: buffer.name.original(),
                     index,
                     read_fs: None,
                     write_fs: None,
+                    object_type: ObjectType::Buffer,
                 }),
                 _ => Err(DynError::new(
                     "operation object has unexpected type. Are we looking at the correct manifest?",
@@ -183,24 +186,35 @@ fn correlate_operation(
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    let total_fs_read_len = action_infos
+    // Only registers are allowed multi-action ops
+    let operation_object_type = action_infos[0].object_type;
+    if action_infos
         .iter()
-        .map(|info| info.read_fs.map(|fs| fs.size_bytes.value).unwrap_or(0))
-        .sum::<u32>() as usize;
-    let total_fs_write_len = action_infos
-        .iter()
-        .map(|info| info.write_fs.map(|fs| fs.size_bytes.value).unwrap_or(0))
-        .sum::<u32>() as usize;
-
-    if total_fs_read_len != operation.read_data.len() {
-        return Err(DynError::new(
-            "read data has unexpected length. Are we looking at the correct manifest?",
-        ));
+        .any(|info| info.object_type != operation_object_type)
+    {
+        return Err(DynError::new("not all actions are of the same type"));
     }
-    if total_fs_write_len != operation.write_data.len() {
-        return Err(DynError::new(
-            "write data has unexpected length. Are we looking at the correct manifest?",
-        ));
+
+    if operation_object_type != ObjectType::Buffer {
+        let total_fs_read_len = action_infos
+            .iter()
+            .map(|info| info.read_fs.map(|fs| fs.size_bytes.value).unwrap_or(0))
+            .sum::<u32>() as usize;
+        let total_fs_write_len = action_infos
+            .iter()
+            .map(|info| info.write_fs.map(|fs| fs.size_bytes.value).unwrap_or(0))
+            .sum::<u32>() as usize;
+
+        if total_fs_read_len != operation.read_data.len() {
+            return Err(DynError::new(
+                "read data has unexpected length. Are we looking at the correct manifest?",
+            ));
+        }
+        if total_fs_write_len != operation.write_data.len() {
+            return Err(DynError::new(
+                "write data has unexpected length. Are we looking at the correct manifest?",
+            ));
+        }
     }
 
     let actions = action_infos
@@ -373,7 +387,7 @@ impl Display for CorrelatedAction {
                 )
             } else if !bytes.is_empty() {
                 // Just bytes without associated fieldset (likely buffer)
-                writeln!(f, "{:02X?}", bytes)
+                write!(f, "> {:02X?}", bytes)
             } else {
                 Ok(())
             }
@@ -423,6 +437,7 @@ fn operation_action(
 
 struct ActionInfo<'a> {
     operation_name: Istr,
+    object_type: ObjectType,
     index: Option<String>,
     read_fs: Option<&'a FieldSet>,
     write_fs: Option<&'a FieldSet>,

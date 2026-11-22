@@ -2,6 +2,7 @@ manifest my-man {
     device MyTestDevice {
         register-address-type: u8,
         command-address-type: i16,
+        buffer-address-type: u32,
         default-access: RW,
         register-address-mode: mapped,
 
@@ -55,5 +56,9 @@ manifest my-man {
             fields-in: SingleByte,
             fields-out: FooFields,
         },
+
+        buffer MyBuffer {
+            address: 0x8000_0000,
+        }
     }
 }

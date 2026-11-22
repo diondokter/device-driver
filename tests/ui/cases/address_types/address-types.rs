@@ -77,7 +77,7 @@ impl<I> Device<I> {
         I: ::device_driver::BufferInterfaceBase<AddressType = i8>,
     {
         let address = self.base_address + 0;
-        ::device_driver::BufferOperation::new(self, address as i8)
+        ::device_driver::BufferOperation::new(self, address as i8, 0x5000000)
     }
 }
 impl<I> ::device_driver::Block for Device<I> {
