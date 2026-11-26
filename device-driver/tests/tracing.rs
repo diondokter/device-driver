@@ -5,7 +5,9 @@ use device_driver::{
     FieldsetMetadata, RegisterInterface, RegisterInterfaceBase,
 };
 use device_driver_trace::{
-    ObjectIdentifier, TestTraceInterface, crc32,
+    ObjectIdentifier, TestTraceInterface,
+    correlator::DisplayStyle,
+    crc32,
     decoder::{DecodeError, Event, Operation},
 };
 
@@ -135,7 +137,7 @@ fn test_single_modify() {
         })]
     );
 
-    let trace = render_trace(&events);
+    let trace = render_trace(events);
     println!("{trace}");
 }
 
@@ -166,22 +168,29 @@ fn test_bulk_modify() {
     let mut decoder = device_driver_trace::decoder::StreamingDecoder::new();
     let events = decoder.push_bytes(&written_bytes);
 
-    // assert_eq!(
-    //     events,
-    //     vec![Ok(Event {
-    //         source_crc: device_driver_trace::crc32(include_bytes!("./tracing.ddsl")),
-    //         id: 0,
-    //         timestamp: Some(1_001_000),
-    //         operations: vec![Operation {
-    //             objects: vec![ObjectIdentifier::new(0x03000000, None)],
-    //             address: vec![0],
-    //             read_data: vec![0, 0, 0, 0],
-    //             write_data: vec![0xD1, 0x80, 0x43, 0x00],
-    //         }]
-    //     })]
-    // );
+    assert_eq!(
+        events,
+        vec![Ok(Event {
+            source_crc: device_driver_trace::crc32(include_str!("./tracing.ddsl")),
+            id: 0,
+            timestamp: None,
+            operations: vec![Operation {
+                objects: vec![
+                    ObjectIdentifier::new(0x03000000, None),
+                    ObjectIdentifier::new(0x03000001, Some(0)),
+                    ObjectIdentifier::new(0x03000001, Some(1)),
+                    ObjectIdentifier::new(0x03000001, Some(2)),
+                    ObjectIdentifier::new(0x03000001, Some(3)),
+                    ObjectIdentifier::new(0x03000002, Some(0)),
+                ],
+                address: vec![0],
+                read_data: vec![0, 0, 0, 0, 0, 0, 0, 0, 0],
+                write_data: vec![0x01, 0xE0, 0xFF, 0x01, 0x2A, 0x00, 0x00, 0x00, 0xFF],
+            }]
+        })]
+    );
 
-    let trace = render_trace(&events);
+    let trace = render_trace(events);
     println!("{trace}");
 }
 
@@ -216,7 +225,7 @@ fn test_none_command() {
         })]
     );
 
-    let trace = render_trace(&events);
+    let trace = render_trace(events);
     println!("{trace}");
 }
 
@@ -254,7 +263,7 @@ fn test_in_command() {
         })]
     );
 
-    let trace = render_trace(&events);
+    let trace = render_trace(events);
     println!("{trace}");
 }
 
@@ -289,7 +298,7 @@ fn test_out_command() {
         })]
     );
 
-    let trace = render_trace(&events);
+    let trace = render_trace(events);
     println!("{trace}");
 }
 
@@ -327,7 +336,7 @@ fn test_inout_command() {
         })]
     );
 
-    let trace = render_trace(&events);
+    let trace = render_trace(events);
     println!("{trace}");
 }
 
@@ -364,13 +373,11 @@ fn test_buffer() {
     //     })]
     // );
 
-    let trace = render_trace(&events);
+    let trace = render_trace(events);
     println!("{trace}");
 }
 
-fn render_trace(events: &[Result<Event, DecodeError>]) -> String {
-    use std::fmt::Write;
-
+fn render_trace(events: Vec<Result<Event, DecodeError>>) -> String {
     const DDSL: &'static str = include_str!("./tracing.ddsl");
 
     let mut diagnostics = Default::default();
@@ -382,19 +389,17 @@ fn render_trace(events: &[Result<Event, DecodeError>]) -> String {
 
     let manifests = [(crc32(DDSL), manifest)].into_iter().collect();
 
-    let mut output = String::new();
+    let mut output = Vec::new();
 
     for event in events {
-        match event {
-            Ok(event) => {
-                match device_driver_trace::correlator::correlate(&manifests, event.clone()) {
-                    Ok(event) => writeln!(&mut output, "{event}").unwrap(),
-                    Err(e) => writeln!(&mut output, "Event correlate error: {e}").unwrap(),
-                }
-            }
-            Err(e) => writeln!(&mut output, "Event decode error: {e:?}").unwrap(),
-        }
+        device_driver_trace::correlator::render_event_into(
+            &mut output,
+            DisplayStyle::Fancy,
+            &manifests,
+            event.unwrap(),
+        )
+        .unwrap()
     }
 
-    output
+    String::from_utf8_lossy_owned(output)
 }

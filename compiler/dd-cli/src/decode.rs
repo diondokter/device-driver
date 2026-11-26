@@ -1,7 +1,10 @@
 use std::{borrow::Cow, collections::HashMap, io::Read, process::ExitCode};
 
 use device_driver_diagnostics::{DynError, ResultExt};
-use device_driver_trace::decoder::{DecodeError, StreamingDecoder};
+use device_driver_trace::{
+    correlator::DisplayStyle,
+    decoder::{DecodeError, StreamingDecoder},
+};
 
 use crate::{DecodeArgs, DecodeIngest, EofBehavior};
 
@@ -77,12 +80,16 @@ pub fn decode(args: DecodeArgs) -> Result<ExitCode, DynError> {
 
         for event in decoder.push_bytes(&buffer[..buf_len]) {
             match event {
-                Ok(event) => match device_driver_trace::correlator::correlate(&manifests, event) {
-                    Ok(e) => {
-                        println!("{e}");
+                Ok(event) => {
+                    if let Err(e) = device_driver_trace::correlator::render_event_into(
+                        &mut std::io::stdout().lock(),
+                        DisplayStyle::Fancy,
+                        &manifests,
+                        event,
+                    ) {
+                        println!("event correlation error: {e}");
                     }
-                    Err(e) => println!("event correlation error: {e}"),
-                },
+                }
                 Err(DecodeError::Incomplete) => println!("received incomplete event"),
                 Err(DecodeError::Malformed) => println!("received malformed event"),
             }

@@ -2,6 +2,7 @@
 
 use core::mem::MaybeUninit;
 
+mod ansi;
 #[cfg(any(test, feature = "std"))]
 pub(crate) mod bitdump;
 #[cfg(any(test, feature = "std"))]

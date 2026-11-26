@@ -1,4 +1,4 @@
-use core::{fmt::Display, ops::Not};
+use core::ops::Not;
 use std::collections::HashMap;
 
 use device_driver_common::{
@@ -12,14 +12,17 @@ use device_driver_mir::{
 };
 
 use crate::{
+    ansi::*,
     bitdump::{BitdumpFormatter, Field},
     decoder::Operation,
 };
 
-pub fn correlate(
+pub fn render_event_into(
+    w: &mut impl std::io::Write,
+    style: DisplayStyle,
     manifests: &HashMap<u32, Manifest>,
     event: crate::decoder::Event,
-) -> Result<CorrelatedEvent, DynError> {
+) -> Result<(), DynError> {
     let manifest = manifests.get(&event.source_crc).ok_or_else(|| {
         DynError::new(format!(
             "got event for manifest with source CRC of \"{}\", but no manifest is found",
@@ -40,7 +43,7 @@ pub fn correlate(
         None
     };
 
-    Ok(CorrelatedEvent {
+    CorrelatedEvent {
         timestamp: event.timestamp,
         manifest_name: manifest.name.original(),
         device_name: device_name.unwrap_or(manifest.name.original()),
@@ -49,7 +52,9 @@ pub fn correlate(
             .into_iter()
             .map(|op| correlate_operation(manifest, op))
             .collect::<Result<Vec<_>, DynError>>()?,
-    })
+    }
+    .fmt_into(w, style)
+    .with_message(|| "could not render the event")
 }
 
 fn correlate_operation(
@@ -268,21 +273,26 @@ pub struct CorrelatedEvent {
     operations: Vec<CorrelatedOperation>,
 }
 
-impl Display for CorrelatedEvent {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+impl CorrelatedEvent {
+    fn fmt_into(&self, w: &mut impl std::io::Write, style: DisplayStyle) -> std::io::Result<()> {
         if let Some(timestamp) = self.timestamp {
-            write!(f, "[{:8.3}] ", timestamp as f32 / 1_000_000.0)?;
+            write!(w, "{DIM}[{:8.3}]{RESET} ", timestamp as f32 / 1_000_000.0)?;
         }
 
-        write!(f, "TRACE ")?;
+        write!(w, "TRACE ")?;
 
         if self.manifest_name == self.device_name {
-            write!(f, "{} ", self.device_name)?;
+            write!(w, "{} ", self.device_name)?;
         } else {
-            write!(f, "({}) {} ", self.manifest_name, self.device_name)?;
+            write!(
+                w,
+                "{DIM}({}){RESET} {YELLOW}{}{RESET} ",
+                self.manifest_name, self.device_name
+            )?;
         }
         for operation in &self.operations {
-            writeln!(f, "{operation}")?;
+            operation.fmt_into(w, style)?;
+            writeln!(w)?;
         }
 
         Ok(())
@@ -294,18 +304,22 @@ pub struct CorrelatedOperation {
     actions: Vec<CorrelatedAction>,
 }
 
-impl Display for CorrelatedOperation {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "address: {:#X}", self.address)?; // TODO: This renders negative addresses quite poorly
+impl CorrelatedOperation {
+    fn fmt_into(&self, w: &mut impl std::io::Write, style: DisplayStyle) -> std::io::Result<()> {
+        if self.address.is_negative() {
+            write!(w, "{DIM}@ {}{RESET}", self.address)?;
+        } else {
+            write!(w, "{DIM}@ {:#04X}{RESET}", self.address)?;
+        }
 
         if self.actions.len() > 1 {
-            writeln!(f)?;
+            writeln!(w)?;
         } else {
-            write!(f, ", ")?;
+            write!(w, ", ")?;
         }
 
         for action in &self.actions {
-            write!(f, "{action}")?;
+            action.fmt_into(w, style)?;
         }
 
         Ok(())
@@ -313,7 +327,7 @@ impl Display for CorrelatedOperation {
 }
 
 struct CorrelatedAction {
-    action: &'static str,
+    action: String,
     read_first: bool,
     is_modify: bool,
     operation_name: Istr,
@@ -324,23 +338,27 @@ struct CorrelatedAction {
     write_data: Vec<u8>,
 }
 
-impl Display for CorrelatedAction {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{} {}", self.action, self.operation_name)?;
+impl CorrelatedAction {
+    fn fmt_into(&self, w: &mut impl std::io::Write, style: DisplayStyle) -> std::io::Result<()> {
+        write!(w, "{} {YELLOW}{}{RESET}", self.action, self.operation_name)?;
         if let Some(index) = self.index.as_ref() {
-            writeln!(f, "[{index}]")?;
+            writeln!(w, "[{index}]")?;
         } else {
-            writeln!(f)?;
+            writeln!(w)?;
         }
 
         fn fmt_bytes(
-            f: &mut core::fmt::Formatter<'_>,
+            w: &mut impl std::io::Write,
+            style: DisplayStyle,
             fs: Option<&DecodedFieldset>,
             fs_diff: Option<&DecodedFieldset>,
             bytes: &[u8],
             bytes_diff: Option<&[u8]>,
-        ) -> core::fmt::Result {
-            if let Some(fs) = fs {
+            operation_name: Istr,
+        ) -> std::io::Result<()> {
+            if let Some(fs) = fs
+                && style != DisplayStyle::Raw
+            {
                 let diff_fs = if let Some(fs_diff) = &fs_diff {
                     fs_diff.fields.iter().map(Some).collect()
                 } else {
@@ -348,10 +366,10 @@ impl Display for CorrelatedAction {
                 };
 
                 write!(
-                    f,
+                    w,
                     "{}",
                     BitdumpFormatter::new(
-                        fs.name.to_string(),
+                        (fs.name != operation_name).then(|| fs.name.to_string()),
                         bytes.to_vec(),
                         bytes_diff.map(|b| b.to_vec()),
                         fs.fields
@@ -382,12 +400,19 @@ impl Display for CorrelatedAction {
                                 reserved: false,
                             })
                             .collect(),
-                        true
+                        style == DisplayStyle::Fancy
                     )
                 )
             } else if !bytes.is_empty() {
                 // Just bytes without associated fieldset (likely buffer)
-                write!(f, "> {:02X?}", bytes)
+                write!(w, "{DIM}>{RESET} ")?;
+                for (index, byte) in bytes.iter().enumerate() {
+                    if index != 0 {
+                        write!(w, ", ")?;
+                    }
+                    write!(w, "{GREEN}{byte:02X}{RESET}")?;
+                }
+                writeln!(w)
             } else {
                 Ok(())
             }
@@ -395,19 +420,53 @@ impl Display for CorrelatedAction {
 
         if self.is_modify {
             fmt_bytes(
-                f,
+                w,
+                style,
                 self.write_fs.as_ref(),
                 self.read_fs.as_ref(),
                 &self.write_data,
                 Some(&self.read_data),
+                self.operation_name,
             )?;
         } else {
             if self.read_first {
-                fmt_bytes(f, self.read_fs.as_ref(), None, &self.read_data, None)?;
-                fmt_bytes(f, self.write_fs.as_ref(), None, &self.write_data, None)?;
+                fmt_bytes(
+                    w,
+                    style,
+                    self.read_fs.as_ref(),
+                    None,
+                    &self.read_data,
+                    None,
+                    self.operation_name,
+                )?;
+                fmt_bytes(
+                    w,
+                    style,
+                    self.write_fs.as_ref(),
+                    None,
+                    &self.write_data,
+                    None,
+                    self.operation_name,
+                )?;
             } else {
-                fmt_bytes(f, self.write_fs.as_ref(), None, &self.write_data, None)?;
-                fmt_bytes(f, self.read_fs.as_ref(), None, &self.read_data, None)?;
+                fmt_bytes(
+                    w,
+                    style,
+                    self.write_fs.as_ref(),
+                    None,
+                    &self.write_data,
+                    None,
+                    self.operation_name,
+                )?;
+                fmt_bytes(
+                    w,
+                    style,
+                    self.read_fs.as_ref(),
+                    None,
+                    &self.read_data,
+                    None,
+                    self.operation_name,
+                )?;
             }
         }
 
@@ -418,17 +477,39 @@ impl Display for CorrelatedAction {
 fn operation_action(
     used_access: Option<Access>,
     operation_type: ObjectType,
-) -> Result<(&'static str, bool, bool), DynError> {
+) -> Result<(String, bool, bool), DynError> {
     match (used_access, operation_type) {
-        (None, ObjectType::Command) => Ok(("dispatch command", false, false)),
-        (Some(Access::RO), ObjectType::Command) => Ok(("dispatch out command", false, false)),
-        (Some(Access::WO), ObjectType::Command) => Ok(("dispatch in command", false, false)),
-        (Some(Access::RW), ObjectType::Command) => Ok(("dispatch inout command", false, false)),
-        (Some(Access::RO), ObjectType::Register) => Ok(("read register", false, true)),
-        (Some(Access::WO), ObjectType::Register) => Ok(("write register", false, true)),
-        (Some(Access::RW), ObjectType::Register) => Ok(("modify register", true, true)),
-        (Some(Access::RO), ObjectType::Buffer) => Ok(("read buffer", false, true)),
-        (Some(Access::WO), ObjectType::Buffer) => Ok(("write buffer", false, true)),
+        (None, ObjectType::Command) => Ok((format!("{RED}dispatch{RESET} command"), false, false)),
+        (Some(Access::RO), ObjectType::Command) => Ok((
+            format!("{RED}dispatch {UNDERLINE}out{RESET} command"),
+            false,
+            false,
+        )),
+        (Some(Access::WO), ObjectType::Command) => Ok((
+            format!("{RED}dispatch {UNDERLINE}in{RESET} command"),
+            false,
+            false,
+        )),
+        (Some(Access::RW), ObjectType::Command) => Ok((
+            format!("{RED}dispatch {UNDERLINE}inout{RESET} command"),
+            false,
+            false,
+        )),
+        (Some(Access::RO), ObjectType::Register) => {
+            Ok((format!("{RED}read{RESET} register"), false, true))
+        }
+        (Some(Access::WO), ObjectType::Register) => {
+            Ok((format!("{RED}write{RESET} register"), false, true))
+        }
+        (Some(Access::RW), ObjectType::Register) => {
+            Ok((format!("{RED}modify{RESET} register"), true, true))
+        }
+        (Some(Access::RO), ObjectType::Buffer) => {
+            Ok((format!("{RED}read{RESET} buffer"), false, true))
+        }
+        (Some(Access::WO), ObjectType::Buffer) => {
+            Ok((format!("{RED}write{RESET} buffer"), false, true))
+        }
         _ => Err(DynError::new(
             "unexpected combination of access pattern and operation type. Are we looking at the correct manifest?",
         )),
@@ -441,4 +522,11 @@ struct ActionInfo<'a> {
     index: Option<String>,
     read_fs: Option<&'a FieldSet>,
     write_fs: Option<&'a FieldSet>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DisplayStyle {
+    Fancy,
+    Compact,
+    Raw,
 }

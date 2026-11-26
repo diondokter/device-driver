@@ -1,3 +1,4 @@
+use crate::ansi::*;
 /// Bitfield visualizer, taken and adapted from https://github.com/oddlama/embedded-devices under MIT license
 use core::ops::Range;
 use std::{collections::HashSet, fmt};
@@ -13,13 +14,7 @@ pub struct Field {
     pub reserved: bool,
 }
 
-const COLORS: &[&str] = &["\x1b[31m", "\x1b[32m", "\x1b[34m", "\x1b[35m"]; // Red, green, blue, magenta
-const DIM: &str = "\x1b[2m";
-const RESET: &str = "\x1b[0m";
-const YELLOW: &str = "\x1b[33m";
-const GRAY: &str = "\x1b[90m";
-const NDIFF: &str = "\x1b[2m"; // underline
-const CELL: usize = 4; // visible width of one bit cell in the border calculations
+pub const CELL: usize = 4; // visible width of one bit cell in the border calculations
 
 #[derive(Debug, Clone)]
 struct Section {
@@ -31,7 +26,7 @@ struct Section {
 }
 
 pub struct BitdumpFormatter {
-    name: String,
+    name: Option<String>,
     data: Vec<u8>,
     data_diff: Option<Vec<u8>>,
     fields: Vec<Field>,
@@ -41,7 +36,7 @@ pub struct BitdumpFormatter {
 
 impl BitdumpFormatter {
     pub fn new(
-        name: String,
+        name: Option<String>,
         data: Vec<u8>,
         data_diff: Option<Vec<u8>>,
         fields: Vec<Field>,
@@ -264,9 +259,9 @@ impl BitdumpFormatter {
         if self.borders {
             // Border prefix
             if last_line {
-                write!(f, "   ┌")?;
+                write!(f, "     ┌")?;
             } else {
-                write!(f, "   ├")?;
+                write!(f, "     ├")?;
             }
 
             for (si, span_start) in span_starts.iter().enumerate().rev() {
@@ -334,7 +329,7 @@ impl BitdumpFormatter {
         } else {
             '│'
         };
-        write!(f, "{line:02x} {left_border}")?;
+        write!(f, "  {line:02x} {left_border}")?;
 
         let mut display_field = None;
         let mut potentially_displayable_fields = 0;
@@ -350,7 +345,7 @@ impl BitdumpFormatter {
             }
 
             let bit_value = if self.get_bit(bit) { "1" } else { "0" };
-            let bit_style_mod = if !self.is_bit_diffed(bit) { NDIFF } else { "" };
+            let bit_style_mod = if !self.is_bit_diffed(bit) { DIM } else { "" };
             let sec_idx = self.section_index_at(bit);
             if let Some(si) = sec_idx {
                 let sec = &self.sections[si];
@@ -439,7 +434,7 @@ impl BitdumpFormatter {
 
         // Border suffix
         if self.borders && line == 0 {
-            write!(f, "   └")?;
+            write!(f, "     └")?;
             for (si, span_start) in span_starts.iter().enumerate().rev() {
                 let span_end = if si + 1 < span_starts.len() {
                     span_starts[si + 1]
@@ -511,7 +506,7 @@ impl BitdumpFormatter {
             let border = if last { '╰' } else { '├' };
             write!(
                 f,
-                "   {DIM}{border}─ {idx}{RESET} {color}{name:<name_width$}{RESET}  {bv:<bv_width$}",
+                "     {DIM}{border}─ {idx}{RESET} {color}{name:<name_width$}{RESET}  {bv:<bv_width$}",
                 idx = i + 1,
                 name = field.name,
                 name_width = max_name_width,
@@ -532,7 +527,7 @@ impl BitdumpFormatter {
             }
 
             writeln!(f)?;
-            if last {
+            if last && self.borders {
                 writeln!(f)?;
             }
         }
@@ -542,11 +537,17 @@ impl BitdumpFormatter {
 
 impl fmt::Display for BitdumpFormatter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "   {DIM}╭─{RESET} {YELLOW}{}{RESET}", self.name)?;
+        let arrow_rest = if let Some(name) = &self.name {
+            writeln!(f, "     {DIM}╭─ fieldset{RESET} {CYAN}{}{RESET}", name)?;
+            format!("{DIM}│{RESET}")
+        } else {
+            " ".into()
+        };
+
         if self.borders {
             writeln!(
                 f,
-                "   {DIM}🭭{RESET} 7   {DIM}6{RESET}   5   {DIM}4{RESET}   3   {DIM}2{RESET}   1   {DIM}0{RESET}"
+                "     {arrow_rest} 7   {DIM}6{RESET}   5   {DIM}4{RESET}   3   {DIM}2{RESET}   1   {DIM}0{RESET}"
             )?;
         }
 
