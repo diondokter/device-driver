@@ -7,6 +7,7 @@
 - Added an LSP hover over an address. If the object is repeated, you'll get an overview of all the address for each repeat index
 - Rendered fieldsets in LSP hover now use hex for the (base) value instead of decimal
 - Fix patch suggestion for SizeBytesTooLarge error
+- Fixed panic in LSP hover when a conversion type is not defined inline
 
 ### 2.2.0 (21-10-26)
 

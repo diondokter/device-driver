@@ -1,7 +1,7 @@
 use std::ops::{Not, Range};
 
 use device_driver_common::specifiers::RepeatSource;
-use device_driver_mir::model::{Manifest, Object, Register};
+use device_driver_mir::model::{Manifest, Object, Register, TypeRef};
 use itertools::Itertools;
 use tower_lsp_server::ls_types::{Hover, HoverContents, MarkedString, Position};
 
@@ -33,11 +33,12 @@ fn try_get_identifier_hover(document: &Document, position: Position) -> Option<H
         node_header_span = node_header_span.until_start_of(body_span);
     }
     if let Some(conversion) = target.type_conversion()
-        && let Some(target_type) = document.mir_manifest().search_type(&conversion.type_ref)
-        && let Some(body_span) = target_type.body_span()
+        && let TypeRef::Id(target_type_id) = conversion.type_ref.value
+        && let Some(target_type) = document.mir_manifest().object(target_type_id)
+        && let Some(conversion_body_span) = target_type.body_span()
     {
         // We have a conversion type with a body. Let's not show that body either
-        node_header_span = node_header_span.until_start_of(body_span);
+        node_header_span = node_header_span.until_start_of(conversion_body_span);
     }
 
     let node_header_text = &document.source()[Range::from(node_header_span)];
