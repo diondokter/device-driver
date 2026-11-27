@@ -34,10 +34,12 @@ fn try_get_identifier_hover(document: &Document, position: Position) -> Option<H
     }
     if let Some(conversion) = target.type_conversion()
         && let Some(target_type) = document.mir_manifest().search_type(&conversion.type_ref)
-        && let Some(body_span) = target_type.body_span()
+        && let Some(conversion_body_span) = target_type.body_span()
+        // Is the conversion defined inline?
+        && conversion_body_span.overlaps(node_header_span)
     {
         // We have a conversion type with a body. Let's not show that body either
-        node_header_span = node_header_span.until_start_of(body_span);
+        node_header_span = node_header_span.until_start_of(conversion_body_span);
     }
 
     let node_header_text = &document.source()[Range::from(node_header_span)];
