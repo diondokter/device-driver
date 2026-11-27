@@ -1172,7 +1172,9 @@ pub struct TypeConversion {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeRef {
+    /// Referenced object
     Identifier(IdentifierRef<Type>),
+    /// Inline defined object
     Id(ObjectId),
 }
 
