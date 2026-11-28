@@ -116,6 +116,8 @@ where
 {
     block: &'b mut B,
     address: AddressType,
+    #[cfg(feature = "trace")]
+    object_id: u32,
     _phantom: PhantomData<Access>,
 }
 
@@ -129,13 +131,34 @@ where
     pub fn new(
         interface: &'b mut B,
         address: <B::Interface as BufferInterfaceBase>::AddressType,
+        _object_id: u32,
     ) -> Self {
         Self {
             block: interface,
             address,
+            #[cfg(feature = "trace")]
+            object_id: _object_id,
             _phantom: PhantomData,
         }
     }
+
+    fn send_event(&mut self, _index: Option<i32>, _bytes: &[u8], _write: bool) {
+        #[cfg(feature = "trace")]
+        if let Some(trace_interface) = crate::global_trace_interface() {
+            use device_driver_trace::encoder::Event;
+
+            Event::new(trace_interface, B::SOURCE_CRC).send_final_frame(trace_interface, |f| {
+                f.send_timestamp(trace_interface.timestamp());
+                f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                    self.object_id,
+                    _index,
+                ));
+                self.address.get_le_bytes(|address| f.send_address(address));
+                f.send_bytes(_write, _bytes);
+            });
+        }
+    }
+
     /// Write a buffer into this writer, returning how many bytes were written.
     ///
     /// Mirror function of [`embedded_io::Write::write`].
@@ -147,21 +170,33 @@ where
         B::Interface: BufferInterface,
         Access: WriteCapability,
     {
-        self.block.interface().write(self.address, buf)
+        let result = self.block.interface().write(self.address, buf);
+
+        if let Ok(len) = result {
+            self.send_event(None, &buf[..len], true);
+        }
+
+        result
     }
 
     /// Write a buffer into this writer, returning how many bytes were written.
     ///
     /// Mirror function of [`embedded_io_async::Write::write`].
-    pub fn write_async(
+    pub async fn write_async(
         &mut self,
         buf: &[u8],
-    ) -> impl Future<Output = Result<usize, <B::Interface as BufferInterfaceBase>::Error>>
+    ) -> Result<usize, <B::Interface as BufferInterfaceBase>::Error>
     where
         B::Interface: AsyncBufferInterface,
         Access: WriteCapability,
     {
-        self.block.interface().write(self.address, buf)
+        let result = self.block.interface().write(self.address, buf).await;
+
+        if let Ok(len) = result {
+            self.send_event(None, &buf[..len], true);
+        }
+
+        result
     }
 
     /// Write an entire buffer into this writer.
@@ -245,21 +280,33 @@ where
         B::Interface: BufferInterface,
         Access: ReadCapability,
     {
-        self.block.interface().read(self.address, buf)
+        let result = self.block.interface().read(self.address, buf);
+
+        if let Ok(len) = result {
+            self.send_event(None, &buf[..len], false);
+        }
+
+        result
     }
 
     /// Read some bytes from this source into the specified buffer, returning how many bytes were read.
     ///
     /// Mirror function of [`embedded_io_async::Read::read`].
-    pub fn read_async(
+    pub async fn read_async(
         &mut self,
         buf: &mut [u8],
-    ) -> impl Future<Output = Result<usize, <B::Interface as BufferInterfaceBase>::Error>>
+    ) -> Result<usize, <B::Interface as BufferInterfaceBase>::Error>
     where
         B::Interface: AsyncBufferInterface,
         Access: ReadCapability,
     {
-        self.block.interface().read(self.address, buf)
+        let result = self.block.interface().read(self.address, buf).await;
+
+        if let Ok(len) = result {
+            self.send_event(None, &buf[..len], false);
+        }
+
+        result
     }
 }
 

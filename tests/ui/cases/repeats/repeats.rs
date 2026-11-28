@@ -69,6 +69,7 @@ impl<I> ::device_driver::Block for Repeats<I> {
     type CommandAddressType = u8;
     type BufferAddressType = u8;
     type RegisterAddressMode = ();
+    const SOURCE_CRC: u32 = 0x6D537431;
     fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }
@@ -99,6 +100,7 @@ impl<'i, I> ::device_driver::Block for Foo<'i, I> {
     type CommandAddressType = u8;
     type BufferAddressType = u8;
     type RegisterAddressMode = ();
+    const SOURCE_CRC: u32 = 0x6D537431;
     fn interface(&mut self) -> &mut Self::Interface {
         self.interface
     }
@@ -129,6 +131,7 @@ impl<'i, I> ::device_driver::Block for Bar<'i, I> {
     type CommandAddressType = u8;
     type BufferAddressType = u8;
     type RegisterAddressMode = ();
+    const SOURCE_CRC: u32 = 0x6D537431;
     fn interface(&mut self) -> &mut Self::Interface {
         self.interface
     }
@@ -159,6 +162,7 @@ impl<'i, I> ::device_driver::Block for Quux<'i, I> {
     type CommandAddressType = u8;
     type BufferAddressType = u8;
     type RegisterAddressMode = ();
+    const SOURCE_CRC: u32 = 0x6D537431;
     fn interface(&mut self) -> &mut Self::Interface {
         self.interface
     }
@@ -195,7 +199,7 @@ impl From<TooBig> for u32 {
     }
 }
 #[doc(hidden)]
-impl ::device_driver::EnumIndex for TooBig {
+impl ::device_driver::Index for TooBig {
     #[track_caller]
     fn index(&self) -> i32 {
         let index = u32::from(*self);
@@ -244,7 +248,7 @@ impl From<Small> for i8 {
     }
 }
 #[doc(hidden)]
-impl ::device_driver::EnumIndex for Small {
+impl ::device_driver::Index for Small {
     #[track_caller]
     fn index(&self) -> i32 {
         let index = i8::from(*self);

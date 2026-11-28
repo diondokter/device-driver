@@ -114,7 +114,7 @@ impl Diagnostics {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Summary {
     pub errors: u32,
     pub warnings: u32,

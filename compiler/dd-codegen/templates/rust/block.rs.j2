@@ -121,13 +121,22 @@ impl{{block_generics}} {{ block.name.to_case(Case::Pascal) }}{{block_generics}} 
                         {% else %}
                             {{field_set_name.to_case(Case::Pascal)}}::default,
                         {% endif %}
+                        {{method.mir_object_id.raw() | fmt("{:#X}")}},
                     )
                 {% endwhen %}
                 {% when BlockMethodType::Command { field_set_name_in, field_set_name_out } %}
-                    ::device_driver::CommandOperation::new(self, address as {{block.command_address_type}})
+                    ::device_driver::CommandOperation::new(
+                        self,
+                        address as {{block.command_address_type}},
+                        {{method.mir_object_id.raw() | fmt("{:#X}")}},
+                    )
                 {% endwhen %}
                 {% when BlockMethodType::Buffer { access } %}
-                    ::device_driver::BufferOperation::new(self, address as {{block.buffer_address_type}})
+                    ::device_driver::BufferOperation::new(
+                        self,
+                        address as {{block.buffer_address_type}},
+                        {{method.mir_object_id.raw() | fmt("{:#X}")}},
+                    )
                 {% endwhen %}
             {% endmatch %}
         }
@@ -140,6 +149,7 @@ impl{{block_generics}} ::device_driver::Block for {{ block.name.to_case(Case::Pa
     type CommandAddressType = {{ block.command_address_type }};
     type BufferAddressType = {{ block.buffer_address_type }};
     type RegisterAddressMode = {{self::get_address_mode_const_value(block.register_address_mode)}};
+    const SOURCE_CRC: u32 = {{driver.source_crc | fmt("{:#X}")}};
 
     {% if block.root %}
     fn interface(&mut self) -> &mut Self::Interface {

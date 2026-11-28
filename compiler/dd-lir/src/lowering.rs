@@ -145,6 +145,7 @@ fn get_method(
                 method_type: lir::BlockMethodType::Block {
                     name: name.value.clone().cast(),
                 },
+                mir_object_id: object,
             })
         }
         mir::Object::Register(mir::Register {
@@ -178,6 +179,7 @@ fn get_method(
                     })
                     .transpose()?,
                 },
+                mir_object_id: object,
             })
         }
         mir::Object::Command(mir::Command {
@@ -221,6 +223,7 @@ fn get_method(
                     field_set_name_out: field_set_out
                         .map(|fs_out| fs_out.name.value.clone().cast_assert()),
                 },
+                mir_object_id: object,
             })
         }
         mir::Object::Buffer(mir::Buffer {
@@ -240,6 +243,7 @@ fn get_method(
             method_type: lir::BlockMethodType::Buffer {
                 access: access.ok_or_else(|| DynError::new("access is not set"))?,
             },
+            mir_object_id: object,
         }),
         mir::Object::FieldSet(_) => None,
         mir::Object::Enum(_) => None,

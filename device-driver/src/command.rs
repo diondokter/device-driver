@@ -1,6 +1,18 @@
+#![cfg_attr(not(feature = "trace"), expect(clippy::let_unit_value))]
+
 use core::marker::PhantomData;
 
-use crate::{Address, Block, Fieldset, FieldsetMetadata, NotFieldset, NotRepeating, Repeating};
+#[cfg(feature = "trace")]
+use device_driver_trace::encoder::Event;
+
+use crate::{
+    Address, Block, Fieldset, FieldsetMetadata, Index, NotFieldset, NotRepeating, Repeating,
+};
+
+#[cfg(feature = "trace")]
+type ModifyEvent = Option<Event>;
+#[cfg(not(feature = "trace"))]
+type ModifyEvent = ();
 
 /// Common properties shared by [`CommandInterface`] & [`AsyncCommandInterface`]
 pub trait CommandInterfaceBase {
@@ -100,6 +112,8 @@ where
 {
     block: &'b mut B,
     address: AddressType,
+    #[cfg(feature = "trace")]
+    object_id: u32,
     _phantom: PhantomData<(InFieldset, OutFieldset, Repeat)>,
 }
 
@@ -111,22 +125,92 @@ where
     AddressType: Address,
 {
     #[doc(hidden)]
-    pub fn new(block: &'d mut B, address: AddressType) -> Self {
+    pub fn new(block: &'d mut B, address: AddressType, _object_id: u32) -> Self {
         Self {
             block,
             address,
+            #[cfg(feature = "trace")]
+            object_id: _object_id,
             _phantom: PhantomData,
         }
     }
 
+    fn send_none_event(&mut self, _index: Option<i32>) {
+        #[cfg(feature = "trace")]
+        if let Some(trace_interface) = crate::global_trace_interface() {
+            use device_driver_trace::encoder::Event;
+
+            Event::new(trace_interface, B::SOURCE_CRC).send_final_frame(trace_interface, |f| {
+                f.send_timestamp(trace_interface.timestamp());
+                f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                    self.object_id,
+                    _index,
+                ));
+                self.address.get_le_bytes(|address| f.send_address(address));
+            });
+        }
+    }
+
+    fn send_single_event(&mut self, _index: Option<i32>, _fs: &impl Fieldset, _write: bool) {
+        #[cfg(feature = "trace")]
+        if let Some(trace_interface) = crate::global_trace_interface() {
+            use device_driver_trace::encoder::Event;
+
+            Event::new(trace_interface, B::SOURCE_CRC).send_final_frame(trace_interface, |f| {
+                f.send_timestamp(trace_interface.timestamp());
+                f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                    self.object_id,
+                    _index,
+                ));
+                self.address.get_le_bytes(|address| f.send_address(address));
+                f.send_bytes(_write, _fs.as_slice());
+            });
+        }
+    }
+
+    fn start_inout_event(&mut self, _index: Option<i32>, _in: &impl Fieldset) -> ModifyEvent {
+        #[cfg(feature = "trace")]
+        if let Some(trace_interface) = crate::global_trace_interface() {
+            Some(
+                Event::new(trace_interface, B::SOURCE_CRC).send_frame(trace_interface, |f| {
+                    f.send_timestamp(trace_interface.timestamp());
+                    f.send_object_identifier(&device_driver_trace::ObjectIdentifier::new(
+                        self.object_id,
+                        _index,
+                    ));
+                    self.address.get_le_bytes(|address| f.send_address(address));
+                    f.send_bytes(true, _in.as_slice());
+                }),
+            )
+        } else {
+            None
+        }
+    }
+
+    fn finish_inout_event(&mut self, _event: ModifyEvent, _out: &impl Fieldset) {
+        #[cfg(feature = "trace")]
+        if let Some(event) = _event {
+            if let Some(trace_interface) = crate::global_trace_interface() {
+                event.send_final_frame(trace_interface, |f| {
+                    f.send_bytes(false, _out.as_slice());
+                });
+            } else {
+                event.discard();
+            }
+        }
+    }
+
     /// Dispatch the command to the device
-    pub fn dispatch(self) -> Result<(), <B::Interface as CommandInterfaceBase>::Error>
+    #[allow(private_bounds)]
+    pub fn dispatch(mut self) -> Result<(), <B::Interface as CommandInterfaceBase>::Error>
     where
         B::Interface: CommandInterface,
         InFieldset: NotFieldset,
         OutFieldset: NotFieldset,
         Repeat: NotRepeating,
     {
+        self.send_none_event(None);
+
         self.block.interface().dispatch_command(
             self.address,
             &mut [],
@@ -137,9 +221,10 @@ where
     }
 
     /// Dispatch the command to the device
+    #[allow(private_bounds)]
     #[track_caller]
     pub fn dispatch_at(
-        self,
+        mut self,
         index: Repeat::Index,
     ) -> Result<(), <B::Interface as CommandInterfaceBase>::Error>
     where
@@ -148,6 +233,8 @@ where
         OutFieldset: NotFieldset,
         Repeat: Repeating,
     {
+        self.send_none_event(Some(index.index()));
+
         self.block.interface().dispatch_command(
             Repeat::calc_address(self.address, index),
             &mut [],
@@ -158,8 +245,9 @@ where
     }
 
     /// Dispatch the command to the device
+    #[allow(private_bounds)]
     pub fn dispatch_async(
-        self,
+        mut self,
     ) -> impl Future<Output = Result<(), <B::Interface as CommandInterfaceBase>::Error>>
     where
         B::Interface: AsyncCommandInterface,
@@ -167,6 +255,8 @@ where
         OutFieldset: NotFieldset,
         Repeat: NotRepeating,
     {
+        self.send_none_event(None);
+
         self.block.interface().dispatch_command(
             self.address,
             &mut [],
@@ -177,8 +267,9 @@ where
     }
 
     /// Dispatch the command to the device
+    #[allow(private_bounds)]
     pub fn dispatch_at_async(
-        self,
+        mut self,
         index: Repeat::Index,
     ) -> impl Future<Output = Result<(), <B::Interface as CommandInterfaceBase>::Error>>
     where
@@ -187,6 +278,8 @@ where
         OutFieldset: NotFieldset,
         Repeat: Repeating,
     {
+        self.send_none_event(Some(index.index()));
+
         self.block.interface().dispatch_command(
             Repeat::calc_address(self.address, index),
             &mut [],
@@ -197,8 +290,9 @@ where
     }
 
     /// Dispatch the command to the device with an input
+    #[allow(private_bounds)]
     pub fn dispatch_in(
-        self,
+        mut self,
         f: impl FnOnce(&mut InFieldset),
     ) -> Result<(), <B::Interface as CommandInterfaceBase>::Error>
     where
@@ -209,6 +303,8 @@ where
     {
         let mut in_fields = InFieldset::ZERO;
         f(&mut in_fields);
+
+        self.send_single_event(None, &in_fields, true);
 
         self.block.interface().dispatch_command(
             self.address,
@@ -221,8 +317,9 @@ where
 
     /// Dispatch the command to the device with an input
     #[track_caller]
+    #[allow(private_bounds)]
     pub fn dispatch_in_at(
-        self,
+        mut self,
         index: Repeat::Index,
         f: impl FnOnce(&mut InFieldset),
     ) -> Result<(), <B::Interface as CommandInterfaceBase>::Error>
@@ -235,6 +332,8 @@ where
         let mut in_fields = InFieldset::ZERO;
         f(&mut in_fields);
 
+        self.send_single_event(Some(index.index()), &in_fields, true);
+
         self.block.interface().dispatch_command(
             Repeat::calc_address(self.address, index),
             in_fields.as_slice_mut(),
@@ -245,8 +344,9 @@ where
     }
 
     /// Dispatch the command to the device with an input
+    #[allow(private_bounds)]
     pub async fn dispatch_in_async(
-        self,
+        mut self,
         f: impl FnOnce(&mut InFieldset),
     ) -> Result<(), <B::Interface as CommandInterfaceBase>::Error>
     where
@@ -257,6 +357,8 @@ where
     {
         let mut in_fields = InFieldset::ZERO;
         f(&mut in_fields);
+
+        self.send_single_event(None, &in_fields, true);
 
         self.block
             .interface()
@@ -271,8 +373,9 @@ where
     }
 
     /// Dispatch the command to the device with an input
+    #[allow(private_bounds)]
     pub async fn dispatch_in_at_async(
-        self,
+        mut self,
         index: Repeat::Index,
         f: impl FnOnce(&mut InFieldset),
     ) -> Result<(), <B::Interface as CommandInterfaceBase>::Error>
@@ -284,6 +387,8 @@ where
     {
         let mut in_fields = InFieldset::ZERO;
         f(&mut in_fields);
+
+        self.send_single_event(Some(index.index()), &in_fields, true);
 
         self.block
             .interface()
@@ -298,7 +403,10 @@ where
     }
 
     /// Dispatch the command to the device with an output
-    pub fn dispatch_out(self) -> Result<OutFieldset, <B::Interface as CommandInterfaceBase>::Error>
+    #[allow(private_bounds)]
+    pub fn dispatch_out(
+        mut self,
+    ) -> Result<OutFieldset, <B::Interface as CommandInterfaceBase>::Error>
     where
         B::Interface: CommandInterface,
         InFieldset: NotFieldset,
@@ -315,13 +423,16 @@ where
             &OutFieldset::METADATA,
         )?;
 
+        self.send_single_event(None, &out_fields, false);
+
         Ok(out_fields)
     }
 
     /// Dispatch the command to the device with an output
     #[track_caller]
+    #[allow(private_bounds)]
     pub fn dispatch_out_at(
-        self,
+        mut self,
         index: Repeat::Index,
     ) -> Result<OutFieldset, <B::Interface as CommandInterfaceBase>::Error>
     where
@@ -340,12 +451,15 @@ where
             &OutFieldset::METADATA,
         )?;
 
+        self.send_single_event(Some(index.index()), &out_fields, false);
+
         Ok(out_fields)
     }
 
     /// Dispatch the command to the device with an output
+    #[allow(private_bounds)]
     pub async fn dispatch_out_async(
-        self,
+        mut self,
     ) -> Result<OutFieldset, <B::Interface as CommandInterfaceBase>::Error>
     where
         B::Interface: AsyncCommandInterface,
@@ -366,12 +480,15 @@ where
             )
             .await?;
 
+        self.send_single_event(None, &out_fields, false);
+
         Ok(out_fields)
     }
 
     /// Dispatch the command to the device with an output
+    #[allow(private_bounds)]
     pub async fn dispatch_out_at_async(
-        self,
+        mut self,
         index: Repeat::Index,
     ) -> Result<OutFieldset, <B::Interface as CommandInterfaceBase>::Error>
     where
@@ -392,13 +509,15 @@ where
                 &OutFieldset::METADATA,
             )
             .await?;
+
+        self.send_single_event(Some(index.index()), &out_fields, false);
 
         Ok(out_fields)
     }
 
     /// Dispatch the command to the device with an input and output
     pub fn dispatch_inout(
-        self,
+        mut self,
         f: impl FnOnce(&mut InFieldset),
     ) -> Result<OutFieldset, <B::Interface as CommandInterfaceBase>::Error>
     where
@@ -410,6 +529,8 @@ where
         let mut in_fields = InFieldset::ZERO;
         f(&mut in_fields);
 
+        let event = self.start_inout_event(None, &in_fields);
+
         let mut out_fields = OutFieldset::ZERO;
 
         self.block.interface().dispatch_command(
@@ -419,6 +540,8 @@ where
             out_fields.as_slice_mut(),
             &OutFieldset::METADATA,
         )?;
+
+        self.finish_inout_event(event, &out_fields);
 
         Ok(out_fields)
     }
@@ -426,7 +549,7 @@ where
     /// Dispatch the command to the device with an input and output
     #[track_caller]
     pub fn dispatch_inout_at(
-        self,
+        mut self,
         index: Repeat::Index,
         f: impl FnOnce(&mut InFieldset),
     ) -> Result<OutFieldset, <B::Interface as CommandInterfaceBase>::Error>
@@ -439,6 +562,8 @@ where
         let mut in_fields = InFieldset::ZERO;
         f(&mut in_fields);
 
+        let event = self.start_inout_event(None, &in_fields);
+
         let mut out_fields = OutFieldset::ZERO;
 
         self.block.interface().dispatch_command(
@@ -449,12 +574,14 @@ where
             &OutFieldset::METADATA,
         )?;
 
+        self.finish_inout_event(event, &out_fields);
+
         Ok(out_fields)
     }
 
     /// Dispatch the command to the device with an input and output
     pub async fn dispatch_inout_async(
-        self,
+        mut self,
         f: impl FnOnce(&mut InFieldset),
     ) -> Result<OutFieldset, <B::Interface as CommandInterfaceBase>::Error>
     where
@@ -465,6 +592,8 @@ where
     {
         let mut in_fields = InFieldset::ZERO;
         f(&mut in_fields);
+
+        let event = self.start_inout_event(None, &in_fields);
 
         let mut out_fields = OutFieldset::ZERO;
 
@@ -479,12 +608,14 @@ where
             )
             .await?;
 
+        self.finish_inout_event(event, &out_fields);
+
         Ok(out_fields)
     }
 
     /// Dispatch the command to the device with an input and output
     pub async fn dispatch_inout_at_async(
-        self,
+        mut self,
         index: Repeat::Index,
         f: impl FnOnce(&mut InFieldset),
     ) -> Result<OutFieldset, <B::Interface as CommandInterfaceBase>::Error>
@@ -496,6 +627,8 @@ where
     {
         let mut in_fields = InFieldset::ZERO;
         f(&mut in_fields);
+
+        let event = self.start_inout_event(None, &in_fields);
 
         let mut out_fields = OutFieldset::ZERO;
 
@@ -509,6 +642,8 @@ where
                 &OutFieldset::METADATA,
             )
             .await?;
+
+        self.finish_inout_event(event, &out_fields);
 
         Ok(out_fields)
     }

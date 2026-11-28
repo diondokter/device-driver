@@ -1,0 +1,69 @@
+manifest my-man {
+    device MyTestDevice {
+        register-address-type: u8,
+        command-address-type: i16,
+        buffer-address-type: u32,
+        default-access: RW,
+        register-address-mode: mapped,
+
+        register MyRegister {
+            address: 0,
+            fields: fieldset FooFields {
+                byte-order: LE,
+                size-bytes: 4,
+
+                field aaa 0,
+                field xxxxxx 1,
+                field bbb 3:2,
+                field ccc 12:4 -> _ as try enum _ {
+                    A: 0xD,
+                },
+                field ddd 31:13
+            }
+        },
+        register Second[4 stride 1] {
+            address: 4,
+            fields: fieldset _ {
+                byte-order: LE,
+                size-bytes: 1,
+                field value 7:0
+            }
+        },
+        fieldset SingleByte {
+            byte-order: LE,
+            size-bytes: 1,
+            field value 7:0
+        },
+        register Third[ThirdIndex stride 1] {
+            address: 8,
+            fields: SingleByte,
+        },
+        enum ThirdIndex {
+            A: _,
+            B: _,
+            C: _,
+            D: _,
+        },
+
+        command MyNoneCommand {
+            address: -4,
+        },
+        command MyInCommand {
+            address: 0,
+            fields-in: SingleByte,
+        },
+        command MyOutCommand {
+            address: 4,
+            fields-out: SingleByte,
+        },
+        command MyInOutCommand {
+            address: 5,
+            fields-in: SingleByte,
+            fields-out: FooFields,
+        },
+
+        buffer MyBuffer {
+            address: 0x8000_0000,
+        }
+    }
+}

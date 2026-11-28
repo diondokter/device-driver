@@ -1,0 +1,405 @@
+use std::sync::Mutex;
+
+use device_driver::{
+    Block, BufferInterface, BufferInterfaceBase, CommandInterface, CommandInterfaceBase,
+    FieldsetMetadata, RegisterInterface, RegisterInterfaceBase,
+};
+use device_driver_trace::{
+    ObjectIdentifier, TestTraceInterface,
+    correlator::DisplayStyle,
+    crc32,
+    decoder::{DecodeError, Event, Operation},
+};
+
+pub struct DeviceInterface {
+    device_memory: [u8; 128],
+}
+
+impl Default for DeviceInterface {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl DeviceInterface {
+    pub const fn new() -> Self {
+        Self {
+            device_memory: [0; 128],
+        }
+    }
+}
+
+impl RegisterInterfaceBase for DeviceInterface {
+    type Error = !;
+    type AddressType = u8;
+}
+impl RegisterInterface for DeviceInterface {
+    fn write_register(
+        &mut self,
+        address: Self::AddressType,
+        data: &mut [u8],
+        _metadata: &FieldsetMetadata,
+    ) -> Result<(), Self::Error> {
+        self.device_memory[address as usize..][..data.len()].copy_from_slice(data);
+        Ok(())
+    }
+
+    fn read_register(
+        &mut self,
+        address: Self::AddressType,
+        data: &mut [u8],
+        _metadata: &FieldsetMetadata,
+    ) -> Result<(), Self::Error> {
+        data.copy_from_slice(&self.device_memory[address as usize..][..data.len()]);
+        Ok(())
+    }
+}
+impl CommandInterfaceBase for DeviceInterface {
+    type Error = !;
+    type AddressType = i16;
+}
+impl CommandInterface for DeviceInterface {
+    fn dispatch_command(
+        &mut self,
+        _address: Self::AddressType,
+        _input: &mut [u8],
+        _input_metadata: &FieldsetMetadata,
+        output: &mut [u8],
+        _output_metadata: &FieldsetMetadata,
+    ) -> Result<(), Self::Error> {
+        output.fill(0xDD);
+        Ok(())
+    }
+}
+
+impl BufferInterfaceBase for DeviceInterface {
+    type Error = !;
+    type AddressType = u32;
+}
+impl BufferInterface for DeviceInterface {
+    fn write(&mut self, _address: Self::AddressType, buf: &[u8]) -> Result<usize, Self::Error> {
+        Ok(buf.len().min(2))
+    }
+
+    fn flush(&mut self, _address: Self::AddressType) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
+    fn read(&mut self, _address: Self::AddressType, buf: &mut [u8]) -> Result<usize, Self::Error> {
+        buf.fill(0xDD);
+        Ok(buf.len())
+    }
+}
+
+device_driver::compile!(
+    manifest: "tests/tracing.ddsl"
+);
+
+// `cargo test` shares global state for tests, so we need to 'serialize' the tests using this lock
+static TEST_LOCK: Mutex<()> = Mutex::new(());
+static INTERFACE: TestTraceInterface = TestTraceInterface::new();
+
+#[test]
+fn test_single_modify() {
+    let _tl = TEST_LOCK.lock().unwrap();
+    let _ = device_driver::set_global_trace_interface(&INTERFACE);
+    INTERFACE.reset();
+    INTERFACE.set_timestamp(Some(1_001_000));
+
+    let mut device = MyTestDevice::new(DeviceInterface::new());
+
+    device
+        .my_register()
+        .modify(|reg| {
+            reg.set_ccc(Ccc::A);
+            reg.set_aaa(true);
+            reg.set_ddd(540);
+        })
+        .unwrap();
+
+    let written_bytes = INTERFACE.take_bytes();
+
+    let mut decoder = device_driver_trace::decoder::StreamingDecoder::new();
+    let events = decoder.push_bytes(&written_bytes);
+
+    assert_eq!(
+        events,
+        vec![Ok(Event {
+            source_crc: device_driver_trace::crc32(include_str!("./tracing.ddsl")),
+            id: 0,
+            timestamp: Some(1_001_000),
+            operations: vec![Operation {
+                objects: vec![ObjectIdentifier::new(0x03000000, None)],
+                address: vec![0],
+                read_data: vec![0, 0, 0, 0],
+                write_data: vec![0xD1, 0x80, 0x43, 0x00],
+            }]
+        })]
+    );
+
+    let trace = render_trace(events);
+    println!("{trace}");
+}
+
+#[test]
+fn test_bulk_modify() {
+    let _tl = TEST_LOCK.lock().unwrap();
+    let _ = device_driver::set_global_trace_interface(&INTERFACE);
+    INTERFACE.reset();
+    INTERFACE.set_timestamp(None);
+
+    let mut device = MyTestDevice::new(DeviceInterface::new());
+
+    device
+        .bulk_modify()
+        .with(|d| d.my_register().plan())
+        .with(|d| d.second().plan_array_at::<4>(0))
+        .with(|d| d.third().plan_at(ThirdIndex::A))
+        .execute(|(x, y, z)| {
+            x.set_aaa(true);
+            x.set_ddd(0xFFF);
+            y[0].set_value(42);
+            z.set_value(255);
+        })
+        .unwrap();
+
+    let written_bytes = INTERFACE.take_bytes();
+
+    let mut decoder = device_driver_trace::decoder::StreamingDecoder::new();
+    let events = decoder.push_bytes(&written_bytes);
+
+    assert_eq!(
+        events,
+        vec![Ok(Event {
+            source_crc: device_driver_trace::crc32(include_str!("./tracing.ddsl")),
+            id: 0,
+            timestamp: None,
+            operations: vec![Operation {
+                objects: vec![
+                    ObjectIdentifier::new(0x03000000, None),
+                    ObjectIdentifier::new(0x03000001, Some(0)),
+                    ObjectIdentifier::new(0x03000001, Some(1)),
+                    ObjectIdentifier::new(0x03000001, Some(2)),
+                    ObjectIdentifier::new(0x03000001, Some(3)),
+                    ObjectIdentifier::new(0x03000002, Some(0)),
+                ],
+                address: vec![0],
+                read_data: vec![0, 0, 0, 0, 0, 0, 0, 0, 0],
+                write_data: vec![0x01, 0xE0, 0xFF, 0x01, 0x2A, 0x00, 0x00, 0x00, 0xFF],
+            }]
+        })]
+    );
+
+    let trace = render_trace(events);
+    println!("{trace}");
+}
+
+#[test]
+fn test_none_command() {
+    let _tl = TEST_LOCK.lock().unwrap();
+    let _ = device_driver::set_global_trace_interface(&INTERFACE);
+    INTERFACE.reset();
+    INTERFACE.set_timestamp(Some(1_001_000));
+
+    let mut device = MyTestDevice::new(DeviceInterface::new());
+
+    device.my_none_command().dispatch().unwrap();
+
+    let written_bytes = INTERFACE.take_bytes();
+
+    let mut decoder = device_driver_trace::decoder::StreamingDecoder::new();
+    let events = decoder.push_bytes(&written_bytes);
+
+    assert_eq!(
+        events,
+        vec![Ok(Event {
+            source_crc: device_driver_trace::crc32(include_str!("./tracing.ddsl")),
+            id: 0,
+            timestamp: Some(1_001_000),
+            operations: vec![Operation {
+                objects: vec![ObjectIdentifier::new(0x4000000, None)],
+                address: vec![252, 255],
+                read_data: vec![],
+                write_data: vec![],
+            }]
+        })]
+    );
+
+    let trace = render_trace(events);
+    println!("{trace}");
+}
+
+#[test]
+fn test_in_command() {
+    let _tl = TEST_LOCK.lock().unwrap();
+    let _ = device_driver::set_global_trace_interface(&INTERFACE);
+    INTERFACE.reset();
+    INTERFACE.set_timestamp(Some(1_001_000));
+
+    let mut device = MyTestDevice::new(DeviceInterface::new());
+
+    device
+        .my_in_command()
+        .dispatch_in(|fs| fs.set_value(42))
+        .unwrap();
+
+    let written_bytes = INTERFACE.take_bytes();
+
+    let mut decoder = device_driver_trace::decoder::StreamingDecoder::new();
+    let events = decoder.push_bytes(&written_bytes);
+
+    assert_eq!(
+        events,
+        vec![Ok(Event {
+            source_crc: device_driver_trace::crc32(include_str!("./tracing.ddsl")),
+            id: 0,
+            timestamp: Some(1_001_000),
+            operations: vec![Operation {
+                objects: vec![ObjectIdentifier::new(0x4000001, None)],
+                address: vec![0, 0],
+                read_data: vec![],
+                write_data: vec![42],
+            }]
+        })]
+    );
+
+    let trace = render_trace(events);
+    println!("{trace}");
+}
+
+#[test]
+fn test_out_command() {
+    let _tl = TEST_LOCK.lock().unwrap();
+    let _ = device_driver::set_global_trace_interface(&INTERFACE);
+    INTERFACE.reset();
+    INTERFACE.set_timestamp(Some(1_001_000));
+
+    let mut device = MyTestDevice::new(DeviceInterface::new());
+
+    device.my_out_command().dispatch_out().unwrap();
+
+    let written_bytes = INTERFACE.take_bytes();
+
+    let mut decoder = device_driver_trace::decoder::StreamingDecoder::new();
+    let events = decoder.push_bytes(&written_bytes);
+
+    assert_eq!(
+        events,
+        vec![Ok(Event {
+            source_crc: device_driver_trace::crc32(include_str!("./tracing.ddsl")),
+            id: 0,
+            timestamp: Some(1_001_000),
+            operations: vec![Operation {
+                objects: vec![ObjectIdentifier::new(0x4000002, None)],
+                address: vec![4, 0],
+                read_data: vec![0xDD],
+                write_data: vec![],
+            }]
+        })]
+    );
+
+    let trace = render_trace(events);
+    println!("{trace}");
+}
+
+#[test]
+fn test_inout_command() {
+    let _tl = TEST_LOCK.lock().unwrap();
+    let _ = device_driver::set_global_trace_interface(&INTERFACE);
+    INTERFACE.reset();
+    INTERFACE.set_timestamp(Some(1_001_000));
+
+    let mut device = MyTestDevice::new(DeviceInterface::new());
+
+    device
+        .my_in_out_command()
+        .dispatch_inout(|fs| fs.set_value(42))
+        .unwrap();
+
+    let written_bytes = INTERFACE.take_bytes();
+
+    let mut decoder = device_driver_trace::decoder::StreamingDecoder::new();
+    let events = decoder.push_bytes(&written_bytes);
+
+    assert_eq!(
+        events,
+        vec![Ok(Event {
+            source_crc: device_driver_trace::crc32(include_str!("./tracing.ddsl")),
+            id: 0,
+            timestamp: Some(1_001_000),
+            operations: vec![Operation {
+                objects: vec![ObjectIdentifier::new(0x4000003, None)],
+                address: vec![5, 0],
+                read_data: vec![0xDD, 0xDD, 0xDD, 0xDD],
+                write_data: vec![42],
+            }]
+        })]
+    );
+
+    let trace = render_trace(events);
+    println!("{trace}");
+}
+
+#[test]
+fn test_buffer() {
+    let _tl = TEST_LOCK.lock().unwrap();
+    let _ = device_driver::set_global_trace_interface(&INTERFACE);
+    INTERFACE.reset();
+    INTERFACE.set_timestamp(Some(1_001_000));
+
+    let mut device = MyTestDevice::new(DeviceInterface::new());
+
+    device.my_buffer().write_all(&[0, 1, 2, 3]).unwrap();
+    let mut buf = [0; 3];
+    device.my_buffer().read(&mut buf).unwrap();
+
+    let written_bytes = INTERFACE.take_bytes();
+
+    let mut decoder = device_driver_trace::decoder::StreamingDecoder::new();
+    let events = decoder.push_bytes(&written_bytes);
+
+    // assert_eq!(
+    //     events,
+    //     vec![Ok(Event {
+    //         source_crc: device_driver_trace::crc32(include_str!("./tracing.ddsl")),
+    //         id: 0,
+    //         timestamp: Some(1_001_000),
+    //         operations: vec![Operation {
+    //             objects: vec![ObjectIdentifier::new(0x4000003, None)],
+    //             address: vec![5, 0],
+    //             read_data: vec![0xDD, 0xDD, 0xDD, 0xDD],
+    //             write_data: vec![42],
+    //         }]
+    //     })]
+    // );
+
+    let trace = render_trace(events);
+    println!("{trace}");
+}
+
+fn render_trace(events: Vec<Result<Event, DecodeError>>) -> String {
+    const DDSL: &'static str = include_str!("./tracing.ddsl");
+
+    let mut diagnostics = Default::default();
+    let tokens = device_driver_lexer::lex(DDSL);
+    let ast = device_driver_parser::parse(&tokens, &mut diagnostics);
+    let (manifest, _) =
+        device_driver_mir::lower_ast(&ast, &Default::default(), &mut diagnostics).unwrap();
+    assert_eq!(diagnostics.summary(), Default::default());
+
+    let manifests = [(crc32(DDSL), manifest)].into_iter().collect();
+
+    let mut output = Vec::new();
+
+    for event in events {
+        device_driver_trace::correlator::render_event_into(
+            &mut output,
+            DisplayStyle::Fancy,
+            &manifests,
+            event.unwrap(),
+        )
+        .unwrap()
+    }
+
+    String::from_utf8_lossy_owned(output)
+}

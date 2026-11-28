@@ -54,6 +54,7 @@ impl<I> Device<I> {
             self,
             address as u16,
             FooFieldSet::default,
+            0x3000000,
         )
     }
     /// Command operation:
@@ -64,7 +65,7 @@ impl<I> Device<I> {
         I: ::device_driver::CommandInterfaceBase<AddressType = i32>,
     {
         let address = self.base_address + 0;
-        ::device_driver::CommandOperation::new(self, address as i32)
+        ::device_driver::CommandOperation::new(self, address as i32, 0x4000000)
     }
     /// Buffer operation:
     /// - Address: `0`
@@ -76,7 +77,7 @@ impl<I> Device<I> {
         I: ::device_driver::BufferInterfaceBase<AddressType = i8>,
     {
         let address = self.base_address + 0;
-        ::device_driver::BufferOperation::new(self, address as i8)
+        ::device_driver::BufferOperation::new(self, address as i8, 0x5000000)
     }
 }
 impl<I> ::device_driver::Block for Device<I> {
@@ -85,6 +86,7 @@ impl<I> ::device_driver::Block for Device<I> {
     type CommandAddressType = i32;
     type BufferAddressType = i8;
     type RegisterAddressMode = ();
+    const SOURCE_CRC: u32 = 0xB1641CDF;
     fn interface(&mut self) -> &mut Self::Interface {
         &mut self.interface
     }
